@@ -1,9 +1,14 @@
 # Itunda Implementation Guide
 
-## Complete TOSS-like Fintech System for Rwanda
+## Toss-like Fintech System for Rwanda — Prototype Stage
 
 ### System Overview
-Itunda is a 100% complete fintech super-app system built to match TOSS capabilities for Rwanda. This includes all backend microservices, frontend applications, mobile apps, admin consoles, and production infrastructure.
+Itunda is a prototype fintech super-app for Rwanda, aiming for Toss's product and architecture
+pattern. It is **not** production-ready and has no real money, PSP licensing, or audited
+compliance certification. See [ARCHITECTURE.md](ARCHITECTURE.md) for what's real vs. stub vs.
+target, and [docs/TOSS_PARITY_MATRIX.md](docs/TOSS_PARITY_MATRIX.md) for the implementation
+checklist. The only backend on Toss's actual real-world stack today is
+`spring_workspace/spring-backend`; everything else is scaffolding at varying depth.
 
 ## 1. Architecture
 
@@ -224,32 +229,39 @@ kubectl set image deployment/api-gateway api-gateway=itunda:prod
 
 ## 7. Performance Targets
 
-- API Response Time: < 100ms (p95)
-- Transaction Processing: < 2 seconds
-- Database Query: < 50ms
-- Cache Hit Ratio: > 85%
-- System Uptime: 99.99%
-- Concurrent Users: 1M+
+These are aspirational targets for a future production system, not measurements of the current
+prototype — nothing in this repo has been load-tested. Toss Bank's own real-world benchmark
+(sourced, see `docs/TOSS_ARCHITECTURE_FACTS.md` §1) is active-active dual-datacenter with
+independent per-service scaling; that is the scale reference to aim at eventually, not a claim
+to make about itunda today.
+
+- API Response Time: < 100ms (p95) — target
+- Transaction Processing: < 2 seconds — target
+- Database Query: < 50ms — target
+- Cache Hit Ratio: > 85% — target (no cache layer exists yet)
+- System Uptime, concurrent-user scale — not applicable pre-launch; do not state a number
+  without a real production deployment to measure
 
 ## 8. Security & Compliance
 
-### PCI-DSS Level 1
-- AES-256 encryption at rest
-- TLS 1.3 for transit
-- Tokenization for card data
-- Secure key management
+No compliance certification (PCI-DSS, SOC 2, or otherwise) exists for this repository — those
+require an actual third-party audit, not a claim in a markdown file. See
+[SECURITY.md](SECURITY.md) for the real, verified security posture and open gaps, and
+[docs/TOSS_ARCHITECTURE_FACTS.md](docs/TOSS_ARCHITECTURE_FACTS.md) §5 for why unearned
+compliance claims are explicitly disallowed in this repo's docs.
 
-### KYC/AML
-- Document verification
-- Sanctions list checking
-- Beneficial ownership verification
-- Rwanda regulatory compliance
+### KYC/AML — target, not built
+- Document verification: not implemented.
+- Sanctions list checking: not implemented.
+- Beneficial ownership verification: not implemented.
+- `POST /identity/submit` moves a credential to `REVIEW` and opens a real compliance-queue
+  item (see `docs/TOSS_PARITY_MATRIX.md`), but there is no decision-maker (no NIDA/vendor
+  integration, no reviewer UI) to move it to `VERIFIED`.
 
-### Monitoring
-- Real-time transaction monitoring
-- Fraud detection
-- Anomaly alerts
-- Compliance reporting
+### Monitoring — target, not built
+Real-time transaction monitoring, fraud detection, anomaly alerts, and compliance reporting
+are all designed in `docs/TOSS_RWANDA_ALIGNMENT.md`'s operations bounded context but not
+implemented.
 
 ## 9. Testing
 
@@ -297,28 +309,22 @@ npm run security:scan
 
 ## 12. Roadmap
 
-### ✓ Phase 1-5 Complete
-- Core infrastructure
-- Payments & banking
-- Loans & credit
-- Investments
-- Insurance & savings
+See [ARCHITECTURE.md §5](ARCHITECTURE.md#5-immediate-architecture-backlog) for the actual
+current priority order and [docs/TOSS_PARITY_MATRIX.md](docs/TOSS_PARITY_MATRIX.md) for
+per-feature status. Nothing below is "complete" in a production sense — demo/mocked coverage
+exists for most product areas on `spring_workspace/spring-backend`; native and web clients
+range from real-but-duplicated to broken to stub (see ARCHITECTURE.md §1-3).
 
-### ✓ Phase 6-8 Complete
-- Real-time notifications
-- Analytics & AI
-- Admin dashboard
+### Done (demo-grade, verified live against real MySQL)
+- Core ledger, wallet, transfer quote/confirm, idempotency (spring-backend)
+- Bills, loans, stocks, savings, insurance enrollment, notifications, discover (spring-backend)
 
-### ✓ Phase 9-10 Complete
-- iOS & Android apps
-- Merchant services
-- B2B features
-
-### Phase 11-12 (Optimizations)
-- Load testing & optimization
-- Security hardening
-- Performance tuning
-- Production deployment
+### Not done
+- Kafka event backbone (designed, not wired)
+- Real super-app mini-app loading mechanism (`saronite/` is a placeholder, see ARCHITECTURE.md §2)
+- Working root web app (currently broken, see ARCHITECTURE.md §2)
+- Canonical native mobile apps (currently duplicated, see ARCHITECTURE.md §3)
+- Load testing, security hardening beyond `SECURITY.md`'s fixes, production deployment
 
 ## 13. Quick Commands
 
@@ -374,13 +380,10 @@ kubectl scale deployment api-gateway --replicas=5
 
 ## 15. Contact & Support
 
-**Email**: support@itunda.rw
-**Documentation**: https://docs.itunda.rw
-**Status Page**: https://status.itunda.rw
-**Support Hours**: 24/7
+No real support email, hosted documentation site, or status page exists yet — this is a local
+prototype repository, not a deployed service. Fill this in once those actually exist.
 
 ---
 
-**Version**: 1.0.0
-**Last Updated**: 2026-07-02
-**Status**: Production Ready
+**Last Updated**: 2026-07-10
+**Status**: Prototype — see ARCHITECTURE.md for what's real vs. stub vs. target

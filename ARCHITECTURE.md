@@ -1,297 +1,129 @@
-# Itunda Fintech Platform - Complete System Architecture
+# Itunda System Architecture
 
-For the canonical Toss/Rwanda product, architecture, and UI/UX alignment target, see [docs/TOSS_RWANDA_ALIGNMENT.md](docs/TOSS_RWANDA_ALIGNMENT.md).
+This document describes itunda's technical architecture and how it maps to Toss's *actual*,
+sourced architecture. Every "Toss does X" claim here must trace to
+[docs/TOSS_ARCHITECTURE_FACTS.md](docs/TOSS_ARCHITECTURE_FACTS.md). For the product/bounded-context
+model see [docs/TOSS_RWANDA_ALIGNMENT.md](docs/TOSS_RWANDA_ALIGNMENT.md); for implementation
+status see [docs/TOSS_PARITY_MATRIX.md](docs/TOSS_PARITY_MATRIX.md).
 
-This document describes the intended architecture. Some services listed below are target bounded contexts, while the current repository implements a React web app, Express demo API, SwiftUI iOS shell, Android scaffold, Spring backend scaffold, and a loan-service prototype. Do not treat every service name here as a production-running service.
+Status labels below follow the repo convention: `real` (exists and runs), `demo` (exists,
+mocked/local data), `target` (designed, not built), `stub` (scaffold with little/no logic),
+`superseded` (duplicate, not canonical).
 
-## Overview
-Itunda is a comprehensive fintech platform for Rwanda, built to match Toss's capabilities. It's a full-stack system with frontend, backend microservices, mobile apps, and admin console.
+## 0. The one architectural idea to copy first
 
-## System Components
+Toss is not one backend wearing one app's face. "Toss," Toss Bank, Toss Securities, and Toss
+Payments are separately regulated systems with **different backends and different tech
+stacks** (Toss Bank: Kotlin/MySQL/Kubernetes; Toss Securities: legacy C ledger + Java edge),
+unified by **one frontend mechanism**: a native host app that dynamically loads independent
+React Native mini-app bundles per feature (§3 of the facts doc, productized as
+[toss/granite](https://github.com/toss/granite)).
 
-### 1. Frontend (Web Application)
-- **Framework**: React 19 + TypeScript + Vite
-- **Location**: `/src`
-- **Pages**:
-  - Home - Dashboard with wallet balance, recent transactions
-  - Pay - Send money to contacts
-  - Benefits - Promotions and rewards
-  - Stock - Stock trading
-  - Crypto - Cryptocurrency trading
-  - Insurance - Insurance products
-  - Savings - Savings accounts and fixed deposits
-  - Loans - Loan applications and management
-  - Bills - Utility bill payments
-  - Entire - App settings and features
-  - Profile - User settings and KYC
-  - Analytics - Spending insights and reports
+That reframes what "100% Toss-like" should mean for itunda: **not** one monolithic set of 12
+generically-named microservices sharing one repo, but (a) a small number of real bounded-context
+backends that can evolve independently, unified by (b) one real super-app shell that loads
+feature bundles independently. Itunda currently has neither cleanly — it has fragments of both,
+scattered across duplicate trees. This document's job is to say which fragment is the real one.
 
-### 2. Backend Microservices Architecture
+## 1. Backend architecture
 
-#### Core Services
-1. **API Gateway** (Port 3000)
-   - Request routing and load balancing
-   - Authentication & authorization
-   - Rate limiting
-   - API versioning
+### What Toss actually does (sourced, see facts doc §1-2)
 
-2. **User Service** (Port 3001)
-   - User registration and management
-   - KYC/AML verification
-   - Profile updates
-   - User settings
+- Toss Bank: monolith → MSA, Kotlin/Spring-style services, **MySQL**, all channel/business
+  services containerized on **Kubernetes**, independent per-service CI/CD deploy and scaling,
+  **active-active dual-datacenter** (not primary/DR).
+- Toss Securities: does **not** rewrite its system of record reflexively — keeps a legacy C
+  ledger core, puts a Java/Kubernetes edge in front of it, bridges the two with **Kafka**.
 
-3. **Account Service** (Port 3002)
-   - Account creation and management
-   - Account types (checking, savings, mobile_money)
-   - Multi-currency support
+### Itunda's current state
 
-4. **Transaction Service** (Port 3003)
-   - Money transfers (P2P)
-   - Transaction history
-   - Real-time updates via WebSocket/Kafka
+| Layer | Directory | Status | Notes |
+|---|---|---|---|
+| Core ledger + money-moving backend | `spring_workspace/spring-backend` | **real** | Kotlin + Spring Boot + Spring Data JPA + MySQL + Spring Security JWT. ~4,300 LOC across auth/wallet/transfer/bills/loans/contacts/stocks/savings/insurance/notifications/discover/system, verified live against real MySQL with per-user ownership checks and a transactional idempotency store. This is the one piece that is genuinely on Toss's real stack (Kotlin, Spring, MySQL) — see `docs/TOSS_PARITY_MATRIX.md` for the verified detail. **This is the canonical backend.** |
+| Earlier Kotlin scaffolds | `spring_workspace/payment-service`, `spring_workspace/ledger-service` | **superseded** | 9 and 11 `.kt` files respectively, thin, predate `spring-backend`'s consolidation. Candidates to delete once confirmed nothing in them is undone in `spring-backend`. |
+| API gateway | `node_workspace/apps/api-gateway` | **stub** | Express + http-proxy-middleware, essentially just `index.js`. Not a real gateway yet — no rate limiting, no auth, no routing table beyond a proxy. |
+| Micro-frontends | `node_workspace/apps/micro-frontends/{host-app,bank-mfe,kyc-mfe}` | **demo** | Real Vite+React scaffolds (~1,500 LOC), but this is a *web* micro-frontend split, which is not the architecture Toss is actually known for (§3 below is). Keep only if the goal is a web admin/BFF surface distinct from the consumer super-app. |
+| Earlier Express demo API | referenced in README/docs as `backend/` | **gone** | Does not exist in the tree; docs still reference it. Superseded by `spring-backend`. Any doc still pointing at `backend/` for product-surface coverage is stale — `spring-backend` is where that coverage actually lives now. |
 
-5. **Ledger Service** (Port 3004)
-   - Double-entry ledger maintenance
-   - Transaction recording
-   - Balance calculations
-   - Audit trails
+**Decision this implies:** `spring_workspace/spring-backend` is the single backend of record.
+`payment-service`, `ledger-service`, and the API-gateway stub are either archived or folded in,
+not developed in parallel. Kafka is not yet present anywhere in the repo — it is the real gap
+between "itunda has a working monolith-shaped Spring app" and "itunda has the MSA event backbone
+Toss actually runs" (transfer.confirmed / payment.provider_succeeded / ledger.posted events
+listed in `docs/TOSS_RWANDA_ALIGNMENT.md`'s event model are designed but not wired to any broker).
 
-6. **Loan Service** (Port 3005)
-   - Loan applications
-   - AI-powered credit scoring
-   - Loan approvals
-   - Payment tracking
+## 2. Frontend / super-app architecture
 
-7. **Investment Service** (Port 3006)
-   - Stock trading
-   - Cryptocurrency trading
-   - Mutual funds and ETFs
-   - Portfolio management
+### What Toss actually does (sourced, see facts doc §3)
 
-8. **Insurance Service** (Port 3007)
-   - Insurance product management
-   - Policy issuance
-   - Claims processing
+Native host app + independently-built, independently-deployed **React Native mini-app
+bundles**, split into one **shared bundle** (RN core + common code) and many **service
+bundles** (one per feature), **loaded dynamically at runtime** rather than shipped up front.
+Open-sourced as `toss/granite`. Third-party version of the same mechanism is **Apps-in-Toss**.
 
-9. **Notification Service** (Port 3008)
-   - Email notifications
-   - SMS notifications
-   - Push notifications
-   - WebSocket real-time updates
+### Itunda's current state
 
-10. **Analytics Service** (Port 3009)
-    - Spending analytics
-    - AI recommendations
-    - Trend analysis
-    - Reports generation
+| Layer | Directory | Status | Notes |
+|---|---|---|---|
+| Hand-rolled super-app shell | `saronite/` | **stub, wrong shape** | React Native host app + 4 "mini-apps" (`wallet-balance`, `pay-bills`, `reward-tasks`, `insurance_mini_app`), but only 1-3 files each (~930 LOC total) and no dynamic bundle loading, no shared/service bundle split, no CDN deploy path. It approximates Granite's *idea* without the mechanism that makes it real. |
+| Consumer web app | root `package.json` / `dist/` | **broken** | Root `package.json` has no matching `src/`, `index.html`, or Vite config — it references a deleted app. `dist/` is a stale build artifact from that deleted source. Nothing currently builds from repo root. |
+| Earliest web skeleton | `web-prototype/` | **stub** | 3 files, 139 LOC, not wired to anything. |
+| Design system | none | **target** | TDS itself isn't open-source, but its components are documented (facts doc §3) and should be the literal reference for itunda's design tokens, not an invented "Itunda Design System (aligned with Toss Design System)" placeholder with no actual token file behind it. `ios/Core/DesignSystem` and `android/core/designsystem` exist as directories but were not verified to contain a real token set. |
 
-11. **Savings Service** (Port 3010)
-    - Savings accounts
-    - Fixed deposits
-    - Goal tracking
+**Decision this implies:** the highest-leverage single frontend move is replacing `saronite/`'s
+hand-rolled shell with a real build on `toss/granite` (or, at minimum, rebuilding it to match
+Granite's actual host/shared-bundle/service-bundle/dynamic-load mechanism instead of a flat
+React Native app with a few screens in folders). Until that happens, calling `saronite/`
+"Toss-aligned" in any doc is the same kind of unsourced claim §5 of the facts doc warns against.
 
-12. **Admin Service** (Port 3011)
-    - User management
-    - Transaction monitoring
-    - Compliance checks
-    - System health monitoring
+## 3. Mobile native shells
 
-### 3. Mobile Applications
+| Directory | Status | Notes |
+|---|---|---|
+| `android/` (top-level: `core/{ledger,identity,network,consent,risk,designsystem,testing}`, `features/{credit,payments,wealth,engagement,banking,bills,assets,insurance,merchant}`) | **demo, more complete** | Feature-modularized, mirrors the bounded-context list in `docs/TOSS_RWANDA_ALIGNMENT.md`. 17 files / ~1,360 LOC. |
+| `mobile_clients/android/` | **superseded** | Simpler/older structure, same rough file count, no clear reason to keep both. |
+| `ios/` (top-level, Core/Features/SDK, Tuist microfeatures) | **demo, more complete** | Mirrors `android/`'s structure. 64 files / ~810 LOC. |
+| `mobile_clients/ios/` | **superseded** | Older/thinner. |
+| `mobile_clients/itunda-pay-sdk` | **reference only** | This is a **vendored git clone of the real `tosspayments/payment-sdk-android`**, not itunda code — its own `.git` history is genuine Toss Payments commits. Keep as a reference for how Toss actually structures a payment SDK; do not treat it as part of itunda's app surface. |
 
-#### iOS App (Swift/SwiftUI)
-- Location: `/ios`
-- Architecture: Microfeatures Architecture managed by Tuist (modular independent features)
-- Features: All web features + biometric auth, offline mode, push notifications
+**Decision this implies:** `android/` and `ios/` (top-level) are canonical; `mobile_clients/android`
+and `mobile_clients/ios` are archived once confirmed there's nothing uniquely valuable in them.
+These native shells should eventually become **thin hosts that load Granite-style mini-app
+bundles**, per §2, rather than growing their own parallel feature implementations long-term —
+otherwise itunda ends up building three copies of every feature (web, native-Android, native-iOS)
+instead of one shared bundle loaded into all three, which is the entire point of the Toss pattern.
 
-#### Android App (Kotlin/Jetpack Compose)
-- Location: `/android`
-- Architecture: Multi-module "Apps-in-Toss" Super-App framework
-- Features: All web features + biometric auth, offline mode, push notifications
+## 4. Infrastructure
 
-### 4. Infrastructure
+- `infrastructure/` has both `k8s/` and `kubernetes/` — pick one, they should not coexist.
+- Kubernetes itself is a real point of alignment (Toss Bank channel services run on K8s) —
+  keep it. Kafka is not yet present and is the real gap (§1).
+- Active-active dual-datacenter, 1,000+ topic Kafka mirroring, and sub-200ms real-time
+  ledger writes (facts doc §1-2) are **not targets for itunda's current stage** — they are
+  what Toss does at real-money, real-scale, regulated-bank operation. Naming them in a doc as
+  something itunda "has" or will build next would repeat the same fabrication problem this
+  document exists to fix. They belong in this facts doc as context, not on itunda's near-term
+  roadmap.
+- No claim of PCI-DSS Level 1, SOC 2, or similar should appear anywhere in itunda's docs
+  without an actual audit behind it (facts doc §5). `SECURITY.md` was already rewritten once to
+  remove exactly this kind of fiction — `IMPLEMENTATION_GUIDE.md` still has it and needs the
+  same treatment.
 
-#### Databases
-- **MySQL 8 (Enterprise equivalent)**: Primary relational database (users, accounts, transactions, loans, ledger)
-- **MongoDB**: Document storage (user profiles, settings, preferences)
-- **Redis**: Caching and session management
+## 5. Immediate architecture backlog
 
-#### Message Queue
-- **Kafka**: Event streaming for service-to-service communication
+In priority order, each item closes a specific gap identified above:
 
-#### Logging & Monitoring
-- **Elasticsearch**: Log aggregation
-- **Kibana**: Log visualization
-- **Prometheus**: Metrics collection
-- **Grafana**: Metrics visualization
-
-#### Cloud Storage
-- **AWS S3**: Document storage, images, backups
-
-## Architecture Diagram
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     CLIENT LAYER                                │
-├─────────────────────────────────────────────────────────────────┤
-│  Web App (React)  │  iOS App (Swift)  │  Android App (Kotlin)  │
-└─────────────────────────────────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    API GATEWAY (Spring Cloud Gateway)           │
-│            (Authentication, Routing, Rate Limiting)            │
-└─────────────────────────────────────────────────────────────────┘
-                             │
-          ┌──────────────────┼──────────────────┐
-          ▼                  ▼                  ▼
-    ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-    │ User Service │  │Account Svc   │  │Transaction   │
-    │              │  │              │  │Service       │
-    └──────────────┘  └──────────────┘  └──────────────┘
-          │                  │                  │
-          └──────────────────┼──────────────────┘
-                             │
-          ┌──────────────────┼──────────────────┐
-          ▼                  ▼                  ▼
-    ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-    │Loan Service  │  │Investment    │  │Notification │
-    │              │  │Service       │  │Service       │
-    └──────────────┘  └──────────────┘  └──────────────┘
-          │                  │                  │
-          └──────────────────┼──────────────────┘
-                             │
-          ┌──────────────────┼──────────────────┐
-          ▼                  ▼                  ▼
-    ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-    │Insurance Svc │  │Analytics Svc │  │Admin Service │
-    │              │  │              │  │              │
-    └──────────────┘  └──────────────┘  └──────────────┘
-          │                  │                  │
-          └──────────────────┼──────────────────┘
-                             │
-          ┌──────────────────┼──────────────────┐
-          ▼                  ▼                  ▼
-    ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-    │   MySQL      │  │  MongoDB     │  │   Redis      │
-    │  (Ledger)    │  │(User Data)   │  │ (Cache)      │
-    └──────────────┘  └──────────────┘  └──────────────┘
-          │                  │                  │
-          └──────────────────┼──────────────────┘
-                             │
-          ┌──────────────────┼──────────────────┐
-          ▼                  ▼                  ▼
-    ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-    │   Kafka      │  │Elasticsearch │  │   AWS S3     │
-    │(Event Stream)│  │  (Logs)      │  │ (Storage)    │
-    └──────────────┘  └──────────────┘  └──────────────┘
-```
-
-## Technology Stack
-
-### Backend
-- **Framework**: Spring Boot (Cloud Native)
-- **Language**: Kotlin / Java
-- **Architecture**: Microservices Architecture (MSA) with CQRS
-- **API**: REST + gRPC
-- **Database**: MySQL Enterprise Edition, MongoDB
-- **Search & Indexing**: Elasticsearch
-- **Cache**: Redis
-- **Message Queue**: Apache Kafka
-- **Authentication**: JWT + OAuth2
-- **Testing**: JUnit, MockK
-
-### Frontend
-- **Framework**: React 19
-- **Language**: TypeScript
-- **Styling**: CSS Modules/Tailwind CSS
-- **State Management**: Zustand
-- **Animation**: Framer Motion
-- **Icons**: Lucide React
-- **HTTP Client**: React Query (TanStack Query)
-
-### Mobile
-- **iOS Architecture**: Microfeatures Architecture managed by Tuist
-- **iOS**: Swift + SwiftUI
-- **Android Architecture**: Multi-module "Apps-in-Toss" Super-App framework
-- **Android**: Kotlin + Jetpack Compose
-- **Design System**: Itunda Design System (aligned with Toss Design System)
-- **State Management**: Redux/MVI
-- **Local Storage**: SQLite + Encrypted Preferences
-
-### Infrastructure
-- **Containerization**: Docker
-- **Orchestration**: Kubernetes + Istio (Service Mesh)
-- **Monitoring**: Prometheus + Grafana
-- **Logging**: ELK Stack
-- **CI/CD**: GitHub Actions
-
-## Security
-
-### Authentication
-- JWT tokens with refresh mechanism
-- OAuth2 integration (Google, Apple)
-- Biometric authentication (Face ID, Fingerprint)
-- Multi-factor authentication (MFA)
-
-### Data Protection
-- End-to-end encryption for sensitive data
-- AES-256 encryption at rest
-- SSL/TLS for data in transit
-- PCI-DSS compliance
-
-### Compliance
-- AML/KYC verification
-- Sanctions list checking
-- GDPR compliant
-- Data privacy regulations
-
-## Deployment
-
-### Development
-```bash
-docker-compose up
-npm run dev
-```
-
-### Production
-- Kubernetes deployment
-- Auto-scaling with load balancing
-- Database replication
-- Disaster recovery setup
-
-## API Documentation
-
-Full API documentation available at `http://localhost:3000/api/docs` (Swagger UI)
-
-## Testing
-
-### Unit Tests
-```bash
-npm run test
-```
-
-### E2E Tests
-```bash
-npm run test:e2e
-```
-
-### Load Testing
-```bash
-npm run test:load
-```
-
-## Performance Metrics
-
-- API Response Time: < 200ms (p95)
-- Transaction Processing: < 2 seconds
-- Database Query: < 100ms
-- Cache Hit Ratio: > 80%
-- System Uptime: 99.99%
-
-## Support & Contact
-
-- **Documentation**: `/docs`
-- **API Reference**: `http://localhost:3000/api/docs`
-- **Issue Tracker**: GitHub Issues
-- **Email**: support@itunda.rw
+1. Delete/archive `spring_workspace/payment-service`, `spring_workspace/ledger-service`,
+   `mobile_clients/android`, `mobile_clients/ios`, `web-prototype/` once confirmed nothing
+   unique lives only there — stop maintaining parallel copies of the same thing.
+2. Fix the broken root `package.json`/`dist/` — either rebuild a real consumer web app or
+   remove the orphaned root build config so `npm run dev` at repo root isn't a lie.
+3. Rebuild `saronite/` on the real host+shared-bundle+service-bundle+dynamic-load mechanism
+   (study/adopt `toss/granite` directly) instead of the current flat-folder approximation.
+4. Introduce Kafka as the actual event backbone for the event model already designed in
+   `docs/TOSS_RWANDA_ALIGNMENT.md` (`transfer.confirmed`, `payment.provider_succeeded`,
+   `ledger.posted`, etc.) — currently those events are documented but not emitted anywhere.
+5. Replace the placeholder "Itunda Design System (aligned with Toss Design System)" with an
+   actual token set derived from the publicly documented TDS components (facts doc §3).
+6. Remove PCI-DSS/SOC2/1M-user/"Production Ready" language from `IMPLEMENTATION_GUIDE.md`.
+7. Consolidate `infrastructure/k8s` and `infrastructure/kubernetes` into one directory.
