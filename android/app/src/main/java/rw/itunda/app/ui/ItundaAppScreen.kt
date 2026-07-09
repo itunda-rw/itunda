@@ -445,6 +445,13 @@ private fun AllTab() {
  * Real entry point for Apps-in-Itunda mini-apps -- launches the genuine
  * ReactActivity subclasses in rw.itunda.app.miniapps, each loading a real RN
  * bundle from packages/saronite/mini-apps, not a placeholder screen.
+ *
+ * Flat, no card wrapper -- matches the real Toss settings/service screens
+ * (송금, 전체 서비스, 고객센터 reference screenshots, 2026-07-10): rows sit
+ * directly on the screen background, grouped by a small label, separated by
+ * hairline dividers, not floated in an isolated white/gray card island. The
+ * earlier card-per-section treatment read as generic fintech-app UI, not
+ * Toss's actual, much flatter composition.
  */
 @Composable
 private fun MiniAppsSection(
@@ -452,40 +459,70 @@ private fun MiniAppsSection(
     onPayBills: () -> Unit,
     onRewardTasks: () -> Unit
 ) {
-    Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = TossCard),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(24.dp)) {
-            Text("Mini apps", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TossText)
-            Spacer(modifier = Modifier.height(8.dp))
-            listOf(
-                Triple("Wallet balance", onWalletBalance, "W"),
-                Triple("Pay bills", onPayBills, "P"),
-                Triple("Reward tasks", onRewardTasks, "R")
-            ).forEachIndexed { index, (title, onClick, glyph) ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = onClick)
-                        .padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(TossChip),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(glyph, color = TossText, fontWeight = FontWeight.Bold)
+    FlatSection(
+        title = "Mini apps",
+        rows = listOf(
+            FlatRow("Wallet balance", onClick = onWalletBalance),
+            FlatRow("Pay bills", onClick = onPayBills),
+            FlatRow("Reward tasks", onClick = onRewardTasks)
+        )
+    )
+}
+
+private data class FlatRow(
+    val title: String,
+    val subtitle: String? = null,
+    val trailing: String? = null,
+    val trailingIsLink: Boolean = false,
+    val onClick: () -> Unit = {}
+)
+
+/**
+ * The real Toss list pattern: a small secondary-color section label, then
+ * plain rows with a hairline divider between them -- no card, no icon chip,
+ * no background fill. Two real row shapes coexist in the reference
+ * screenshots and both are supported here: title + a stacked description
+ * below it ("서류 발급 / 통장 사본・송금확인증 등"), or title + a right-aligned
+ * value, sometimes in the brand blue as a link ("신용대출 갈아타기 ... 연
+ * 5.14%~15.00%"). This is what 서비스/신용카드/체크카드/갈아타기 etc. actually
+ * look like, as opposed to a boxed "settings card."
+ */
+@Composable
+private fun FlatSection(title: String, rows: List<FlatRow>) {
+    Column {
+        Text(
+            title,
+            color = TossSecondary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+        rows.forEachIndexed { index, row ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = row.onClick)
+                    .padding(vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(row.title, color = TossText, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+                    if (row.subtitle != null) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(row.subtitle, color = TossTertiary, fontSize = 13.sp)
                     }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Text(title, modifier = Modifier.weight(1f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TossText)
                 }
-                if (index != 2) Divider(color = TossLine)
+                if (row.trailing != null) {
+                    Text(
+                        row.trailing,
+                        color = if (row.trailingIsLink) TossBlue else TossSecondary,
+                        fontSize = 15.sp,
+                        fontWeight = if (row.trailingIsLink) FontWeight.SemiBold else FontWeight.Normal
+                    )
+                }
             }
+            if (index != rows.lastIndex) Divider(color = TossLine, thickness = 0.5.dp)
         }
     }
 }
@@ -702,7 +739,7 @@ private fun AllTopBar() {
 @Composable
 private fun IconGridSection(title: String, items: List<String>) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text(title, color = TossText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text(title, color = TossSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         val chunked = items.chunked(4)
         chunked.forEach { rowItems ->
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
@@ -722,26 +759,10 @@ private fun IconGridSection(title: String, items: List<String>) {
 
 @Composable
 private fun ListSection(title: String, items: List<Pair<String, String>>) {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text(title, color = TossText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = TossCard)) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                items.forEachIndexed { index, item ->
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 12.dp)) {
-                        Box(modifier = Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(TossChip), contentAlignment = Alignment.Center) {
-                            Text(item.first.take(1), color = TossText, fontWeight = FontWeight.Bold)
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(item.first, color = TossText, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                            Text(item.second, color = TossSecondary, fontSize = 14.sp)
-                        }
-                    }
-                    if (index != items.lastIndex) Divider(color = TossLine)
-                }
-            }
-        }
-    }
+    FlatSection(
+        title = title,
+        rows = items.map { (name, description) -> FlatRow(title = name, subtitle = description) }
+    )
 }
 
 @Preview(showBackground = true)
