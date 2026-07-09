@@ -19,26 +19,36 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalance
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.AttachMoney
+import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.Casino
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Checkroom
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.CurrencyExchange
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.DynamicFeed
 import androidx.compose.material.icons.outlined.EventAvailable
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.HomeWork
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.LocalOffer
+import androidx.compose.material.icons.outlined.LocalShipping
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Payments
+import androidx.compose.material.icons.outlined.Percent
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PersonAddAlt
 import androidx.compose.material.icons.outlined.Pets
@@ -46,16 +56,20 @@ import androidx.compose.material.icons.outlined.PieChart
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Redeem
+import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material.icons.outlined.Send
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material.icons.outlined.ShoppingCart
+import androidx.compose.material.icons.outlined.ShowChart
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material.icons.outlined.Swipe
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.TouchApp
+import androidx.compose.material.icons.outlined.TrendingUp
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -110,6 +124,18 @@ private val TossLine: Color
     @Composable get() = Tds.colors.divider
 private val TossChip: Color
     @Composable get() = Tds.colors.chip
+
+// Fixed vivid accent colors for the small product-icon badges in
+// FlatSection rows (갈아타기/서비스/외화/목돈굴리기/연금/대출 등) -- these are
+// brand/product colors in real Toss, not semantic theme colors, so unlike
+// TossBlue etc. above they intentionally stay constant across light/dark.
+private val AccentBlue = Color(0xFF3182F6)
+private val AccentTeal = Color(0xFF14AE85)
+private val AccentPurple = Color(0xFF7C5CFC)
+private val AccentOrange = Color(0xFFF2A93B)
+private val AccentRed = Color(0xFFFF5B5B)
+private val AccentPink = Color(0xFFEC5F8C)
+private val AccentGray = Color(0xFF6B7684)
 
 private enum class TossTab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     Home("Home", Icons.Outlined.Home),
@@ -548,12 +574,90 @@ private fun AllTab() {
                 "More" to Icons.Outlined.MoreHoriz
             ))
         }
-        item { ListSection("Financial services", listOf(
-            "Open account" to "Toss Bank, other banks, securities",
-            "My assets" to "Accounts, loans, securities, cards, points",
-            "Get a loan" to "Credit, mortgage, overdraft, microloan",
-            "Mobile plan" to "MTN, Airtel, broadband"
-        )) }
+        item {
+            FlatSection("Financial services", listOf(
+                FlatRow("Open account", subtitle = "Itunda Wallet, other banks, RSE brokerage", icon = Icons.Outlined.AddCircleOutline, iconColor = AccentBlue),
+                FlatRow("My assets", subtitle = "Accounts, loans, RSE holdings, cards, points", icon = Icons.Outlined.PieChart, iconColor = AccentPurple),
+                FlatRow("Get a loan", subtitle = "Personal, salary-backed, SME working capital", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue),
+                FlatRow("Mobile plan", subtitle = "MTN, Airtel, broadband", icon = Icons.Outlined.Public, iconColor = AccentTeal)
+            ))
+        }
+
+        // Everything below is modeled directly on the real Toss Bank
+        // 갈아타기/신용카드/체크카드/서비스/외화/목돈굴리기/연금/대출/알림 및 동의/고객센터
+        // reference screens (user-provided, 2026-07-10), adapted to Rwanda
+        // rails per docs/FACT_CHECKED_TOSS_RWANDA_MAP.md's established
+        // mapping (REG/WASAC/Irembo/RRA, MTN MoMo/Airtel Money, RSE tickers,
+        // RSSB pension) rather than left as Korean-market content.
+        item {
+            FlatSection("Switch & save", listOf(
+                FlatRow("Switch your personal loan", trailing = "12% ~ 24%", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue),
+                FlatRow("Switch your rent deposit loan", trailing = "9% ~ 15%", trailingIsLink = true, icon = Icons.Outlined.HomeWork, iconColor = AccentTeal),
+                FlatRow("Switch your SME loan", trailing = "11% ~ 22%", trailingIsLink = true, icon = Icons.Outlined.Storefront, iconColor = AccentTeal)
+            ))
+        }
+        item {
+            FlatSection("Cards", listOf(
+                FlatRow("Itunda Card", trailing = "5% back on bills", trailingIsLink = true, icon = Icons.Outlined.CreditCard, iconColor = AccentRed),
+                FlatRow("Virtual card", trailing = "Instant issue", icon = Icons.Outlined.CreditCard, iconColor = AccentGray)
+            ))
+        }
+        item {
+            FlatSection("Services", listOf(
+                FlatRow("Rent deposit protection", icon = Icons.Outlined.HomeWork, iconColor = AccentBlue),
+                FlatRow("Recurring payments", icon = Icons.Outlined.Description, iconColor = AccentBlue),
+                FlatRow("Import recurring payments", icon = Icons.Outlined.LocalShipping, iconColor = AccentGray),
+                FlatRow("REG & WASAC bills", icon = Icons.Outlined.Bolt, iconColor = AccentBlue),
+                FlatRow("Claim interest now", icon = Icons.Outlined.Bolt, iconColor = AccentPurple),
+                FlatRow("SME income tax estimate", icon = Icons.Outlined.Savings, iconColor = AccentOrange),
+                FlatRow("Split a bill with friends", icon = Icons.Outlined.Groups, iconColor = AccentBlue),
+                FlatRow("Shared calendar", icon = Icons.Outlined.CalendarMonth, iconColor = AccentBlue),
+                FlatRow("Kids' allowance tasks", icon = Icons.Outlined.CheckCircle, iconColor = AccentOrange)
+            ))
+        }
+        item {
+            FlatSection("Foreign currency", listOf(
+                FlatRow("Foreign currency wallet", trailing = "100% rate preference", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentPurple),
+                FlatRow("International transfer", icon = Icons.Outlined.AttachMoney, iconColor = AccentBlue)
+            ))
+        }
+        item {
+            FlatSection("Grow your money", listOf(
+                FlatRow("RSE stocks", subtitle = "BOK, MTNR, BLR, IMR, CMR, EQTY", icon = Icons.Outlined.ShowChart, iconColor = AccentTeal),
+                FlatRow("Bonds & fixed income", trailing = "7.5% ~ 12%", trailingIsLink = true, icon = Icons.Outlined.AccountBalance, iconColor = AccentBlue),
+                FlatRow("IPO schedule", icon = Icons.Outlined.TrendingUp, iconColor = AccentRed),
+                FlatRow("Brokerage account", trailing = "Up to 30,000 RWF", trailingIsLink = true, icon = Icons.Outlined.AccountBalance, iconColor = AccentTeal)
+            ))
+        }
+        item {
+            FlatSection("Pension", listOf(
+                FlatRow("Check my RSSB pension", icon = Icons.Outlined.AccountBalance, iconColor = AccentBlue),
+                FlatRow("Pension products", icon = Icons.Outlined.Percent, iconColor = AccentBlue)
+            ))
+        }
+        item {
+            FlatSection("Loans", listOf(
+                FlatRow("Check my max limit", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple),
+                FlatRow("Personal loan", trailing = "11% ~ 24%", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue)
+            ))
+        }
+        item {
+            FlatSection("Notifications & consent", listOf(
+                FlatRow("Notifications", showChevron = true),
+                FlatRow("Credit data usage policy", showChevron = true),
+                FlatRow("Privacy policy", showChevron = true),
+                FlatRow("Terms & consent", showChevron = true)
+            ))
+        }
+        item {
+            FlatSection("Support", listOf(
+                FlatRow("FAQ", showChevron = true),
+                FlatRow("Live chat", showChevron = true),
+                FlatRow("Call support", showChevron = true),
+                FlatRow("Report fraud", showChevron = true),
+                FlatRow("Announcements", showChevron = true)
+            ))
+        }
     }
 }
 
@@ -590,43 +694,60 @@ private data class FlatRow(
     val subtitle: String? = null,
     val trailing: String? = null,
     val trailingIsLink: Boolean = false,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    val iconColor: Color = AccentBlue,
+    val showChevron: Boolean = false,
     val onClick: () -> Unit = {}
 )
 
 /**
- * The real Toss list pattern: a small secondary-color section label, then
- * plain rows with a hairline divider between them -- no card, no icon chip,
- * no background fill. Two real row shapes coexist in the reference
- * screenshots and both are supported here: title + a stacked description
- * below it ("서류 발급 / 통장 사본・송금확인증 등"), or title + a right-aligned
- * value, sometimes in the brand blue as a link ("신용대출 갈아타기 ... 연
- * 5.14%~15.00%"). This is what 서비스/신용카드/체크카드/갈아타기 etc. actually
- * look like, as opposed to a boxed "settings card."
+ * The real Toss list pattern, matched directly against the reference
+ * screenshots (user-provided, 2026-07-10) of 갈아타기/신용카드/체크카드/서비스/
+ * 외화/목돈굴리기/연금/대출: a bold white section header (not a small gray
+ * label), then plain rows with NO divider between them and NO card
+ * background -- only a gap between different sections. Every row in that
+ * product-list pattern carries a small colorful square icon (never a
+ * chevron); a right-aligned value in brand blue appears only when there's
+ * a real number/status to show (interest rate, discount). A second,
+ * separate pattern exists for legal/settings lists (알림 및 동의, 고객센터):
+ * no icon at all, plain chevron on the right -- selected per-row via
+ * showChevron since both patterns can appear in the same screen.
  */
 @Composable
 private fun FlatSection(title: String, rows: List<FlatRow>) {
     Column {
         Text(
             title,
-            color = TossSecondary,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(bottom = 4.dp)
+            color = TossText,
+            fontSize = 19.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 6.dp)
         )
-        rows.forEachIndexed { index, row ->
+        rows.forEach { row ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable(onClick = row.onClick)
-                    .padding(vertical = 14.dp),
+                    .padding(vertical = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(row.title, color = TossText, fontSize = 17.sp, fontWeight = FontWeight.Medium)
-                    if (row.subtitle != null) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(row.subtitle, color = TossTertiary, fontSize = 13.sp)
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    if (row.icon != null) {
+                        Box(
+                            modifier = Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(row.iconColor),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(row.icon, contentDescription = null, modifier = Modifier.size(19.dp), tint = Color.White)
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                    }
+                    Column {
+                        Text(row.title, color = TossText, fontSize = 17.sp, fontWeight = FontWeight.Medium)
+                        if (row.subtitle != null) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(row.subtitle, color = TossTertiary, fontSize = 13.sp)
+                        }
                     }
                 }
                 if (row.trailing != null) {
@@ -636,9 +757,10 @@ private fun FlatSection(title: String, rows: List<FlatRow>) {
                         fontSize = 15.sp,
                         fontWeight = if (row.trailingIsLink) FontWeight.SemiBold else FontWeight.Normal
                     )
+                } else if (row.showChevron) {
+                    Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TossTertiary)
                 }
             }
-            if (index != rows.lastIndex) Divider(color = TossLine, thickness = 0.5.dp)
         }
     }
 }
@@ -866,17 +988,15 @@ private fun PayFeatureCard() {
     }
 }
 
+// Was a text navbar -- "ID | Support | Settings" with pipe separators --
+// a website convention with no equivalent anywhere in real Toss. The
+// 전체 (All) tab top bar is just the user's name plus a single settings
+// icon button; support/ID live as rows further down the list, not up here.
 @Composable
 private fun AllTopBar() {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text("TUYIZERE ERIC", color = TossText, fontWeight = FontWeight.Bold, fontSize = 26.sp)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("ID", color = TossSecondary)
-            Text("|", color = TossTertiary)
-            Text("Support", color = TossSecondary)
-            Text("|", color = TossTertiary)
-            Text("Settings", color = TossSecondary)
-        }
+        TopIconButton(Icons.Outlined.Settings)
     }
 }
 
@@ -905,13 +1025,6 @@ private fun IconGridSection(title: String, items: List<Pair<String, androidx.com
     }
 }
 
-@Composable
-private fun ListSection(title: String, items: List<Pair<String, String>>) {
-    FlatSection(
-        title = title,
-        rows = items.map { (name, description) -> FlatRow(title = name, subtitle = description) }
-    )
-}
 
 @Preview(showBackground = true)
 @Composable
