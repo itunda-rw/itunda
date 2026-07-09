@@ -17,9 +17,50 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountBalance
+import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.Campaign
+import androidx.compose.material.icons.outlined.CardGiftcard
+import androidx.compose.material.icons.outlined.Casino
+import androidx.compose.material.icons.outlined.Checkroom
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.CurrencyExchange
+import androidx.compose.material.icons.outlined.DynamicFeed
+import androidx.compose.material.icons.outlined.EventAvailable
+import androidx.compose.material.icons.outlined.Face
+import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.HomeWork
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.LocalOffer
+import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Payments
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.PersonAddAlt
+import androidx.compose.material.icons.outlined.Pets
+import androidx.compose.material.icons.outlined.PieChart
+import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.QrCodeScanner
+import androidx.compose.material.icons.outlined.Redeem
+import androidx.compose.material.icons.outlined.Send
+import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.ShoppingBag
+import androidx.compose.material.icons.outlined.ShoppingCart
+import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.Storefront
+import androidx.compose.material.icons.outlined.Swipe
+import androidx.compose.material.icons.outlined.SwapHoriz
+import androidx.compose.material.icons.outlined.TouchApp
+import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -70,12 +111,12 @@ private val TossLine: Color
 private val TossChip: Color
     @Composable get() = Tds.colors.chip
 
-private enum class TossTab(val label: String, val glyph: String) {
-    Home("Home", "H"),
-    Benefits("Benefits", "B"),
-    Shop("Shop", "S"),
-    Pay("Pay", "P"),
-    All("All", "A")
+private enum class TossTab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Home("Home", Icons.Outlined.Home),
+    Benefits("Benefits", Icons.Outlined.CardGiftcard),
+    Shop("Shop", Icons.Outlined.ShoppingBag),
+    Pay("Pay", Icons.Outlined.QrCodeScanner),
+    All("All", Icons.Outlined.Apps)
 }
 
 @Composable
@@ -107,18 +148,22 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
     }
 }
 
+/**
+ * Toss's real bottom nav is a flat, edge-to-edge bar with a hairline top
+ * divider and real icons -- not a floating rounded pill with letter-glyph
+ * placeholders, which is what this was before and read as an unfinished
+ * wireframe rather than an actual app (feedback from comparing directly
+ * against real Toss screenshots, 2026-07-10).
+ */
 @Composable
 private fun TossBottomBar(selectedTab: TossTab, onSelect: (TossTab) -> Unit) {
-    Surface(
-        color = Color.Transparent,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
-    ) {
+    Column {
+        Divider(color = TossLine, thickness = 0.5.dp)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(Color(0xFF17181D))
-                .padding(horizontal = 8.dp, vertical = 8.dp),
+                .background(TossCard)
+                .padding(top = 8.dp, bottom = 10.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -131,26 +176,18 @@ private fun TossBottomBar(selectedTab: TossTab, onSelect: (TossTab) -> Unit) {
                         .padding(vertical = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(22.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color.Transparent),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = tab.glyph,
-                            color = if (selected) TossText else TossSecondary,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    Icon(
+                        imageVector = tab.icon,
+                        contentDescription = tab.label,
+                        modifier = Modifier.size(24.dp),
+                        tint = if (selected) TossBlue else TossTertiary
+                    )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = tab.label,
-                        fontSize = 10.sp,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (selected) TossText else TossSecondary
+                        fontSize = 11.sp,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                        color = if (selected) TossBlue else TossTertiary
                     )
                 }
             }
@@ -174,9 +211,9 @@ private fun HomeTab(viewModel: MainViewModel) {
             ShellSection(
                 title = "",
                 rows = listOf(
-                    Triple("RWF 463,022", "Spent in July", "3 new"),
-                    Triple("Transfer cashback", "BK account -> TUYIZERE Eric", "Claim"),
-                    Triple("Sprinkle money to friends", "19:03:55 left", "Send")
+                    ShellRow("RWF 463,022", "Spent in July", "3 new", Icons.Outlined.PieChart),
+                    ShellRow("Transfer cashback", "BK account -> TUYIZERE Eric", "Claim", Icons.Outlined.Payments),
+                    ShellRow("Sprinkle money to friends", "19:03:55 left", "Send", Icons.Outlined.Redeem)
                 )
             )
         }
@@ -184,9 +221,9 @@ private fun HomeTab(viewModel: MainViewModel) {
             ShellSection(
                 title = "",
                 rows = listOf(
-                    Triple("Get cashback every time you pay", "", ">"),
-                    Triple("Pay with face ID", "", ">"),
-                    Triple("Receive government alerts", "", ">")
+                    ShellRow("Get cashback every time you pay", "", ">", Icons.Outlined.Payments),
+                    ShellRow("Pay with face ID", "", ">", Icons.Outlined.Face),
+                    ShellRow("Receive government alerts", "", ">", Icons.Outlined.Campaign)
                 )
             )
         }
@@ -199,26 +236,38 @@ private fun HomeTopBar() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 8.dp, bottom = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Real search bar, not an empty placeholder box -- the previous
+        // version here was a Box() with a background color and no children
+        // at all, a genuine leftover bug (found comparing directly against
+        // real Toss screenshots, 2026-07-10).
         Box(
             modifier = Modifier
                 .weight(1f)
-                .height(88.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(Color(0xFF181920))
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            TopGlyph("Pay")
-            TopGlyph("N")
+                .clip(RoundedCornerShape(16.dp))
+                .background(TossCardSoft)
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+        ) {
+            Text("Search", color = TossSecondary, fontSize = 15.sp)
         }
+        TopIconButton(Icons.Outlined.QrCodeScanner)
+        TopIconButton(Icons.Outlined.Notifications)
     }
 }
 
 @Composable
-private fun TopGlyph(label: String) {
-    Text(label, color = TossText, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+private fun TopIconButton(icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Box(
+        modifier = Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(TossCardSoft),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = TossText)
+    }
 }
 
 @Composable
@@ -278,7 +327,10 @@ private fun WalletMiniRow(amount: String, subtitle: String, action: String) {
                 .background(TossChip),
             contentAlignment = Alignment.Center
         ) {
-            Text(amount.take(1), color = TossText, fontWeight = FontWeight.Bold)
+            // Was amount.take(1) -- literally the first character of the RWF
+            // string as an "icon" (e.g. "R"), a real leftover bug, not a
+            // deliberate placeholder. Real icon now.
+            Icon(Icons.Outlined.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp), tint = TossText)
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -302,8 +354,15 @@ private fun SmallBlueButton(label: String) {
     }
 }
 
+private data class ShellRow(
+    val title: String,
+    val subtitle: String,
+    val action: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector
+)
+
 @Composable
-private fun ShellSection(title: String, rows: List<Triple<String, String, String>>) {
+private fun ShellSection(title: String, rows: List<ShellRow>) {
     Card(
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = TossCard),
@@ -328,17 +387,26 @@ private fun ShellSection(title: String, rows: List<Triple<String, String, String
                             .background(TossChip),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(row.third, color = TossText, fontWeight = FontWeight.Bold)
+                        // Was showing row.third (the action label, e.g. "3 new"
+                        // or "Claim") crammed into a 42dp icon box -- a real bug,
+                        // not a placeholder; it also rendered a second time below
+                        // via SmallBlueButton whenever longer than one character.
+                        // Then briefly row.first's initial as a stopgap; a real
+                        // per-row icon now, for consistency with every other
+                        // section on screen.
+                        Icon(row.icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = TossText)
                     }
                     Spacer(modifier = Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(row.first, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TossText)
-                        if (row.second.isNotEmpty()) {
-                            Text(row.second, fontSize = 14.sp, color = TossSecondary)
+                        Text(row.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TossText)
+                        if (row.subtitle.isNotEmpty()) {
+                            Text(row.subtitle, fontSize = 14.sp, color = TossSecondary)
                         }
                     }
-                    if (row.third.length > 1) {
-                        SmallBlueButton(row.third)
+                    if (row.action == ">") {
+                        Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TossTertiary)
+                    } else if (row.action.isNotBlank()) {
+                        SmallBlueButton(row.action)
                     }
                 }
                 if (index != rows.lastIndex) {
@@ -382,7 +450,7 @@ private fun ShopTab(viewModel: MainViewModel) {
                 ShellSection(
                     title = "Discover",
                     rows = discoverItems.take(3).map { item ->
-                        Triple(item.title, item.subtitle, item.badge ?: ">")
+                        ShellRow(item.title, item.subtitle, item.badge ?: ">", Icons.Outlined.Storefront)
                     }
                 )
             }
@@ -402,8 +470,8 @@ private fun PayTab() {
         item { MapPlaceholder() }
         item { PayFeatureCard() }
         item { ShellSection("", listOf(
-            Triple("Points and pay money", "Total RWF 31,031", " "),
-            Triple("Received coupons", "", " ")
+            ShellRow("Points and pay money", "Total RWF 31,031", " ", Icons.Outlined.Payments),
+            ShellRow("Received coupons", "", " ", Icons.Outlined.LocalOffer)
         )) }
     }
 }
@@ -417,7 +485,14 @@ private fun AllTab() {
     ) {
         item { AllTopBar() }
         item { SearchBar("Search") }
-        item { IconGridSection("Quick access", listOf("Mini", "Games", "Bank", "Pick")) }
+        item {
+            IconGridSection("Quick access", listOf(
+                "Mini" to Icons.Outlined.Apps,
+                "Games" to Icons.Outlined.SportsEsports,
+                "Bank" to Icons.Outlined.AccountBalance,
+                "Pick" to Icons.Outlined.Star
+            ))
+        }
         item {
             MiniAppsSection(
                 onWalletBalance = {
@@ -431,7 +506,18 @@ private fun AllTab() {
                 }
             )
         }
-        item { IconGridSection("Recent services", listOf("Open acct", "Photo transfer", "Verify", "Send", "Group", "Property", "Insurance", "More")) }
+        item {
+            IconGridSection("Recent services", listOf(
+                "Open acct" to Icons.Outlined.AddCircleOutline,
+                "Photo transfer" to Icons.Outlined.CameraAlt,
+                "Verify" to Icons.Outlined.VerifiedUser,
+                "Send" to Icons.Outlined.Send,
+                "Group" to Icons.Outlined.Group,
+                "Property" to Icons.Outlined.HomeWork,
+                "Insurance" to Icons.Outlined.Shield,
+                "More" to Icons.Outlined.MoreHoriz
+            ))
+        }
         item { ListSection("Financial services", listOf(
             "Open account" to "Toss Bank, other banks, securities",
             "My assets" to "Accounts, loans, securities, cards, points",
@@ -569,13 +655,18 @@ private fun BenefitsVisitCard() {
     Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = TossCard)) {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Text("Visit 3 of 4 services and earn points", color = TossText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            listOf("Happy lottery", "Push the button", "Try on", "Bring friends").forEach {
+            listOf(
+                "Happy lottery" to Icons.Outlined.Casino,
+                "Push the button" to Icons.Outlined.TouchApp,
+                "Try on" to Icons.Outlined.Checkroom,
+                "Bring friends" to Icons.Outlined.PersonAddAlt
+            ).forEach { (title, icon) ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(TossChip), contentAlignment = Alignment.Center) {
-                        Text(it.take(1), color = TossText, fontWeight = FontWeight.Bold)
+                        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = TossText)
                     }
                     Spacer(modifier = Modifier.width(14.dp))
-                    Text(it, modifier = Modifier.weight(1f), color = TossText, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    Text(title, modifier = Modifier.weight(1f), color = TossText, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                     SmallBlueButton("Visit")
                 }
             }
@@ -591,7 +682,9 @@ private fun CashbackChanceCard() {
             Text("We will notify you when new chances are available", color = TossSecondary, fontSize = 15.sp)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF246BFF)), contentAlignment = Alignment.Center) {
-                    Text("₩", color = Color.White, fontWeight = FontWeight.Bold)
+                    // Was the Korean Won symbol ("₩") -- wrong currency
+                    // entirely for a Rwanda app; real icon now.
+                    Icon(Icons.Outlined.CurrencyExchange, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color.White)
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -609,9 +702,9 @@ private fun ShopTopBar() {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         SearchBar("Search products")
         Spacer(modifier = Modifier.width(12.dp))
-        Text("U", color = TossText, fontSize = 22.sp)
+        Icon(Icons.Outlined.Person, contentDescription = null, tint = TossText)
         Spacer(modifier = Modifier.width(12.dp))
-        Text("B", color = TossText, fontSize = 22.sp)
+        Icon(Icons.Outlined.ShoppingCart, contentDescription = null, tint = TossText)
     }
 }
 
@@ -653,13 +746,19 @@ private fun PointActionsCard() {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text("Points and coupon tasks", color = TossText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                listOf("Check-in", "Scroll", "Feed", "Cat", "Pick").forEach {
+                listOf(
+                    "Check-in" to Icons.Outlined.EventAvailable,
+                    "Scroll" to Icons.Outlined.Swipe,
+                    "Feed" to Icons.Outlined.DynamicFeed,
+                    "Cat" to Icons.Outlined.Pets,
+                    "Pick" to Icons.Outlined.Star
+                ).forEach { (label, icon) ->
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(TossCardSoft), contentAlignment = Alignment.Center) {
-                            Text(it.take(1), color = TossText, fontWeight = FontWeight.Bold)
+                            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = TossText)
                         }
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text(it, color = TossSecondary, fontSize = 12.sp)
+                        Text(label, color = TossSecondary, fontSize = 12.sp)
                     }
                 }
             }
@@ -672,8 +771,8 @@ private fun PayTopBar() {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text("itunda pay", color = TossText, fontWeight = FontWeight.ExtraBold, fontSize = 28.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("QR", color = TossText, fontWeight = FontWeight.Bold)
-            Text("G", color = TossText, fontWeight = FontWeight.Bold)
+            Icon(Icons.Outlined.QrCodeScanner, contentDescription = null, tint = TossText)
+            Icon(Icons.Outlined.Public, contentDescription = null, tint = TossText)
         }
     }
 }
@@ -695,7 +794,7 @@ private fun PayFeatureCard() {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(TossChip), contentAlignment = Alignment.Center) {
-                    Text("P", color = TossBlue, fontWeight = FontWeight.Bold)
+                    Icon(Icons.Outlined.Storefront, contentDescription = null, modifier = Modifier.size(18.dp), tint = TossBlue)
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -709,7 +808,7 @@ private fun PayFeatureCard() {
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(TossChip), contentAlignment = Alignment.Center) {
-                    Text("W", color = TossText, fontWeight = FontWeight.Bold)
+                    Icon(Icons.Outlined.Language, contentDescription = null, modifier = Modifier.size(18.dp), tint = TossText)
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -736,20 +835,24 @@ private fun AllTopBar() {
     }
 }
 
+// Was rendering item.take(1) -- the first letter of the label -- as the
+// "icon" in every grid tile across the app (Mini/Games/Bank/Pick all
+// showed as plain letters M/G/B/P). Real icons per item now; this is the
+// single biggest reason the app read as a wireframe rather than Toss.
 @Composable
-private fun IconGridSection(title: String, items: List<String>) {
+private fun IconGridSection(title: String, items: List<Pair<String, androidx.compose.ui.graphics.vector.ImageVector>>) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text(title, color = TossSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         val chunked = items.chunked(4)
         chunked.forEach { rowItems ->
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                rowItems.forEach { item ->
+                rowItems.forEach { (label, icon) ->
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                         Box(modifier = Modifier.size(54.dp).clip(RoundedCornerShape(18.dp)).background(TossCardSoft), contentAlignment = Alignment.Center) {
-                            Text(item.take(1), color = TossText, fontWeight = FontWeight.Bold)
+                            Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = TossText)
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(item, color = TossSecondary, fontSize = 13.sp)
+                        Text(label, color = TossSecondary, fontSize = 13.sp)
                     }
                 }
             }
