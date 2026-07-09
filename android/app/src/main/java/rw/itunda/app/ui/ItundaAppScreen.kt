@@ -656,7 +656,16 @@ private fun PromoBannerCard() {
     Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF5D2FE6))) {
         Box(modifier = Modifier.fillMaxWidth().height(220.dp).padding(20.dp)) {
             Column {
-                Text("Limited gift for Rwanda", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    // Toss's real open-source emoji font (github.com/toss/tossface),
+                    // bundled from the actual release asset -- not a generic system
+                    // emoji glyph.
+                    "🎁 Limited gift for Rwanda",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = rw.itunda.core.designsystem.theme.TossFaceFontFamily
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("25,000", color = Color.White, fontSize = 54.sp, fontWeight = FontWeight.ExtraBold)
                 Spacer(modifier = Modifier.height(10.dp))
@@ -708,7 +717,13 @@ private fun BenefitsVisitCard() {
 private fun CashbackChanceCard() {
     Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = TossCard)) {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("3 chances to get money back", color = TossText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "🍀 3 chances to get money back",
+                color = TossText,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = rw.itunda.core.designsystem.theme.TossFaceFontFamily
+            )
             Text("We will notify you when new chances are available", color = TossSecondary, fontSize = 15.sp)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF246BFF)), contentAlignment = Alignment.Center) {
