@@ -1,7 +1,18 @@
-import SwiftUI
+//
+//  BankView.swift
+//  Ported from mobile_clients/ios (2026-07-10) into its correct Tuist module --
+//  see ARCHITECTURE.md §3.
+//
+//  NOT build-verified -- see Core/Risk/Sources/ZeroTrust.swift for why.
+//
 
-struct BankView: View {
-    var body: some View {
+import SwiftUI
+import CoreDesignSystem
+
+public struct BankView: View {
+    public init() {}
+
+    public var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: IDS.Layout.cardGap) {
                 HomeTopBar()

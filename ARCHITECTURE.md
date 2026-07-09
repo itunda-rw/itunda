@@ -78,30 +78,33 @@ React Native app with a few screens in folders). Until that happens, calling `sa
 
 ## 3. Mobile native shells
 
-**Correction (2026-07-10):** an earlier pass of this document called the top-level `android/`
-and `ios/` trees "more complete" based on a shallow file/LOC count. Checked properly (real
-source vs. empty scaffolding), that's wrong — it's not one tree superseding the other, it's two
-incomplete halves:
+**Resolved (2026-07-10):** `mobile_clients/android` and `mobile_clients/ios` were duplicate
+native-shell trees with real orphaned source and no build system (see git history for the full
+"two incomplete halves" analysis that preceded this). Both have been consolidated into the
+canonical `android/`/`ios/` trees and deleted. Current state:
 
-| Directory | Status | Notes |
+| Module | Content | Verification |
 |---|---|---|
-| `android/` (top-level: `core/*`, `features/*`, matches the bounded-context list in `docs/TOSS_RWANDA_ALIGNMENT.md`) | **real shell, mostly empty modules** | Has a real, compiling app (`MainActivity` → `ItundaAppScreen.kt`, genuine 5-tab Toss-style nav: Home/Benefits/Shop/Pay/All), a real ledger domain module, a real design system (`TdsButton`/`TdsColors`/`TdsTheme`), and real payments transfer code (`TransferScreen.kt`, `TransferApi.kt`, verified compiling). But `core/identity`, `core/risk`, `core/consent`, `core/testing`, and every feature module except `payments` are **empty Gradle scaffolding — zero real Kotlin source.** |
-| `mobile_clients/android/` | **real orphaned source, zero build system** | Has real, substantive Kotlin nothing else has: `Security/RootDetection.kt`, `Security/NIDABiometricAuth.kt` (root/biometric detection — nothing like this exists in `android/core/identity` or `core/risk`, which are empty), and a full `CoreBank` screen set (Bank, Transfer, Recipient, Spending, Menu). But **no `build.gradle.kts`, `settings.gradle.kts`, or `AndroidManifest.xml` exist anywhere in this tree** — none of it has ever compiled. |
-| `ios/` (top-level, Tuist microfeatures) | **real shell, mostly empty modules** | Identical pattern to `android/`: real `ItundaApp.swift`/`ContentView.swift`, `LedgerRepository.swift`, `BffClient.swift`, `TdsTheme`/`Components`/`SduiRenderer`, and `TransferScreen.swift`/`TransferApi.swift`. Every other module (`Core/Identity`, `Core/Risk`, `Core/Consent`, `Core/Testing`, `Features/{Banking,Bills,Assets,Insurance,Wealth,Engagement,Credit,Merchant}`) is a literal `Dummy.swift`, 0 lines — Tuist module placeholders, not real code. |
-| `mobile_clients/ios/` | **real orphaned source, unverified build** | `Security/ZeroTrust.swift`, `Security/NIDABiometricAuth.swift`, and `CoreBank` views (`MainTabView`, `BankViewController`, `BankView`, `MenuView`) — the same real-content-nothing-else-has pattern as its Android counterpart. |
-| `mobile_clients/itunda-pay-sdk` | **reference only** | This is a **vendored git clone of the real `tosspayments/payment-sdk-android`**, not itunda code — its own `.git` history is genuine Toss Payments commits. Keep as a reference for how Toss actually structures a payment SDK; do not treat it as part of itunda's app surface, and consider moving it out of `mobile_clients/` (a name that otherwise means "itunda's own client code") so it stops reading as a third duplicate.
+| `android/core/risk` | `RootDetection.kt` | **Real, compiles.** `./gradlew :app:assembleDebug` succeeded; the resulting APK was installed and launched on a real emulator (avd `andros`), confirmed alive via `adb` (no `AndroidRuntime`/`FATAL` in logcat) with a real screenshot. `MainActivity` calls this before rendering. |
+| `android/core/identity` | `NIDABiometricAuth.kt` (+ `androidx.biometric` dep) | Same build/run verification as above. Local biometric gate only — no NIDA server-side call, honestly labeled in the file. |
+| `android/features/banking/impl` | `BankScreen.kt`, `MySpendingScreen.kt` | Same verification. Ported with three real compile-error fixes (ambiguous lambda type, invalid `Modifier.padding()` args, a `TransactionItem` composable that was called but never defined in the original) — proof the source had genuinely never compiled before. |
+| `android/features/payments/impl` | `RecipientScreen.kt` (alongside the pre-existing `TransferQuoteScreen.kt`) | Same verification. |
+| `android/core/designsystem/ids` | `IDS.kt` | Ported as a second, separate token set alongside the existing `Tds*` tokens rather than silently merged — reconciling the two remains open (see §5). |
+| `ios/Core/Risk`, `ios/Core/Identity`, `ios/Features/Banking`, `ios/Core/DesignSystem`, `ios/SDK/Pay` | `ZeroTrust.swift`, `NIDABiometricAuth.swift`, `BankView.swift`, `IDS.swift`, `PaymentWidget.swift`/`AgreementWidget.swift`/`PaymentMethodWidget.swift` | **Ported, not build-verified.** This sandbox's Tuist install can't run (`libswiftSynchronization.dylib` missing — Tuist was built for a newer macOS than this environment has) and only Xcode Command Line Tools are selected, not full Xcode, so `tuist generate`/`xcodebuild` could not be exercised. Files were hand-audited for correct `public` access-control and per-module `import` statements (Swift multi-framework visibility), but treat as unverified until someone runs this on a real Mac with Xcode. |
+| `mobile_clients/itunda-pay-sdk` | vendored `tosspayments/payment-sdk-android` clone | Untouched — real third-party reference, not itunda code, its own `.git` history is genuine Toss Payments commits. Still worth moving out of `mobile_clients/` eventually so the name stops implying it's itunda's own client code. |
 
-**Decision this implies:** the fix is not "delete the older tree" — it's **port the real orphaned
-security/banking source from `mobile_clients/{android,ios}` into the empty modules of the
-top-level `android/`/`ios` trees, verify it actually compiles as part of the real multi-module
-build, then delete the now-fully-superseded `mobile_clients/{android,ios}` duplicates.** Once
-consolidated, these native shells should hold the trust-critical native surface (bank, transfer,
-identity/biometrics, ledger) permanently — not migrate to RN — while non-core features load as
-Granite-style mini-app bundles per §2. That split (native for money-moving trust surface,
-mini-app bundles for everything else) mirrors how Toss itself only exposes the *generic*
-app-shell mechanism as open-source Granite while keeping money/identity bridge APIs private and
-native (facts doc §3) — core trust surface stays native, extensibility surface goes through the
-mini-app runtime.
+`MainTabScreen.kt`/`MenuScreen.kt`/`BankActivity.kt` (Android) and `MainTabView.swift`/
+`BankViewController.swift`/`MenuView.swift`/`SaroniteViewController.swift` (iOS) were
+deliberately **not** ported — they're alternate app-shell/entry-point implementations that would
+compete with the canonical `MainActivity`/`ItundaAppScreen` and `ContentView`, not extend them.
+The old `TransferScreen.kt` (Android) was dropped as superseded by the newer, already-real
+`TransferQuoteScreen.kt`.
+
+These native shells hold the trust-critical native surface (bank, transfer, identity/biometrics,
+ledger) permanently — not migrated to RN — while non-core features load as Granite-style mini-app
+bundles per §2. That split mirrors how Toss itself only exposes the *generic* app-shell mechanism
+as open-source Granite while keeping money/identity bridge APIs private and native (facts doc
+§3) — core trust surface stays native, extensibility surface goes through the mini-app runtime.
 
 ## 4. Infrastructure
 

@@ -1,20 +1,25 @@
+//
+//  AgreementWidget.swift
+//  Ported from mobile_clients/ios/ItundaPaySDK (2026-07-10) -- see PaymentWidget.swift.
+//
+
 import SwiftUI
 
 public struct AgreementWidget: View {
     @ObservedObject var widget: PaymentWidget
     @Binding var isAgreed: Bool
-    
+
     public init(widget: PaymentWidget, isAgreed: Binding<Bool>) {
         self.widget = widget
         self._isAgreed = isAgreed
     }
-    
+
     public var body: some View {
         VStack(alignment: .leading) {
             Text("Terms and Conditions")
                 .font(.headline)
                 .padding(.bottom, 8)
-            
+
             Button(action: {
                 isAgreed.toggle()
             }) {
@@ -22,7 +27,7 @@ public struct AgreementWidget: View {
                     Image(systemName: isAgreed ? "checkmark.square.fill" : "square")
                         .foregroundColor(isAgreed ? .blue : .gray)
                         .font(.title3)
-                    
+
                     VStack(alignment: .leading, spacing: 4) {
                         Text("I agree to all Terms and Conditions")
                             .font(.subheadline)
