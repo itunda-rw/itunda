@@ -1,0 +1,19 @@
+{
+  "name": "saronite-miniapp-reward-tasks",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A real mini-app for claiming reward tasks, modeled on the rewards/points-earning mini-app category common in Toss's real Apps in Toss ecosystem",
+  "main": "pages/index.tsx",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@itunda/saronite-react-native": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "react": "19.1.0",
+    "react-native": "^0.80.3",
+    "typescript": "^5.5.4"
+  }
+}

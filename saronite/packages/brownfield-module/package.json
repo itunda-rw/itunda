@@ -1,0 +1,17 @@
+{
+  "name": "@itunda/saronite-brownfield-module",
+  "version": "0.1.0",
+  "description": "Typed native-module contract for Saronite, mirroring Toss Granite's GraniteBrownfieldModule spec pattern",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react-native": ">=0.70.0"
+  },
+  "devDependencies": {
+    "react-native": "^0.80.3",
+    "typescript": "^5.5.4"
+  }
+}

@@ -1,0 +1,72 @@
+package rw.itunda.core.repository
+
+import jakarta.persistence.LockModeType
+import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
+import rw.itunda.core.domain.Contact
+import rw.itunda.core.domain.Holding
+import rw.itunda.core.domain.InterestJar
+import rw.itunda.core.domain.LedgerAccount
+import rw.itunda.core.domain.LedgerEntry
+import rw.itunda.core.domain.LoanAccount
+import rw.itunda.core.domain.SavingsGoal
+import rw.itunda.core.domain.Transaction
+import rw.itunda.core.domain.User
+import rw.itunda.core.domain.Wallet
+import rw.itunda.core.domain.WalletType
+import java.util.Optional
+
+interface LoanAccountRepository : JpaRepository<LoanAccount, String> {
+    fun findByUserId(userId: String): List<LoanAccount>
+}
+
+interface ContactRepository : JpaRepository<Contact, String> {
+    fun findByUserId(userId: String): List<Contact>
+}
+
+interface HoldingRepository : JpaRepository<Holding, String> {
+    fun findByUserId(userId: String): List<Holding>
+    fun findByUserIdAndStockId(userId: String, stockId: String): Holding?
+}
+
+interface SavingsGoalRepository : JpaRepository<SavingsGoal, String> {
+    fun findByUserId(userId: String): List<SavingsGoal>
+}
+
+interface InterestJarRepository : JpaRepository<InterestJar, String>
+
+interface LedgerAccountRepository : JpaRepository<LedgerAccount, String> {
+    // A real row lock (SELECT ... FOR UPDATE) — the concurrency control the Express/
+    // JSON-file prototype explicitly could not provide (see TOSS_PARITY_MATRIX.md's
+    // ledger "Non-Negotiable Gate": needs "a real durable store with real transactions/
+    // concurrency control"). Two simultaneous postLedgerTransaction calls touching the
+    // same clearing account now serialize instead of racing on a read-modify-write.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from LedgerAccount a where a.id = :id")
+    fun findByIdForUpdate(@Param("id") id: String): Optional<LedgerAccount>
+}
+
+interface UserRepository : JpaRepository<User, String> {
+    fun findByPhoneNumber(phoneNumber: String): User?
+    fun existsByPhoneNumber(phoneNumber: String): Boolean
+}
+
+interface WalletRepository : JpaRepository<Wallet, String> {
+    fun findByUserId(userId: String): List<Wallet>
+    fun findByUserIdAndType(userId: String, type: WalletType): Wallet?
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select w from Wallet w where w.id = :id")
+    fun findByIdForUpdate(@Param("id") id: String): Optional<Wallet>
+}
+
+interface LedgerEntryRepository : JpaRepository<LedgerEntry, String> {
+    fun findByTransactionId(transactionId: String): List<LedgerEntry>
+    fun findByAccountIdOrderByCreatedAtDesc(accountId: String): List<LedgerEntry>
+}
+
+interface TransactionRepository : JpaRepository<Transaction, String> {
+    fun findBySenderIdOrRecipientIdOrderByCreatedAtDesc(senderId: String, recipientId: String): List<Transaction>
+}

@@ -1,0 +1,19 @@
+{
+  "name": "saronite-miniapp-pay-bills",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A real mini-app for paying pending bills, modeled on the life-services category of Toss's real Apps in Toss mini-app ecosystem",
+  "main": "pages/index.tsx",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@itunda/saronite-react-native": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "react": "19.1.0",
+    "react-native": "^0.80.3",
+    "typescript": "^5.5.4"
+  }
+}

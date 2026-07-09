@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: itunda
+  labels:
+    name: itunda
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: itunda-monitoring
+  labels:
+    name: itunda-monitoring
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: itunda-logging
+  labels:
+    name: itunda-logging

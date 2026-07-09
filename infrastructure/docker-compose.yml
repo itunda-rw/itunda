@@ -1,0 +1,127 @@
+version: '3.9'
+
+# Toss-aligned Infrastructure-Only Docker Compose
+# Provides the databases, caching, and event-streaming (Kafka) required for local development.
+
+services:
+  # ==================== PostgreSQL / MySQL ====================
+  mysql:
+    image: mysql:8
+    container_name: mysql
+    environment:
+      MYSQL_DATABASE: itunda_ledger
+      MYSQL_USER: itunda
+      MYSQL_PASSWORD: ${DB_PASSWORD:-itunda_password}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-itunda_password}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - itunda-network
+    restart: unless-stopped
+
+  # ==================== Redis Cache ====================
+  redis-node-1:
+    image: redis:7-alpine
+    container_name: redis-node-1
+    command: redis-server --port 6379 --appendonly yes
+    ports:
+      - "16379:6379"
+    volumes:
+      - redis_node_1:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - itunda-network
+    restart: unless-stopped
+
+  # ==================== Zookeeper for Kafka ====================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+    healthcheck:
+      test: echo ruok | nc -w 2 zookeeper 2181
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - itunda-network
+    restart: unless-stopped
+
+  # ==================== Kafka Broker ====================
+  kafka-broker-1:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka-broker-1
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker-1:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka_broker_1:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - itunda-network
+    restart: unless-stopped
+
+  # ==================== Debezium (Kafka Connect for CDC Outbox) ====================
+  debezium:
+    image: quay.io/debezium/connect:2.5.0.Final
+    container_name: debezium
+    depends_on:
+      kafka-broker-1:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: kafka-broker-1:29092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: connect_configs
+      OFFSET_STORAGE_TOPIC: connect_offsets
+      STATUS_STORAGE_TOPIC: connect_statuses
+    networks:
+      - itunda-network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  redis_node_1:
+  zookeeper_data:
+  zookeeper_logs:
+  kafka_broker_1:
+
+networks:
+  itunda-network:
+    driver: bridge

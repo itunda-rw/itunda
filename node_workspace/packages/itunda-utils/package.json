@@ -1,0 +1,9 @@
+{
+  "name": "@itunda/utils",
+  "version": "1.0.0",
+  "description": "Itunda internal utils modeled after Toss @toss/utils",
+  "main": "src/index.ts",
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

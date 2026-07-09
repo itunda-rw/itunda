@@ -1,0 +1,23 @@
+{
+  "name": "@itunda/saronite-react-native",
+  "version": "0.1.0",
+  "description": "JS-side SDK mini-apps import to talk to the host itunda app, mirroring Toss Granite's bridge-function pattern",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@itunda/saronite-brownfield-module": "0.1.0"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-native": ">=0.70.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "react": "19.1.0",
+    "react-native": "^0.80.3",
+    "typescript": "^5.5.4"
+  }
+}

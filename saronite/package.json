@@ -1,0 +1,14 @@
+{
+  "name": "saronite",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Mini-app SDK for itunda, modeled on Toss's Granite framework",
+  "workspaces": [
+    "packages/*",
+    "mini-apps/*",
+    "host-app"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}

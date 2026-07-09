@@ -1,0 +1,39 @@
+package rw.itunda.auth
+
+import java.time.Instant
+
+data class RegisterRequest(
+    val phoneNumber: String,
+    val email: String?,
+    val firstName: String,
+    val lastName: String,
+    val password: String,
+)
+
+data class LoginRequest(val phoneNumber: String, val password: String)
+
+data class RefreshRequest(val refreshToken: String)
+
+/** refreshToken is optional: a client that lost it (or never stored it) can still log
+ * out the current access token; if provided, the refresh token is revoked too so it
+ * can't be used to silently mint a new access token after the user thought they left. */
+data class LogoutRequest(val refreshToken: String? = null)
+
+data class PublicUser(
+    val id: String,
+    val phoneNumber: String,
+    val email: String?,
+    val firstName: String,
+    val lastName: String,
+    val kycVerified: Boolean,
+    val creditScore: Int,
+    val createdAt: Instant,
+)
+
+data class AuthResponse(
+    val success: Boolean = true,
+    val message: String,
+    val user: PublicUser,
+    val accessToken: String,
+    val refreshToken: String,
+)

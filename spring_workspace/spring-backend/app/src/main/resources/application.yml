@@ -1,0 +1,36 @@
+server:
+  port: 4001
+
+spring:
+  application:
+    name: itunda
+  # This app authenticates purely via the JWT filter (see SecurityConfig/
+  # JwtAuthenticationFilter) and never uses Spring Security's UserDetailsService /
+  # form-login machinery, so auto-configuring an in-memory default user is just noise
+  # (and a red herring — that generated password authenticates nothing real).
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:itunda}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: ${DB_USER:itunda}
+    password: ${DB_PASSWORD:itunda}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  jpa:
+    hibernate:
+      # update, not validate/none: same "demo stepping stone" tier of rigor as the
+      # Express backend's JSON-file persistence — real deployments need Flyway/Liquibase
+      # migrations instead of letting Hibernate infer the schema. Documented, not hidden.
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+itunda:
+  jwt:
+    secret: ${JWT_SECRET:itunda-dev-secret-do-not-use-in-production}
