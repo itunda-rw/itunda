@@ -65,4 +65,7 @@ dependencies {
 
     // Project Modules
     implementation(project(":core:designsystem"))
+    implementation(project(":core:risk"))
+    implementation(project(":core:identity"))
+    implementation(project(":features:banking:impl"))
 }
