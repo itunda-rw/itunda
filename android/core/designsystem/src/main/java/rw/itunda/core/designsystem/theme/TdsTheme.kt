@@ -4,25 +4,29 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 
 private val TdsLightColors = lightColorScheme(
-    primary = TdsColors.Blue500,
+    primary = TdsLightSemanticColors.brand,
     onPrimary = TdsColors.White,
-    background = TdsColors.Gray50,
-    onBackground = TdsColors.Gray900,
-    surface = TdsColors.White,
-    onSurface = TdsColors.Gray900,
-    error = TdsColors.Red500
+    background = TdsLightSemanticColors.background,
+    onBackground = TdsLightSemanticColors.textPrimary,
+    surface = TdsLightSemanticColors.surface,
+    onSurface = TdsLightSemanticColors.textPrimary,
+    error = TdsLightSemanticColors.danger
 )
 
+// Real black, matching the actual Toss app's dark mode (was navy #191F28
+// before -- didn't match Toss or this project's own hand-tuned dark accents
+// elsewhere; see TdsSemanticColors.kt for the full account).
 private val TdsDarkColors = darkColorScheme(
-    primary = TdsColors.Blue500,
+    primary = TdsDarkSemanticColors.brand,
     onPrimary = TdsColors.White,
-    background = TdsColors.Gray900,
-    onBackground = TdsColors.White,
-    surface = TdsColors.Gray800,
-    onSurface = TdsColors.White,
-    error = TdsColors.Red500
+    background = TdsDarkSemanticColors.background,
+    onBackground = TdsDarkSemanticColors.textPrimary,
+    surface = TdsDarkSemanticColors.surface,
+    onSurface = TdsDarkSemanticColors.textPrimary,
+    error = TdsDarkSemanticColors.danger
 )
 
 @Composable
@@ -31,9 +35,12 @@ fun TdsTheme(
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) TdsDarkColors else TdsLightColors
-    
-    MaterialTheme(
-        colorScheme = colorScheme,
-        content = content
-    )
+    val semanticColors = if (darkTheme) TdsDarkSemanticColors else TdsLightSemanticColors
+
+    CompositionLocalProvider(LocalTdsSemanticColors provides semanticColors) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            content = content
+        )
+    }
 }

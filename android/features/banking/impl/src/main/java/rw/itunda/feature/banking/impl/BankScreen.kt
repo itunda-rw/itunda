@@ -39,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import rw.itunda.core.designsystem.ids.IDS
+import rw.itunda.core.designsystem.theme.Tds
 
 // Named to avoid ambiguous type inference when used as one branch of an
 // inline if/else assigned directly to a () -> Unit parameter (a real
@@ -66,29 +67,29 @@ fun BankScreen(
     onNavigateToTransfer: () -> Unit = {}
 ) {
     val quickActions = listOf(
-        QuickAction("Transfer", Icons.Outlined.ArrowForward, IDS.Colors.SuccessTint, onNavigateToTransfer),
-        QuickAction("Bills", Icons.Outlined.ReceiptLong, IDS.Colors.WarningTint, {}),
-        QuickAction("MoMo", Icons.Outlined.Smartphone, IDS.Colors.Pressed, {}),
-        QuickAction("Savings", Icons.Outlined.Savings, IDS.Colors.DangerTint, {})
+        QuickAction("Transfer", Icons.Outlined.ArrowForward, Tds.colors.successTint, onNavigateToTransfer),
+        QuickAction("Bills", Icons.Outlined.ReceiptLong, Tds.colors.warningTint, {}),
+        QuickAction("MoMo", Icons.Outlined.Smartphone, Tds.colors.pressed, {}),
+        QuickAction("Savings", Icons.Outlined.Savings, Tds.colors.dangerTint, {})
     )
     val linkedMoneyRows = listOf(
-        HomeRow("BK Bank account", "Salary and card settlement", "RWF 842,000", Icons.Outlined.AccountBalance, IDS.Colors.BackgroundTertiary),
-        HomeRow("MTN MoMo", "Daily spending wallet", "RWF 118,400", Icons.Outlined.Smartphone, IDS.Colors.SuccessTint),
-        HomeRow("Airtel Money", "Backup cash-out line", "Connected", Icons.Outlined.Payments, IDS.Colors.WarningTint)
+        HomeRow("BK Bank account", "Salary and card settlement", "RWF 842,000", Icons.Outlined.AccountBalance, Tds.colors.chip),
+        HomeRow("MTN MoMo", "Daily spending wallet", "RWF 118,400", Icons.Outlined.Smartphone, Tds.colors.successTint),
+        HomeRow("Airtel Money", "Backup cash-out line", "Connected", Icons.Outlined.Payments, Tds.colors.warningTint)
     )
     val serviceRows = listOf(
-        HomeRow("Pay CashPower", "Top up electricity instantly", "Open", Icons.Outlined.ReceiptLong, IDS.Colors.WarningTint),
-        HomeRow("Irembo services", "Government and document payments", "Browse", Icons.Outlined.AccountBalance, IDS.Colors.Pressed),
-        HomeRow("My spending", "View monthly categories and trends", "See all", Icons.Outlined.AccountBalanceWallet, IDS.Colors.BackgroundTertiary)
+        HomeRow("Pay CashPower", "Top up electricity instantly", "Open", Icons.Outlined.ReceiptLong, Tds.colors.warningTint),
+        HomeRow("Irembo services", "Government and document payments", "Browse", Icons.Outlined.AccountBalance, Tds.colors.pressed),
+        HomeRow("My spending", "View monthly categories and trends", "See all", Icons.Outlined.AccountBalanceWallet, Tds.colors.chip)
     )
     val rewardRows = listOf(
-        HomeRow("Itunda rewards", "Claim today's cashback and offers", "140 RWF", Icons.Outlined.Payments, IDS.Colors.SuccessTint),
-        HomeRow("Goal saver", "Rainy day fund progress", "62%", Icons.Outlined.Savings, IDS.Colors.Pressed)
+        HomeRow("Itunda rewards", "Claim today's cashback and offers", "140 RWF", Icons.Outlined.Payments, Tds.colors.successTint),
+        HomeRow("Goal saver", "Rainy day fund progress", "62%", Icons.Outlined.Savings, Tds.colors.pressed)
     )
 
     LazyColumn(
         modifier = Modifier
-            .background(IDS.Colors.BackgroundPrimary),
+            .background(Tds.colors.background),
         contentPadding = PaddingValues(
             start = IDS.Spacing.ScreenHorizontal,
             top = IDS.Spacing.ScreenTop,
@@ -114,7 +115,7 @@ fun BankScreen(
                 linkedMoneyRows.forEachIndexed { index, row ->
                     CompactListRow(row = row)
                     if (index != linkedMoneyRows.lastIndex) {
-                        Divider(color = IDS.Colors.Divider)
+                        Divider(color = Tds.colors.divider)
                     }
                 }
             }
@@ -130,7 +131,7 @@ fun BankScreen(
                         onClick = if (row.title == "My spending") onNavigateToSpending else NoOpClick
                     )
                     if (index != serviceRows.lastIndex) {
-                        Divider(color = IDS.Colors.Divider)
+                        Divider(color = Tds.colors.divider)
                     }
                 }
             }
@@ -143,7 +144,7 @@ fun BankScreen(
                 rewardRows.forEachIndexed { index, row ->
                     CompactListRow(row = row)
                     if (index != rewardRows.lastIndex) {
-                        Divider(color = IDS.Colors.Divider)
+                        Divider(color = Tds.colors.divider)
                     }
                 }
             }
@@ -161,8 +162,8 @@ private fun HomeTopBar() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(IDS.Spacing.Tight)) {
-            Text("Good morning", style = IDS.Typography.BodyMedium)
-            Text("Itunda", style = IDS.Typography.Header)
+            Text("Good morning", style = IDS.Typography.BodyMedium, color = Tds.colors.textSecondary)
+            Text("Itunda", style = IDS.Typography.Header, color = Tds.colors.textPrimary)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(IDS.Spacing.Inline)) {
             TopBarActionButton(icon = Icons.Outlined.Notifications)
@@ -178,9 +179,9 @@ private fun TopBarActionButton(icon: ImageVector) {
         modifier = Modifier
             .size(IDS.Size.TopBarAction)
             .clip(CircleShape)
-            .background(IDS.Colors.BackgroundSecondary)
+            .background(Tds.colors.surface)
     ) {
-        Icon(icon, contentDescription = null, tint = IDS.Colors.IconPrimary)
+        Icon(icon, contentDescription = null, tint = Tds.colors.iconPrimary)
     }
 }
 
@@ -189,7 +190,7 @@ private fun AccountSummaryCard(onNavigateToTransfer: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = IDS.Shapes.Card,
-        colors = CardDefaults.cardColors(containerColor = IDS.Colors.RaisedCard),
+        colors = CardDefaults.cardColors(containerColor = Tds.colors.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = IDS.Elevation.Card)
     ) {
         Column(
@@ -197,9 +198,9 @@ private fun AccountSummaryCard(onNavigateToTransfer: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(IDS.Spacing.CardGap)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(IDS.Spacing.Tight)) {
-                Text("Itunda total balance", style = IDS.Typography.SectionLabel)
-                Text("RWF 1,284,350", style = IDS.Typography.LargeAmount)
-                Text("Wallet, bank and mobile money in one place", style = IDS.Typography.BodyMedium)
+                Text("Itunda total balance", style = IDS.Typography.SectionLabel, color = Tds.colors.textSecondary)
+                Text("RWF 1,284,350", style = IDS.Typography.LargeAmount, color = Tds.colors.textPrimary)
+                Text("Wallet, bank and mobile money in one place", style = IDS.Typography.BodyMedium, color = Tds.colors.textSecondary)
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -219,14 +220,14 @@ private fun AccountSummaryCard(onNavigateToTransfer: () -> Unit) {
             Row(
                 modifier = Modifier
                     .clip(IDS.Shapes.Pill)
-                    .background(IDS.Colors.Pressed)
+                    .background(Tds.colors.pressed)
                     .clickable { onNavigateToTransfer() }
                     .padding(horizontal = IDS.Spacing.CardPadding, vertical = IDS.Spacing.Inline),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(IDS.Spacing.Tight)
             ) {
-                Text("Send money now", style = IDS.Typography.BodyBold.copy(color = IDS.Colors.TextBrand))
-                Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = IDS.Colors.TextBrand)
+                Text("Send money now", style = IDS.Typography.BodyBold.copy(color = Tds.colors.textBrand))
+                Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Tds.colors.textBrand)
             }
         }
     }
@@ -237,12 +238,12 @@ private fun BalanceTile(modifier: Modifier = Modifier, title: String, amount: St
     Column(
         modifier = modifier
             .clip(IDS.Shapes.SectionCard)
-            .background(IDS.Colors.BackgroundPrimary)
+            .background(Tds.colors.background)
             .padding(IDS.Spacing.Inline),
         verticalArrangement = Arrangement.spacedBy(IDS.Spacing.Tight)
     ) {
-        Text(title, style = IDS.Typography.Caption)
-        Text(amount, style = IDS.Typography.Metric)
+        Text(title, style = IDS.Typography.Caption, color = Tds.colors.textTertiary)
+        Text(amount, style = IDS.Typography.Metric, color = Tds.colors.textPrimary)
     }
 }
 
@@ -266,7 +267,7 @@ private fun QuickActionItem(modifier: Modifier = Modifier, action: QuickAction) 
     Column(
         modifier = modifier
             .clip(IDS.Shapes.SectionCard)
-            .background(IDS.Colors.BackgroundSecondary)
+            .background(Tds.colors.surface)
             .clickable(onClick = action.onClick)
             .padding(vertical = IDS.Spacing.Inline),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -279,11 +280,11 @@ private fun QuickActionItem(modifier: Modifier = Modifier, action: QuickAction) 
                 .background(action.background),
             contentAlignment = Alignment.Center
         ) {
-            Icon(action.icon, contentDescription = null, tint = IDS.Colors.IconPrimary)
+            Icon(action.icon, contentDescription = null, tint = Tds.colors.iconPrimary)
         }
         Text(
             text = action.title,
-            style = IDS.Typography.Caption.copy(color = IDS.Colors.TextSecondary)
+            style = IDS.Typography.Caption.copy(color = Tds.colors.textSecondary)
         )
     }
 }
@@ -297,7 +298,7 @@ private fun HomeSectionCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = IDS.Shapes.SectionCard,
-        colors = CardDefaults.cardColors(containerColor = IDS.Colors.Card),
+        colors = CardDefaults.cardColors(containerColor = Tds.colors.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = IDS.Elevation.Card)
     ) {
         Column(
@@ -309,8 +310,8 @@ private fun HomeSectionCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(title, style = IDS.Typography.Title)
-                    Text(actionLabel, style = IDS.Typography.BodyMedium.copy(color = IDS.Colors.TextTertiary))
+                    Text(title, style = IDS.Typography.Title, color = Tds.colors.textPrimary)
+                    Text(actionLabel, style = IDS.Typography.BodyMedium.copy(color = Tds.colors.textTertiary))
                 }
                 content()
             }
@@ -336,18 +337,18 @@ private fun CompactListRow(row: HomeRow, onClick: () -> Unit = {}) {
                 .background(row.iconBackground),
             contentAlignment = Alignment.Center
         ) {
-            Icon(row.icon, contentDescription = null, tint = IDS.Colors.IconPrimary)
+            Icon(row.icon, contentDescription = null, tint = Tds.colors.iconPrimary)
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(IDS.Spacing.Tight)) {
-            Text(row.title, style = IDS.Typography.BodyBold)
-            Text(row.subtitle, style = IDS.Typography.Caption)
+            Text(row.title, style = IDS.Typography.BodyBold, color = Tds.colors.textPrimary)
+            Text(row.subtitle, style = IDS.Typography.Caption, color = Tds.colors.textTertiary)
         }
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(IDS.Spacing.Tight)
         ) {
-            Text(row.trailing, style = IDS.Typography.BodyMedium.copy(color = IDS.Colors.TextSecondary))
-            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = IDS.Colors.TextTertiary)
+            Text(row.trailing, style = IDS.Typography.BodyMedium.copy(color = Tds.colors.textSecondary))
+            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Tds.colors.textTertiary)
         }
     }
 }

@@ -1,7 +1,6 @@
 package rw.itunda.core.designsystem.ids
 
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -9,89 +8,65 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * Ported from mobile_clients/android's rw.itunda.app.DesignSystem.IDS (2026-07-10)
- * — see ARCHITECTURE.md §2/§3. This token set and rw.itunda.core.designsystem.theme's
- * Tds* tokens are two real, independently-built design systems that both exist in
- * this repo; they have not been reconciled into one. Screens ported alongside this
- * file (features/banking/impl, the recipient screen in features/payments/impl) use
- * IDS as-is rather than being silently rewritten onto Tds under time pressure.
- * Consolidating the two remains open work — see ARCHITECTURE.md §5.
+ * Ported from mobile_clients/android's rw.itunda.app.DesignSystem.IDS (2026-07-10),
+ * reconciled with Tds* on 2026-07-10 (see ARCHITECTURE.md §2/§3 and the UI/UX pass
+ * that added real light+dark theming). `IDS.Colors` is gone -- it was a second,
+ * light-only-hardcoded color system with zero dark-mode values, the root cause of
+ * BankScreen/MySpendingScreen/RecipientScreen having no working dark mode. Those
+ * screens now use `Tds.colors` (rw.itunda.core.designsystem.theme.TdsSemanticColors),
+ * which is real, theme-reactive, and shared with the rest of the app.
+ *
+ * What's left here (Typography/Shapes/Spacing/Size/Elevation) is genuinely
+ * theme-invariant layout/type scale, not colors, so it stays as a real, still-used
+ * part of the design system rather than something to also migrate. Typography
+ * styles below no longer embed a `color` (they used to hardcode the old light-only
+ * IDS.Colors values directly into the TextStyle, which would have rendered
+ * dark-on-dark and been unreadable in dark mode even after call sites started
+ * passing `color = Tds.colors.X` separately -- Compose's Text `color` param only
+ * wins over `style.color` when explicitly non-default) -- callers must pass
+ * `color = Tds.colors.X` explicitly, which every call site in this repo now does.
  */
 object IDS {
-    object Colors {
-        val Brand = Color(0xFF3182F6)
-        val BackgroundPrimary = Color(0xFFF4F6F8)
-        val BackgroundSecondary = Color(0xFFFFFFFF)
-        val BackgroundTertiary = Color(0xFFEDF2F7)
-        val Card = Color(0xFFFFFFFF)
-        val RaisedCard = Color(0xFFFFFFFF)
-        val Pressed = Color(0xFFEAF2FF)
-        val Divider = Color(0xFFE5E8EB)
-        val TextPrimary = Color(0xFF191F28)
-        val TextSecondary = Color(0xFF4E5968)
-        val TextTertiary = Color(0xFF8B95A1)
-        val TextBrand = Brand
-        val SuccessTint = Color(0xFFE8F3FF)
-        val WarningTint = Color(0xFFFFF4D6)
-        val DangerTint = Color(0xFFFFECEB)
-        val IconPrimary = Color(0xFF2C3643)
-        val IconSecondary = Color(0xFF6B7684)
-        val IconTertiary = Color(0xFFDDE3EA)
-        val Shadow = Color(0x14000000)
-
-        val PrimaryBlue = Brand
-        val Background = BackgroundPrimary
-        val PositiveBackground = SuccessTint
-    }
-
     object Typography {
         val Header = TextStyle(
             fontFamily = FontFamily.Default,
             fontWeight = FontWeight.Bold,
-            fontSize = 30.sp,
-            color = Colors.TextPrimary
+            fontSize = 30.sp
         )
         val Title = TextStyle(
             fontFamily = FontFamily.Default,
             fontWeight = FontWeight.Bold,
-            fontSize = 22.sp,
-            color = Colors.TextPrimary
+            fontSize = 22.sp
         )
         val SectionLabel = TextStyle(
             fontFamily = FontFamily.Default,
             fontWeight = FontWeight.SemiBold,
-            fontSize = 15.sp,
-            color = Colors.TextSecondary
+            fontSize = 15.sp
         )
         val BodyBold = TextStyle(
             fontFamily = FontFamily.Default,
             fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
-            color = Colors.TextPrimary
+            fontSize = 16.sp
         )
         val BodyMedium = TextStyle(
             fontFamily = FontFamily.Default,
             fontWeight = FontWeight.Medium,
-            fontSize = 15.sp,
-            color = Colors.TextSecondary
+            fontSize = 15.sp
         )
         val Caption = TextStyle(
             fontFamily = FontFamily.Default,
             fontWeight = FontWeight.Medium,
-            fontSize = 13.sp,
-            color = Colors.TextTertiary
+            fontSize = 13.sp
         )
         val LargeAmount = TextStyle(
             fontFamily = FontFamily.Default,
             fontWeight = FontWeight.Bold,
-            fontSize = 34.sp,
-            color = Colors.TextPrimary
+            fontSize = 34.sp
         )
         val Metric = TextStyle(
             fontFamily = FontFamily.Default,
             fontWeight = FontWeight.Bold,
-            fontSize = 20.sp,
-            color = Colors.TextPrimary
+            fontSize = 20.sp
         )
     }
 

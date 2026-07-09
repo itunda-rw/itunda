@@ -7,7 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import rw.itunda.core.designsystem.theme.TdsColors
+import rw.itunda.core.designsystem.theme.Tds
 import rw.itunda.core.designsystem.theme.TdsTypography
 
 @Composable
@@ -28,14 +28,14 @@ fun TdsListRow(
             Text(
                 text = title,
                 style = TdsTypography.Subtitle1,
-                color = TdsColors.Gray900
+                color = Tds.colors.textPrimary
             )
             if (subtitle != null) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = subtitle,
                     style = TdsTypography.Body2,
-                    color = TdsColors.Gray600
+                    color = Tds.colors.textSecondary
                 )
             }
         }
@@ -43,7 +43,7 @@ fun TdsListRow(
             Text(
                 text = rightText,
                 style = TdsTypography.Subtitle1,
-                color = TdsColors.Gray900
+                color = Tds.colors.textPrimary
             )
         }
     }

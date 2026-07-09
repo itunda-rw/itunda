@@ -180,9 +180,28 @@ In priority order, each item closes a specific gap identified above:
    (outbox, hexagonal layering) into spring-backend instead.
 4. Build-verify the `ios/` port on a real Mac with full Xcode (this sandbox's Tuist can't run —
    see §3) and get iOS to the same "compiles and runs on-device" bar Android is now at.
-5. Reconcile `core/designsystem`'s two token sets (`Tds*` and `ids/IDS`, both Android and iOS)
-   into one.
-5. Replace the placeholder "Itunda Design System (aligned with Toss Design System)" with an
-   actual token set derived from the publicly documented TDS components (facts doc §3).
-6. Remove PCI-DSS/SOC2/1M-user/"Production Ready" language from `IMPLEMENTATION_GUIDE.md`.
+5. **Done on Android (2026-07-10), still open on iOS:** `core/designsystem`'s two token sets
+   (`Tds*` and `ids/IDS`) are reconciled — `IDS.Colors` (a second, light-only-hardcoded color
+   system with zero dark-mode values, the actual root cause of `BankScreen`/`MySpendingScreen`/
+   `RecipientScreen` having no working dark mode) is gone; every color reference across
+   `ItundaAppScreen.kt`, `BankScreen.kt`, `MySpendingScreen.kt`, `RecipientScreen.kt`,
+   `TransferScreen.kt`, `TdsButton`, and `TdsListRow` now goes through one real,
+   `CompositionLocal`-backed `Tds.colors` (`TdsSemanticColors.kt`), verified live in both light
+   and dark on the real emulator (`adb shell cmd uimode night yes/no`) across all 5 real tabs
+   (Home/Benefits/Shop/Pay/All). Dark palette now matches the actual Toss app (true-black
+   background, not the old unexplained navy `#191F28`) rather than a guess. iOS's `IDS.swift`
+   has the identical bug (light-only, ported unverified — see §3) and needs the same fix once
+   iOS can be build-verified.
+   **New finding from this pass:** `BankScreen`, `MySpendingScreen`, `RecipientScreen`, and
+   `TransferQuoteScreen` all compile and are now correctly themed, but **none of them are
+   reachable from any real navigation** — `grep` for their call sites in `:app` returns nothing.
+   They're real, tested-for-theming code with no path a user could ever hit. Wiring at least one
+   in (e.g. the Home tab's "Spent in July" row is the natural entry point to
+   `MySpendingScreen`) is the next concrete step to make this design-system work actually visible
+   in the app, not just correct in principle.
+6. Replace the placeholder "Itunda Design System (aligned with Toss Design System)" with an
+   actual token set derived from the publicly documented TDS components (facts doc §3) —
+   `Tds.colors`' light values already independently converged with real TDS hex values twice
+   (`TdsColors` and the old `IDS.Colors`); this item is about the rest of the token surface
+   (spacing scale, elevation, component shapes) matching the real documented TDS, not just colors.
 7. Consolidate `infrastructure/k8s` and `infrastructure/kubernetes` into one directory.

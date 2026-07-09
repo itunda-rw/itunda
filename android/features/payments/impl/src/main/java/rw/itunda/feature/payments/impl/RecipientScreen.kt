@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import rw.itunda.core.designsystem.ids.IDS
+import rw.itunda.core.designsystem.theme.Tds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,7 +26,7 @@ fun RecipientScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(IDS.Colors.Background)
+            .background(Tds.colors.background)
     ) {
         // Top Bar
         Row(
@@ -37,12 +38,13 @@ fun RecipientScreen(
             Text(
                 text = "Back",
                 style = IDS.Typography.BodyMedium,
-                color = IDS.Colors.TextSecondary,
+                color = Tds.colors.textSecondary,
                 modifier = Modifier.clickable { onBack() }.padding(end = 16.dp)
             )
             Text(
                 text = "Send Money",
-                style = IDS.Typography.Header
+                style = IDS.Typography.Header,
+                color = Tds.colors.textPrimary
             )
         }
 
@@ -56,9 +58,9 @@ fun RecipientScreen(
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             shape = RoundedCornerShape(12.dp),
             colors = TextFieldDefaults.outlinedTextFieldColors(
-                containerColor = IDS.Colors.Card,
-                unfocusedBorderColor = IDS.Colors.Card,
-                focusedBorderColor = IDS.Colors.PrimaryBlue
+                containerColor = Tds.colors.surface,
+                unfocusedBorderColor = Tds.colors.surface,
+                focusedBorderColor = Tds.colors.brand
             ),
             singleLine = true
         )
@@ -83,7 +85,7 @@ fun RecipientScreen(
         Text(
             text = "Recent Contacts",
             style = IDS.Typography.BodyBold,
-            color = IDS.Colors.TextSecondary,
+            color = Tds.colors.textSecondary,
             modifier = Modifier.padding(horizontal = 20.dp)
         )
 
@@ -117,7 +119,7 @@ fun QuickActionButton(title: String) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(IDS.Colors.Card)
+            .background(Tds.colors.surface)
             .clickable { /* Handle action */ }
             .padding(horizontal = 16.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center
@@ -125,7 +127,7 @@ fun QuickActionButton(title: String) {
         Text(
             text = title,
             style = IDS.Typography.BodyMedium,
-            color = IDS.Colors.TextPrimary
+            color = Tds.colors.textPrimary
         )
     }
 }
@@ -143,21 +145,21 @@ fun ContactItem(name: String, detail: String, onClick: () -> Unit) {
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(IDS.Colors.Card),
+                .background(Tds.colors.surface),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = name.first().toString(),
                 style = IDS.Typography.Title,
-                color = IDS.Colors.PrimaryBlue
+                color = Tds.colors.brand
             )
         }
         
         Spacer(modifier = Modifier.width(16.dp))
         
         Column {
-            Text(text = name, style = IDS.Typography.BodyBold)
-            Text(text = detail, style = IDS.Typography.BodyMedium, color = IDS.Colors.TextSecondary)
+            Text(text = name, style = IDS.Typography.BodyBold, color = Tds.colors.textPrimary)
+            Text(text = detail, style = IDS.Typography.BodyMedium, color = Tds.colors.textSecondary)
         }
     }
 }

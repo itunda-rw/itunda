@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import rw.itunda.core.designsystem.theme.Tds
 import rw.itunda.core.designsystem.theme.TdsColors
 import rw.itunda.core.designsystem.theme.TdsTypography
 
@@ -27,10 +28,10 @@ fun TdsButton(
             .height(56.dp),
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = TdsColors.Blue500,
+            containerColor = Tds.colors.brand,
             contentColor = TdsColors.White,
-            disabledContainerColor = TdsColors.Gray300,
-            disabledContentColor = TdsColors.White
+            disabledContainerColor = Tds.colors.divider,
+            disabledContentColor = Tds.colors.textTertiary
         )
     ) {
         Text(text = text, style = TdsTypography.Button)

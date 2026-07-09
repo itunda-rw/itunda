@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.ids.IDS
+import rw.itunda.core.designsystem.theme.Tds
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
@@ -56,7 +57,7 @@ fun MySpendingScreen(onBack: () -> Unit = {}) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(IDS.Colors.Background)
+            .background(Tds.colors.background)
     ) {
         Spacer(modifier = Modifier.height(40.dp))
         
@@ -74,12 +75,13 @@ fun MySpendingScreen(onBack: () -> Unit = {}) {
                     .clickable { onBack() },
                 contentAlignment = Alignment.Center
             ) {
-                Text("<", style = IDS.Typography.Title)
+                Text("<", style = IDS.Typography.Title, color = Tds.colors.textPrimary)
             }
             Spacer(modifier = Modifier.width(16.dp))
             Text(
                 text = "My Spending",
-                style = IDS.Typography.Header
+                style = IDS.Typography.Header,
+                color = Tds.colors.textPrimary
             )
         }
 
@@ -89,13 +91,14 @@ fun MySpendingScreen(onBack: () -> Unit = {}) {
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
                 .clip(IDS.Shapes.Card)
-                .background(IDS.Colors.Card)
+                .background(Tds.colors.surface)
                 .padding(16.dp)
         ) {
             Column {
                 Text(
                     text = "${currentMonth.month.getDisplayName(TextStyle.FULL, Locale.ENGLISH)} ${currentMonth.year}",
                     style = IDS.Typography.Title,
+                    color = Tds.colors.textPrimary,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
                 
@@ -105,7 +108,7 @@ fun MySpendingScreen(onBack: () -> Unit = {}) {
                         Text(
                             text = day,
                             fontSize = 12.sp,
-                            color = IDS.Colors.TextSecondary,
+                            color = Tds.colors.textSecondary,
                             modifier = Modifier.weight(1f),
                             textAlign = TextAlign.Center
                         )
@@ -139,7 +142,7 @@ fun MySpendingScreen(onBack: () -> Unit = {}) {
                                     .aspectRatio(0.7f)
                                     .padding(2.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isSelected) IDS.Colors.PrimaryBlue.copy(alpha = 0.1f) else Color.Transparent)
+                                    .background(if (isSelected) Tds.colors.brand.copy(alpha = 0.1f) else Color.Transparent)
                                     .clickable { selectedDate = date },
                                 contentAlignment = Alignment.TopCenter
                             ) {
@@ -151,13 +154,13 @@ fun MySpendingScreen(onBack: () -> Unit = {}) {
                                         text = dayNumber.toString(),
                                         fontSize = 14.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (isSelected) IDS.Colors.PrimaryBlue else IDS.Colors.TextPrimary
+                                        color = if (isSelected) Tds.colors.brand else Tds.colors.textPrimary
                                     )
                                     if (totalSpend > 0) {
                                         Text(
                                             text = "-${totalSpend / 1000}k",
                                             fontSize = 9.sp,
-                                            color = IDS.Colors.TextSecondary,
+                                            color = Tds.colors.textSecondary,
                                             modifier = Modifier.padding(top = 4.dp)
                                         )
                                     }
@@ -181,6 +184,7 @@ fun MySpendingScreen(onBack: () -> Unit = {}) {
         Text(
             text = if (selectedDate != null) "Transactions for ${selectedDate!!.dayOfMonth}" else "Recent Activity",
             style = IDS.Typography.Title,
+            color = Tds.colors.textPrimary,
             modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 12.dp)
         )
         
@@ -192,7 +196,7 @@ fun MySpendingScreen(onBack: () -> Unit = {}) {
             if (displayTransactions.isEmpty()) {
                 item {
                     Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                        Text("No spending on this day.", color = IDS.Colors.TextSecondary)
+                        Text("No spending on this day.", color = Tds.colors.textSecondary)
                     }
                 }
             } else {
@@ -218,16 +222,16 @@ private fun TransactionItem(title: String, amount: String, isPositive: Boolean) 
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(IDS.Colors.Card)
+            .background(Tds.colors.surface)
             .padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = title, style = IDS.Typography.BodyBold)
+        Text(text = title, style = IDS.Typography.BodyBold, color = Tds.colors.textPrimary)
         Text(
             text = amount,
             style = IDS.Typography.BodyBold,
-            color = if (isPositive) Color(0xFF1F8A4C) else IDS.Colors.TextPrimary
+            color = if (isPositive) Tds.colors.success else Tds.colors.textPrimary
         )
     }
 }

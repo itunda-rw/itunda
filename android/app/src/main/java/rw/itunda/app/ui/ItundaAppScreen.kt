@@ -2,7 +2,6 @@ package rw.itunda.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,28 +43,32 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 import rw.itunda.core.designsystem.theme.TdsTheme
-import rw.itunda.core.designsystem.theme.TdsColors
+import rw.itunda.core.designsystem.theme.Tds
 
-// In a real refactor, all Composables would consume MaterialTheme directly. 
-// For now, we alias them inside the file since it's a huge monolithic file.
+// Aliased to the real theme-reactive design-system tokens (see
+// core/designsystem/theme/TdsSemanticColors.kt) rather than the ad-hoc,
+// half dark-mode-aware set this file used to hand-roll -- kept as thin
+// aliases (not a full rename) since this file's Composables all reference
+// these names throughout; the fix was making the values real, not renaming
+// every call site.
 private val TossBlue: Color
-    @Composable get() = TdsColors.Blue500
+    @Composable get() = Tds.colors.brand
 private val TossBackground: Color
-    @Composable get() = MaterialTheme.colorScheme.background
+    @Composable get() = Tds.colors.background
 private val TossCard: Color
-    @Composable get() = MaterialTheme.colorScheme.surface
+    @Composable get() = Tds.colors.surface
 private val TossCardSoft: Color
-    @Composable get() = if (isSystemInDarkTheme()) Color(0xFF23242B) else TdsColors.Gray200
+    @Composable get() = Tds.colors.surfaceSoft
 private val TossText: Color
-    @Composable get() = MaterialTheme.colorScheme.onBackground
+    @Composable get() = Tds.colors.textPrimary
 private val TossSecondary: Color
-    @Composable get() = if (isSystemInDarkTheme()) Color(0xFF989EAA) else TdsColors.Gray600
+    @Composable get() = Tds.colors.textSecondary
 private val TossTertiary: Color
-    @Composable get() = if (isSystemInDarkTheme()) Color(0xFF575C66) else TdsColors.Gray500
+    @Composable get() = Tds.colors.textTertiary
 private val TossLine: Color
-    @Composable get() = if (isSystemInDarkTheme()) Color(0xFF2B2D35) else TdsColors.Gray300
+    @Composable get() = Tds.colors.divider
 private val TossChip: Color
-    @Composable get() = if (isSystemInDarkTheme()) Color(0xFF262A33) else TdsColors.Gray200
+    @Composable get() = Tds.colors.chip
 
 private enum class TossTab(val label: String, val glyph: String) {
     Home("Home", "H"),
