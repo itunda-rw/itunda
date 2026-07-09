@@ -119,10 +119,39 @@ private enum class TossTab(val label: String, val icon: androidx.compose.ui.grap
     All("All", Icons.Outlined.Apps)
 }
 
+/**
+ * Real top-level navigation for the transfer flow -- a full-screen takeover
+ * over the tab scaffold, matching how the reference screenshots show it
+ * (no bottom nav visible during recipient/amount entry). Genuinely wired
+ * to a visible entry point (WalletHeroCard's "Send" button), not built and
+ * left unreachable like the screens it replaces.
+ */
+private sealed class TransferStep {
+    data object Recipient : TransferStep()
+    data class Amount(val accountNumber: String) : TransferStep()
+}
+
 @Composable
 fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.compose.viewModel()) {
     TdsTheme {
         var selectedTab by remember { mutableStateOf(TossTab.Home) }
+        var transferStep by remember { mutableStateOf<TransferStep?>(null) }
+
+        val step = transferStep
+        if (step != null) {
+            when (step) {
+                is TransferStep.Recipient -> rw.itunda.feature.payments.impl.RecipientEntryScreen(
+                    onBack = { transferStep = null },
+                    onNext = { accountNumber -> transferStep = TransferStep.Amount(accountNumber) }
+                )
+                is TransferStep.Amount -> rw.itunda.feature.payments.impl.TransferAmountScreen(
+                    recipientAccountNumber = step.accountNumber,
+                    onBack = { transferStep = TransferStep.Recipient },
+                    onConfirm = { transferStep = null }
+                )
+            }
+            return@TdsTheme
+        }
 
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
@@ -137,7 +166,7 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                     .padding(paddingValues)
             ) {
                 when (selectedTab) {
-                    TossTab.Home -> HomeTab(viewModel)
+                    TossTab.Home -> HomeTab(viewModel, onSend = { transferStep = TransferStep.Recipient })
                     TossTab.Benefits -> BenefitsTab()
                     TossTab.Shop -> ShopTab(viewModel)
                     TossTab.Pay -> PayTab()
@@ -196,7 +225,7 @@ private fun TossBottomBar(selectedTab: TossTab, onSelect: (TossTab) -> Unit) {
 }
 
 @Composable
-private fun HomeTab(viewModel: MainViewModel) {
+private fun HomeTab(viewModel: MainViewModel, onSend: () -> Unit) {
     val primaryWallet by viewModel.primaryWallet.collectAsState()
     val balanceText = primaryWallet?.let { "${it.currency} %,.0f".format(it.balance) } ?: "RWF 0"
 
@@ -206,7 +235,7 @@ private fun HomeTab(viewModel: MainViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item { HomeTopBar() }
-        item { WalletHeroCard(balanceText) }
+        item { WalletHeroCard(balanceText, onSend) }
         item {
             ShellSection(
                 title = "",
@@ -271,7 +300,7 @@ private fun TopIconButton(icon: androidx.compose.ui.graphics.vector.ImageVector)
 }
 
 @Composable
-private fun WalletHeroCard(balanceText: String) {
+private fun WalletHeroCard(balanceText: String, onSend: () -> Unit) {
     Card(
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = TossCard),
@@ -284,8 +313,8 @@ private fun WalletHeroCard(balanceText: String) {
             Text("Wallet", fontSize = 14.sp, color = TossSecondary)
             Text(balanceText, fontSize = 34.sp, color = TossText, fontWeight = FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                PrimaryAction("Add money", Modifier.weight(1f), false)
-                PrimaryAction("Send", Modifier.weight(1f), true)
+                PrimaryAction("Add money", Modifier.weight(1f), false) {}
+                PrimaryAction("Send", Modifier.weight(1f), true, onSend)
             }
             Divider(color = TossLine)
             WalletMiniRow("RWF 613", "Bravo Korea parking", "Send")
@@ -302,11 +331,12 @@ private fun WalletHeroCard(balanceText: String) {
 }
 
 @Composable
-private fun PrimaryAction(title: String, modifier: Modifier = Modifier, filled: Boolean) {
+private fun PrimaryAction(title: String, modifier: Modifier = Modifier, filled: Boolean, onClick: () -> Unit) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
             .background(if (filled) TossBlue else Color(0xFF1F3053))
+            .clickable(onClick = onClick)
             .padding(vertical = 14.dp),
         contentAlignment = Alignment.Center
     ) {

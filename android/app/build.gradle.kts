@@ -68,6 +68,7 @@ dependencies {
     implementation(project(":core:risk"))
     implementation(project(":core:identity"))
     implementation(project(":features:banking:impl"))
+    implementation(project(":features:payments:impl"))
 
     // Apps-in-Itunda mini-app host (Saronite/Granite-pattern brownfield RN integration).
     // Old Native Modules API, no autolinking/codegen -- see MiniAppActivity.kt and
