@@ -8,44 +8,21 @@ pattern. It is **not** production-ready and has no real money, PSP licensing, or
 compliance certification. See [ARCHITECTURE.md](ARCHITECTURE.md) for what's real vs. stub vs.
 target, and [docs/TOSS_PARITY_MATRIX.md](docs/TOSS_PARITY_MATRIX.md) for the implementation
 checklist. The only backend on Toss's actual real-world stack today is
-`spring_workspace/spring-backend`; everything else is scaffolding at varying depth.
+`services/spring-backend`; everything else is scaffolding at varying depth.
 
 ## 1. Architecture
 
-### Microservices (12+)
-```
-api-gateway/              → Authentication, routing, rate limiting
-user-service/             → User management, KYC, profiles
-account-service/          → Account management, multi-currency
-transaction-service/      → P2P transfers, real-time updates
-ledger-service/           → Double-entry accounting, audit trails
-loan-service/             → Loans, AI credit scoring
-investment-service/       → Stocks, crypto, trading
-insurance-service/        → Insurance products, claims
-savings-service/          → Savings goals, fixed deposits
-notification-service/     → Email, SMS, push, WebSocket
-analytics-service/        → Spending insights, AI recommendations
-admin-service/            → User management, compliance, monitoring
-```
-
-### Frontend Applications
-- **Web App** (React 19) - Full feature parity with mobile apps
-- **iOS App** (SwiftUI) - Native iOS experience with offline support
-- **Android App** (Jetpack Compose) - Native Android experience
-- **Admin Portal** - Compliance, monitoring, user management
-
-### Infrastructure Stack
-```
-Backend Framework → Spring Boot 3.2, Kotlin 1.9, Spring Data JPA
-Architecture      → Microservices with CQRS, Event-Driven
-Containers        → Docker, Docker Compose
-Orchestration     → Kubernetes + Istio (production)
-Databases         → MySQL (Enterprise equivalent) for Ledger & Core
-Message Queue     → Kafka (event streaming)
-Monitoring        → Prometheus, Grafana
-Logging          → Elasticsearch, Kibana
-Storage          → AWS S3
-```
+This section previously listed a fictional 12-microservice / Istio / Elasticsearch / Kibana
+stack with no basis in the actual repo — removed 2026-07-10. See
+[ARCHITECTURE.md](ARCHITECTURE.md) for the real, sourced architecture and
+[docs/TOSS_ARCHITECTURE_FACTS.md](docs/TOSS_ARCHITECTURE_FACTS.md) for what Toss itself actually
+runs. Summary: `services/spring-backend` (canonical, most feature coverage) and
+`services/spring-microservices` (a real, less-complete per-bounded-context MSA prototype closer
+to Toss's actual documented architecture) coexist and are not yet reconciled. Frontend surfaces
+are `android/`/`ios/` native shells (real bounded-context modules, partly ported/verified) and
+`services/micro-frontends` (web, demo depth). Kafka exists in exactly one place
+(`services/spring-microservices/spring-core-libs`' `KafkaConfig.kt`) and is not yet a real event
+backbone across services.
 
 ## 2. Getting Started (Development)
 
@@ -68,20 +45,20 @@ cd /Users/me/rwanda/itunda
 docker-compose up -d
 
 # Start the Spring Boot Backend (Toss Architecture)
-cd spring_workspace/spring-backend
+cd services/spring-backend
 DB_HOST=localhost DB_PORT=3306 DB_NAME=itunda DB_USER=itunda DB_PASSWORD=itunda ./gradlew :app:bootRun
 
-# In a new terminal, start frontend
-cd /Users/me/rwanda/itunda/node_workspace
-npm install
-npm run dev
+# In a new terminal, start the frontend workspace
+cd /Users/me/rwanda/itunda
+yarn install
+yarn dev
 
-# Access dashboard
+# Access
 Web:    http://localhost:5173
-Admin:  http://localhost:5173/admin
-API:    http://localhost:3000/api
-Docs:   http://localhost:3000/api/docs
 ```
+
+No admin portal or API gateway currently runs at a fixed port — `services/api-gateway` is a
+stub (see ARCHITECTURE.md §1), not a running service to point a URL at.
 
 ## 3. Key Features
 
@@ -209,22 +186,17 @@ Full API docs: http://localhost:3000/api/docs (Swagger UI)
 
 ### Development
 ```bash
-docker-compose up -d
-npm run dev:services
-npm run dev
+docker-compose -f infra/docker-compose.yml up -d
+yarn dev
 ```
 
-### Staging
+### Staging / Production
+`infra/k8s/production/` has one real manifest (`api-gateway.yaml`) plus a `monitoring/`
+manifest — no staging manifests exist yet, and nothing here has been applied to a real cluster.
+Treat this as a starting point, not a working deploy pipeline:
 ```bash
-kubectl apply -f k8s/staging/
-kubectl set image deployment/api-gateway api-gateway=itunda:staging
-```
-
-### Production
-```bash
-kubectl apply -f k8s/production/
-kubectl set image deployment/api-gateway api-gateway=itunda:prod
-# Auto-scaling enabled (10-100 replicas per service)
+kubectl apply -f infra/k8s/production/
+# Auto-scaling and multi-replica numbers below are aspirational, not configured anywhere yet
 ```
 
 ## 7. Performance Targets
@@ -312,7 +284,7 @@ npm run security:scan
 See [ARCHITECTURE.md §5](ARCHITECTURE.md#5-immediate-architecture-backlog) for the actual
 current priority order and [docs/TOSS_PARITY_MATRIX.md](docs/TOSS_PARITY_MATRIX.md) for
 per-feature status. Nothing below is "complete" in a production sense — demo/mocked coverage
-exists for most product areas on `spring_workspace/spring-backend`; native and web clients
+exists for most product areas on `services/spring-backend`; native and web clients
 range from real-but-duplicated to broken to stub (see ARCHITECTURE.md §1-3).
 
 ### Done (demo-grade, verified live against real MySQL)
@@ -330,12 +302,12 @@ range from real-but-duplicated to broken to stub (see ARCHITECTURE.md §1-3).
 
 ```bash
 # Backend Development
-cd spring_workspace/spring-backend
+cd services/spring-backend
 ./gradlew :app:bootRun          # Start Spring Boot API gateway & core
 ./gradlew test                  # Run Kotest unit tests
 
 # Frontend Development
-cd node_workspace
+
 npm run dev                     # Start React app
 
 # iOS Development
@@ -360,14 +332,15 @@ npm run health:check
 ```
 
 ### Database Connection Issues
+`services/spring-backend` uses **MySQL**, not Postgres/MongoDB (those were part of the
+fictional stack removed from §1 above):
 ```bash
-# Check if databases are running
-docker ps | grep postgres
-docker ps | grep mongo
+# Check if MySQL/Redis are running
+docker ps | grep mysql
 docker ps | grep redis
 
-# Restart databases
-docker-compose restart postgres mongo redis
+# Restart
+docker-compose -f infra/docker-compose.yml restart mysql redis
 ```
 
 ### High API Latency

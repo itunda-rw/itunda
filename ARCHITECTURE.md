@@ -39,18 +39,23 @@ scattered across duplicate trees. This document's job is to say which fragment i
 
 | Layer | Directory | Status | Notes |
 |---|---|---|---|
-| Core ledger + money-moving backend | `spring_workspace/spring-backend` | **real** | Kotlin + Spring Boot + Spring Data JPA + MySQL + Spring Security JWT. ~4,300 LOC across auth/wallet/transfer/bills/loans/contacts/stocks/savings/insurance/notifications/discover/system, verified live against real MySQL with per-user ownership checks and a transactional idempotency store. This is the one piece that is genuinely on Toss's real stack (Kotlin, Spring, MySQL) — see `docs/TOSS_PARITY_MATRIX.md` for the verified detail. **This is the canonical backend.** |
-| Earlier Kotlin scaffolds | `spring_workspace/payment-service`, `spring_workspace/ledger-service` | **superseded** | 9 and 11 `.kt` files respectively, thin, predate `spring-backend`'s consolidation. Candidates to delete once confirmed nothing in them is undone in `spring-backend`. |
-| API gateway | `node_workspace/apps/api-gateway` | **stub** | Express + http-proxy-middleware, essentially just `index.js`. Not a real gateway yet — no rate limiting, no auth, no routing table beyond a proxy. |
-| Micro-frontends | `node_workspace/apps/micro-frontends/{host-app,bank-mfe,kyc-mfe}` | **demo** | Real Vite+React scaffolds (~1,500 LOC), but this is a *web* micro-frontend split, which is not the architecture Toss is actually known for (§3 below is). Keep only if the goal is a web admin/BFF surface distinct from the consumer super-app. |
-| Earlier Express demo API | referenced in README/docs as `backend/` | **gone** | Does not exist in the tree; docs still reference it. Superseded by `spring-backend`. Any doc still pointing at `backend/` for product-surface coverage is stale — `spring-backend` is where that coverage actually lives now. |
+| Core ledger + money-moving backend | `services/spring-backend` | **real** | Kotlin + Spring Boot + Spring Data JPA + MySQL + Spring Security JWT. ~4,300 LOC across auth/wallet/transfer/bills/loans/contacts/stocks/savings/insurance/notifications/discover/system, verified live against real MySQL with per-user ownership checks and a transactional idempotency store. This is the one piece that is genuinely on Toss's real stack (Kotlin, Spring, MySQL) — see `docs/TOSS_PARITY_MATRIX.md` for the verified detail. **This is the canonical backend.** |
+| Per-bounded-context MSA prototype | `services/spring-microservices/{payment-service,ledger-service,spring-core-libs}` | **real, different shape** | **Correction (2026-07-10):** an earlier pass of this doc called these "superseded" based on a shallow file count. Wrong — checked properly, this is genuine hexagonal-architecture Kotlin (domain/application/infrastructure layers), a real double-entry `TransferService`, an outbox pattern for Kafka event publishing, and a mocked RNP (Rwanda National Digital Payment System) gateway. Each service (`payment-service`, `ledger-service`) has its own Gradle root and is independently deployable — this is actually **closer** to Toss Bank's real documented MSA split (facts doc §1: independently deployable per-bounded-context services) than `spring-backend`'s single consolidated app is. Not superseded; a parallel, not-yet-reconciled architectural direction. |
+| API gateway | `services/api-gateway` | **stub** | Express + http-proxy-middleware, essentially just `index.js`. Not a real gateway yet — no rate limiting, no auth, no routing table beyond a proxy. |
+| Micro-frontends | `services/micro-frontends/{host-app,bank-mfe,kyc-mfe}` | **demo** | Real Vite+React scaffolds (~1,500 LOC) — `bank-mfe`/`kyc-mfe` already depend on the real `@toss/use-funnel`, a genuine alignment point. But this is a *web* micro-frontend split, which is not the architecture Toss is actually known for (§3 below is). Keep only if the goal is a web admin/BFF surface distinct from the consumer super-app. |
+| Earlier Express demo API | referenced in older docs as `backend/` | **gone** | Does not exist in the tree. Superseded by `spring-backend`. |
 
-**Decision this implies:** `spring_workspace/spring-backend` is the single backend of record.
-`payment-service`, `ledger-service`, and the API-gateway stub are either archived or folded in,
-not developed in parallel. Kafka is not yet present anywhere in the repo — it is the real gap
-between "itunda has a working monolith-shaped Spring app" and "itunda has the MSA event backbone
-Toss actually runs" (transfer.confirmed / payment.provider_succeeded / ledger.posted events
-listed in `docs/TOSS_RWANDA_ALIGNMENT.md`'s event model are designed but not wired to any broker).
+**Decision this implies:** `services/spring-backend` is the backend with the most product-surface
+coverage today and stays the default for new feature work, but `services/spring-microservices`
+should **not** be deleted or treated as dead — it's the shape Toss's real MSA split actually
+looks like (facts doc §1), just with far less feature coverage. Reconciling the two (eventually
+splitting `spring-backend`'s bounded contexts out into independently-deployable services matching
+`ledger-service`/`payment-service`'s pattern) is real future work, not a cleanup task. Kafka is
+not yet wired between any of these — that's the concrete gap between "itunda has Spring apps"
+and "itunda has the MSA event backbone Toss actually runs" (`transfer.confirmed` /
+`payment.provider_succeeded` / `ledger.posted` events listed in `docs/TOSS_RWANDA_ALIGNMENT.md`'s
+event model are designed but not emitted anywhere yet — `spring-core-libs`' `KafkaConfig.kt` is
+the only real Kafka wiring that exists, and only `payment-service` uses it).
 
 ## 2. Frontend / super-app architecture
 
@@ -65,9 +70,8 @@ Open-sourced as `toss/granite`. Third-party version of the same mechanism is **A
 
 | Layer | Directory | Status | Notes |
 |---|---|---|---|
-| Hand-rolled super-app shell | `saronite/` | **stub, wrong shape** | React Native host app + 4 "mini-apps" (`wallet-balance`, `pay-bills`, `reward-tasks`, `insurance_mini_app`), but only 1-3 files each (~930 LOC total) and no dynamic bundle loading, no shared/service bundle split, no CDN deploy path. It approximates Granite's *idea* without the mechanism that makes it real. |
-| Consumer web app | root `package.json` / `dist/` | **broken** | Root `package.json` has no matching `src/`, `index.html`, or Vite config — it references a deleted app. `dist/` is a stale build artifact from that deleted source. Nothing currently builds from repo root. |
-| Earliest web skeleton | `web-prototype/` | **stub** | 3 files, 139 LOC, not wired to anything. |
+| Hand-rolled super-app shell | `packages/saronite/` | **stub, wrong shape** | React Native host app + 4 "mini-apps" (`wallet-balance`, `pay-bills`, `reward-tasks`, `insurance_mini_app`), but only 1-3 files each (~930 LOC total) and no dynamic bundle loading, no shared/service bundle split, no CDN deploy path. It approximates Granite's *idea* without the mechanism that makes it real. Its own `packages/react-native` and `packages/brownfield-module` are real, standalone-verified code (see §3) — the gap is the host/shared/service-bundle mechanism itself, not the bridge code. |
+| Consumer web app | `services/micro-frontends/host-app` (root `package.json` is now a pure workspace root) | **demo** | Root previously had leftover `dev`/`build`/`vite` scripts and app deps from a deleted app with no `src/`; fixed 2026-07-10 by making root a pure Yarn workspace root that delegates to `host-app`. `host-app` itself already depends on the real `@tosspayments/payment-widget-sdk`. |
 | Design system | none | **target** | TDS itself isn't open-source, but its components are documented (facts doc §3) and should be the literal reference for itunda's design tokens, not an invented "Itunda Design System (aligned with Toss Design System)" placeholder with no actual token file behind it. `ios/Core/DesignSystem` and `android/core/designsystem` exist as directories but were not verified to contain a real token set. |
 
 **Decision this implies:** the highest-leverage single frontend move is replacing `saronite/`'s
@@ -108,7 +112,11 @@ as open-source Granite while keeping money/identity bridge APIs private and nati
 
 ## 4. Infrastructure
 
-- `infrastructure/` has both `k8s/` and `kubernetes/` — pick one, they should not coexist.
+- `infrastructure/` renamed to `infra/` (2026-07-10), matching the top-level naming Toss's real
+  `toss/granite` repo uses. `infra/kubernetes/` was deleted — it was manifests for the fictional
+  12-microservice/MongoDB/Elasticsearch/Kibana stack this document already flags as unsourced
+  (§1, facts doc §5); `infra/k8s/` (which references the real `api-gateway` service) is now the
+  only k8s directory.
 - Kubernetes itself is a real point of alignment (Toss Bank channel services run on K8s) —
   keep it. Kafka is not yet present and is the real gap (§1).
 - Active-active dual-datacenter, 1,000+ topic Kafka mirroring, and sub-200ms real-time
@@ -122,20 +130,54 @@ as open-source Granite while keeping money/identity bridge APIs private and nati
   remove exactly this kind of fiction — `IMPLEMENTATION_GUIDE.md` still has it and needs the
   same treatment.
 
-## 5. Immediate architecture backlog
+## 5. Repo layout (2026-07-10 restructure)
+
+The top level was reorganized to match Toss's real monorepo convention (`toss/granite`,
+`toss/es-toolkit`: a `packages/` + `services/` split, Yarn PnP at root, `docs/`, `infra/`):
+
+```
+itunda/
+├── packages/              # shared libraries
+│   ├── shared-utils/       (depends on the real es-toolkit)
+│   ├── itunda-utils/
+│   └── saronite/           (own npm workspace -- see §2)
+├── services/               # deployable apps/backends
+│   ├── spring-backend/     (canonical backend, §1)
+│   ├── spring-microservices/  (payment-service, ledger-service, spring-core-libs -- §1)
+│   ├── api-gateway/
+│   ├── micro-frontends/    (host-app, bank-mfe, kyc-mfe)
+│   └── blog/                (own npm workspace, tech.itunda.rw)
+├── android/, ios/          # native mobile shells (§3)
+├── mobile_clients/itunda-pay-sdk/  # vendored real Toss Payments SDK, reference only
+├── infra/                  # was infrastructure/, kubernetes/ dupe removed (§4)
+└── docs/
+```
+
+`mobile_clients/android`, `mobile_clients/ios`, `web-prototype/`, `node_workspace/`,
+`spring_workspace/` (old name), and the stale untracked `dist/` are gone — either fully
+consolidated into the tree above (§3) or deleted as pure scaffolding with no unique content
+(`web-prototype/` was an unmodified `npm create vite` template, never touched).
+
+## 6. Remaining architecture backlog
 
 In priority order, each item closes a specific gap identified above:
 
-1. Delete/archive `spring_workspace/payment-service`, `spring_workspace/ledger-service`,
-   `mobile_clients/android`, `mobile_clients/ios`, `web-prototype/` once confirmed nothing
-   unique lives only there — stop maintaining parallel copies of the same thing.
-2. Fix the broken root `package.json`/`dist/` — either rebuild a real consumer web app or
-   remove the orphaned root build config so `npm run dev` at repo root isn't a lie.
-3. Rebuild `saronite/` on the real host+shared-bundle+service-bundle+dynamic-load mechanism
-   (study/adopt `toss/granite` directly) instead of the current flat-folder approximation.
-4. Introduce Kafka as the actual event backbone for the event model already designed in
+1. Rebuild `packages/saronite/` on the real host+shared-bundle+service-bundle+dynamic-load
+   mechanism (study/adopt `toss/granite` directly) instead of the current flat-folder
+   approximation.
+2. Introduce Kafka as the actual event backbone for the event model already designed in
    `docs/TOSS_RWANDA_ALIGNMENT.md` (`transfer.confirmed`, `payment.provider_succeeded`,
    `ledger.posted`, etc.) — currently those events are documented but not emitted anywhere.
+   `services/spring-microservices/spring-core-libs`' `KafkaConfig.kt` is the only real Kafka
+   wiring in the repo today.
+3. Reconcile `services/spring-backend` (most feature coverage, monolith-shaped) with
+   `services/spring-microservices` (less coverage, real per-service MSA shape) — decide whether
+   to split spring-backend's bounded contexts out to match, or fold the microservices' patterns
+   (outbox, hexagonal layering) into spring-backend instead.
+4. Build-verify the `ios/` port on a real Mac with full Xcode (this sandbox's Tuist can't run —
+   see §3) and get iOS to the same "compiles and runs on-device" bar Android is now at.
+5. Reconcile `core/designsystem`'s two token sets (`Tds*` and `ids/IDS`, both Android and iOS)
+   into one.
 5. Replace the placeholder "Itunda Design System (aligned with Toss Design System)" with an
    actual token set derived from the publicly documented TDS components (facts doc §3).
 6. Remove PCI-DSS/SOC2/1M-user/"Production Ready" language from `IMPLEMENTATION_GUIDE.md`.

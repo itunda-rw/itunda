@@ -105,7 +105,7 @@ Source: [github.com/toss](https://github.com/toss) org listing (fetched live)
 | [overlay-kit](https://github.com/toss/overlay-kit) | Declarative overlay/bottom-sheet/modal handling | `KeypadBottomSheet` and similar confirmation sheets |
 | [suspensive](https://github.com/toss/suspensive) | React Suspense + ErrorBoundary utilities | Data-fetching states across Home/Wallet/Invest pages |
 | [granite](https://github.com/toss/granite) | Host app + RN mini-app microservice framework | Direct replacement candidate for the hand-rolled `saronite/` |
-| [nestjs-aop](https://github.com/toss/nestjs-aop) | AOP for NestJS | Only relevant if `node_workspace/apps/api-gateway` stays NestJS-based |
+| [nestjs-aop](https://github.com/toss/nestjs-aop) | AOP for NestJS | Only relevant if `services/api-gateway` stays NestJS-based |
 
 ## 5. What is genuinely unverifiable and should not be claimed as "Toss-sourced"
 
