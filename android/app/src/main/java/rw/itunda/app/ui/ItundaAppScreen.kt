@@ -407,6 +407,7 @@ private fun PayTab() {
 
 @Composable
 private fun AllTab() {
+    val context = androidx.compose.ui.platform.LocalContext.current
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -414,6 +415,19 @@ private fun AllTab() {
         item { AllTopBar() }
         item { SearchBar("Search") }
         item { IconGridSection("Quick access", listOf("Mini", "Games", "Bank", "Pick")) }
+        item {
+            MiniAppsSection(
+                onWalletBalance = {
+                    context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.WalletBalanceMiniAppActivity::class.java))
+                },
+                onPayBills = {
+                    context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
+                },
+                onRewardTasks = {
+                    context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java))
+                }
+            )
+        }
         item { IconGridSection("Recent services", listOf("Open acct", "Photo transfer", "Verify", "Send", "Group", "Property", "Insurance", "More")) }
         item { ListSection("Financial services", listOf(
             "Open account" to "Toss Bank, other banks, securities",
@@ -421,6 +435,55 @@ private fun AllTab() {
             "Get a loan" to "Credit, mortgage, overdraft, microloan",
             "Mobile plan" to "MTN, Airtel, broadband"
         )) }
+    }
+}
+
+/**
+ * Real entry point for Apps-in-Itunda mini-apps -- launches the genuine
+ * ReactActivity subclasses in rw.itunda.app.miniapps, each loading a real RN
+ * bundle from packages/saronite/mini-apps, not a placeholder screen.
+ */
+@Composable
+private fun MiniAppsSection(
+    onWalletBalance: () -> Unit,
+    onPayBills: () -> Unit,
+    onRewardTasks: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = TossCard),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text("Mini apps", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TossText)
+            Spacer(modifier = Modifier.height(8.dp))
+            listOf(
+                Triple("Wallet balance", onWalletBalance, "W"),
+                Triple("Pay bills", onPayBills, "P"),
+                Triple("Reward tasks", onRewardTasks, "R")
+            ).forEachIndexed { index, (title, onClick, glyph) ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onClick)
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(TossChip),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(glyph, color = TossText, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Text(title, modifier = Modifier.weight(1f), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TossText)
+                }
+                if (index != 2) Divider(color = TossLine)
+            }
+        }
     }
 }
 

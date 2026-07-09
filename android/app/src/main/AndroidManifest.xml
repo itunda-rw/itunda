@@ -4,9 +4,11 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
+        android:name=".miniapps.ItundaApplication"
         android:allowBackup="true"
         android:label="Itunda"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
             android:name=".MainActivity"
@@ -16,5 +18,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Apps-in-Itunda mini-app host activities, see miniapps/MiniAppActivity.kt -->
+        <activity
+            android:name=".miniapps.WalletBalanceMiniAppActivity"
+            android:theme="@style/Theme.Itunda.MiniApp"
+            android:exported="false" />
+        <activity
+            android:name=".miniapps.PayBillsMiniAppActivity"
+            android:theme="@style/Theme.Itunda.MiniApp"
+            android:exported="false" />
+        <activity
+            android:name=".miniapps.RewardTasksMiniAppActivity"
+            android:theme="@style/Theme.Itunda.MiniApp"
+            android:exported="false" />
     </application>
 </manifest>

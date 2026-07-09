@@ -1,16 +1,18 @@
 /**
- * Tells the React Native CLI (used by both settings.gradle.kts's autolinking
- * and app/build.gradle.kts's `react { autolinkLibrariesWithApp() }`) where
- * the real Android project actually lives. Without this, `config` can't find
- * an `android/` folder here at all — by design, this brownfield host-app has
- * no android/ios folders of its own; the real Android app is
- * itunda/android/app, wired in separately via react{} in its build.gradle.kts.
+ * Points at itunda's real Android project. Not used for autolinking here --
+ * the actual wiring is manual (see android/app/build.gradle.kts and
+ * android/app/src/main/java/rw/itunda/app/miniapps/), not the RN CLI's
+ * `react {}` Gradle plugin -- this file exists so `npx react-native start`
+ * (run from packages/saronite/host-app) can find the real app directory
+ * for tooling that expects it. Path/package fixed 2026-07-10 after the
+ * packages/services restructure (was pointing at a pre-restructure path
+ * and the wrong applicationId).
  */
 module.exports = {
   project: {
     android: {
-      sourceDir: '../../android',
-      packageName: 'com.itunda.app',
+      sourceDir: '../../../android',
+      packageName: 'rw.itunda.app',
     },
   },
 };

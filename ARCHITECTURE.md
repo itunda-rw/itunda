@@ -70,15 +70,17 @@ Open-sourced as `toss/granite`. Third-party version of the same mechanism is **A
 
 | Layer | Directory | Status | Notes |
 |---|---|---|---|
-| Hand-rolled super-app shell | `packages/saronite/` | **stub, wrong shape** | React Native host app + 4 "mini-apps" (`wallet-balance`, `pay-bills`, `reward-tasks`, `insurance_mini_app`), but only 1-3 files each (~930 LOC total) and no dynamic bundle loading, no shared/service bundle split, no CDN deploy path. It approximates Granite's *idea* without the mechanism that makes it real. Its own `packages/react-native` and `packages/brownfield-module` are real, standalone-verified code (see §3) — the gap is the host/shared/service-bundle mechanism itself, not the bridge code. |
+| Apps-in-Itunda mini-app host | `android/app/src/main/java/rw/itunda/app/miniapps/` + `packages/saronite/` | **real, verified live on-device (2026-07-10)** | Not the full Granite mechanism (no dynamic bundle loading over CDN, no shared/service-bundle split, no autolinking/codegen — a deliberately manual, minimal brownfield integration) but genuinely real and running: a real `ReactApplication` host, a real native bridge module, and one concrete `Activity` per mini-app, wired into the canonical `android/app`, launched from a real "Mini apps" section in `ItundaAppScreen.kt`'s All tab. Verified by actually tapping through the real UI on a real emulator: `./gradlew :app:assembleDebug` → install → Home → All → Pay bills → Metro's live "Bundling 88.1%..." → real RN screen rendering "Couldn't load bills: No active itunda session" (a correct failure, since itunda has no login flow yet — see `packages/saronite/README.md` for the full account, including four real bugs found and fixed getting here: a Kotlin 1.9→2.1 project-wide upgrade forced by react-android's stdlib metadata, a missing native library requiring an RN 0.72.17 downgrade, an RN-version API difference, and a component-name mismatch between the Activities and `index.js`). |
 | Consumer web app | `services/micro-frontends/host-app` (root `package.json` is now a pure workspace root) | **demo** | Root previously had leftover `dev`/`build`/`vite` scripts and app deps from a deleted app with no `src/`; fixed 2026-07-10 by making root a pure Yarn workspace root that delegates to `host-app`. `host-app` itself already depends on the real `@tosspayments/payment-widget-sdk`. |
 | Design system | none | **target** | TDS itself isn't open-source, but its components are documented (facts doc §3) and should be the literal reference for itunda's design tokens, not an invented "Itunda Design System (aligned with Toss Design System)" placeholder with no actual token file behind it. `ios/Core/DesignSystem` and `android/core/designsystem` exist as directories but were not verified to contain a real token set. |
 
-**Decision this implies:** the highest-leverage single frontend move is replacing `saronite/`'s
-hand-rolled shell with a real build on `toss/granite` (or, at minimum, rebuilding it to match
-Granite's actual host/shared-bundle/service-bundle/dynamic-load mechanism instead of a flat
-React Native app with a few screens in folders). Until that happens, calling `saronite/`
-"Toss-aligned" in any doc is the same kind of unsourced claim §5 of the facts doc warns against.
+**Decision this implies:** the mini-app host mechanism itself is now real and proven end-to-end
+on Android. What's still missing to call this "Granite-equivalent" rather than "a working
+brownfield integration": dynamic bundle loading from a CDN instead of a local Metro server,
+a shared-bundle/service-bundle split, and RN autolinking. The iOS side has no equivalent yet.
+`packages/saronite/README.md` §5's dependency choices (RN 0.72.17, old architecture, manual
+Maven deps) are locked in by what was actually verified working — changing them means
+re-verifying on-device, not just updating a version number.
 
 ## 3. Mobile native shells
 
@@ -162,9 +164,11 @@ consolidated into the tree above (§3) or deleted as pure scaffolding with no un
 
 In priority order, each item closes a specific gap identified above:
 
-1. Rebuild `packages/saronite/` on the real host+shared-bundle+service-bundle+dynamic-load
-   mechanism (study/adopt `toss/granite` directly) instead of the current flat-folder
-   approximation.
+1. Evolve the now-working mini-app host toward Granite's actual mechanism: dynamic bundle
+   loading from a CDN (Metro dev server only, currently), a shared-bundle/service-bundle split,
+   and RN autolinking — plus wire up a real login flow so `getAuthToken()` can return something
+   other than null and the mini-apps can show real data, not just a correct auth error. Port the
+   same brownfield integration to iOS (nothing exists there yet).
 2. Introduce Kafka as the actual event backbone for the event model already designed in
    `docs/TOSS_RWANDA_ALIGNMENT.md` (`transfer.confirmed`, `payment.provider_succeeded`,
    `ledger.posted`, etc.) — currently those events are documented but not emitted anywhere.

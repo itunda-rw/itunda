@@ -1,0 +1,9 @@
+<resources>
+    <!--
+      ReactActivity requires a Theme.AppCompat descendant; itunda's main app is
+      100% Compose and had no AppCompat theme anywhere. Applied only to the
+      mini-app Activities in AndroidManifest.xml; MainActivity's default
+      theme is untouched.
+    -->
+    <style name="Theme.Itunda.MiniApp" parent="Theme.AppCompat.Light.NoActionBar" />
+</resources>

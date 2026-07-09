@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
@@ -37,9 +38,7 @@ android {
     }
     buildFeatures {
         compose = true
-    }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.8"
+        buildConfig = true
     }
     packaging {
         resources {
@@ -68,4 +67,22 @@ dependencies {
     implementation(project(":core:risk"))
     implementation(project(":core:identity"))
     implementation(project(":features:banking:impl"))
+
+    // Apps-in-Itunda mini-app host (Saronite/Granite-pattern brownfield RN integration).
+    // Old Native Modules API, no autolinking/codegen -- see MiniAppActivity.kt and
+    // ItundaApplication.kt for why this is a deliberately manual, minimal integration
+    // rather than pulling in the full React Native Gradle plugin.
+    // Downgraded from 0.80.3 (2026-07-10): that version's core bridge init
+    // unconditionally dlopen()s libreact_featureflagsjni.so, which the AAR
+    // ships only as C++ headers for -- the actual .so is normally produced by
+    // the official React Native Gradle plugin's own CMake step, which this
+    // deliberately manual/plugin-free integration does not run. Verified live
+    // on-device: the app installs and launches, but crashes with
+    // UnsatisfiedLinkError the moment a mini-app Activity initializes RN.
+    // 0.72.x predates that mandatory native build step.
+    implementation("com.facebook.react:react-android:0.72.17")
+    implementation("com.facebook.react:hermes-android:0.72.17")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.google.code.gson:gson:2.10.1")
 }

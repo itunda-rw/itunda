@@ -113,16 +113,68 @@ saronite/
                                  # itunda/android (the real native project)
 ```
 
-**Intended end state, not yet real:** the mini-apps should run inside
-itunda's actual Android app, not a separate RN shell — same idea as
-Granite's brownfield model. As of 2026-07-10 this is **not built**: see the
-correction below. `mobile_clients/android/app/src/main/java/rw/itunda/app/SaroniteHost/`
-has real `Activity` subclasses per mini-app (`WalletBalanceMiniAppActivity`,
-`PayBillsMiniAppActivity`, `RewardTasksMiniAppActivity`) and `CoreBank/MenuScreen.kt`
-references them, but that directory has no Gradle project, no manifest, and
-is not the canonical android app (see `ARCHITECTURE.md` §3 — `android/` at
-repo root is canonical; `mobile_clients/android` is a superseded duplicate).
-Nothing currently launches a mini-app from any real, buildable itunda app.
+**Real as of 2026-07-10, verified live on-device, not just claimed:** the
+mini-apps run inside itunda's actual canonical Android app
+(`android/app`), not a separate RN shell — same idea as Granite's
+brownfield model. `android/app/src/main/java/rw/itunda/app/miniapps/`
+has the real bridge (`SaroniteBridge.kt`), a real `ItundaApplication`
+(`ReactApplication` host), and one concrete `Activity` per mini-app
+(`MiniAppActivity.kt`), registered in `AndroidManifest.xml` and launched
+from a real "Mini apps" section in `ItundaAppScreen.kt`'s All tab.
+
+Verified end-to-end, live: `./gradlew :app:assembleDebug` → installed on a
+real emulator (avd `andros`) → Metro (`npx react-native start` in
+`packages/saronite/host-app`) → tapped Home → All → Pay bills through the
+real UI (via `adb shell input tap`, not a shortcut) → the real
+`PayBillsMiniAppActivity` opened, showed Metro's live "Bundling 88.1%..."
+progress bar, then rendered the actual RN screen with the title "Pay
+bills" and, correctly, **"Couldn't load bills: No active itunda
+session"** — itunda's app has no login flow yet
+(`NetworkClient.kt` has a literal `// TODO: Inject Token`), so
+`getAuthToken()` honestly returns null and the bridge's
+`SARONITE_NOT_AUTHENTICATED` path fired for real, exactly as designed.
+That's a correct failure mode, not a bug — it proves the full native ↔
+JS ↔ bridge ↔ backend-call pipeline runs for real, including the
+"no session" business logic, without needing to fabricate a fake token
+or claim data that isn't there.
+
+Four real, previously-undiscovered problems were found and fixed getting
+here (not simulated — each one actually failed a real build or crashed
+the real app):
+1. `react-android:0.80.3`'s stdlib metadata (Kotlin 2.1.20) couldn't be
+   read by the project's Kotlin 1.9.22 compiler. Gradle resolves one
+   plugin classpath version per build, so this couldn't be scoped to
+   `:app` alone — fixed by upgrading the whole `android/` project to
+   Kotlin 2.1.0 and migrating every Compose module off the old
+   `composeOptions.kotlinCompilerExtensionVersion` mechanism onto the
+   new `org.jetbrains.kotlin.plugin.compose` plugin.
+2. `react-android:0.80.3`'s core bridge init unconditionally
+   `dlopen()`s `libreact_featureflagsjni.so` — which the AAR ships only
+   as C++ headers for. In a normal RN project the official React Native
+   Gradle plugin's own CMake step compiles this locally; this
+   integration deliberately doesn't use that plugin (manual Maven
+   dependencies only, no autolinking/codegen). Real, live crash:
+   installed fine, launched fine, then `UnsatisfiedLinkError` the moment
+   the mini-app Activity initialized RN. Fixed by downgrading to
+   `react-android`/`hermes-android` 0.72.17, which predates that
+   mandatory native build step — verified this actually resolves it by
+   re-running the exact same on-device test, not by inspecting code.
+3. RN 0.72's `ReactApplication` interface is a Java-style
+   `getReactNativeHost()` method, not the Kotlin `val reactNativeHost`
+   property RN 0.80's interface exposes — hit as a real compile error
+   after the downgrade, fixed by matching 0.72's actual API.
+4. `packages/saronite/host-app/index.js` registers components as
+   `SaroniteWalletBalance`/`SaronitePayBills`/`SaroniteRewardTasks`, but
+   the first pass of `MiniAppActivity.kt` used
+   `wallet-balance`/`pay-bills`/`reward-tasks` — a real naming mismatch
+   between two files that would have silently shown a blank/wrong
+   screen; fixed by matching the Activities' `getMainComponentName()` to
+   the actual registered names.
+
+Also fixed: `react-native.config.js`'s `sourceDir`/`packageName` still
+pointed at a pre-restructure path and the wrong `applicationId`
+(`com.itunda.app` instead of the real `rw.itunda.app`) — corrected
+during the same pass.
 
 ## What's real and verified vs. what's still ahead
 
