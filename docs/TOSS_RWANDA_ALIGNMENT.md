@@ -392,7 +392,17 @@ Medium priority:
   before it) found and fixed, not just generic coverage. The remaining 4
   (notifications, discover, contacts, system) are small (41-70 LOC) hardcoded-data read
   endpoints with no ledger interaction at all — meaningfully lower-stakes, left
-  uncovered as a deliberate choice, not an oversight.
+  uncovered as a deliberate choice, not an oversight. **Contacts + notifications added
+  (2026-07-11):** on closer look these two aren't purely hardcoded-data reads — both
+  have real per-user authorization logic (`ContactsController.getContacts`'s own doc
+  comment names a real IDOR the Express version had; `NotificationController.markAsRead`
+  has an ownership check before ever flipping `isRead`), worth a regression guard the
+  same way the ownership checks in `LoansServiceTest.kt`/`SavingsServiceTest.kt` are.
+  New `ContactsControllerTest.kt` (4 tests) and `NotificationControllerTest.kt` (4
+  tests), same Kotest/MockK convention, calling the controllers directly (no Spring
+  context needed — `@AuthenticationPrincipal`/`Authentication` are just plain method
+  parameters at the JVM level). `discover`/`system` remain uncovered — genuinely just
+  static catalog data with no branching logic to regress.
 
 Low priority:
 
