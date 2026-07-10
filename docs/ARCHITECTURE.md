@@ -68,8 +68,15 @@ publish `payment.provider_succeeded` after `ProviderConnector.attempt` and the l
 both succeed (new `TransferEvents.kt`/`PaymentEvents.kt`, same after-commit pattern as
 `ledger.posted`). Merchant QR collection deliberately does not publish
 `payment.provider_succeeded` — it never calls `ProviderConnector`, so there's no provider
-success to report. `payment.provider_failed` remains unemitted — `ProviderDeclinedException`
-is caught and turned into an HTTP 502 today, not published as an event. Verified:
+success to report. **`payment.provider_failed` added, same pass (2026-07-11):**
+`BillsService`'s new `attemptOrPublishFailure` wraps `ProviderConnector.attempt`,
+publishing this event before rethrowing `ProviderDeclinedException` — still caught and
+turned into an HTTP 502 by `BillsController`, unchanged. Required a new
+`EventPublisher.publishImmediately` method rather than `publishAfterCommit`: the
+enclosing `@Transactional` method rolls back right after a decline, and
+`publishAfterCommit`'s afterCommit hook never fires on rollback, so the event would be
+silently dropped every time — `publishImmediately` fires unconditionally instead, since
+a decline is a fact about an external system, not about a database write. Verified:
 `:wallet:test`/`:bills:test` (11 tests, 0 failures) and `:app:compileKotlin` (full Spring
 wiring resolves the new `EventPublisher` constructor param) both pass.
 `core-libs`' `KafkaConfig.kt` (`services/microservices`) remains separate and
@@ -229,11 +236,11 @@ In priority order, each item closes a specific gap identified above:
    other than null and the mini-apps can show real data, not just a correct auth error. Port the
    same brownfield integration to iOS (nothing exists there yet).
 2. ~~Introduce Kafka as the actual event backbone for the event model already designed in
-   `docs/TOSS_RWANDA_ALIGNMENT.md`~~ **`ledger.posted`, `transfer.confirmed`, and
-   `payment.provider_succeeded` now real (2026-07-11)** — see §1 and item 8 below. Still
-   open: `payment.provider_failed` (declines are caught as HTTP 502, never published) and
-   everything past those four (`settlement.*`, `fraud.*`, `reconciliation.*`, `reward.*`)
-   — no real code exists yet for those domains to publish from. `services/backend`'s own
+   `docs/TOSS_RWANDA_ALIGNMENT.md`~~ **`ledger.posted`, `transfer.confirmed`,
+   `payment.provider_succeeded`, and `payment.provider_failed` now real (2026-07-11)** —
+   see §1 and item 8 below. Still open: everything past those four (`settlement.*`,
+   `fraud.*`, `reconciliation.*`, `reward.*`) — no real code exists yet for those domains
+   to publish from. `services/backend`'s own
    `core/.../events/KafkaConfig.kt` and `services/microservices/core-libs`' `KafkaConfig.kt`
    remain separate, unreconciled Kafka configs (see §1).
 3. Reconcile `services/backend` (most feature coverage, monolith-shaped) with

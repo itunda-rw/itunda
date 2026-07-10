@@ -40,6 +40,16 @@ class EventPublisher(
         })
     }
 
+    /**
+     * For events that report a fact about something *other than* the enclosing
+     * transaction's own writes -- e.g. an external provider declining a payment
+     * before any ledger row is touched. [publishAfterCommit]'s afterCommit hook only
+     * fires on commit, never on rollback, so it would silently drop an event for a
+     * caller that (correctly) rolls back its transaction after catching the same
+     * failure this event is reporting. Use this instead in that situation.
+     */
+    fun publishImmediately(topic: String, key: String, payload: Any) = publishNow(topic, key, payload)
+
     private fun publishNow(topic: String, key: String, payload: Any) {
         try {
             kafkaTemplate.send(topic, key, objectMapper.writeValueAsString(payload))

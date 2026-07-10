@@ -5,12 +5,16 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.events.EventPublisher
+import rw.itunda.core.events.PaymentProviderFailedEvent
 import rw.itunda.core.events.PaymentProviderSucceededEvent
+import rw.itunda.core.events.TOPIC_PAYMENT_PROVIDER_FAILED
 import rw.itunda.core.events.TOPIC_PAYMENT_PROVIDER_SUCCEEDED
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.provider.ProviderConnector
+import rw.itunda.core.provider.ProviderDeclinedException
 import rw.itunda.core.provider.RailCatalog
+import rw.itunda.core.provider.RailProfile
 import rw.itunda.core.repository.WalletRepository
 import rw.itunda.core.domain.WalletType
 import java.math.BigDecimal
@@ -43,12 +47,38 @@ class BillsService(
     fun getProviders() = BillsCatalog.providers
     fun getPendingBills() = BillsCatalog.pendingBills
 
+    /** Wraps [ProviderConnector.attempt] so a decline publishes `payment.provider_failed`
+     * before rethrowing. Published via [EventPublisher.publishImmediately] rather than
+     * [EventPublisher.publishAfterCommit] -- the caller's @Transactional method is about
+     * to roll back once this exception propagates, so an afterCommit hook would never
+     * fire for it. */
+    private fun attemptOrPublishFailure(rail: RailProfile, description: String, amount: BigDecimal, currency: String) {
+        try {
+            providerConnector.attempt(rail, description)
+        } catch (e: ProviderDeclinedException) {
+            eventPublisher.publishImmediately(
+                TOPIC_PAYMENT_PROVIDER_FAILED,
+                rail.id,
+                PaymentProviderFailedEvent(
+                    railId = rail.id,
+                    railDisplayName = rail.displayName,
+                    description = description,
+                    amount = amount,
+                    currency = currency,
+                    reason = e.message ?: "declined",
+                    failedAt = Instant.now(),
+                ),
+            )
+            throw e
+        }
+    }
+
     @Transactional
     fun payBill(userId: String, billId: String, amount: BigDecimal, accountNumber: String?, provider: String? = null): Map<String, Any?> {
         val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN) ?: throw NoWalletException("No wallet found for this account")
 
         val rail = RailCatalog.resolve(provider)
-        providerConnector.attempt(rail, "Bill payment $billId")
+        attemptOrPublishFailure(rail, "Bill payment $billId", amount, wallet.currency)
 
         val result = ledgerService.postLedgerTransaction(
             wallet.currency,
@@ -87,7 +117,7 @@ class BillsService(
         val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN) ?: throw NoWalletException("No wallet found for this account")
 
         val rail = RailCatalog.resolve(provider)
-        providerConnector.attempt(rail, "Airtime $phoneNumber")
+        attemptOrPublishFailure(rail, "Airtime $phoneNumber", amount, wallet.currency)
 
         val result = ledgerService.postLedgerTransaction(
             wallet.currency,

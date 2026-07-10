@@ -238,9 +238,12 @@ Use events for cross-context workflows:
   `buyAirtime` publish this after `ProviderConnector.attempt` and the ledger post both
   succeed. Merchant QR collection does not publish it — it's pure wallet-to-wallet
   with no external rail call, so there's no provider to have succeeded against.
-- `payment.provider_failed` — still not emitted. `ProviderConnector.attempt` throws
-  `ProviderDeclinedException` on decline (caught as an HTTP 502 by
-  `BillsController`), but nothing publishes an event for it yet.
+- `payment.provider_failed` — **real (2026-07-11):** `BillsService`'s new
+  `attemptOrPublishFailure` wraps `ProviderConnector.attempt`, publishing this event
+  before rethrowing `ProviderDeclinedException` (still caught as an HTTP 502 by
+  `BillsController`, unchanged). Published via `EventPublisher.publishImmediately`
+  (new method), not `publishAfterCommit` — the enclosing `@Transactional` method
+  rolls back right after this fires, so an afterCommit hook would never run for it.
 - `ledger.posted` — **real (2026-07-11):** `services/backend`'s `LedgerService` publishes
   this to Kafka after every successful ledger post (see `docs/ARCHITECTURE.md` §1).
 - The rest of this list (`settlement.batch_created` onward) is still purely a target,
