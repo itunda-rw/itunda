@@ -355,11 +355,14 @@ Medium priority:
   already drifted (`bank-mfe`'s `--toss-green` was Apple's iOS system green `#34c759`,
   not Toss's real `green500` `#04C065` that Android/iOS both use correctly) — verified
   the corrected value and a real new dark-mode block actually landed in both apps'
-  compiled CSS output, not just the source. `kyc-mfe` is **not** wired to this package:
-  `KycDashboard.tsx` uses inline `style={{...}}` hex literals throughout rather than CSS
-  custom properties, so adopting the shared tokens there would mean converting its
-  styling approach first, not a drop-in swap — left as an explicit, known follow-up
-  rather than silently skipped.
+  compiled CSS output, not just the source. **`kyc-mfe` converted too (2026-07-11):**
+  new `KycDashboard.css` replaces every inline hex literal with real
+  `var(--toss-*)`-based classes (also gaining real dark-mode support for the first
+  time); `index.css`/`App.css` turned out to still be the unmodified `create-vite`
+  scaffold theme, never actually re-themed since the project was created — `index.css`
+  now imports the shared tokens like the other two apps, `App.css` was dead code
+  (never imported) and deleted. All three micro-frontends now share one real token
+  source. Verified via the compiled CSS output and a clean `yarn build`/`yarn lint`.
 - ~~Add end-to-end demo scripts for send, QR, bill, merchant settlement, and fraud
   review.~~ **Done for send/bill/QR (2026-07-11):** `scripts/demo-e2e.sh` — real curl
   calls against `services/backend`'s actual endpoints (login as the seeded demo user

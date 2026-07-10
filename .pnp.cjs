@@ -1770,6 +1770,7 @@ const RAW_RUNTIME_STATE =
       ["workspace:services/micro-frontends/kyc-mfe", {\
         "packageLocation": "./services/micro-frontends/kyc-mfe/",\
         "packageDependencies": [\
+          ["@itunda/design-tokens", "workspace:packages/design-tokens"],\
           ["@originjs/vite-plugin-federation", "npm:1.4.1"],\
           ["@toss/use-funnel", "virtual:ccde1c9cb640e571fa5c95b90b440b4081a78651e5361eae5720e5d18bcfb14d917892b561fc16e98c8e270abc93d22ecea20b6638011ef647b5f9761ac7ac21#npm:1.4.2"],\
           ["@types/node", "npm:24.13.2"],\

@@ -4,7 +4,7 @@ import KycDashboard from './KycDashboard';
 function App() {
   return (
     <OverlayProvider>
-      <div style={{ maxWidth: '400px', margin: '0 auto', paddingTop: '40px' }}>
+      <div className="kyc-app-shell">
         <KycDashboard />
       </div>
     </OverlayProvider>

@@ -1318,6 +1318,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "kyc-mfe@workspace:services/micro-frontends/kyc-mfe"
   dependencies:
+    "@itunda/design-tokens": "workspace:*"
     "@originjs/vite-plugin-federation": "npm:^1.4.1"
     "@toss/use-funnel": "npm:^1.4.2"
     "@types/node": "npm:^24.13.2"

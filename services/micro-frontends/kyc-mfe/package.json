@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@itunda/design-tokens": "workspace:*",
     "@toss/use-funnel": "^1.4.2",
     "es-toolkit": "^1.49.0",
     "overlay-kit": "^1.9.0",
