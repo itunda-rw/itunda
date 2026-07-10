@@ -311,20 +311,40 @@ Every product flow must define:
 
 High priority:
 
-- Replace mocked provider calls with provider connector interfaces and typed fake providers.
-- Add a real double-entry ledger module before expanding money movement.
-- Add transfer quote/confirm separation.
-- Add idempotency keys to transfer and payment APIs.
-- Create merchant domain routes instead of only documentation.
-- Make Android and iOS share the same product taxonomy as web.
-- Convert architecture docs from aspirational service lists to implemented/target sections.
+- ~~Replace mocked provider calls with provider connector interfaces and typed fake providers.~~
+  **Done (2026-07-11)** for bills/airtime: `rw.itunda.core.provider.ProviderConnector`
+  (`services/backend`), a real interface with a `SimulatedProviderConnector` implementation —
+  per-rail latency/success-rate profiles, called before ledger posting so a decline never
+  touches a wallet balance. Not yet extended to transfers or merchant collection.
+- ~~Add a real double-entry ledger module before expanding money movement.~~ **Done** —
+  `rw.itunda.core.ledger.LedgerService`, row-locked, tested (`LedgerServiceTest.kt`).
+- ~~Add transfer quote/confirm separation.~~ **Done** — `WalletController`'s quote/confirm split.
+- ~~Add idempotency keys to transfer and payment APIs.~~ **Done** — `IdempotencyService`,
+  used across wallet/bills/loans/savings/insurance/merchant.
+- ~~Create merchant domain routes instead of only documentation.~~ **Done (2026-07-11)** —
+  `rw.itunda.merchant`: registration + QR payment collection, see
+  `docs/TOSS_PARITY_MATRIX.md`'s Merchant row for the real/not-real split.
+- Make Android and iOS share the same product taxonomy as web. **Partially done** —
+  design tokens now match exactly across `android/core/designsystem` and
+  `ios/Core/DesignSystem` (2026-07-11 reconciliation); screen/navigation taxonomy parity
+  is still open.
+- Convert architecture docs from aspirational service lists to implemented/target
+  sections. **Done, ongoing practice** — see `docs/ARCHITECTURE.md`'s real/demo/stub
+  table, kept current as of every fix this document's own dated notes describe.
 
 Medium priority:
 
-- Add design tokens for mobile and web parity.
+- Add design tokens for mobile and web parity. **Done for mobile** (Android/iOS
+  reconciled 2026-07-11); web (`services/micro-frontends`) still uses its own separate
+  `--toss-*` CSS custom properties, not derived from the same source as mobile's Kotlin/
+  Swift token files.
 - Add end-to-end demo scripts for send, QR, bill, merchant settlement, and fraud review.
 - Add accessibility checks for touch targets, contrast, form labels, and focus.
-- Add test coverage around fallback demo behavior.
+- ~~Add test coverage around fallback demo behavior.~~ **Started (2026-07-11)** —
+  `LedgerServiceTest.kt`, `MerchantServiceTest.kt`, `BillsServiceTest.kt` now exist
+  (previously only the first one did). Most other services (auth, wallet, loans,
+  savings, stocks, insurance, notifications, discover, contacts, system) still have
+  zero test coverage.
 
 Low priority:
 

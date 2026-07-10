@@ -15,6 +15,7 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
+import rw.itunda.core.provider.ProviderDeclinedException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
@@ -39,7 +40,7 @@ class BillsController(private val billsService: BillsService, private val idempo
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/bills/pay", idempotencyKey, request) {
-            val transaction = billsService.payBill(currentUser.userId, request.billId, request.amount, request.accountNumber)
+            val transaction = billsService.payBill(currentUser.userId, request.billId, request.amount, request.accountNumber, request.provider)
             200 to mapOf("success" to true, "message" to "Bill payment successful", "transaction" to transaction)
         }
         return ResponseEntity.status(status).body(body)
@@ -72,4 +73,7 @@ class BillsController(private val billsService: BillsService, private val idempo
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
+
+    @ExceptionHandler(ProviderDeclinedException::class)
+    fun handleProviderDeclined(ex: ProviderDeclinedException) = ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(ApiError("PROVIDER_DECLINED", ex.message ?: "Provider declined"))
 }
