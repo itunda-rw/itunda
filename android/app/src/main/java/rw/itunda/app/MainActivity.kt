@@ -1,13 +1,17 @@
 package rw.itunda.app
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.Text
+import androidx.fragment.app.FragmentActivity
 import rw.itunda.app.ui.ItundaAppScreen
 import rw.itunda.core.risk.RootDetection
 
-class MainActivity : ComponentActivity() {
+// FragmentActivity, not just ComponentActivity, so NIDABiometricAuth's real
+// BiometricPrompt (androidx.biometric:1.1.0) can be constructed from screens
+// below it -- see core/identity/NIDABiometricAuth.kt. FragmentActivity itself
+// still supports Compose's setContent{} directly, no separate host needed.
+class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 

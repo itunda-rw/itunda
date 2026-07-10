@@ -162,6 +162,9 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
     TdsTheme {
         var selectedTab by remember { mutableStateOf(TossTab.Home) }
         var transferStep by remember { mutableStateOf<TransferStep?>(null) }
+        var biometricError by remember { mutableStateOf<String?>(null) }
+        val activity = androidx.compose.ui.platform.LocalContext.current as androidx.fragment.app.FragmentActivity
+        val biometricAuth = remember(activity) { rw.itunda.core.identity.NIDABiometricAuth(activity) }
 
         val step = transferStep
         if (step != null) {
@@ -170,11 +173,36 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                     onBack = { transferStep = null },
                     onNext = { accountNumber -> transferStep = TransferStep.Amount(accountNumber) }
                 )
-                is TransferStep.Amount -> rw.itunda.feature.payments.impl.TransferAmountScreen(
-                    recipientAccountNumber = step.accountNumber,
-                    onBack = { transferStep = TransferStep.Recipient },
-                    onConfirm = { transferStep = null }
-                )
+                is TransferStep.Amount -> {
+                    rw.itunda.feature.payments.impl.TransferAmountScreen(
+                        recipientAccountNumber = step.accountNumber,
+                        onBack = { transferStep = TransferStep.Recipient },
+                        onConfirm = { amountRwf ->
+                            // Toss-style biometric confirmation gate before a transfer
+                            // completes -- see docs/ARCHITECTURE.md's NIDABiometricAuth
+                            // note. Still local-state-only (no backend session yet, see
+                            // TransferFlow.kt's header), so "success" here means the
+                            // sheet closes, not that money actually moved.
+                            biometricError = null
+                            biometricAuth.authenticateForTransaction(
+                                reason = "Confirm sending $amountRwf RWF"
+                            ) { success, error ->
+                                if (success) {
+                                    transferStep = null
+                                } else {
+                                    biometricError = error ?: "Couldn't verify. Try again."
+                                }
+                            }
+                        }
+                    )
+                    biometricError?.let { message ->
+                        androidx.compose.material3.Text(
+                            text = message,
+                            color = Tds.colors.danger,
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                        )
+                    }
+                }
             }
             return@TdsTheme
         }
