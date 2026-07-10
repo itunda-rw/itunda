@@ -20,3 +20,11 @@ spring:
     open-in-view: false
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+# Real MTN MoMo/Airtel Money/RNP 2.0 provider endpoint -- unset by default, meaning
+# RnpPaymentGateway refuses to fake a successful transfer (see its own doc comment).
+# There is no real value for this anywhere -- it requires actual provider credentials
+# and certification, not a code change.
+rnp:
+  gateway:
+    base-url: ${RNP_GATEWAY_BASE_URL:}
