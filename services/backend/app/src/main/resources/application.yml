@@ -20,12 +20,17 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
   jpa:
     hibernate:
-      # update, not validate/none: same "demo stepping stone" tier of rigor as the
-      # Express backend's JSON-file persistence — real deployments need Flyway/Liquibase
-      # migrations instead of letting Hibernate infer the schema. Documented, not hidden.
-      ddl-auto: update
+      # Fixed (2026-07-11): was `update`, letting Hibernate infer the schema -- the
+      # documented "demo stepping stone" gap this comment used to describe. Real
+      # versioned migrations now live in app/src/main/resources/db/migration/, and
+      # Hibernate just validates its entity mappings against what Flyway created
+      # rather than being trusted to derive the schema itself.
+      ddl-auto: validate
     open-in-view: false
     properties:
       hibernate:

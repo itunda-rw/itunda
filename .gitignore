@@ -41,8 +41,11 @@ temp/
 # Docker
 docker-compose.override.yml
 
-# Database
+# Database dumps -- not migration source. The blanket *.sql rule below silently
+# excluded real Flyway migrations under db/migration/ until this fix (2026-07-11);
+# the negation pattern keeps dump files ignored without doing that again.
 *.sql
+!**/db/migration/*.sql
 *.db
 *.sqlite
 

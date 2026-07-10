@@ -28,6 +28,10 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("com.mysql:mysql-connector-j")
+    // Real versioned migrations instead of Hibernate ddl-auto inferring the schema --
+    // see application.yml's jpa.hibernate.ddl-auto comment (2026-07-11 fix).
+    implementation("org.flywaydb:flyway-core")
+    implementation("org.flywaydb:flyway-mysql")
     // Without these, Jackson can't deserialize Kotlin data class request bodies at all
     // (LoginRequest, RegisterRequest, etc. all have no default constructor) and every
     // POST endpoint 500s internally before Spring MVC even reaches the controller.
