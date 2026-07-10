@@ -234,7 +234,9 @@ Use events for cross-context workflows:
 - `transfer.confirmed`
 - `payment.provider_succeeded`
 - `payment.provider_failed`
-- `ledger.posted`
+- `ledger.posted` — **real (2026-07-11):** `services/backend`'s `LedgerService` publishes
+  this to Kafka after every successful ledger post (see `docs/ARCHITECTURE.md` §1). The
+  rest of this list is still purely a target, not emitted anywhere.
 - `settlement.batch_created`
 - `settlement.paid`
 - `fraud.case_opened`

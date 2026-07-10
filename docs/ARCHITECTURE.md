@@ -50,12 +50,27 @@ coverage today and stays the default for new feature work, but `services/microse
 should **not** be deleted or treated as dead — it's the shape Toss's real MSA split actually
 looks like (facts doc §1), just with far less feature coverage. Reconciling the two (eventually
 splitting `services/backend`'s bounded contexts out into independently-deployable services matching
-`ledger-service`/`payment-service`'s pattern) is real future work, not a cleanup task. Kafka is
-not yet wired between any of these — that's the concrete gap between "itunda has Spring apps"
-and "itunda has the MSA event backbone Toss actually runs" (`transfer.confirmed` /
-`payment.provider_succeeded` / `ledger.posted` events listed in `docs/TOSS_RWANDA_ALIGNMENT.md`'s
-event model are designed but not emitted anywhere yet — `core-libs`' `KafkaConfig.kt` is
-the only real Kafka wiring that exists, and only `payment-service` uses it).
+`ledger-service`/`payment-service`'s pattern) is real future work, not a cleanup task.
+**`ledger.posted` wired (2026-07-11):** `services/backend` now publishes a real `ledger.posted`
+Kafka event from `LedgerService.postLedgerTransaction` — the one choke-point every money-moving
+flow already goes through (transfers, bills, loans, savings, stocks, insurance, merchant
+collection), so this single change covers all of them without touching each individual service.
+New `core/.../events/EventPublisher.kt` publishes only *after* the enclosing transaction commits
+(`TransactionSynchronizationManager.afterCommit`), not mid-transaction — publishing an event for a
+row that then rolled back would be worse than not publishing at all. Honestly labeled as a lighter
+pattern than a true transactional outbox (which `ledger-service` uses for real, via an
+`OutboxEventEntity` + Debezium CDC): if Kafka is unreachable at commit time, the event is logged
+and dropped, not retried. Ledger correctness never depends on this succeeding. Still open:
+`transfer.confirmed`/`payment.provider_succeeded` (the other two events `docs/TOSS_RWANDA_ALIGNMENT.md`'s
+event model names) aren't separately emitted — `ledger.posted` is the one universal event every
+flow shares, the other two are more specific and would need per-flow instrumentation this pass
+didn't do. `core-libs`' `KafkaConfig.kt` (`services/microservices`) remains separate and
+independent — `services/backend` has its own `core/.../events/KafkaConfig.kt` now, matching its
+own `KAFKA_BOOTSTRAP_SERVERS` env-var convention rather than sharing config across the two
+still-unreconciled backends. Verified: full backend build passes, all 61 existing tests across
+every module still pass after this change (the `LedgerService` constructor gained a parameter,
+requiring `LedgerServiceTest.kt`'s update too). Not runtime-verified against a live Kafka broker
+— no Docker daemon in this environment, same honest caveat as this session's other infra work.
 
 ## 2. Frontend / super-app architecture
 
@@ -144,7 +159,9 @@ as open-source Granite while keeping money/identity bridge APIs private and nati
   environment, so neither a real cluster nor even `kind` could come up to test an actual
   `kubectl apply`.
 - Kubernetes itself is a real point of alignment (Toss Bank channel services run on K8s) —
-  keep it. Kafka is not yet present and is the real gap (§1).
+  keep it. Kafka now has one real event flowing (`ledger.posted`, §1) but is still far from a
+  full event backbone — no manifest in this directory deploys a Kafka broker itself (Kafka only
+  exists via `infra/docker-compose.yml`'s local-dev-only setup).
 - Active-active dual-datacenter, 1,000+ topic Kafka mirroring, and sub-200ms real-time
   ledger writes (facts doc §1-2) are **not targets for itunda's current stage** — they are
   what Toss does at real-money, real-scale, regulated-bank operation. Naming them in a doc as

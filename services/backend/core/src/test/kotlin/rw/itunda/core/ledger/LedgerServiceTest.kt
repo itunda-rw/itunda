@@ -11,6 +11,7 @@ import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.events.EventPublisher
 import rw.itunda.core.repository.LedgerAccountRepository
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.WalletRepository
@@ -34,7 +35,11 @@ class LedgerServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val ledgerAccountRepository = mockk<LedgerAccountRepository>()
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
-        val service = LedgerService(walletRepository, ledgerAccountRepository, ledgerEntryRepository)
+        // relaxed: this test suite is about ledger balance correctness, not event
+        // publishing (see EventPublisherTest / LedgerService's own wiring comment) --
+        // a relaxed mock lets publishAfterCommit calls no-op without stubbing each one.
+        val eventPublisher = mockk<EventPublisher>(relaxed = true)
+        val service = LedgerService(walletRepository, ledgerAccountRepository, ledgerEntryRepository, eventPublisher)
 
         val sourceWallet = wallet("wallet_1", "1000")
         val feeAccount = LedgerAccount(id = "fee_revenue", name = "Fee Revenue")

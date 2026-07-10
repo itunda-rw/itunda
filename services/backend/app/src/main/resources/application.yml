@@ -20,6 +20,10 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+  # Real event backbone for ledger.posted (see core/.../events/, 2026-07-11 fix) --
+  # same env var convention as services/microservices' KAFKA_BOOTSTRAP_SERVERS.
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
   flyway:
     enabled: true
     locations: classpath:db/migration

@@ -5,6 +5,10 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.LedgerEntry
+import rw.itunda.core.events.EventPublisher
+import rw.itunda.core.events.LedgerPostedEvent
+import rw.itunda.core.events.LedgerPostedLeg
+import rw.itunda.core.events.TOPIC_LEDGER_POSTED
 import rw.itunda.core.repository.LedgerAccountRepository
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.WalletRepository
@@ -36,6 +40,7 @@ class LedgerService(
     private val walletRepository: WalletRepository,
     private val ledgerAccountRepository: LedgerAccountRepository,
     private val ledgerEntryRepository: LedgerEntryRepository,
+    private val eventPublisher: EventPublisher,
 ) {
     @Transactional
     fun postLedgerTransaction(currency: String, rawLegs: List<LedgerLeg>): LedgerPostResult {
@@ -100,6 +105,31 @@ class LedgerService(
         }
 
         ledgerEntryRepository.saveAll(entries)
+
+        // Real event backbone (2026-07-11 fix) -- this is the one choke-point every
+        // money-moving flow already goes through (transfers, bills, loans, savings,
+        // stocks, insurance, merchant collection), so publishing here covers all of
+        // them without touching each individual service. Published after-commit, not
+        // here directly -- see EventPublisher's own doc comment for why.
+        eventPublisher.publishAfterCommit(
+            TOPIC_LEDGER_POSTED,
+            transactionId,
+            LedgerPostedEvent(
+                transactionId = transactionId,
+                currency = currency,
+                postedAt = createdAt,
+                legs = entries.map {
+                    LedgerPostedLeg(
+                        accountId = it.accountId,
+                        accountType = it.accountType.name,
+                        direction = it.direction.name,
+                        amount = it.amount,
+                        memo = it.memo,
+                    )
+                },
+            ),
+        )
+
         return LedgerPostResult(transactionId, entries)
     }
 }
