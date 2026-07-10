@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { overlay } from 'overlay-kit';
 import { useFunnel } from '@toss/use-funnel';
 

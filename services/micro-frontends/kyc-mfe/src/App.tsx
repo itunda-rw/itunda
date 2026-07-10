@@ -1,4 +1,3 @@
-import React from 'react';
 import { OverlayProvider } from 'overlay-kit';
 import KycDashboard from './KycDashboard';
 

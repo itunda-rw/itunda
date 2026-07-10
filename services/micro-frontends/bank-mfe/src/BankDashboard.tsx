@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowUpRight, ArrowDownLeft, Wallet, ShieldCheck, ChevronRight, Plus, ScanFace } from 'lucide-react';
+import { ArrowUpRight, Wallet, ShieldCheck, ChevronRight, Plus, ScanFace } from 'lucide-react';
 
 // Mock API Calls
 const fetchBalance = async () => {
