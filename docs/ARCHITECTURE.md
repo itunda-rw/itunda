@@ -214,7 +214,7 @@ In priority order, each item closes a specific gap identified above:
    (outbox, hexagonal layering) into backend instead.
 4. Build-verify the `ios/` port on a real Mac with full Xcode (this sandbox's Tuist can't run —
    see §3) and get iOS to the same "compiles and runs on-device" bar Android is now at.
-5. **Done on Android (2026-07-10), still open on iOS:** `core/designsystem`'s two token sets
+5. **Done on Android (2026-07-10) and iOS (2026-07-11):** `core/designsystem`'s two token sets
    (`Tds*` and `ids/IDS`) are reconciled — `IDS.Colors` (a second, light-only-hardcoded color
    system with zero dark-mode values, the actual root cause of `BankScreen`/`MySpendingScreen`/
    `RecipientScreen` having no working dark mode) is gone; every color reference across
@@ -223,9 +223,19 @@ In priority order, each item closes a specific gap identified above:
    `CompositionLocal`-backed `Tds.colors` (`TdsSemanticColors.kt`), verified live in both light
    and dark on the real emulator (`adb shell cmd uimode night yes/no`) across all 5 real tabs
    (Home/Benefits/Shop/Pay/All). Dark palette now matches the actual Toss app (true-black
-   background, not the old unexplained navy `#191F28`) rather than a guess. iOS's `IDS.swift`
-   has the identical bug (light-only, ported unverified — see §3) and needs the same fix once
-   iOS can be build-verified.
+   background, not the old unexplained navy `#191F28`) rather than a guess.
+   **iOS (2026-07-11):** fixed differently, not identically — SwiftUI/UIKit can build a
+   theme-reactive `Color` directly from a dynamic `UIColor` provider, so `ios/Core/DesignSystem/
+   Sources/IDS.swift`'s `IDS.Colors` (the semantic-role layer, same job as Android's `Tds.colors`)
+   now resolves every value via a new `Color(light:dark:)` init with real dark values ported from
+   Android's already-tuned `TdsDarkSemanticColors` where the concept maps 1:1 — with zero call-site
+   changes needed anywhere that already used `IDS.Colors.textPrimary` etc., unlike Android's
+   CompositionLocal-threading approach. `TdsColors`/`TdsTypography` (`Theme/TdsTheme.swift`)
+   correctly stay static/non-reactive, matching Android's `TdsColors` object — that's the
+   primitive/raw-palette layer, not the semantic layer, and was never actually competing with
+   `IDS.Colors` at the same job the way the original "two unreconciled token sets" framing implied.
+   Not build-verified for the same Tuist-toolchain reason as the rest of `ios/` (§3) — passes
+   `swiftc -parse` only.
    **New finding from this pass:** `BankScreen`, `MySpendingScreen`, `RecipientScreen`, and
    `TransferQuoteScreen` all compile and are now correctly themed, but **none of them are
    reachable from any real navigation** — `grep` for their call sites in `:app` returns nothing.

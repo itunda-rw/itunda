@@ -1,6 +1,10 @@
 import SwiftUI
 
-/// Toss-Style Color System
+/// Toss-Style Color System -- the primitive/raw brand palette (Blue500, Gray900, ...).
+/// Deliberately static, not theme-reactive: see IDS.swift's header comment for the
+/// 2026-07-11 reconciliation between this file and IDS.Colors. The *semantic* layer
+/// that should change between light/dark is IDS.Colors, matching Android's split
+/// between the static `TdsColors` object and the reactive `Tds.colors`.
 public struct TdsColors {
     public static let blue500 = Color(hex: 0x3182F6)
     public static let blue600 = Color(hex: 0x1B64DA)
