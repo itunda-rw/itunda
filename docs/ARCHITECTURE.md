@@ -117,8 +117,32 @@ as open-source Granite while keeping money/identity bridge APIs private and nati
 - `infrastructure/` renamed to `infra/` (2026-07-10), matching the top-level naming Toss's real
   `toss/granite` repo uses. `infra/kubernetes/` was deleted — it was manifests for the fictional
   12-microservice/MongoDB/Elasticsearch/Kibana stack this document already flags as unsourced
-  (§1, facts doc §5); `infra/k8s/` (which references the real `api-gateway` service) is now the
-  only k8s directory.
+  (§1, facts doc §5); `infra/k8s/` is now the only k8s directory.
+- **Fixed (2026-07-11):** until this point, `infra/k8s/production/api-gateway.yaml` was the
+  *only* deployment manifest that existed — it deployed the 24-line Node.js proxy, while
+  `services/backend` (the canonical Kotlin backend, most of the real product surface) had no
+  k8s manifest at all. Added `backend.yaml`, `ledger-service.yaml`, `payment-service.yaml`
+  alongside it, and updated `api-gateway.yaml` with the in-cluster Service DNS names for all
+  three (`http://backend:4001`, `http://ledger-service:8082`, `http://payment-service:8081`)
+  — `services/api-gateway/index.js` was hardcoding `localhost` for these targets, which
+  doesn't resolve inside a Kubernetes pod; now env-configurable, defaulting to `localhost`
+  for local dev. Writing the health-check probes for these manifests surfaced a real gap:
+  neither `services/backend` nor either microservice had Spring Boot Actuator at all, so a
+  `/actuator/health` liveness probe would have crash-looped every pod against a path that
+  didn't exist. Added `spring-boot-starter-actuator` to all three and permitted
+  `/actuator/health` in `services/backend`'s `SecurityConfig` (it already had a `/health`
+  permitAll rule pointing at an endpoint that was never actually implemented — the same
+  "declared but not real" pattern this whole document tracks elsewhere). Secrets
+  (`itunda-db-credentials`, `itunda-jwt-secret`) and ConfigMaps (`itunda-db-config`,
+  `itunda-microservices-db-config`, `itunda-redis-config`, `itunda-kafka-config`) are
+  referenced but deliberately not created by these manifests — committing real credentials
+  to a YAML file in git would repeat exactly the mistake `SECURITY.md` exists to catch
+  elsewhere; they need out-of-band provisioning, documented in each manifest's header
+  comment. Verified: all three services' Gradle builds pass with Actuator added, and every
+  manifest is valid YAML (checked with both Ruby's YAML parser and `kubectl` client-side
+  parsing). Not verified against a live cluster — no Docker daemon running in this
+  environment, so neither a real cluster nor even `kind` could come up to test an actual
+  `kubectl apply`.
 - Kubernetes itself is a real point of alignment (Toss Bank channel services run on K8s) —
   keep it. Kafka is not yet present and is the real gap (§1).
 - Active-active dual-datacenter, 1,000+ topic Kafka mirroring, and sub-200ms real-time

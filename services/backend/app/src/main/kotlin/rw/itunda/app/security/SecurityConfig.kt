@@ -25,7 +25,11 @@ class SecurityConfig(private val jwtAuthenticationFilter: JwtAuthenticationFilte
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { auth ->
                 auth
-                    .requestMatchers("/health", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
+                    // "/health" was already permitAll here but nothing ever implemented
+                    // it -- k8s readiness/liveness probes need a real endpoint, so
+                    // "/actuator/health" was added alongside it (2026-07-11) rather than
+                    // building a bespoke one; see infra/k8s/production/backend.yaml.
+                    .requestMatchers("/health", "/actuator/health", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
                     .anyRequest().authenticated()
             }
             // Spring Security's default for an unauthenticated request with no configured

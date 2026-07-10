@@ -16,4 +16,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.kafka:spring-kafka") // For Outbox CDC or direct API event emission
+    // Real k8s liveness/readiness probes need a real health endpoint (2026-07-11,
+    // alongside infra/k8s/production/payment-service.yaml).
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
 }

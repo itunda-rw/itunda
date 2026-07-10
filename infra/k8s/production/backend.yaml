@@ -1,0 +1,109 @@
+# The canonical Kotlin/Spring Boot backend (services/backend) -- auth, wallet,
+# transfer, bills, loans, contacts, stocks, savings, insurance, notifications,
+# discover, system. Added 2026-07-11: previously the only k8s manifest that
+# existed in this repo deployed api-gateway, a 24-line Node.js proxy -- the
+# service actually holding the real business logic and ledger had no deployment
+# story at all.
+#
+# Secrets referenced below (itunda-db-credentials, itunda-jwt-secret) are NOT
+# created by this file on purpose -- committing real credentials to a YAML file
+# in git is exactly the anti-pattern this repo's own SECURITY.md exists to catch
+# elsewhere. Provision them out-of-band, e.g.:
+#   kubectl create secret generic itunda-db-credentials \
+#     --from-literal=username=itunda --from-literal=password=<real value> -n itunda
+#   kubectl create secret generic itunda-jwt-secret \
+#     --from-literal=secret=<real value> -n itunda
+#
+# DB_HOST/DB_PORT point at an external managed MySQL instance via itunda-db-config
+# (a ConfigMap, also provisioned out-of-band) -- this manifest deliberately does
+# not attempt to run production MySQL as a Kubernetes StatefulSet itself.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: itunda
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: ghcr.io/itunda/backend:latest
+        ports:
+        - containerPort: 4001
+        env:
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-db-config
+              key: host
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-db-config
+              key: port
+        - name: DB_NAME
+          value: "itunda"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: itunda-db-credentials
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: itunda-db-credentials
+              key: password
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-redis-config
+              key: host
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-redis-config
+              key: port
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: itunda-jwt-secret
+              key: secret
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 4001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 4001
+          initialDelaySeconds: 45
+          periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: itunda
+spec:
+  selector:
+    app: backend
+  ports:
+  - port: 4001
+    targetPort: 4001
+  type: ClusterIP

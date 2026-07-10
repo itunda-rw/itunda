@@ -18,6 +18,17 @@ spec:
         image: ghcr.io/itunda/api-gateway:latest
         ports:
         - containerPort: 3000
+        # In-cluster Service DNS names for the three backends this gateway proxies
+        # to (2026-07-11 fix, alongside services/api-gateway/index.js's move away
+        # from hardcoded localhost -- see backend.yaml/ledger-service.yaml/
+        # payment-service.yaml, all in this same directory).
+        env:
+        - name: BACKEND_URL
+          value: "http://backend:4001"
+        - name: LEDGER_SERVICE_URL
+          value: "http://ledger-service:8082"
+        - name: PAYMENT_SERVICE_URL
+          value: "http://payment-service:8081"
         resources:
           requests:
             memory: "256Mi"

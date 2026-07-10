@@ -15,18 +15,26 @@ app.use(cors());
 // (Express matches middleware in registration order, not path specificity); the
 // catch-all to services/backend is registered last as the default for everything
 // else under /api/v1.
+// Targets are env-configurable (defaulting to localhost for local dev) rather than
+// hardcoded -- `localhost` doesn't resolve to anything inside a Kubernetes pod, and
+// infra/k8s/production/*.yaml sets these to the real in-cluster Service DNS names
+// (2026-07-11 fix).
+const PAYMENT_SERVICE_URL = process.env.PAYMENT_SERVICE_URL || 'http://localhost:8081';
+const LEDGER_SERVICE_URL = process.env.LEDGER_SERVICE_URL || 'http://localhost:8082';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:4001';
+
 app.use('/api/v1/payments', createProxyMiddleware({
-    target: 'http://localhost:8081',
+    target: PAYMENT_SERVICE_URL,
     changeOrigin: true
 }));
 
 app.use('/api/v1/ledger', createProxyMiddleware({
-    target: 'http://localhost:8082',
+    target: LEDGER_SERVICE_URL,
     changeOrigin: true
 }));
 
 app.use('/api/v1', createProxyMiddleware({
-    target: 'http://localhost:4001',
+    target: BACKEND_URL,
     changeOrigin: true
 }));
 

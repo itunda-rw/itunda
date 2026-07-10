@@ -1,0 +1,85 @@
+# services/microservices/ledger-service -- the independently-deployable, real
+# hexagonal-architecture ledger service (double-entry TransferService, Kafka
+# outbox). Added 2026-07-11 alongside backend.yaml/payment-service.yaml -- see
+# backend.yaml's header comment for the secrets/ConfigMap provisioning convention
+# these manifests all share.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ledger-service
+  namespace: itunda
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ledger-service
+  template:
+    metadata:
+      labels:
+        app: ledger-service
+    spec:
+      containers:
+      - name: ledger-service
+        image: ghcr.io/itunda/ledger-service:latest
+        ports:
+        - containerPort: 8082
+        env:
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-microservices-db-config
+              key: host
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-microservices-db-config
+              key: port
+        - name: DB_NAME
+          value: "itunda_ledger"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: itunda-db-credentials
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: itunda-db-credentials
+              key: password
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-kafka-config
+              key: bootstrap-servers
+        resources:
+          requests:
+            memory: "384Mi"
+            cpu: "250m"
+          limits:
+            memory: "768Mi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8082
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8082
+          initialDelaySeconds: 45
+          periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ledger-service
+  namespace: itunda
+spec:
+  selector:
+    app: ledger-service
+  ports:
+  - port: 8082
+    targetPort: 8082
+  type: ClusterIP

@@ -1,0 +1,90 @@
+# services/microservices/payment-service -- the independently-deployable payment
+# service (ConfirmPaymentService, RnpPaymentGateway). Added 2026-07-11 alongside
+# backend.yaml/ledger-service.yaml -- see backend.yaml's header comment for the
+# secrets/ConfigMap provisioning convention these manifests all share.
+#
+# RNP_GATEWAY_BASE_URL is deliberately left unset here: there is no real MTN
+# MoMo/Airtel Money/RNP integration to point it at yet (see
+# RnpPaymentGateway.kt's own doc comment and docs/TOSS_PARITY_MATRIX.md's
+# "Non-Negotiable Gates Before Real Money") -- setting it to a fake value just to
+# make this manifest look more complete would misrepresent what's actually wired.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  namespace: itunda
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+    spec:
+      containers:
+      - name: payment-service
+        image: ghcr.io/itunda/payment-service:latest
+        ports:
+        - containerPort: 8081
+        env:
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-microservices-db-config
+              key: host
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-microservices-db-config
+              key: port
+        - name: DB_NAME
+          value: "itunda_payment"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: itunda-db-credentials
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: itunda-db-credentials
+              key: password
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-kafka-config
+              key: bootstrap-servers
+        resources:
+          requests:
+            memory: "384Mi"
+            cpu: "250m"
+          limits:
+            memory: "768Mi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8081
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8081
+          initialDelaySeconds: 45
+          periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service
+  namespace: itunda
+spec:
+  selector:
+    app: payment-service
+  ports:
+  - port: 8081
+    targetPort: 8081
+  type: ClusterIP
