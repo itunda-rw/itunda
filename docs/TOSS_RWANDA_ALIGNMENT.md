@@ -340,11 +340,17 @@ Medium priority:
   Swift token files.
 - Add end-to-end demo scripts for send, QR, bill, merchant settlement, and fraud review.
 - Add accessibility checks for touch targets, contrast, form labels, and focus.
-- ~~Add test coverage around fallback demo behavior.~~ **Started (2026-07-11)** —
-  `LedgerServiceTest.kt`, `MerchantServiceTest.kt`, `BillsServiceTest.kt` now exist
-  (previously only the first one did). Most other services (auth, wallet, loans,
-  savings, stocks, insurance, notifications, discover, contacts, system) still have
-  zero test coverage.
+- ~~Add test coverage around fallback demo behavior.~~ **Done for every module that
+  moves money or authenticates (2026-07-11):** `LedgerServiceTest.kt` (pre-existing) plus
+  new `AuthServiceTest.kt`, `WalletServiceTest.kt`, `MerchantServiceTest.kt`,
+  `BillsServiceTest.kt`, `LoansServiceTest.kt`, `SavingsServiceTest.kt`,
+  `StocksServiceTest.kt`, `InsuranceServiceTest.kt` — 9 of 13 backend modules, covering
+  every real ledger-touching flow plus login/registration/token rotation. Several tests
+  are specifically regression guards for real bugs this session (and `SECURITY.md`
+  before it) found and fixed, not just generic coverage. The remaining 4
+  (notifications, discover, contacts, system) are small (41-70 LOC) hardcoded-data read
+  endpoints with no ledger interaction at all — meaningfully lower-stakes, left
+  uncovered as a deliberate choice, not an oversight.
 
 Low priority:
 
