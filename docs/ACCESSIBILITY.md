@@ -145,21 +145,49 @@ Platform minimums: Android/Material Design recommends 48dp; Apple HIG requires
   (matching `TopIconButton`'s pattern) rather than leaving the bare ~20dp icon
   itself as the tap target.
 
-## 4. Not yet audited (open)
+## 4. Form labels (2026-07-11)
+
+Grep-audited every text-input composable across `android/` (`grep -rl
+"TextField\|EditText"`) — there is exactly one form field in the entire app:
+`RecipientEntryScreen`'s account-number `BasicTextField` in
+`android/features/payments/impl/.../TransferFlow.kt`. Every other screen is
+read-only (lists, cards, amounts) or uses the custom `NumericKeypad` composable
+(digit buttons, not a text field).
+
+Found and fixed 2 real bugs:
+- The account-number `BasicTextField` had no accessible label at all.
+  Unlike a View-based `TextInputLayout`, `BasicTextField` doesn't
+  auto-associate the visible `"Enter account number"` `Text()` sitting above
+  it — Compose doesn't merge separate sibling composables into one
+  accessible node unless told to — so TalkBack announced a bare, unlabeled
+  edit field. Fixed with `Modifier.semantics { contentDescription = "Account
+  number, up to 16 digits" }`.
+- `NumericKeypad`'s digit keys (`0`–`9`, `00`) are fine as-is — their visible
+  text already is their accessible name. The `DEL` key uses only a `"⌫"`
+  glyph as its visible content, which isn't a meaningful accessible name on
+  its own — fixed by adding `contentDescription = "Delete"` to that key only.
+
+Verified: `./gradlew :app:assembleDebug` → `BUILD SUCCESSFUL`.
+
+iOS has no equivalent audit yet — `AgreementWidget.swift`/
+`PaymentMethodWidget.swift` (§2) are the closest thing to form inputs and were
+already checked there; no `TextField`/`SecureField` usage exists elsewhere in
+`ios/` today.
+
+## 5. Not yet audited (open)
 
 - **Focus order** (Compose semantics traversal order / SwiftUI focus order) — not
   started this pass. Requires either a live TalkBack/VoiceOver run or Compose's
   `testTag`-based semantics tree inspection, neither available in this
   environment.
-- **Form labels** — bill-pay/transfer/registration form fields (`TextField`s
-  across the app) not yet audited for `label`/`placeholder`-only fields lacking a
-  real accessible label.
 - **Dynamic Type / font scaling** — not checked on either platform.
 
 ## Status
 
 Corresponds to the `docs/TOSS_RWANDA_ALIGNMENT.md` gap-list item "Add accessibility
 checks for touch targets, contrast, form labels, and focus" — contrast and
-content-description/label checks are done (with 2 real defects documented above,
-left open pending a design-system-level fix), touch-target sizing is checked and
-one real gap flagged, form labels and focus order remain open.
+content-description/label checks are done (2 real color-contrast defects documented
+above, left open pending a design-system-level fix; all content-description/label
+bugs found were fixed), touch-target sizing is checked and the one real gap found
+(Android's `TopIconButton`) is fixed, form labels are audited and both bugs found
+are fixed. Only focus order and Dynamic Type/font scaling remain open.

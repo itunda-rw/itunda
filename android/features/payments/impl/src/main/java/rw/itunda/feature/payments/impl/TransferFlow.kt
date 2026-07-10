@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -74,12 +76,21 @@ fun RecipientEntryScreen(
             Spacer(modifier = Modifier.height(28.dp))
             Text("Enter account number", color = Tds.colors.brand, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Spacer(modifier = Modifier.height(6.dp))
+            // Fixed (2026-07-11): the only form input in this app had no accessible
+            // label at all -- BasicTextField, unlike a View-based TextInputLayout,
+            // doesn't auto-associate the visible "Enter account number" Text() above
+            // it (Compose doesn't merge sibling composables into one accessible node
+            // unless told to), so TalkBack announced this as a bare, unlabeled edit
+            // field. docs/ACCESSIBILITY.md flagged form labels as an open, unaudited
+            // item -- this was the field that audit needed to find.
             BasicTextField(
                 value = accountNumber,
                 onValueChange = { input -> accountNumber = input.filter { it.isDigit() }.take(16) },
                 textStyle = TextStyle(color = Tds.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.SemiBold),
                 cursorBrush = androidx.compose.ui.graphics.SolidColor(Tds.colors.brand),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "Account number, up to 16 digits" }
             )
             Spacer(modifier = Modifier.height(8.dp))
             androidx.compose.material3.Divider(color = Tds.colors.brand, thickness = 2.dp)
@@ -286,7 +297,11 @@ private fun NumericKeypad(onDigit: (String) -> Unit, onDelete: () -> Unit) {
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .clickable { if (key == "DEL") onDelete() else onDigit(key) },
+                            .clickable { if (key == "DEL") onDelete() else onDigit(key) }
+                            // Digit keys' visible text is already their own accessible
+                            // name; DEL's "⌫" glyph is not, so it needs an explicit one
+                            // -- same reasoning as TopIconButton's fix elsewhere.
+                            .then(if (key == "DEL") Modifier.semantics { contentDescription = "Delete" } else Modifier),
                         contentAlignment = Alignment.Center
                     ) {
                         if (key == "DEL") {

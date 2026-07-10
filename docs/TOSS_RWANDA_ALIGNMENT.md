@@ -385,8 +385,11 @@ Medium priority:
   Android's `TopIconButton` was 44dp, below Material's 48dp recommendation —
   **fixed same day:** bumped to 48dp after confirming all 3 call sites' layouts
   absorb the extra 4dp without overflow, `:app:assembleDebug` verified). Full
-  findings in `docs/ACCESSIBILITY.md`. Form labels and focus order remain open —
-  not started.
+  findings in `docs/ACCESSIBILITY.md`. **Form labels audited and fixed (2026-07-11):**
+  the only form field in the Android app (`RecipientEntryScreen`'s account-number
+  `BasicTextField`) had no accessible label at all — fixed with a real
+  `contentDescription`; the numeric keypad's `DEL` key (a bare `"⌫"` glyph) got one
+  too. Only focus order and Dynamic Type/font scaling remain open — not started.
 - ~~Add test coverage around fallback demo behavior.~~ **Done for every module that
   moves money or authenticates (2026-07-11):** `LedgerServiceTest.kt` (pre-existing) plus
   new `AuthServiceTest.kt`, `WalletServiceTest.kt`, `MerchantServiceTest.kt`,
