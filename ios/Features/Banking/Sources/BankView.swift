@@ -73,15 +73,19 @@ private struct HomeTopBar: View {
             Spacer()
 
             HStack(spacing: IDS.Layout.inlineGap) {
-                TopBarActionButton(symbol: "bell")
-                TopBarActionButton(symbol: "person")
+                TopBarActionButton(symbol: "bell", accessibilityLabel: "Notifications")
+                TopBarActionButton(symbol: "person", accessibilityLabel: "Profile")
             }
         }
     }
 }
 
+// Icon-only buttons need an explicit label -- SwiftUI doesn't derive one from the SF
+// Symbol name, so without this VoiceOver announced these as "Button" with no name
+// (the same class of bug fixed in ItundaAppScreen.kt's TopIconButton on Android).
 private struct TopBarActionButton: View {
     let symbol: String
+    let accessibilityLabel: String
 
     var body: some View {
         Button(action: {}) {
@@ -92,6 +96,7 @@ private struct TopBarActionButton: View {
                 .background(IDS.Colors.backgroundSecondary)
                 .clipShape(Circle())
         }
+        .accessibilityLabel(accessibilityLabel)
     }
 }
 

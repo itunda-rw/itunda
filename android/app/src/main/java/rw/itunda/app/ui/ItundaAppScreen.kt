@@ -335,13 +335,18 @@ private fun HomeTopBar() {
         ) {
             Text("Search", color = TossSecondary, fontSize = 15.sp)
         }
-        TopIconButton(Icons.Outlined.QrCodeScanner)
-        TopIconButton(Icons.Outlined.Notifications)
+        TopIconButton(Icons.Outlined.QrCodeScanner, contentDescription = "Scan QR code")
+        TopIconButton(Icons.Outlined.Notifications, contentDescription = "Notifications")
     }
 }
 
+// Fixed (2026-07-11): this shared icon-only button had no way to tell a screen reader
+// what any given instance actually does -- contentDescription was hardcoded null
+// regardless of which icon was passed in. A required contentDescription param means a
+// new call site can't silently reintroduce the bug the way an optional/defaulted
+// param could.
 @Composable
-private fun TopIconButton(icon: androidx.compose.ui.graphics.vector.ImageVector) {
+private fun TopIconButton(icon: androidx.compose.ui.graphics.vector.ImageVector, contentDescription: String) {
     Box(
         modifier = Modifier
             .size(44.dp)
@@ -349,7 +354,7 @@ private fun TopIconButton(icon: androidx.compose.ui.graphics.vector.ImageVector)
             .background(TossCardSoft),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = TossText)
+        Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(20.dp), tint = TossText)
     }
 }
 
@@ -900,9 +905,13 @@ private fun ShopTopBar() {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         SearchBar("Search products")
         Spacer(modifier = Modifier.width(12.dp))
-        Icon(Icons.Outlined.Person, contentDescription = null, tint = TossText)
+        // Fixed (2026-07-11): standalone icon-only buttons, no adjacent text label --
+        // contentDescription = null left a screen reader with no way to know what
+        // either one does, unlike the many *decorative* icons elsewhere in this file
+        // that correctly stay null because they sit next to their own visible Text().
+        Icon(Icons.Outlined.Person, contentDescription = "Profile", tint = TossText)
         Spacer(modifier = Modifier.width(12.dp))
-        Icon(Icons.Outlined.ShoppingCart, contentDescription = null, tint = TossText)
+        Icon(Icons.Outlined.ShoppingCart, contentDescription = "Cart", tint = TossText)
     }
 }
 
@@ -969,8 +978,10 @@ private fun PayTopBar() {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text("itunda pay", color = TossText, fontWeight = FontWeight.ExtraBold, fontSize = 28.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Icon(Icons.Outlined.QrCodeScanner, contentDescription = null, tint = TossText)
-            Icon(Icons.Outlined.Public, contentDescription = null, tint = TossText)
+            // Fixed (2026-07-11): standalone icon-only buttons -- "itunda pay" above
+            // is this screen's title, not a label for these two icons specifically.
+            Icon(Icons.Outlined.QrCodeScanner, contentDescription = "Scan QR code", tint = TossText)
+            Icon(Icons.Outlined.Public, contentDescription = "Language", tint = TossText)
         }
     }
 }
@@ -1027,7 +1038,7 @@ private fun PayFeatureCard() {
 private fun AllTopBar() {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text("TUYIZERE ERIC", color = TossText, fontWeight = FontWeight.Bold, fontSize = 26.sp)
-        TopIconButton(Icons.Outlined.Settings)
+        TopIconButton(Icons.Outlined.Settings, contentDescription = "Settings")
     }
 }
 

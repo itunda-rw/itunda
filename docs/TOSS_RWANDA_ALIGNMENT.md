@@ -358,7 +358,18 @@ Medium priority:
   settlement batching and fraud review have no real, callable endpoints yet to script
   against at all (see this doc's own Operations section and
   `docs/TOSS_PARITY_MATRIX.md`'s Operations rows) — left undone rather than faked.
-- Add accessibility checks for touch targets, contrast, form labels, and focus.
+- ~~Add accessibility checks for touch targets, contrast, form labels, and focus.~~
+  **Contrast + content-description/label checks done, touch targets checked
+  (2026-07-11):** real WCAG 2.1 contrast ratios computed against the live design
+  tokens (2 genuine defects found and documented: `textTertiary` fails AA in both
+  themes, light-mode `success` green fails contrast on white entirely); full
+  content-description audit on Android (`ItundaAppScreen.kt`, 3 real icon-only-button
+  bugs fixed, 7 icon usages) and accessibility-label audit on iOS
+  (`BankView.swift`'s `TopBarActionButton`, 1 real bug fixed); touch target sizes
+  checked against Android 48dp/iOS 44pt/WCAG 44px minimums (iOS passes exactly,
+  Android's `TopIconButton` is 44dp — below Material's 48dp recommendation, flagged
+  not changed). Full findings in new `docs/ACCESSIBILITY.md`. Form labels and focus
+  order remain open — not started.
 - ~~Add test coverage around fallback demo behavior.~~ **Done for every module that
   moves money or authenticates (2026-07-11):** `LedgerServiceTest.kt` (pre-existing) plus
   new `AuthServiceTest.kt`, `WalletServiceTest.kt`, `MerchantServiceTest.kt`,

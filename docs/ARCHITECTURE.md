@@ -266,3 +266,20 @@ In priority order, each item closes a specific gap identified above:
    (`TdsColors` and the old `IDS.Colors`); this item is about the rest of the token surface
    (spacing scale, elevation, component shapes) matching the real documented TDS, not just colors.
 7. Consolidate `infrastructure/k8s` and `infrastructure/kubernetes` into one directory.
+8. **Accessibility audit — contrast, content descriptions, touch targets (2026-07-11):**
+   full findings in new `docs/ACCESSIBILITY.md`. Real WCAG 2.1 contrast ratios computed
+   against the live `packages/design-tokens/tokens.css` values (same source Android's
+   `TdsSemanticColors`/iOS's `IDS.Colors` are reconciled against per item 5 above) found
+   two genuine defects: `textTertiary` fails AA contrast in both light and dark themes,
+   and light-mode `success` green fails contrast against white entirely (2.40:1) — left
+   open as a design-system-level decision rather than patched blind. Fixed 3 real
+   icon-only-button `contentDescription`/`accessibilityLabel` bugs found by auditing every
+   icon usage in `ItundaAppScreen.kt` (Android, 7 icon usages across `TopIconButton`/
+   `ShopTopBar`/`PayTopBar`) and `BankView.swift` (iOS, `TopBarActionButton`'s bell/person
+   icons) — both verified to build/parse (`:app:assembleDebug` succeeded;
+   `swift -frontend -parse` succeeded). Touch targets checked against platform minimums:
+   iOS's `topBarActionSize` (44pt) passes Apple's HIG exactly; Android's `TopIconButton`
+   (44dp) clears WCAG's 44px baseline but sits below Material's 48dp recommendation, and
+   `ShopTopBar`/`PayTopBar`'s icons have no clickable wrapper/sized tap target at all yet
+   (they're not wired to real actions) — flagged for whoever wires them next. Form labels
+   and focus order remain unaudited — open.
