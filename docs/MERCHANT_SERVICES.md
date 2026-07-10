@@ -5,9 +5,22 @@
 > "Online Payments"/"API Reference" sections invented an
 > `Authorization: Bearer MERCHANT_API_KEY` scheme and webhook event names
 > like `payment.received` that don't match how any real provider works).
-> Nothing in this file is implemented. For the real, working payment
-> gateway — mirroring Toss Payments' actual REST API, researched from
-> their public docs rather than imagined — see **[PAYMENTS.md](PAYMENTS.md)**.
+> Most of this file is still not implemented — POS/card processing, B2B
+> payroll/invoicing, webhooks, inventory, and analytics all remain exactly
+> as aspirational as when this note was first written. For the real,
+> working payment gateway — mirroring Toss Payments' actual REST API,
+> researched from their public docs rather than imagined — see
+> **[PAYMENTS.md](PAYMENTS.md)**.
+>
+> **Update (2026-07-11):** §§1–2's core idea — merchant registration and
+> QR-based payment collection — is now real, at `rw.itunda.merchant` in
+> `services/backend` (not the endpoint paths/fee numbers below, which are
+> this file's own invented ones): `POST /api/v1/merchant/register`,
+> `POST /api/v1/merchant/qr/generate`, `POST /api/v1/merchant/collect/{intentId}`.
+> Ledger-backed, idempotent, and ownership-checked, same discipline as
+> every other money-moving endpoint in that backend. See
+> `docs/TOSS_PARITY_MATRIX.md`'s Merchant row for the current real/not-real
+> split.
 
 ## Overview
 Itunda Merchant Services enable businesses and merchants to accept payments, manage inventory, and process settlements.

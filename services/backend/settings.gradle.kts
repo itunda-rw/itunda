@@ -13,5 +13,6 @@ include(
     ":discover",
     ":contacts",
     ":system",
+    ":merchant",
     ":app"
 )

@@ -24,6 +24,7 @@ dependencies {
     implementation(project(":discover"))
     implementation(project(":insurance"))
     implementation(project(":system"))
+    implementation(project(":merchant"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")

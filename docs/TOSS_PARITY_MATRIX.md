@@ -45,7 +45,7 @@ This matrix turns the alignment goal into an implementation checklist. Status va
 | Credit score | Free credit check | Alternative data with consent | demo | Model audit trail and explainability |
 | Invest | Securities | RSE stocks, bonds, global where permitted | demo | Real holdings now ledger-backed (`securities_suspense`); brokerage/custody integration still open |
 | Insurance | Marketplace | Motor, health, life, travel | demo | Enrollment now ledger-backed and UI-wired; claims filing and insurer quote/bind adapters still open |
-| Merchant | Business tools | QR, POS, reports, settlements | demo | Merchant/KYB routes and settlement ledger |
+| Merchant | Business tools | QR, POS, reports, settlements | demo | **Registration + QR payment collection now real and ledger-backed (2026-07-11):** `rw.itunda.merchant` (`services/backend`) — `POST /api/v1/merchant/register`, `POST /api/v1/merchant/qr/generate`, `POST /api/v1/merchant/collect/{intentId}`, idempotent, ownership-checked, real fee split to `fee_revenue`. POS, card processing, B2B payroll, and webhooks are not built — see `docs/MERCHANT_SERVICES.md`'s own header, which already flags that part of the spec as invented and never checked against a real provider. KYB/business verification still open (same regulatory gate as identity verification). |
 | Rewards | Benefits/cashback | Cashback, points, referrals | demo | Now ledger-backed (`rewards_expense`) with claim-once guard; still needs real campaign rules and daily reset scheduling |
 | Operations | Provider health | Rail success/latency/fallback | demo | Live monitoring and alerting |
 | Operations | Fraud/review | High-value QR, velocity, new recipient | demo | Case management actions |
