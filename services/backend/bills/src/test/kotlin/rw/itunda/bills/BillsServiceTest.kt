@@ -8,6 +8,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.events.EventPublisher
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.provider.ProviderConnector
@@ -34,7 +35,8 @@ class BillsServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val providerConnector = mockk<ProviderConnector>()
-        val service = BillsService(walletRepository, ledgerService, providerConnector)
+        val eventPublisher = mockk<EventPublisher>(relaxed = true)
+        val service = BillsService(walletRepository, ledgerService, providerConnector, eventPublisher)
 
         every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet()
 

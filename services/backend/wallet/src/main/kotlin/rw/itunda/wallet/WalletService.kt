@@ -9,6 +9,9 @@ import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.events.EventPublisher
+import rw.itunda.core.events.TOPIC_TRANSFER_CONFIRMED
+import rw.itunda.core.events.TransferConfirmedEvent
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
@@ -35,6 +38,7 @@ class WalletService(
     private val walletRepository: WalletRepository,
     private val transactionRepository: TransactionRepository,
     private val ledgerService: LedgerService,
+    private val eventPublisher: EventPublisher,
 ) {
     private val quoteStore = QuoteStore()
 
@@ -103,6 +107,20 @@ class WalletService(
             createdAt = quote.createdAt,
         )
         transactionRepository.save(transaction)
+
+        eventPublisher.publishAfterCommit(
+            TOPIC_TRANSFER_CONFIRMED,
+            transaction.id,
+            TransferConfirmedEvent(
+                transactionId = transaction.id,
+                fromWalletId = quote.fromWalletId,
+                recipient = quote.recipient,
+                amount = quote.amount,
+                fee = quote.fee,
+                currency = quote.currency,
+                confirmedAt = Instant.now(),
+            ),
+        )
 
         return transaction to wallet.balance
     }

@@ -231,12 +231,21 @@ Use events for cross-context workflows:
 - `identity.verified`
 - `consent.created`
 - `transfer.quoted`
-- `transfer.confirmed`
-- `payment.provider_succeeded`
-- `payment.provider_failed`
+- `transfer.confirmed` — **real (2026-07-11):** `WalletService.confirmTransfer` publishes
+  this to Kafka after the transaction row is saved, same after-commit pattern as
+  `ledger.posted`.
+- `payment.provider_succeeded` — **real (2026-07-11):** `BillsService.payBill`/
+  `buyAirtime` publish this after `ProviderConnector.attempt` and the ledger post both
+  succeed. Merchant QR collection does not publish it — it's pure wallet-to-wallet
+  with no external rail call, so there's no provider to have succeeded against.
+- `payment.provider_failed` — still not emitted. `ProviderConnector.attempt` throws
+  `ProviderDeclinedException` on decline (caught as an HTTP 502 by
+  `BillsController`), but nothing publishes an event for it yet.
 - `ledger.posted` — **real (2026-07-11):** `services/backend`'s `LedgerService` publishes
-  this to Kafka after every successful ledger post (see `docs/ARCHITECTURE.md` §1). The
-  rest of this list is still purely a target, not emitted anywhere.
+  this to Kafka after every successful ledger post (see `docs/ARCHITECTURE.md` §1).
+- The rest of this list (`settlement.batch_created` onward) is still purely a target,
+  not emitted anywhere — no real settlement/fraud/reconciliation/reward code exists yet
+  to publish from.
 - `settlement.batch_created`
 - `settlement.paid`
 - `fraud.case_opened`

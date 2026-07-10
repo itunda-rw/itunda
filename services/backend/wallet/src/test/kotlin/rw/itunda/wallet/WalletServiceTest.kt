@@ -8,6 +8,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.events.EventPublisher
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
@@ -36,7 +37,8 @@ class WalletServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = WalletService(walletRepository, transactionRepository, ledgerService)
+        val eventPublisher = mockk<EventPublisher>(relaxed = true)
+        val service = WalletService(walletRepository, transactionRepository, ledgerService, eventPublisher)
 
         val senderWallet = wallet("wallet_1", "user_1", "10000")
 

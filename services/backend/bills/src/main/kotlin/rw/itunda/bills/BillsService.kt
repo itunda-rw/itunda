@@ -4,6 +4,9 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.events.EventPublisher
+import rw.itunda.core.events.PaymentProviderSucceededEvent
+import rw.itunda.core.events.TOPIC_PAYMENT_PROVIDER_SUCCEEDED
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.provider.ProviderConnector
@@ -35,6 +38,7 @@ class BillsService(
     private val walletRepository: WalletRepository,
     private val ledgerService: LedgerService,
     private val providerConnector: ProviderConnector,
+    private val eventPublisher: EventPublisher,
 ) {
     fun getProviders() = BillsCatalog.providers
     fun getPendingBills() = BillsCatalog.pendingBills
@@ -51,6 +55,19 @@ class BillsService(
             listOf(
                 LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Bill payment $billId"),
                 LedgerLeg("rail_suspense", LedgerAccountType.RAIL_SUSPENSE, LedgerDirection.CREDIT, amount, "Biller settlement $billId"),
+            ),
+        )
+        eventPublisher.publishAfterCommit(
+            TOPIC_PAYMENT_PROVIDER_SUCCEEDED,
+            result.transactionId,
+            PaymentProviderSucceededEvent(
+                transactionId = result.transactionId,
+                railId = rail.id,
+                railDisplayName = rail.displayName,
+                description = "Bill payment $billId",
+                amount = amount,
+                currency = wallet.currency,
+                succeededAt = Instant.now(),
             ),
         )
         return mapOf(
@@ -77,6 +94,19 @@ class BillsService(
             listOf(
                 LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Airtime $phoneNumber"),
                 LedgerLeg("rail_suspense", LedgerAccountType.RAIL_SUSPENSE, LedgerDirection.CREDIT, amount, "Airtime settlement $phoneNumber"),
+            ),
+        )
+        eventPublisher.publishAfterCommit(
+            TOPIC_PAYMENT_PROVIDER_SUCCEEDED,
+            result.transactionId,
+            PaymentProviderSucceededEvent(
+                transactionId = result.transactionId,
+                railId = rail.id,
+                railDisplayName = rail.displayName,
+                description = "Airtime $phoneNumber",
+                amount = amount,
+                currency = wallet.currency,
+                succeededAt = Instant.now(),
             ),
         )
         return mapOf(

@@ -60,11 +60,19 @@ New `core/.../events/EventPublisher.kt` publishes only *after* the enclosing tra
 row that then rolled back would be worse than not publishing at all. Honestly labeled as a lighter
 pattern than a true transactional outbox (which `ledger-service` uses for real, via an
 `OutboxEventEntity` + Debezium CDC): if Kafka is unreachable at commit time, the event is logged
-and dropped, not retried. Ledger correctness never depends on this succeeding. Still open:
-`transfer.confirmed`/`payment.provider_succeeded` (the other two events `docs/TOSS_RWANDA_ALIGNMENT.md`'s
-event model names) aren't separately emitted — `ledger.posted` is the one universal event every
-flow shares, the other two are more specific and would need per-flow instrumentation this pass
-didn't do. `core-libs`' `KafkaConfig.kt` (`services/microservices`) remains separate and
+and dropped, not retried. Ledger correctness never depends on this succeeding.
+**`transfer.confirmed`/`payment.provider_succeeded` added (2026-07-11):** the per-flow
+instrumentation this pass originally left open — `WalletService.confirmTransfer` publishes
+`transfer.confirmed` after saving the transaction row; `BillsService.payBill`/`buyAirtime`
+publish `payment.provider_succeeded` after `ProviderConnector.attempt` and the ledger post
+both succeed (new `TransferEvents.kt`/`PaymentEvents.kt`, same after-commit pattern as
+`ledger.posted`). Merchant QR collection deliberately does not publish
+`payment.provider_succeeded` — it never calls `ProviderConnector`, so there's no provider
+success to report. `payment.provider_failed` remains unemitted — `ProviderDeclinedException`
+is caught and turned into an HTTP 502 today, not published as an event. Verified:
+`:wallet:test`/`:bills:test` (11 tests, 0 failures) and `:app:compileKotlin` (full Spring
+wiring resolves the new `EventPublisher` constructor param) both pass.
+`core-libs`' `KafkaConfig.kt` (`services/microservices`) remains separate and
 independent — `services/backend` has its own `core/.../events/KafkaConfig.kt` now, matching its
 own `KAFKA_BOOTSTRAP_SERVERS` env-var convention rather than sharing config across the two
 still-unreconciled backends. Verified: full backend build passes, all 61 existing tests across
@@ -220,11 +228,14 @@ In priority order, each item closes a specific gap identified above:
    and RN autolinking — plus wire up a real login flow so `getAuthToken()` can return something
    other than null and the mini-apps can show real data, not just a correct auth error. Port the
    same brownfield integration to iOS (nothing exists there yet).
-2. Introduce Kafka as the actual event backbone for the event model already designed in
-   `docs/TOSS_RWANDA_ALIGNMENT.md` (`transfer.confirmed`, `payment.provider_succeeded`,
-   `ledger.posted`, etc.) — currently those events are documented but not emitted anywhere.
-   `services/microservices/core-libs`' `KafkaConfig.kt` is the only real Kafka
-   wiring in the repo today.
+2. ~~Introduce Kafka as the actual event backbone for the event model already designed in
+   `docs/TOSS_RWANDA_ALIGNMENT.md`~~ **`ledger.posted`, `transfer.confirmed`, and
+   `payment.provider_succeeded` now real (2026-07-11)** — see §1 and item 8 below. Still
+   open: `payment.provider_failed` (declines are caught as HTTP 502, never published) and
+   everything past those four (`settlement.*`, `fraud.*`, `reconciliation.*`, `reward.*`)
+   — no real code exists yet for those domains to publish from. `services/backend`'s own
+   `core/.../events/KafkaConfig.kt` and `services/microservices/core-libs`' `KafkaConfig.kt`
+   remain separate, unreconciled Kafka configs (see §1).
 3. Reconcile `services/backend` (most feature coverage, monolith-shaped) with
    `services/microservices` (less coverage, real per-service MSA shape) — decide whether
    to split backend's bounded contexts out to match, or fold the microservices' patterns
