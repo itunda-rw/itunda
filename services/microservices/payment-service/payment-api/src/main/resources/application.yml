@@ -4,5 +4,19 @@ server:
 spring:
   application:
     name: payment-service
+  # Was missing entirely (2026-07-11 fix) -- payment-db's OutboxEvent JPA entity had
+  # no datasource to connect to. Separate database from ledger-service's (itunda_payment,
+  # not itunda_ledger) because both services map an OutboxEvent entity to a table named
+  # `outbox_events` with different columns -- sharing one DB would make Hibernate's
+  # ddl-auto fight over that table's schema. See infra/mysql-init/01-init-databases.sql.
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3307}/${DB_NAME:itunda_payment}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: ${DB_USER:itunda}
+    password: ${DB_PASSWORD:itunda_password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}

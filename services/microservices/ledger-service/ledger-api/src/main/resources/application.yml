@@ -1,0 +1,25 @@
+# Was missing entirely (2026-07-11 fix) -- ledger-service would default to Spring
+# Boot's port 8080, not the 8082 services/api-gateway has always assumed, and had no
+# datasource despite ledger-db's real JPA entities/repositories. Port matches the
+# gateway; datasource matches infra/docker-compose.yml's mysql service (itunda_ledger,
+# host port 3307 -- separate from services/backend's own MySQL on 3306, see its
+# README -- these are two distinct, not-yet-reconciled MySQL instances).
+server:
+  port: 8082
+
+spring:
+  application:
+    name: ledger-service
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3307}/${DB_NAME:itunda_ledger}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: ${DB_USER:itunda}
+    password: ${DB_PASSWORD:itunda_password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      # Same demo-stepping-stone tier as services/backend -- see its application.yml's
+      # comment. Real deployments need Flyway/Liquibase, not Hibernate schema inference.
+      ddl-auto: update
+    open-in-view: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
