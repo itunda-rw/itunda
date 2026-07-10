@@ -1,73 +1,61 @@
 import SwiftUI
+import FeatureBanking
 
+// Tab labels renamed (2026-07-11) to match android/app/.../ItundaAppScreen.kt's
+// established taxonomy exactly: Home/Benefits/Shop/Pay/All -- this file previously
+// said "Discover"/"Entire" instead of "Shop"/"All", the "screen/navigation taxonomy
+// parity is still open" gap docs/TOSS_RWANDA_ALIGNMENT.md's Current Repository Gap
+// List names. Not a cosmetic rename: Android's Shop tab contains its own internal
+// "Discover" section (ShopTab -> ShellSection(title = "Discover", ...) backed by the
+// same discover-items data this screen's card content already resembles), and "All"
+// is the deliberate translation of Toss's 전체 tab Android's own ShopTab/AllTopBar
+// comments already establish -- "Entire" was simply the wrong word.
 struct ContentView: View {
     @State private var selectedTab = 0
-    
+
     var body: some View {
         TabView(selection: $selectedTab) {
-            BankScreen()
+            // Real, ported screen (was previously unreachable from any navigation --
+            // see docs/ARCHITECTURE.md §3's "New finding" note) replaces the crude,
+            // hardcoded-mock-data BankScreen struct that used to live in this file,
+            // same "delete the unreachable duplicate, wire in the real one" fix
+            // Android already went through for its own legacy BankScreen.kt.
+            BankView()
                 .tabItem {
                     Image(systemName: "house.fill")
                     Text("Home")
                 }
                 .tag(0)
-            
+
             BenefitsScreen()
                 .tabItem {
                     Image(systemName: "diamond.fill")
                     Text("Benefits")
                 }
                 .tag(1)
-            
+
             DiscoverScreen()
                 .tabItem {
                     Image(systemName: "bag.fill")
-                    Text("Discover")
+                    Text("Shop")
                 }
                 .tag(2)
-            
+
             PayScreen()
                 .tabItem {
                     Image(systemName: "creditcard.fill")
                     Text("Pay")
                 }
                 .tag(3)
-                
+
             EntireMenuScreen()
                 .tabItem {
                     Image(systemName: "line.3.horizontal")
-                    Text("Entire")
+                    Text("All")
                 }
                 .tag(4)
         }
         .accentColor(.primary)
-    }
-}
-
-struct BankScreen: View {
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                HeaderTitle(title: "Itunda Bank")
-                CardItem(title: "Main Account", value: "1,145,872 RWF", buttonText: "Transfer", buttonColor: .blue)
-                
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("Recent Transactions")
-                        .font(.system(size: 18, weight: .bold))
-                        .padding(.horizontal, 24)
-                        .padding(.bottom, 16)
-                    TransactionRow(title: "Simba Supermarket", date: "Today", amount: "-12,500 RWF", isNegative: true)
-                    TransactionRow(title: "Salary (BK)", date: "Yesterday", amount: "+1,150,000 RWF", isNegative: false)
-                    TransactionRow(title: "MTN Momo Transfer", date: "July 7", amount: "-5,000 RWF", isNegative: true)
-                }
-                .padding(.vertical, 24)
-                .background(Color(.secondarySystemGroupedBackground))
-                .cornerRadius(24)
-                .padding(.horizontal, 20)
-            }
-            .padding(.top, 24)
-        }
-        .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
     }
 }
 

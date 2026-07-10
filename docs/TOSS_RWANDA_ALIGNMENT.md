@@ -340,8 +340,31 @@ High priority:
   `docs/TOSS_PARITY_MATRIX.md`'s Merchant row for the real/not-real split.
 - Make Android and iOS share the same product taxonomy as web. **Partially done** —
   design tokens now match exactly across `android/core/designsystem` and
-  `ios/Core/DesignSystem` (2026-07-11 reconciliation); screen/navigation taxonomy parity
-  is still open.
+  `ios/Core/DesignSystem` (2026-07-11 reconciliation). **Tab taxonomy fixed
+  (2026-07-11):** discovered `ios/App/Sources/ContentView.swift` (the app's real
+  `@main` entry point, confirmed via `ItundaApp.swift`) had never been reconciled
+  with Android's established taxonomy at all — its tabs were labeled
+  Home/Benefits/**Discover**/Pay/**Entire** against Android's
+  Home/Benefits/**Shop**/Pay/**All**. Not a cosmetic mismatch: Android's `ShopTab`
+  contains its own internal `"Discover"`-titled section fed by the same
+  discover-items data `ContentView.swift`'s `DiscoverScreen` already resembles
+  (flash deals, partner offers), confirming they're the same tab under two names;
+  "All" is the deliberate translation of Toss's 전체 tab Android's own code comments
+  already establish, "Entire" was just the wrong word. Renamed both labels to match.
+  Also found and fixed along the way: `ContentView.swift`'s Home tab used its own
+  crude, hardcoded-mock-data `BankScreen` struct instead of the real, IDS-token-driven
+  `BankView` (`ios/Features/Banking/`) — `BankView` had **zero call sites anywhere**
+  despite being real, ported code (the same "correct but unreachable" bug pattern
+  `docs/ARCHITECTURE.md` §3 already documented for it). Deleted `BankScreen`, wired
+  `BankView()` in directly (`Project.swift`'s `ItundaApp` target already depends on
+  `FeatureBanking`, so no dependency-graph change needed). Verified via
+  `swift -frontend -parse` (clean except a pre-existing, unrelated `#Preview` macro
+  limitation in this toolchain, confirmed present in the file before this change
+  too) — not build-verified for the usual no-Xcode-in-this-environment reason (§3),
+  so the cross-module `import FeatureBanking` resolution itself is unverified.
+  Screen/navigation taxonomy for the other 4 tabs (Benefits/Shop/Pay/All still use
+  `ContentView.swift`'s own crude inline screens, not the other ported feature
+  modules) remains open.
 - Convert architecture docs from aspirational service lists to implemented/target
   sections. **Done, ongoing practice** — see `docs/ARCHITECTURE.md`'s real/demo/stub
   table, kept current as of every fix this document's own dated notes describe.
