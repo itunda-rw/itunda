@@ -70,8 +70,16 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":core:risk"))
     implementation(project(":core:identity"))
-    implementation(project(":features:banking:impl"))
     implementation(project(":features:payments:impl"))
+    // features:banking:impl deliberately has no dependency here (2026-07-11): its
+    // real screens (BankScreen.kt, MySpendingScreen.kt) were intentionally deleted
+    // in 061cff6 as unreachable and superseded by ItundaAppScreen.kt's Home tab,
+    // built directly against real Toss reference screenshots -- see docs/ARCHITECTURE.md
+    // §3. Re-adding them would recreate the exact "two things doing the same job"
+    // duplication this repo has spent this session eliminating elsewhere (backend,
+    // SDKs, shared-utils). The module itself stays declared in settings.gradle.kts
+    // as a placeholder for a genuinely distinct future banking feature, matching the
+    // other empty feature modules -- it just has nothing to depend on yet.
 
     // Apps-in-Itunda mini-app host (Saronite/Granite-pattern brownfield RN integration).
     // Old Native Modules API, no autolinking/codegen -- see MiniAppActivity.kt and
