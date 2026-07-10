@@ -348,7 +348,16 @@ Medium priority:
   custom properties, so adopting the shared tokens there would mean converting its
   styling approach first, not a drop-in swap — left as an explicit, known follow-up
   rather than silently skipped.
-- Add end-to-end demo scripts for send, QR, bill, merchant settlement, and fraud review.
+- ~~Add end-to-end demo scripts for send, QR, bill, merchant settlement, and fraud
+  review.~~ **Done for send/bill/QR (2026-07-11):** `scripts/demo-e2e.sh` — real curl
+  calls against `services/backend`'s actual endpoints (login as the seeded demo user
+  so there's a real balance to spend, pay a bill, quote+confirm a transfer, register a
+  merchant, generate a QR code, pay it). Every path/body/field is transcribed directly
+  from the real controllers, not guessed. Not runtime-executed in this environment — no
+  Docker daemon to bring up MySQL/Redis/a live backend to run it against. Merchant
+  settlement batching and fraud review have no real, callable endpoints yet to script
+  against at all (see this doc's own Operations section and
+  `docs/TOSS_PARITY_MATRIX.md`'s Operations rows) — left undone rather than faked.
 - Add accessibility checks for touch targets, contrast, form labels, and focus.
 - ~~Add test coverage around fallback demo behavior.~~ **Done for every module that
   moves money or authenticates (2026-07-11):** `LedgerServiceTest.kt` (pre-existing) plus
