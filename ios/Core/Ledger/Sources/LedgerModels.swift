@@ -88,7 +88,7 @@ public struct LedgerTransaction: Codable, Identifiable {
         let totalCredits = postings.filter { $0.type == .credit }.reduce(0) { $0 + $1.amount }
         
         guard totalDebits == totalCredits else {
-            throw LedgerError.doubleEntryViolation("Double-entry violation: Debits (\\(totalDebits)) do not equal Credits (\\(totalCredits)) for transaction \\(id)")
+            throw LedgerError.doubleEntryViolation("Double-entry violation: Debits (\(totalDebits)) do not equal Credits (\(totalCredits)) for transaction \(id)")
         }
     }
 }

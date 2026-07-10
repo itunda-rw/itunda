@@ -43,7 +43,7 @@ public struct SduiRenderer: View {
                     Spacer().frame(height: CGFloat(size))
                     
                 default:
-                    Text("Unknown component: \\(component.type)")
+                    Text("Unknown component: \(component.type)")
                         .foregroundColor(TdsColors.red500)
                 }
             }

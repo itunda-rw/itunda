@@ -3,10 +3,11 @@ package rw.itunda.insurance
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.InsurancePolicy
+import rw.itunda.core.domain.LedgerAccountType
+import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.WalletType
-import rw.itunda.core.ledger.service.LedgerService
-import rw.itunda.core.ledger.service.PostingRequest
-import rw.itunda.core.ledger.domain.Direction
+import rw.itunda.core.ledger.LedgerLeg
+import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.InsurancePolicyRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -43,13 +44,12 @@ class InsuranceService(
         val monthlyPremium = BigDecimal(plan["monthlyPremium"].toString())
         val planName = plan["name"] as String
 
-        ledgerService.postTransaction(
-            transactionReference = "ins_enroll_${UUID.randomUUID()}",
-            description = "First premium - $planName",
-            entries = listOf(
-                PostingRequest(accountId = premiumWallet.id, amount = monthlyPremium, direction = Direction.DEBIT),
-                PostingRequest(accountId = "insurance_premium_revenue", amount = monthlyPremium, direction = Direction.CREDIT)
-            )
+        ledgerService.postLedgerTransaction(
+            premiumWallet.currency,
+            listOf(
+                LedgerLeg(premiumWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, monthlyPremium, "First premium - $planName"),
+                LedgerLeg("insurance_premium_revenue", LedgerAccountType.INSURANCE_PREMIUM_REVENUE, LedgerDirection.CREDIT, monthlyPremium, "First premium - $planName"),
+            ),
         )
 
         val policy = InsurancePolicy(

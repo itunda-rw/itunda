@@ -107,6 +107,7 @@ var appDependencies: [TargetDependency] = []
 for feature in featureModules {
     appDependencies.append(.target(name: "Feature\(feature)"))
 }
+appDependencies.append(.target(name: "CoreRisk"))
 
 allTargets.append(
     Target(
