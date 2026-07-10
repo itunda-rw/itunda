@@ -329,7 +329,17 @@ High priority:
   **Done (2026-07-11)** for bills/airtime: `rw.itunda.core.provider.ProviderConnector`
   (`services/backend`), a real interface with a `SimulatedProviderConnector` implementation —
   per-rail latency/success-rate profiles, called before ledger posting so a decline never
-  touches a wallet balance. Not yet extended to transfers or merchant collection.
+  touches a wallet balance. **Extended to transfers (2026-07-11):** every P2P transfer
+  previously always succeeded with no rail simulation at all — `WalletService.confirmTransfer`
+  now calls `providerConnector.attempt` before ledger posting too, same
+  decline-before-ledger-touch discipline, publishing `payment.provider_failed` on decline
+  (`WalletController` got the same `ProviderDeclinedException` → 502 handler as
+  `BillsController`). `RailCatalog.resolve` almost always falls through to `generic` for a
+  transfer's free-text `recipient` (a phone number in practice) rather than matching a named
+  rail — an honest reflection of not having real per-rail routing for P2P yet, not a bug.
+  New decline-path test in `WalletServiceTest.kt` (now 8 tests). **Not extended to merchant
+  collection** — deliberately: `MerchantService.collect` is pure wallet-to-wallet with no
+  external rail call at all, so there's no provider to simulate a decline against.
 - ~~Add a real double-entry ledger module before expanding money movement.~~ **Done** —
   `rw.itunda.core.ledger.LedgerService`, row-locked, tested (`LedgerServiceTest.kt`).
 - ~~Add transfer quote/confirm separation.~~ **Done** — `WalletController`'s quote/confirm split.

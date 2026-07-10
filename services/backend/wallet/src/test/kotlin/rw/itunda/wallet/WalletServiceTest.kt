@@ -12,6 +12,8 @@ import rw.itunda.core.events.EventPublisher
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.provider.ProviderConnector
+import rw.itunda.core.provider.ProviderDeclinedException
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -38,7 +40,12 @@ class WalletServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val eventPublisher = mockk<EventPublisher>(relaxed = true)
-        val service = WalletService(walletRepository, transactionRepository, ledgerService, eventPublisher)
+        // Relaxed: most Whens below don't care about provider behavior at all, only
+        // the "provider declines" one explicitly stubs a throw -- same pattern as
+        // BillsServiceTest, minus needing an explicit "accepts" stub in every other
+        // When since relaxed already defaults to a no-op success.
+        val providerConnector = mockk<ProviderConnector>(relaxed = true)
+        val service = WalletService(walletRepository, transactionRepository, ledgerService, eventPublisher, providerConnector)
 
         val senderWallet = wallet("wallet_1", "user_1", "10000")
 
@@ -138,6 +145,22 @@ class WalletServiceTest : BehaviorSpec({
                     error("expected QuoteNotFoundException")
                 } catch (e: QuoteNotFoundException) {
                     // expected
+                }
+            }
+        }
+
+        When("the provider declines the transfer") {
+            every { walletRepository.findById("wallet_1") } returns Optional.of(senderWallet)
+            val quote = service.quoteTransfer("user_1", "wallet_1", "+250788111111", BigDecimal("1000"))
+            every { providerConnector.attempt(any(), any()) } throws ProviderDeclinedException("rail declined")
+
+            Then("confirmTransfer throws ProviderDeclinedException and never touches the ledger") {
+                try {
+                    service.confirmTransfer(quote.id, "user_1")
+                    error("expected ProviderDeclinedException")
+                } catch (e: ProviderDeclinedException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                    verify(exactly = 0) { transactionRepository.save(any()) }
                 }
             }
         }
