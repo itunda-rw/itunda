@@ -304,7 +304,10 @@ In priority order, each item closes a specific gap identified above:
    icons) — both verified to build/parse (`:app:assembleDebug` succeeded;
    `swift -frontend -parse` succeeded). Touch targets checked against platform minimums:
    iOS's `topBarActionSize` (44pt) passes Apple's HIG exactly; Android's `TopIconButton`
-   (44dp) clears WCAG's 44px baseline but sits below Material's 48dp recommendation, and
-   `ShopTopBar`/`PayTopBar`'s icons have no clickable wrapper/sized tap target at all yet
-   (they're not wired to real actions) — flagged for whoever wires them next. Form labels
-   and focus order remain unaudited — open.
+   was 44dp (cleared WCAG's 44px baseline but sat below Material's 48dp recommendation)
+   — **bumped to 48dp same day**, after confirming all 3 call sites' `Row` layouts
+   (`ShopTopBar`'s flexible search box, `AllTopBar`'s `SpaceBetween`) absorb the extra
+   4dp without overflow; `:app:assembleDebug` verified. `ShopTopBar`/`PayTopBar`'s icons
+   still have no clickable wrapper/sized tap target at all (they're not wired to real
+   actions) — flagged for whoever wires them next. Form labels and focus order remain
+   unaudited — open.

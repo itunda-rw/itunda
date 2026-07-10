@@ -129,11 +129,13 @@ Platform minimums: Android/Material Design recommends 48dp; Apple HIG requires
 
 - **iOS**: `IDS.Layout.topBarActionSize = 44` (points) — meets Apple's 44pt HIG
   minimum exactly. Pass.
-- **Android**: `TopIconButton`'s tap area is `.size(44.dp)` — meets the WCAG 44px
-  baseline but is **below** Material Design's own 48dp recommendation. Not changed
-  in this pass (a size bump is a visual, not just accessibility, change to a
-  component used across every top bar — left as an open, scoped item rather than
-  changed unreviewed).
+- **Android**: `TopIconButton`'s tap area — **fixed (2026-07-11):** bumped from
+  `.size(44.dp)` (met the WCAG 44px baseline but sat below Material's own 48dp
+  recommendation) to `.size(48.dp)`. Checked all 3 call sites' surrounding `Row`
+  layout first (`ShopTopBar`'s `weight(1f)` search box, `AllTopBar`'s
+  `SpaceBetween`) — each absorbs the extra 4dp per button without overflow risk, so
+  this was safe to change directly rather than leaving as an open item. Verified:
+  `./gradlew :app:assembleDebug` → `BUILD SUCCESSFUL`.
 - **Android — `ShopTopBar()` / `PayTopBar()`**: the `Icon(...)` composables fixed in
   §2 (Profile, Cart, Scan QR, Language) are **not currently wrapped in a
   `clickable` modifier or a sized `Box`** the way `TopIconButton` is — they have no

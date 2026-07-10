@@ -381,10 +381,12 @@ Medium priority:
   content-description audit on Android (`ItundaAppScreen.kt`, 3 real icon-only-button
   bugs fixed, 7 icon usages) and accessibility-label audit on iOS
   (`BankView.swift`'s `TopBarActionButton`, 1 real bug fixed); touch target sizes
-  checked against Android 48dp/iOS 44pt/WCAG 44px minimums (iOS passes exactly,
-  Android's `TopIconButton` is 44dp — below Material's 48dp recommendation, flagged
-  not changed). Full findings in new `docs/ACCESSIBILITY.md`. Form labels and focus
-  order remain open — not started.
+  checked against Android 48dp/iOS 44pt/WCAG 44px minimums (iOS passes exactly;
+  Android's `TopIconButton` was 44dp, below Material's 48dp recommendation —
+  **fixed same day:** bumped to 48dp after confirming all 3 call sites' layouts
+  absorb the extra 4dp without overflow, `:app:assembleDebug` verified). Full
+  findings in `docs/ACCESSIBILITY.md`. Form labels and focus order remain open —
+  not started.
 - ~~Add test coverage around fallback demo behavior.~~ **Done for every module that
   moves money or authenticates (2026-07-11):** `LedgerServiceTest.kt` (pre-existing) plus
   new `AuthServiceTest.kt`, `WalletServiceTest.kt`, `MerchantServiceTest.kt`,

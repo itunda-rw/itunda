@@ -345,11 +345,18 @@ private fun HomeTopBar() {
 // regardless of which icon was passed in. A required contentDescription param means a
 // new call site can't silently reintroduce the bug the way an optional/defaulted
 // param could.
+//
+// Touch target bumped 44dp -> 48dp (2026-07-11): 44dp cleared WCAG's 44px baseline
+// but sat below Material Design's own 48dp recommendation, flagged as an open gap in
+// docs/ACCESSIBILITY.md. Every call site sits in a Row with a flexible weight(1f)
+// sibling or SpaceBetween arrangement, so the extra 4dp per button is absorbed by
+// that flexible space rather than causing overflow -- checked each of the 3 call
+// sites' surrounding layout before changing this shared component.
 @Composable
 private fun TopIconButton(icon: androidx.compose.ui.graphics.vector.ImageVector, contentDescription: String) {
     Box(
         modifier = Modifier
-            .size(44.dp)
+            .size(48.dp)
             .clip(CircleShape)
             .background(TossCardSoft),
         contentAlignment = Alignment.Center
