@@ -283,7 +283,14 @@ In priority order, each item closes a specific gap identified above:
    `Tds.colors`' light values already independently converged with real TDS hex values twice
    (`TdsColors` and the old `IDS.Colors`); this item is about the rest of the token surface
    (spacing scale, elevation, component shapes) matching the real documented TDS, not just colors.
-7. Consolidate `infrastructure/k8s` and `infrastructure/kubernetes` into one directory.
+7. ~~Consolidate `infrastructure/k8s` and `infrastructure/kubernetes` into one
+   directory.~~ **Already done, discovered stale (2026-07-11):** the 2026-07-10
+   restructure (§5) already folded both into today's single `infra/k8s/` — confirmed
+   via `git log -- infrastructure/kubernetes` (last touched in the restructure commit
+   itself, nothing since) and a repo-wide search for any remaining `infrastructure/`
+   or duplicate `kubernetes/` directory (none). This item was left unchecked in the
+   backlog after the restructure actually resolved it — no code change needed, just
+   correcting the doc.
 8. **Accessibility audit — contrast, content descriptions, touch targets (2026-07-11):**
    full findings in new `docs/ACCESSIBILITY.md`. Real WCAG 2.1 contrast ratios computed
    against the live `packages/design-tokens/tokens.css` values (same source Android's
