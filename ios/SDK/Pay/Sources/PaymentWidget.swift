@@ -1,9 +1,9 @@
 //
 //  PaymentWidget.swift
 //  Ported from mobile_clients/ios/ItundaPaySDK (2026-07-10) into the canonical
-//  SDK/Pay Tuist target -- see ARCHITECTURE.md §3. In-app checkout widgets,
-//  complementary to this file's existing ItundaPay (the URL-scheme entry point
-//  for third-party apps launching Itunda Pay).
+//  SDK/Pay Tuist target -- see docs/ARCHITECTURE.md §3. In-app checkout widgets,
+//  complementary to this file's existing ItundaPayments (the URL-scheme entry point
+//  for third-party apps launching Itunda Payments).
 //
 //  NOT build-verified -- see ios/Core/Risk/Sources/ZeroTrust.swift for why.
 //

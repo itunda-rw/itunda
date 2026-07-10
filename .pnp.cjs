@@ -15,10 +15,6 @@ const RAW_RUNTIME_STATE =
       "reference": "workspace:."\
     },\
     {\
-      "name": "@itunda/utils",\
-      "reference": "workspace:packages/itunda-utils"\
-    },\
-    {\
       "name": "@itunda/shared-utils",\
       "reference": "workspace:packages/shared-utils"\
     },\
@@ -45,7 +41,6 @@ const RAW_RUNTIME_STATE =
   "fallbackExclusionList": [\
     ["@itunda/api-gateway", ["workspace:services/api-gateway"]],\
     ["@itunda/shared-utils", ["workspace:packages/shared-utils"]],\
-    ["@itunda/utils", ["workspace:packages/itunda-utils"]],\
     ["bank-mfe", ["workspace:services/micro-frontends/bank-mfe"]],\
     ["host-app", ["workspace:services/micro-frontends/host-app"]],\
     ["itunda", ["workspace:."]],\
@@ -133,16 +128,7 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "./packages/shared-utils/",\
         "packageDependencies": [\
           ["@itunda/shared-utils", "workspace:packages/shared-utils"],\
-          ["es-toolkit", "npm:1.49.0"]\
-        ],\
-        "linkType": "SOFT"\
-      }]\
-    ]],\
-    ["@itunda/utils", [\
-      ["workspace:packages/itunda-utils", {\
-        "packageLocation": "./packages/itunda-utils/",\
-        "packageDependencies": [\
-          ["@itunda/utils", "workspace:packages/itunda-utils"],\
+          ["es-toolkit", "npm:1.49.0"],\
           ["typescript", "patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"]\
         ],\
         "linkType": "SOFT"\

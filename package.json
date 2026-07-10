@@ -3,10 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "comment": "packages/saronite and services/blog are deliberately excluded -- each is its own independently-managed npm workspace (own package-lock.json), not part of this yarn workspace. services/spring-microservices and services/spring-backend are Gradle/Kotlin, not part of any JS workspace.",
+  "comment": "packages/saronite and services/blog are deliberately excluded -- each is its own independently-managed npm workspace (own package-lock.json), not part of this yarn workspace. services/microservices and services/backend are Gradle/Kotlin, not part of any JS workspace.",
   "workspaces": [
     "packages/shared-utils",
-    "packages/itunda-utils",
     "services/micro-frontends/*",
     "services/api-gateway"
   ],

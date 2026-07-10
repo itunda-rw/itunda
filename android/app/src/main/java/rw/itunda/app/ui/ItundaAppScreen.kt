@@ -266,9 +266,9 @@ private fun HomeTab(viewModel: MainViewModel, onSend: () -> Unit) {
             ShellSection(
                 title = "",
                 rows = listOf(
-                    ShellRow("RWF 463,022", "Spent in July", "3 new", Icons.Outlined.PieChart),
-                    ShellRow("Transfer cashback", "BK account -> TUYIZERE Eric", "Claim", Icons.Outlined.Payments),
-                    ShellRow("Sprinkle money to friends", "19:03:55 left", "Send", Icons.Outlined.Redeem)
+                    ShellRow("RWF 463,022", "Spent in July", "3 new", Icons.Outlined.PieChart, AccentPurple),
+                    ShellRow("Transfer cashback", "BK account -> TUYIZERE Eric", "Claim", Icons.Outlined.Payments, AccentBlue),
+                    ShellRow("Sprinkle money to friends", "19:03:55 left", "Send", Icons.Outlined.Redeem, AccentOrange)
                 )
             )
         }
@@ -276,9 +276,9 @@ private fun HomeTab(viewModel: MainViewModel, onSend: () -> Unit) {
             ShellSection(
                 title = "",
                 rows = listOf(
-                    ShellRow("Get cashback every time you pay", "", ">", Icons.Outlined.Payments),
-                    ShellRow("Pay with face ID", "", ">", Icons.Outlined.Face),
-                    ShellRow("Receive government alerts", "", ">", Icons.Outlined.Campaign)
+                    ShellRow("Get cashback every time you pay", "", ">", Icons.Outlined.Payments, AccentBlue),
+                    ShellRow("Pay with face ID", "", ">", Icons.Outlined.Face, AccentPurple),
+                    ShellRow("Receive government alerts", "", ">", Icons.Outlined.Campaign, AccentRed)
                 )
             )
         }
@@ -414,7 +414,8 @@ private data class ShellRow(
     val title: String,
     val subtitle: String,
     val action: String,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val iconColor: Color = AccentBlue
 )
 
 @Composable
@@ -440,17 +441,19 @@ private fun ShellSection(title: String, rows: List<ShellRow>) {
                         modifier = Modifier
                             .size(42.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(TossChip),
+                            .background(row.iconColor),
                         contentAlignment = Alignment.Center
                     ) {
                         // Was showing row.third (the action label, e.g. "3 new"
                         // or "Claim") crammed into a 42dp icon box -- a real bug,
                         // not a placeholder; it also rendered a second time below
                         // via SmallBlueButton whenever longer than one character.
-                        // Then briefly row.first's initial as a stopgap; a real
-                        // per-row icon now, for consistency with every other
-                        // section on screen.
-                        Icon(row.icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = TossText)
+                        // Then briefly row.first's initial as a stopgap, then a
+                        // real icon but on a flat muted TossChip background --
+                        // real Toss's card-list icon badges (송금/자산 reference
+                        // screenshots) are vivid per-item brand colors, not one
+                        // neutral gray tone reused everywhere.
+                        Icon(row.icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color.White)
                     }
                     Spacer(modifier = Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -506,7 +509,7 @@ private fun ShopTab(viewModel: MainViewModel) {
                 ShellSection(
                     title = "Discover",
                     rows = discoverItems.take(3).map { item ->
-                        ShellRow(item.title, item.subtitle, item.badge ?: ">", Icons.Outlined.Storefront)
+                        ShellRow(item.title, item.subtitle, item.badge ?: ">", Icons.Outlined.Storefront, AccentTeal)
                     }
                 )
             }
@@ -526,8 +529,8 @@ private fun PayTab() {
         item { MapPlaceholder() }
         item { PayFeatureCard() }
         item { ShellSection("", listOf(
-            ShellRow("Points and pay money", "Total RWF 31,031", " ", Icons.Outlined.Payments),
-            ShellRow("Received coupons", "", " ", Icons.Outlined.LocalOffer)
+            ShellRow("Points and pay money", "Total RWF 31,031", " ", Icons.Outlined.Payments, AccentBlue),
+            ShellRow("Received coupons", "", " ", Icons.Outlined.LocalOffer, AccentOrange)
         )) }
     }
 }

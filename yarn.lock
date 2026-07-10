@@ -65,13 +65,6 @@ __metadata:
   resolution: "@itunda/shared-utils@workspace:packages/shared-utils"
   dependencies:
     es-toolkit: "npm:^1.49.0"
-  languageName: unknown
-  linkType: soft
-
-"@itunda/utils@workspace:packages/itunda-utils":
-  version: 0.0.0-use.local
-  resolution: "@itunda/utils@workspace:packages/itunda-utils"
-  dependencies:
     typescript: "npm:^5.0.0"
   languageName: unknown
   linkType: soft

@@ -12,7 +12,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // Root/FDS gate on the real app entry point, ported from
-        // mobile_clients/android's BankActivity (see ARCHITECTURE.md §3) --
+        // mobile_clients/android's BankActivity (see docs/ARCHITECTURE.md §3) --
         // money-moving screens should not render on a compromised device.
         if (!RootDetection.verifyDeviceIntegrity()) {
             setContent {

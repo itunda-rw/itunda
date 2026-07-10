@@ -8,25 +8,27 @@ The canonical product, architecture, and UI/UX map is [docs/TOSS_RWANDA_ALIGNMEN
 
 ## Current Surfaces
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the full real/demo/stub breakdown, sourced against
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full real/demo/stub breakdown, sourced against
 Toss's actual architecture in [docs/TOSS_ARCHITECTURE_FACTS.md](docs/TOSS_ARCHITECTURE_FACTS.md).
-Top-level layout (restructured 2026-07-10 to match Toss's own repo convention):
+Top-level layout (restructured 2026-07-11 for naming clarity — see
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §5):
 
-- `services/spring-backend/`: the canonical backend — real Kotlin + Spring Boot + MySQL, covering
+- `services/backend/`: the canonical backend — real Kotlin + Spring Boot + MySQL, covering
   auth/wallet/transfer/bills/loans/contacts/stocks/savings/insurance/notifications/discover/system,
   verified live against real MySQL.
-- `services/spring-microservices/`: a real, independently-deployable per-bounded-context MSA
-  prototype (`payment-service`, `ledger-service`) — less feature coverage than `spring-backend`
+- `services/microservices/`: a real, independently-deployable per-bounded-context MSA
+  prototype (`payment-service`, `ledger-service`) — less feature coverage than `services/backend`
   but architecturally closer to Toss's actual documented MSA pattern. Not reconciled with
-  `spring-backend` yet.
+  `services/backend` yet.
 - `services/micro-frontends/`, `services/api-gateway/`: web/BFF surfaces, demo-to-stub depth.
 - `services/blog/`: the `tech.itunda.rw` engineering blog, modeled on toss.tech.
 - `packages/saronite/`: mini-app SDK modeled on Toss's real open-source `granite` — currently a
   hand-rolled approximation, not yet built on Granite itself.
 - `android/`, `ios/`: native mobile shells with real bounded-context modules (design system,
   ledger, risk, identity, banking, payments) — Android verified compiling and running on-device;
-  iOS ported but not build-verified in this environment (see ARCHITECTURE.md §3).
-- `mobile_clients/itunda-pay-sdk/`: a vendored clone of the real `tosspayments/payment-sdk-android`, kept as reference only.
+  iOS ported but not build-verified in this environment (see docs/ARCHITECTURE.md §3). Each
+  platform's own `sdk/pay`/`SDK/Pay` module holds itunda's own (in-progress) payment SDK,
+  `ItundaPayments`.
 - `infra/`: Kubernetes manifests and other infrastructure config.
 
 ## Toss-Aligned Product System
@@ -71,7 +73,7 @@ The repository currently demonstrates the product shape and system contracts. Tr
 
 ## Local Development
 
-Install JS dependencies (root workspace covers `packages/shared-utils`, `packages/itunda-utils`,
+Install JS dependencies (root workspace covers `packages/shared-utils`,
 `services/micro-frontends/*`, `services/api-gateway`; `packages/saronite` and `services/blog` are
 separate npm workspaces, install those independently):
 
@@ -88,7 +90,7 @@ yarn dev
 Run the canonical backend:
 
 ```bash
-cd services/spring-backend
+cd services/backend
 ./gradlew :app:bootRun
 ```
 

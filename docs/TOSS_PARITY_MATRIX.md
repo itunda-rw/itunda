@@ -10,7 +10,7 @@ NestJS+TypeORM+Postgres scaffold that was mostly empty stubs (two services conta
 nothing but `node_modules`), and `spring-backend/` — declared as 13 Gradle modules in
 `settings.gradle.kts` but containing **zero `.kt` files**.
 
-`spring-backend/` is now a real backend on the actual Toss stack — Kotlin + Spring Boot
+`services/backend/` (formerly `spring-backend/`) is now a real backend on the actual Toss stack — Kotlin + Spring Boot
 + Spring Data JPA/Hibernate + MySQL + Spring Security (JWT) — covering auth, wallets,
 transfers, bills, loans, contacts, stocks, and savings, each verified live end-to-end
 against a real MySQL instance with the same per-user ownership enforcement fixed in
@@ -22,7 +22,7 @@ transactional with the business write it was supposed to protect, meaning a wall
 could commit while its idempotency record failed to save — a retry with the same key
 would then find nothing cached and could double-charge. Both fixed (explicit `TEXT`
 column; `@Transactional` around the combined replay-or-execute flow).
-The Express backend (`backend/`) has now been fully ported over to the Spring Boot backend, achieving 100% product-surface coverage. This means the Toss Kotlin/Spring parity goal is fully met.
+The old Express backend (a separate, now-removed `backend/` at the repo root) has now been fully ported over to the Spring Boot backend, achieving 100% product-surface coverage. This means the Toss Kotlin/Spring parity goal is fully met.
 
 This matrix turns the alignment goal into an implementation checklist. Status values mean:
 

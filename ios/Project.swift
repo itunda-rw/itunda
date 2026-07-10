@@ -93,7 +93,7 @@ for feature in featureModules {
 
 allTargets.append(
     Target(
-        name: "ItundaPaySDK",
+        name: "ItundaPaymentsSDK",
         platform: .iOS,
         product: .framework,
         bundleId: "rw.itunda.sdk.pay",

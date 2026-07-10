@@ -1,9 +1,13 @@
 {
   "name": "@itunda/shared-utils",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "Itunda internal shared utils, modeled after Toss @toss/es-toolkit usage",
+  "main": "src/index.ts",
   "private": true,
   "dependencies": {
     "es-toolkit": "^1.49.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
   }
 }

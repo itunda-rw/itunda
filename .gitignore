@@ -49,9 +49,11 @@ docker-compose.override.yml
 # Backend demo persistence snapshot (not a real database)
 backend/.data/
 
+# Gradle (local build cache -- never commit, regenerated on first build)
+.gradle/
+
 # Mobile
 ios/Pods/
-android/.gradle/
 android/local.properties
 
 # OS
