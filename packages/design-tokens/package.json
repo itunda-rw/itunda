@@ -1,0 +1,7 @@
+{
+  "name": "@itunda/design-tokens",
+  "version": "1.0.0",
+  "description": "Single source of truth for itunda's web color tokens, matching android/core/designsystem and ios/Core/DesignSystem's real hex values -- see tokens.css's own header comment.",
+  "main": "tokens.css",
+  "private": true
+}

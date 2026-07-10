@@ -336,10 +336,18 @@ High priority:
 
 Medium priority:
 
-- Add design tokens for mobile and web parity. **Done for mobile** (Android/iOS
-  reconciled 2026-07-11); web (`services/micro-frontends`) still uses its own separate
-  `--toss-*` CSS custom properties, not derived from the same source as mobile's Kotlin/
-  Swift token files.
+- ~~Add design tokens for mobile and web parity.~~ **Done (2026-07-11)** for mobile
+  (Android/iOS reconciled) and for web's CSS-custom-property consumers: new
+  `packages/design-tokens` is the single source of truth `host-app` and `bank-mfe` now
+  both `@import`, replacing two independently hand-copied `:root` blocks that had
+  already drifted (`bank-mfe`'s `--toss-green` was Apple's iOS system green `#34c759`,
+  not Toss's real `green500` `#04C065` that Android/iOS both use correctly) — verified
+  the corrected value and a real new dark-mode block actually landed in both apps'
+  compiled CSS output, not just the source. `kyc-mfe` is **not** wired to this package:
+  `KycDashboard.tsx` uses inline `style={{...}}` hex literals throughout rather than CSS
+  custom properties, so adopting the shared tokens there would mean converting its
+  styling approach first, not a drop-in swap — left as an explicit, known follow-up
+  rather than silently skipped.
 - Add end-to-end demo scripts for send, QR, bill, merchant settlement, and fraud review.
 - Add accessibility checks for touch targets, contrast, form labels, and focus.
 - ~~Add test coverage around fallback demo behavior.~~ **Done for every module that

@@ -1,32 +1,9 @@
-:root {
-  /* Toss Color Palette */
-  --toss-blue: #3182f6;
-  --toss-blue-active: #1b64da;
-  --toss-blue-light: #e8f3ff;
-  --toss-red: #f04452;
-  --toss-green: #34c759;
-  
-  /* Grayscale */
-  --toss-grey-100: #f2f4f6; /* App Background */
-  --toss-grey-200: #e5e8eb; /* Divider */
-  --toss-grey-300: #d1d6db; /* Disabled border */
-  --toss-grey-400: #b0b8c1;
-  --toss-grey-500: #8b95a1; /* Tertiary Text */
-  --toss-grey-600: #6b7684;
-  --toss-grey-700: #4e5968; /* Secondary Text */
-  --toss-grey-800: #333d4b;
-  --toss-grey-900: #191f28; /* Primary Text */
-  
-  --toss-white: #ffffff;
-  
-  /* Shadow & Animation */
-  --toss-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
-  --toss-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.08);
-  --toss-transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
-  --toss-radius-sm: 8px;
-  --toss-radius-md: 16px;
-  --toss-radius-lg: 24px;
-}
+/* Toss color tokens -- single source of truth (2026-07-11), matching
+   android/core/designsystem and ios/Core/DesignSystem's real values, real dark mode
+   included. Previously this file hand-copied its own :root block, independently from
+   host-app's identical copy, and had drifted (--toss-green was Apple's iOS system
+   green #34c759, not Toss's real green500 #04C065) -- see the package's own header. */
+@import "@itunda/design-tokens/tokens.css";
 
 body {
   margin: 0;
@@ -106,9 +83,9 @@ button:active {
   background: #f6f7f8;
   background-image: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%);
   background-repeat: no-repeat;
-  background-size: 800px 100%; 
+  background-size: 800px 100%;
   animation-duration: 1s;
-  animation-fill-mode: forwards; 
+  animation-fill-mode: forwards;
   animation-iteration-count: infinite;
   animation-name: shimmer;
   animation-timing-function: linear;

@@ -1,32 +1,9 @@
-:root {
-  /* Toss Color Palette -- kept in sync with bank-mfe/src/index.css and kyc-mfe's
-     inline hex literals so the host shell and both federated remotes read as one
-     visual system rather than three disconnected styles (2026-07-11). */
-  --toss-blue: #3182f6;
-  --toss-blue-active: #1b64da;
-  --toss-blue-light: #e8f3ff;
-  --toss-red: #f04452;
-  --toss-green: #34c759;
-
-  --toss-grey-100: #f2f4f6;
-  --toss-grey-200: #e5e8eb;
-  --toss-grey-300: #d1d6db;
-  --toss-grey-400: #b0b8c1;
-  --toss-grey-500: #8b95a1;
-  --toss-grey-600: #6b7684;
-  --toss-grey-700: #4e5968;
-  --toss-grey-800: #333d4b;
-  --toss-grey-900: #191f28;
-
-  --toss-white: #ffffff;
-
-  --toss-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
-  --toss-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.08);
-  --toss-transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
-  --toss-radius-sm: 8px;
-  --toss-radius-md: 16px;
-  --toss-radius-lg: 24px;
-}
+/* Toss color tokens -- single source of truth (2026-07-11), matching
+   android/core/designsystem and ios/Core/DesignSystem's real values, real dark mode
+   included. Previously this file hand-copied its own :root block, independently from
+   bank-mfe's identical copy -- see the package's own header for the drift that
+   caused (bank-mfe's --toss-green had silently diverged to Apple's system green). */
+@import "@itunda/design-tokens/tokens.css";
 
 body {
   margin: 0;

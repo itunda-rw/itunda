@@ -15,6 +15,10 @@ const RAW_RUNTIME_STATE =
       "reference": "workspace:."\
     },\
     {\
+      "name": "@itunda/design-tokens",\
+      "reference": "workspace:packages/design-tokens"\
+    },\
+    {\
       "name": "@itunda/shared-utils",\
       "reference": "workspace:packages/shared-utils"\
     },\
@@ -40,6 +44,7 @@ const RAW_RUNTIME_STATE =
   "pnpZipBackend": "libzip",\
   "fallbackExclusionList": [\
     ["@itunda/api-gateway", ["workspace:services/api-gateway"]],\
+    ["@itunda/design-tokens", ["workspace:packages/design-tokens"]],\
     ["@itunda/shared-utils", ["workspace:packages/shared-utils"]],\
     ["bank-mfe", ["workspace:services/micro-frontends/bank-mfe"]],\
     ["host-app", ["workspace:services/micro-frontends/host-app"]],\
@@ -138,6 +143,15 @@ const RAW_RUNTIME_STATE =
           ["es-toolkit", "npm:1.49.0"],\
           ["express", "npm:4.22.2"],\
           ["http-proxy-middleware", "virtual:348dd1c97061fe5488fc654616a1cdd97aeff72e64d7ada5ad10a8f44838469e2516b7e3edd307dc9e50756a4b0d2081be70bf7360f05d26f5a6803e6395d2b7#npm:2.0.10"]\
+        ],\
+        "linkType": "SOFT"\
+      }]\
+    ]],\
+    ["@itunda/design-tokens", [\
+      ["workspace:packages/design-tokens", {\
+        "packageLocation": "./packages/design-tokens/",\
+        "packageDependencies": [\
+          ["@itunda/design-tokens", "workspace:packages/design-tokens"]\
         ],\
         "linkType": "SOFT"\
       }]\
@@ -888,6 +902,7 @@ const RAW_RUNTIME_STATE =
         "packageLocation": "./services/micro-frontends/bank-mfe/",\
         "packageDependencies": [\
           ["@emotion/is-prop-valid", "npm:1.4.0"],\
+          ["@itunda/design-tokens", "workspace:packages/design-tokens"],\
           ["@originjs/vite-plugin-federation", "npm:1.4.1"],\
           ["@suspensive/react", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:3.21.3"],\
           ["@toss/use-funnel", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:1.4.2"],\
@@ -1579,6 +1594,7 @@ const RAW_RUNTIME_STATE =
       ["workspace:services/micro-frontends/host-app", {\
         "packageLocation": "./services/micro-frontends/host-app/",\
         "packageDependencies": [\
+          ["@itunda/design-tokens", "workspace:packages/design-tokens"],\
           ["@originjs/vite-plugin-federation", "npm:1.4.1"],\
           ["@types/node", "npm:24.13.2"],\
           ["@types/react", "npm:19.2.17"],\
