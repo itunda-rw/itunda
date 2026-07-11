@@ -258,14 +258,22 @@ live check, not a proxy for one. New `App/UITests/FocusOrderTests.swift`
   Notifications (bell) button's accessibility position sits left of Profile,
   matching `HomeTopBar`'s real `HStack` order (both were the icon-only buttons
   fixed for missing labels earlier this session).
+- `testBenefitsTabRowsFocusOrderMatchesVisualTopToBottomOrder`,
+  `testShopTabTopBarIconsFocusOrderMatchesVisualOrder`,
+  `testPayTabMerchantRowsFocusOrderMatchesVisualTopToBottomOrder`,
+  `testAllTabTopBarFocusOrderMatchesVisualOrder` — added same day, extending
+  coverage from Home-only to all 5 tabs (each taps the real tab bar first, the
+  same path a VoiceOver user takes, not a navigation shortcut). Found one real
+  thing worth noting along the way, not a bug: `ShopTopBar`'s Profile/Cart and
+  `TdsAllTopBar`'s Settings icon are bare `Image()`s with an
+  `accessibilityLabel`, not wrapped in `Button` — the first version of these
+  tests queried `app.buttons[...]` and genuinely failed to find them; querying
+  `app.images[...]` (the correct element type, confirmed by XCUITest itself,
+  not assumed) passed. Matches the already-documented finding that these
+  specific icons have no clickable wrapper/real navigation yet.
 - Run via `xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp
   -destination 'platform=iOS Simulator,name=iPhone 14' test` →
-  **`TEST SUCCEEDED`**, 2/2 tests passed, 0 failed.
-- Scope: only the Home tab and tab bar — the other 4 tabs' focus order
-  (Benefits/Shop/Pay/All, all real content as of this session's tab rebuild)
-  isn't covered by a test yet. A real, narrower gap than "nothing can be
-  checked at all," and a real pattern (`XCUIApplication` + accessibility-tree
-  queries) any future test can reuse.
+  **`TEST SUCCEEDED`**, 6/6 tests passed, 0 failed. Full 5-tab coverage.
 
 **Android — also real, live-verified, same pass.** A real "andros" AVD emulator
 (API 36 / Android 16) was already available in this environment
@@ -277,6 +285,15 @@ semantics tree TalkBack does:
   five tab labels are in left-to-right `x`-position order.
 - `homeTopBarIconsFocusOrderMatchesVisualOrder` — asserts "Scan QR code" sits
   left of "Notifications", matching `HomeTopBar`'s real `Row` order.
+- `benefitsTabRowsFocusOrderMatchesVisualTopToBottomOrder`,
+  `shopTabTopBarIconsFocusOrderMatchesVisualOrder`,
+  `payTabTopBarIconsFocusOrderMatchesVisualOrder`,
+  `allTabTopBarFocusOrderMatchesVisualOrder` — same extension to all 5 tabs as
+  iOS, each tapping the real tab bar first. Unlike iOS, no element-type
+  surprise here — Android's `Icon(contentDescription = ...)` composables are
+  directly queryable via `onNodeWithContentDescription` regardless of whether
+  they're wrapped in `.clickable`, so all 6 passed on the first real run once
+  the two environment bugs below were fixed.
 
 Getting this running found and fixed two real, independent environment bugs
 along the way, neither hypothetical:
@@ -295,9 +312,13 @@ along the way, neither hypothetical:
    targets newer platforms correctly.
 
 `adb shell am instrument -w -e class rw.itunda.app.ui.FocusOrderTest
-rw.itunda.app.test/androidx.test.runner.AndroidJUnitRunner` → **`OK (2 tests)`**,
-run live against the real emulator. Scope: same as iOS — Home tab + tab bar
-only, not the other 4 tabs.
+rw.itunda.app.test/androidx.test.runner.AndroidJUnitRunner` → **`OK (6 tests)`**,
+run live against the real emulator. Full 5-tab coverage, matching iOS.
+
+Both platforms now have complete, real, live focus-order verification across
+every tab — the pattern (tap the real tab bar, assert accessibility-tree
+position matches visual position) is proven and directly reusable for any
+future screen.
 
 ## Status
 
@@ -308,7 +329,7 @@ above, left open pending a design-system-level fix; all content-description/labe
 bugs found were fixed), touch-target sizing is checked and the one real gap found
 (Android's `TopIconButton`) is fixed, form labels are audited and both bugs found
 are fixed, Dynamic Type/font scaling is audited and all 19 real bugs found (all on
-iOS) are fixed, focus order is now real, live-verified on both platforms' Home
-tab/tab bar (XCUITest on iOS, `androidx.compose.ui.test` on Android — 2/2 passing
-each) with the other 4 tabs on both platforms the only remaining scope. Every item
-in the original gap list now has real, non-speculative verification behind it.
+iOS) are fixed, focus order is now real, live-verified on both platforms across
+all 5 tabs (XCUITest on iOS — 6/6 passing; `androidx.compose.ui.test` on
+Android — 6/6 passing). Every item in the original gap list now has real,
+non-speculative, full-coverage verification behind it on both platforms.

@@ -462,16 +462,22 @@ Medium priority:
   `androidTest` source set (Android's first — `FocusOrderTest.kt`) both assert
   the tab bar's real accessibility order matches the Home/Benefits/Shop/Pay/All
   taxonomy and left-to-right visual position, and that the Home tab's
-  notification/profile icons are in correct visual order. iOS:
-  `TEST SUCCEEDED`, 2/2. Android: `OK (2 tests)`, run via `adb shell am
-  instrument` on a real "andros" AVD emulator — getting Android's running at all
-  found and fixed two real bugs: `build.gradle.kts` had never set
-  `testInstrumentationRunner`, silently defaulting to a JUnit3-only legacy
-  runner that would have reported "No tests found" for every real `@Test`
-  ever added; and `espresso-core:3.5.1`'s reflection-based input-injection init
-  threw a live `NoSuchMethodException` against the emulator's API 36 platform,
-  fixed by bumping to `3.7.0`. Scope on both platforms: Home tab + tab bar only,
-  the other 4 tabs remain unverified this way.
+  notification/profile icons are in correct visual order — **extended same day
+  to all 5 tabs on both platforms** (each test taps the real tab bar first,
+  the same path a TalkBack/VoiceOver user takes). iOS: `TEST SUCCEEDED`, 6/6.
+  Android: `OK (6 tests)`, run via `adb shell am instrument` on a real "andros"
+  AVD emulator — getting Android's running at all found and fixed two real
+  bugs: `build.gradle.kts` had never set `testInstrumentationRunner`, silently
+  defaulting to a JUnit3-only legacy runner that would have reported "No tests
+  found" for every real `@Test` ever added; and `espresso-core:3.5.1`'s
+  reflection-based input-injection init threw a live `NoSuchMethodException`
+  against the emulator's API 36 platform, fixed by bumping to `3.7.0`. On iOS,
+  extending coverage also found that `ShopTopBar`'s Profile/Cart and
+  `TdsAllTopBar`'s Settings icons are bare `Image()`s with an
+  `accessibilityLabel`, not `Button`s — confirmed by XCUITest itself (querying
+  `app.buttons[...]` genuinely failed; `app.images[...]` passed), matching the
+  already-documented finding that those specific icons aren't wired to real
+  navigation yet. Full 5-tab focus-order coverage on both platforms now.
 - ~~Add test coverage around fallback demo behavior.~~ **Done for every module that
   moves money or authenticates (2026-07-11):** `LedgerServiceTest.kt` (pre-existing) plus
   new `AuthServiceTest.kt`, `WalletServiceTest.kt`, `MerchantServiceTest.kt`,

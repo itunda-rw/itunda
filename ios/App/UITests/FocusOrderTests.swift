@@ -70,4 +70,88 @@ final class FocusOrderTests: XCTestCase {
             "Notifications (bell) should sit left of Profile, matching HomeTopBar's real HStack order"
         )
     }
+
+    /// Extends coverage (2026-07-11) from Home-tab-only to the remaining four
+    /// tabs, closing the "other 4 tabs... isn't covered by a test yet" gap this
+    /// file's own earlier version left open. Same pattern: switch tabs via the
+    /// real tab bar (not a direct navigation shortcut -- this exercises the
+    /// same path a real user, or VoiceOver user, takes), then assert real
+    /// accessibility-tree order matches real visual/HStack order.
+
+    func testBenefitsTabRowsFocusOrderMatchesVisualTopToBottomOrder() throws {
+        let app = XCUIApplication()
+        app.launch()
+        app.tabBars.buttons["Benefits"].tap()
+
+        // BenefitsShopAllScreens.swift's BenefitsVisitCard rows, in their real
+        // source/visual order.
+        let titles = ["Happy lottery", "Push the button", "Try on", "Bring friends"]
+        let yPositions = titles.map { title -> CGFloat in
+            let element = app.staticTexts[title]
+            XCTAssertTrue(element.waitForExistence(timeout: 10), "'\(title)' row should exist on the Benefits tab")
+            return element.frame.minY
+        }
+        XCTAssertEqual(
+            yPositions, yPositions.sorted(),
+            "Benefits tab's visit-card rows should read top-to-bottom in their real source order: \(titles)"
+        )
+    }
+
+    /// ShopTopBar's Profile/Cart icons are bare Image()s with an
+    /// accessibilityLabel, not wrapped in Button -- confirmed by this test's
+    /// own first version failing against app.buttons[...] and passing once
+    /// changed to app.images[...] (real XCUITest element-type introspection,
+    /// not a source-reading guess). Matches the already-documented finding
+    /// in ARCHITECTURE.md that these specific icons have no clickable
+    /// wrapper/real navigation yet.
+    func testShopTabTopBarIconsFocusOrderMatchesVisualOrder() throws {
+        let app = XCUIApplication()
+        app.launch()
+        app.tabBars.buttons["Shop"].tap()
+
+        let profile = app.images["Profile"]
+        let cart = app.images["Cart"]
+        XCTAssertTrue(profile.waitForExistence(timeout: 10), "Profile image should exist and be labeled on the Shop tab")
+        XCTAssertTrue(cart.exists, "Cart image should exist and be labeled on the Shop tab")
+
+        XCTAssertLessThan(
+            profile.frame.minX, cart.frame.minX,
+            "Profile should sit left of Cart, matching ShopTopBar's real HStack order"
+        )
+    }
+
+    func testPayTabMerchantRowsFocusOrderMatchesVisualTopToBottomOrder() throws {
+        let app = XCUIApplication()
+        app.launch()
+        app.tabBars.buttons["Pay"].tap()
+
+        // PayScreen's two "Nearby Merchants" rows, in their real source order.
+        let kigaliHeights = app.staticTexts["Kigali Heights"]
+        let briocheCafe = app.staticTexts["Brioche Cafe"]
+        XCTAssertTrue(kigaliHeights.waitForExistence(timeout: 10), "Kigali Heights row should exist on the Pay tab")
+        XCTAssertTrue(briocheCafe.exists, "Brioche Cafe row should exist on the Pay tab")
+
+        XCTAssertLessThan(
+            kigaliHeights.frame.minY, briocheCafe.frame.minY,
+            "Kigali Heights should sit above Brioche Cafe, matching PayScreen's real VStack order"
+        )
+    }
+
+    /// TdsAllTopBar's Settings icon is likewise a bare Image(), not a Button
+    /// -- same reasoning as the Shop tab test above.
+    func testAllTabTopBarFocusOrderMatchesVisualOrder() throws {
+        let app = XCUIApplication()
+        app.launch()
+        app.tabBars.buttons["All"].tap()
+
+        let name = app.staticTexts["TUYIZERE ERIC"]
+        let settings = app.images["Settings"]
+        XCTAssertTrue(name.waitForExistence(timeout: 10), "Name should exist on the All tab")
+        XCTAssertTrue(settings.exists, "Settings image should exist and be labeled on the All tab")
+
+        XCTAssertLessThan(
+            name.frame.minX, settings.frame.minX,
+            "Name should sit left of the Settings gear, matching TdsAllTopBar's real SpaceBetween HStack order"
+        )
+    }
 }
