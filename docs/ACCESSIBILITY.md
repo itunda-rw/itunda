@@ -239,7 +239,7 @@ notification/profile icon circles grew — a real, live, before/after comparison
 not an inference from reading the code. `IDS.scaledFont` genuinely works at
 runtime.
 
-## 6. Focus order (iOS: real, live-verified; Android: statically checked, open)
+## 6. Focus order (both platforms: real, live-verified)
 
 **iOS — real XCUITest, 2026-07-11.** This was written as "the one item in this
 whole audit that has no static-analysis path... requires a live TalkBack/
@@ -267,11 +267,37 @@ live check, not a proxy for one. New `App/UITests/FocusOrderTests.swift`
   checked at all," and a real pattern (`XCUIApplication` + accessibility-tree
   queries) any future test can reuse.
 
-**Android — still open.** No equivalent XCUITest-style live check attempted
-this pass; the earlier static finding stands: no explicit focus-order
-manipulation anywhere in `android/` (grepped for it, none found), so Compose's
-default traversal order applies, unverified against a live TalkBack run or
-Compose's `testTag`-based semantics tree inspection.
+**Android — also real, live-verified, same pass.** A real "andros" AVD emulator
+(API 36 / Android 16) was already available in this environment
+(`$ANDROID_HOME/emulator/emulator -avd andros`). New `androidTest` source set
+(this repo's first — `android/app/src/androidTest/java/rw/itunda/app/ui/
+FocusOrderTest.kt`) using `androidx.compose.ui.test`, which reads the same
+semantics tree TalkBack does:
+- `tabBarFocusOrderMatchesVisualLeftToRightOrder` — asserts `TossBottomBar`'s
+  five tab labels are in left-to-right `x`-position order.
+- `homeTopBarIconsFocusOrderMatchesVisualOrder` — asserts "Scan QR code" sits
+  left of "Notifications", matching `HomeTopBar`'s real `Row` order.
+
+Getting this running found and fixed two real, independent environment bugs
+along the way, neither hypothetical:
+1. `android/app/build.gradle.kts` never set `testInstrumentationRunner` —
+   `pm list instrumentation` on the real device confirmed it had silently
+   defaulted to the ancient, pre-AndroidX `android.test.InstrumentationTestRunner`,
+   which only understands legacy JUnit3 `TestCase` subclasses. Every `@Test`-
+   annotated class in this repo (Android or not) would have silently reported
+   "No tests found" rather than running — invisible until this session's first
+   `androidTest` source set actually tried to run one. Fixed by setting
+   `testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"`.
+2. `espresso-core:3.5.1`'s `InputManagerEventInjectionStrategy` reflectively
+   calls `android.hardware.input.InputManager.getInstance()`, a hidden API
+   removed/renamed on this emulator's API 36 platform — a live
+   `NoSuchMethodException`, not a guess. Bumped to `espresso-core:3.7.0`, which
+   targets newer platforms correctly.
+
+`adb shell am instrument -w -e class rw.itunda.app.ui.FocusOrderTest
+rw.itunda.app.test/androidx.test.runner.AndroidJUnitRunner` → **`OK (2 tests)`**,
+run live against the real emulator. Scope: same as iOS — Home tab + tab bar
+only, not the other 4 tabs.
 
 ## Status
 
@@ -282,5 +308,7 @@ above, left open pending a design-system-level fix; all content-description/labe
 bugs found were fixed), touch-target sizing is checked and the one real gap found
 (Android's `TopIconButton`) is fixed, form labels are audited and both bugs found
 are fixed, Dynamic Type/font scaling is audited and all 19 real bugs found (all on
-iOS) are fixed, focus order is now real-XCUITest-verified on iOS's Home
-tab/tab bar (2/2 passing) with the other 4 tabs and Android both still open.
+iOS) are fixed, focus order is now real, live-verified on both platforms' Home
+tab/tab bar (XCUITest on iOS, `androidx.compose.ui.test` on Android — 2/2 passing
+each) with the other 4 tabs on both platforms the only remaining scope. Every item
+in the original gap list now has real, non-speculative verification behind it.

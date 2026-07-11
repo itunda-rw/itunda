@@ -70,6 +70,26 @@ If the package id changes, inspect `android/app/build.gradle.kts` and use that `
 
 The Android app is native-first: `MainActivity` renders the Compose navigation graph directly.
 
+Run the real instrumented UI tests (`androidTest/.../FocusOrderTest.kt` — checks
+accessibility focus order against the live semantics tree, the same one TalkBack
+reads) against a connected emulator or device:
+
+```bash
+cd android
+./gradlew :app:connectedDebugAndroidTest
+```
+
+If Gradle's test orchestrator (UTP) fails at APK install with a transient
+`Broken pipe`/`INSTALL_FAILED` error, restart adb (`adb kill-server && adb
+start-server`) and retry, or install + run directly instead:
+
+```bash
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+adb shell am instrument -w -e class rw.itunda.app.ui.FocusOrderTest \
+  rw.itunda.app.test/androidx.test.runner.AndroidJUnitRunner
+```
+
 ## iOS
 
 Needs full Xcode (not just Command Line Tools) and Tuist 3.x — this repo's

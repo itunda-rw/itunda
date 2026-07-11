@@ -453,16 +453,25 @@ Medium priority:
   fixed-size `Font.system(size:weight:)`, ignoring the user's iOS text-size
   accessibility setting entirely. 19 real instances found and fixed via a new,
   shared `IDS.scaledFont` helper wrapping `UIFontMetrics` (Apple's documented
-  pattern for this exact case). **Focus order real-verified on iOS (2026-07-11):**
-  once the real Xcode/simulator toolchain was found (`ARCHITECTURE.md` §3), "no
-  live TalkBack/VoiceOver access" stopped being true — XCUITest reads the same
-  accessibility tree VoiceOver does. New `ItundaAppUITests` target
-  (`App/UITests/FocusOrderTests.swift`) asserts the tab bar's real accessibility
-  order matches Android's taxonomy and left-to-right visual position, and the
-  Home tab's Notifications/Profile icons are in correct visual order —
-  `TEST SUCCEEDED`, 2/2 passing, run live against the simulator, not inferred
-  from code. Scope: Home tab + tab bar only; the other 4 tabs and Android both
-  remain unverified this way.
+  pattern for this exact case). **Focus order real-verified on both platforms
+  (2026-07-11):** once the real Xcode/simulator toolchain was found
+  (`ARCHITECTURE.md` §3), "no live TalkBack/VoiceOver access" stopped being true
+  on either platform — XCUITest/`androidx.compose.ui.test` both read the same
+  accessibility/semantics tree TalkBack and VoiceOver actually use. New
+  `ItundaAppUITests` (iOS, `App/UITests/FocusOrderTests.swift`) and a new
+  `androidTest` source set (Android's first — `FocusOrderTest.kt`) both assert
+  the tab bar's real accessibility order matches the Home/Benefits/Shop/Pay/All
+  taxonomy and left-to-right visual position, and that the Home tab's
+  notification/profile icons are in correct visual order. iOS:
+  `TEST SUCCEEDED`, 2/2. Android: `OK (2 tests)`, run via `adb shell am
+  instrument` on a real "andros" AVD emulator — getting Android's running at all
+  found and fixed two real bugs: `build.gradle.kts` had never set
+  `testInstrumentationRunner`, silently defaulting to a JUnit3-only legacy
+  runner that would have reported "No tests found" for every real `@Test`
+  ever added; and `espresso-core:3.5.1`'s reflection-based input-injection init
+  threw a live `NoSuchMethodException` against the emulator's API 36 platform,
+  fixed by bumping to `3.7.0`. Scope on both platforms: Home tab + tab bar only,
+  the other 4 tabs remain unverified this way.
 - ~~Add test coverage around fallback demo behavior.~~ **Done for every module that
   moves money or authenticates (2026-07-11):** `LedgerServiceTest.kt` (pre-existing) plus
   new `AuthServiceTest.kt`, `WalletServiceTest.kt`, `MerchantServiceTest.kt`,

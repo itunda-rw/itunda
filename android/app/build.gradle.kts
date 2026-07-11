@@ -15,6 +15,16 @@ android {
         versionCode = 1
         versionName = "1.0"
 
+        // Real bug, found 2026-07-11 running FocusOrderTest.kt for the first time:
+        // this was never set, so it silently defaulted to the ancient, pre-AndroidX
+        // android.test.InstrumentationTestRunner (`pm list instrumentation` on a real
+        // emulator confirmed it), which only understands legacy JUnit3 TestCase
+        // subclasses -- any real @Test-annotated JUnit4 class (every test in this
+        // repo, Android or otherwise) silently reported "No tests found" rather than
+        // actually running. There was no androidTest source set before this session
+        // to ever notice.
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -98,4 +108,23 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.google.code.gson:gson:2.10.1")
+
+    // Real instrumented UI tests (2026-07-11) -- androidx.compose.ui.test reads the
+    // same semantics tree TalkBack does, so this is a real live accessibility check
+    // against a real emulator, not a static-analysis proxy for one. See
+    // androidTest/.../FocusOrderTest.kt, the iOS equivalent of
+    // ios/App/UITests/FocusOrderTests.swift.
+    // The compose-bom platform must be applied per-configuration -- declaring it
+    // once under implementation doesn't cover androidTestImplementation, which
+    // otherwise fails to resolve ui-test-junit4's version at all.
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.02.00"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    // 3.7.0, not 3.5.1 (2026-07-11): 3.5.1's InputManagerEventInjectionStrategy
+    // reflectively calls the hidden android.hardware.input.InputManager.getInstance()
+    // -- removed/renamed by the real emulator's API 36 (Android 16) platform,
+    // confirmed via a live NoSuchMethodException on that exact call. 3.7.0 targets
+    // newer platforms correctly.
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
