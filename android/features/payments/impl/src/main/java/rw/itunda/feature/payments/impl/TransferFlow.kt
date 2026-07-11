@@ -117,6 +117,26 @@ fun RecipientEntryScreen(
                 }
                 Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Tds.colors.textTertiary)
             }
+
+            // Added 2026-07-11 against a real Toss reference screenshot found this
+            // session (user-provided, 2026-07-10, matching this file's own header) --
+            // the real "어디로 돈을 보낼까요?" recipient screen leads with a "최근 보낸
+            // 계좌" (recently sent accounts) list above manual account entry, which
+            // this screen didn't have. Purely additive: the existing manual-entry
+            // flow (already real, tested, and wired to the biometric-gated confirm
+            // step) is unchanged, this just adds the shortcut the reference shows.
+            // "TUYIZERE Eric" / BK is the same demo recipient identity already used
+            // in ItundaAppScreen.kt's CashbackChanceCard -- and is, per that
+            // screenshot's own visible "TUYIZERE E" recent-recipient row, the real
+            // reference identity, not an arbitrary placeholder.
+            if (accountNumber.isEmpty()) {
+                Spacer(modifier = Modifier.height(28.dp))
+                Text("Recent", color = Tds.colors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(modifier = Modifier.height(12.dp))
+                RecentRecipientRow(name = "TUYIZERE Eric", bankAndAccount = "BK - 201-452385-18-277") {
+                    accountNumber = "2014523851827".take(16)
+                }
+            }
         }
 
         Spacer(modifier = Modifier.weight(1f))
@@ -223,6 +243,35 @@ private fun FlowTopBar(onBack: () -> Unit) {
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Back", modifier = Modifier.size(18.dp), tint = Tds.colors.textPrimary)
+        }
+    }
+}
+
+/**
+ * A recent-recipient shortcut row, matching the real reference screenshot's
+ * "최근 보낸 계좌" (recently sent accounts) list -- a circular initial avatar,
+ * name, and bank/account line, tappable to prefill the account number field
+ * above rather than typing it manually.
+ */
+@Composable
+private fun RecentRecipientRow(name: String, bankAndAccount: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier.size(44.dp).clip(CircleShape).background(Tds.colors.chip),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(name.take(1), color = Tds.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        }
+        Spacer(modifier = Modifier.width(14.dp))
+        Column {
+            Text(name, color = Tds.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(bankAndAccount, color = Tds.colors.textTertiary, fontSize = 13.sp)
         }
     }
 }

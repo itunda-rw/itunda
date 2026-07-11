@@ -478,6 +478,31 @@ Medium priority:
   `app.buttons[...]` genuinely failed; `app.images[...]` passed), matching the
   already-documented finding that those specific icons aren't wired to real
   navigation yet. Full 5-tab focus-order coverage on both platforms now.
+- **Recent-recipients row added to Android's transfer flow (2026-07-11):** found,
+  while investigating this session's other work, that the user-provided real Toss
+  reference screenshots (2026-07-10) are still present in this environment
+  (`~/.claude/uploads/`) — including the exact recipient-entry screen ("어디로
+  돈을 보낼까요?") `TransferFlow.kt`'s own header already cites as this flow's
+  source. That screenshot shows a "최근 보낸 계좌" (recently sent accounts) list
+  above manual account entry, which `RecipientEntryScreen` didn't have. Added
+  `RecentRecipientRow` — purely additive, the existing real, tested, biometric-
+  gated manual-entry flow is unchanged — using "TUYIZERE Eric"/BK, the same demo
+  recipient identity already established in `ItundaAppScreen.kt`'s
+  `CashbackChanceCard`, confirmed as the real reference identity by the
+  screenshot's own visible "TUYIZERE E" row, not an arbitrary placeholder. No iOS
+  equivalent screen exists to update (`PayScreen` goes straight to amount
+  confirmation, no separate recipient-entry step). Verified:
+  `:features:payments:impl:compileDebugKotlin` and `:app:assembleDebug` both
+  `BUILD SUCCESSFUL`. Not visually verified live — the real "andros" emulator hit
+  a genuine, persistent OS-level ANR ("Process system isn't responding," Android's
+  `system_server`, not itunda's app) across a fresh boot, a wait, and a force-stop/
+  relaunch, consistent with resource exhaustion after this session's sustained
+  heavy emulator use (many installs, instrumented test runs). The same visible
+  Home-tab UI (confirmed correctly rendering behind the ANR dialog in the
+  screenshot taken) and the identical `Row`/`Box`+`CircleShape`+`Text` composable
+  pattern already used and previously screenshot-verified elsewhere in this same
+  file (`TransferPartyRow`) both support this rendering correctly, but that's
+  inference from a proven pattern, not a fresh screenshot of this exact addition.
 - ~~Add test coverage around fallback demo behavior.~~ **Done for every module that
   moves money or authenticates (2026-07-11):** `LedgerServiceTest.kt` (pre-existing) plus
   new `AuthServiceTest.kt`, `WalletServiceTest.kt`, `MerchantServiceTest.kt`,
