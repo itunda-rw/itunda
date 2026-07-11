@@ -28,6 +28,21 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // Added 2026-07-11 -- real step toward docs/ARCHITECTURE.md §2's Granite-
+        // mechanism backlog item ("dynamic bundle loading from a CDN instead of a
+        // local Metro server"). Empty by default -- inert unless explicitly set via
+        // -PminiAppBundleCdnUrl=..., so existing debug (Metro) and release (packaged
+        // asset) behavior are both completely unchanged unless someone opts in. See
+        // ItundaApplication.kt's ReactNativeHost.getJSBundleFile() override for
+        // where this is actually consumed, and its own doc comment for the honest
+        // scope/risk this carries -- deliberately not live-verified in this
+        // environment (see the same file's comment for why).
+        buildConfigField(
+            "String",
+            "MINIAPP_BUNDLE_CDN_URL",
+            "\"${project.findProperty("miniAppBundleCdnUrl") ?: ""}\""
+        )
     }
 
     buildTypes {

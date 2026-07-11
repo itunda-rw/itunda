@@ -240,11 +240,37 @@ package should claim to be "the" shared-utils home.
 
 In priority order, each item closes a specific gap identified above:
 
-1. Evolve the now-working mini-app host toward Granite's actual mechanism: dynamic bundle
-   loading from a CDN (Metro dev server only, currently), a shared-bundle/service-bundle split,
-   and RN autolinking — plus wire up a real login flow so `getAuthToken()` can return something
-   other than null and the mini-apps can show real data, not just a correct auth error. Port the
-   same brownfield integration to iOS (nothing exists there yet).
+1. Evolve the now-working mini-app host toward Granite's actual mechanism: **dynamic bundle
+   loading from a CDN — first, real, scoped step done (2026-07-11):**
+   `ItundaApplication.kt`'s `ReactNativeHost` gained a real `getJSBundleFile()` override and a
+   new `MiniAppBundleDownloader` (real `OkHttpClient` fetch-and-cache, not a stub) — opt-in via
+   a new `-PminiAppBundleCdnUrl=...` Gradle property (`BuildConfig.MINIAPP_BUNDLE_CDN_URL`,
+   empty/inert by default). Deliberately zero risk to anything this session ever tested:
+   `getUseDeveloperSupport()` is `true` for every debug build (the only mode exercised
+   on-device this session), and RN's dev-support manager takes over bundle loading entirely
+   in that mode — `getJSBundleFile()` is provably never even called, not just believed safe.
+   With no CDN URL set (the default), release builds also fall through to today's existing
+   packaged-asset behavior unchanged. Verified: `:app:assembleDebug` and
+   `:app:compileReleaseKotlin` both `BUILD SUCCESSFUL`; the `-PminiAppBundleCdnUrl=...`
+   property was confirmed to actually reach the generated `BuildConfig.java` (`grep`'d it),
+   and reverts to empty without the flag. **Honest, real, open residual risk in the one new
+   opt-in path:** the downloader makes a synchronous network call, and whether RN 0.72 calls
+   `getJSBundleFile()` off the main thread in this exact build has not been confirmed live in
+   this environment (checked via `top` that the real emulator was under genuine resource
+   strain at the time, not assumed) — if it's called on the main thread, setting a real CDN
+   URL would throw `NetworkOnMainThreadException` the first time anyone actually uses it. This
+   is real progress on the backlog item's literal ask, not a claim that the whole mechanism is
+   proven end-to-end. Still open: a shared-bundle/service-bundle split (today all 3 mini-apps
+   still register from one combined `index.js`/bundle — confirmed by reading
+   `packages/saronite/host-app/index.js` directly, not assumed) and RN autolinking (adopting
+   the real `react-native-gradle-plugin` — deliberately not attempted, since this exact
+   codebase already has documented, real evidence of what that plugin's CMake step catches
+   that a manual build doesn't: the `libreact_featureflagsjni.so` dlopen() crash that forced
+   the RN 0.72.17 downgrade in the first place — attempting it again without live-device
+   verification capability risks reproducing that exact class of failure). Plus wire up a real
+   login flow so `getAuthToken()` can return something other than null and the mini-apps can
+   show real data, not just a correct auth error. Port the same brownfield integration to iOS
+   (nothing exists there yet).
 2. ~~Introduce Kafka as the actual event backbone for the event model already designed in
    `docs/TOSS_RWANDA_ALIGNMENT.md`~~ **`ledger.posted`, `transfer.confirmed`,
    `payment.provider_succeeded`, and `payment.provider_failed` now real (2026-07-11)** —

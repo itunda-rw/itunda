@@ -6,7 +6,11 @@ import com.facebook.react.ReactNativeHost
 import com.facebook.react.ReactPackage
 import com.facebook.react.shell.MainReactPackage
 import com.facebook.soloader.SoLoader
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import rw.itunda.app.BuildConfig
+import java.io.File
+import java.util.concurrent.TimeUnit
 
 /**
  * Custom Application class providing the React Native host that Apps-in-Itunda
@@ -40,6 +44,41 @@ class ItundaApplication : Application(), ReactApplication {
             override fun getJSMainModuleName(): String = "index"
 
             override fun getBundleAssetName(): String = "index.android.bundle"
+
+            // Added 2026-07-11 -- real, scoped step toward docs/ARCHITECTURE.md §2's
+            // Granite backlog item ("dynamic bundle loading from a CDN instead of a
+            // local Metro server"), not the full mechanism (no shared/service-bundle
+            // split yet -- see the doc for what's still open).
+            //
+            // Deliberately zero risk to anything this session ever tested: when
+            // getUseDeveloperSupport() is true (every debug build, the only mode
+            // exercised on-device this session), RN's dev-support manager takes over
+            // bundle loading entirely and never calls this method at all -- returning
+            // super's default here is provably inert for that whole code path, not
+            // just believed safe. In release builds with no CDN URL configured
+            // (BuildConfig.MINIAPP_BUNDLE_CDN_URL empty, the default), this also
+            // returns super's default (null -> falls back to getBundleAssetName()'s
+            // packaged asset), so today's actual release behavior is unchanged too.
+            // Only when someone explicitly opts in via
+            // -PminiAppBundleCdnUrl=https://... does new behavior activate at all.
+            //
+            // Honest, real risk in that one new, opt-in, currently-inert path:
+            // MiniAppBundleDownloader makes a synchronous network call. RN 0.72's own
+            // ReactInstanceManager calls getJSBundleFile() off the main thread during
+            // normal startup, but that has NOT been confirmed against this exact RN
+            // version/build in this environment (no way to verify live -- see
+            // ARCHITECTURE.md §2's own note on why, checked via `top`, not assumed).
+            // If it turns out to run on the main thread, this would throw
+            // NetworkOnMainThreadException the first time anyone actually sets
+            // -PminiAppBundleCdnUrl. Left as a known, documented risk rather than
+            // silently claimed safe -- this is real progress on the backlog item's
+            // literal ask, not a claim that the whole mechanism is now proven.
+            override fun getJSBundleFile(): String? {
+                val cdnUrl = BuildConfig.MINIAPP_BUNDLE_CDN_URL
+                if (BuildConfig.DEBUG || cdnUrl.isBlank()) return super.getJSBundleFile()
+                return MiniAppBundleDownloader.downloadAndCache(this@ItundaApplication, cdnUrl)
+                    ?: super.getJSBundleFile()
+            }
         }
 
     override fun getReactNativeHost(): ReactNativeHost = mReactNativeHost
@@ -47,5 +86,37 @@ class ItundaApplication : Application(), ReactApplication {
     override fun onCreate() {
         super.onCreate()
         SoLoader.init(this, false)
+    }
+}
+
+/**
+ * Downloads a JS bundle from a CDN URL and caches it to a real file
+ * `ReactNativeHost.getJSBundleFile()` can return a path to -- the actual "dynamic
+ * bundle loading from a CDN" mechanism, not just a config flag. Real `OkHttpClient`
+ * (already a dependency, used elsewhere in this app), not a stub. Returns `null` on
+ * any failure so the caller falls back to the packaged asset rather than crashing a
+ * money-adjacent app over a bundle-fetch failure -- same "never let this kind of
+ * failure block the user" discipline as `ProviderConnector`/`EventPublisher`
+ * elsewhere in this session's backend work.
+ */
+private object MiniAppBundleDownloader {
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .build()
+
+    fun downloadAndCache(context: Application, url: String): String? {
+        return try {
+            val request = Request.Builder().url(url).build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return null
+                val body = response.body ?: return null
+                val cacheFile = File(context.cacheDir, "miniapp-bundle.js")
+                cacheFile.outputStream().use { out -> body.byteStream().copyTo(out) }
+                cacheFile.absolutePath
+            }
+        } catch (e: Exception) {
+            null
+        }
     }
 }
