@@ -1,5 +1,6 @@
 import SwiftUI
 import FeatureBanking
+import FeaturePayments
 
 // Tab labels renamed (2026-07-11) to match android/app/.../ItundaAppScreen.kt's
 // established taxonomy exactly: Home/Benefits/Shop/Pay/All -- this file previously
@@ -88,19 +89,37 @@ struct DiscoverScreen: View {
 }
 
 struct PayScreen: View {
+    // Wires the real, ported TransferQuoteScreen (ios/Features/Payments/
+    // Sources/TransferScreen.swift) in for the first time -- it had zero call
+    // sites anywhere in ios/ despite being real code with a working biometric
+    // confirm gate (docs/ARCHITECTURE.md §3's "BankView wired in" note names
+    // this same pattern for BankView; this is the same fix for
+    // TransferQuoteScreen). No real backend session exists on iOS yet (no
+    // login flow -- same honest caveat android/features/payments/impl/
+    // TransferFlow.kt's own header states for Android), so recipient/amount/
+    // fee are UI-only placeholder state, not a real quote.
+    @State private var selectedMerchant: String?
+    @State private var showTransferSheet = false
+
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
                 HeaderTitle(title: "Itunda Pay")
                 CardItem(title: "Pay Balance", value: "32,050 RWF", buttonText: "Scan QR / Barcode", buttonColor: .blue)
-                
+
                 VStack(alignment: .leading, spacing: 0) {
                     Text("Nearby Merchants")
                         .font(.system(size: 18, weight: .bold))
                         .padding(.horizontal, 24)
                         .padding(.bottom, 16)
-                    TransactionRow(title: "Kigali Heights", date: "1.2 km away", amount: "Pay with QR", isNegative: false)
-                    TransactionRow(title: "Brioche Cafe", date: "2.0 km away", amount: "Pay with QR", isNegative: false)
+                    TransactionRow(title: "Kigali Heights", date: "1.2 km away", amount: "Pay with QR", isNegative: false) {
+                        selectedMerchant = "Kigali Heights"
+                        showTransferSheet = true
+                    }
+                    TransactionRow(title: "Brioche Cafe", date: "2.0 km away", amount: "Pay with QR", isNegative: false) {
+                        selectedMerchant = "Brioche Cafe"
+                        showTransferSheet = true
+                    }
                 }
                 .padding(.vertical, 24)
                 .background(Color(.secondarySystemGroupedBackground))
@@ -110,6 +129,15 @@ struct PayScreen: View {
             .padding(.top, 24)
         }
         .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
+        .sheet(isPresented: $showTransferSheet) {
+            TransferQuoteScreen(
+                recipientName: selectedMerchant ?? "Merchant",
+                amount: "2,000",
+                fee: "0",
+                onConfirm: { showTransferSheet = false },
+                onCancel: { showTransferSheet = false }
+            )
+        }
     }
 }
 
@@ -183,13 +211,16 @@ struct TransactionRow: View {
     let date: String
     let amount: String
     let isNegative: Bool
-    
+    // Optional so a read-only usage (a past transaction, say) doesn't need to pass a
+    // no-op closure -- PayScreen's merchant rows are the first real, tappable usage.
+    var action: (() -> Void)? = nil
+
     var body: some View {
-        HStack {
+        let content = HStack {
             Circle()
                 .fill(Color.secondary.opacity(0.2))
                 .frame(width: 40, height: 40)
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.system(size: 16, weight: .semibold))
@@ -205,6 +236,13 @@ struct TransactionRow: View {
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 12)
+
+        if let action {
+            Button(action: action) { content }
+                .buttonStyle(.plain)
+        } else {
+            content
+        }
     }
 }
 

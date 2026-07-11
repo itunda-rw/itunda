@@ -372,9 +372,12 @@ High priority:
   limitation in this toolchain, confirmed present in the file before this change
   too) — not build-verified for the usual no-Xcode-in-this-environment reason (§3),
   so the cross-module `import FeatureBanking` resolution itself is unverified.
-  Screen/navigation taxonomy for the other 4 tabs (Benefits/Shop/Pay/All still use
-  `ContentView.swift`'s own crude inline screens, not the other ported feature
-  modules) remains open.
+  **`TransferQuoteScreen` wired too, same pass:** also found with zero call sites —
+  its own internal biometric-confirm wiring (an earlier fix this session) was real
+  but unreachable, since the screen containing it was never shown anywhere. `Pay`
+  tab's two merchant rows now open it in a `.sheet` on tap. Screen/navigation
+  taxonomy for the rest of the tabs (Benefits/Shop/All still use `ContentView.swift`'s
+  own crude inline screens, not the other ported feature modules) remains open.
 - Convert architecture docs from aspirational service lists to implemented/target
   sections. **Done, ongoing practice** — see `docs/ARCHITECTURE.md`'s real/demo/stub
   table, kept current as of every fix this document's own dated notes describe.
