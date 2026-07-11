@@ -285,8 +285,13 @@ private fun HomeTab(viewModel: MainViewModel, onSend: () -> Unit) {
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 20.dp, top = 14.dp, end = 20.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        // top/bottom kept as their own literal values, not forced into
+        // screenVertical/sectionGap -- they're genuinely different from the other
+        // 4 tabs' uniform vertical padding, and TdsLayout.kt's own header explains
+        // why this pass doesn't force every value into a token that doesn't
+        // actually fit.
+        contentPadding = PaddingValues(start = Tds.layout.screenHorizontal, top = 14.dp, end = Tds.layout.screenHorizontal, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)
     ) {
         item { HomeTopBar() }
         item { WalletHeroCard(balanceText, onSend) }
@@ -356,7 +361,7 @@ private fun HomeTopBar() {
 private fun TopIconButton(icon: androidx.compose.ui.graphics.vector.ImageVector, contentDescription: String) {
     Box(
         modifier = Modifier
-            .size(48.dp)
+            .size(Tds.layout.minTouchTarget)
             .clip(CircleShape)
             .background(TossCardSoft),
         contentAlignment = Alignment.Center
@@ -521,8 +526,8 @@ private fun BenefitsTab() {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
+        verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)
     ) {
         item { PlainTopBar("Benefits") }
         item { PromoBannerCard() }
@@ -537,8 +542,8 @@ private fun ShopTab(viewModel: MainViewModel) {
     val discoverItems by viewModel.discoverItems.collectAsState()
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
+        verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)
     ) {
         item { ShopTopBar() }
         item { CategoryTabsRow(listOf("Home", "Categories", "Cycling", "Deals", "Summer food")) }
@@ -562,8 +567,8 @@ private fun ShopTab(viewModel: MainViewModel) {
 @Composable
 private fun PayTab() {
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
+        verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)
     ) {
         item { PayTopBar() }
         item { MapPlaceholder() }
@@ -579,8 +584,8 @@ private fun PayTab() {
 private fun AllTab() {
     val context = androidx.compose.ui.platform.LocalContext.current
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
+        verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)
     ) {
         item { AllTopBar() }
         item { SearchBar("Search") }
@@ -818,7 +823,7 @@ private fun PlainTopBar(title: String) {
 
 @Composable
 private fun PromoBannerCard() {
-    Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFF5D2FE6))) {
+    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Color(0xFF5D2FE6))) {
         Box(modifier = Modifier.fillMaxWidth().height(220.dp).padding(20.dp)) {
             Column {
                 Text(
@@ -856,7 +861,7 @@ private fun PointPill(label: String) {
 
 @Composable
 private fun BenefitsVisitCard() {
-    Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = TossCard)) {
+    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard)) {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Text("Visit 3 of 4 services and earn points", color = TossText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             listOf(
@@ -880,7 +885,7 @@ private fun BenefitsVisitCard() {
 
 @Composable
 private fun CashbackChanceCard() {
-    Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = TossCard)) {
+    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard)) {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(
                 "🍀 3 chances to get money back",
@@ -945,7 +950,7 @@ private fun CategoryTabsRow(tabs: List<String>) {
 
 @Composable
 private fun ShopPromoCard() {
-    Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFFDDEFFC))) {
+    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Color(0xFFDDEFFC))) {
         Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
             Text("10,000 RWF early-bird", color = Color(0xFFE25A61), fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
@@ -956,7 +961,7 @@ private fun ShopPromoCard() {
 
 @Composable
 private fun PointActionsCard() {
-    Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = TossBackground)) {
+    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossBackground)) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text("Points and coupon tasks", color = TossText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
@@ -995,7 +1000,7 @@ private fun PayTopBar() {
 
 @Composable
 private fun MapPlaceholder() {
-    Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFFEFE4D7))) {
+    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Color(0xFFEFE4D7))) {
         Box(modifier = Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.BottomCenter) {
             Box(modifier = Modifier.padding(bottom = 18.dp).clip(RoundedCornerShape(20.dp)).background(Color(0xFF202228)).padding(horizontal = 20.dp, vertical = 10.dp)) {
                 Text("5 nearby stores", color = TossText, fontWeight = FontWeight.Bold)
@@ -1006,7 +1011,7 @@ private fun MapPlaceholder() {
 
 @Composable
 private fun PayFeatureCard() {
-    Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = TossCard)) {
+    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard)) {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(TossChip), contentAlignment = Alignment.Center) {

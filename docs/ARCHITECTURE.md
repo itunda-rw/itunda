@@ -334,6 +334,27 @@ In priority order, each item closes a specific gap identified above:
    `Tds.colors`' light values already independently converged with real TDS hex values twice
    (`TdsColors` and the old `IDS.Colors`); this item is about the rest of the token surface
    (spacing scale, elevation, component shapes) matching the real documented TDS, not just colors.
+   **Partially done (2026-07-11):** re-checked `docs/TOSS_ARCHITECTURE_FACTS.md`/
+   `docs/FACT_CHECKED_TOSS_RWANDA_MAP.md` for a real, sourced TDS spacing/elevation spec to
+   port from — there isn't one; TDS's spacing/elevation values were never publicly documented
+   the way its colors were, so filling this in with invented numbers dressed up as "sourced"
+   would be worse than leaving it open. What *was* real and fixable: Android's design system
+   had `TdsColors`/`TdsSemanticColors`/`TdsTypography` but no spacing/shape layer at all —
+   every screen used raw `.dp` literals directly, unlike iOS's `IDS.Layout` (added earlier
+   this session), a real asymmetry between the two platforms' design systems. New
+   `TdsLayout.kt` (`core/designsystem/theme/`), exposed as `Tds.layout.*` matching `Tds.colors`'
+   existing access pattern — values are Android's own real, already-established norms, audited
+   from `ItundaAppScreen.kt`'s actual usage frequency (`20.dp`/`16.dp` screen padding at 4
+   identical call sites, `24.dp` the single most common card corner radius at 7 occurrences),
+   not invented, and deliberately not forced to match iOS's `IDS.Layout` numbers where the two
+   platforms' real, shipped values don't actually agree. Wired the highest-value, safest,
+   most-repeated call sites (all 5 tabs' screen-level padding, all 7 `24.dp` card corner
+   radii, `TopIconButton`'s touch target) — same literal values throughout, a pure
+   extract-to-named-constant refactor with zero visual change by construction, not a full
+   sweep of every remaining magic number in that file (real, separate, larger follow-up).
+   Verified: `:app:assembleDebug` → `BUILD SUCCESSFUL`. Not live-verified on-device — the
+   real "andros" emulator was under genuine, checked (`top`) resource strain (83%+ sys CPU)
+   at the time, the same constraint noted elsewhere in this document.
 7. ~~Consolidate `infrastructure/k8s` and `infrastructure/kubernetes` into one
    directory.~~ **Already done, discovered stale (2026-07-11):** the 2026-07-10
    restructure (§5) already folded both into today's single `infra/k8s/` — confirmed

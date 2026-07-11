@@ -96,4 +96,8 @@ val LocalTdsSemanticColors = staticCompositionLocalOf { TdsLightSemanticColors }
 object Tds {
     val colors: TdsSemanticColors
         @Composable get() = LocalTdsSemanticColors.current
+
+    // Added 2026-07-11 -- see TdsLayout.kt's own header for the full reasoning.
+    val layout: TdsLayout
+        get() = TdsLayout
 }
