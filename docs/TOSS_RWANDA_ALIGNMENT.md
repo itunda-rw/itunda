@@ -425,7 +425,17 @@ Medium priority:
   the only form field in the Android app (`RecipientEntryScreen`'s account-number
   `BasicTextField`) had no accessible label at all — fixed with a real
   `contentDescription`; the numeric keypad's `DEL` key (a bare `"⌫"` glyph) got one
-  too. Only focus order and Dynamic Type/font scaling remain open — not started.
+  too. **Dynamic Type audited and fixed (2026-07-11):** Android was already correct
+  (every `fontSize` uses the scalable `.sp` unit, no `.dp`, no `fontScale`
+  override). iOS was genuinely broken — `IDS.Typography`/`TdsTypography` (the app's
+  only typography tokens) and 5 more inline calls in `BankView.swift` all used
+  fixed-size `Font.system(size:weight:)`, ignoring the user's iOS text-size
+  accessibility setting entirely. 19 real instances found and fixed via a new,
+  shared `IDS.scaledFont` helper wrapping `UIFontMetrics` (Apple's documented
+  pattern for this exact case). Only focus order remains open — genuinely blocked,
+  no live TalkBack/VoiceOver access in this environment (confirmed via grep that
+  neither codebase does any explicit focus-order manipulation, so there's nothing
+  further a static check can tell us).
 - ~~Add test coverage around fallback demo behavior.~~ **Done for every module that
   moves money or authenticates (2026-07-11):** `LedgerServiceTest.kt` (pre-existing) plus
   new `AuthServiceTest.kt`, `WalletServiceTest.kt`, `MerchantServiceTest.kt`,

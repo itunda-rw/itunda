@@ -1,6 +1,17 @@
 import SwiftUI
+import UIKit
 import FeatureBanking
 import FeaturePayments
+
+// Fixed (2026-07-11): every Text() in this file used .font(.system(size:weight:)) --
+// a fixed point size that doesn't grow or shrink with iOS's Dynamic Type
+// accessibility setting. Same bug, same fix as CoreDesignSystem's IDS.swift/
+// TdsTheme.swift (see IDS.swift's Typography struct for the full reasoning) --
+// this file doesn't import CoreDesignSystem for anything else today, so a small
+// local helper avoids adding a new cross-module dependency just for this.
+private func scaledFont(size: CGFloat, weight: UIFont.Weight, relativeTo style: UIFont.TextStyle) -> Font {
+    Font(UIFontMetrics(forTextStyle: style).scaledFont(for: UIFont.systemFont(ofSize: size, weight: weight)))
+}
 
 // Tab labels renamed (2026-07-11) to match android/app/.../ItundaAppScreen.kt's
 // established taxonomy exactly: Home/Benefits/Shop/Pay/All -- this file previously
@@ -109,7 +120,7 @@ struct PayScreen: View {
 
                 VStack(alignment: .leading, spacing: 0) {
                     Text("Nearby Merchants")
-                        .font(.system(size: 18, weight: .bold))
+                        .font(scaledFont(size: 18, weight: .bold, relativeTo: .headline))
                         .padding(.horizontal, 24)
                         .padding(.bottom, 16)
                     TransactionRow(title: "Kigali Heights", date: "1.2 km away", amount: "Pay with QR", isNegative: false) {
@@ -161,7 +172,7 @@ struct HeaderTitle: View {
     var body: some View {
         HStack {
             Text(title)
-                .font(.system(size: 28, weight: .bold))
+                .font(scaledFont(size: 28, weight: .bold, relativeTo: .largeTitle))
                 .foregroundColor(.primary)
             Spacer()
             Image(systemName: "bell.fill")
@@ -182,16 +193,16 @@ struct CardItem: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(title)
-                .font(.system(size: 14, weight: .semibold))
+                .font(scaledFont(size: 14, weight: .semibold, relativeTo: .footnote))
                 .foregroundColor(.secondary)
-            
+
             Text(value)
-                .font(.system(size: 22, weight: .bold))
+                .font(scaledFont(size: 22, weight: .bold, relativeTo: .title1))
                 .foregroundColor(.primary)
-            
+
             Button(action: {}) {
                 Text(buttonText)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(scaledFont(size: 16, weight: .semibold, relativeTo: .body))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                     .background(buttonColor)
@@ -223,15 +234,15 @@ struct TransactionRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(scaledFont(size: 16, weight: .semibold, relativeTo: .body))
                     .foregroundColor(.primary)
                 Text(date)
-                    .font(.system(size: 14))
+                    .font(scaledFont(size: 14, weight: .regular, relativeTo: .footnote))
                     .foregroundColor(.secondary)
             }
             Spacer()
             Text(amount)
-                .font(.system(size: 16, weight: .bold))
+                .font(scaledFont(size: 16, weight: .bold, relativeTo: .body))
                 .foregroundColor(isNegative ? .primary : .blue)
         }
         .padding(.horizontal, 24)

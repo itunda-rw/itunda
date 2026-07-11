@@ -90,7 +90,7 @@ private struct TopBarActionButton: View {
     var body: some View {
         Button(action: {}) {
             Image(systemName: symbol)
-                .font(.system(size: 18, weight: .medium))
+                .font(IDS.scaledFont(size: 18, weight: .medium, relativeTo: .body))
                 .foregroundColor(IDS.Colors.iconPrimary)
                 .frame(width: IDS.Layout.topBarActionSize, height: IDS.Layout.topBarActionSize)
                 .background(IDS.Colors.backgroundSecondary)
@@ -126,7 +126,7 @@ private struct AccountSummaryCard: View {
                     .foregroundColor(IDS.Colors.textBrand)
                 Image(systemName: "chevron.right")
                     .foregroundColor(IDS.Colors.textBrand)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(IDS.scaledFont(size: 13, weight: .semibold, relativeTo: .footnote))
             }
             .padding(.horizontal, IDS.Layout.cardPadding)
             .padding(.vertical, IDS.Layout.inlineGap)
@@ -173,7 +173,7 @@ private struct QuickActionsRow: View {
             ForEach(actions, id: \.0) { action in
                 VStack(spacing: IDS.Layout.tightGap) {
                     Image(systemName: action.1)
-                        .font(.system(size: 20, weight: .medium))
+                        .font(IDS.scaledFont(size: 20, weight: .medium, relativeTo: .body))
                         .foregroundColor(IDS.Colors.iconPrimary)
                         .frame(width: IDS.Layout.quickActionIconSize, height: IDS.Layout.quickActionIconSize)
                         .background(action.2)
@@ -231,7 +231,7 @@ private struct CompactListRow: View {
     var body: some View {
         HStack(spacing: IDS.Layout.inlineGap) {
             Image(systemName: row.symbol)
-                .font(.system(size: 19, weight: .medium))
+                .font(IDS.scaledFont(size: 19, weight: .medium, relativeTo: .body))
                 .foregroundColor(IDS.Colors.iconPrimary)
                 .frame(width: IDS.Layout.rowIconSize, height: IDS.Layout.rowIconSize)
                 .background(row.iconBackground)
@@ -253,7 +253,7 @@ private struct CompactListRow: View {
                     .font(IDS.Typography.bodyMedium)
                     .foregroundColor(IDS.Colors.textSecondary)
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(IDS.scaledFont(size: 12, weight: .semibold, relativeTo: .caption1))
                     .foregroundColor(IDS.Colors.textTertiary)
             }
         }

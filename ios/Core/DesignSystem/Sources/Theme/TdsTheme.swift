@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Toss-Style Color System -- the primitive/raw brand palette (Blue500, Gray900, ...).
 /// Deliberately static, not theme-reactive: see IDS.swift's header comment for the
@@ -39,11 +40,17 @@ extension Color {
 }
 
 /// Toss-Style Typography (SwiftUI ViewModifiers)
+///
+/// Fixed (2026-07-11): every entry here used to be a plain Font.system(size:weight:
+/// design:) -- a fixed point size that does not scale with iOS's Dynamic Type
+/// accessibility setting. Reuses `IDS.scaledFont` (same module, `Core/DesignSystem/
+/// Sources/IDS.swift`) rather than a second copy of the same helper -- see its doc
+/// comment for the full reasoning. No call site needed to change.
 public struct TdsTypography {
-    public static let title1 = Font.system(size: 24, weight: .bold, design: .default)
-    public static let title2 = Font.system(size: 20, weight: .bold, design: .default)
-    public static let subtitle1 = Font.system(size: 17, weight: .semibold, design: .default)
-    public static let body1 = Font.system(size: 15, weight: .regular, design: .default)
-    public static let body2 = Font.system(size: 13, weight: .regular, design: .default)
-    public static let button = Font.system(size: 16, weight: .semibold, design: .default)
+    public static let title1 = IDS.scaledFont(size: 24, weight: .bold, relativeTo: .title1)
+    public static let title2 = IDS.scaledFont(size: 20, weight: .bold, relativeTo: .title2)
+    public static let subtitle1 = IDS.scaledFont(size: 17, weight: .semibold, relativeTo: .subheadline)
+    public static let body1 = IDS.scaledFont(size: 15, weight: .regular, relativeTo: .subheadline)
+    public static let body2 = IDS.scaledFont(size: 13, weight: .regular, relativeTo: .caption1)
+    public static let button = IDS.scaledFont(size: 16, weight: .semibold, relativeTo: .body)
 }

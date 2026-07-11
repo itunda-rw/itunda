@@ -174,13 +174,62 @@ iOS has no equivalent audit yet — `AgreementWidget.swift`/
 already checked there; no `TextField`/`SecureField` usage exists elsewhere in
 `ios/` today.
 
-## 5. Not yet audited (open)
+## 5. Dynamic Type / font scaling (2026-07-11)
 
-- **Focus order** (Compose semantics traversal order / SwiftUI focus order) — not
-  started this pass. Requires either a live TalkBack/VoiceOver run or Compose's
+Unlike focus order (needs a live TalkBack/VoiceOver run), this is fully checkable
+statically — grepped every font-size declaration on both platforms.
+
+**Android:** every `fontSize = N.sp` usage in `ItundaAppScreen.kt` and
+`TransferFlow.kt` (the two files with real text) already uses `.sp`, the scalable
+unit Compose uses to auto-scale with the system font-size accessibility setting —
+zero uses of `.dp` for text size (a real bug on Android, since `.dp` never scales),
+and no `LocalDensity`/`fontScale` override anywhere that would disable scaling.
+Android was already correct; nothing to fix.
+
+**iOS:** genuinely broken, and fixed. `IDS.Typography` (`Core/DesignSystem/Sources/
+IDS.swift`) and `TdsTypography` (`.../Theme/TdsTheme.swift`) — the app's only two
+typography token sets — used `Font.system(size:weight:)` throughout, a fixed point
+size that does not respond to iOS Settings → Accessibility → Display & Text Size →
+Larger Text at all, unlike semantic styles (`.title`, `.body`). A further sweep
+found 5 more raw `Font.system(size:weight:)` calls directly in `BankView.swift`
+(on `Image(systemName:)` SF Symbols, not just `Text()`), bypassing the token
+system entirely. **14 typography constants + 5 inline icon fonts, 19 total, all
+fixed:**
+- Added `IDS.scaledFont(size:weight:relativeTo:)`, wrapping
+  `UIFontMetrics(forTextStyle:).scaledFont(for:)` — Apple's documented pattern for
+  "keep this exact point size at the default content size category, but still
+  scale with Dynamic Type," the right fix when a design calls for a specific size
+  that doesn't map onto a built-in text style.
+- `IDS.Typography` and `TdsTypography` both now build every constant through this
+  one shared helper (`TdsTypography` reuses `IDS.scaledFont` directly — same
+  module, no duplicate implementation).
+- `BankView.swift`'s 5 inline icon fonts converted to `IDS.scaledFont` calls too
+  (it already imports `CoreDesignSystem`).
+- `ContentView.swift` (the app's real `@main`-reachable entry point, still not
+  wired to `CoreDesignSystem` — see `ARCHITECTURE.md` §3) had 8 of its own,
+  separate raw `Font.system(size:weight:)` calls, since its Benefits/Shop/All tabs
+  don't use the shared design system yet. Rather than adding a new
+  `CoreDesignSystem` dependency edge to `Project.swift` just for this, added a
+  small local `scaledFont` helper (same implementation, self-contained) and
+  converted all 8.
+- No call sites needed to change beyond the font declarations themselves — every
+  existing `IDS.Typography.header`/`TdsTypography.title1`/etc. reference keeps
+  working exactly as before, it just scales now.
+
+Not build-verified — no Xcode/simulator in this environment to confirm the actual
+runtime scaling behavior, same caveat as the rest of `ios/`. `UIFontMetrics` is
+real, documented UIKit API (not invented), and every file compiles under
+`swift -frontend -parse`, but the scaling itself is unverified here.
+
+## 6. Not yet audited (open)
+
+- **Focus order** (Compose semantics traversal order / SwiftUI focus order) — the
+  one item in this whole audit that has no static-analysis path: there is no
+  explicit focus-order manipulation anywhere in either codebase (grepped for it —
+  none found), so the default traversal order applies, but confirming that order
+  is actually correct requires a live TalkBack/VoiceOver run or Compose's
   `testTag`-based semantics tree inspection, neither available in this
   environment.
-- **Dynamic Type / font scaling** — not checked on either platform.
 
 ## Status
 
@@ -190,4 +239,6 @@ content-description/label checks are done (2 real color-contrast defects documen
 above, left open pending a design-system-level fix; all content-description/label
 bugs found were fixed), touch-target sizing is checked and the one real gap found
 (Android's `TopIconButton`) is fixed, form labels are audited and both bugs found
-are fixed. Only focus order and Dynamic Type/font scaling remain open.
+are fixed, Dynamic Type/font scaling is audited and all 19 real bugs found (all on
+iOS) are fixed. Only focus order remains open, genuinely blocked on live
+device/simulator access this environment doesn't have.

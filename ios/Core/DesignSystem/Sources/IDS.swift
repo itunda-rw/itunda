@@ -56,6 +56,26 @@ private extension UIColor {
 }
 
 public struct IDS {
+    // Fixed (2026-07-11): every font constant below Typography (and TdsTypography in
+    // Theme/TdsTheme.swift, and every consumer that had its own inline
+    // Font.system(size:weight:) call, e.g. FeatureBanking's BankView.swift) used to be
+    // a plain Font.system(size:weight:) -- a fixed point size that does not grow or
+    // shrink with the user's iOS Settings > Accessibility > Display & Text Size >
+    // Larger Text setting (Dynamic Type), unlike semantic styles such as .title/.body.
+    // This wraps UIFontMetrics.scaledFont(for:), Apple's documented pattern for "keep
+    // this exact point size at the default content size category, but still scale
+    // with Dynamic Type" -- the right fix when a design calls for a specific size that
+    // doesn't map onto a built-in text style, rather than switching to .title/.body
+    // and losing the design's actual type scale. Public (not private to Typography)
+    // so every consumer with the same problem can share one implementation instead of
+    // each defining its own copy. Not build-verified for the usual
+    // no-Xcode-in-this-environment reason (see this file's own header) -- UIFontMetrics
+    // is real UIKit API, not invented, but the runtime scaling behavior itself is
+    // unverified here.
+    public static func scaledFont(size: CGFloat, weight: UIFont.Weight, relativeTo style: UIFont.TextStyle) -> Font {
+        Font(UIFontMetrics(forTextStyle: style).scaledFont(for: UIFont.systemFont(ofSize: size, weight: weight)))
+    }
+
     public struct Colors {
         public static let brand = Color(light: 0x3182F6, dark: 0x4C8FFF)
         public static let backgroundPrimary = Color(light: 0xF2F4F6, dark: 0x000000)
@@ -89,15 +109,21 @@ public struct IDS {
         public static let positiveBackground = successTint
     }
 
+    // Fixed (2026-07-11): every entry here used to be a plain Font.system(size:weight:)
+    // with no Dynamic Type scaling -- see IDS.scaledFont's own doc comment above for
+    // the full reasoning. No call site needed to change -- every existing
+    // `IDS.Typography.header` etc. reference keeps working, it just scales now.
     public struct Typography {
-        public static let header = Font.system(size: 30, weight: .bold)
-        public static let title = Font.system(size: 22, weight: .bold)
-        public static let sectionLabel = Font.system(size: 15, weight: .semibold)
-        public static let bodyBold = Font.system(size: 17, weight: .bold)
-        public static let bodyMedium = Font.system(size: 15, weight: .medium)
-        public static let caption = Font.system(size: 13, weight: .medium)
-        public static let largeAmount = Font.system(size: 34, weight: .bold)
-        public static let metric = Font.system(size: 20, weight: .bold)
+        // Explicitly qualified with `IDS.` -- a nested type's static members can't
+        // reliably rely on unqualified lookup to reach the enclosing type's members.
+        public static let header = IDS.scaledFont(size: 30, weight: .bold, relativeTo: .largeTitle)
+        public static let title = IDS.scaledFont(size: 22, weight: .bold, relativeTo: .title1)
+        public static let sectionLabel = IDS.scaledFont(size: 15, weight: .semibold, relativeTo: .subheadline)
+        public static let bodyBold = IDS.scaledFont(size: 17, weight: .bold, relativeTo: .body)
+        public static let bodyMedium = IDS.scaledFont(size: 15, weight: .medium, relativeTo: .subheadline)
+        public static let caption = IDS.scaledFont(size: 13, weight: .medium, relativeTo: .caption1)
+        public static let largeAmount = IDS.scaledFont(size: 34, weight: .bold, relativeTo: .largeTitle)
+        public static let metric = IDS.scaledFont(size: 20, weight: .bold, relativeTo: .title2)
     }
 
     public struct Layout {
