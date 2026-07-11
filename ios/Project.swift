@@ -1,10 +1,25 @@
+import Foundation
 import ProjectDescription
 
 func makeMicroFeature(
     name: String,
     dependencies: [TargetDependency] = []
 ) -> [Target] {
-    return [
+    // Fixed (2026-07-11): a real `xcodebuild` run against the `Itunda-Workspace`
+    // aggregate scheme found every Feature*Example target fails to link ("entry
+    // point (_main) undefined") except Banking/Payments -- each is declared as a
+    // runnable .app product below, but 7 of 9 feature modules only have a
+    // placeholder Dummy.swift in Example/Sources/, with no real @main. Rather than
+    // hand-maintain a list that can drift from reality, check the filesystem for
+    // real content (more than a lone Dummy.swift) the same way this manifest
+    // already declares `sources:` globs against the real directory tree --
+    // Tuist manifests are just Swift code the tuist binary evaluates, so this is a
+    // real filesystem check at generate time, not a guess.
+    let exampleSourcesDir = "Features/\(name)/Example/Sources"
+    let exampleFiles = (try? FileManager.default.contentsOfDirectory(atPath: exampleSourcesDir)) ?? []
+    let hasRealExampleContent = exampleFiles.contains { $0 != "Dummy.swift" }
+
+    var targets: [Target] = [
         Target(
             name: "Feature\(name)Interface",
             platform: .iOS,
@@ -48,19 +63,26 @@ func makeMicroFeature(
                 .target(name: "Feature\(name)Testing")
             ]
         ),
-        Target(
-            name: "Feature\(name)Example",
-            platform: .iOS,
-            product: .app,
-            bundleId: "rw.itunda.feature.\(name.lowercased()).example",
-            infoPlist: .default,
-            sources: ["Features/\(name)/Example/Sources/**"],
-            dependencies: [
-                .target(name: "Feature\(name)"),
-                .target(name: "Feature\(name)Testing")
-            ]
-        )
     ]
+
+    if hasRealExampleContent {
+        targets.append(
+            Target(
+                name: "Feature\(name)Example",
+                platform: .iOS,
+                product: .app,
+                bundleId: "rw.itunda.feature.\(name.lowercased()).example",
+                infoPlist: .default,
+                sources: ["Features/\(name)/Example/Sources/**"],
+                dependencies: [
+                    .target(name: "Feature\(name)"),
+                    .target(name: "Feature\(name)Testing")
+                ]
+            )
+        )
+    }
+
+    return targets
 }
 
 var allTargets: [Target] = []
