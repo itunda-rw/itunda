@@ -245,7 +245,13 @@ Use events for cross-context workflows:
   (new method), not `publishAfterCommit` — the enclosing `@Transactional` method
   rolls back right after this fires, so an afterCommit hook would never run for it.
 - `ledger.posted` — **real (2026-07-11):** `services/backend`'s `LedgerService` publishes
-  this to Kafka after every successful ledger post (see `docs/ARCHITECTURE.md` §1).
+  this to Kafka after every successful ledger post (see `docs/ARCHITECTURE.md` §1). **All
+  four events upgraded to a real transactional outbox, same day:** `EventPublisher` used to
+  publish directly to Kafka from an `afterCommit` callback (correct timing, but dropped on
+  a Kafka outage). Now writes a real, durable outbox row instead, and a new `OutboxRelay`
+  polls and publishes them — real at-least-once delivery. Verified: full backend build and
+  test suite (70/70, 0 failures) pass; the new migration is confirmed bundled in the
+  runnable jar.
 - The rest of this list (`settlement.batch_created` onward) is still purely a target,
   not emitted anywhere — no real settlement/fraud/reconciliation/reward code exists yet
   to publish from.

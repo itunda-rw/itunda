@@ -48,19 +48,29 @@ scattered across duplicate trees. This document's job is to say which fragment i
 **Decision this implies:** `services/backend` is the backend with the most product-surface
 coverage today and stays the default for new feature work, but `services/microservices`
 should **not** be deleted or treated as dead — it's the shape Toss's real MSA split actually
-looks like (facts doc §1), just with far less feature coverage. Reconciling the two (eventually
-splitting `services/backend`'s bounded contexts out into independently-deployable services matching
-`ledger-service`/`payment-service`'s pattern) is real future work, not a cleanup task.
+looks like (facts doc §1), just with far less feature coverage. **Reconciliation decided and
+acted on (2026-07-11) — see backlog item 3 below for the full comparison and reasoning:**
+rather than splitting `backend`'s 13 domains out to match `microservices`' 2, the validated
+pattern (transactional outbox) was ported forward into `backend` instead, completed further
+than the original even had it (a real relay, not just durable-but-unrelayed rows).
+`services/microservices` stays as real, buildable reference code — not deleted, just not the
+direction this backend grows in.
 **`ledger.posted` wired (2026-07-11):** `services/backend` now publishes a real `ledger.posted`
 Kafka event from `LedgerService.postLedgerTransaction` — the one choke-point every money-moving
 flow already goes through (transfers, bills, loans, savings, stocks, insurance, merchant
 collection), so this single change covers all of them without touching each individual service.
-New `core/.../events/EventPublisher.kt` publishes only *after* the enclosing transaction commits
-(`TransactionSynchronizationManager.afterCommit`), not mid-transaction — publishing an event for a
-row that then rolled back would be worse than not publishing at all. Honestly labeled as a lighter
-pattern than a true transactional outbox (which `ledger-service` uses for real, via an
-`OutboxEventEntity` + Debezium CDC): if Kafka is unreachable at commit time, the event is logged
-and dropped, not retried. Ledger correctness never depends on this succeeding.
+New `core/.../events/EventPublisher.kt` originally published only *after* the enclosing transaction
+committed (`TransactionSynchronizationManager.afterCommit`), not mid-transaction — publishing an
+event for a row that then rolled back would be worse than not publishing at all. Honestly labeled
+at the time as a lighter pattern than a true transactional outbox (which `ledger-service` was
+believed to use for real, via an `OutboxEventEntity` + Debezium CDC): if Kafka was unreachable at
+commit time, the event was logged and dropped, not retried. **Upgraded to a real, complete
+transactional outbox (2026-07-11) — see backlog item 3 below for the full account:** on closer
+inspection `ledger-service`'s own outbox was *also* incomplete (writes rows, never relays them,
+no Debezium/CDC config exists anywhere in this repo) — `EventPublisher` now writes real outbox
+rows and a new `OutboxRelay` actually polls and publishes them, going further than the pattern it
+was originally modeled on. Ledger correctness still never depends on this succeeding — a relay
+failure is retried on the next poll, not thrown back into the money-moving call path.
 **`transfer.confirmed`/`payment.provider_succeeded` added (2026-07-11):** the per-flow
 instrumentation this pass originally left open — `WalletService.confirmTransfer` publishes
 `transfer.confirmed` after saving the transaction row; `BillsService.payBill`/`buyAirtime`
@@ -243,10 +253,40 @@ In priority order, each item closes a specific gap identified above:
    to publish from. `services/backend`'s own
    `core/.../events/KafkaConfig.kt` and `services/microservices/core-libs`' `KafkaConfig.kt`
    remain separate, unreconciled Kafka configs (see §1).
-3. Reconcile `services/backend` (most feature coverage, monolith-shaped) with
+3. ~~Reconcile `services/backend` (most feature coverage, monolith-shaped) with
    `services/microservices` (less coverage, real per-service MSA shape) — decide whether
    to split backend's bounded contexts out to match, or fold the microservices' patterns
-   (outbox, hexagonal layering) into backend instead.
+   (outbox, hexagonal layering) into backend instead.~~ **Decided and acted on
+   (2026-07-11):** compared both codebases directly rather than leaving this as an open
+   question indefinitely. `services/microservices` covers exactly 2 of `backend`'s 13
+   real domains (`ledger-service`, `payment-service`) — real hexagonal layering, but on
+   inspection its own transactional-outbox pattern is *also* incomplete: it writes
+   `OutboxEvent` rows durably (the real half) but nothing in that codebase ever reads
+   and relays them to Kafka, and no Debezium/CDC connector config exists anywhere in
+   this repo despite that being named as the intended mechanism. Splitting `backend`'s
+   11 additional domains out to match `microservices`' shape would mean rebuilding
+   real, tested, working feature coverage as a second implementation for no functional
+   gain. **Recommendation: keep `services/backend` as the one canonical backend; port
+   the *validated pattern* — not the codebase — forward.** Done, not just recommended:
+   `services/backend` now has its own real, *complete* transactional outbox
+   (`core/.../events/OutboxEvent.kt`, `EventPublisher.kt` rewritten to write outbox
+   rows instead of best-effort direct Kafka sends, new `OutboxRelay.kt` polling and
+   publishing them, `V3__outbox.sql`) — going one step further than
+   `microservices/ledger-service`'s own incomplete version by actually finishing the
+   relay half. `publishAfterCommit` writes within the caller's own transaction
+   (commits/rolls back atomically with the domain write, same safety property the old
+   `afterCommit`-callback approach approximated, now backed by the database instead of
+   an in-memory hook); `publishImmediately` uses `Propagation.REQUIRES_NEW` so it
+   survives the caller's rollback. No test needed to change — every test mocks
+   `EventPublisher`, none construct it directly. Verified: full backend build
+   (`:core:compileKotlin`/`:app:compileKotlin`) succeeds, the migration is confirmed
+   bundled in the runnable jar (`unzip -l app/build/libs/app.jar`), and the complete
+   test suite — every module, not just the ones touched — passes at **70/70, 0
+   failures, 0 errors** (aggregated from every module's real JUnit XML report). Not
+   runtime-verified against a live MySQL/Kafka instance, same no-Docker-daemon caveat
+   as the rest of this backend's real-but-unrun-live work. `services/microservices`
+   itself is left as-is, not deleted — it remains real, buildable, reference code,
+   just not the direction this backend grows in.
 4. ~~Build-verify the `ios/` port on a real Mac with full Xcode (this sandbox's Tuist can't
    run) and get iOS to the same "compiles and runs on-device" bar Android is now at.~~
    **Done for simulator (2026-07-11):** this *was* a real Mac with full Xcode the whole

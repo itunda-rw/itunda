@@ -4,12 +4,17 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.domain.EntityScan
 import org.springframework.boot.runApplication
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories
+import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
 
+// @EnableScheduling added 2026-07-11 for core/.../events/OutboxRelay.kt's @Scheduled
+// poller -- the second half of the real transactional outbox pattern EventPublisher
+// now writes the first half of.
 @SpringBootApplication(scanBasePackages = ["rw.itunda"])
 @EntityScan("rw.itunda.core")
 @EnableJpaRepositories("rw.itunda.core")
+@EnableScheduling
 class ItundaApplication
 
 fun main(args: Array<String>) {

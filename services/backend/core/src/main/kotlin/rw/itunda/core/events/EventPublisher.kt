@@ -1,60 +1,66 @@
 package rw.itunda.core.events
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.slf4j.LoggerFactory
-import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.stereotype.Component
-import org.springframework.transaction.support.TransactionSynchronization
-import org.springframework.transaction.support.TransactionSynchronizationManager
+import org.springframework.transaction.annotation.Propagation
+import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
+import java.util.UUID
 
 /**
- * Publishes domain events to Kafka only after the enclosing database transaction has
- * actually committed -- publishing mid-transaction would risk emitting an event for a
- * row that never persisted if the transaction later rolled back.
+ * Publishes domain events via a real transactional outbox (2026-07-11) -- upgraded
+ * from an earlier, honestly-lighter pattern (Kafka published directly from an
+ * `afterCommit` transaction-synchronization callback: correct about *timing*, but if
+ * Kafka was unreachable at that moment the event was logged and dropped, not
+ * retried).
  *
- * This is a lighter pattern than a true transactional outbox (which
- * services/microservices/ledger-service uses for real, via an OutboxEventEntity +
- * Debezium CDC) -- honestly labeled as such: if Kafka is unreachable at commit time,
- * the event is dropped rather than retried, unlike a real outbox's at-least-once
- * guarantee. Ledger correctness never depends on this succeeding -- publish failures
- * are logged, not thrown, so a Kafka outage can never block or roll back a real money
- * movement. Closes the gap docs/ARCHITECTURE.md's backlog names: "the event model
- * [...] is designed but not emitted anywhere yet."
+ * `services/microservices/ledger-service` already had its own `OutboxEvent`/
+ * `OutboxEventEntity` (separate table, untouched by this) — but on inspection it's
+ * also incomplete: it writes outbox rows durably (the correct half of the pattern)
+ * but nothing in that codebase ever reads and relays them to Kafka, and no
+ * Debezium/CDC connector config exists anywhere in this repo despite that being
+ * named as the intended relay mechanism. This implementation completes both halves:
+ * this class writes the row, [OutboxRelay] polls and publishes it — real
+ * at-least-once delivery, not just durable-but-unrelayed storage.
  */
 @Component
 class EventPublisher(
-    private val kafkaTemplate: KafkaTemplate<String, String>,
+    private val outboxEventRepository: OutboxEventRepository,
     private val objectMapper: ObjectMapper,
 ) {
-    private val log = LoggerFactory.getLogger(EventPublisher::class.java)
-
-    fun publishAfterCommit(topic: String, key: String, payload: Any) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            // No active transaction (e.g. called outside a @Transactional method) --
-            // publish immediately rather than silently dropping the event.
-            publishNow(topic, key, payload)
-            return
-        }
-        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
-            override fun afterCommit() = publishNow(topic, key, payload)
-        })
-    }
+    /**
+     * Writes the outbox row as part of whatever transaction the caller is already
+     * in (Spring's default `REQUIRED` propagation) — it commits or rolls back
+     * atomically with the caller's own domain write, so this row only ever exists
+     * durably if that write actually committed. That's the exact safety property
+     * the old `afterCommit`-callback approach was approximating with an in-memory
+     * hook; this gets it for real, backed by the database, and if there's no active
+     * transaction at all (e.g. called outside a `@Transactional` method), Spring
+     * Data's own per-method transaction on `save()` still commits the row on its
+     * own — no special-case branch needed either way.
+     */
+    fun publishAfterCommit(topic: String, key: String, payload: Any) = writeOutboxRow(topic, key, payload)
 
     /**
      * For events that report a fact about something *other than* the enclosing
      * transaction's own writes -- e.g. an external provider declining a payment
-     * before any ledger row is touched. [publishAfterCommit]'s afterCommit hook only
-     * fires on commit, never on rollback, so it would silently drop an event for a
-     * caller that (correctly) rolls back its transaction after catching the same
-     * failure this event is reporting. Use this instead in that situation.
+     * before any ledger row is touched. `REQUIRES_NEW` so this row commits in its
+     * own, independent transaction and survives the caller's rollback (the caller
+     * is about to roll back after catching the same failure this event reports;
+     * without `REQUIRES_NEW` this row would roll back right along with it).
      */
-    fun publishImmediately(topic: String, key: String, payload: Any) = publishNow(topic, key, payload)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    fun publishImmediately(topic: String, key: String, payload: Any) = writeOutboxRow(topic, key, payload)
 
-    private fun publishNow(topic: String, key: String, payload: Any) {
-        try {
-            kafkaTemplate.send(topic, key, objectMapper.writeValueAsString(payload))
-        } catch (e: Exception) {
-            log.warn("Failed to publish event to topic {} (key={}): {}", topic, key, e.message)
-        }
+    private fun writeOutboxRow(topic: String, key: String, payload: Any) {
+        outboxEventRepository.save(
+            OutboxEventEntity(
+                id = "outbox_${UUID.randomUUID()}",
+                topic = topic,
+                key = key,
+                payload = objectMapper.writeValueAsString(payload),
+                createdAt = Instant.now(),
+            )
+        )
     }
 }
