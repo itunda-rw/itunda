@@ -71,33 +71,10 @@ struct ContentView: View {
     }
 }
 
-struct BenefitsScreen: View {
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                HeaderTitle(title: "Benefits")
-                CardItem(title: "Daily Lucky Draw", value: "Tap to win up to 500 RWF!", buttonText: "Play Now", buttonColor: .blue)
-                CardItem(title: "Interest Jar", value: "Earned: 450 RWF", buttonText: "Claim", buttonColor: .blue)
-            }
-            .padding(.top, 24)
-        }
-        .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
-    }
-}
-
-struct DiscoverScreen: View {
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                HeaderTitle(title: "Discover")
-                CardItem(title: "Flash Deal", value: "50% off Canal+ Subscription", buttonText: "Buy Now", buttonColor: .pink)
-                CardItem(title: "Featured", value: "Order from Jumia & save 10%", buttonText: "Order", buttonColor: .orange)
-            }
-            .padding(.top, 24)
-        }
-        .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
-    }
-}
+// BenefitsScreen and DiscoverScreen (the "Shop" tab) moved to
+// BenefitsShopAllScreens.swift (2026-07-11) -- rebuilt against Android's real,
+// Toss-screenshot-verified ItundaAppScreen.kt content instead of this file's old
+// crude hardcoded-mock-data placeholders. See that file's own header for why.
 
 struct PayScreen: View {
     // Wires the real, ported TransferQuoteScreen (ios/Features/Payments/
@@ -152,20 +129,8 @@ struct PayScreen: View {
     }
 }
 
-struct EntireMenuScreen: View {
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                HeaderTitle(title: "Entire")
-                CardItem(title: "Loans", value: "Get up to 5,000,000 RWF", buttonText: "Apply", buttonColor: .blue)
-                CardItem(title: "Bills & Airtime", value: "Cashpower, Airtel, MTN", buttonText: "Pay Bills", buttonColor: .blue)
-                CardItem(title: "Irembo Services", value: "Pay government services directly", buttonText: "Access", buttonColor: .blue)
-            }
-            .padding(.top, 24)
-        }
-        .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
-    }
-}
+// EntireMenuScreen (the "All" tab) also moved to BenefitsShopAllScreens.swift
+// (2026-07-11) -- same reason as the comment above.
 
 struct HeaderTitle: View {
     let title: String

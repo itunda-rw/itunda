@@ -25,10 +25,29 @@ public struct TdsColors {
     public static let red500  = Color(hex: 0xF04452) // Destructive/Error
     public static let green500 = Color(hex: 0x04C065) // Success
     public static let white   = Color(hex: 0xFFFFFF)
+
+    // Fixed product-icon accent colors (Benefits/Shop/All tab icon badges) -- real
+    // Toss brand/product colors, not semantic theme colors, so like the rest of this
+    // struct they intentionally stay constant across light/dark. Ported exact-value
+    // from android/app/.../ItundaAppScreen.kt's AccentBlue/Teal/Purple/Orange/Red/
+    // Pink/Gray (2026-07-11, for the Benefits/Shop/All tab rebuild).
+    public static let accentBlue = Color(hex: 0x3182F6)
+    public static let accentTeal = Color(hex: 0x14AE85)
+    public static let accentPurple = Color(hex: 0x7C5CFC)
+    public static let accentOrange = Color(hex: 0xF2A93B)
+    public static let accentRed = Color(hex: 0xFF5B5B)
+    public static let accentPink = Color(hex: 0xEC5F8C)
+    public static let accentGray = Color(hex: 0x6B7684)
 }
 
 extension Color {
-    init(hex: UInt, alpha: Double = 1) {
+    // Made public 2026-07-11 (was internal, so unusable outside this module) for the
+    // Benefits/Shop/All tab rebuild -- those screens need a few one-off campaign
+    // colors (a promo banner purple, a pill pink) that mirror Android's own choice
+    // to use local Color(0xFF...) literals for those specific spots rather than
+    // adding them to the reusable token set, since they're one-off screen dressing,
+    // not colors any other screen reuses.
+    public init(hex: UInt, alpha: Double = 1) {
         self.init(
             .sRGB,
             red: Double((hex >> 16) & 0xff) / 255,

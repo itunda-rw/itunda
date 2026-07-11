@@ -97,6 +97,12 @@ public struct IDS {
         // No Android TdsDarkSemanticColors counterpart to port -- extrapolated one
         // step up from `divider`'s dark value, not a direct reference-matched port.
         public static let iconTertiary = Color(light: 0xDDE3EA, dark: 0x3A3D45)
+        // Matches Android's TdsSemanticColors.chip / .surfaceSoft exactly -- both are
+        // the same two hex values (0xF2F4F6 / 0x23242B) under two different names on
+        // Android, so one token covers both roles here (chip pill backgrounds, soft
+        // icon-badge backgrounds). Added 2026-07-11 for the Benefits/Shop/All tab
+        // rebuild -- IDS.Colors had no chip/soft-surface role before this.
+        public static let chipBackground = Color(light: 0xF2F4F6, dark: 0x23242B)
         // Android's dark shadow is ~25% opacity black (0x40000000) vs. light's 8%.
         public static let shadow = Color(uiColor: UIColor { traitCollection in
             traitCollection.userInterfaceStyle == .dark

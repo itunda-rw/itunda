@@ -375,9 +375,19 @@ High priority:
   **`TransferQuoteScreen` wired too, same pass:** also found with zero call sites —
   its own internal biometric-confirm wiring (an earlier fix this session) was real
   but unreachable, since the screen containing it was never shown anywhere. `Pay`
-  tab's two merchant rows now open it in a `.sheet` on tap. Screen/navigation
-  taxonomy for the rest of the tabs (Benefits/Shop/All still use `ContentView.swift`'s
-  own crude inline screens, not the other ported feature modules) remains open.
+  tab's two merchant rows now open it in a `.sheet` on tap. **Benefits/Shop/All tabs
+  rebuilt (2026-07-11):** the remaining "crude inline screens" — new
+  `App/Sources/BenefitsShopAllScreens.swift` replaces all three with content
+  transcribed directly from `ItundaAppScreen.kt`'s real, Toss-screenshot-verified
+  `BenefitsTab`/`ShopTab`/`AllTab` (applying an already-sourced design to iOS, not
+  guessing at a new one), styled through `IDS`/`TdsColors` like `BankView`.
+  `Project.swift`'s `ItundaApp` target now depends on `CoreDesignSystem` directly for
+  this. Two token additions, both exact-value ports from Android's
+  `TdsSemanticColors.kt`: `IDS.Colors.chipBackground` and `TdsColors.accent*` (the
+  fixed product-icon colors). The All tab's mini-apps section is ported as inert list
+  rows, not fake-wired — no mini-app runtime exists on iOS yet. All 5 tabs (Home,
+  Benefits, Shop, Pay, All) now use real, taxonomy-matched, design-system-driven
+  screens. Not build-verified, same no-Xcode caveat as the rest of `ios/`.
 - Convert architecture docs from aspirational service lists to implemented/target
   sections. **Done, ongoing practice** — see `docs/ARCHITECTURE.md`'s real/demo/stub
   table, kept current as of every fix this document's own dated notes describe.

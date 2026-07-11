@@ -1,0 +1,527 @@
+//
+//  BenefitsShopAllScreens.swift
+//  Rebuilt (2026-07-11) to close part of docs/TOSS_RWANDA_ALIGNMENT.md's "screen/
+//  navigation taxonomy parity is still open" gap -- these three tabs (BenefitsScreen,
+//  DiscoverScreen (the "Shop" tab), EntireMenuScreen (the "All" tab)) used to be
+//  ContentView.swift's own crude, hardcoded-mock-data placeholders, unrelated to the
+//  real design system. Content and structure are transcribed directly from
+//  android/app/src/main/java/rw/itunda/app/ui/ItundaAppScreen.kt's BenefitsTab/
+//  ShopTab/AllTab -- that file was built directly against real Toss reference
+//  screenshots earlier this session (see ARCHITECTURE.md's own git-log-cited
+//  history), so porting its already-verified structure here is not guessing at a
+//  new design, it's applying an existing, sourced one to the platform that never
+//  got it. Colors/type go through IDS/TdsColors (this file's own new
+//  CoreDesignSystem dependency, see Project.swift), the same tokens BankView.swift
+//  already uses -- not a third, independent hardcoded palette.
+//
+//  Every row and label below is a straight transcription of Android's real content
+//  (Icons.Outlined.X -> the closest real SF Symbol, not invented). MiniAppsSection's
+//  three rows are transcribed as plain, non-functional list rows -- Android's
+//  version launches real ReactActivity mini-app bundles, but no such runtime exists
+//  on iOS yet (see ARCHITECTURE.md's backlog item 1: "Port the same brownfield
+//  integration to iOS (nothing exists there yet)"), so wiring these to fake
+//  behavior would be worse than leaving them inert with an honest comment.
+//
+//  Not build-verified -- see IDS.swift's header for why (no Xcode/Tuist in this
+//  environment). Passes `swift -frontend -parse` only.
+//
+
+import SwiftUI
+import UIKit
+import CoreDesignSystem
+
+// MARK: - Benefits tab
+
+struct BenefitsScreen: View {
+    var body: some View {
+        ScrollView {
+            VStack(spacing: IDS.Layout.cardGap) {
+                TdsPlainTopBar(title: "Benefits")
+                PromoBannerCard()
+                BenefitsVisitCard()
+                CashbackChanceCard()
+            }
+            .padding(.horizontal, IDS.Layout.screenHorizontal)
+            .padding(.top, IDS.Layout.screenTop)
+            .padding(.bottom, IDS.Layout.sectionSpacing)
+        }
+        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+    }
+}
+
+private struct PromoBannerCard: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("🎁 Limited gift for Rwanda")
+                .font(IDS.scaledFont(size: 18, weight: .bold, relativeTo: .body))
+                .foregroundColor(.white)
+            Text("25,000")
+                .font(IDS.scaledFont(size: 54, weight: .heavy, relativeTo: .largeTitle))
+                .foregroundColor(.white)
+            Spacer().frame(height: 2)
+            Text("Redeem for free")
+                .font(IDS.scaledFont(size: 16, weight: .bold, relativeTo: .body))
+                .foregroundColor(.white)
+                .padding(.horizontal, 26)
+                .padding(.vertical, 12)
+                .background(Color(hex: 0xEF56FF))
+                .clipShape(Capsule())
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, minHeight: 220, alignment: .topLeading)
+        .background(Color(hex: 0x5D2FE6))
+        .cornerRadius(IDS.Layout.cardCornerRadius)
+    }
+}
+
+private struct BenefitsVisitCard: View {
+    private let rows: [(String, String)] = [
+        ("Happy lottery", "die.face.5.fill"),
+        ("Push the button", "hand.tap.fill"),
+        ("Try on", "tshirt.fill"),
+        ("Bring friends", "person.badge.plus"),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Visit 3 of 4 services and earn points")
+                .font(IDS.scaledFont(size: 28, weight: .bold, relativeTo: .title1))
+                .foregroundColor(IDS.Colors.textPrimary)
+            ForEach(rows, id: \.0) { title, symbol in
+                HStack {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12).fill(IDS.Colors.chipBackground)
+                        Image(systemName: symbol)
+                            .font(IDS.scaledFont(size: 18, weight: .medium, relativeTo: .body))
+                            .foregroundColor(IDS.Colors.textPrimary)
+                    }
+                    .frame(width: 38, height: 38)
+                    Text(title)
+                        .font(IDS.scaledFont(size: 18, weight: .semibold, relativeTo: .body))
+                        .foregroundColor(IDS.Colors.textPrimary)
+                    Spacer()
+                    SmallBlueButton(label: "Visit")
+                }
+            }
+        }
+        .padding(24)
+        .background(IDS.Colors.card)
+        .cornerRadius(IDS.Layout.cardCornerRadius)
+    }
+}
+
+private struct CashbackChanceCard: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("🍀 3 chances to get money back")
+                .font(IDS.scaledFont(size: 28, weight: .bold, relativeTo: .title1))
+                .foregroundColor(IDS.Colors.textPrimary)
+            Text("We will notify you when new chances are available")
+                .font(IDS.scaledFont(size: 15, weight: .regular, relativeTo: .subheadline))
+                .foregroundColor(IDS.Colors.textSecondary)
+            HStack {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14).fill(Color(hex: 0x246BFF))
+                    Image(systemName: "arrow.left.arrow.right.circle.fill")
+                        .font(IDS.scaledFont(size: 20, weight: .medium, relativeTo: .body))
+                        .foregroundColor(.white)
+                }
+                .frame(width: 42, height: 42)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("RWF 5,000")
+                        .font(IDS.scaledFont(size: 24, weight: .bold, relativeTo: .title2))
+                        .foregroundColor(IDS.Colors.textPrimary)
+                    Text("BK account -> TUYIZERE Eric")
+                        .font(IDS.scaledFont(size: 15, weight: .regular, relativeTo: .subheadline))
+                        .foregroundColor(IDS.Colors.textSecondary)
+                }
+                Spacer()
+                SmallBlueButton(label: "Get back")
+            }
+        }
+        .padding(24)
+        .background(IDS.Colors.card)
+        .cornerRadius(IDS.Layout.cardCornerRadius)
+    }
+}
+
+// MARK: - Shop tab ("Discover" struct name kept for source stability, see
+// ContentView.swift's own taxonomy-rename comment: the visible label is "Shop",
+// matching Android exactly, but the Swift type name wasn't part of that gap)
+
+struct DiscoverScreen: View {
+    var body: some View {
+        ScrollView {
+            VStack(spacing: IDS.Layout.cardGap) {
+                ShopTopBar()
+                CategoryTabsRow(tabs: ["Home", "Categories", "Cycling", "Deals", "Summer food"])
+                ShopPromoCard()
+                PointActionsCard()
+            }
+            .padding(.horizontal, IDS.Layout.screenHorizontal)
+            .padding(.top, IDS.Layout.screenTop)
+            .padding(.bottom, IDS.Layout.sectionSpacing)
+        }
+        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+    }
+}
+
+private struct ShopTopBar: View {
+    var body: some View {
+        HStack(spacing: 12) {
+            Text("Search products")
+                .font(IDS.scaledFont(size: 16, weight: .regular, relativeTo: .body))
+                .foregroundColor(IDS.Colors.textSecondary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(IDS.Colors.chipBackground)
+                .cornerRadius(14)
+            // Fixed (2026-07-11): standalone icon-only buttons need a real
+            // accessibility label -- same fix already applied to Android's
+            // ShopTopBar (ItundaAppScreen.kt) and BankView.swift's TopBarActionButton.
+            Image(systemName: "person")
+                .font(IDS.scaledFont(size: 20, weight: .regular, relativeTo: .body))
+                .foregroundColor(IDS.Colors.textPrimary)
+                .accessibilityLabel("Profile")
+            Image(systemName: "cart")
+                .font(IDS.scaledFont(size: 20, weight: .regular, relativeTo: .body))
+                .foregroundColor(IDS.Colors.textPrimary)
+                .accessibilityLabel("Cart")
+        }
+    }
+}
+
+private struct CategoryTabsRow: View {
+    let tabs: [String]
+    var body: some View {
+        HStack(spacing: 18) {
+            ForEach(Array(tabs.enumerated()), id: \.offset) { index, tab in
+                Text(tab)
+                    .font(IDS.scaledFont(size: 17, weight: index == 0 ? .bold : .medium, relativeTo: .body))
+                    .foregroundColor(index == 0 ? IDS.Colors.textPrimary : IDS.Colors.textSecondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct ShopPromoCard: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("10,000 RWF early-bird")
+                .font(IDS.scaledFont(size: 16, weight: .bold, relativeTo: .body))
+                .foregroundColor(Color(hex: 0xE25A61))
+            Text("Calcium + Magnesium\n90 tablets 3,900 RWF")
+                .font(IDS.scaledFont(size: 30, weight: .heavy, relativeTo: .largeTitle))
+                .foregroundColor(Color(hex: 0x151515))
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(hex: 0xDDEFFC))
+        .cornerRadius(IDS.Layout.cardCornerRadius)
+    }
+}
+
+private struct PointActionsCard: View {
+    private let items: [(String, String)] = [
+        ("Check-in", "calendar.badge.checkmark"),
+        ("Scroll", "hand.draw"),
+        ("Feed", "square.stack.fill"),
+        ("Cat", "pawprint.fill"),
+        ("Pick", "star.fill"),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Points and coupon tasks")
+                .font(IDS.scaledFont(size: 28, weight: .bold, relativeTo: .title1))
+                .foregroundColor(IDS.Colors.textPrimary)
+            HStack {
+                ForEach(items, id: \.0) { label, symbol in
+                    VStack(spacing: 6) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 16).fill(IDS.Colors.chipBackground)
+                            Image(systemName: symbol)
+                                .font(IDS.scaledFont(size: 20, weight: .regular, relativeTo: .body))
+                                .foregroundColor(IDS.Colors.textPrimary)
+                        }
+                        .frame(width: 48, height: 48)
+                        Text(label)
+                            .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
+                            .foregroundColor(IDS.Colors.textSecondary)
+                    }
+                    if label != items.last?.0 { Spacer() }
+                }
+            }
+        }
+        .padding(24)
+        .background(IDS.Colors.backgroundPrimary)
+        .cornerRadius(IDS.Layout.cardCornerRadius)
+    }
+}
+
+// MARK: - All tab
+
+struct EntireMenuScreen: View {
+    var body: some View {
+        ScrollView {
+            VStack(spacing: IDS.Layout.sectionSpacing) {
+                TdsAllTopBar()
+                TdsSearchBar(placeholder: "Search")
+                IconGridSection(title: "Quick access", items: [
+                    ("Mini", "square.grid.2x2.fill"),
+                    ("Games", "gamecontroller.fill"),
+                    ("Bank", "building.columns.fill"),
+                    ("Pick", "star.fill"),
+                ])
+                // Android's MiniAppsSection launches real ReactActivity mini-app
+                // bundles -- no equivalent runtime exists on iOS yet (see this
+                // file's own header), so these three rows are plain, inert list
+                // items rather than fake-functional buttons.
+                FlatSection(title: "Mini apps", rows: [
+                    FlatRow(title: "Wallet balance"),
+                    FlatRow(title: "Pay bills"),
+                    FlatRow(title: "Reward tasks"),
+                ])
+                IconGridSection(title: "Recent services", items: [
+                    ("Open acct", "plus.circle"),
+                    ("Photo transfer", "camera.fill"),
+                    ("Verify", "checkmark.seal.fill"),
+                    ("Send", "paperplane.fill"),
+                    ("Group", "person.2.fill"),
+                    ("Property", "house.fill"),
+                    ("Insurance", "shield.fill"),
+                    ("More", "ellipsis"),
+                ])
+                FlatSection(title: "Financial services", rows: [
+                    FlatRow(title: "Open account", subtitle: "Itunda Wallet, other banks, RSE brokerage", symbol: "plus.circle", tint: .accentBlue),
+                    FlatRow(title: "My assets", subtitle: "Accounts, loans, RSE holdings, cards, points", symbol: "chart.pie.fill", tint: .accentPurple),
+                    FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "wallet.pass.fill", tint: .accentBlue),
+                    FlatRow(title: "Mobile plan", subtitle: "MTN, Airtel, broadband", symbol: "globe", tint: .accentTeal),
+                ])
+                // Everything below is modeled directly on the real Toss Bank
+                // reference screens (see ItundaAppScreen.kt's own identical note),
+                // adapted to Rwanda rails (REG/WASAC/Irembo/RRA, MTN MoMo/Airtel
+                // Money, RSE tickers, RSSB pension) the same way Android already was.
+                FlatSection(title: "Switch & save", rows: [
+                    FlatRow(title: "Switch your personal loan", trailing: "12% ~ 24%", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentBlue),
+                    FlatRow(title: "Switch your rent deposit loan", trailing: "9% ~ 15%", trailingIsLink: true, symbol: "house.fill", tint: .accentTeal),
+                    FlatRow(title: "Switch your SME loan", trailing: "11% ~ 22%", trailingIsLink: true, symbol: "storefront.fill", tint: .accentTeal),
+                ])
+                FlatSection(title: "Cards", rows: [
+                    FlatRow(title: "Itunda Card", trailing: "5% back on bills", trailingIsLink: true, symbol: "creditcard.fill", tint: .accentRed),
+                    FlatRow(title: "Virtual card", trailing: "Instant issue", symbol: "creditcard.fill", tint: .accentGray),
+                ])
+                FlatSection(title: "Services", rows: [
+                    FlatRow(title: "Rent deposit protection", symbol: "house.fill", tint: .accentBlue),
+                    FlatRow(title: "Recurring payments", symbol: "doc.text.fill", tint: .accentBlue),
+                    FlatRow(title: "Import recurring payments", symbol: "shippingbox.fill", tint: .accentGray),
+                    FlatRow(title: "REG & WASAC bills", symbol: "bolt.fill", tint: .accentBlue),
+                    FlatRow(title: "Claim interest now", symbol: "bolt.fill", tint: .accentPurple),
+                    FlatRow(title: "SME income tax estimate", symbol: "banknote.fill", tint: .accentOrange),
+                    FlatRow(title: "Split a bill with friends", symbol: "person.3.fill", tint: .accentBlue),
+                    FlatRow(title: "Shared calendar", symbol: "calendar", tint: .accentBlue),
+                    FlatRow(title: "Kids' allowance tasks", symbol: "checkmark.circle.fill", tint: .accentOrange),
+                ])
+                FlatSection(title: "Foreign currency", rows: [
+                    FlatRow(title: "Foreign currency wallet", trailing: "100% rate preference", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentPurple),
+                    FlatRow(title: "International transfer", symbol: "dollarsign.circle.fill", tint: .accentBlue),
+                ])
+                FlatSection(title: "Grow your money", rows: [
+                    FlatRow(title: "RSE stocks", subtitle: "BOK, MTNR, BLR, IMR, CMR, EQTY", symbol: "chart.line.uptrend.xyaxis", tint: .accentTeal),
+                    FlatRow(title: "Bonds & fixed income", trailing: "7.5% ~ 12%", trailingIsLink: true, symbol: "building.columns.fill", tint: .accentBlue),
+                    FlatRow(title: "IPO schedule", symbol: "chart.line.uptrend.xyaxis", tint: .accentRed),
+                    FlatRow(title: "Brokerage account", trailing: "Up to 30,000 RWF", trailingIsLink: true, symbol: "building.columns.fill", tint: .accentTeal),
+                ])
+                FlatSection(title: "Pension", rows: [
+                    FlatRow(title: "Check my RSSB pension", symbol: "building.columns.fill", tint: .accentBlue),
+                    FlatRow(title: "Pension products", symbol: "percent", tint: .accentBlue),
+                ])
+                FlatSection(title: "Loans", rows: [
+                    FlatRow(title: "Check my max limit", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple),
+                    FlatRow(title: "Personal loan", trailing: "11% ~ 24%", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentBlue),
+                ])
+                FlatSection(title: "Notifications & consent", rows: [
+                    FlatRow(title: "Notifications", showChevron: true),
+                    FlatRow(title: "Credit data usage policy", showChevron: true),
+                    FlatRow(title: "Privacy policy", showChevron: true),
+                    FlatRow(title: "Terms & consent", showChevron: true),
+                ])
+                FlatSection(title: "Support", rows: [
+                    FlatRow(title: "FAQ", showChevron: true),
+                    FlatRow(title: "Live chat", showChevron: true),
+                    FlatRow(title: "Call support", showChevron: true),
+                    FlatRow(title: "Report fraud", showChevron: true),
+                    FlatRow(title: "Announcements", showChevron: true),
+                ])
+            }
+            .padding(.horizontal, IDS.Layout.screenHorizontal)
+            .padding(.top, IDS.Layout.screenTop)
+            .padding(.bottom, IDS.Layout.sectionSpacing)
+        }
+        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+    }
+}
+
+private struct TdsAllTopBar: View {
+    var body: some View {
+        HStack {
+            Text("TUYIZERE ERIC")
+                .font(IDS.scaledFont(size: 26, weight: .bold, relativeTo: .largeTitle))
+                .foregroundColor(IDS.Colors.textPrimary)
+            Spacer()
+            Image(systemName: "gearshape")
+                .font(IDS.scaledFont(size: 20, weight: .regular, relativeTo: .body))
+                .foregroundColor(IDS.Colors.textPrimary)
+                .accessibilityLabel("Settings")
+        }
+    }
+}
+
+// MARK: - Shared components (mirror Android's TdsPlainTopBar/SearchBar/FlatSection/
+// FlatRow/IconGridSection/SmallBlueButton in ItundaAppScreen.kt)
+
+private struct TdsPlainTopBar: View {
+    let title: String
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(IDS.scaledFont(size: 28, weight: .bold, relativeTo: .largeTitle))
+                .foregroundColor(IDS.Colors.textPrimary)
+            Spacer()
+            Text("...")
+                .font(IDS.scaledFont(size: 24, weight: .regular, relativeTo: .title1))
+                .foregroundColor(IDS.Colors.textPrimary)
+        }
+    }
+}
+
+private struct TdsSearchBar: View {
+    let placeholder: String
+    var body: some View {
+        Text(placeholder)
+            .font(IDS.scaledFont(size: 16, weight: .regular, relativeTo: .body))
+            .foregroundColor(IDS.Colors.textSecondary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(IDS.Colors.chipBackground)
+            .cornerRadius(14)
+    }
+}
+
+private struct SmallBlueButton: View {
+    let label: String
+    var body: some View {
+        Text(label)
+            .font(IDS.scaledFont(size: 14, weight: .bold, relativeTo: .footnote))
+            .foregroundColor(IDS.Colors.brand)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(Color(hex: 0x223554))
+            .cornerRadius(12)
+    }
+}
+
+private struct FlatRow {
+    let title: String
+    var subtitle: String? = nil
+    var trailing: String? = nil
+    var trailingIsLink: Bool = false
+    var symbol: String? = nil
+    var tint: Color = .accentBlue
+    var showChevron: Bool = false
+}
+
+private struct FlatSection: View {
+    let title: String
+    let rows: [FlatRow]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(IDS.scaledFont(size: 19, weight: .bold, relativeTo: .title2))
+                .foregroundColor(IDS.Colors.textPrimary)
+                .padding(.bottom, 6)
+            ForEach(rows, id: \.title) { row in
+                HStack {
+                    if let symbol = row.symbol {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 10).fill(row.tint)
+                            Image(systemName: symbol)
+                                .font(IDS.scaledFont(size: 19, weight: .regular, relativeTo: .body))
+                                .foregroundColor(.white)
+                        }
+                        .frame(width: 34, height: 34)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(row.title)
+                            .font(IDS.scaledFont(size: 17, weight: .medium, relativeTo: .body))
+                            .foregroundColor(IDS.Colors.textPrimary)
+                        if let subtitle = row.subtitle {
+                            Text(subtitle)
+                                .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .caption1))
+                                .foregroundColor(IDS.Colors.textTertiary)
+                        }
+                    }
+                    Spacer()
+                    if let trailing = row.trailing {
+                        Text(trailing)
+                            .font(IDS.scaledFont(size: 15, weight: row.trailingIsLink ? .semibold : .regular, relativeTo: .subheadline))
+                            .foregroundColor(row.trailingIsLink ? IDS.Colors.brand : IDS.Colors.textSecondary)
+                    } else if row.showChevron {
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(IDS.Colors.textTertiary)
+                    }
+                }
+                .padding(.vertical, 10)
+            }
+        }
+    }
+}
+
+private struct IconGridSection: View {
+    let title: String
+    let items: [(String, String)]
+
+    private var rows: [[(String, String)]] {
+        stride(from: 0, to: items.count, by: 4).map { Array(items[$0..<min($0 + 4, items.count)]) }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(title)
+                .font(IDS.scaledFont(size: 14, weight: .semibold, relativeTo: .footnote))
+                .foregroundColor(IDS.Colors.textSecondary)
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, rowItems in
+                HStack {
+                    ForEach(rowItems, id: \.0) { label, symbol in
+                        VStack(spacing: 8) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 18).fill(IDS.Colors.chipBackground)
+                                Image(systemName: symbol)
+                                    .font(IDS.scaledFont(size: 24, weight: .regular, relativeTo: .title2))
+                                    .foregroundColor(IDS.Colors.textPrimary)
+                            }
+                            .frame(width: 54, height: 54)
+                            Text(label)
+                                .font(IDS.scaledFont(size: 13, weight: .regular, relativeTo: .caption1))
+                                .foregroundColor(IDS.Colors.textSecondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private extension Color {
+    static let accentBlue = TdsColors.accentBlue
+    static let accentTeal = TdsColors.accentTeal
+    static let accentPurple = TdsColors.accentPurple
+    static let accentOrange = TdsColors.accentOrange
+    static let accentRed = TdsColors.accentRed
+    static let accentGray = TdsColors.accentGray
+}
