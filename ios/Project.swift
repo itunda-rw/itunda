@@ -126,6 +126,25 @@ allTargets.append(
     )
 )
 
+// Added 2026-07-11 to actually check accessibility focus order (docs/
+// ACCESSIBILITY.md's one remaining open item) against the app's real accessibility
+// tree via XCUITest -- the same underlying tree VoiceOver reads -- rather than
+// leaving it as "no live device, can't check" indefinitely. See
+// App/UITests/FocusOrderTests.swift.
+allTargets.append(
+    Target(
+        name: "ItundaAppUITests",
+        platform: .iOS,
+        product: .uiTests,
+        bundleId: "rw.itunda.app.uitests",
+        infoPlist: .default,
+        sources: ["App/UITests/**"],
+        dependencies: [
+            .target(name: "ItundaApp")
+        ]
+    )
+)
+
 let project = Project(
     name: "Itunda",
     targets: allTargets

@@ -453,10 +453,16 @@ Medium priority:
   fixed-size `Font.system(size:weight:)`, ignoring the user's iOS text-size
   accessibility setting entirely. 19 real instances found and fixed via a new,
   shared `IDS.scaledFont` helper wrapping `UIFontMetrics` (Apple's documented
-  pattern for this exact case). Only focus order remains open — genuinely blocked,
-  no live TalkBack/VoiceOver access in this environment (confirmed via grep that
-  neither codebase does any explicit focus-order manipulation, so there's nothing
-  further a static check can tell us).
+  pattern for this exact case). **Focus order real-verified on iOS (2026-07-11):**
+  once the real Xcode/simulator toolchain was found (`ARCHITECTURE.md` §3), "no
+  live TalkBack/VoiceOver access" stopped being true — XCUITest reads the same
+  accessibility tree VoiceOver does. New `ItundaAppUITests` target
+  (`App/UITests/FocusOrderTests.swift`) asserts the tab bar's real accessibility
+  order matches Android's taxonomy and left-to-right visual position, and the
+  Home tab's Notifications/Profile icons are in correct visual order —
+  `TEST SUCCEEDED`, 2/2 passing, run live against the simulator, not inferred
+  from code. Scope: Home tab + tab bar only; the other 4 tabs and Android both
+  remain unverified this way.
 - ~~Add test coverage around fallback demo behavior.~~ **Done for every module that
   moves money or authenticates (2026-07-11):** `LedgerServiceTest.kt` (pre-existing) plus
   new `AuthServiceTest.kt`, `WalletServiceTest.kt`, `MerchantServiceTest.kt`,

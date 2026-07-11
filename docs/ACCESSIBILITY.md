@@ -239,15 +239,39 @@ notification/profile icon circles grew — a real, live, before/after comparison
 not an inference from reading the code. `IDS.scaledFont` genuinely works at
 runtime.
 
-## 6. Not yet audited (open)
+## 6. Focus order (iOS: real, live-verified; Android: statically checked, open)
 
-- **Focus order** (Compose semantics traversal order / SwiftUI focus order) — the
-  one item in this whole audit that has no static-analysis path: there is no
-  explicit focus-order manipulation anywhere in either codebase (grepped for it —
-  none found), so the default traversal order applies, but confirming that order
-  is actually correct requires a live TalkBack/VoiceOver run or Compose's
-  `testTag`-based semantics tree inspection, neither available in this
-  environment.
+**iOS — real XCUITest, 2026-07-11.** This was written as "the one item in this
+whole audit that has no static-analysis path... requires a live TalkBack/
+VoiceOver run... neither available in this environment." That stopped being
+true once this session found the real Xcode/simulator toolchain
+(`ARCHITECTURE.md` §3's "MAJOR CORRECTION" note) — XCUITest reads the exact
+same accessibility tree VoiceOver does, so a real UI test against it is a real
+live check, not a proxy for one. New `App/UITests/FocusOrderTests.swift`
+(`ItundaAppUITests` target, added to `Project.swift`):
+- `testTabBarFocusOrderMatchesVisualLeftToRightOrder` — asserts the tab bar's
+  accessibility-tree order is exactly `["Home", "Benefits", "Shop", "Pay",
+  "All"]` (Android's taxonomy, in order) *and* that each button's
+  accessibility position is left-to-right on screen, so a VoiceOver swipe-right
+  traversal can't silently diverge from what's visible.
+- `testHomeTabTopBarIconsFocusOrderMatchesVisualOrder` — asserts the
+  Notifications (bell) button's accessibility position sits left of Profile,
+  matching `HomeTopBar`'s real `HStack` order (both were the icon-only buttons
+  fixed for missing labels earlier this session).
+- Run via `xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp
+  -destination 'platform=iOS Simulator,name=iPhone 14' test` →
+  **`TEST SUCCEEDED`**, 2/2 tests passed, 0 failed.
+- Scope: only the Home tab and tab bar — the other 4 tabs' focus order
+  (Benefits/Shop/Pay/All, all real content as of this session's tab rebuild)
+  isn't covered by a test yet. A real, narrower gap than "nothing can be
+  checked at all," and a real pattern (`XCUIApplication` + accessibility-tree
+  queries) any future test can reuse.
+
+**Android — still open.** No equivalent XCUITest-style live check attempted
+this pass; the earlier static finding stands: no explicit focus-order
+manipulation anywhere in `android/` (grepped for it, none found), so Compose's
+default traversal order applies, unverified against a live TalkBack run or
+Compose's `testTag`-based semantics tree inspection.
 
 ## Status
 
@@ -258,5 +282,5 @@ above, left open pending a design-system-level fix; all content-description/labe
 bugs found were fixed), touch-target sizing is checked and the one real gap found
 (Android's `TopIconButton`) is fixed, form labels are audited and both bugs found
 are fixed, Dynamic Type/font scaling is audited and all 19 real bugs found (all on
-iOS) are fixed. Only focus order remains open, genuinely blocked on live
-device/simulator access this environment doesn't have.
+iOS) are fixed, focus order is now real-XCUITest-verified on iOS's Home
+tab/tab bar (2/2 passing) with the other 4 tabs and Android both still open.

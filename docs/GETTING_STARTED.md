@@ -108,6 +108,14 @@ this working, including two real Swift compiler bugs it caught that
 `swift -frontend -parse` alone couldn't (a `#Preview` macro plugin issue and a
 15-child `@ViewBuilder` exceeding Swift 5.8's 10-child limit).
 
+Run the real UI tests (`App/UITests/FocusOrderTests.swift` — checks accessibility
+focus order against the live accessibility tree, the same one VoiceOver reads):
+
+```bash
+xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp \
+  -destination 'platform=iOS Simulator,name=iPhone 14' test
+```
+
 ## Current Project Structure
 
 ```text
