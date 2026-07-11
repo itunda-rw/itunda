@@ -6,7 +6,9 @@ Use this guide for the current repository state. The full Toss/Rwanda target is 
 
 - Node.js 20+ and Yarn (the repo root is a Yarn PnP workspace)
 - JDK 21 for `services/backend` and `services/microservices`; JDK 17 for `android/`
-- Xcode + Tuist for `ios/` work, if needed (not build-verified in most environments — see `ARCHITECTURE.md` §3)
+- Xcode + a Tuist version matching `ios/Project.swift`'s manifest API (see the `## iOS`
+  section below — this repo's `Project.swift` needs Tuist 3.x specifically, not the
+  latest 4.x)
 
 ## Install
 
@@ -67,6 +69,44 @@ adb shell monkey -p rw.itunda.app 1
 If the package id changes, inspect `android/app/build.gradle.kts` and use that `applicationId`.
 
 The Android app is native-first: `MainActivity` renders the Compose navigation graph directly.
+
+## iOS
+
+Needs full Xcode (not just Command Line Tools) and Tuist 3.x — this repo's
+`ios/Project.swift` uses the `platform: .iOS`/`Target(name:platform:product:...)`
+manifest API, which Tuist 4.0+ replaced with `destinations:` as a breaking change, so
+the latest Tuist will fail with confusing `ProjectDescription` type errors against
+this file. If `xcode-select -p` reports the Command Line Tools instead of a full
+Xcode install, check `/Applications/Xcode.app` before assuming Xcode isn't
+available — point at it for just your shell session, no `sudo`/system-wide
+`xcode-select -s` needed:
+
+```bash
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+```
+
+Install a compatible Tuist via [mise](https://mise.jdx.dev/) (any 3.x release; 3.42.3
+is confirmed working):
+
+```bash
+mise install tuist@3.42.3
+```
+
+Generate the real Xcode workspace and build against a simulator:
+
+```bash
+cd ios
+mise exec tuist@3.42.3 -- tuist generate --no-open
+xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp \
+  -destination 'platform=iOS Simulator,name=iPhone 14' build
+```
+
+`Itunda.xcodeproj`/`Itunda.xcworkspace`/`Derived/` are Tuist output, gitignored —
+regenerate with the command above rather than expecting them to already exist.
+See `ARCHITECTURE.md` §3's "MAJOR CORRECTION" note for the full account of getting
+this working, including two real Swift compiler bugs it caught that
+`swift -frontend -parse` alone couldn't (a `#Preview` macro plugin issue and a
+15-child `@ViewBuilder` exceeding Swift 5.8's 10-child limit).
 
 ## Current Project Structure
 

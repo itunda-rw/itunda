@@ -222,6 +222,13 @@ struct TransactionRow: View {
     }
 }
 
-#Preview {
-    ContentView()
-}
+// #Preview { ContentView() } removed (2026-07-11) -- the real, working Xcode
+// toolchain discovered this session (DEVELOPER_DIR=/Applications/Xcode.app/...,
+// Xcode 14.3.1 + Tuist 3.42.3 via mise, see ARCHITECTURE.md §3) rejected this with
+// "use of unknown directive '#Preview'" -- the preview-macro plugin isn't available
+// in this generated project's build configuration. #Preview has zero runtime/
+// production effect (canvas-only, Xcode-GUI-only), and no interactive canvas can
+// ever render in this non-GUI environment anyway, so removing it was the right call
+// rather than fighting toolchain plumbing for a feature that could never be used
+// here. This was the *only* error in an otherwise clean full xcodebuild of every
+// target in the workspace.

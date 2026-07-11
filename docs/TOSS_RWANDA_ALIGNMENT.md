@@ -348,6 +348,17 @@ High priority:
 - ~~Create merchant domain routes instead of only documentation.~~ **Done (2026-07-11)** —
   `rw.itunda.merchant`: registration + QR payment collection, see
   `docs/TOSS_PARITY_MATRIX.md`'s Merchant row for the real/not-real split.
+- **Correction (2026-07-11):** every "not build-verified"/"no Xcode in this
+  environment" note below (and throughout `docs/ARCHITECTURE.md`'s §3) was true when
+  written but not re-checked hard enough — `docs/ARCHITECTURE.md` §3's own
+  "MAJOR CORRECTION" note has the full account: a real Xcode 14.3.1 install was
+  present the whole time, just not the active `xcode-select` target, reachable via a
+  scoped `DEVELOPER_DIR` env var with no system changes; a compatible Tuist version
+  (3.42.3, via `mise`, no sudo) generates the real project; a real
+  `xcodebuild ... BUILD SUCCEEDED` now exists, installed/launched/screenshotted on a
+  real simulator, with Dynamic Type scaling confirmed live (before/after screenshots
+  at a larger accessibility text size). Treat every "not build-verified" iOS note
+  below as historical, superseded by that one.
 - Make Android and iOS share the same product taxonomy as web. **Partially done** —
   design tokens now match exactly across `android/core/designsystem` and
   `ios/Core/DesignSystem` (2026-07-11 reconciliation). **Tab taxonomy fixed

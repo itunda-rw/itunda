@@ -116,11 +116,19 @@ Other `Image(systemName:)` usages checked and left alone:
   that also contain `Text()` (terms checkbox, payment method rows). Not a hard
   violation (each button has a text label), but not deeply verified for
   SwiftUI's per-child accessibility-element merging — flagged as a follow-up, not
-  fixed, since it could not be confirmed without a real device/simulator run
-  (no macOS/Xcode available in this environment, per `ARCHITECTURE.md` §3).
+  fixed. Could now actually be checked with the real simulator `ARCHITECTURE.md`
+  §3's major-correction note describes (VoiceOver can run in the iOS Simulator),
+  but wasn't re-visited in that pass — left open, no longer for lack of a
+  toolchain, just not yet done.
 
-Not build-verified — no Docker/macOS/Xcode toolchain in this environment to run a real
-`swift build` or simulator, same caveat as every other iOS change this session.
+**Build-verification status corrected (2026-07-11):** this was written when "no
+macOS/Xcode toolchain in this environment" was believed true. It wasn't —
+`ARCHITECTURE.md` §3's major-correction note has the full account. A real
+`xcodebuild ... BUILD SUCCEEDED` now exists covering every Swift file this
+document's fixes touched (`ItundaAppScreen.kt`'s Android side was already
+build-verified throughout). The `AgreementWidget`/`PaymentMethodWidget` item above
+is the one real accessibility question this document leaves open that the
+now-available simulator could resolve but hasn't yet.
 
 ## 3. Touch target size
 
@@ -205,21 +213,31 @@ fixed:**
   module, no duplicate implementation).
 - `BankView.swift`'s 5 inline icon fonts converted to `IDS.scaledFont` calls too
   (it already imports `CoreDesignSystem`).
-- `ContentView.swift` (the app's real `@main`-reachable entry point, still not
-  wired to `CoreDesignSystem` — see `ARCHITECTURE.md` §3) had 8 of its own,
-  separate raw `Font.system(size:weight:)` calls, since its Benefits/Shop/All tabs
-  don't use the shared design system yet. Rather than adding a new
-  `CoreDesignSystem` dependency edge to `Project.swift` just for this, added a
-  small local `scaledFont` helper (same implementation, self-contained) and
-  converted all 8.
+- `ContentView.swift` (the app's real `@main`-reachable entry point) had 8 of its
+  own, separate raw `Font.system(size:weight:)` calls. At the time this was fixed,
+  `ContentView.swift` wasn't wired to `CoreDesignSystem` yet, so a small local
+  `scaledFont` helper (same implementation, self-contained) was added instead of a
+  new `Project.swift` dependency edge just for this. **Superseded, same day:** the
+  Benefits/Shop/All tab rebuild (`ARCHITECTURE.md` §3) added that
+  `CoreDesignSystem` dependency anyway for unrelated reasons — `ContentView.swift`'s
+  local `scaledFont` copy is now redundant with `IDS.scaledFont` but harmless,
+  left as-is rather than churned for a pure dedup.
 - No call sites needed to change beyond the font declarations themselves — every
   existing `IDS.Typography.header`/`TdsTypography.title1`/etc. reference keeps
   working exactly as before, it just scales now.
 
-Not build-verified — no Xcode/simulator in this environment to confirm the actual
-runtime scaling behavior, same caveat as the rest of `ios/`. `UIFontMetrics` is
-real, documented UIKit API (not invented), and every file compiles under
-`swift -frontend -parse`, but the scaling itself is unverified here.
+**Runtime-verified, not just build-verified (2026-07-11):** written when "no
+Xcode/simulator in this environment" was believed true — it wasn't
+(`ARCHITECTURE.md` §3's major-correction note). Went further than just
+confirming the build: `xcrun simctl ui <device> content_size
+accessibility-extra-large` followed by a full app relaunch (the running app
+doesn't pick up a new content-size category until relaunched — confirmed by
+screenshotting *before* relaunch too, where nothing had changed) then a fresh
+screenshot shows the Home tab's text and icons visibly, substantially larger —
+"Good morning" now wraps to two lines, the balance figure runs off-screen, the
+notification/profile icon circles grew — a real, live, before/after comparison,
+not an inference from reading the code. `IDS.scaledFont` genuinely works at
+runtime.
 
 ## 6. Not yet audited (open)
 

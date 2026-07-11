@@ -267,94 +267,107 @@ struct EntireMenuScreen: View {
     var body: some View {
         ScrollView {
             VStack(spacing: IDS.Layout.sectionSpacing) {
-                TdsAllTopBar()
-                TdsSearchBar(placeholder: "Search")
-                IconGridSection(title: "Quick access", items: [
-                    ("Mini", "square.grid.2x2.fill"),
-                    ("Games", "gamecontroller.fill"),
-                    ("Bank", "building.columns.fill"),
-                    ("Pick", "star.fill"),
-                ])
-                // Android's MiniAppsSection launches real ReactActivity mini-app
-                // bundles -- no equivalent runtime exists on iOS yet (see this
-                // file's own header), so these three rows are plain, inert list
-                // items rather than fake-functional buttons.
-                FlatSection(title: "Mini apps", rows: [
-                    FlatRow(title: "Wallet balance"),
-                    FlatRow(title: "Pay bills"),
-                    FlatRow(title: "Reward tasks"),
-                ])
-                IconGridSection(title: "Recent services", items: [
-                    ("Open acct", "plus.circle"),
-                    ("Photo transfer", "camera.fill"),
-                    ("Verify", "checkmark.seal.fill"),
-                    ("Send", "paperplane.fill"),
-                    ("Group", "person.2.fill"),
-                    ("Property", "house.fill"),
-                    ("Insurance", "shield.fill"),
-                    ("More", "ellipsis"),
-                ])
-                FlatSection(title: "Financial services", rows: [
-                    FlatRow(title: "Open account", subtitle: "Itunda Wallet, other banks, RSE brokerage", symbol: "plus.circle", tint: .accentBlue),
-                    FlatRow(title: "My assets", subtitle: "Accounts, loans, RSE holdings, cards, points", symbol: "chart.pie.fill", tint: .accentPurple),
-                    FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "wallet.pass.fill", tint: .accentBlue),
-                    FlatRow(title: "Mobile plan", subtitle: "MTN, Airtel, broadband", symbol: "globe", tint: .accentTeal),
-                ])
-                // Everything below is modeled directly on the real Toss Bank
-                // reference screens (see ItundaAppScreen.kt's own identical note),
-                // adapted to Rwanda rails (REG/WASAC/Irembo/RRA, MTN MoMo/Airtel
-                // Money, RSE tickers, RSSB pension) the same way Android already was.
-                FlatSection(title: "Switch & save", rows: [
-                    FlatRow(title: "Switch your personal loan", trailing: "12% ~ 24%", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentBlue),
-                    FlatRow(title: "Switch your rent deposit loan", trailing: "9% ~ 15%", trailingIsLink: true, symbol: "house.fill", tint: .accentTeal),
-                    FlatRow(title: "Switch your SME loan", trailing: "11% ~ 22%", trailingIsLink: true, symbol: "storefront.fill", tint: .accentTeal),
-                ])
-                FlatSection(title: "Cards", rows: [
-                    FlatRow(title: "Itunda Card", trailing: "5% back on bills", trailingIsLink: true, symbol: "creditcard.fill", tint: .accentRed),
-                    FlatRow(title: "Virtual card", trailing: "Instant issue", symbol: "creditcard.fill", tint: .accentGray),
-                ])
-                FlatSection(title: "Services", rows: [
-                    FlatRow(title: "Rent deposit protection", symbol: "house.fill", tint: .accentBlue),
-                    FlatRow(title: "Recurring payments", symbol: "doc.text.fill", tint: .accentBlue),
-                    FlatRow(title: "Import recurring payments", symbol: "shippingbox.fill", tint: .accentGray),
-                    FlatRow(title: "REG & WASAC bills", symbol: "bolt.fill", tint: .accentBlue),
-                    FlatRow(title: "Claim interest now", symbol: "bolt.fill", tint: .accentPurple),
-                    FlatRow(title: "SME income tax estimate", symbol: "banknote.fill", tint: .accentOrange),
-                    FlatRow(title: "Split a bill with friends", symbol: "person.3.fill", tint: .accentBlue),
-                    FlatRow(title: "Shared calendar", symbol: "calendar", tint: .accentBlue),
-                    FlatRow(title: "Kids' allowance tasks", symbol: "checkmark.circle.fill", tint: .accentOrange),
-                ])
-                FlatSection(title: "Foreign currency", rows: [
-                    FlatRow(title: "Foreign currency wallet", trailing: "100% rate preference", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentPurple),
-                    FlatRow(title: "International transfer", symbol: "dollarsign.circle.fill", tint: .accentBlue),
-                ])
-                FlatSection(title: "Grow your money", rows: [
-                    FlatRow(title: "RSE stocks", subtitle: "BOK, MTNR, BLR, IMR, CMR, EQTY", symbol: "chart.line.uptrend.xyaxis", tint: .accentTeal),
-                    FlatRow(title: "Bonds & fixed income", trailing: "7.5% ~ 12%", trailingIsLink: true, symbol: "building.columns.fill", tint: .accentBlue),
-                    FlatRow(title: "IPO schedule", symbol: "chart.line.uptrend.xyaxis", tint: .accentRed),
-                    FlatRow(title: "Brokerage account", trailing: "Up to 30,000 RWF", trailingIsLink: true, symbol: "building.columns.fill", tint: .accentTeal),
-                ])
-                FlatSection(title: "Pension", rows: [
-                    FlatRow(title: "Check my RSSB pension", symbol: "building.columns.fill", tint: .accentBlue),
-                    FlatRow(title: "Pension products", symbol: "percent", tint: .accentBlue),
-                ])
-                FlatSection(title: "Loans", rows: [
-                    FlatRow(title: "Check my max limit", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple),
-                    FlatRow(title: "Personal loan", trailing: "11% ~ 24%", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentBlue),
-                ])
-                FlatSection(title: "Notifications & consent", rows: [
-                    FlatRow(title: "Notifications", showChevron: true),
-                    FlatRow(title: "Credit data usage policy", showChevron: true),
-                    FlatRow(title: "Privacy policy", showChevron: true),
-                    FlatRow(title: "Terms & consent", showChevron: true),
-                ])
-                FlatSection(title: "Support", rows: [
-                    FlatRow(title: "FAQ", showChevron: true),
-                    FlatRow(title: "Live chat", showChevron: true),
-                    FlatRow(title: "Call support", showChevron: true),
-                    FlatRow(title: "Report fraud", showChevron: true),
-                    FlatRow(title: "Announcements", showChevron: true),
-                ])
+                // Split across two Group blocks (2026-07-11, found via a real
+                // xcodebuild against Xcode 14.3.1/Swift 5.8.1 -- see this file's
+                // own header for how that toolchain was located): that Swift
+                // version's ViewBuilder only supports up to 10 children per
+                // container (the parameter-pack-based unlimited-children ViewBuilder
+                // arrived in Swift 5.9), and this VStack has 15. Group doesn't
+                // change layout at all -- it's purely a ViewBuilder child-count
+                // workaround, each Group still contributes its children directly
+                // to the VStack's layout.
+                Group {
+                    TdsAllTopBar()
+                    TdsSearchBar(placeholder: "Search")
+                    IconGridSection(title: "Quick access", items: [
+                        ("Mini", "square.grid.2x2.fill"),
+                        ("Games", "gamecontroller.fill"),
+                        ("Bank", "building.columns.fill"),
+                        ("Pick", "star.fill"),
+                    ])
+                    // Android's MiniAppsSection launches real ReactActivity mini-app
+                    // bundles -- no equivalent runtime exists on iOS yet (see this
+                    // file's own header), so these three rows are plain, inert list
+                    // items rather than fake-functional buttons.
+                    FlatSection(title: "Mini apps", rows: [
+                        FlatRow(title: "Wallet balance"),
+                        FlatRow(title: "Pay bills"),
+                        FlatRow(title: "Reward tasks"),
+                    ])
+                    IconGridSection(title: "Recent services", items: [
+                        ("Open acct", "plus.circle"),
+                        ("Photo transfer", "camera.fill"),
+                        ("Verify", "checkmark.seal.fill"),
+                        ("Send", "paperplane.fill"),
+                        ("Group", "person.2.fill"),
+                        ("Property", "house.fill"),
+                        ("Insurance", "shield.fill"),
+                        ("More", "ellipsis"),
+                    ])
+                    FlatSection(title: "Financial services", rows: [
+                        FlatRow(title: "Open account", subtitle: "Itunda Wallet, other banks, RSE brokerage", symbol: "plus.circle", tint: .accentBlue),
+                        FlatRow(title: "My assets", subtitle: "Accounts, loans, RSE holdings, cards, points", symbol: "chart.pie.fill", tint: .accentPurple),
+                        FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "wallet.pass.fill", tint: .accentBlue),
+                        FlatRow(title: "Mobile plan", subtitle: "MTN, Airtel, broadband", symbol: "globe", tint: .accentTeal),
+                    ])
+                    // Everything below is modeled directly on the real Toss Bank
+                    // reference screens (see ItundaAppScreen.kt's own identical note),
+                    // adapted to Rwanda rails (REG/WASAC/Irembo/RRA, MTN MoMo/Airtel
+                    // Money, RSE tickers, RSSB pension) the same way Android already was.
+                    FlatSection(title: "Switch & save", rows: [
+                        FlatRow(title: "Switch your personal loan", trailing: "12% ~ 24%", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentBlue),
+                        FlatRow(title: "Switch your rent deposit loan", trailing: "9% ~ 15%", trailingIsLink: true, symbol: "house.fill", tint: .accentTeal),
+                        FlatRow(title: "Switch your SME loan", trailing: "11% ~ 22%", trailingIsLink: true, symbol: "storefront.fill", tint: .accentTeal),
+                    ])
+                }
+                Group {
+                    FlatSection(title: "Cards", rows: [
+                        FlatRow(title: "Itunda Card", trailing: "5% back on bills", trailingIsLink: true, symbol: "creditcard.fill", tint: .accentRed),
+                        FlatRow(title: "Virtual card", trailing: "Instant issue", symbol: "creditcard.fill", tint: .accentGray),
+                    ])
+                    FlatSection(title: "Services", rows: [
+                        FlatRow(title: "Rent deposit protection", symbol: "house.fill", tint: .accentBlue),
+                        FlatRow(title: "Recurring payments", symbol: "doc.text.fill", tint: .accentBlue),
+                        FlatRow(title: "Import recurring payments", symbol: "shippingbox.fill", tint: .accentGray),
+                        FlatRow(title: "REG & WASAC bills", symbol: "bolt.fill", tint: .accentBlue),
+                        FlatRow(title: "Claim interest now", symbol: "bolt.fill", tint: .accentPurple),
+                        FlatRow(title: "SME income tax estimate", symbol: "banknote.fill", tint: .accentOrange),
+                        FlatRow(title: "Split a bill with friends", symbol: "person.3.fill", tint: .accentBlue),
+                        FlatRow(title: "Shared calendar", symbol: "calendar", tint: .accentBlue),
+                        FlatRow(title: "Kids' allowance tasks", symbol: "checkmark.circle.fill", tint: .accentOrange),
+                    ])
+                    FlatSection(title: "Foreign currency", rows: [
+                        FlatRow(title: "Foreign currency wallet", trailing: "100% rate preference", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentPurple),
+                        FlatRow(title: "International transfer", symbol: "dollarsign.circle.fill", tint: .accentBlue),
+                    ])
+                    FlatSection(title: "Grow your money", rows: [
+                        FlatRow(title: "RSE stocks", subtitle: "BOK, MTNR, BLR, IMR, CMR, EQTY", symbol: "chart.line.uptrend.xyaxis", tint: .accentTeal),
+                        FlatRow(title: "Bonds & fixed income", trailing: "7.5% ~ 12%", trailingIsLink: true, symbol: "building.columns.fill", tint: .accentBlue),
+                        FlatRow(title: "IPO schedule", symbol: "chart.line.uptrend.xyaxis", tint: .accentRed),
+                        FlatRow(title: "Brokerage account", trailing: "Up to 30,000 RWF", trailingIsLink: true, symbol: "building.columns.fill", tint: .accentTeal),
+                    ])
+                    FlatSection(title: "Pension", rows: [
+                        FlatRow(title: "Check my RSSB pension", symbol: "building.columns.fill", tint: .accentBlue),
+                        FlatRow(title: "Pension products", symbol: "percent", tint: .accentBlue),
+                    ])
+                    FlatSection(title: "Loans", rows: [
+                        FlatRow(title: "Check my max limit", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple),
+                        FlatRow(title: "Personal loan", trailing: "11% ~ 24%", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentBlue),
+                    ])
+                    FlatSection(title: "Notifications & consent", rows: [
+                        FlatRow(title: "Notifications", showChevron: true),
+                        FlatRow(title: "Credit data usage policy", showChevron: true),
+                        FlatRow(title: "Privacy policy", showChevron: true),
+                        FlatRow(title: "Terms & consent", showChevron: true),
+                    ])
+                    FlatSection(title: "Support", rows: [
+                        FlatRow(title: "FAQ", showChevron: true),
+                        FlatRow(title: "Live chat", showChevron: true),
+                        FlatRow(title: "Call support", showChevron: true),
+                        FlatRow(title: "Report fraud", showChevron: true),
+                        FlatRow(title: "Announcements", showChevron: true),
+                    ])
+                }
             }
             .padding(.horizontal, IDS.Layout.screenHorizontal)
             .padding(.top, IDS.Layout.screenTop)

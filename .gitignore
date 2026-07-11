@@ -59,6 +59,14 @@ backend/.data/
 ios/Pods/
 android/local.properties
 
+# Tuist-generated (2026-07-11) -- `tuist generate` produces these from ios/Project.swift
+# and every ios/**/Sources/** file; regenerate with `tuist generate` (see
+# docs/ARCHITECTURE.md §3 for the exact toolchain versions this environment needed),
+# never hand-edit or commit them.
+ios/*.xcodeproj/
+ios/*.xcworkspace/
+ios/Derived/
+
 # OS
 .DS_Store
 Thumbs.db
