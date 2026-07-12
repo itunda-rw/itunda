@@ -42,6 +42,27 @@ multi-master (which risks write conflicts corrupting double-entry integrity) —
 at the read/serving layer, single-writer-with-fast-promotion at the data layer. Matches how
 real financial systems, including Toss's own documented pattern, actually do this.
 
+5. **Two-way topology restored after the drill, not left broken.** Brought dc-a's stopped
+   MySQL container back up and pointed it at dc-b (now the primary) via `CHANGE REPLICATION
+   SOURCE TO ... SOURCE_AUTO_POSITION=1` — no re-clone needed. GTID auto-position correctly
+   resolved the set difference even though dc-a still had its own pre-outage transaction
+   history locally; it just needed the one new transaction dc-b generated under its own
+   server UUID after promotion. Verified by checking dc-a's actual data, not just replica
+   status: dc-a picked up the dropped test table, all 5 real Flyway migrations, and every row
+   of real application data written during the live backend test below (see "Real backend,
+   booted against this rehearsal's infrastructure") — including a user whose `kycVerified`
+   flag was flipped mid-test. Confirms the failover pattern is reusable, not a one-shot demo.
+
+## Real backend, booted against this rehearsal's infrastructure
+
+Not just a MySQL/Kafka toy — the actual Spring Boot backend (`services/backend`) was booted
+against dc-b (post-promotion primary) with a real Redis added alongside it on the same VM, to
+live-verify the new `identity`/compliance module (see `docs/API_SPECIFICATION.md`'s Identity
+and Compliance sections, and `docs/TOSS_PARITY_MATRIX.md`'s Compliance row for the full
+account). Flyway applied all 5 real migrations cleanly against the promoted node; a real user
+was registered, submitted KYC, got reviewed by a promoted admin, and had `kycVerified` flip to
+`true` — all against this rehearsal's own infrastructure, not a throwaway local container.
+
 ## What's real but not fully proven — Kafka
 
 Both Kafka clusters are real, independently running KRaft brokers, matching the "two fully
