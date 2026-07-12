@@ -86,6 +86,25 @@ count against outstanding). `investments`: `{totalCostBasis, holdingCount}` — 
 module and no module in this backend depends on another feature module. `insurance`:
 `{activePolicyCount, totalMonthlyPremium}`.
 
+## P2P — `/api/v1/p2p`
+
+Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s QR Pay row. The first
+real wallet-to-wallet money movement in this backend where both sides are known itunda users
+(the existing `wallet/transfer/*` flow always routes through the simulated external rail, even
+recipient-to-recipient — see that row for the full account).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/request` | `{amount, description}` | `201` `{success, request}` | Creates a real `PENDING` request, 15-minute expiry (same convention as merchant QR) |
+| GET | `/requests` | — | `{success, requests: [...]}` | Caller's own requests, most recent first |
+| POST | `/pay/{requestId}` | — (+ `Idempotency-Key`) | `{success, message, transaction, newBalance}` | Direct `WALLET`→`WALLET` ledger pair, no fee. `newBalance` is the payer's own wallet balance after payment |
+
+Errors: `404 P2P_REQUEST_NOT_FOUND`, `409 P2P_REQUEST_NOT_PAYABLE` (already paid, or expired —
+a real request past its `expiresAt` gets marked `EXPIRED` on the attempt, not silently allowed),
+`400 SELF_PAYMENT_NOT_ALLOWED`, `404 WALLET_NOT_FOUND`, `422 INSUFFICIENT_FUNDS`,
+`409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`.
+
 ## Wallet — `/api/v1/wallet`
 
 | Method | Path | Body | Success | Notes |
@@ -339,4 +358,14 @@ every real itunda product (wallets, savings, loans, investments, insurance) into
 figure for the first time; previously only wallets were ever aggregated. Live-verified against
 a real account; also surfaced a separate real gap (no `SAVINGS`-type wallet auto-provisioning
 at registration, so `POST /api/v1/savings/goals` currently 404s for every new user) — noted in
-`docs/TOSS_PARITY_MATRIX.md`'s Account aggregation row, not yet fixed.
+`docs/TOSS_PARITY_MATRIX.md`'s Account aggregation row, since fixed (see below).
+
+**Same day, a sixth time:** the savings-wallet gap above was fixed — registration now
+provisions both `MAIN` and `SAVINGS` wallets, live-verified with a brand-new account
+(`POST /api/v1/savings/goals` now returns a real `201`, not the `404` every prior real user hit).
+
+**Same day, a seventh time:** the P2P section was added — the first real wallet-to-wallet
+transfer in this backend. Live-verified with two real accounts: a requester starting at 0 RWF
+ended at exactly the requested amount after being paid, and saw the transaction in their own
+`GET /wallet/transactions` for the first time (the existing transfer flow's hardcoded
+`recipientId: "external"` never allowed that).

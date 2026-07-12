@@ -18,5 +18,6 @@ include(
     ":rewards",
     ":creditscore",
     ":overview",
+    ":p2p",
     ":app"
 )
