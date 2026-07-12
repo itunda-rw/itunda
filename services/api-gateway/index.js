@@ -1,9 +1,32 @@
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const cors = require('cors');
+const promClient = require('prom-client');
 
 const app = express();
 app.use(cors());
+
+// Real Prometheus scrape target (2026-07-11, alongside services/backend's
+// micrometer-registry-prometheus) -- default Node process metrics plus HTTP
+// request duration, so this gateway isn't the one service in the fleet with no
+// metrics surface at all.
+const metricsRegistry = new promClient.Registry();
+promClient.collectDefaultMetrics({ register: metricsRegistry });
+const httpRequestDuration = new promClient.Histogram({
+    name: 'http_request_duration_seconds',
+    help: 'Duration of HTTP requests proxied by the gateway',
+    labelNames: ['method', 'route', 'status_code'],
+    registers: [metricsRegistry]
+});
+app.use((req, res, next) => {
+    const stop = httpRequestDuration.startTimer({ method: req.method });
+    res.on('finish', () => stop({ route: req.path, status_code: res.statusCode }));
+    next();
+});
+app.get('/metrics', async (req, res) => {
+    res.set('Content-Type', metricsRegistry.contentType);
+    res.end(await metricsRegistry.metrics());
+});
 
 // Toss-style API Gateway: Route mobile requests to internal Spring Boot services.
 //

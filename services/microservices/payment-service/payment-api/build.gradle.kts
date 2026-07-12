@@ -19,4 +19,5 @@ dependencies {
     // Real k8s liveness/readiness probes need a real health endpoint (2026-07-11,
     // alongside infra/k8s/production/payment-service.yaml).
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
 }
