@@ -94,7 +94,11 @@ class WalletService(
                 LedgerAccountType.SAVINGS_GOAL_PAYABLE -> "Savings"
                 LedgerAccountType.INSURANCE_PREMIUM_REVENUE -> "Insurance"
                 LedgerAccountType.FEE_REVENUE -> "Fees"
-                LedgerAccountType.REWARDS_EXPENSE, LedgerAccountType.INTEREST_EXPENSE, null -> "Other"
+                // REWARDS_EXPENSE/INTEREST_EXPENSE/INSURANCE_CLAIMS_EXPENSE are all credit-side
+                // accounts (they pay money *into* a wallet) -- they'd never realistically be the
+                // counterpart to a WALLET debit here, but the compiler correctly demands every
+                // LedgerAccountType be handled since this is an exhaustive `when`.
+                LedgerAccountType.REWARDS_EXPENSE, LedgerAccountType.INTEREST_EXPENSE, LedgerAccountType.INSURANCE_CLAIMS_EXPENSE, null -> "Other"
                 LedgerAccountType.WALLET -> "Other"
             }
             totals[category] = (totals[category] ?: BigDecimal.ZERO) + debit.amount

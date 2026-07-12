@@ -207,11 +207,24 @@ simulated.
 | GET | `/plans` | — | `{success, plans: [...]}` | |
 | GET | `/my-policies` | — | `{success, policies: [...]}` | |
 | POST | `/enroll` | `{planId}` (+ `Idempotency-Key`) | `{success, ...}` | |
+| POST | `/claims` | `{policyId, description, amount}` | `201` `{success, claim}` | Built and live-verified 2026-07-13. No `Idempotency-Key` — filing isn't money-moving, only the ADMIN decide step is. Real `404` if the policy isn't yours, real `409` if it's not `active` |
+| GET | `/claims` | — | `{success, claims: [...]}` | Caller's own claims, most recent first |
 
 Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
-`400 IDEMPOTENCY_KEY_REQUIRED`, `404 PLAN_NOT_FOUND`, `404 WALLET_NOT_FOUND`,
-`422 INSUFFICIENT_FUNDS`. No claims-filing endpoint exists; real insurer quote/bind adapters
-are not built.
+`400 IDEMPOTENCY_KEY_REQUIRED`, `404 PLAN_NOT_FOUND`, `404 POLICY_NOT_FOUND`,
+`409 POLICY_NOT_ACTIVE`, `404 WALLET_NOT_FOUND`, `422 INSUFFICIENT_FUNDS`,
+`400 INVALID_REQUEST`. Real insurer quote/bind adapters are not built — this is itunda's own
+claims workflow, not a live connection to an actual insurer.
+
+### Insurance claims review — `/api/v1/system/insurance-claims` (ADMIN role only)
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/queue` | — | `{success, queue: [...]}` | All `SUBMITTED` claims, oldest first |
+| POST | `/{claimId}/decide` | `{approve, reason?}` | `{success, claim}` | On `approve: true`, really pays out from a new `insurance_claims_expense` ledger account straight into the claimant's wallet — confirmed live, balance moved by the exact claim amount |
+
+Errors: `404 CLAIM_NOT_FOUND`, `409 CLAIM_NOT_PENDING` (already decided), `404 WALLET_NOT_FOUND`,
+`422 INSUFFICIENT_FUNDS`.
 
 ## Merchant — `/api/v1/merchant`
 
@@ -400,3 +413,8 @@ masking `NEW_RECIPIENT`); re-verified live after the fix with a genuinely new re
 it — Spring Boot's single-threaded default scheduler pool, shared across every `@Scheduled`
 bean in the app, meant the new job ran once at boot and never again until
 `spring.task.scheduling.pool.size` was raised in `application.yml`.
+
+**Same day, a tenth time:** the Insurance section's claims endpoints and the new Insurance
+claims review admin section were added. Live-verified end to end against a real policy: filed
+a claim, saw it in the ADMIN queue, approved it, and confirmed the claimant's wallet balance
+moved by the exact claim amount, not just the response body.

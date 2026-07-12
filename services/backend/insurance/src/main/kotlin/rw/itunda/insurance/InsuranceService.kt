@@ -2,26 +2,35 @@ package rw.itunda.insurance
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.core.domain.InsuranceClaim
+import rw.itunda.core.domain.InsuranceClaimStatus
 import rw.itunda.core.domain.InsurancePolicy
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.repository.InsuranceClaimRepository
 import rw.itunda.core.repository.InsurancePolicyRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 
 class PlanNotFoundException(message: String) : RuntimeException(message)
 class NoWalletException(message: String) : RuntimeException(message)
+class PolicyNotFoundException(message: String) : RuntimeException(message)
+class PolicyNotActiveException(message: String) : RuntimeException(message)
+class ClaimNotFoundException(message: String) : RuntimeException(message)
+class ClaimNotPendingException(message: String) : RuntimeException(message)
 
 @Service
 class InsuranceService(
     private val insurancePolicyRepository: InsurancePolicyRepository,
     private val walletRepository: WalletRepository,
-    private val ledgerService: LedgerService
+    private val ledgerService: LedgerService,
+    private val insuranceClaimRepository: InsuranceClaimRepository,
 ) {
 
     val insurancePlans = listOf(
@@ -67,5 +76,47 @@ class InsuranceService(
         )
 
         return insurancePolicyRepository.save(policy)
+    }
+
+    fun submitClaim(userId: String, policyId: String, description: String, amount: BigDecimal): InsuranceClaim {
+        require(amount > BigDecimal.ZERO) { "Claim amount must be greater than zero" }
+        val policy = insurancePolicyRepository.findById(policyId)
+            .filter { it.userId == userId }
+            .orElseThrow { PolicyNotFoundException("Policy not found") }
+        if (policy.status != "active") {
+            throw PolicyNotActiveException("Cannot file a claim against a ${policy.status} policy")
+        }
+        val claim = InsuranceClaim(id = "claim_${UUID.randomUUID()}", policyId = policyId, userId = userId, description = description, amount = amount)
+        return insuranceClaimRepository.save(claim)
+    }
+
+    fun getMyClaims(userId: String) = insuranceClaimRepository.findByUserIdOrderBySubmittedAtDesc(userId)
+
+    fun getClaimsQueue() = insuranceClaimRepository.findByStatusOrderBySubmittedAtAsc(InsuranceClaimStatus.SUBMITTED)
+
+    @Transactional
+    fun decideClaim(claimId: String, reviewerId: String, approve: Boolean, reason: String?): InsuranceClaim {
+        val claim = insuranceClaimRepository.findById(claimId).orElseThrow { ClaimNotFoundException("Claim not found") }
+        if (claim.status != InsuranceClaimStatus.SUBMITTED) {
+            throw ClaimNotPendingException("Claim is already ${claim.status}")
+        }
+
+        if (approve) {
+            val wallet = walletRepository.findByUserIdAndType(claim.userId, WalletType.MAIN)
+                ?: throw NoWalletException("No wallet found for this account")
+            ledgerService.postLedgerTransaction(
+                wallet.currency,
+                listOf(
+                    LedgerLeg("insurance_claims_expense", LedgerAccountType.INSURANCE_CLAIMS_EXPENSE, LedgerDirection.DEBIT, claim.amount, "Claim payout - ${claim.description}"),
+                    LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, claim.amount, "Claim payout - ${claim.description}"),
+                ),
+            )
+        }
+
+        claim.status = if (approve) InsuranceClaimStatus.APPROVED else InsuranceClaimStatus.REJECTED
+        claim.reviewedBy = reviewerId
+        claim.reviewedAt = Instant.now()
+        claim.decisionReason = reason
+        return insuranceClaimRepository.save(claim)
     }
 }

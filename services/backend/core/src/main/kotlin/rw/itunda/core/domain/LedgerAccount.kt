@@ -36,6 +36,7 @@ class LedgerAccount(
             "interest_expense" to "Interest Expense",
             "insurance_premium_revenue" to "Insurance Premium Revenue",
             "rewards_expense" to "Rewards Expense",
+            "insurance_claims_expense" to "Insurance Claims Expense",
         )
     }
 }

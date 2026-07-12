@@ -14,8 +14,12 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.insurance.InsuranceService
 import rw.itunda.insurance.NoWalletException
 import rw.itunda.insurance.PlanNotFoundException
+import rw.itunda.insurance.PolicyNotActiveException
+import rw.itunda.insurance.PolicyNotFoundException
+import java.math.BigDecimal
 
 data class EnrollRequest(val planId: String)
+data class SubmitClaimRequest(val policyId: String, val description: String, val amount: BigDecimal)
 
 @RestController
 @RequestMapping("/api/v1/insurance")
@@ -83,6 +87,25 @@ class InsuranceController(
         return ResponseEntity.status(status).body(body)
     }
 
+    // Real claims filing (2026-07-13) -- see docs/TOSS_PARITY_MATRIX.md's Insurance row.
+    // No Idempotency-Key: filing a claim isn't money-moving (only the ADMIN decide step,
+    // in InsuranceClaimsAdminController, actually pays anything out).
+    @PostMapping("/claims")
+    fun submitClaim(@RequestBody request: SubmitClaimRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> {
+        val claim = insuranceService.submitClaim(currentUser.userId, request.policyId, request.description, request.amount)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "claim" to claim))
+    }
+
+    @GetMapping("/claims")
+    fun getMyClaims(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "claims" to insuranceService.getMyClaims(currentUser.userId)))
+
+    @ExceptionHandler(PolicyNotFoundException::class)
+    fun handlePolicyNotFound(ex: PolicyNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("POLICY_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(PolicyNotActiveException::class)
+    fun handlePolicyNotActive(ex: PolicyNotActiveException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("POLICY_NOT_ACTIVE", ex.message ?: "Conflict"))
+
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENCY_KEY_CONFLICT", ex.message ?: "Conflict"))
 
@@ -100,4 +123,7 @@ class InsuranceController(
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
+
+    @ExceptionHandler(IllegalArgumentException::class)
+    fun handleBadRequest(ex: IllegalArgumentException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_REQUEST", ex.message ?: "Bad request"))
 }
