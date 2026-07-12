@@ -102,7 +102,11 @@ class SaroniteBrownfieldModule(
 
     @ReactMethod
     fun getPendingBills(promise: Promise) {
-        authorizedCall(get("bills/pending"), promise, ::parsePendingBills)
+        // Real bug fixed (2026-07-13): was missing the /api/v1 prefix every other
+        // endpoint on this same class already uses correctly (getWalletBalance) --
+        // resolved to the wrong URL relative to BuildConfig.API_BASE_URL and 404'd
+        // against the real backend (services/backend/bills, @RequestMapping("/api/v1/bills")).
+        authorizedCall(get("api/v1/bills/pending"), promise, ::parsePendingBills)
     }
 
     @ReactMethod
@@ -113,7 +117,8 @@ class SaroniteBrownfieldModule(
             addProperty("accountNumber", accountNumber)
             addProperty("provider", provider)
         }
-        authorizedCall(post("bills/pay", body), promise, ::parsePayBillResult)
+        // Same missing-prefix bug as getPendingBills above, fixed 2026-07-13.
+        authorizedCall(post("api/v1/bills/pay", body), promise, ::parsePayBillResult)
     }
 
     @ReactMethod
@@ -177,22 +182,50 @@ class SaroniteBrownfieldModule(
         })
     }
 
+    // Real bug fixed (2026-07-13): never set top-level `totalBalance`/`currency`,
+    // which WalletBalanceResult (the TS spec this bridge implements --
+    // packages/saronite/packages/brownfield-module/src/spec/SaroniteBrownfieldModule.ts)
+    // requires and wallet-balance/pages/index.tsx actually reads
+    // (`balance.totalBalance.toLocaleString()`) -- would throw on any successful
+    // fetch. Also only populated 3 of WalletSummary's 8 fields; the real backend
+    // (services/backend's Wallet entity) has real values for all of them except
+    // `icon` (no such concept server-side -- left honestly empty rather than
+    // invented) and `connected` (always true: these are itunda's own wallets,
+    // not an externally-linked account with a real connection-status concept).
     private fun parseWalletBalance(json: String): WritableMap {
         val root = JsonParser.parseString(json).asJsonObject
         val result = Arguments.createMap()
         val wallets = Arguments.createArray()
+        var totalBalance = 0.0
+        var currency = "RWF"
         root.getAsJsonArray("wallets")?.forEach { element ->
             val w = element.asJsonObject
+            val balance = w.get("balance").asDouble
+            val walletCurrency = w.get("currency")?.asString ?: currency
             val walletMap = Arguments.createMap()
             walletMap.putString("id", w.get("id").asString)
-            walletMap.putDouble("balance", w.get("balance").asDouble)
-            walletMap.putString("currency", w.get("currency").asString)
+            walletMap.putString("type", w.get("type")?.asString ?: "")
+            walletMap.putString("name", w.get("accountName")?.asString ?: "")
+            walletMap.putString("number", w.get("accountNumber")?.asString ?: "")
+            walletMap.putDouble("balance", balance)
+            walletMap.putString("currency", walletCurrency)
+            walletMap.putString("icon", "")
+            walletMap.putBoolean("connected", true)
             wallets.pushMap(walletMap)
+            totalBalance += balance
+            currency = walletCurrency
         }
+        result.putDouble("totalBalance", totalBalance)
+        result.putString("currency", currency)
         result.putArray("wallets", wallets)
         return result
     }
 
+    // Real bug fixed (2026-07-13): only populated 3 of PendingBill's 6 fields --
+    // `dueDate` and `status` are rendered directly by pay-bills/pages/index.tsx
+    // (`item.dueDate`), and `accountNumber` is required in the payBill() request
+    // body sent right back to this same bridge's payBill method, so leaving it
+    // unset meant a real bill payment would submit `accountNumber: undefined`.
     private fun parsePendingBills(json: String): WritableMap {
         val root = JsonParser.parseString(json).asJsonObject
         val bills = Arguments.createArray()
@@ -202,6 +235,9 @@ class SaroniteBrownfieldModule(
             billMap.putString("id", b.get("id").asString)
             billMap.putString("provider", b.get("provider").asString)
             billMap.putDouble("amount", b.get("amount").asDouble)
+            billMap.putString("dueDate", b.get("dueDate")?.asString ?: "")
+            billMap.putString("status", b.get("status")?.asString ?: "")
+            billMap.putString("accountNumber", b.get("accountNumber")?.asString ?: "")
             bills.pushMap(billMap)
         }
         val result = Arguments.createMap()
@@ -209,10 +245,22 @@ class SaroniteBrownfieldModule(
         return result
     }
 
+    // Real bug fixed (2026-07-13): only populated `message`, leaving
+    // `transactionId`/`referenceNumber`/`status` unset -- the current UI
+    // (pay-bills/pages/index.tsx) only reads `message` today so this was benign
+    // in practice, but any future screen showing a receipt/confirmation would
+    // have silently gotten `undefined` for all three. Pulled from the real
+    // nested `transaction` object services/backend's BillsController actually
+    // returns (`{"success", "message", "transaction": {"id", "referenceNumber",
+    // "status", ...}}`), not invented.
     private fun parsePayBillResult(json: String): WritableMap {
         val root = JsonParser.parseString(json).asJsonObject
+        val transaction = root.getAsJsonObject("transaction")
         val result = Arguments.createMap()
         result.putString("message", root.get("message")?.asString ?: "Bill payment successful")
+        result.putString("transactionId", transaction?.get("id")?.asString ?: "")
+        result.putString("referenceNumber", transaction?.get("referenceNumber")?.asString ?: "")
+        result.putString("status", transaction?.get("status")?.asString ?: "")
         return result
     }
 
