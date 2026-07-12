@@ -63,6 +63,20 @@ class AuthService(
                 availableBalance = BigDecimal.ZERO,
             ),
         )
+        // Fixed 2026-07-13, found live: SavingsService.createGoal requires a real
+        // WalletType.SAVINGS wallet and only MAIN was ever provisioned here, so
+        // POST /api/v1/savings/goals 404'd (WALLET_NOT_FOUND) for every real user.
+        walletRepository.save(
+            Wallet(
+                id = "wallet_${UUID.randomUUID()}",
+                userId = user.id,
+                accountNumber = generateAccountNumber(),
+                accountName = "${user.firstName}'s Savings Account",
+                type = WalletType.SAVINGS,
+                balance = BigDecimal.ZERO,
+                availableBalance = BigDecimal.ZERO,
+            ),
+        )
 
         return issueAuthResponse(user, "Registration successful")
     }
