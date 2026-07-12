@@ -13,6 +13,7 @@ import rw.itunda.core.domain.P2pPaymentRequest
 import rw.itunda.core.domain.P2pPaymentRequestStatus
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
@@ -36,7 +37,8 @@ class P2pServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = P2pService(p2pPaymentRequestRepository, walletRepository, transactionRepository, ledgerService)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = P2pService(p2pPaymentRequestRepository, walletRepository, transactionRepository, ledgerService, fraudRuleEngine)
 
         val request = P2pPaymentRequest(id = "p2p_1", requesterUserId = "requester_1", amount = BigDecimal("2000"), description = "Lunch", expiresAt = Instant.now().plusSeconds(900))
         every { p2pPaymentRequestRepository.findById("p2p_1") } returns Optional.of(request)
@@ -80,7 +82,8 @@ class P2pServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = P2pService(p2pPaymentRequestRepository, walletRepository, transactionRepository, ledgerService)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = P2pService(p2pPaymentRequestRepository, walletRepository, transactionRepository, ledgerService, fraudRuleEngine)
 
         val request = P2pPaymentRequest(id = "p2p_2", requesterUserId = "user_5", amount = BigDecimal("1000"), description = "test", expiresAt = Instant.now().plusSeconds(900))
         every { p2pPaymentRequestRepository.findById("p2p_2") } returns Optional.of(request)
@@ -102,7 +105,8 @@ class P2pServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = P2pService(p2pPaymentRequestRepository, walletRepository, transactionRepository, ledgerService)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = P2pService(p2pPaymentRequestRepository, walletRepository, transactionRepository, ledgerService, fraudRuleEngine)
 
         val request = P2pPaymentRequest(id = "p2p_3", requesterUserId = "requester_2", amount = BigDecimal("1000"), description = "test", expiresAt = Instant.now().minusSeconds(1))
         every { p2pPaymentRequestRepository.findById("p2p_3") } returns Optional.of(request)
@@ -126,7 +130,8 @@ class P2pServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = P2pService(p2pPaymentRequestRepository, walletRepository, transactionRepository, ledgerService)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = P2pService(p2pPaymentRequestRepository, walletRepository, transactionRepository, ledgerService, fraudRuleEngine)
 
         val request = P2pPaymentRequest(id = "p2p_4", requesterUserId = "requester_3", amount = BigDecimal("5000"), description = "test", expiresAt = Instant.now().plusSeconds(900))
         every { p2pPaymentRequestRepository.findById("p2p_4") } returns Optional.of(request)

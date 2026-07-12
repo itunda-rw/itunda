@@ -10,6 +10,7 @@ import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
@@ -42,6 +43,7 @@ class P2pService(
     private val walletRepository: WalletRepository,
     private val transactionRepository: TransactionRepository,
     private val ledgerService: LedgerService,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
 
     fun generateRequest(requesterUserId: String, amount: BigDecimal, description: String): P2pPaymentRequest {
@@ -106,6 +108,11 @@ class P2pService(
             description = "QR payment - ${request.description}",
             completedAt = Instant.now(),
         )
+        // Real bug found live: evaluating fraud rules *after* saving this transaction let it
+        // find itself as "prior history" (recipientId already matches, since it's checking
+        // against itself), permanently masking NEW_RECIPIENT no matter how new the recipient
+        // actually was. Must evaluate before this transaction exists in the query results.
+        fraudRuleEngine.evaluate(payerUserId, request.requesterUserId, request.amount, transaction.id)
         transactionRepository.save(transaction)
 
         request.status = P2pPaymentRequestStatus.COMPLETED

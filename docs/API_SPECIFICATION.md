@@ -312,6 +312,22 @@ Unlike every other module in this file, `SystemController` is real infrastructur
 real RBAC gate) wired to entirely fake data — don't mistake "the endpoint exists and is
 protected" for "the endpoint returns anything real." Building this out is open work, not a bug.
 
+### Fraud review — `/api/v1/system/fraud` (ADMIN role only)
+
+Unlike the stubs above, this one is genuinely real end to end. Built and live-verified
+2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s Operations/Fraud row.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/queue` | — | `{success, queue: [...]}` | All unreviewed flags, oldest first |
+| POST | `/{flagId}/decide` | `{decision: "CLEARED" \| "CONFIRMED"}` | `{success, flag}` | Blocks re-deciding an already-reviewed flag |
+
+Flags are raised by `FraudRuleEngine` (lives in `:core`, currently only called from the P2P
+payment flow) and never block a transaction — review-only by design. Rules: `HIGH_VALUE`
+(≥100,000 RWF), `VELOCITY` (3+ outgoing transactions in 5 minutes), `NEW_RECIPIENT` (first-ever
+payment to that recipient). Errors: `404 FRAUD_FLAG_NOT_FOUND`,
+`409 FRAUD_FLAG_ALREADY_REVIEWED`.
+
 ## What does not exist (previously implied real, or plausible-sounding, but absent)
 
 Grepped for directly, confirmed absent as of 2026-07-13:
@@ -369,3 +385,8 @@ transfer in this backend. Live-verified with two real accounts: a requester star
 ended at exactly the requested amount after being paid, and saw the transaction in their own
 `GET /wallet/transactions` for the first time (the existing transfer flow's hardcoded
 `recipientId: "external"` never allowed that).
+
+**Same day, an eighth time:** the System section's Fraud review subsection was added — no
+fraud-rule engine existed at all before. A real live bug was caught and fixed mid-build
+(evaluating fraud rules after saving the current transaction let it match itself, permanently
+masking `NEW_RECIPIENT`); re-verified live after the fix with a genuinely new recipient.
