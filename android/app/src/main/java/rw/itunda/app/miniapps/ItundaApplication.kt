@@ -1,16 +1,16 @@
 package rw.itunda.app.miniapps
 
 import android.app.Application
+import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
-import com.facebook.react.ReactNativeHost
-import com.facebook.react.ReactPackage
-import com.facebook.react.shell.MainReactPackage
-import com.facebook.soloader.SoLoader
-import okhttp3.OkHttpClient
-import okhttp3.Request
+import com.facebook.react.ReactHost
+import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
+import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import rw.itunda.app.BuildConfig
 import rw.itunda.app.network.NetworkClient
 import rw.itunda.app.network.SessionManager
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.io.File
 import java.util.concurrent.TimeUnit
 
@@ -21,73 +21,59 @@ import java.util.concurrent.TimeUnit
  * `ReactActivity`'s requirement that the Application implement `ReactApplication`.
  *
  * Registered in AndroidManifest.xml as `android:name=".miniapps.ItundaApplication"`.
- * Old Native Modules architecture (newArchEnabled=false, matching
- * packages/saronite/packages/brownfield-module's proven-standalone setup) --
- * no Fabric/TurboModule codegen, deliberately, for the same reason documented
- * there: not worth the risk for a handful of simple mini-apps.
+ *
+ * Rewritten 2026-07-12 (granite-adoption stage 4) from the legacy
+ * `ReactNativeHost`/`ReactInstanceManager` pattern to RN 0.84's real `ReactHost`/
+ * Bridgeless API -- not a style preference, a hard requirement: a live,
+ * instrumented on-device test (`MiniAppNewArchitectureTest`) crashed with
+ * `ReactInstanceManager.createReactContext is unsupported` the moment New
+ * Architecture was enabled, because Bridgeless mode (default under New
+ * Architecture at this RN version) removes the legacy bridge entirely. Matches
+ * the real official `@react-native-community/template@0.84.0`'s
+ * `MainApplication.kt` shape exactly (fetched and compared directly, not
+ * guessed), with itunda's two real additions layered on: the manually-registered
+ * `SaronitePackage` (autolinking, wired at the settings level in stage 2, doesn't
+ * pick this up -- `@itunda/saronite-react-native` has no autolinking config
+ * markers) alongside the now-real autolinked `PackageList`, and the CDN
+ * mini-app-bundle downloader (`docs/ARCHITECTURE.md` §2's backlog item) via
+ * `getDefaultReactHost`'s `jsBundleFilePath` parameter, which accepts a real file
+ * path directly -- the modern equivalent of the old `getJSBundleFile()` override.
  */
 class ItundaApplication : Application(), ReactApplication {
 
-    private val mReactNativeHost: ReactNativeHost =
-        object : ReactNativeHost(this) {
-            override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
-
-            // No RN CLI autolinking here (no react-native.config.js-driven codegen
-            // wired into this Gradle build), so there's no generated PackageList --
-            // core view managers come from MainReactPackage directly, plus the one
-            // real bridge module mini-apps actually use.
-            override fun getPackages(): List<ReactPackage> =
-                listOf(MainReactPackage(), SaronitePackage(ItundaSaroniteHostBridge()))
-
-            override fun getJSMainModuleName(): String = "index"
-
-            override fun getBundleAssetName(): String = "index.android.bundle"
-
-            // Added 2026-07-11 -- real, scoped step toward docs/ARCHITECTURE.md §2's
-            // Granite backlog item ("dynamic bundle loading from a CDN instead of a
-            // local Metro server"), not the full mechanism (no shared/service-bundle
-            // split yet -- see the doc for what's still open).
-            //
-            // Deliberately zero risk to anything this session ever tested: when
-            // getUseDeveloperSupport() is true (every debug build, the only mode
-            // exercised on-device this session), RN's dev-support manager takes over
-            // bundle loading entirely and never calls this method at all -- returning
-            // super's default here is provably inert for that whole code path, not
-            // just believed safe. In release builds with no CDN URL configured
-            // (BuildConfig.MINIAPP_BUNDLE_CDN_URL empty, the default), this also
-            // returns super's default (null -> falls back to getBundleAssetName()'s
-            // packaged asset), so today's actual release behavior is unchanged too.
-            // Only when someone explicitly opts in via
-            // -PminiAppBundleCdnUrl=https://... does new behavior activate at all.
-            //
-            // Honest, real risk in that one new, opt-in, currently-inert path:
-            // MiniAppBundleDownloader makes a synchronous network call. RN 0.72's own
-            // ReactInstanceManager calls getJSBundleFile() off the main thread during
-            // normal startup, but that has NOT been confirmed against this exact RN
-            // version/build in this environment (no way to verify live -- see
-            // ARCHITECTURE.md §2's own note on why, checked via `top`, not assumed).
-            // If it turns out to run on the main thread, this would throw
-            // NetworkOnMainThreadException the first time anyone actually sets
-            // -PminiAppBundleCdnUrl. Left as a known, documented risk rather than
-            // silently claimed safe -- this is real progress on the backlog item's
-            // literal ask, not a claim that the whole mechanism is now proven.
-            override fun getJSBundleFile(): String? {
-                val cdnUrl = BuildConfig.MINIAPP_BUNDLE_CDN_URL
-                if (BuildConfig.DEBUG || cdnUrl.isBlank()) return super.getJSBundleFile()
-                return MiniAppBundleDownloader.downloadAndCache(this@ItundaApplication, cdnUrl)
-                    ?: super.getJSBundleFile()
-            }
+    override val reactHost: ReactHost by lazy {
+        // Same conditional logic as the pre-rewrite getJSBundleFile() override:
+        // debug builds (every mode exercised on-device this session) and an unset
+        // CDN URL both fall through to null -> getDefaultReactHost's own default
+        // asset-bundle loader; only an explicit -PminiAppBundleCdnUrl in a release
+        // build activates the downloader. Same honest, documented risk as before:
+        // this makes a synchronous network call, not yet confirmed live off the
+        // main thread under the new ReactHost startup sequence.
+        val cdnUrl = BuildConfig.MINIAPP_BUNDLE_CDN_URL
+        val cdnBundleFilePath = if (BuildConfig.DEBUG || cdnUrl.isBlank()) {
+            null
+        } else {
+            MiniAppBundleDownloader.downloadAndCache(this, cdnUrl)
         }
-
-    // RN's ReactApplication interface changed getReactNativeHost() (a Java-style
-    // getter, valid up through 0.72) to a Kotlin `val reactNativeHost` property --
-    // confirmed by reading node_modules/react-native's own ReactApplication.kt at
-    // 0.80.3 directly (granite-adoption stage 2, 2026-07-12).
-    override val reactNativeHost: ReactNativeHost = mReactNativeHost
+        getDefaultReactHost(
+            context = applicationContext,
+            packageList = PackageList(this).packages.apply {
+                add(SaronitePackage(ItundaSaroniteHostBridge()))
+            },
+            jsBundleFilePath = cdnBundleFilePath,
+        )
+    }
 
     override fun onCreate() {
         super.onCreate()
-        SoLoader.init(this, false)
+        // loadReactNative() replaces the old explicit SoLoader.init(...) call --
+        // confirmed against the real official template, which calls only this, no
+        // separate SoLoader call. It handles the merged-.so mapping internally
+        // (see the git history on this file for the UnsatisfiedLinkError on
+        // libreact_featureflagsjni.so that the old explicit
+        // SoLoader.init(this, OpenSourceMergedSoMapping) call fixed, one step
+        // before this rewrite superseded that call site).
+        loadReactNative(this)
         // Real login/session flow (2026-07-11) -- must run before any screen can make
         // an authenticated request. See network/NetworkClient.kt/SessionManager.kt.
         NetworkClient.init(this)

@@ -3,6 +3,7 @@ package rw.itunda.app.miniapps
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultReactActivityDelegate
+import rw.itunda.app.BuildConfig
 
 /**
  * One concrete Activity subclass per mini-app, each hardcoding its own RN
@@ -17,7 +18,13 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate
  */
 abstract class SaroniteMiniAppActivity : ReactActivity() {
     override fun createReactActivityDelegate(): ReactActivityDelegate =
-        DefaultReactActivityDelegate(this, mainComponentName!!, false)
+        // fabricEnabled reads the real, plugin-generated BuildConfig flag
+        // (granite-adoption stage 4, 2026-07-12) rather than a hardcoded `false`
+        // -- it must track newArchEnabled, since Fabric is New Architecture's
+        // renderer; leaving this false while New Architecture is on elsewhere
+        // would mismatch the RootView's renderer against the ReactHost built in
+        // ItundaApplication.kt.
+        DefaultReactActivityDelegate(this, mainComponentName!!, BuildConfig.IS_NEW_ARCHITECTURE_ENABLED)
 }
 
 class WalletBalanceMiniAppActivity : SaroniteMiniAppActivity() {
