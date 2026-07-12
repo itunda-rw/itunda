@@ -155,6 +155,48 @@ common generic fintech-microservices choices:
   **corporate-strategy facts, not architecture facts** — they don't belong in this document's
   "what to build like" scope and shouldn't be treated as an itunda roadmap item.
 
+## 7. Toss Payments' private cloud: OpenStack + Cluster API, internally called "OKS"
+
+Source: [토스 테크 — 레거시 인프라 작살내고 하이브리드 클라우드 만든 썰](https://toss.tech/article/payments-legacy-9)
+(fetched 2026-07-13). Directly answers a question this session's own Multipass-based
+active-active rehearsal raised: does Toss run OpenStack anywhere? Yes — but scoped to Toss
+Payments specifically, and not as a replacement for Kubernetes, as an IaaS layer underneath it.
+
+- Toss Payments built its own private cloud on **OpenStack**, organized as three independent
+  clusters they call "Pods": **Pod0** (management — Cluster API, monitoring, security tooling,
+  quorum nodes) and **Pod1**/**Pod2** (production, active-active, fully independent of each
+  other — losing one OpenStack cluster shifts traffic to the others without an outage).
+- Kubernetes runs on top of this via **Cluster API + CAPO** (Cluster API Provider OpenStack) +
+  **OCCM** (OpenStack Cloud Controller Manager) — a deliberate choice over OpenStack's own
+  Magnum PaaS offering, specifically so K8s clusters stay declaratively managed like any other
+  resource. They name this whole arrangement **"OKS"** ("OpenStack Kubernetes Service"), an
+  explicit naming echo of AWS EKS.
+- Explicit resource-parity mapping to AWS, stated directly in the source: EC2→Nova,
+  NLB→Octavia, ALB→F5 BigIP, ECR→Harbor (open-source), **EKS→Cluster API-managed K8s (OKS)**.
+- Four live traffic zones in production: Live1/Live2 on AWS, Live3/Live4 on the OpenStack
+  Pods — Route53 plus AWS Global Accelerator balance across all four before traffic ever
+  reaches a customer-facing firewall.
+- IaC via Terraform + Ansible; golden images bring instance creation down to ~10 seconds;
+  **AWS Roles Anywhere** lets OpenStack-hosted workloads assume real AWS IAM roles without
+  static access keys (a process-credential-provider pattern for VMs, a sidecar + K8s
+  ServiceAccount pattern for pods).
+- Monitoring: Zabbix/Prometheus/Mimir for metrics, Grafana for dashboards, Elasticsearch with
+  Cross-Cluster Search handling 100,000–300,000 logs/second across both the AWS and OpenStack
+  environments.
+- They patched Octavia's own source code to change its log format — real operational
+  ownership of the private-cloud stack, not a vendored black box left untouched.
+
+**What this means for itunda, honestly**: full OKS-style Cluster API + CAPO + a real OpenStack
+control plane is production infrastructure sized for a company running its own physical data
+centers — not something to stand up as a local rehearsal (CAPO alone typically wants
+kubeadm-class nodes with real resources per node; OpenStack's own control plane is commonly
+budgeted 8GB+ RAM before any workload runs on it). The two-Multipass-VM rehearsal this session
+is building targets a different, smaller claim: prototyping the *shape* of active-active
+failover (MySQL replica promotion, Kafka topic mirroring) locally, not reproducing OKS itself.
+If itunda ever needs the real thing, Cluster API + a cloud-agnostic infrastructure provider
+(not necessarily CAPO/OpenStack specifically) is the correct pattern to converge on, matching
+what's actually sourced here rather than a guess.
+
 ## Update Rule
 
 Same rule as `FACT_CHECKED_TOSS_RWANDA_MAP.md`: update this file when new public Toss
