@@ -1,629 +1,245 @@
-# Itunda API Specification
-
-## Base URL
-- Development: `http://localhost:3000/api/v1`
-- Production: `https://api.itunda.rw/api/v1`
-
-## Authentication
-All endpoints (except login/register) require Bearer token in Authorization header:
-```
-Authorization: Bearer <jwt_token>
-```
-
-## HTTP Status Codes
-- `200`: Success
-- `201`: Created
-- `204`: No Content
-- `400`: Bad Request
-- `401`: Unauthorized
-- `403`: Forbidden
-- `404`: Not Found
-- `409`: Conflict
-- `422`: Unprocessable Entity
-- `429`: Too Many Requests
-- `500`: Internal Server Error
-
-## Rate Limiting
-- Global: 100 requests per 15 minutes
-- Per endpoint: Varies (see endpoint docs)
-
-## Response Format
-```json
-{
-  "status": "success",
-  "code": 200,
-  "message": "Operation successful",
-  "data": {},
-  "timestamp": "2024-07-02T12:44:05Z"
-}
-```
-
-## Error Response Format
-```json
-{
-  "status": "error",
-  "code": 400,
-  "message": "Validation failed",
-  "errors": [
-    {
-      "field": "email",
-      "message": "Invalid email format"
-    }
-  ],
-  "timestamp": "2024-07-02T12:44:05Z"
-}
-```
-
----
-
-## Authentication Endpoints
-
-### POST /auth/register
-Register a new user
-
-**Request Body**
-```json
-{
-  "phoneNumber": "+250788111111",
-  "email": "user@example.com",
-  "password": "SecurePassword123!",
-  "firstName": "John",
-  "lastName": "Doe",
-  "dateOfBirth": "1990-01-01"
-}
-```
-
-**Response** (201)
-```json
-{
-  "status": "success",
-  "data": {
-    "userId": "550e8400-e29b-41d4-a716-446655440000",
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "expiresIn": 86400
-  }
-}
-```
-
-### POST /auth/login
-Authenticate user
-
-**Request Body**
-```json
-{
-  "phoneNumber": "+250788111111",
-  "password": "SecurePassword123!"
-}
-```
-
-**Response** (200)
-```json
-{
-  "status": "success",
-  "data": {
-    "userId": "550e8400-e29b-41d4-a716-446655440000",
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "expiresIn": 86400
-  }
-}
-```
-
-### POST /auth/refresh-token
-Refresh JWT token
-
-**Request Body**
-```json
-{
-  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
-**Response** (200)
-```json
-{
-  "status": "success",
-  "data": {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "expiresIn": 86400
-  }
-}
-```
-
-### POST /auth/logout
-Logout user (invalidate token)
-
-**Response** (204)
-No content
-
----
-
-## User Endpoints
-
-### GET /users/profile
-Get current user profile
-
-**Response** (200)
-```json
-{
-  "status": "success",
-  "data": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "phoneNumber": "+250788111111",
-    "email": "user@example.com",
-    "firstName": "John",
-    "lastName": "Doe",
-    "status": "active",
-    "kycStatus": "verified",
-    "createdAt": "2024-01-01T10:00:00Z"
-  }
-}
-```
-
-### PUT /users/profile
-Update user profile
-
-**Request Body**
-```json
-{
-  "firstName": "Jane",
-  "lastName": "Smith",
-  "email": "jane@example.com"
-}
-```
-
-**Response** (200)
-```json
-{
-  "status": "success",
-  "data": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "firstName": "Jane",
-    "lastName": "Smith",
-    "email": "jane@example.com",
-    "updatedAt": "2024-07-02T12:44:05Z"
-  }
-}
-```
-
-### POST /users/kyc/verify
-Submit KYC verification
-
-**Request Body** (multipart/form-data)
-```
-nationalIdFront: <file>
-nationalIdBack: <file>
-selfie: <file>
-address: "123 Main St"
-city: "Kigali"
-country: "Rwanda"
-postalCode: "12345"
-```
-
-**Response** (201)
-```json
-{
-  "status": "success",
-  "message": "KYC verification submitted. Pending review.",
-  "data": {
-    "kycStatus": "pending"
-  }
-}
-```
-
----
-
-## Account Endpoints
-
-### GET /accounts
-List all user accounts
-
-**Query Parameters**
-- `page`: Page number (default: 1)
-- `limit`: Items per page (default: 10)
-- `type`: Account type filter (savings, checking, mobile_money)
-- `currency`: Currency filter (RWF, USD, EUR)
-
-**Response** (200)
-```json
-{
-  "status": "success",
-  "data": {
-    "items": [
-      {
-        "id": "550e8400-e29b-41d4-a716-446655440000",
-        "accountNumber": "ACC-001",
-        "accountType": "savings",
-        "balance": 1000000,
-        "currency": "RWF",
-        "status": "active",
-        "createdAt": "2024-01-01T10:00:00Z"
-      }
-    ],
-    "pagination": {
-      "page": 1,
-      "limit": 10,
-      "total": 1
-    }
-  }
-}
-```
-
-### POST /accounts
-Create a new account
-
-**Request Body**
-```json
-{
-  "accountType": "savings",
-  "currency": "RWF"
-}
-```
-
-**Response** (201)
-```json
-{
-  "status": "success",
-  "data": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "accountNumber": "ACC-002",
-    "accountType": "savings",
-    "balance": 0,
-    "currency": "RWF",
-    "status": "active"
-  }
-}
-```
-
----
-
-## Transaction Endpoints
-
-### GET /transactions
-List transactions
-
-**Query Parameters**
-- `page`: Page number (default: 1)
-- `limit`: Items per page (default: 20)
-- `status`: Status filter (pending, completed, failed)
-- `type`: Transaction type filter
-- `fromDate`: Start date (ISO 8601)
-- `toDate`: End date (ISO 8601)
-
-**Response** (200)
-```json
-{
-  "status": "success",
-  "data": {
-    "items": [
-      {
-        "id": "550e8400-e29b-41d4-a716-446655440000",
-        "fromUserId": "550e8400-e29b-41d4-a716-446655440000",
-        "toUserId": "660e8400-e29b-41d4-a716-446655440001",
-        "amount": 50000,
-        "currency": "RWF",
-        "transactionType": "transfer",
-        "status": "completed",
-        "description": "Payment for groceries",
-        "createdAt": "2024-07-02T12:44:05Z",
-        "completedAt": "2024-07-02T12:44:15Z"
-      }
-    ],
-    "pagination": {
-      "page": 1,
-      "limit": 20,
-      "total": 150
-    }
-  }
-}
-```
-
-### POST /transactions/send
-Send money
-
-**Request Body**
-```json
-{
-  "recipientPhoneNumber": "+250788222222",
-  "amount": 50000,
-  "description": "Payment",
-  "fromAccountId": "550e8400-e29b-41d4-a716-446655440000"
-}
-```
-
-**Response** (201)
-```json
-{
-  "status": "success",
-  "data": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "transactionId": "TXN-001",
-    "status": "processing",
-    "amount": 50000,
-    "fee": 1000,
-    "totalAmount": 51000,
-    "message": "Transaction initiated. It will be completed in 2-5 minutes."
-  }
-}
-```
-
-### GET /transactions/:id
-Get transaction details
-
-**Response** (200)
-```json
-{
-  "status": "success",
-  "data": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "transactionId": "TXN-001",
-    "fromUser": {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
-      "phoneNumber": "+250788111111"
-    },
-    "toUser": {
-      "id": "660e8400-e29b-41d4-a716-446655440001",
-      "phoneNumber": "+250788222222"
-    },
-    "amount": 50000,
-    "fee": 1000,
-    "totalAmount": 51000,
-    "status": "completed",
-    "createdAt": "2024-07-02T12:44:05Z",
-    "completedAt": "2024-07-02T12:44:15Z"
-  }
-}
-```
-
----
-
-## Loan Endpoints
-
-### POST /loans/apply
-Apply for a loan
-
-**Request Body**
-```json
-{
-  "loanAmount": 500000,
-  "durationMonths": 12,
-  "purpose": "Personal use"
-}
-```
-
-**Response** (201)
-```json
-{
-  "status": "success",
-  "data": {
-    "loanId": "550e8400-e29b-41d4-a716-446655440000",
-    "status": "pending",
-    "message": "Loan application submitted. You'll receive a response within 24 hours."
-  }
-}
-```
-
-### GET /loans
-List loans
-
-**Response** (200)
-```json
-{
-  "status": "success",
-  "data": {
-    "items": [
-      {
-        "id": "550e8400-e29b-41d4-a716-446655440000",
-        "loanAmount": 500000,
-        "interestRate": 12.5,
-        "monthlyPayment": 45000,
-        "status": "active",
-        "remainingBalance": 450000,
-        "nextPaymentDate": "2024-08-02",
-        "createdAt": "2024-06-02T10:00:00Z"
-      }
-    ]
-  }
-}
-```
-
----
-
-## Notification Endpoints
-
-### GET /notifications
-Get notifications
-
-**Query Parameters**
-- `page`: Page number (default: 1)
-- `limit`: Items per page (default: 20)
-- `isRead`: Filter by read status (true/false)
-
-**Response** (200)
-```json
-{
-  "status": "success",
-  "data": {
-    "items": [
-      {
-        "id": "550e8400-e29b-41d4-a716-446655440000",
-        "title": "Transfer Completed",
-        "message": "Your transfer of 50,000 RWF to +250788222222 was successful.",
-        "type": "transaction",
-        "isRead": false,
-        "createdAt": "2024-07-02T12:44:05Z"
-      }
-    ],
-    "pagination": {
-      "page": 1,
-      "limit": 20,
-      "unreadCount": 5
-    }
-  }
-}
-```
-
-### PUT /notifications/:id/read
-Mark notification as read
-
-**Response** (200)
-```json
-{
-  "status": "success",
-  "data": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "isRead": true
-  }
-}
-```
-
----
-
-## Analytics Endpoints
-
-### GET /analytics/spending
-Get spending analytics
-
-**Query Parameters**
-- `period`: Analysis period (week, month, year) - default: month
-- `category`: Category filter (optional)
-
-**Response** (200)
-```json
-{
-  "status": "success",
-  "data": {
-    "period": "month",
-    "totalSpent": 500000,
-    "avgDailySpending": 16667,
-    "byCategory": {
-      "food": 100000,
-      "transport": 50000,
-      "utilities": 75000,
-      "entertainment": 50000,
-      "other": 225000
-    },
-    "topTransactions": [
-      {
-        "id": "550e8400-e29b-41d4-a716-446655440000",
-        "amount": 50000,
-        "category": "food",
-        "description": "Supermarket"
-      }
-    ]
-  }
-}
-```
-
-### GET /analytics/insights
-Get AI-powered insights
-
-**Response** (200)
-```json
-{
-  "status": "success",
-  "data": {
-    "spendingTrend": "increasing",
-    "recommendations": [
-      "Your spending is 20% higher than last month. Consider reviewing discretionary expenses.",
-      "You can save 50,000 RWF monthly if you switch to a cheaper internet plan."
-    ],
-    "savingsPotential": 50000,
-    "budgetSuggestion": {
-      "recommended": 600000,
-      "current": 500000
-    }
-  }
-}
-```
-
----
-
-## Error Codes
-
-| Code | Message | Description |
-|------|---------|-------------|
-| AUTH_001 | Invalid credentials | Wrong username or password |
-| AUTH_002 | Token expired | JWT token has expired |
-| AUTH_003 | Unauthorized | User not authenticated |
-| AUTH_004 | Forbidden | Insufficient permissions |
-| USER_001 | User not found | User does not exist |
-| USER_002 | Email already exists | Email is already registered |
-| USER_003 | Phone number already exists | Phone number is already registered |
-| TRANS_001 | Insufficient balance | Account balance is insufficient |
-| TRANS_002 | Transaction failed | Transaction processing failed |
-| LOAN_001 | Loan application rejected | Loan application was rejected |
-| LOAN_002 | Loan already exists | User already has an active loan |
-| RATE_001 | Rate limit exceeded | Too many requests |
-| SERVER_001 | Internal server error | Unexpected server error |
-
-## Webhook Events
-
-### transaction.completed
-Sent when a transaction is completed
-
-```json
-{
-  "event": "transaction.completed",
-  "timestamp": "2024-07-02T12:44:05Z",
-  "data": {
-    "transactionId": "550e8400-e29b-41d4-a716-446655440000",
-    "amount": 50000,
-    "status": "completed"
-  }
-}
-```
-
-### loan.approved
-Sent when a loan is approved
-
-```json
-{
-  "event": "loan.approved",
-  "timestamp": "2024-07-02T12:44:05Z",
-  "data": {
-    "loanId": "550e8400-e29b-41d4-a716-446655440000",
-    "amount": 500000,
-    "interestRate": 12.5
-  }
-}
-```
-
----
-
-## Pagination
-
-All list endpoints support pagination with:
-- `page`: Current page number (1-based)
-- `limit`: Items per page (1-100, default: 10)
-
-Response includes:
-```json
-{
-  "pagination": {
-    "page": 1,
-    "limit": 10,
-    "total": 100,
-    "totalPages": 10,
-    "hasNext": true,
-    "hasPrev": false
-  }
-}
-```
-
-## Filtering
-
-Use query parameters for filtering:
-```
-GET /transactions?status=completed&type=transfer&fromDate=2024-01-01&toDate=2024-07-02
-```
-
-## Sorting
-
-Use `sort` query parameter:
-```
-GET /transactions?sort=-createdAt
-# ascending: fieldName
-# descending: -fieldName
-```
+# API Specification
+
+> **Rewritten 2026-07-13.** The previous version of this file was entirely fictional: a
+> `http://localhost:3000/api/v1` base URL, endpoints like `/auth/register`,
+> `/transactions/send`, `/loans/apply`, `/analytics/insights`, a `{"status": "success",
+> "code": 200, "message": ..., "data": {}, "timestamp": ...}` response envelope, an
+> `AUTH_001`-style error code table, and webhook events (`transaction.completed`,
+> `loan.approved`) — none of it matched any real controller in `services/backend`. This
+> version is generated directly from the real Kotlin/Spring controllers (one
+> `@RestController` per domain module, all under `services/backend/<module>/src/main/kotlin/
+> rw/itunda/<module>/`), read in full on 2026-07-13. Every endpoint, request shape, response
+> shape, and error code below is copied from real code, not invented. See
+> `docs/TOSS_PARITY_MATRIX.md` for which of these are load-bearing in a real device build vs.
+> demo-only, and `docs/ARCHITECTURE.md` for the ledger/idempotency/provider-connector
+> internals behind them.
+
+## Base URL and conventions
+
+- Base path: `/api/v1` (no version renegotiation — this is the only version that exists).
+  Local dev default port is `4001` (`services/backend/app/src/main/resources/application.yml`);
+  confirm against that file before assuming, it is not hardcoded here.
+- Auth: `Authorization: Bearer <accessToken>` header, required on every route except
+  `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`,
+  `/health`, and `/actuator/health` (see `SecurityConfig.kt`). A missing/invalid token gets
+  `401`. A valid token lacking the required role (currently only `/api/v1/system/**`, which
+  requires the `ADMIN` role) gets `403`, not `401` — this distinction was a real, previously
+  live bug (see `SecurityConfig.kt`'s own comments) and is now fixed and tested.
+- Response envelope: **there is no single global envelope.** Every controller hand-builds its
+  own `Map<String, Any>` body, but they all follow the same convention: a top-level
+  `"success": true` boolean plus one or more named keys holding the actual payload (e.g.
+  `{"success": true, "wallet": {...}}`, not a generic `"data"` wrapper). The exact key name is
+  documented per-endpoint below because it varies by resource (`"wallets"`, `"bills"`,
+  `"loan"`, `"quote"`, etc.) — there is no single field name to rely on generically.
+- Error shape: **uniform**, unlike the success envelope —
+  `{"code": "SCREAMING_SNAKE_CASE", "message": "human-readable reason"}`
+  (`rw.itunda.core.web.ApiError`), deliberately matching Toss Payments' own published error
+  shape (`docs.tosspayments.com/reference/error-codes`) rather than a made-up convention.
+  Every domain-specific error code actually used is listed per-module below — there is no
+  central error registry, each controller declares its own `@ExceptionHandler`s.
+- Idempotency: every money-moving `POST` (transfer confirm, bill pay, airtime, loan
+  apply/repay, stock buy/sell, savings deposit/claim, insurance enrollment, merchant
+  collection) requires an `Idempotency-Key` header. Missing it is a real `400
+  IDEMPOTENCY_KEY_REQUIRED`. A replayed key with the same request body returns the original
+  cached result (same status code, same body) rather than re-executing. A reused key with a
+  **different** body is a real `409 IDEMPOTENCY_KEY_CONFLICT`. A key currently mid-flight (a
+  concurrent duplicate request) is a real `409 IDEMPOTENT_REQUEST_PROCESSING`. Backed by a
+  durable MySQL table, not an in-memory map — survives a process restart.
+- Amounts are `BigDecimal` (JSON numbers, RWF, no minor-unit/cents convention — Toss's own API
+  uses whole KRW, and RWF has no minor unit in practice either).
+
+## Auth — `/api/v1/auth`
+
+| Method | Path | Auth | Body | Success | Notes |
+|---|---|---|---|---|---|
+| POST | `/register` | none | `{phoneNumber, email?, firstName, lastName, password}` | `201` `AuthResponse` | |
+| POST | `/login` | none | `{phoneNumber, password}` | `200` `AuthResponse` | |
+| POST | `/refresh` | none (refresh token is the credential) | `{refreshToken}` | `200` `AuthResponse` | Rotates the refresh token; the old one is revoked immediately |
+| POST | `/logout` | Bearer | `{refreshToken?}` (optional body) | `200` `{"success": true}` | Revokes the exact access token used to call this, and the refresh token too if provided |
+| GET | `/profile` | Bearer | — | `200` `{"success": true, "user": PublicUser}` | |
+
+`AuthResponse`: `{success: true, message: string, user: PublicUser, accessToken: string,
+refreshToken: string}`.
+
+`PublicUser`: `{id, phoneNumber, email, firstName, lastName, kycVerified, creditScore,
+createdAt}`. **`kycVerified` is real as a field, but nothing in this backend can ever set it
+`true` outside of demo seed data** — see the Compliance row in `docs/TOSS_PARITY_MATRIX.md`;
+there is no verification endpoint anywhere in this API.
+
+Errors: `409 PHONE_ALREADY_REGISTERED`, `401 INVALID_CREDENTIALS`, `404 USER_NOT_FOUND`,
+`401 INVALID_REFRESH_TOKEN`, `429 RATE_LIMITED`.
+
+## Wallet — `/api/v1/wallet`
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `` | — | `{success, wallets: [...]}` | |
+| GET | `/{id}` | — | `{success, wallet: {...}}` | |
+| GET | `/transactions` | — | `{success, transactions: [...]}` | Real transaction history, backs the transaction-history screen on both mobile platforms |
+| POST | `/transfer/quote` | `{amount, recipient, fromWalletId?, description?}` | `{success, quote: {...}}` | Quote expires after 60 seconds |
+| POST | `/transfer/confirm` | `{quoteId}` (+ `Idempotency-Key`) | `{success, message, transaction, newBalance}` | Requires the quote from `/transfer/quote`; posts through the double-entry ledger |
+
+Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`, `404 WALLET_NOT_FOUND`, `403 WALLET_NOT_OWNED`,
+`404 QUOTE_NOT_FOUND`, `409 QUOTE_EXPIRED`, `409 QUOTE_ALREADY_USED`,
+`422 INSUFFICIENT_FUNDS`, `502 PROVIDER_DECLINED` (the simulated provider connector declined
+the rail), `400 INVALID_REQUEST`.
+
+## Bills — `/api/v1/bills`
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/providers` | — | `{success, providers: [...]}` | |
+| GET | `/pending` | — | `{success, bills: [...]}` | |
+| POST | `/pay` | `{billId, amount, accountNumber?, provider?}` (+ `Idempotency-Key`) | `{success, message, transaction}` | |
+| POST | `/airtime` | `{phoneNumber, amount, provider?}` (+ `Idempotency-Key`) | `{success, message, transaction}` | |
+
+Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`, `404 WALLET_NOT_FOUND`, `422 INSUFFICIENT_FUNDS`,
+`502 PROVIDER_DECLINED`.
+
+No real biller integration exists behind this (REG/WASAC/Irembo/RRA credentials) — see
+`docs/TOSS_PARITY_MATRIX.md`'s Bills row; this is a real simulated provider connector, not a
+live utility payment.
+
+## Loans — `/api/v1/loans`
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/offers` | — | `{success, offers: [...]}` | |
+| GET | `/my-loans` | — | `{success, loans: [...]}` | |
+| POST | `/apply` | `{loanId, amount}` (+ `Idempotency-Key`) | `{success, message, loan}` | `loanId` here refers to an offer ID |
+| POST | `/repay` | `{loanId, amount}` (+ `Idempotency-Key`) | `{success, message, ...repayment fields}` | Repayment result fields are spread into the top level, not nested under a `repayment` key |
+
+Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`, `404 LOAN_OFFER_NOT_FOUND`, `404 LOAN_NOT_FOUND`,
+`404 WALLET_NOT_FOUND`, `403 LOAN_NOT_OWNED`, `409 LOAN_ALREADY_PAID`,
+`422 INVALID_LOAN_AMOUNT`, `422 INSUFFICIENT_FUNDS`.
+
+## Savings — `/api/v1/savings`
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/goals` | — | `{success, goals: [...]}` | |
+| POST | `/goals` | `{name, targetAmount, monthlyContribution?, targetDate?, category?}` | `{success, goal: {...}}` | |
+| POST | `/deposit` | `{goalId, amount, fromWalletId?}` (+ `Idempotency-Key`) | `{success, ...}` | |
+| GET | `/interest-jar` | — | `{success, ...}` | |
+| POST | `/interest-jar/claim` | (+ `Idempotency-Key`) | `{success, ...}` | |
+
+Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`, `404 GOAL_NOT_FOUND`, `404 WALLET_NOT_FOUND`,
+`404 INTEREST_JAR_NOT_FOUND`, `403 WALLET_NOT_OWNED`, `409 NO_INTEREST_AVAILABLE`,
+`422 INSUFFICIENT_FUNDS`. Recurring auto-save scheduling (charging `monthlyContribution` on a
+timer) is not implemented — the field is accepted and stored, nothing acts on it yet.
+
+## Stocks — `/api/v1/stocks`
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `` | — | `{success, stocks: [...]}` | |
+| GET | `/portfolio` | — | `{success, portfolio: [...]}` | |
+| POST | `/buy` | `{stockId, shares}` (+ `Idempotency-Key`) | `{success, ...}` | Weighted-average-cost basis recomputed on each buy |
+| POST | `/sell` | `{stockId, shares}` (+ `Idempotency-Key`) | `{success, ...}` | |
+
+Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`, `404 STOCK_NOT_FOUND`, `404 WALLET_NOT_FOUND`,
+`422 INSUFFICIENT_SHARES`, `422 INSUFFICIENT_FUNDS`. RSE (Rwanda Stock Exchange) brokerage/
+custody integration is blocked (regulatory), not built — stock prices and trades here are
+simulated.
+
+## Insurance — `/api/v1/insurance`
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/plans` | — | `{success, plans: [...]}` | |
+| GET | `/my-policies` | — | `{success, policies: [...]}` | |
+| POST | `/enroll` | `{planId}` (+ `Idempotency-Key`) | `{success, ...}` | |
+
+Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`, `404 PLAN_NOT_FOUND`, `404 WALLET_NOT_FOUND`,
+`422 INSUFFICIENT_FUNDS`. No claims-filing endpoint exists; real insurer quote/bind adapters
+are not built.
+
+## Merchant — `/api/v1/merchant`
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/register` | `{businessName}` | `{success, merchant: {...}}` | No KYB/business verification — accepts any authenticated user |
+| GET | `/me` | — | `{success, merchant: {...}}` | |
+| POST | `/qr/generate` | `{amount, description}` | `{success, paymentIntent: {...}}` | |
+| POST | `/collect/{intentId}` | (+ `Idempotency-Key`) | `{success, ...}` | Ownership-checked, ledger-backed, real 1.5% fee split |
+
+Errors: `409 MERCHANT_ALREADY_REGISTERED`, `404 MERCHANT_NOT_FOUND`,
+`404 WALLET_NOT_FOUND`, `404 PAYMENT_CODE_NOT_FOUND`, `409 PAYMENT_CODE_NOT_PAYABLE`,
+`400 SELF_PAYMENT_NOT_ALLOWED`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`,
+`422 INSUFFICIENT_FUNDS`. No POS/card processing, B2B payroll, or webhooks — see
+`docs/TOSS_PARITY_MATRIX.md`'s Merchant row.
+
+## Notifications — `/api/v1/notifications`
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `` | — | `{success, notifications: [...]}` | |
+| POST | `/{id}/read` | — | `{success, ...}` | |
+
+## Discover — `/api/v1/discover`
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `` | All discover items |
+| GET | `/{category}` | Filtered by category |
+
+No auth required on either route (no `@AuthenticationPrincipal` in the controller).
+
+## Contacts — `/api/v1/contacts`
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `` | — | `{success, contacts: [...]}` (exact shape — controller returns `ResponseEntity<Any>`, check `ContactsService` directly before building strict client-side types against it) | |
+| POST | `` | `{name, bank?, phoneNumber}` | `201`/`200` (verify against controller before relying on the exact status code — not re-confirmed this pass) | |
+
+Errors: `400 INVALID_REQUEST`.
+
+## System — `/api/v1/system` (ADMIN role only)
+
+Requires the `ADMIN` role JWT claim — a `USER`-role token gets a real `403`, not `401`. There
+is no self-service role-promotion flow; `ADMIN` only exists via seed data today.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/dashboard` | **Stub** — returns hardcoded zero values (`todayVolume: 0`, `activeConsents: 0`), not real aggregated data. Controller's own comment: "Simple mock endpoints ... to complete the migration" |
+| GET | `/capabilities` | **Stub** — always returns empty `capabilities`/`summary` |
+| GET | `/parity` | **Stub** — always returns empty `parity`/`gates` |
+| GET | `/rails` | **Stub** — always returns empty `rails` |
+
+Unlike every other module in this file, `SystemController` is real infrastructure (real route,
+real RBAC gate) wired to entirely fake data — don't mistake "the endpoint exists and is
+protected" for "the endpoint returns anything real." Building this out is open work, not a bug.
+
+## What does not exist (previously implied real, or plausible-sounding, but absent)
+
+Grepped for directly, confirmed absent as of 2026-07-13:
+
+- **Any KYC/identity-verification submission endpoint.** `User.kycVerified` is a plain
+  boolean, `false` by default, only ever set `true` by demo seed data. There is no
+  `/identity/*` route anywhere in `services/backend`.
+- **Any `/rewards/*` route.** The Saronite `reward-tasks` mini-app's native bridge calls
+  `GET /rewards/tasks` / `POST /rewards/claim` — neither exists. See
+  `docs/TOSS_PARITY_MATRIX.md`'s Rewards row.
+- **Any `/users/*` or `/analytics/*` route** (both were invented in the previous version of
+  this document). Profile lives at `GET /api/v1/auth/profile`; there is no spending-analytics
+  endpoint at all yet (`docs/TOSS_PARITY_MATRIX.md`'s Spending row: `demo`, categorization is
+  still target).
+- **Webhooks.** No outbound webhook mechanism exists in this API for any event.
+
+## What Changed Since the Last Version of This Document
+
+The previous version described a generic, fictional REST API (`localhost:3000`, a
+`status`/`code`/`data`/`timestamp` envelope, endpoints like `/transactions/send` and
+`/loans/apply` with a different request shape than the real `/loans/apply`, an `AUTH_001`-style
+error code table that doesn't match any real `ApiError.code` value, and fabricated webhook
+events). None of it was grounded in `services/backend`. This version was generated by reading
+every real `@RestController` in the backend directly on 2026-07-13; anything not explicitly
+listed above does not exist yet. See `docs/IMPLEMENTATION_GUIDE.md` and `docs/PAYMENTS.md` for
+two other docs with known, not-yet-fixed staleness as of this pass.
