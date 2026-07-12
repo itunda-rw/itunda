@@ -69,6 +69,23 @@ there is no verification endpoint anywhere in this API.
 Errors: `409 PHONE_ALREADY_REGISTERED`, `401 INVALID_CREDENTIALS`, `404 USER_NOT_FOUND`,
 `401 INVALID_REFRESH_TOKEN`, `429 RATE_LIMITED`.
 
+## Overview — `/api/v1/overview`
+
+Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s Account aggregation
+row. Aggregates every real itunda product into one net-worth figure; does not touch external
+bank/MoMo linking, which remains fully target.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `` | — | `{success, netWorth, accounts: [...], savings, loans, investments, insurance}` | `netWorth` = wallet balances + savings + investment cost basis − active loan outstanding. Insurance is excluded from `netWorth` (a paid premium is a sunk expense, not an asset) and reported separately as a coverage summary |
+
+`accounts`: `[{id, type, name, balance, currency}]`. `savings`: `{totalSaved, goalCount}`.
+`loans`: `{totalOutstanding, activeCount}` (active loans only — a fully `PAID` loan doesn't
+count against outstanding). `investments`: `{totalCostBasis, holdingCount}` — cost basis
+(`shares × avgPrice`), not live market value; the stock price catalog lives in the `:stocks`
+module and no module in this backend depends on another feature module. `insurance`:
+`{activePolicyCount, totalMonthlyPremium}`.
+
 ## Wallet — `/api/v1/wallet`
 
 | Method | Path | Body | Success | Notes |
@@ -316,3 +333,10 @@ it live from real account data and was verified to produce the exact expected va
 be `target` entirely. Live testing caught a real bug in the first version (bills, airtime, and
 transfers all share the `rail_suspense` ledger account, so they merged into one bucket); fixed
 using each debit's own memo and re-verified live before this document was updated.
+
+**Same day, a fifth time:** the Overview section was added — `GET /api/v1/overview` aggregates
+every real itunda product (wallets, savings, loans, investments, insurance) into one net-worth
+figure for the first time; previously only wallets were ever aggregated. Live-verified against
+a real account; also surfaced a separate real gap (no `SAVINGS`-type wallet auto-provisioning
+at registration, so `POST /api/v1/savings/goals` currently 404s for every new user) — noted in
+`docs/TOSS_PARITY_MATRIX.md`'s Account aggregation row, not yet fixed.

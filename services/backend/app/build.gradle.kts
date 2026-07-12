@@ -28,6 +28,7 @@ dependencies {
     implementation(project(":identity"))
     implementation(project(":rewards"))
     implementation(project(":creditscore"))
+    implementation(project(":overview"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")

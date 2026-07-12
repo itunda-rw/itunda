@@ -17,5 +17,6 @@ include(
     ":identity",
     ":rewards",
     ":creditscore",
+    ":overview",
     ":app"
 )
