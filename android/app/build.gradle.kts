@@ -2,6 +2,21 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("com.facebook.react")
+}
+
+// Real React Native Gradle Plugin config (2026-07-12, granite-adoption stage 2).
+// itunda's JS project root is NOT the default `..` the plugin assumes (that default
+// fits the standard co-located android/+node_modules/ layout the plugin was built
+// for) -- it lives at packages/saronite/host-app, a sibling of packages/, three
+// levels up and back down from here. Every path below is explicit for that reason.
+react {
+    root = file("../../packages/saronite/host-app")
+    // Hoisting location changes across `npm install` runs in packages/saronite as
+    // the dependency graph shifts -- re-verify against settings.gradle.kts's
+    // includeBuild path (same caveat) whenever this stops resolving.
+    reactNativeDir = file("../../packages/saronite/host-app/node_modules/react-native")
+    entryFile = file("../../packages/saronite/host-app/index.js")
 }
 
 android {
@@ -125,19 +140,20 @@ dependencies {
     // other empty feature modules -- it just has nothing to depend on yet.
 
     // Apps-in-Itunda mini-app host (Saronite/Granite-pattern brownfield RN integration).
-    // Old Native Modules API, no autolinking/codegen -- see MiniAppActivity.kt and
-    // ItundaApplication.kt for why this is a deliberately manual, minimal integration
-    // rather than pulling in the full React Native Gradle plugin.
-    // Downgraded from 0.80.3 (2026-07-10): that version's core bridge init
-    // unconditionally dlopen()s libreact_featureflagsjni.so, which the AAR
-    // ships only as C++ headers for -- the actual .so is normally produced by
-    // the official React Native Gradle plugin's own CMake step, which this
-    // deliberately manual/plugin-free integration does not run. Verified live
-    // on-device: the app installs and launches, but crashes with
-    // UnsatisfiedLinkError the moment a mini-app Activity initializes RN.
-    // 0.72.x predates that mandatory native build step.
-    implementation("com.facebook.react:react-android:0.72.17")
-    implementation("com.facebook.react:hermes-android:0.72.17")
+    // Real React Native Gradle Plugin as of 2026-07-12 (granite-adoption stage 2) --
+    // see the `react { }` block above. No version pin here anymore: the plugin
+    // resolves the react-android/hermes-android artifact versions itself from the
+    // react-native package.json found at `reactNativeDir`, which is how the
+    // previous manual pin's whole reason for existing (avoiding the plugin's CMake
+    // step, which produces the .so files a newer react-android AAR expects to
+    // dlopen -- see git history on this block for the exact UnsatisfiedLinkError
+    // that forced the earlier 0.80.3 downgrade) is now handled correctly instead of
+    // avoided. Still pinned to 0.72.17 at the JS/react-native-package level
+    // (packages/saronite/host-app/package.json) -- this stage introduces the
+    // plugin only, no version change yet (see docs/ARCHITECTURE.md backlog and the
+    // granite-adoption plan for the staged version-upgrade path).
+    implementation("com.facebook.react:react-android")
+    implementation("com.facebook.react:hermes-android")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.google.code.gson:gson:2.10.1")

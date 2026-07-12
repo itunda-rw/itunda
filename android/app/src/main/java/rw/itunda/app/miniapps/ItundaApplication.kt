@@ -28,10 +28,6 @@ import java.util.concurrent.TimeUnit
  */
 class ItundaApplication : Application(), ReactApplication {
 
-    // RN 0.72's ReactApplication is a plain Java-style getter (getReactNativeHost()),
-    // not the Kotlin `val` property RN 0.80's interface exposes -- real API
-    // difference hit while downgrading, see the comment on the react-android
-    // dependency in build.gradle.kts for why.
     private val mReactNativeHost: ReactNativeHost =
         object : ReactNativeHost(this) {
             override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
@@ -83,7 +79,11 @@ class ItundaApplication : Application(), ReactApplication {
             }
         }
 
-    override fun getReactNativeHost(): ReactNativeHost = mReactNativeHost
+    // RN's ReactApplication interface changed getReactNativeHost() (a Java-style
+    // getter, valid up through 0.72) to a Kotlin `val reactNativeHost` property --
+    // confirmed by reading node_modules/react-native's own ReactApplication.kt at
+    // 0.80.3 directly (granite-adoption stage 2, 2026-07-12).
+    override val reactNativeHost: ReactNativeHost = mReactNativeHost
 
     override fun onCreate() {
         super.onCreate()
