@@ -232,14 +232,15 @@ Errors: `404 CLAIM_NOT_FOUND`, `409 CLAIM_NOT_PENDING` (already decided), `404 W
 |---|---|---|---|---|
 | POST | `/register` | `{businessName}` | `{success, merchant: {...}}` | No KYB/business verification — accepts any authenticated user |
 | GET | `/me` | — | `{success, merchant: {...}}` | |
+| POST | `/webhook-url` | `{webhookUrl}` | `{success, merchant: {...}}` | Built and live-verified 2026-07-13. Registers the URL `collect` delivers `PAYMENT_STATUS_CHANGED` events to |
 | POST | `/qr/generate` | `{amount, description}` | `{success, paymentIntent: {...}}` | |
-| POST | `/collect/{intentId}` | (+ `Idempotency-Key`) | `{success, ...}` | Ownership-checked, ledger-backed, real 1.5% fee split |
+| POST | `/collect/{intentId}` | (+ `Idempotency-Key`) | `{success, ...}` | Ownership-checked, ledger-backed, real 1.5% fee split. On success, if the merchant has a `webhookUrl`, delivers a real `PAYMENT_STATUS_CHANGED` HTTP POST (Toss Payments' documented shape) — single-attempt, failure never blocks or rolls back the payment, see `docs/TOSS_PARITY_MATRIX.md`'s Merchant row |
 
 Errors: `409 MERCHANT_ALREADY_REGISTERED`, `404 MERCHANT_NOT_FOUND`,
 `404 WALLET_NOT_FOUND`, `404 PAYMENT_CODE_NOT_FOUND`, `409 PAYMENT_CODE_NOT_PAYABLE`,
 `400 SELF_PAYMENT_NOT_ALLOWED`, `409 IDEMPOTENCY_KEY_CONFLICT`,
 `409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`,
-`422 INSUFFICIENT_FUNDS`. No POS/card processing, B2B payroll, or webhooks — see
+`422 INSUFFICIENT_FUNDS`. No POS/card processing or B2B payroll — see
 `docs/TOSS_PARITY_MATRIX.md`'s Merchant row.
 
 ## Identity — `/api/v1/identity`
@@ -353,7 +354,9 @@ Grepped for directly, confirmed absent as of 2026-07-13:
   this document). Profile lives at `GET /api/v1/auth/profile`; there is no spending-analytics
   endpoint at all yet (`docs/TOSS_PARITY_MATRIX.md`'s Spending row: `demo`, categorization is
   still target).
-- **Webhooks.** No outbound webhook mechanism exists in this API for any event.
+- **Webhooks for anything other than merchant collection.** `POST /api/v1/merchant/webhook-url` +
+  `PAYMENT_STATUS_CHANGED` delivery on collection are real (built 2026-07-13, see the Merchant
+  section) — no other module emits webhooks of any kind.
 
 ## What Changed Since the Last Version of This Document
 
@@ -418,3 +421,9 @@ bean in the app, meant the new job ran once at boot and never again until
 claims review admin section were added. Live-verified end to end against a real policy: filed
 a claim, saw it in the ADMIN queue, approved it, and confirmed the claimant's wallet balance
 moved by the exact claim amount, not just the response body.
+
+**Same day, an eleventh time:** the Merchant section's `webhook-url` endpoint and webhook
+delivery note were added — verified with an actual HTTP listener process on a separate host,
+not a mocked call: the real `PAYMENT_STATUS_CHANGED` payload arrived over the network with a
+logged 200 response. Also verified a payment still completes when the registered endpoint is
+unreachable.

@@ -44,7 +44,8 @@ class MerchantServiceTest : BehaviorSpec({
         val paymentIntentRepository = mockk<PaymentIntentRepository>()
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService)
+        val webhookDeliveryService = mockk<WebhookDeliveryService>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService)
 
         val ownerWallet = wallet("wallet_merchant", "owner_1")
         val merchant = Merchant(
@@ -215,6 +216,52 @@ class MerchantServiceTest : BehaviorSpec({
                 } catch (e: PaymentIntentNotFoundException) {
                     // expected
                 }
+            }
+        }
+
+        When("the merchant has a real webhook URL registered and a payment is collected") {
+            val hookedMerchant = Merchant(
+                id = "merchant_2", ownerUserId = "owner_2", walletId = "wallet_merchant2",
+                businessName = "Hooked Cafe", status = MerchantStatus.ACTIVE, webhookUrl = "https://merchant.example/hooks",
+            )
+            val payerWallet = wallet("wallet_payer2", "payer_2")
+            val intent = PaymentIntent(
+                id = "pi_hook", merchantId = "merchant_2", amount = BigDecimal("1000"),
+                description = "coffee", expiresAt = Instant.now().plusSeconds(600),
+            )
+            every { paymentIntentRepository.findById("pi_hook") } returns Optional.of(intent)
+            every { merchantRepository.findById("merchant_2") } returns Optional.of(hookedMerchant)
+            every { walletRepository.findByUserIdAndType("payer_2", WalletType.MAIN) } returns payerWallet
+            every { walletRepository.findById("wallet_merchant2") } returns Optional.of(wallet("wallet_merchant2", "owner_2"))
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_hook", emptyList())
+            every { paymentIntentRepository.save(any()) } answers { firstArg() }
+
+            service.collect("payer_2", "pi_hook")
+
+            Then("real webhook delivery is attempted with the merchant's registered URL") {
+                verify(exactly = 1) { webhookDeliveryService.deliverPaymentStatusChanged("https://merchant.example/hooks", any()) }
+            }
+        }
+    }
+
+    Given("a registered merchant with no webhook configured yet") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val paymentIntentRepository = mockk<PaymentIntentRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val webhookDeliveryService = mockk<WebhookDeliveryService>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService)
+
+        val merchant = Merchant(id = "merchant_3", ownerUserId = "owner_3", walletId = "wallet_3", businessName = "Test Shop")
+        every { merchantRepository.findByOwnerUserId("owner_3") } returns merchant
+        every { merchantRepository.save(any()) } answers { firstArg() }
+
+        When("registering a webhook URL") {
+            val updated = service.setWebhookUrl("owner_3", "https://myshop.example/webhooks/itunda")
+
+            Then("it's saved onto the real merchant record") {
+                updated.webhookUrl shouldBe "https://myshop.example/webhooks/itunda"
+                verify(exactly = 1) { merchantRepository.save(merchant) }
             }
         }
     }

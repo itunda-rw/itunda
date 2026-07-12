@@ -42,6 +42,7 @@ class MerchantService(
     private val paymentIntentRepository: PaymentIntentRepository,
     private val walletRepository: WalletRepository,
     private val ledgerService: LedgerService,
+    private val webhookDeliveryService: WebhookDeliveryService,
 ) {
     // Toss Payments' real published fee schedule tiers wallet-based payments
     // ("Toss Pay") at 0.8%-1.8% depending on merchant volume (see
@@ -72,6 +73,13 @@ class MerchantService(
     fun getMyMerchant(ownerUserId: String): Merchant =
         merchantRepository.findByOwnerUserId(ownerUserId)
             ?: throw MerchantNotFoundException("This account is not registered as a merchant")
+
+    @Transactional
+    fun setWebhookUrl(ownerUserId: String, webhookUrl: String): Merchant {
+        val merchant = getMyMerchant(ownerUserId)
+        merchant.webhookUrl = webhookUrl
+        return merchantRepository.save(merchant)
+    }
 
     @Transactional
     fun generateQr(ownerUserId: String, amount: BigDecimal, description: String): PaymentIntent {
@@ -127,7 +135,7 @@ class MerchantService(
         intent.paidByUserId = payerUserId
         paymentIntentRepository.save(intent)
 
-        return mapOf(
+        val resultMap = mapOf(
             "transactionId" to result.transactionId,
             "merchantName" to merchant.businessName,
             "amount" to intent.amount,
@@ -135,5 +143,11 @@ class MerchantService(
             "status" to "COMPLETED",
             "completedAt" to Instant.now().toString(),
         )
+        // Real webhook delivery -- no-op if the merchant never registered a URL. Called last,
+        // after the ledger transaction and intent status are already saved, so a slow or
+        // unreachable webhook endpoint can only delay the response, never roll back real money
+        // that already moved.
+        webhookDeliveryService.deliverPaymentStatusChanged(merchant.webhookUrl, resultMap + ("paymentIntentId" to intentId) + ("payerId" to payerUserId))
+        return resultMap
     }
 }

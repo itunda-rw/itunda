@@ -15,9 +15,11 @@ enum class MerchantStatus { ACTIVE, SUSPENDED }
  * Reuses the owner's existing MAIN wallet as the settlement wallet rather than
  * introducing a new WalletType, since AuthService.register already provisions one
  * for every user. See rw.itunda.merchant.MerchantService for the real subset of
- * docs/MERCHANT_SERVICES.md this implements (QR-style payment collection), and
- * that doc's own header for why the rest of its spec (POS/cards/B2B/webhooks)
- * isn't built.
+ * docs/MERCHANT_SERVICES.md this implements (QR-style payment collection). POS/
+ * cards/B2B payroll genuinely need real PSP-level infrastructure this repo has no
+ * path to certify -- webhooks don't, and are real as of 2026-07-13 (webhookUrl
+ * below), corrected from an earlier version of this comment that grouped all four
+ * together as equally out of reach.
  */
 @Entity
 @Table(name = "merchants")
@@ -41,6 +43,9 @@ class Merchant(
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
+
+    @Column(name = "webhook_url", length = 500)
+    var webhookUrl: String? = null,
 ) {
     protected constructor() : this(id = "", ownerUserId = "", walletId = "", businessName = "")
 }

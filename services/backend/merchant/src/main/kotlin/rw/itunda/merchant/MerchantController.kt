@@ -22,6 +22,7 @@ import java.math.BigDecimal
 
 data class RegisterMerchantRequest(val businessName: String)
 data class GenerateQrRequest(val amount: BigDecimal, val description: String)
+data class SetWebhookUrlRequest(val webhookUrl: String)
 
 @RestController
 @RequestMapping("/api/v1/merchant")
@@ -49,6 +50,17 @@ class MerchantController(
     ): ResponseEntity<Map<String, Any?>> {
         val intent = merchantService.generateQr(currentUser.userId, request.amount, request.description)
         return ResponseEntity.ok(mapOf("success" to true, "paymentIntent" to intent))
+    }
+
+    // Real webhook registration (2026-07-13) -- see docs/TOSS_PARITY_MATRIX.md's Merchant
+    // row and WebhookDeliveryService for the real delivery mechanism this feeds.
+    @PostMapping("/webhook-url")
+    fun setWebhookUrl(
+        @RequestBody request: SetWebhookUrlRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val merchant = merchantService.setWebhookUrl(currentUser.userId, request.webhookUrl)
+        return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
     @PostMapping("/collect/{intentId}")
