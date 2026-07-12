@@ -201,6 +201,27 @@ Mapped under the `system` path prefix specifically so it inherits the existing
 Errors: `404 KYC_SUBMISSION_NOT_FOUND`, `409 KYC_SUBMISSION_NOT_PENDING` (already decided —
 re-deciding is blocked, not silently overwritten), `404 USER_NOT_FOUND`.
 
+## Rewards — `/api/v1/rewards`
+
+Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s Rewards row for the
+full account, including what this corrects (a previous version of that row falsely claimed
+this already existed).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/tasks` | — | `{success, tasks: [...], rewardsTotal}` | Static 5-task catalog merged with the caller's own claim status |
+| POST | `/claim` | `{taskId}` (+ `Idempotency-Key`) | `{success, message, rewardAmount, newBalance}` | `newBalance` is the caller's new cumulative claimed-rewards total, not their overall wallet balance. Real ledger transaction posts the reward straight into the caller's MAIN wallet |
+
+`RewardTask` shape (as returned in `tasks`): `{id, title, subtitle, rewardAmount, claimed,
+claimedAt}`.
+
+Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
+`400 IDEMPOTENCY_KEY_REQUIRED`, `404 REWARD_TASK_NOT_FOUND`,
+`409 REWARD_TASK_ALREADY_CLAIMED` (a real DB-unique-constraint guard, not just an
+application-level check — a race between two concurrent claims for the same task can't both
+succeed), `404 WALLET_NOT_FOUND`. The task catalog is static — claiming "Make your first
+transfer" is honor-system today, not verified against the caller's actual transaction history.
+
 ## Notifications — `/api/v1/notifications`
 
 | Method | Path | Body | Success | Notes |
@@ -246,9 +267,6 @@ protected" for "the endpoint returns anything real." Building this out is open w
 
 Grepped for directly, confirmed absent as of 2026-07-13:
 
-- **Any `/rewards/*` route.** The Saronite `reward-tasks` mini-app's native bridge calls
-  `GET /rewards/tasks` / `POST /rewards/claim` — neither exists. See
-  `docs/TOSS_PARITY_MATRIX.md`'s Rewards row.
 - **Any `/users/*` or `/analytics/*` route** (both were invented in the previous version of
   this document). Profile lives at `GET /api/v1/auth/profile`; there is no spending-analytics
   endpoint at all yet (`docs/TOSS_PARITY_MATRIX.md`'s Spending row: `demo`, categorization is
@@ -270,3 +288,8 @@ two other docs with known, not-yet-fixed staleness as of this pass.
 module, built same-day and live-verified against a running backend (see
 `docs/TOSS_PARITY_MATRIX.md`'s Compliance row for the full account). This document's own "what
 does not exist" list above used to include KYC/identity submission; it doesn't anymore.
+
+**Same day, again:** the Rewards section was added — a real `rewards` module, also built and
+live-verified same-day (claim-once guard confirmed via a real 409 on re-claim, reward amount
+confirmed to actually post to the caller's real wallet balance). This document's own "what
+does not exist" list used to include `/rewards/*` entirely; it doesn't anymore.

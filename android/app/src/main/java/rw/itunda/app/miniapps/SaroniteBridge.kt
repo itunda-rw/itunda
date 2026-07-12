@@ -123,13 +123,16 @@ class SaroniteBrownfieldModule(
 
     @ReactMethod
     fun getRewardTasks(promise: Promise) {
-        authorizedCall(get("rewards/tasks"), promise, ::parseRewardTasks)
+        // Same missing-prefix bug as getPendingBills/payBill, fixed 2026-07-13 alongside the
+        // real backend these calls hit for the first time (services/backend's new rewards
+        // module -- see docs/API_SPECIFICATION.md's Rewards section).
+        authorizedCall(get("api/v1/rewards/tasks"), promise, ::parseRewardTasks)
     }
 
     @ReactMethod
     fun claimRewardTask(taskId: String, promise: Promise) {
         val body = JsonObject().apply { addProperty("taskId", taskId) }
-        authorizedCall(post("rewards/claim", body), promise, ::parseClaimRewardResult)
+        authorizedCall(post("api/v1/rewards/claim", body), promise, ::parseClaimRewardResult)
     }
 
     private fun get(path: String): Request.Builder? {
@@ -264,6 +267,11 @@ class SaroniteBrownfieldModule(
         return result
     }
 
+    // Fixed 2026-07-13, live-verified against the real backend: this used to drop subtitle/
+    // claimed per task and the top-level rewardsTotal entirely -- the mini-app's own type
+    // (packages/saronite/packages/brownfield-module/src/spec/SaroniteBrownfieldModule.ts's
+    // RewardTask/RewardTasksResult) requires all of them; result.rewardsTotal being undefined
+    // would have thrown on the very first render (`total.toLocaleString()`).
     private fun parseRewardTasks(json: String): WritableMap {
         val root = JsonParser.parseString(json).asJsonObject
         val tasks = Arguments.createArray()
@@ -272,18 +280,27 @@ class SaroniteBrownfieldModule(
             val taskMap = Arguments.createMap()
             taskMap.putString("id", t.get("id").asString)
             taskMap.putString("title", t.get("title").asString)
+            taskMap.putString("subtitle", t.get("subtitle")?.asString ?: "")
             taskMap.putDouble("rewardAmount", t.get("rewardAmount").asDouble)
+            taskMap.putBoolean("claimed", t.get("claimed")?.asBoolean ?: false)
+            t.get("claimedAt")?.takeIf { !it.isJsonNull }?.let { taskMap.putString("claimedAt", it.asString) }
             tasks.pushMap(taskMap)
         }
         val result = Arguments.createMap()
         result.putArray("tasks", tasks)
+        result.putDouble("rewardsTotal", root.get("rewardsTotal")?.asDouble ?: 0.0)
         return result
     }
 
+    // Fixed 2026-07-13 alongside parseRewardTasks: newBalance being dropped meant
+    // setTotal(result.newBalance) in the mini-app would have set the displayed total to
+    // undefined immediately after every successful claim.
     private fun parseClaimRewardResult(json: String): WritableMap {
         val root = JsonParser.parseString(json).asJsonObject
         val result = Arguments.createMap()
         result.putString("message", root.get("message")?.asString ?: "Reward claimed")
+        result.putDouble("rewardAmount", root.get("rewardAmount")?.asDouble ?: 0.0)
+        result.putDouble("newBalance", root.get("newBalance")?.asDouble ?: 0.0)
         return result
     }
 
