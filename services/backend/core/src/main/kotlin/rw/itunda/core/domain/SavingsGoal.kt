@@ -55,6 +55,11 @@ class SavingsGoal(
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
+
+    // Real recurring auto-save (2026-07-13) -- null means "never auto-contributed yet",
+    // treated as immediately due. See AutoSaveScheduler in the savings module.
+    @Column(name = "last_auto_contribution_at")
+    var lastAutoContributionAt: Instant? = null,
 ) {
     protected constructor() : this(id = "", userId = "", walletId = "", name = "", targetAmount = BigDecimal.ZERO, currentAmount = BigDecimal.ZERO, monthlyContribution = BigDecimal.ZERO, interestRate = 0.0)
 }

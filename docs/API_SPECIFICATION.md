@@ -178,8 +178,12 @@ Errors: `404 USER_NOT_FOUND`.
 Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
 `400 IDEMPOTENCY_KEY_REQUIRED`, `404 GOAL_NOT_FOUND`, `404 WALLET_NOT_FOUND`,
 `404 INTEREST_JAR_NOT_FOUND`, `403 WALLET_NOT_OWNED`, `409 NO_INTEREST_AVAILABLE`,
-`422 INSUFFICIENT_FUNDS`. Recurring auto-save scheduling (charging `monthlyContribution` on a
-timer) is not implemented — the field is accepted and stored, nothing acts on it yet.
+`422 INSUFFICIENT_FUNDS`. Recurring auto-save is built and live-verified 2026-07-13 —
+`AutoSaveScheduler` runs on a real 30-day business cadence (30-second poll for demo speed) and
+charges `monthlyContribution` from the goal owner's MAIN wallet, skipping gracefully on
+insufficient funds. There is no API endpoint for this — it's a background job, not a route; see
+`docs/TOSS_PARITY_MATRIX.md`'s Savings row for the full account, including a real scheduler
+thread-starvation bug found and fixed alongside it.
 
 ## Stocks — `/api/v1/stocks`
 
@@ -390,3 +394,9 @@ ended at exactly the requested amount after being paid, and saw the transaction 
 fraud-rule engine existed at all before. A real live bug was caught and fixed mid-build
 (evaluating fraud rules after saving the current transaction let it match itself, permanently
 masking `NEW_RECIPIENT`); re-verified live after the fix with a genuinely new recipient.
+
+**Same day, a ninth time:** the Savings section's recurring-auto-save note was corrected from
+"not implemented" to real. A real, separate infrastructure bug was found and fixed alongside
+it — Spring Boot's single-threaded default scheduler pool, shared across every `@Scheduled`
+bean in the app, meant the new job ran once at boot and never again until
+`spring.task.scheduling.pool.size` was raised in `application.yml`.

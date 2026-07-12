@@ -30,6 +30,18 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  task:
+    scheduling:
+      # Real bug found live (2026-07-13): Spring Boot's default is a single-threaded
+      # scheduler pool shared by every @Scheduled bean. OutboxRelay.relay() (every 2s)
+      # blocks on kafkaTemplate.send(...).get() with no timeout when Kafka is
+      # unreachable, monopolizing that one thread -- the new AutoSaveScheduler
+      # (savings/AutoSaveScheduler.kt) ran exactly once at boot and never again,
+      # confirmed via logs showing no second execution despite the app running for
+      # minutes. Every @Scheduled bean in this app was silently at risk of the same
+      # starvation, not just the new one that happened to surface it.
+      pool:
+        size: 10
   jpa:
     hibernate:
       # Fixed (2026-07-11): was `update`, letting Hibernate infer the schema -- the

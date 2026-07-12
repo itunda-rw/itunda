@@ -1,5 +1,6 @@
 package rw.itunda.savings
 
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.LedgerAccountType
@@ -14,7 +15,10 @@ import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
+
+private const val AUTO_CONTRIBUTION_INTERVAL_DAYS = 30L
 
 class GoalNotFoundException(message: String) : RuntimeException(message)
 class WalletNotOwnedException(message: String) : RuntimeException(message)
@@ -37,6 +41,8 @@ class SavingsService(
     private val interestJarRepository: InterestJarRepository,
     private val ledgerService: LedgerService,
 ) {
+    private val log = LoggerFactory.getLogger(SavingsService::class.java)
+
     fun getGoals(userId: String) = savingsGoalRepository.findByUserId(userId)
 
     @Transactional
@@ -75,6 +81,46 @@ class SavingsService(
         goal.currentAmount = goal.currentAmount.add(amount).min(goal.targetAmount)
         if (goal.currentAmount >= goal.targetAmount) goal.status = SavingsGoalStatus.completed
         return savingsGoalRepository.save(goal)
+    }
+
+    // Real recurring auto-save (2026-07-13) -- monthlyContribution was accepted and stored
+    // at goal creation but nothing ever read it until now. findAll() + in-memory filter is
+    // the honest choice at this system's actual data scale -- a real production system with
+    // many more goals would want a bounded/indexed query (see OutboxRelay's
+    // findTop100By...  for the established convention here once that scale exists).
+    fun getGoalsDueForAutoContribution(): List<SavingsGoal> {
+        val cutoff = Instant.now().minus(AUTO_CONTRIBUTION_INTERVAL_DAYS, ChronoUnit.DAYS)
+        return savingsGoalRepository.findAll().filter { goal ->
+            goal.status == SavingsGoalStatus.active &&
+                goal.monthlyContribution > BigDecimal.ZERO &&
+                (goal.lastAutoContributionAt == null || goal.lastAutoContributionAt!!.isBefore(cutoff))
+        }
+    }
+
+    // Returns false (not an exception) on insufficient funds -- a real recurring job skips
+    // this cycle and retries next time, the same way a real bank's standing order behaves,
+    // rather than failing loudly for something that isn't the user's fault mid-batch.
+    @Transactional
+    fun autoContribute(goal: SavingsGoal): Boolean {
+        val sourceWallet = walletRepository.findByUserIdAndType(goal.userId, WalletType.MAIN)
+        if (sourceWallet == null || sourceWallet.availableBalance < goal.monthlyContribution) {
+            log.info("Skipping auto-contribution for goal {} -- insufficient funds or no MAIN wallet", goal.id)
+            return false
+        }
+
+        ledgerService.postLedgerTransaction(
+            sourceWallet.currency,
+            listOf(
+                LedgerLeg(sourceWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, goal.monthlyContribution, "Auto-save to ${goal.name}"),
+                LedgerLeg("savings_goal_payable", LedgerAccountType.SAVINGS_GOAL_PAYABLE, LedgerDirection.CREDIT, goal.monthlyContribution, "Auto-save to ${goal.name}"),
+            ),
+        )
+
+        goal.currentAmount = goal.currentAmount.add(goal.monthlyContribution).min(goal.targetAmount)
+        if (goal.currentAmount >= goal.targetAmount) goal.status = SavingsGoalStatus.completed
+        goal.lastAutoContributionAt = Instant.now()
+        savingsGoalRepository.save(goal)
+        return true
     }
 
     fun getInterestJar(userId: String) = interestJarRepository.findById(userId).orElseThrow { NoInterestJarException("No interest jar found for this account") }

@@ -167,6 +167,66 @@ class SavingsServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("goals due for real recurring auto-save") {
+        val walletRepository = mockk<WalletRepository>()
+        val savingsGoalRepository = mockk<SavingsGoalRepository>()
+        val interestJarRepository = mockk<InterestJarRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService)
+
+        fun goal(id: String, monthlyContribution: String, lastAutoContributionAt: Instant?, status: SavingsGoalStatus = SavingsGoalStatus.active) = SavingsGoal(
+            id = id, userId = "user_1", walletId = "wallet_savings", name = "Goal $id",
+            targetAmount = BigDecimal("500000"), currentAmount = BigDecimal("10000"),
+            monthlyContribution = BigDecimal(monthlyContribution), interestRate = 7.5,
+            status = status, lastAutoContributionAt = lastAutoContributionAt,
+        )
+
+        When("finding what's due") {
+            val neverContributed = goal("sg_new", "10000", null)
+            val overdue = goal("sg_overdue", "10000", Instant.now().minus(31, java.time.temporal.ChronoUnit.DAYS))
+            val recentlyContributed = goal("sg_recent", "10000", Instant.now().minus(5, java.time.temporal.ChronoUnit.DAYS))
+            val zeroContribution = goal("sg_zero", "0", null)
+            val completedGoal = goal("sg_done", "10000", null, SavingsGoalStatus.completed)
+
+            every { savingsGoalRepository.findAll() } returns listOf(neverContributed, overdue, recentlyContributed, zeroContribution, completedGoal)
+
+            val due = service.getGoalsDueForAutoContribution()
+
+            Then("only never-contributed and truly-overdue active goals with a real nonzero contribution qualify") {
+                due.map { it.id }.toSet() shouldBe setOf("sg_new", "sg_overdue")
+            }
+        }
+
+        When("auto-contributing to a goal with sufficient funds") {
+            val g = goal("sg_ok", "20000", null)
+            every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
+            every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_auto", emptyList())
+            every { savingsGoalRepository.save(any()) } answers { firstArg() }
+
+            val succeeded = service.autoContribute(g)
+
+            Then("it posts to the ledger, advances the goal, and stamps a real lastAutoContributionAt") {
+                succeeded shouldBe true
+                g.currentAmount shouldBe BigDecimal("30000")
+                (g.lastAutoContributionAt != null) shouldBe true
+                verify(exactly = 1) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+
+        When("auto-contributing to a goal without enough balance") {
+            val g = goal("sg_poor", "999999999", null)
+            every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
+
+            val succeeded = service.autoContribute(g)
+
+            Then("it skips gracefully -- no exception, no ledger call, goal untouched for a later retry") {
+                succeeded shouldBe false
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                g.lastAutoContributionAt shouldBe null
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }
