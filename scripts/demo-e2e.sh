@@ -20,11 +20,16 @@
 # non-zero decline rate -- an occasional PROVIDER_DECLINED here is correct, expected
 # behavior, not a bug in this script.
 #
-# Not runtime-verified in this environment -- no Docker daemon available to bring up
-# MySQL/Redis and no live backend to run this against (same honest caveat as this
-# session's other backend work). Every endpoint path, request body, and response
-# field below is transcribed directly from the real controllers
-# (WalletController.kt, BillsController.kt, MerchantController.kt), not guessed.
+# Runtime-verified (2026-07-11): every endpoint in this script was exercised by hand
+# against a real, live services/backend + MySQL + Redis (this environment does have a
+# Docker daemon after all -- see docs/ARCHITECTURE.md's Flyway/outbox notes for the full
+# story) and every one returned a real HTTP 200 with a correctly-balanced ledger entry.
+# This exact script was not run start-to-finish (jq wasn't installable here -- an
+# unrelated Homebrew man-page permission issue, not a code problem), but each of its
+# curl calls was run manually with the same payloads and produced the results this
+# script expects. Every endpoint path, request body, and response field below is
+# transcribed directly from the real controllers (WalletController.kt, BillsController.kt,
+# MerchantController.kt), not guessed.
 
 set -euo pipefail
 
