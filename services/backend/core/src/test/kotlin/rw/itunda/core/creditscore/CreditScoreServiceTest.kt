@@ -1,4 +1,4 @@
-package rw.itunda.creditscore
+package rw.itunda.core.creditscore
 
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec

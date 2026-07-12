@@ -6,6 +6,8 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import rw.itunda.core.creditscore.CreditScoreResult
+import rw.itunda.core.creditscore.CreditScoreService
 import rw.itunda.core.domain.LoanAccount
 import rw.itunda.core.domain.LoanStatus
 import rw.itunda.core.domain.Wallet
@@ -36,9 +38,12 @@ class LoansServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val loanAccountRepository = mockk<LoanAccountRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = LoansService(walletRepository, loanAccountRepository, ledgerService)
+        val creditScoreService = mockk<CreditScoreService>()
+        val service = LoansService(walletRepository, loanAccountRepository, ledgerService, creditScoreService)
 
-        When("applying for an amount within the offer's max") {
+        When("applying for a high amount (80% of the offer's max) with a real qualifying score") {
+            every { loanAccountRepository.findByUserId("user_1") } returns emptyList()
+            every { creditScoreService.computeScore("user_1") } returns CreditScoreResult(700, emptyList(), Instant.now())
             every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
             every { loanAccountRepository.save(any()) } answers { firstArg() }
@@ -47,6 +52,7 @@ class LoansServiceTest : BehaviorSpec({
 
             Then("it disburses via the ledger and creates an active loan") {
                 result["status"] shouldBe "approved"
+                result["creditScore"] shouldBe 700
                 verify(exactly = 1) { ledgerService.postLedgerTransaction(any(), any()) }
             }
         }
@@ -69,6 +75,65 @@ class LoansServiceTest : BehaviorSpec({
                     error("expected LoanOfferNotFoundException")
                 } catch (e: LoanOfferNotFoundException) {
                     // expected
+                }
+            }
+        }
+
+        When("a low-value, low-amount applicant whose score is below the minimum") {
+            every { loanAccountRepository.findByUserId("user_low") } returns emptyList()
+            every { creditScoreService.computeScore("user_low") } returns CreditScoreResult(300, emptyList(), Instant.now())
+
+            Then("it throws LoanApplicationDeclinedException before touching the ledger, even for a small amount") {
+                try {
+                    service.applyForLoan("user_low", "loan_1", BigDecimal("10000"))
+                    error("expected LoanApplicationDeclinedException")
+                } catch (e: LoanApplicationDeclinedException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("a qualifying-for-small-amounts applicant requests a high amount they don't qualify for") {
+            every { loanAccountRepository.findByUserId("user_mid") } returns emptyList()
+            every { creditScoreService.computeScore("user_mid") } returns CreditScoreResult(450, emptyList(), Instant.now())
+
+            Then("it throws LoanApplicationDeclinedException for the high-amount tier specifically") {
+                try {
+                    // 400000 is 80% of loan_1's 500000 max -- above the 50% high-amount threshold
+                    service.applyForLoan("user_mid", "loan_1", BigDecimal("400000"))
+                    error("expected LoanApplicationDeclinedException")
+                } catch (e: LoanApplicationDeclinedException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("that same mid-score applicant requests a small amount instead") {
+            every { loanAccountRepository.findByUserId("user_mid2") } returns emptyList()
+            every { creditScoreService.computeScore("user_mid2") } returns CreditScoreResult(450, emptyList(), Instant.now())
+            every { walletRepository.findByUserIdAndType("user_mid2", WalletType.MAIN) } returns wallet("wallet_mid2", "user_mid2")
+            every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_mid", emptyList())
+            every { loanAccountRepository.save(any()) } answers { firstArg() }
+
+            Then("450 clears the base minimum, so a low-tier amount is approved") {
+                val result = service.applyForLoan("user_mid2", "loan_1", BigDecimal("50000"))
+                result["status"] shouldBe "approved"
+            }
+        }
+
+        When("an applicant already has 2 concurrent active loans") {
+            val existingActive = (1..2).map {
+                LoanAccount(id = "loan_existing_$it", userId = "user_maxed", walletId = "w1", offerId = "loan_1", principal = BigDecimal("10000"), outstanding = BigDecimal("5000"), interestRate = 5.0, status = LoanStatus.ACTIVE)
+            }
+            every { loanAccountRepository.findByUserId("user_maxed") } returns existingActive
+
+            Then("it throws LoanApplicationDeclinedException before ever checking credit score") {
+                try {
+                    service.applyForLoan("user_maxed", "loan_1", BigDecimal("10000"))
+                    error("expected LoanApplicationDeclinedException")
+                } catch (e: LoanApplicationDeclinedException) {
+                    verify(exactly = 0) { creditScoreService.computeScore(any()) }
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 }
             }
         }

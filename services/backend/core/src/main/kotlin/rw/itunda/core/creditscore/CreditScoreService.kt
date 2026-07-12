@@ -1,4 +1,4 @@
-package rw.itunda.creditscore
+package rw.itunda.core.creditscore
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -24,6 +24,12 @@ data class CreditScoreResult(val score: Int, val factors: List<CreditScoreFactor
  * doesn't have. Computed live from itunda's own real transaction/loan/savings/KYC history on
  * every call, not cached beyond writing the result back onto User.creditScore for profile
  * display -- there is no separate "run a check" action to model, unlike a real bureau pull.
+ *
+ * Moved from the creditscore module into :core (2026-07-13) so LoansService's real
+ * affordability/risk-model governance (docs/TOSS_PARITY_MATRIX.md's Credit row) can share
+ * this exact computation rather than reading a possibly-stale User.creditScore or
+ * duplicating the scoring logic -- same reasoning LedgerService lives in :core: more than
+ * one feature module needs it, so it can't live inside just one of them.
  */
 @Service
 class CreditScoreService(

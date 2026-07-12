@@ -7,10 +7,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import rw.itunda.core.creditscore.CreditScoreService
+import rw.itunda.core.creditscore.CreditScoreUserNotFoundException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
-import rw.itunda.creditscore.CreditScoreService
-import rw.itunda.creditscore.CreditScoreUserNotFoundException
 
 @RestController
 @RequestMapping("/api/v1/credit-score")

@@ -145,13 +145,19 @@ live utility payment.
 |---|---|---|---|---|
 | GET | `/offers` | — | `{success, offers: [...]}` | |
 | GET | `/my-loans` | — | `{success, loans: [...]}` | |
-| POST | `/apply` | `{loanId, amount}` (+ `Idempotency-Key`) | `{success, message, loan}` | `loanId` here refers to an offer ID |
+| POST | `/apply` | `{loanId, amount}` (+ `Idempotency-Key`) | `{success, message, loan}` | `loanId` here refers to an offer ID. `loan.creditScore` is the applicant's real score at approval time (see Credit Score section) |
 | POST | `/repay` | `{loanId, amount}` (+ `Idempotency-Key`) | `{success, message, ...repayment fields}` | Repayment result fields are spread into the top level, not nested under a `repayment` key |
+
+Real risk governance, built and live-verified 2026-07-13, gates `/apply`: a minimum credit
+score of 400 to qualify for any loan, a higher bar of 600 for amounts over half the offer's
+limit, and a cap of 2 concurrent active loans (checked before the score, cheapest check first).
+Uses the exact same live computation as `GET /api/v1/credit-score` (moved into `:core` so both
+modules share it), not a separate or cached copy.
 
 Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
 `400 IDEMPOTENCY_KEY_REQUIRED`, `404 LOAN_OFFER_NOT_FOUND`, `404 LOAN_NOT_FOUND`,
 `404 WALLET_NOT_FOUND`, `403 LOAN_NOT_OWNED`, `409 LOAN_ALREADY_PAID`,
-`422 INVALID_LOAN_AMOUNT`, `422 INSUFFICIENT_FUNDS`.
+`422 INVALID_LOAN_AMOUNT`, `422 LOAN_APPLICATION_DECLINED`, `422 INSUFFICIENT_FUNDS`.
 
 ## Credit Score — `/api/v1/credit-score`
 
@@ -163,7 +169,10 @@ Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s Credit
 
 `factors` entries: `{name, points, description}`. Score range 300–850. Writes the result back
 onto `User.creditScore`, so `GET /api/v1/auth/profile` reflects the most recent computation.
-Errors: `404 USER_NOT_FOUND`.
+Errors: `404 USER_NOT_FOUND`. The computation itself lives in `:core`'s `CreditScoreService`
+(moved there 2026-07-13, was originally in the `creditscore` module alone) specifically so
+`POST /api/v1/loans/apply`'s real risk governance can reuse the exact same score, not a
+duplicated or cached copy — see the Loans section.
 
 ## Savings — `/api/v1/savings`
 
@@ -427,3 +436,9 @@ delivery note were added — verified with an actual HTTP listener process on a 
 not a mocked call: the real `PAYMENT_STATUS_CHANGED` payload arrived over the network with a
 logged 200 response. Also verified a payment still completes when the registered endpoint is
 unreachable.
+
+**Same day, a twelfth time:** the Loans section's real risk-governance note was added, and
+`CreditScoreService` moved from the `creditscore` module into `:core` so `/loans/apply` could
+reuse its exact computation. Live-verified with three real accounts at different real score
+tiers, each declining for the specific documented reason (below minimum, below the high-amount
+tier, or the concurrent-loan cap), not a generic rejection.

@@ -86,6 +86,9 @@ class LoansController(private val loansService: LoansService, private val idempo
     @ExceptionHandler(LoanAmountInvalidException::class)
     fun handleInvalidAmount(ex: LoanAmountInvalidException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INVALID_LOAN_AMOUNT", ex.message ?: "Invalid amount"))
 
+    @ExceptionHandler(LoanApplicationDeclinedException::class)
+    fun handleDeclined(ex: LoanApplicationDeclinedException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("LOAN_APPLICATION_DECLINED", ex.message ?: "Declined"))
+
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
 }
