@@ -74,6 +74,26 @@ class SeedDataRunner(
             ),
         )
 
+        // Demo ADMIN account so /api/v1/system/** (see SecurityConfig's hasRole("ADMIN")
+        // rule) is actually reachable locally without hand-editing the database --
+        // same "fake but clearly labeled" convention as the rest of this seed file, not
+        // a real onboarding flow (there isn't one yet, see V4__user_role.sql).
+        if (userRepository.findByPhoneNumber("+250788999000") == null) {
+            userRepository.save(
+                User(
+                    id = "user_admin_1",
+                    phoneNumber = "+250788999000",
+                    email = "ops@itunda.rw",
+                    firstName = "Itunda",
+                    lastName = "Ops",
+                    passwordHash = BCryptPasswordEncoder().encode("admin123"),
+                    kycVerified = true,
+                    role = "ADMIN",
+                    createdAt = Instant.now(),
+                ),
+            )
+        }
+
         if (walletRepository.findByUserId(user.id).isEmpty()) {
             walletRepository.saveAll(
                 listOf(

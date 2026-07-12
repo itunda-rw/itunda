@@ -39,6 +39,11 @@ class User(
     @Column(name = "credit_score", nullable = false)
     var creditScore: Int = 0,
 
+    // RBAC for /api/v1/system/** (see SecurityConfig) -- no self-service promotion
+    // flow exists yet, see V4__user_role.sql's comment.
+    @Column(name = "role", nullable = false, length = 16)
+    var role: String = "USER",
+
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),
 ) {

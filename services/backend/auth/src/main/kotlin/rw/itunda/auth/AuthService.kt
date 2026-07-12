@@ -119,7 +119,7 @@ class AuthService(
     private fun issueAuthResponse(user: User, message: String) = AuthResponse(
         message = message,
         user = user.toPublic(),
-        accessToken = jwtService.issueAccessToken(user.id, user.phoneNumber),
+        accessToken = jwtService.issueAccessToken(user.id, user.phoneNumber, user.role),
         refreshToken = jwtService.issueRefreshToken(user.id),
     )
 

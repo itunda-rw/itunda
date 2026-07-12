@@ -32,6 +32,10 @@ dependencies {
     // 2026-07-11 alongside infra/k8s/production/backend.yaml, which would
     // otherwise crash-loop every pod probing a path that didn't exist.
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    // Real Prometheus scrape target -- see infra/k8s/monitoring/prometheus-config.yaml's
+    // scrape_configs (2026-07-11 fix, closing the "bare Prometheus Deployment with no
+    // scrape config, no ServiceMonitor, no actual metrics wiring" gap).
+    runtimeOnly("io.micrometer:micrometer-registry-prometheus")
     implementation("com.mysql:mysql-connector-j")
     // Real versioned migrations instead of Hibernate ddl-auto inferring the schema --
     // see application.yml's jpa.hibernate.ddl-auto comment (2026-07-11 fix).

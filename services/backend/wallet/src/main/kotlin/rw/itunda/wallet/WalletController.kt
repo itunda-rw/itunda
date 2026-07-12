@@ -36,6 +36,12 @@ class WalletController(private val walletService: WalletService, private val ide
     fun getWalletById(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true, "wallet" to walletService.getWalletById(id, currentUser.userId)))
 
+    // Real transaction history (2026-07-12) -- backs the new card/transaction-
+    // history screen on both platforms; see WalletService.getTransactionHistory.
+    @GetMapping("/transactions")
+    fun getTransactionHistory(@AuthenticationPrincipal currentUser: CurrentUser) =
+        ResponseEntity.ok(mapOf("success" to true, "transactions" to walletService.getTransactionHistory(currentUser.userId)))
+
     @PostMapping("/transfer/quote")
     fun quoteTransfer(@RequestBody request: QuoteTransferRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> {
         val quote = walletService.quoteTransfer(currentUser.userId, request.fromWalletId, request.recipient, request.amount)

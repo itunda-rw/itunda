@@ -14,7 +14,10 @@ spring:
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:itunda}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: ${DB_USER:itunda}
-    password: ${DB_PASSWORD:itunda}
+    # Matches infra/docker-compose.yml's local MySQL default. Production and CI
+    # must supply DB_PASSWORD explicitly; this value is only for the disposable
+    # developer container.
+    password: ${DB_PASSWORD:itunda_password}
     driver-class-name: com.mysql.cj.jdbc.Driver
   data:
     redis:
@@ -43,3 +46,19 @@ spring:
 itunda:
   jwt:
     secret: ${JWT_SECRET:itunda-dev-secret-do-not-use-in-production}
+
+# Real Prometheus scrape target (2026-07-11, alongside micrometer-registry-prometheus
+# in app/build.gradle.kts and infra/k8s/monitoring/prometheus-config.yaml's
+# scrape_configs) -- only health/prometheus are exposed, not the full actuator surface.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}

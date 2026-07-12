@@ -6,4 +6,4 @@ package rw.itunda.core.security
  * `requireAuth` in backend/src/middleware/auth.middleware.ts — every controller should
  * resolve the caller's identity from this, never from a hardcoded id.
  */
-data class CurrentUser(val userId: String)
+data class CurrentUser(val userId: String, val role: String = "USER")

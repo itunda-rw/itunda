@@ -58,6 +58,13 @@ class WalletService(
 
     fun getWallets(userId: String): List<Wallet> = walletRepository.findByUserId(userId)
 
+    // Real transaction history (2026-07-12) -- TransactionRepository's
+    // findBySenderIdOrRecipientIdOrderByCreatedAtDesc already existed with no
+    // controller endpoint ever calling it; this is what backs the new card/
+    // transaction-history screen on both platforms.
+    fun getTransactionHistory(userId: String): List<Transaction> =
+        transactionRepository.findBySenderIdOrRecipientIdOrderByCreatedAtDesc(userId, userId)
+
     fun getWalletById(walletId: String, userId: String): Wallet {
         val wallet = walletRepository.findById(walletId).orElse(null)
         // 404 (not 403) on someone else's wallet id, so this endpoint can't be used to

@@ -151,7 +151,7 @@ class AuthServiceTest : BehaviorSpec({
         }
 
         When("refreshing with a real access token instead of a refresh token") {
-            val accessToken = jwtService.issueAccessToken("user_4", "+250788000006")
+            val accessToken = jwtService.issueAccessToken("user_4", "+250788000006", "USER")
 
             Then("it throws InvalidRefreshTokenException -- an access token must not double as a refresh token") {
                 try {

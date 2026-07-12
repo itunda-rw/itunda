@@ -11,7 +11,7 @@ import java.util.Date
 import java.util.UUID
 import javax.crypto.SecretKey
 
-data class DecodedToken(val userId: String, val isRefresh: Boolean, val jti: String, val expiresAt: Instant)
+data class DecodedToken(val userId: String, val isRefresh: Boolean, val jti: String, val expiresAt: Instant, val role: String)
 
 /**
  * Same shape as backend/src/controllers/auth.controller.ts / auth.middleware.ts: HS256,
@@ -32,11 +32,12 @@ class JwtService(
     // than silently zero-padding a too-short secret into a weaker key.
     private val key: SecretKey = Keys.hmacShaKeyFor(secret.toByteArray(Charsets.UTF_8))
 
-    fun issueAccessToken(userId: String, phoneNumber: String): String =
+    fun issueAccessToken(userId: String, phoneNumber: String, role: String): String =
         Jwts.builder()
             .id(UUID.randomUUID().toString())
             .subject(userId)
             .claim("phone", phoneNumber)
+            .claim("role", role)
             .issuedAt(Date())
             .expiration(Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))
             .signWith(key)
@@ -61,6 +62,11 @@ class JwtService(
             isRefresh = claims["type"] == "refresh",
             jti = claims.id,
             expiresAt = claims.expiration.toInstant(),
+            // Refresh tokens never carried a role claim (they're not used to authorize
+            // requests, only to mint a fresh access token) -- default to the least
+            // privilege rather than throwing, since callers that care about role never
+            // call verify() on a refresh token's result expecting authorization data.
+            role = claims["role"] as? String ?: "USER",
         )
     } catch (_: JwtException) {
         null

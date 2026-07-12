@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.access.AccessDeniedHandler
 import org.springframework.security.web.authentication.HttpStatusEntryPoint
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.http.HttpStatus
@@ -29,13 +30,41 @@ class SecurityConfig(private val jwtAuthenticationFilter: JwtAuthenticationFilte
                     // it -- k8s readiness/liveness probes need a real endpoint, so
                     // "/actuator/health" was added alongside it (2026-07-11) rather than
                     // building a bespoke one; see infra/k8s/production/backend.yaml.
-                    .requestMatchers("/health", "/actuator/health", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
+                    // "/error" added (2026-07-11, found live): sendError(403)/401 from
+                    // accessDeniedHandler/authenticationEntryPoint triggers Spring Boot's
+                    // BasicErrorController via an internal servlet forward to /error --
+                    // which re-enters this exact same filter chain as a fresh request. If
+                    // /error itself isn't permitted, it hits .anyRequest().authenticated(),
+                    // fails (the forward reaches AuthorizationFilter before any per-filter
+                    // JWT re-authentication resolves), and *that* failure's response is what
+                    // the client actually receives -- silently overriding whatever status the
+                    // original handler set. Confirmed live: a valid USER-role token denied
+                    // ADMIN-only /api/v1/system/** came back 401 instead of 403 until this
+                    // was added.
+                    .requestMatchers("/health", "/actuator/health", "/error", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
+                    // Fixed (2026-07-11): previously any authenticated user -- not just an
+                    // operator -- could read fraud/compliance/reconciliation data from
+                    // /api/v1/system/**, exactly the gap SECURITY.md names as still open.
+                    // Requires the "role":"ADMIN" JWT claim (see JwtAuthenticationFilter);
+                    // there's no self-service promotion flow yet, see
+                    // V4__user_role.sql's comment.
+                    .requestMatchers("/api/v1/system/**").hasRole("ADMIN")
                     .anyRequest().authenticated()
             }
             // Spring Security's default for an unauthenticated request with no configured
             // entry point is 403; Express's requireAuth returns 401 for a missing/invalid
             // token. Matching that exactly rather than leaving an incidental difference.
-            .exceptionHandling { it.authenticationEntryPoint(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)) }
+            //
+            // Real bug found deploying this (2026-07-11): a *valid* USER-role token hitting
+            // an ADMIN-only /api/v1/system/** route also came back 401, not 403 -- wrongly
+            // implying "you're not logged in" to someone who very much is, just isn't
+            // allowed here. Only authenticationEntryPoint was ever customized; explicitly
+            // wiring accessDeniedHandler too, rather than trusting Spring Security's default
+            // wiring to already separate the two cases correctly.
+            .exceptionHandling {
+                it.authenticationEntryPoint(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+                it.accessDeniedHandler(AccessDeniedHandler { _, response, _ -> response.sendError(HttpStatus.FORBIDDEN.value()) })
+            }
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
         return http.build()
     }
