@@ -1,0 +1,51 @@
+package rw.itunda.core.domain
+
+import jakarta.persistence.Column
+import jakarta.persistence.Entity
+import jakarta.persistence.Id
+import jakarta.persistence.Table
+import java.time.Instant
+
+/**
+ * documentReference is a demo-mode stand-in for an uploaded ID scan/selfie -- this backend
+ * has no file-storage layer, so it accepts a reference string (e.g. a pre-uploaded object
+ * key) rather than binary content. Real NIDA verification is blocked on regulatory/vendor
+ * access (see docs/TOSS_PARITY_MATRIX.md's Compliance row) -- this entity models the
+ * submission/review workflow itself, which previously didn't exist at all.
+ */
+@Entity
+@Table(name = "kyc_submissions")
+class KycSubmission(
+    @Id
+    @Column(length = 64)
+    val id: String,
+
+    @Column(name = "user_id", nullable = false, length = 64)
+    val userId: String,
+
+    @Column(name = "document_type", nullable = false, length = 32)
+    val documentType: String,
+
+    @Column(name = "document_number", nullable = false, length = 32)
+    val documentNumber: String,
+
+    @Column(name = "document_reference", nullable = false)
+    val documentReference: String,
+
+    @Column(nullable = false, length = 16)
+    var status: String,
+
+    @Column(name = "submitted_at", nullable = false)
+    val submittedAt: Instant,
+
+    @Column(name = "reviewed_by", length = 64)
+    var reviewedBy: String? = null,
+
+    @Column(name = "reviewed_at")
+    var reviewedAt: Instant? = null,
+
+    @Column(name = "decision_reason")
+    var decisionReason: String? = null,
+) {
+    protected constructor() : this(id = "", userId = "", documentType = "", documentNumber = "", documentReference = "", status = "", submittedAt = Instant.now())
+}

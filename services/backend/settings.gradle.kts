@@ -14,5 +14,6 @@ include(
     ":contacts",
     ":system",
     ":merchant",
+    ":identity",
     ":app"
 )

@@ -54,7 +54,7 @@ codebases themselves were not merged).
 | Operations | Fraud/review | High-value QR, velocity, new recipient | target | No fraud-rule engine exists yet |
 | Operations | Reconciliation | Provider settlement files | real (one-sided) | `reconciliation.ts`-equivalent logic now computed from real provider-attempt logs (`services/backend`), aggregated by rail/day; still reconciles itunda's own attempt log against itself — there is no real external settlement file to diff against, so this is honest but not yet two-sided |
 | Operations | Incidents | Rail degradation and user impact | target | No incident-response tooling in-product; `SECURITY.md` has real runbooks for this system's actual failure modes, which is a process document, not product surface |
-| Compliance | KYC/AML | National ID, KYB, AML/CFT queue | target | Corrected 2026-07-13: an earlier version of this row claimed `POST /identity/submit` was real. A repo-wide grep found no such endpoint anywhere in `services/backend` — `User.kycVerified` is a plain boolean column, `false` by default at registration (`AuthService.kt`), only ever flipped `true` via `SeedDataRunner`'s demo seed data. There is no submission endpoint, no `REVIEW` state, and no compliance-queue item — the whole KYC/AML workflow, submission included, is still target, not just its decision-making half |
+| Compliance | KYC/AML | National ID, KYB, AML/CFT queue | real (submission + human review) / blocked (real NIDA verification) | Built and live-verified 2026-07-13 (new `identity` module): `POST /api/v1/identity/submit` creates a real `PENDING` row, rejects a second submission while one is pending (`409 KYC_SUBMISSION_ALREADY_PENDING`); `GET /api/v1/system/compliance/queue` (real `ADMIN`-role RBAC gate — confirmed a `USER` token gets a real `403`) lists it; `POST /api/v1/system/compliance/{id}/decide` sets `VERIFIED`/`REJECTED`, records the reviewer and reason, blocks re-deciding (`409 KYC_SUBMISSION_NOT_PENDING`), and — the actual point of the feature — really flips `User.kycVerified` to `true` on approval, confirmed by re-fetching `GET /api/v1/auth/profile` afterward, not just asserted from the code. What's still blocked: this is a human reviewer approving a self-reported document number, not a real NIDA/vendor lookup validating it against a government record — that integration needs regulatory/vendor access this system doesn't have. `documentReference` is a demo-mode stand-in for an uploaded ID scan; there is no file-storage layer in this backend |
 | Ledger | Trust core | Double-entry wallet and settlement ledger | real | MySQL, Flyway-migrated schema, row-level pessimistic locking in stable order (deadlock avoidance), real transactional outbox with a real relay polling and publishing to Kafka. Real, not a stepping stone — the "needs Postgres" framing in the old version of this doc was never true of this backend |
 | Mobile | Same IA | Home, Benefits, Transfer, Stocks, All | real | Both Android and iOS build and run (Android on-device, iOS on simulator, verified this session's predecessors), 5-tab taxonomy aligned across platforms, real login/session flow with real token storage on both |
 | Mini-app host | Granite-style super-app mechanism | Itunda mini-apps (bills, wallet, rewards) | real (native infra) / demo (one mini-app, JS-blocked) | See `docs/ARCHITECTURE.md`'s mini-app host row for the full, dated account — real granite packages, real RN Gradle Plugin, RN 0.84.0, real New Architecture, real native `brick-module` bridge all independently verified on-device (2026-07-12). One specific, diagnosed upstream JS bug in vendored `@granite-js/brownfield-module` currently blocks the real bridge from working end-to-end for any mini-app; `pay-bills` reverted to itunda's own working bridge in the meantime |
@@ -85,13 +85,14 @@ than any single feature row.
   exception is thrown). This is a real simulation of the pattern, not a real MTN/Airtel/bank
   integration — those need actual provider credentials and certification, which is blocked, not
   a code gap.
-- **KYC/KYB and AML/CFT workflow — target, not started.** Corrected 2026-07-13 (see the
-  Compliance row above): there is no submission endpoint, no `REVIEW` state, and no
-  compliance-queue item anywhere in `services/backend`. `User.kycVerified` is a plain boolean,
-  `false` by default, only ever set `true` via demo seed data. Both halves — submission and
-  decision-making (an actual NIDA/vendor API or a human reviewer UI) — remain to be built; the
-  decision-making half is additionally blocked on regulatory/vendor access once the submission
-  half exists.
+- **KYC/KYB and AML/CFT workflow — real (submission + human review), blocked (real NIDA
+  verification).** Built and live-verified 2026-07-13 (see the Compliance row above): a real
+  submission endpoint, a real `ADMIN`-gated review queue, and a real decision flow that
+  actually flips `User.kycVerified` — end-to-end, verified against a running instance, not
+  just written. What's still missing is the decision-maker's *input*: a human reviewer here is
+  approving a self-reported document number with no government database to check it against.
+  A real NIDA/vendor integration remains blocked on regulatory/vendor access, same as before —
+  that part of this gate didn't change, only the workflow surrounding it.
 - **Customer support workflow — real.** Real ticket creation/listing tied to a specific
   transaction, and a real refund action that reverses the exact original ledger legs (same
   accounts, flipped direction, including the fee) rather than a synthetic adjustment. Missing:
@@ -109,10 +110,18 @@ than any single feature row.
 
 ## What Changed Since the Last Version of This Document
 
-**2026-07-13 correction:** this file's own initial 2026-07-13 rewrite claimed
-`POST /identity/submit` was real. It was not — a repo-wide grep turned up no such endpoint. The
-Compliance row and the KYC/KYB gate above were corrected same-day; see both for the actual state
-(`kycVerified` is seed-data-only, no submission flow exists at all).
+**2026-07-13, later same day:** the correction below was itself superseded within the same
+day — a real `identity` module was built and live-verified against a running backend
+(register → submit → duplicate-submission guard → ADMIN-only queue → decide → confirmed
+`kycVerified` actually flips). See the Compliance row and the KYC/KYB gate above for the
+current, accurate state. This is a genuine example of the discipline this file asks for:
+"target" isn't a permanent label, it's whatever's actually true today, checked today.
+
+**2026-07-13 correction (superseded above):** this file's own initial 2026-07-13 rewrite
+claimed `POST /identity/submit` was real. It was not — a repo-wide grep turned up no such
+endpoint at the time. Left here for the historical record of how the compliance row's status
+moved from a false "real" claim, to a corrected "target", to an actually-real implementation,
+all within one day.
 
 For anyone who read the pre-2026-07-13 version of this file: the entire "three unreconciled
 backend directions" section describing a JSON-file-persisted Express backend, a mostly-empty

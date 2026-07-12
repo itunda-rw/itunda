@@ -176,6 +176,31 @@ Errors: `409 MERCHANT_ALREADY_REGISTERED`, `404 MERCHANT_NOT_FOUND`,
 `422 INSUFFICIENT_FUNDS`. No POS/card processing, B2B payroll, or webhooks — see
 `docs/TOSS_PARITY_MATRIX.md`'s Merchant row.
 
+## Identity — `/api/v1/identity`
+
+Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s Compliance row for the
+full account of what this closes and what's still blocked (real NIDA/vendor verification).
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/submit` | `{documentType, documentNumber, documentReference}` | `201` `{success, submission}` | `documentReference` is a demo-mode stand-in for an uploaded ID scan — no file-storage layer exists. Rejects a second submission while one is already `PENDING` |
+| GET | `/status` | — | `{success, submissions: [...]}` | Caller's own submission history, most recent first |
+
+Errors: `409 KYC_SUBMISSION_ALREADY_PENDING`.
+
+## Compliance — `/api/v1/system/compliance` (ADMIN role only)
+
+Mapped under the `system` path prefix specifically so it inherits the existing
+`hasRole("ADMIN")` gate — a `USER`-role token gets a real `403` here too.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/queue` | — | `{success, queue: [...]}` | All `PENDING` submissions, oldest first |
+| POST | `/{submissionId}/decide` | `{approve, reason?}` | `{success, submission}` | On `approve: true`, really sets `User.kycVerified = true` — confirmed live by re-fetching the user's own `GET /api/v1/auth/profile` afterward, not just asserted from the code |
+
+Errors: `404 KYC_SUBMISSION_NOT_FOUND`, `409 KYC_SUBMISSION_NOT_PENDING` (already decided —
+re-deciding is blocked, not silently overwritten), `404 USER_NOT_FOUND`.
+
 ## Notifications — `/api/v1/notifications`
 
 | Method | Path | Body | Success | Notes |
@@ -221,9 +246,6 @@ protected" for "the endpoint returns anything real." Building this out is open w
 
 Grepped for directly, confirmed absent as of 2026-07-13:
 
-- **Any KYC/identity-verification submission endpoint.** `User.kycVerified` is a plain
-  boolean, `false` by default, only ever set `true` by demo seed data. There is no
-  `/identity/*` route anywhere in `services/backend`.
 - **Any `/rewards/*` route.** The Saronite `reward-tasks` mini-app's native bridge calls
   `GET /rewards/tasks` / `POST /rewards/claim` — neither exists. See
   `docs/TOSS_PARITY_MATRIX.md`'s Rewards row.
@@ -243,3 +265,8 @@ events). None of it was grounded in `services/backend`. This version was generat
 every real `@RestController` in the backend directly on 2026-07-13; anything not explicitly
 listed above does not exist yet. See `docs/IMPLEMENTATION_GUIDE.md` and `docs/PAYMENTS.md` for
 two other docs with known, not-yet-fixed staleness as of this pass.
+
+**Later the same day:** the Identity and Compliance sections were added — a real `identity`
+module, built same-day and live-verified against a running backend (see
+`docs/TOSS_PARITY_MATRIX.md`'s Compliance row for the full account). This document's own "what
+does not exist" list above used to include KYC/identity submission; it doesn't anymore.
