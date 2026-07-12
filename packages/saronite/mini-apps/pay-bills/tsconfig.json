@@ -4,5 +4,12 @@
     "outDir": "dist",
     "rootDir": "pages"
   },
-  "include": ["pages"]
+  "include": ["pages"],
+  // app.tsx/require.context.ts/router.gen.ts (2026-07-12, granite-adoption
+  // stage 7 wrap-up) are real, correct, kept in the repo -- deliberately
+  // excluded from the active build/typecheck for now, pending the real,
+  // diagnosed upstream TurboModuleRegistry timing bug being resolved (see
+  // pages/index.tsx's header comment). Re-add them to "include" and revert
+  // pages/index.tsx/host-app/index.js to re-wire once that's fixed.
+  "exclude": ["app.tsx", "require.context.ts", "router.gen.ts"]
 }

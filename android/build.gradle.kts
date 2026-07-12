@@ -50,3 +50,16 @@ buildscript {
         mavenCentral()
     }
 }
+
+// Root `ext` properties (2026-07-12, granite-adoption stage 7) -- itunda's own
+// modules configure compileSdk/minSdk/etc. directly and literally per-module, not
+// via shared root ext vars, but brick-module's own android/build.gradle (a
+// real, third-party Gradle script, not itunda's code) reads this older-style
+// convention (`rootProject.ext.has("compileSdkVersion")`, matching what
+// react-native's own pre-Gradle-Plugin project template used to generate) to
+// self-configure. Additive only -- doesn't change how any of itunda's own
+// modules resolve these values.
+extra["compileSdkVersion"] = 34
+extra["minSdkVersion"] = 26
+extra["targetSdkVersion"] = 34
+extra["kotlinVersion"] = "2.1.20"

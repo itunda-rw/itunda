@@ -1,6 +1,7 @@
 package rw.itunda.app.miniapps
 
 import android.app.Application
+import com.brickmodule.BrickModulePackage
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -59,6 +60,16 @@ class ItundaApplication : Application(), ReactApplication {
             context = applicationContext,
             packageList = PackageList(this).packages.apply {
                 add(SaronitePackage(ItundaSaroniteHostBridge()))
+                // Real granite native bridge (2026-07-12, granite-adoption stage 7) --
+                // BrickModulePackage is what makes the "BrickModule" TurboModule (the
+                // aggregated class brick-codegen generates at android/.brick,
+                // confirmed by reading BrickModulePackage.getModule's real
+                // Class.forName("com.brickmodule.codegen.BrickModule", ...) lookup)
+                // resolvable at all -- without this, importing granite's real
+                // closeView/getSchemeUri throws
+                // "TurboModuleRegistry.getEnforcing(...): 'BrickModule' could not be
+                // found", confirmed live before this was added.
+                add(BrickModulePackage())
             },
             jsBundleFilePath = cdnBundleFilePath,
         )

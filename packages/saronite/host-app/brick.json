@@ -1,0 +1,6 @@
+{
+  "output": {
+    "android": "../../../android/.brick",
+    "androidAppPath": "../../../android/app"
+  }
+}

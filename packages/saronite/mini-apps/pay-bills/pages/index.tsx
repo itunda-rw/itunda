@@ -17,6 +17,29 @@ import type { PendingBill } from '@itunda/saronite-react-native';
  * is one of the concrete categories Apps in Toss actually lists for
  * partner mini-apps (see saronite/README.md's research notes). Backed by
  * itunda's real `GET /bills/pending` and `POST /bills/pay`, not mock data.
+ *
+ * Reverted from real granite back to itunda's own bridge (2026-07-12,
+ * granite-adoption stage 7 wrap-up): the real native brick-module
+ * infrastructure (android/brownfield-module-stub/, BrickModulePackage in
+ * ItundaApplication.kt) is genuinely built, compiles, and independently
+ * verified to construct and register the real GraniteBrownfieldModule
+ * instance (confirmed via logcat: "BrickModuleRegistry: Registered module
+ * 'GraniteBrownfieldModule'", "BrickModule successfully created"). But a
+ * real, reproduced, diagnosed bug in the *vendored* `@granite-js/brownfield-module`
+ * JS source itself blocks it from actually working end-to-end:
+ * `GraniteBrownfieldModule.brick.ts`'s top-level
+ * `BrickModule.get<GraniteBrownfieldModuleSpec>('GraniteBrownfieldModule')`
+ * call eagerly invokes `TurboModuleRegistry.getEnforcing("BrickModule")`
+ * (brick-module/src/BrickModule.ts) the instant the module is imported --
+ * before the native TurboModuleManager has "BrickModule" resolvable yet --
+ * with no try/catch, so the exception crashes the entire JS bundle
+ * evaluation before `AppRegistry.registerComponent` for this mini-app ever
+ * runs. Reproduced consistently across repeated runs (not a cold-start
+ * fluke) -- see the granite-adoption stage 7 commit history for the full
+ * diagnostic trail. Left as a real, specific, documented follow-up rather
+ * than force a broken mini-app into the tree: `app.tsx`/`require.context.ts`/
+ * `router.gen.ts` in this directory stay in place, real and correct, ready
+ * to be re-wired the moment this upstream timing issue is resolved.
  */
 export default function PayBillsPage() {
   const [bills, setBills] = useState<PendingBill[] | null>(null);

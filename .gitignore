@@ -14,6 +14,12 @@ out/
 # React Native Gradle Plugin's native build step actually runs (granite-adoption
 # stage 2/3, 2026-07-12) -- see android/app/build.gradle.kts.
 .cxx/
+# brick-codegen output (granite-adoption stage 7, 2026-07-12) -- regenerated at
+# build time by brick_modules.gradle (android/.brick/) and by the manual
+# `brick-codegen` CLI run (packages/saronite/host-app/.brick/), same discipline
+# as build/ above. See android/brownfield-module-stub/build.gradle.kts and
+# packages/saronite/host-app/brick.json for where this is configured.
+.brick/
 
 # Environment
 .env

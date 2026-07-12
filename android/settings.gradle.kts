@@ -40,6 +40,38 @@ extensions.configure<com.facebook.react.ReactSettingsExtension> {
     )
 }
 
+// Real brick-module autolinking (2026-07-12, granite-adoption stage 7) -- the
+// mechanism that generates the native Kotlin glue @granite-js/brownfield-module's
+// GraniteBrownfieldModule needs to actually register as a TurboModule (confirmed
+// necessary live: importing it without this throws
+// "TurboModuleRegistry.getEnforcing(...): 'BrickModule' could not be found").
+// Groovy script, applied and invoked from Kotlin DSL via the extra-properties
+// closure it defines -- brick-module's own header comment documents the Groovy
+// call form (`apply from: file(...)` then `applyBrickModules(settings, [...])`);
+// Kotlin DSL has no equivalent call-sugar for a Groovy ext closure, so it's
+// invoked explicitly as a groovy.lang.Closure instead.
+apply(from = "../packages/saronite/node_modules/brick-module/android/brick_modules.gradle")
+
+@Suppress("UNCHECKED_CAST")
+val applyBrickModules = extra["applyBrickModules"] as groovy.lang.Closure<Any?>
+applyBrickModules.call(
+    settings,
+    mapOf(
+        "projectRoot" to "../packages/saronite/host-app",
+        "appProject" to "app",
+    ),
+)
+
+// Redirect :granite-js_brownfield-module to a real, minimal, itunda-owned stub
+// (see android/brownfield-module-stub/build.gradle.kts for the full reasoning).
+// applyBrickModules above already ran settings.include(":granite-js_brownfield-module")
+// with its projectDir pointed at packages/saronite/node_modules/@granite-js/
+// brownfield-module/android -- a directory with real .kt source but no
+// build.gradle, which Gradle can't configure as a library ("No variants exist").
+// Confirmed via the actual generated code that nothing there is needed at
+// compile time; this redirect is a real fix, not a bypass.
+project(":granite-js_brownfield-module").projectDir = file("brownfield-module-stub")
+
 dependencyResolutionManagement {
     // Relaxed from FAIL_ON_PROJECT_REPOS (2026-07-12, granite-adoption stage 2): the
     // real React Native Gradle Plugin adds its own project-level `maven { }`

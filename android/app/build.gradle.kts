@@ -19,6 +19,14 @@ react {
     entryFile = file("../../packages/saronite/host-app/index.js")
 }
 
+// brick-module's own react-native-helpers.gradle (2026-07-12, granite-adoption
+// stage 7) shells out to `node --print "require.resolve('react-native/package.json')"`
+// from android/ by default, which fails in itunda's non-standard layout (same
+// class of issue react { reactNativeDir = ... } above already works around for
+// the official plugin) -- it explicitly checks this ext property first, per its
+// own `safeAppExtGet("REACT_NATIVE_NODE_MODULES_DIR", null)`.
+extra["REACT_NATIVE_NODE_MODULES_DIR"] = file("../../packages/saronite/node_modules/react-native")
+
 android {
     namespace = "rw.itunda.app"
     compileSdk = 34
