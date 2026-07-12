@@ -2,26 +2,25 @@
   "name": "saronite-host-app",
   "private": true,
   "version": "0.1.0",
-  "description": "The Metro/JS entry point that actually runs Saronite mini-apps inside itunda's native Android app. Registers one AppRegistry component per mini-app in mini-apps/*; the host Android Activity (SaroniteMiniAppActivity) picks which one to render via an Intent extra, the same way Granite's real runtime resolves a mini-app's entry component.",
+  "description": "The Metro/JS entry point that actually runs Saronite mini-apps inside itunda's native Android app. Registers one AppRegistry component per mini-app in mini-apps/*; each mini-app gets its own concrete Activity subclass hardcoding which component to render (see android/app/.../miniapps/MiniAppActivity.kt) -- not an Intent-extra dispatch, which was tried and reverted after a real crash (ReactActivity builds its delegate in <init>, before Android attaches the launch Intent).",
   "scripts": {
     "start": "react-native start",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "react": "19.1.0",
-    "react-native": "^0.80.3",
+    "react": "18.2.0",
+    "react-native": "0.72.17",
     "saronite-miniapp-wallet-balance": "0.1.0",
     "saronite-miniapp-pay-bills": "0.1.0",
     "saronite-miniapp-reward-tasks": "0.1.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.25.2",
-    "@babel/preset-env": "^7.25.3",
-    "@react-native/babel-preset": "^0.80.3",
-    "@react-native/metro-config": "^0.80.3",
-    "@react-native-community/cli": "^15.1.3",
-    "@react-native-community/cli-platform-android": "^15.1.3",
-    "@types/react": "^19.1.0",
+    "@babel/core": "^7.20.0",
+    "@babel/preset-env": "^7.20.0",
+    "@babel/runtime": "^7.20.0",
+    "@react-native/metro-config": "^0.72.12",
+    "@types/react": "^18.0.24",
+    "metro-react-native-babel-preset": "^0.76.9",
     "typescript": "^5.5.4"
   },
   "engines": {
