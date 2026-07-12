@@ -1,20 +1,12 @@
-# services/microservices/payment-service -- the independently-deployable payment
-# service (ConfirmPaymentService, RnpPaymentGateway). Added 2026-07-11 alongside
-# backend.yaml/ledger-service.yaml -- see backend.yaml's header comment for the
-# secrets/ConfigMap provisioning convention these manifests all share.
-#
-# RNP_GATEWAY_BASE_URL is deliberately left unset here: there is no real MTN
-# MoMo/Airtel Money/RNP integration to point it at yet (see
-# RnpPaymentGateway.kt's own doc comment and docs/TOSS_PARITY_MATRIX.md's
-# "Non-Negotiable Gates Before Real Money") -- setting it to a fake value just to
-# make this manifest look more complete would misrepresent what's actually wired.
+# Staging variant of infra/k8s/production/payment-service.yaml -- see backend.yaml
+# in this directory for the shared staging conventions.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: payment-service
-  namespace: itunda
+  namespace: itunda-staging
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: payment-service
@@ -22,16 +14,12 @@ spec:
     metadata:
       labels:
         app: payment-service
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/path: "/actuator/prometheus"
-        prometheus.io/port: "8081"
     spec:
       # See infra/k8s/local-dev/kafka.yaml's comment on enableServiceLinks.
       enableServiceLinks: false
       containers:
       - name: payment-service
-        image: ghcr.io/itunda/payment-service:latest
+        image: ghcr.io/itunda/payment-service:staging
         ports:
         - containerPort: 8081
         env:
@@ -64,13 +52,12 @@ spec:
               key: bootstrap-servers
         resources:
           requests:
-            memory: "384Mi"
-            cpu: "250m"
+            memory: "256Mi"
+            cpu: "150m"
           limits:
-            memory: "768Mi"
-            cpu: "500m"
-        # See backend.yaml's comment on startupProbe -- same slow-cold-start-vs-
-        # liveness-probe race hit deploying every Spring Boot service here.
+            memory: "512Mi"
+            cpu: "350m"
+        # See infra/k8s/production/backend.yaml's comment on startupProbe.
         startupProbe:
           httpGet:
             path: /actuator/health
@@ -94,7 +81,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: payment-service
-  namespace: itunda
+  namespace: itunda-staging
 spec:
   selector:
     app: payment-service

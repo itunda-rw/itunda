@@ -1,0 +1,282 @@
+# Cross-cutting cluster policy for the itunda namespace: autoscaling, disruption
+# budgets, network isolation, and resource quotas. Split out from the
+# per-service manifests (api-gateway.yaml/backend.yaml/ledger-service.yaml/
+# payment-service.yaml) because these apply at the namespace/fleet level rather
+# than describing one deployable.
+#
+# NetworkPolicy requires a CNI that enforces it (Calico, Cilium, etc.) -- kind's
+# default kindnet does NOT enforce NetworkPolicy, so these are real manifests that
+# express real intent, but on a stock kind cluster they apply without error and
+# without actually restricting traffic. Documented here rather than silently
+# assumed, the same honesty convention the rest of this repo's infra docs follow.
+
+# ---------- HorizontalPodAutoscaler ----------
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-gateway
+  namespace: itunda
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-gateway
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend
+  namespace: itunda
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ledger-service
+  namespace: itunda
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ledger-service
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: payment-service
+  namespace: itunda
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: payment-service
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+
+# ---------- PodDisruptionBudget ----------
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api-gateway
+  namespace: itunda
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: api-gateway
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: backend
+  namespace: itunda
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: backend
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ledger-service
+  namespace: itunda
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: ledger-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: payment-service
+  namespace: itunda
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: payment-service
+
+# ---------- NetworkPolicy ----------
+# Default deny all ingress in the namespace, then explicitly allow only the paths
+# this system actually uses: internet -> api-gateway, api-gateway -> {backend,
+# ledger-service, payment-service}, everything -> DNS. Nothing is allowed to reach
+# backend/ledger-service/payment-service directly except the gateway -- closing the
+# "any authenticated caller can reach internal services directly" shape of gap
+# flagged in SECURITY.md, at the network layer rather than the application layer.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: itunda
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-gateway
+  namespace: itunda
+spec:
+  podSelector:
+    matchLabels:
+      app: api-gateway
+  policyTypes:
+  - Ingress
+  ingress:
+  - {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gateway-to-backend
+  namespace: itunda
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: api-gateway
+    ports:
+    - port: 4001
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gateway-to-ledger-service
+  namespace: itunda
+spec:
+  podSelector:
+    matchLabels:
+      app: ledger-service
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: api-gateway
+    ports:
+    - port: 8082
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gateway-to-payment-service
+  namespace: itunda
+spec:
+  podSelector:
+    matchLabels:
+      app: payment-service
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: api-gateway
+    ports:
+    - port: 8081
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-stateful-deps-ingress
+  namespace: itunda
+spec:
+  # mysql/redis/kafka/zookeeper only exist in infra/k8s/local-dev (see that
+  # directory's README) -- a real cluster points DB_HOST/REDIS_HOST/
+  # KAFKA_BOOTSTRAP_SERVERS at managed services outside the cluster instead, so
+  # this policy is only meaningful when local-dev's manifests are also applied.
+  podSelector:
+    matchExpressions:
+    - key: app
+      operator: In
+      values: [mysql, redis, kafka, zookeeper]
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchExpressions:
+        - key: app
+          operator: In
+          values: [backend, ledger-service, payment-service, kafka]
+
+# ---------- ResourceQuota / LimitRange ----------
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: itunda-quota
+  namespace: itunda
+spec:
+  hard:
+    requests.cpu: "8"
+    requests.memory: 16Gi
+    limits.cpu: "16"
+    limits.memory: 32Gi
+    pods: "60"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: itunda-limits
+  namespace: itunda
+spec:
+  limits:
+  - type: Container
+    default:
+      cpu: "500m"
+      memory: 512Mi
+    defaultRequest:
+      cpu: "100m"
+      memory: 128Mi

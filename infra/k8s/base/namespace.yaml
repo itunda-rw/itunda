@@ -1,0 +1,24 @@
+# Namespaces every other manifest in infra/k8s assumes exist. Previously nothing
+# created these -- `kubectl apply -f infra/k8s/production` would fail outright
+# against an empty cluster since production/*.yaml all target `namespace: itunda`.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: itunda
+  labels:
+    app.kubernetes.io/part-of: itunda
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: itunda-staging
+  labels:
+    app.kubernetes.io/part-of: itunda
+    environment: staging
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    app.kubernetes.io/part-of: itunda

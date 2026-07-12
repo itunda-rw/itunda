@@ -6,10 +6,18 @@ version: '3.9'
 services:
   # ==================== PostgreSQL / MySQL ====================
   mysql:
-    image: mysql:8
+    # Pinned, not floating "mysql:8" (2026-07-11 fix, found live): the floating tag
+    # resolved to a MySQL patch new enough to have removed `SHOW MASTER STATUS`
+    # (replaced by `SHOW BINARY LOG STATUS`), which Debezium 2.5.0's MySQL connector
+    # still issues unconditionally -- CONNECTOR crash-looped
+    # (`SQLSyntaxErrorException ... near 'MASTER STATUS'`) the moment it tried to
+    # snapshot. A floating major-only tag silently breaking a pinned tool's assumed
+    # SQL surface is exactly the kind of non-reproducible-build problem pinning
+    # exists to prevent.
+    image: mysql:8.0.39
     container_name: mysql
     environment:
-      MYSQL_DATABASE: itunda_ledger
+      MYSQL_DATABASE: itunda
       MYSQL_USER: itunda
       MYSQL_PASSWORD: ${DB_PASSWORD:-itunda_password}
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-itunda_password}
@@ -87,10 +95,14 @@ services:
     volumes:
       - kafka_broker_1:/var/lib/kafka/data
     healthcheck:
+      # kafka-topics is itself a JVM process -- 5s was too tight a timeout for a
+      # cold start on this environment's disk and consistently reported the broker
+      # unhealthy even once it was actually serving requests (2026-07-11 fix).
       test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
       interval: 10s
-      timeout: 5s
+      timeout: 15s
       retries: 5
+      start_period: 30s
     networks:
       - itunda-network
     restart: unless-stopped

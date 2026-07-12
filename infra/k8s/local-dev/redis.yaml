@@ -1,0 +1,62 @@
+# Local-cluster stand-in for docker-compose.yml's redis-node-1 -- single node, no
+# persistence, no clustering (same honesty note applies as the compose file's own
+# `redis-node-1` naming -- it isn't a cluster there either, see ARCHITECTURE.md).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: itunda
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      # See kafka.yaml's comment on enableServiceLinks.
+      enableServiceLinks: false
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        args: ["redis-server", "--appendonly", "yes"]
+        ports:
+        - containerPort: 6379
+        readinessProbe:
+          exec:
+            command: ["redis-cli", "ping"]
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          exec:
+            command: ["redis-cli", "ping"]
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
+        volumeMounts:
+        - name: data
+          mountPath: /data
+      volumes:
+      - name: data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: itunda
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+  type: ClusterIP

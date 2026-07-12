@@ -1,0 +1,133 @@
+# Local-cluster stand-in for docker-compose.yml's zookeeper + kafka-broker-1, so
+# the outbox relay (services/backend/core/.../events/OutboxRelay.kt) and the
+# ledger-service/payment-service Kafka producers have something to talk to inside
+# the cluster too, not just in host-based docker-compose dev.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zookeeper
+  namespace: itunda
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      containers:
+      - name: zookeeper
+        image: confluentinc/cp-zookeeper:7.5.0
+        ports:
+        - containerPort: 2181
+        env:
+        - name: ZOOKEEPER_CLIENT_PORT
+          value: "2181"
+        - name: ZOOKEEPER_TICK_TIME
+          value: "2000"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper
+  namespace: itunda
+spec:
+  selector:
+    app: zookeeper
+  ports:
+  - port: 2181
+    targetPort: 2181
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka
+  namespace: itunda
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+    spec:
+      # Real bug hit deploying this (2026-07-11): Kubernetes auto-injects a
+      # KAFKA_PORT env var into every pod in this namespace (Docker-links-style
+      # discovery vars derived from the `kafka` Service's name+port -- see
+      # https://kubernetes.io/docs/concepts/services-networking/service/#environment-variables).
+      # cp-kafka's own /etc/confluent/docker/configure script treats *any* set
+      # KAFKA_PORT as the deprecated legacy config knob and hard-exits 1 before
+      # the JVM ever starts -- exactly the failure seen here (CrashLoopBackOff,
+      # "port is deprecated..." then exit, no further log output). This is the
+      # standard fix for a Service name colliding with an app's own expected env
+      # var prefix -- not needed by mysql/redis (they use ConfigMap-driven
+      # DB_HOST/DB_PORT/REDIS_HOST, not the auto-injected names), but added there
+      # too as cheap, correct hardening against the same class of collision.
+      enableServiceLinks: false
+      containers:
+      - name: kafka
+        image: confluentinc/cp-kafka:7.5.0
+        ports:
+        - containerPort: 9092
+        env:
+        - name: KAFKA_BROKER_ID
+          value: "1"
+        - name: KAFKA_ZOOKEEPER_CONNECT
+          value: "zookeeper:2181"
+        # Real bug hit deploying this (2026-07-11): without KAFKA_LISTENERS set
+        # explicitly, cp-kafka's config-generation script derives the bind address
+        # from KAFKA_ADVERTISED_LISTENERS -- a Service DNS name here, not a local
+        # interface -- and the broker fails to bind at all (CrashLoopBackOff, exit 1,
+        # no further log output). Advertised (what clients are told to connect to)
+        # and listen (what the process actually binds) must be separate in k8s,
+        # unlike the docker-compose version of this same broker where they happened
+        # to coincide closely enough not to hit this.
+        - name: KAFKA_LISTENERS
+          value: "PLAINTEXT://0.0.0.0:9092"
+        - name: KAFKA_ADVERTISED_LISTENERS
+          value: "PLAINTEXT://kafka.itunda.svc.cluster.local:9092"
+        - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+          value: "PLAINTEXT:PLAINTEXT"
+        - name: KAFKA_INTER_BROKER_LISTENER_NAME
+          value: "PLAINTEXT"
+        - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+          value: "1"
+        - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+          value: "true"
+        readinessProbe:
+          tcpSocket:
+            port: 9092
+          initialDelaySeconds: 20
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: itunda
+spec:
+  selector:
+    app: kafka
+  ports:
+  - port: 9092
+    targetPort: 9092
+  type: ClusterIP

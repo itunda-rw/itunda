@@ -1,0 +1,182 @@
+# Grafana, provisioned (not click-ops'd) with the Prometheus datasource and one
+# dashboard covering the 4 services this cluster actually runs -- added 2026-07-11
+# alongside prometheus.yaml's real scrape config, closing the other half of
+# "monitoring/{grafana,prometheus} are tracked as empty directories."
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: monitoring
+data:
+  datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus:9090
+        isDefault: true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provisioning
+  namespace: monitoring
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: itunda
+        folder: itunda
+        type: file
+        options:
+          path: /var/lib/grafana/dashboards
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-itunda-fleet
+  namespace: monitoring
+data:
+  itunda-fleet.json: |
+    {
+      "title": "itunda fleet",
+      "uid": "itunda-fleet",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Requests per second by service",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count[1m])) by (application)",
+              "legendFormat": "{{application}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "JVM heap used by service",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "sum(jvm_memory_used_bytes{area=\"heap\"}) by (application)",
+              "legendFormat": "{{application}}"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Pods up by app",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "count(up{job=\"itunda-services\"} == 1) by (app)",
+              "legendFormat": "{{app}}"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "Gateway request duration (p50/p95)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))",
+              "legendFormat": "p95"
+            }
+          ]
+        }
+      ]
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+      - name: grafana
+        image: grafana/grafana:11.1.0
+        ports:
+        - containerPort: 3000
+        env:
+        - name: GF_AUTH_ANONYMOUS_ENABLED
+          value: "false"
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: grafana-admin
+              key: password
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 10
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
+        volumeMounts:
+        - name: datasources
+          mountPath: /etc/grafana/provisioning/datasources
+        - name: dashboard-provisioning
+          mountPath: /etc/grafana/provisioning/dashboards
+        - name: dashboard-itunda-fleet
+          mountPath: /var/lib/grafana/dashboards
+      volumes:
+      - name: datasources
+        configMap:
+          name: grafana-datasources
+      - name: dashboard-provisioning
+        configMap:
+          name: grafana-dashboard-provisioning
+      - name: dashboard-itunda-fleet
+        configMap:
+          name: grafana-dashboard-itunda-fleet
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-admin
+  namespace: monitoring
+type: Opaque
+stringData:
+  # Dev-only default -- rotate before this namespace ever points at a real cluster.
+  password: itunda-local-dev-only
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  selector:
+    app: grafana
+  ports:
+  - port: 3000
+  type: ClusterIP

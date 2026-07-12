@@ -31,7 +31,16 @@ spec:
     metadata:
       labels:
         app: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: "4001"
     spec:
+      # See infra/k8s/local-dev/kafka.yaml's comment: Kubernetes auto-injects
+      # Service-name-derived env vars into every pod in the namespace, which can
+      # silently collide with an app's own env vars. Nothing here reads those, so
+      # there's no reason to accept them.
+      enableServiceLinks: false
       containers:
       - name: backend
         image: ghcr.io/itunda/backend:latest
@@ -82,6 +91,23 @@ spec:
           limits:
             memory: "1Gi"
             cpu: "1000m"
+        # Real bug hit deploying this (2026-07-11): a Spring Boot cold start under
+        # real load (JPA repository scanning, Flyway, Hibernate bootstrap) can take
+        # well over a minute, especially on a resource-constrained node -- with only
+        # a livenessProbe and no startupProbe, kubelet was killing the container via
+        # the *liveness* probe's tighter budget before Spring Boot ever got to
+        # /actuator/health for the first time (`Container backend failed liveness
+        # probe, will be restarted`, seen live), so it never got a chance to start at
+        # all -- CrashLoopBackOff on a container that was never actually broken.
+        # startupProbe owns the "give it time to boot" budget (up to 5 minutes);
+        # readiness/liveness only start being evaluated after startupProbe succeeds
+        # once.
+        startupProbe:
+          httpGet:
+            path: /actuator/health
+            port: 4001
+          failureThreshold: 30
+          periodSeconds: 10
         readinessProbe:
           httpGet:
             path: /actuator/health

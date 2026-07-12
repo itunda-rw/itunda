@@ -1,0 +1,103 @@
+# Local-cluster stand-in for docker-compose.yml's mysql service -- see README.md.
+# Single replica, emptyDir storage: data does not survive a pod restart, which is
+# fine (and correct) for disposable local verification, wrong for anything else.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-initdb
+  namespace: itunda
+data:
+  01-init-databases.sql: |
+    CREATE DATABASE IF NOT EXISTS itunda_ledger;
+    CREATE DATABASE IF NOT EXISTS itunda_payment;
+    GRANT ALL PRIVILEGES ON itunda_ledger.* TO 'itunda'@'%';
+    GRANT ALL PRIVILEGES ON itunda_payment.* TO 'itunda'@'%';
+    FLUSH PRIVILEGES;
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: itunda
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      # See kafka.yaml's comment -- cheap, correct hardening against Kubernetes'
+      # auto-injected Service-name env vars (MYSQL_PORT etc.) colliding with an
+      # app's own expected env vars. Not currently needed here (this image doesn't
+      # read MYSQL_PORT), but there's no reason any of these pods should get vars
+      # they never asked for.
+      enableServiceLinks: false
+      containers:
+      - name: mysql
+        # Pinned, not floating "8.0" -- see infra/docker-compose.yml's mysql
+        # service for why (a floating tag silently broke Debezium's assumed SQL
+        # surface).
+        image: mysql:8.0.39
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_DATABASE
+          value: "itunda"
+        - name: MYSQL_USER
+          value: "itunda"
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: itunda-db-credentials
+              key: password
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: itunda-db-credentials
+              key: password
+        volumeMounts:
+        - name: initdb
+          mountPath: /docker-entrypoint-initdb.d
+        - name: data
+          mountPath: /var/lib/mysql
+        readinessProbe:
+          exec:
+            command: ["mysqladmin", "ping", "-h", "localhost", "-uroot", "-p$(MYSQL_ROOT_PASSWORD)"]
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        livenessProbe:
+          exec:
+            command: ["mysqladmin", "ping", "-h", "localhost", "-uroot", "-p$(MYSQL_ROOT_PASSWORD)"]
+          initialDelaySeconds: 30
+          periodSeconds: 20
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+      volumes:
+      - name: initdb
+        configMap:
+          name: mysql-initdb
+      - name: data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: itunda
+spec:
+  selector:
+    app: mysql
+  ports:
+  - port: 3306
+    targetPort: 3306
+  type: ClusterIP
