@@ -9,6 +9,8 @@ import com.facebook.soloader.SoLoader
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import rw.itunda.app.BuildConfig
+import rw.itunda.app.network.NetworkClient
+import rw.itunda.app.network.SessionManager
 import java.io.File
 import java.util.concurrent.TimeUnit
 
@@ -86,6 +88,10 @@ class ItundaApplication : Application(), ReactApplication {
     override fun onCreate() {
         super.onCreate()
         SoLoader.init(this, false)
+        // Real login/session flow (2026-07-11) -- must run before any screen can make
+        // an authenticated request. See network/NetworkClient.kt/SessionManager.kt.
+        NetworkClient.init(this)
+        SessionManager.restoreSession()
     }
 }
 

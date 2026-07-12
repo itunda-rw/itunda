@@ -1,0 +1,128 @@
+package rw.itunda.feature.payments.impl
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
+import androidx.compose.material.icons.outlined.Savings
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import rw.itunda.core.designsystem.theme.Tds
+
+/**
+ * Real savings deposit/withdraw amount screens, matching the two real Toss
+ * reference screenshots (user-provided, 2026-07-12): "얼마나 채울까요?" (deposit)
+ * and "얼마나 꺼낼까요?" (withdraw) -- same visual shape as TransferAmountScreen
+ * (from/to summary, quick-amount chips, keypad, Next bar), reusing its shared
+ * primitives directly (TransferFlow.kt's FlowTopBar/TransferPartyRow/
+ * QuickAmountChip/FlowNextBar/NumericKeypad, widened from private to internal for
+ * exactly this reuse) rather than re-implementing an identical layout.
+ *
+ * itunda has no real withdraw-from-goal endpoint (only deposit + interest-jar
+ * claim, see SavingsController.kt) -- SavingsAmountScreen's `mode` therefore only
+ * offers .deposit for a real goal and .claimInterest for the jar; a withdraw mode
+ * is deliberately not exposed here rather than faked against an endpoint that
+ * doesn't exist.
+ */
+enum class SavingsAmountMode { deposit, claimInterest }
+
+@Composable
+fun SavingsAmountScreen(
+    goalName: String,
+    mode: SavingsAmountMode,
+    availableBalance: Double,
+    isSubmitting: Boolean,
+    onBack: () -> Unit,
+    onConfirm: (amountRwf: Long) -> Unit,
+) {
+    var digits by rememberSaveable { mutableStateOf("") }
+    val amount = digits.toLongOrNull() ?: 0L
+    val availableBalanceLong = availableBalance.toLong()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Tds.colors.background)
+    ) {
+        FlowTopBar(onBack)
+
+        Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+            TransferPartyRow(
+                label = "From Itunda Wallet",
+                sublabel = "Available RWF ${rwfFormatter.format(availableBalanceLong)}",
+                icon = Icons.Outlined.AccountBalanceWallet
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Box(
+                modifier = Modifier
+                    .padding(start = 21.dp)
+                    .width(2.dp)
+                    .height(20.dp)
+                    .background(Tds.colors.divider)
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            TransferPartyRow(
+                label = "To $goalName",
+                sublabel = if (mode == SavingsAmountMode.deposit) "Savings goal" else "Interest jar",
+                icon = Icons.Outlined.Savings
+            )
+        }
+
+        Spacer(modifier = Modifier.height(40.dp))
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                if (mode == SavingsAmountMode.deposit) "How much to save?" else "Claim your interest",
+                color = Tds.colors.textSecondary,
+                fontSize = 16.sp
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = if (digits.isEmpty()) "0 RWF" else "${rwfFormatter.format(amount)} RWF",
+                fontSize = if (digits.isEmpty()) 32.sp else 42.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (digits.isEmpty()) Tds.colors.textTertiary else Tds.colors.textPrimary,
+                textAlign = TextAlign.Center
+            )
+        }
+
+        if (mode == SavingsAmountMode.deposit) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                QuickAmountChip("+10,000") { digits = ((digits.toLongOrNull() ?: 0L) + 10_000L).toString() }
+                QuickAmountChip("+100,000") { digits = ((digits.toLongOrNull() ?: 0L) + 100_000L).toString() }
+                QuickAmountChip("Max") { digits = availableBalanceLong.toString() }
+            }
+        }
+
+        if (isSubmitting) {
+            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
+                androidx.compose.material3.CircularProgressIndicator(color = Tds.colors.brand)
+            }
+        } else if (mode == SavingsAmountMode.claimInterest) {
+            FlowNextBar(enabled = true, label = "Claim") { onConfirm(0L) }
+        } else {
+            FlowNextBar(enabled = digits.isNotEmpty() && amount > 0, label = "Deposit") { onConfirm(amount) }
+            NumericKeypad(
+                onDigit = { d -> if (digits.length < 9) digits += d },
+                onDelete = { if (digits.isNotEmpty()) digits = digits.dropLast(1) }
+            )
+        }
+    }
+}

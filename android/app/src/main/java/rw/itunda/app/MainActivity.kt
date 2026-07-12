@@ -3,8 +3,13 @@ package rw.itunda.app
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import rw.itunda.app.network.SessionManager
+import rw.itunda.app.network.SessionState
 import rw.itunda.app.ui.ItundaAppScreen
+import rw.itunda.app.ui.LoginScreen
 import rw.itunda.core.risk.RootDetection
 
 // FragmentActivity, not just ComponentActivity, so NIDABiometricAuth's real
@@ -25,8 +30,14 @@ class MainActivity : FragmentActivity() {
             return
         }
 
+        // Real login gate (2026-07-11) -- ItundaAppScreen previously rendered
+        // unconditionally with no session at all; see SessionManager.kt.
         setContent {
-            ItundaAppScreen()
+            val sessionState by SessionManager.sessionState.collectAsStateWithLifecycle()
+            when (sessionState) {
+                is SessionState.LoggedIn -> ItundaAppScreen()
+                is SessionState.LoggedOut -> LoginScreen(onLoggedIn = {})
+            }
         }
     }
 }

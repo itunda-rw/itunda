@@ -85,8 +85,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
+import androidx.activity.compose.BackHandler
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -152,22 +156,51 @@ private enum class TossTab(val label: String, val icon: androidx.compose.ui.grap
  * to a visible entry point (WalletHeroCard's "Send" button), not built and
  * left unreachable like the screens it replaces.
  */
-private sealed class TransferStep {
+// Serializable so rememberSaveable can survive process death mid-flow (2026-07-12)
+// -- BiometricPrompt in particular backgrounds the host Activity behind a system
+// overlay, which is exactly the condition Android is most likely to reclaim a
+// low-priority process under memory pressure. Without this, that reclaim silently
+// resets the whole flow to Home with no error shown, even though the confirm call
+// (idempotency-key protected) may have already gone through.
+private sealed class TransferStep : java.io.Serializable {
     data object Recipient : TransferStep()
     data class Amount(val accountNumber: String) : TransferStep()
+}
+
+/** Real savings deposit/claim flow (2026-07-12) -- see SavingsAmountScreen.kt. */
+private sealed class SavingsFlowStep : java.io.Serializable {
+    data class Deposit(val goalId: String, val goalName: String) : SavingsFlowStep()
+    data object ClaimInterest : SavingsFlowStep()
 }
 
 @Composable
 fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.compose.viewModel()) {
     TdsTheme {
-        var selectedTab by remember { mutableStateOf(TossTab.Home) }
-        var transferStep by remember { mutableStateOf<TransferStep?>(null) }
+        var selectedTab by rememberSaveable { mutableStateOf(TossTab.Home) }
+        var transferStep by rememberSaveable { mutableStateOf<TransferStep?>(null) }
+        var savingsFlowStep by rememberSaveable { mutableStateOf<SavingsFlowStep?>(null) }
+        var showTransactionHistory by rememberSaveable { mutableStateOf(false) }
+        var showSettings by rememberSaveable { mutableStateOf(false) }
         var biometricError by remember { mutableStateOf<String?>(null) }
         val activity = androidx.compose.ui.platform.LocalContext.current as androidx.fragment.app.FragmentActivity
         val biometricAuth = remember(activity) { rw.itunda.core.identity.NIDABiometricAuth(activity) }
 
         val step = transferStep
+        var isSendingTransfer by remember { mutableStateOf(false) }
+        val coroutineScope = rememberCoroutineScope()
+        val primaryWalletForTransfer by viewModel.primaryWallet.collectAsState()
         if (step != null) {
+            // Without this, system/gesture back during a transfer falls through to
+            // the Activity's default back behavior (there's no NavHost here) and
+            // exits the app mid-transfer instead of stepping back a screen -- the
+            // same history-backed back-navigation gap toss/use-funnel's real design
+            // (confirmed via toss.tech/GitHub research, 2026-07-12) is built to close.
+            BackHandler {
+                transferStep = when (step) {
+                    is TransferStep.Recipient -> null
+                    is TransferStep.Amount -> TransferStep.Recipient
+                }
+            }
             when (step) {
                 is TransferStep.Recipient -> rw.itunda.feature.payments.impl.RecipientEntryScreen(
                     onBack = { transferStep = null },
@@ -176,19 +209,34 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                 is TransferStep.Amount -> {
                     rw.itunda.feature.payments.impl.TransferAmountScreen(
                         recipientAccountNumber = step.accountNumber,
+                        availableBalance = primaryWalletForTransfer?.availableBalance ?: 0.0,
+                        isSubmitting = isSendingTransfer,
                         onBack = { transferStep = TransferStep.Recipient },
                         onConfirm = { amountRwf ->
                             // Toss-style biometric confirmation gate before a transfer
                             // completes -- see docs/ARCHITECTURE.md's NIDABiometricAuth
-                            // note. Still local-state-only (no backend session yet, see
-                            // TransferFlow.kt's header), so "success" here means the
-                            // sheet closes, not that money actually moved.
+                            // note. Real quote+confirm call now follows a successful
+                            // check (2026-07-12, see MainViewModel.sendTransfer) --
+                            // previously "success" here just closed the sheet without
+                            // moving any real money (see TransferFlow.kt's old header).
                             biometricError = null
                             biometricAuth.authenticateForTransaction(
                                 reason = "Confirm sending $amountRwf RWF"
                             ) { success, error ->
                                 if (success) {
-                                    transferStep = null
+                                    isSendingTransfer = true
+                                    coroutineScope.launch {
+                                        when (val result = viewModel.sendTransfer(step.accountNumber, amountRwf)) {
+                                            is rw.itunda.app.ui.MoneyActionResult.Success -> {
+                                                isSendingTransfer = false
+                                                transferStep = null
+                                            }
+                                            is rw.itunda.app.ui.MoneyActionResult.Failure -> {
+                                                isSendingTransfer = false
+                                                biometricError = result.message
+                                            }
+                                        }
+                                    }
                                 } else {
                                     biometricError = error ?: "Couldn't verify. Try again."
                                 }
@@ -207,6 +255,98 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
             return@TdsTheme
         }
 
+        val savingsStep = savingsFlowStep
+        var isSavingsSubmitting by remember { mutableStateOf(false) }
+        var savingsError by remember { mutableStateOf<String?>(null) }
+        val availableBalanceForSavings by viewModel.primaryWallet.collectAsState()
+        if (savingsStep != null) {
+            BackHandler { savingsFlowStep = null }
+            when (savingsStep) {
+                is SavingsFlowStep.Deposit -> rw.itunda.feature.payments.impl.SavingsAmountScreen(
+                    goalName = savingsStep.goalName,
+                    mode = rw.itunda.feature.payments.impl.SavingsAmountMode.deposit,
+                    availableBalance = availableBalanceForSavings?.availableBalance ?: 0.0,
+                    isSubmitting = isSavingsSubmitting,
+                    onBack = { savingsFlowStep = null },
+                    onConfirm = { amountRwf ->
+                        isSavingsSubmitting = true
+                        coroutineScope.launch {
+                            when (val result = viewModel.depositToSavingsGoal(savingsStep.goalId, amountRwf)) {
+                                is rw.itunda.app.ui.MoneyActionResult.Success -> {
+                                    isSavingsSubmitting = false
+                                    savingsFlowStep = null
+                                }
+                                is rw.itunda.app.ui.MoneyActionResult.Failure -> {
+                                    isSavingsSubmitting = false
+                                    savingsError = result.message
+                                }
+                            }
+                        }
+                    }
+                )
+                is SavingsFlowStep.ClaimInterest -> rw.itunda.feature.payments.impl.SavingsAmountScreen(
+                    goalName = "Interest jar",
+                    mode = rw.itunda.feature.payments.impl.SavingsAmountMode.claimInterest,
+                    availableBalance = availableBalanceForSavings?.availableBalance ?: 0.0,
+                    isSubmitting = isSavingsSubmitting,
+                    onBack = { savingsFlowStep = null },
+                    onConfirm = {
+                        isSavingsSubmitting = true
+                        coroutineScope.launch {
+                            when (val result = viewModel.claimInterest()) {
+                                is rw.itunda.app.ui.MoneyActionResult.Success -> {
+                                    isSavingsSubmitting = false
+                                    savingsFlowStep = null
+                                }
+                                is rw.itunda.app.ui.MoneyActionResult.Failure -> {
+                                    isSavingsSubmitting = false
+                                    savingsError = result.message
+                                }
+                            }
+                        }
+                    }
+                )
+            }
+            savingsError?.let { message ->
+                androidx.compose.material3.Text(
+                    text = message,
+                    color = Tds.colors.danger,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                )
+            }
+            return@TdsTheme
+        }
+
+        if (showTransactionHistory) {
+            BackHandler { showTransactionHistory = false }
+            val transactionsForHistory by viewModel.transactions.collectAsState()
+            val currentUserIdForHistory by viewModel.primaryWallet.collectAsState()
+            rw.itunda.feature.payments.impl.TransactionHistoryScreen(
+                transactions = transactionsForHistory.map { tx ->
+                    rw.itunda.feature.payments.impl.TransactionDisplayItem(
+                        id = tx.id,
+                        description = tx.description,
+                        amount = tx.amount,
+                        currency = tx.currency,
+                        status = tx.status,
+                        isOutgoing = tx.senderId == currentUserIdForHistory?.userId,
+                    )
+                },
+                onBack = { showTransactionHistory = false },
+            )
+            return@TdsTheme
+        }
+
+        if (showSettings) {
+            BackHandler { showSettings = false }
+            SettingsScreen(
+                viewModel = viewModel,
+                onBack = { showSettings = false },
+                onLogout = { coroutineScope.launch { rw.itunda.app.network.SessionManager.logout() } },
+            )
+            return@TdsTheme
+        }
+
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
@@ -220,11 +360,17 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                     .padding(paddingValues)
             ) {
                 when (selectedTab) {
-                    TossTab.Home -> HomeTab(viewModel, onSend = { transferStep = TransferStep.Recipient })
+                    TossTab.Home -> HomeTab(
+                        viewModel,
+                        onSend = { transferStep = TransferStep.Recipient },
+                        onDepositToGoal = { goalId, goalName -> savingsFlowStep = SavingsFlowStep.Deposit(goalId, goalName) },
+                        onClaimInterest = { savingsFlowStep = SavingsFlowStep.ClaimInterest },
+                        onOpenTransactionHistory = { showTransactionHistory = true },
+                    )
                     TossTab.Benefits -> BenefitsTab()
                     TossTab.Shop -> ShopTab(viewModel)
                     TossTab.Pay -> PayTab()
-                    TossTab.All -> AllTab()
+                    TossTab.All -> AllTab(onOpenSettings = { showSettings = true })
                 }
             }
         }
@@ -279,9 +425,17 @@ private fun TossBottomBar(selectedTab: TossTab, onSelect: (TossTab) -> Unit) {
 }
 
 @Composable
-private fun HomeTab(viewModel: MainViewModel, onSend: () -> Unit) {
+private fun HomeTab(
+    viewModel: MainViewModel,
+    onSend: () -> Unit,
+    onDepositToGoal: (goalId: String, goalName: String) -> Unit,
+    onClaimInterest: () -> Unit,
+    onOpenTransactionHistory: () -> Unit,
+) {
     val primaryWallet by viewModel.primaryWallet.collectAsState()
     val balanceText = primaryWallet?.let { "${it.currency} %,.0f".format(it.balance) } ?: "RWF 0"
+    val savingsGoals by viewModel.savingsGoals.collectAsState()
+    val interestJar by viewModel.interestJar.collectAsState()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -299,7 +453,11 @@ private fun HomeTab(viewModel: MainViewModel, onSend: () -> Unit) {
             ShellSection(
                 title = "",
                 rows = listOf(
-                    ShellRow("RWF 463,022", "Spent in July", "3 new", Icons.Outlined.PieChart, AccentPurple),
+                    // Wired to real transaction history (2026-07-12) -- the headline
+                    // figure/label ("RWF 463,022" / "Spent in July") stay illustrative
+                    // (no real spend-by-month aggregation endpoint exists yet), but
+                    // tapping through now opens the real list rather than nothing.
+                    ShellRow("RWF 463,022", "Spent in July", "3 new", Icons.Outlined.PieChart, AccentPurple, onClick = onOpenTransactionHistory),
                     ShellRow("Transfer cashback", "BK account -> TUYIZERE Eric", "Claim", Icons.Outlined.Payments, AccentBlue),
                     ShellRow("Sprinkle money to friends", "19:03:55 left", "Send", Icons.Outlined.Redeem, AccentOrange)
                 )
@@ -314,6 +472,47 @@ private fun HomeTab(viewModel: MainViewModel, onSend: () -> Unit) {
                     ShellRow("Receive government alerts", "", ">", Icons.Outlined.Campaign, AccentRed)
                 )
             )
+        }
+        // Real savings goals + interest jar (2026-07-11) -- the first Home tab
+        // content backed by services/backend's savings module rather than static
+        // promotional copy. Rendered only once real data has arrived, so an empty
+        // list before the first fetch resolves doesn't flash a title with nothing
+        // under it.
+        if (savingsGoals.isNotEmpty() || interestJar != null) {
+            item {
+                ShellSection(
+                    title = "Savings",
+                    rows = buildList {
+                        interestJar?.let { jar ->
+                            add(
+                                ShellRow(
+                                    "Interest jar",
+                                    "Earned this month",
+                                    "RWF %,.0f".format(jar.earnedThisMonth),
+                                    Icons.Outlined.Savings,
+                                    AccentOrange,
+                                    onClick = onClaimInterest,
+                                )
+                            )
+                        }
+                        savingsGoals.forEach { goal ->
+                            val progressPercent = if (goal.targetAmount > 0) {
+                                (goal.currentAmount / goal.targetAmount * 100).toInt()
+                            } else 0
+                            add(
+                                ShellRow(
+                                    goal.name,
+                                    "RWF %,.0f of %,.0f".format(goal.currentAmount, goal.targetAmount),
+                                    "$progressPercent%",
+                                    Icons.Outlined.Savings,
+                                    AccentBlue,
+                                    onClick = { onDepositToGoal(goal.id, goal.name) },
+                                )
+                            )
+                        }
+                    }
+                )
+            }
         }
     }
 }
@@ -358,12 +557,17 @@ private fun HomeTopBar() {
 // that flexible space rather than causing overflow -- checked each of the 3 call
 // sites' surrounding layout before changing this shared component.
 @Composable
-private fun TopIconButton(icon: androidx.compose.ui.graphics.vector.ImageVector, contentDescription: String) {
+private fun TopIconButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit = {},
+) {
     Box(
         modifier = Modifier
             .size(Tds.layout.minTouchTarget)
             .clip(CircleShape)
-            .background(TossCardSoft),
+            .background(TossCardSoft)
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(20.dp), tint = TossText)
@@ -460,7 +664,11 @@ private data class ShellRow(
     val subtitle: String,
     val action: String,
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
-    val iconColor: Color = AccentBlue
+    val iconColor: Color = AccentBlue,
+    // Added 2026-07-12 for the real Savings section's rows (deposit/claim) --
+    // default null preserves every existing purely-promotional ShellRow call site
+    // unchanged.
+    val onClick: (() -> Unit)? = null,
 )
 
 @Composable
@@ -479,6 +687,7 @@ private fun ShellSection(title: String, rows: List<ShellRow>) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .then(if (row.onClick != null) Modifier.clickable(onClick = row.onClick) else Modifier)
                         .padding(vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -581,13 +790,17 @@ private fun PayTab() {
 }
 
 @Composable
-private fun AllTab() {
+private fun AllTab(onOpenSettings: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)
     ) {
-        item { AllTopBar() }
+        // Real Settings screen (2026-07-12) -- previously this gear icon logged out
+        // immediately with no confirmation screen at all; now it opens a real
+        // settings screen (profile/notifications/logout), matching the Toss
+        // reference more faithfully -- logout is one row inside it, not the trigger.
+        item { AllTopBar(onOpenSettings = onOpenSettings) }
         item { SearchBar("Search") }
         item {
             IconGridSection("Quick access", listOf(
@@ -1047,10 +1260,12 @@ private fun PayFeatureCard() {
 // 전체 (All) tab top bar is just the user's name plus a single settings
 // icon button; support/ID live as rows further down the list, not up here.
 @Composable
-private fun AllTopBar() {
+private fun AllTopBar(onOpenSettings: () -> Unit = {}) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text("TUYIZERE ERIC", color = TossText, fontWeight = FontWeight.Bold, fontSize = 26.sp)
-        TopIconButton(Icons.Outlined.Settings, contentDescription = "Settings")
+        // Real Settings screen (2026-07-12, see SettingsScreen.kt) -- previously
+        // wired directly to logout with no screen behind it at all.
+        TopIconButton(Icons.Outlined.Settings, contentDescription = "Settings", onClick = onOpenSettings)
     }
 }
 

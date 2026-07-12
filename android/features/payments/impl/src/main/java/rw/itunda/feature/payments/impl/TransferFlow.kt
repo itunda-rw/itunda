@@ -14,6 +14,7 @@ import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,14 +50,14 @@ import java.util.Locale
  * earlier this session -- not silently claimed as more than it is.
  */
 
-private val rwfFormatter = NumberFormat.getNumberInstance(Locale.US)
+internal val rwfFormatter = NumberFormat.getNumberInstance(Locale.US)
 
 @Composable
 fun RecipientEntryScreen(
     onBack: () -> Unit,
     onNext: (accountNumber: String) -> Unit
 ) {
-    var accountNumber by remember { mutableStateOf("") }
+    var accountNumber by rememberSaveable { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -107,13 +108,19 @@ fun RecipientEntryScreen(
             ) {
                 Column {
                     Text("Select bank", color = Tds.colors.textTertiary, fontSize = 17.sp)
-                    if (accountNumber.isEmpty()) {
-                        Text(
-                            "We'll find the bank once you enter the account number.",
-                            color = Tds.colors.textTertiary,
-                            fontSize = 13.sp
-                        )
-                    }
+                    // Real Toss auto-detects the bank from the account number's real
+                    // BIN registry -- itunda has no such registry to check against, so
+                    // this doesn't claim to (2026-07-12 fix: the previous copy here,
+                    // "We'll find the bank once you enter the account number," implied
+                    // detection that was never wired to anything -- the backend's
+                    // transfer/quote endpoint takes a single opaque `recipient` string,
+                    // not a resolved bank). A picker is a real, honest affordance for a
+                    // future release; for now this is just a label.
+                    Text(
+                        "Optional, for your own reference",
+                        color = Tds.colors.textTertiary,
+                        fontSize = 13.sp
+                    )
                 }
                 Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Tds.colors.textTertiary)
             }
@@ -155,10 +162,19 @@ fun RecipientEntryScreen(
 fun TransferAmountScreen(
     recipientAccountNumber: String,
     onBack: () -> Unit,
-    onConfirm: (amountRwf: Long) -> Unit
+    onConfirm: (amountRwf: Long) -> Unit,
+    // Real wallet balance + real in-flight state (2026-07-12) -- previously this
+    // screen hardcoded "RWF 112,242" regardless of the actual signed-in user's
+    // balance, and had no way to show that a real network call was in progress.
+    availableBalance: Double = 0.0,
+    isSubmitting: Boolean = false,
 ) {
-    var digits by remember { mutableStateOf("") }
+    // rememberSaveable (2026-07-12), same reasoning as ItundaAppScreen.kt's
+    // TransferStep -- confirmed live on-device that without this, a process kill
+    // mid-transfer restored the right screen but reset the typed amount to 0.
+    var digits by rememberSaveable { mutableStateOf("") }
     val amount = digits.toLongOrNull() ?: 0L
+    val availableBalanceLong = availableBalance.toLong()
 
     Column(
         modifier = Modifier
@@ -170,7 +186,7 @@ fun TransferAmountScreen(
         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
             TransferPartyRow(
                 label = "From Itunda Wallet",
-                sublabel = "Available RWF 112,242",
+                sublabel = "Available RWF ${rwfFormatter.format(availableBalanceLong)}",
                 icon = Icons.Outlined.AccountBalanceWallet
             )
             Spacer(modifier = Modifier.height(2.dp))
@@ -216,19 +232,25 @@ fun TransferAmountScreen(
         ) {
             QuickAmountChip("+10,000") { digits = ((digits.toLongOrNull() ?: 0L) + 10_000L).toString() }
             QuickAmountChip("+100,000") { digits = ((digits.toLongOrNull() ?: 0L) + 100_000L).toString() }
-            QuickAmountChip("Max") { digits = "112242" }
+            QuickAmountChip("Max") { digits = availableBalanceLong.toString() }
         }
 
-        FlowNextBar(enabled = digits.isNotEmpty() && amount > 0, label = "Send") { onConfirm(amount) }
-        NumericKeypad(
-            onDigit = { d -> if (digits.length < 9) digits += d },
-            onDelete = { if (digits.isNotEmpty()) digits = digits.dropLast(1) }
-        )
+        if (isSubmitting) {
+            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
+                androidx.compose.material3.CircularProgressIndicator(color = Tds.colors.brand)
+            }
+        } else {
+            FlowNextBar(enabled = digits.isNotEmpty() && amount > 0, label = "Send") { onConfirm(amount) }
+            NumericKeypad(
+                onDigit = { d -> if (digits.length < 9) digits += d },
+                onDelete = { if (digits.isNotEmpty()) digits = digits.dropLast(1) }
+            )
+        }
     }
 }
 
 @Composable
-private fun FlowTopBar(onBack: () -> Unit) {
+internal fun FlowTopBar(onBack: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -277,7 +299,7 @@ private fun RecentRecipientRow(name: String, bankAndAccount: String, onClick: ()
 }
 
 @Composable
-private fun TransferPartyRow(label: String, sublabel: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+internal fun TransferPartyRow(label: String, sublabel: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -297,7 +319,7 @@ private fun TransferPartyRow(label: String, sublabel: String, icon: androidx.com
 }
 
 @Composable
-private fun QuickAmountChip(label: String, onClick: () -> Unit) {
+internal fun QuickAmountChip(label: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
@@ -310,7 +332,7 @@ private fun QuickAmountChip(label: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun FlowNextBar(enabled: Boolean, label: String, onClick: () -> Unit) {
+internal fun FlowNextBar(enabled: Boolean, label: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -331,7 +353,7 @@ private fun FlowNextBar(enabled: Boolean, label: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun NumericKeypad(onDigit: (String) -> Unit, onDelete: () -> Unit) {
+internal fun NumericKeypad(onDigit: (String) -> Unit, onDelete: () -> Unit) {
     val keys = listOf(
         listOf("1", "2", "3"),
         listOf("4", "5", "6"),

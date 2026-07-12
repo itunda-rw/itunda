@@ -43,6 +43,18 @@ android {
             "MINIAPP_BUNDLE_CDN_URL",
             "\"${project.findProperty("miniAppBundleCdnUrl") ?: ""}\""
         )
+
+        // Real login/session flow needs a real base URL -- NetworkClient.kt previously
+        // hardcoded "http://10.0.2.2:8080/", the emulator-only loopback alias, at the
+        // wrong port (services/backend listens on 4001, see its application.yml) --
+        // and a physical device can't resolve 10.0.2.2 at all. Defaults to the emulator
+        // alias at the right port; override for a physical device on the same LAN with
+        // e.g. `-PapiBaseUrl=http://192.168.0.63:4001/` (2026-07-11 fix).
+        buildConfigField(
+            "String",
+            "API_BASE_URL",
+            "\"${project.findProperty("apiBaseUrl") ?: "http://10.0.2.2:4001/"}\""
+        )
     }
 
     buildTypes {
@@ -75,6 +87,8 @@ android {
 dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    // collectAsStateWithLifecycle() for MainActivity's login-gate StateFlow collection.
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
     implementation("androidx.activity:activity-compose:1.8.2")
     // FragmentActivity, not just ComponentActivity, is required by BiometricPrompt's
     // constructor (androidx.biometric:1.1.0) -- see NIDABiometricAuth.kt.
@@ -90,6 +104,10 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+    // Real session storage for the login flow (2026-07-11): access/refresh tokens are
+    // real bearer credentials, not app preferences -- EncryptedSharedPreferences, not
+    // plain SharedPreferences. See network/TokenStore.kt.
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     // Project Modules
     implementation(project(":core:designsystem"))

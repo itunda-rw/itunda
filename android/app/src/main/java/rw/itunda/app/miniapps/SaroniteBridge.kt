@@ -18,6 +18,8 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import rw.itunda.app.BuildConfig
+import rw.itunda.app.network.NetworkClient
 import java.io.IOException
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -29,16 +31,14 @@ import java.util.concurrent.TimeUnit
  * This is the first time it's actually wired into a real, launchable itunda
  * app rather than just verified in isolation -- see ARCHITECTURE.md §2/§8.
  *
- * itunda's app has no login flow yet (NetworkClient.kt has a literal
- * `// TODO: Inject Token` where the auth header would go) -- getAuthToken()
- * honestly returns null below rather than a fabricated token, which means
- * every mini-app data call below will hit the real SARONITE_NOT_AUTHENTICATED
- * path until a real session exists. That's a correct, real failure mode, not
- * a bug to hide.
+ * getAuthToken() now reads the real session TokenStore (2026-07-11, alongside
+ * network/SessionManager.kt) instead of honestly returning null -- a mini-app call
+ * still hits the real SARONITE_NOT_AUTHENTICATED path if nobody has logged in, which
+ * is still a correct, real failure mode, just no longer the *only* one.
  */
 class ItundaSaroniteHostBridge : SaroniteHostBridge {
-    override fun getApiBaseUrl(): String = "http://10.0.2.2:8080/"
-    override fun getAuthToken(): String? = null
+    override fun getApiBaseUrl(): String = BuildConfig.API_BASE_URL
+    override fun getAuthToken(): String? = NetworkClient.currentTokenStore().getAccessToken()
     override fun getSchemeUri(): String = "itunda://saronite"
     override fun onCloseView(activity: Activity?) {
         activity?.finish()
