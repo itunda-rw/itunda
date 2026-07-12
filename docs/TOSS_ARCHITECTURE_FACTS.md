@@ -113,16 +113,47 @@ To keep `ARCHITECTURE.md` honest going forward, the following are **not sourced 
 Toss has published** and must not be presented as facts about Toss, even though they are
 common generic fintech-microservices choices:
 
-- MongoDB, Elasticsearch/Kibana as part of Toss's stack — no source found.
+- **Corrected 2026-07-12** — MongoDB/Elasticsearch as part of Toss's *core banking* stack: no
+  source found; still not claimable for Toss Bank, which remains documented as Oracle→MySQL
+  (§1). But scoped to **Toss Securities' data/ML pipeline specifically**, both are now real and
+  sourced: Elasticsearch runs a ~22TB/day, ~1.7B-entries/day log cluster
+  ([toss.tech/article/slash23-data](https://toss.tech/article/slash23-data)); MongoDB stores
+  ML user-clustering output, joined into ksqlDB via CDC for real-time personalization
+  ([toss.tech/article/ksqldb-realtime-data](https://toss.tech/article/ksqldb-realtime-data)).
+  Do not conflate this with Toss Bank's core ledger/account database.
 - Specific service port numbers (3000-3011) — invented, not real.
-- "PCI-DSS Level 1" self-declared compliance — this is a real, audited certification status,
-  not something a repo can claim about itself without an actual audit; must not appear as a
-  compliance claim.
+- **Corrected 2026-07-12** — "PCI-DSS Level 1" self-declared compliance: the specific phrase
+  "Level 1" is still wrong to use (it names a merchant-transaction-volume tier, not a
+  certification, and no Toss source uses that phrase). But **Toss Securities holds a real,
+  audited PCI-DSS v4.0 certification** from BSI Korea — the first Korean securities firm to get
+  one ([toss.im/tossfeed/article/securities_PCI-DSS](https://toss.im/tossfeed/article/securities_PCI-DSS)).
+  Scoped to Toss Securities only; not evidence of a Toss Bank or Toss Payments certification,
+  and never claimable as itunda's own status without an actual audit.
 - "1M+ concurrent users", "99.99% uptime", "Production Ready" in `IMPLEMENTATION_GUIDE.md` —
   aspirational marketing copy with no basis in this repo's actual state (no git history existed
   until this session; most surfaces are unwired prototypes — see `docs/TOSS_PARITY_MATRIX.md`).
+  Re-checked 2026-07-12: still no official Toss source states a system-uptime SLA figure either
+  (the only official "99.99%" found is FacePay's *facial-recognition accuracy*, an unrelated
+  metric — [toss.im/tossfeed/article/facepay](https://toss.im/tossfeed/article/facepay)).
 - Redux/MVI as "the" Toss mobile state approach — not sourced; Toss's real distinctive mobile
   architecture fact is the RN host+mini-app bundle split (§3), not a specific state library.
+
+## 6. New Toss product/platform developments (found 2026-07-12)
+
+- **FacePay** (biometric in-store payment): a real, named product not previously in this doc —
+  2M+ registered users, 240,000+ participating merchants by mid-2026, first facial-payment
+  product to get preliminary review from Korea's PIPC privacy regulator.
+  Source: [toss.im/tossfeed/article/facepay](https://toss.im/tossfeed/article/facepay). Relevant
+  to itunda's own "Face Pay terminal concept" row in `docs/TOSS_PARITY_MATRIX.md` — now has a
+  real reference point for adoption scale and regulatory precedent, not just a Toss product name.
+- **`toss/granite` has had no release since `0.1.34` (2026-01-12)** despite active non-release
+  commits as recently as 2026-07-10 — a staleness signal worth tracking before deepening a
+  dependency on it (relevant to `saronite`'s eventual migration path, §4), not a reason to avoid
+  it outright.
+- Toss Bank/Viva Republica's blockchain and stablecoin exploration (Solana Foundation MOU,
+  an Optimism PoC, KRW-stablecoin trademark filings) and a reported Q2 2026 US IPO are real but
+  **corporate-strategy facts, not architecture facts** — they don't belong in this document's
+  "what to build like" scope and shouldn't be treated as an itunda roadmap item.
 
 ## Update Rule
 

@@ -19,6 +19,14 @@ Sources:
 - Toss public product page: https://toss.im/en
 - Toss team/product overview: https://toss.im/en/team
 
+**Added 2026-07-12** — FacePay (biometric in-store payment) is a real, named Toss product not
+previously listed here: 2M+ registered users, 240,000+ participating merchants by mid-2026,
+first facial-payment product to get preliminary review from Korea's PIPC privacy regulator.
+Source: https://toss.im/tossfeed/article/facepay. This is the real precedent behind itunda's
+"Face Pay terminal concept" row in `docs/TOSS_PARITY_MATRIX.md` — cite the adoption numbers and
+regulatory-review precedent, not Toss's actual biometric infrastructure, which itunda has no
+access to and must build its own version of on Rwandan identity/biometric rails.
+
 ## Rwanda Product Facts Used
 
 ### Mobile Money

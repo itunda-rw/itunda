@@ -5,6 +5,22 @@
 **Date**: July 2, 2026
 **Target**: 100% Toss feature parity for Rwanda market
 
+> **Read this before the checklist below.** This is the original planning/target
+> specification, written before most of the real backend existed. It describes the intended
+> shape of the product, not what's actually built. **It is not a status report** — for real
+> implementation status per feature, see `docs/TOSS_PARITY_MATRIX.md`; for what's actually
+> verified real vs. demo vs. stub in the codebase, see `docs/ARCHITECTURE.md`; for the actual
+> security posture, see `SECURITY.md`. In particular, the "Security & Compliance Checklist"
+> below was originally written with every item checked `[x]` as if shipped — none of MFA,
+> sanctions-list screening, GDPR tooling, PCI-DSS compliance, or BNR regulatory reporting
+> exist in code as of 2026-07-12 (verified by grep across `services/backend`). Checkboxes
+> below have been corrected to reflect that; treat this section as a requirements list, not a
+> completion record. Also: Itunda never depends on Toss's own live systems (Toss operates
+> under South Korean licenses) — every Rwanda-adapted service below routes through Rwanda's
+> own rails and regulators (MTN Mobile Money, Airtel Money, RNP, BNR, RSE, NIDA, Irembo),
+> never through Toss's infrastructure. Adopting Toss's *open-source* tooling (`granite`,
+> `es-toolkit`, etc.) is a separate, fine thing — see `docs/TOSS_ARCHITECTURE_FACTS.md` §4.
+
 ---
 
 ## Executive Summary
@@ -163,7 +179,7 @@ Itunda is designed to replicate Toss's financial operating system for Rwanda, pr
 | P2P Money Transfer | RNP Direct Transfer | MTN/Airtel fallback |
 | Toss Pay | Itunda Pay | QR + Face Pay |
 | Toss Bank | Itunda Bank | RBDB partnership |
-| Toss Securities | Itunda Invest | Local stock market + Dahabshiil integration |
+| Toss Securities | Itunda Invest | RSE (Rwanda Stock Exchange) equities/bonds first; global assets only where permitted |
 | Toss Insurance | Itunda Protect | Local insurers (AAR, Intra Africa) |
 | Toss Loan | Itunda Loans | AI scoring for unbanked users |
 | Toss Card | Itunda Card | Debit card + mobile money |
@@ -353,40 +369,55 @@ Core Tables:
 
 ---
 
-## Security & Compliance Checklist
+## Security & Compliance Requirements (target — see SECURITY.md for real status)
+
+These were originally checked off `[x]` as if already shipped. They are requirements for a
+production money-moving system, not a record of what exists. As of 2026-07-12, verified real
+in `services/backend`: JWT auth with signed/expiring tokens, bcrypt password hashing, per-user
+ownership checks on every money-moving endpoint, rate limiting on auth, real refresh-token
+rotation with blacklisting (see `SECURITY.md` and `docs/ARCHITECTURE.md` §1 for the exact,
+dated fixes). Everything else below is genuinely not built yet — most of it (sanctions
+screening, AML case management, BNR reporting) is regulatory/vendor-integration work, not a
+pure engineering task; see `docs/TOSS_PARITY_MATRIX.md`'s "Non-Negotiable Gates Before Real
+Money" for the honest breakdown of what's code-gated vs. license/vendor-gated.
 
 ### Encryption
-- [x] TLS 1.3 for data in transit
-- [x] AES-256 for data at rest
-- [x] End-to-end encryption for sensitive fields
-- [x] Key rotation (quarterly)
-- [x] Hardware security modules (HSM) for key storage
+- [ ] TLS 1.3 for data in transit (infra-level, not yet confirmed configured on any deployed endpoint)
+- [ ] AES-256 for data at rest
+- [ ] End-to-end encryption for sensitive fields
+- [ ] Key rotation policy
+- [ ] Hardware security modules (HSM) for key storage
 
 ### Authentication
-- [x] JWT with 15-minute expiry
-- [x] Refresh token with 30-day expiry
-- [x] Biometric authentication (Face ID, Fingerprint)
-- [x] Multi-factor authentication (SMS, Email, Authenticator)
-- [x] Account lockout after 5 failed attempts
-- [x] Session management & timeout (30 min inactivity)
+- [x] JWT with signed, expiring tokens (real, `JwtService.kt`)
+- [x] Refresh token rotation with blacklisting on reuse (real, `AuthServiceTest.kt`)
+- [ ] Biometric authentication tied to a real server-side session (Android/iOS have local-only
+      biometric gates — see `docs/ARCHITECTURE.md` §3 — not yet a server-verified factor)
+- [ ] Multi-factor authentication (SMS, Email, Authenticator)
+- [x] Rate limiting on login attempts (real, `AuthServiceTest.kt` covers ordering)
+- [ ] Session timeout on inactivity
 
 ### Compliance
-- [x] KYC/AML verification (document upload, manual review)
-- [x] Sanctions list checking (OFAC, UN, EU, local Rwanda lists)
-- [x] GDPR compliance (consent management, data retention)
-- [x] Data residency (Rwanda primary, regional backup)
-- [x] PCI-DSS compliance (payment handling)
-- [x] Audit logging (immutable transaction records)
-- [x] Regulatory reporting (daily to BNR)
+- [x] KYC submission workflow real (`POST /identity/submit` moves a credential to `REVIEW` and
+      opens a real compliance-queue item — `docs/TOSS_PARITY_MATRIX.md`)
+- [ ] An actual KYC decision-maker (real NIDA/vendor API or reviewer UI to resolve `REVIEW` →
+      `VERIFIED`/`EXPIRED`) — blocked on regulatory/vendor access, not a code gap
+- [ ] Sanctions list checking (OFAC, UN, EU, local Rwanda lists)
+- [ ] GDPR-equivalent consent management and data retention tooling
+- [ ] Formal data residency policy
+- [ ] PCI-DSS certification (an audited status, not something a repo can self-declare — see
+      `docs/TOSS_ARCHITECTURE_FACTS.md` §5)
+- [x] Audit-relevant transaction records (real double-entry ledger, immutable append pattern)
+- [ ] Regulatory reporting to BNR
 
 ### Fraud Prevention
-- [x] Transaction risk scoring
-- [x] Behavioral analytics
-- [x] Device fingerprinting
-- [x] Velocity checks (daily/monthly limits)
-- [x] Machine learning anomaly detection
-- [x] Manual review queue for high-risk transactions
-- [x] Real-time fraud alerts
+- [ ] Transaction risk scoring
+- [ ] Behavioral analytics
+- [ ] Device fingerprinting
+- [ ] Velocity checks (daily/monthly limits)
+- [ ] Machine learning anomaly detection
+- [ ] Manual review queue for high-risk transactions
+- [ ] Real-time fraud alerts
 
 ---
 
@@ -408,6 +439,11 @@ Core Tables:
 
 ## Deployment Infrastructure
 
+> **This section is an original aspirational target, not current infrastructure.** No AWS
+> account, Terraform, DocumentDB/MongoDB, or Istio exists anywhere in this repo. For what
+> actually exists and is deployable today (real Dockerfiles, real `infra/k8s/` manifests,
+> real MySQL via Flyway), see `docs/DEPLOYMENT.md`.
+
 ### Cloud Provider: AWS
 - **Region**: af-south-1 (Africa - Cape Town) + Regional DR
 - **Compute**: EKS (Kubernetes) for Spring Boot Microservices + Istio Service Mesh
@@ -424,7 +460,8 @@ Core Tables:
 - **Primary**: Data center in Kigali
 - **Backup**: Regional replication to East Africa
 - **Network**: Fiber connection to RNP
-- **Connectivity**: Direct integration with BNR, RTB (Rwanda Stock Exchange)
+- **Connectivity**: Direct integration with BNR, RSE (Rwanda Stock Exchange — not RTB, the
+  Rwanda TVET Board, which this line previously and incorrectly named)
 
 ---
 
