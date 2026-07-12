@@ -16,5 +16,6 @@ include(
     ":merchant",
     ":identity",
     ":rewards",
+    ":creditscore",
     ":app"
 )

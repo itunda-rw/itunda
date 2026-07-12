@@ -116,6 +116,18 @@ Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
 `404 WALLET_NOT_FOUND`, `403 LOAN_NOT_OWNED`, `409 LOAN_ALREADY_PAID`,
 `422 INVALID_LOAN_AMOUNT`, `422 INSUFFICIENT_FUNDS`.
 
+## Credit Score — `/api/v1/credit-score`
+
+Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s Credit score row.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `` | — | `{success, score, factors: [...], computedAt}` | Computed live on every call from real data (KYC status, completed transaction count, loan repayment history, savings activity) — not a cached/static value, and not a real credit bureau pull |
+
+`factors` entries: `{name, points, description}`. Score range 300–850. Writes the result back
+onto `User.creditScore`, so `GET /api/v1/auth/profile` reflects the most recent computation.
+Errors: `404 USER_NOT_FOUND`.
+
 ## Savings — `/api/v1/savings`
 
 | Method | Path | Body | Success | Notes |
@@ -293,3 +305,8 @@ does not exist" list above used to include KYC/identity submission; it doesn't a
 live-verified same-day (claim-once guard confirmed via a real 409 on re-claim, reward amount
 confirmed to actually post to the caller's real wallet balance). This document's own "what
 does not exist" list used to include `/rewards/*` entirely; it doesn't anymore.
+
+**Same day, a third time:** the Credit Score section was added — `creditScore` used to be a
+static, seed-data-only field with no endpoint at all; `GET /api/v1/credit-score` now computes
+it live from real account data and was verified to produce the exact expected value (300 base
++ 100 for a real KYC-verified test account, matching the documented factor weights).
