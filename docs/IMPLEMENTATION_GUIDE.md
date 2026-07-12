@@ -30,142 +30,68 @@ backbone across services.
 ```bash
 # Required tools
 - JDK 17 or higher
-- Node.js 20+ and npm (for frontend only)
+- Node.js 20+ and yarn 4 (root workspace) — packages/saronite and services/blog are each
+  their own separately-managed npm workspace, not part of the root yarn workspace
+  (see package.json's own comment)
 - Docker & Docker Compose
-- MySQL 8.0+ (Enterprise equivalent)
-- Redis 7+
+- MySQL 8.0 (infra/docker-compose.yml pins 8.0.39)
+- Redis 7 (infra/docker-compose.yml pins the redis:7-alpine image)
 - Tuist (for iOS)
 ```
 
 ### Quick Start
 ```bash
-cd /Users/me/rwanda/itunda
+cd /Users/me/rwanda
 
-# Start infrastructure (MySQL, Redis)
-docker-compose up -d
+# Start infrastructure — infra/docker-compose.yml is the only docker-compose file in this
+# repo (there is no root-level one); it also defines Zookeeper/Kafka/Debezium for the
+# transactional-outbox relay, real but not required just to run the API
+docker-compose -f infra/docker-compose.yml up -d mysql redis-node-1
 
-# Start the Spring Boot Backend (Toss Architecture)
+# Start the Spring Boot Backend
 cd services/backend
 DB_HOST=localhost DB_PORT=3306 DB_NAME=itunda DB_USER=itunda DB_PASSWORD=itunda ./gradlew :app:bootRun
+# Listens on :4001 (services/backend/app/src/main/resources/application.yml), not :3000
 
-# In a new terminal, start the frontend workspace
-cd /Users/me/rwanda/itunda
+# In a new terminal, start the root yarn workspace — "yarn dev" resolves to
+# services/micro-frontends/host-app (a real Vite app; see its package.json "name": "host-app")
+cd /Users/me/rwanda
 yarn install
 yarn dev
 
 # Access
 Web:    http://localhost:5173
+Backend: http://localhost:4001/api/v1/...
 ```
 
 No admin portal or API gateway currently runs at a fixed port — `services/api-gateway` is a
-stub (see ARCHITECTURE.md §1), not a running service to point a URL at.
+stub (see ARCHITECTURE.md §1), not a running service to point a URL at. The Android/iOS mobile
+apps and the `packages/saronite` mini-app host are separate build targets (see §13) — `yarn dev`
+does not touch them.
 
 ## 3. Key Features
 
-### ✓ Payments & Transfers
-- P2P money transfers (instant)
-- Mobile money integration (MTN, Airtel)
-- Bank account linking
-- QR code payments
-- Bill payments
-
-### ✓ Banking
-- Multiple account types
-- Multi-currency support
-- Statement generation
-- Transaction history
-- Balance tracking
-
-### ✓ Credit Products
-- Instant loan applications
-- AI-powered credit scoring
-- Quick approvals (< 5 minutes)
-- Multiple loan types
-- Flexible repayment schedules
-
-### ✓ Investment Platform
-- Stock trading
-- Cryptocurrency trading
-- Mutual funds/ETFs
-- Real-time price feeds
-- Portfolio tracking
-
-### ✓ Insurance
-- Multiple insurance products
-- Quick claims processing
-- Digital policy issuance
-- Beneficiary management
-
-### ✓ Savings
-- Savings goals
-- Fixed deposits
-- Interest calculation
-- Auto-save features
-
-### ✓ Analytics
-- Spending insights
-- Income tracking
-- AI recommendations
-- Reports & exports
-
-### ✓ Security
-- Biometric authentication
-- Multi-factor authentication
-- End-to-end encryption
-- PCI-DSS compliance
-- KYC/AML verification
+This section previously marked every feature area with a blanket "✓", implying things like
+cryptocurrency trading, AI-powered credit scoring, real-time price feeds, claims processing,
+PCI-DSS compliance, and MFA all exist — none of them do. Removed 2026-07-13 rather than
+maintained as a second, drifting copy of feature status: **the single source of truth for
+per-feature status is [docs/TOSS_PARITY_MATRIX.md](TOSS_PARITY_MATRIX.md)**, which uses
+`real`/`demo`/`target`/`blocked` labels and is kept current against the actual controllers.
+At a glance, as of 2026-07-13: wallet transfer, bills, loans, stocks, savings, and insurance
+enrollment are `real` (ledger-backed, idempotent, test-covered) in `services/backend`; account
+aggregation, spending analytics, credit scoring, and KYC/AML are `demo` or `target`; anything
+involving cryptocurrency, real-time market data, claims processing, or biometric/PCI-DSS
+compliance certification does not exist in this codebase at all.
 
 ## 4. API Documentation
 
-### Authentication
-```bash
-POST /api/v1/auth/register
-POST /api/v1/auth/login
-POST /api/v1/auth/refresh
-POST /api/v1/auth/logout
-```
-
-### Users
-```bash
-GET  /api/v1/users/profile
-PUT  /api/v1/users/profile
-POST /api/v1/users/kyc/upload
-GET  /api/v1/users/kyc/status
-```
-
-### Transactions
-```bash
-POST /api/v1/transactions/transfer
-GET  /api/v1/transactions/history
-GET  /api/v1/transactions/{id}
-POST /api/v1/transactions/{id}/receipt
-```
-
-### Accounts
-```bash
-GET  /api/v1/accounts
-GET  /api/v1/accounts/{id}
-POST /api/v1/accounts
-GET  /api/v1/accounts/{id}/balance
-```
-
-### Loans
-```bash
-POST /api/v1/loans/apply
-GET  /api/v1/loans
-GET  /api/v1/loans/{id}
-POST /api/v1/loans/{id}/repay
-```
-
-### Investments
-```bash
-POST /api/v1/investments/buy
-POST /api/v1/investments/sell
-GET  /api/v1/investments/portfolio
-GET  /api/v1/investments/prices
-```
-
-Full API docs: http://localhost:3000/api/docs (Swagger UI)
+Full, real endpoint-by-endpoint reference: **[API_SPECIFICATION.md](API_SPECIFICATION.md)**,
+generated directly from every `@RestController` in `services/backend` (rewritten 2026-07-13;
+the version of this section that used to live here — `/users/profile`, `/transactions/transfer`,
+`/accounts`, `/investments/*` — matched none of the real controllers and has been removed
+rather than kept as a second, drifting copy). There is no Swagger/OpenAPI UI in this repo
+(no `springdoc`/`swagger` dependency anywhere in `services/backend`'s Gradle build) — the
+markdown file is the only API reference that exists.
 
 ## 5. Database Schema
 
@@ -226,9 +152,11 @@ compliance claims are explicitly disallowed in this repo's docs.
 - Document verification: not implemented.
 - Sanctions list checking: not implemented.
 - Beneficial ownership verification: not implemented.
-- `POST /identity/submit` moves a credential to `REVIEW` and opens a real compliance-queue
-  item (see `docs/TOSS_PARITY_MATRIX.md`), but there is no decision-maker (no NIDA/vendor
-  integration, no reviewer UI) to move it to `VERIFIED`.
+- No submission endpoint exists either. Corrected 2026-07-13: this section previously claimed
+  `POST /identity/submit` was real and moved a credential to a `REVIEW` state. A repo-wide grep
+  found no such endpoint anywhere in `services/backend` — `User.kycVerified` is a plain boolean,
+  `false` by default, only ever set `true` by demo seed data (see `docs/TOSS_PARITY_MATRIX.md`'s
+  Compliance row). Both submission and decision-making remain to be built.
 
 ### Monitoring — target, not built
 Real-time transaction monitoring, fraud detection, anomaly alerts, and compliance reporting
@@ -237,38 +165,34 @@ implemented.
 
 ## 9. Testing
 
+Corrected 2026-07-13: none of the `npm run test*`/`security:scan` scripts below used to be
+here ever existed — the root `package.json` only declares `dev`, `build`, and `lint` (see §2).
+Real test commands, per stack:
+
 ```bash
-# Unit tests
-npm run test
+# Backend (Kotest, real, run this repeatedly during backend work)
+cd services/backend
+./gradlew test
 
-# Integration tests
-npm run test:integration
+# Android instrumented tests (real device/emulator required)
+cd android
+./gradlew connectedAndroidTest
 
-# E2E tests
-npm run test:e2e
-
-# Load testing (1M concurrent users)
-npm run test:load
-
-# Security scanning
-npm run security:scan
+# Saronite mini-app host (type-check only, no test runner configured yet)
+cd packages/saronite/host-app
+npx tsc --noEmit
 ```
 
-## 10. Monitoring & Observability
+No E2E suite, load-testing tooling, or automated security scanning exists in this repo yet —
+`SECURITY.md` documents real, manually-found-and-fixed vulnerabilities, not an automated scan.
 
-### Metrics
-- Prometheus: http://localhost:9090
-- Grafana: http://localhost:3001
-- Custom dashboards for each service
+## 10. Monitoring & Observability — target, not built
 
-### Logs
-- Elasticsearch: http://localhost:9200
-- Kibana: http://localhost:5601
-
-### Alerts
-- Critical issues → SMS/Email/Slack
-- Performance degradation → Auto-scaling
-- Security events → Immediate notification
+Corrected 2026-07-13: this section previously listed Prometheus, Grafana, Elasticsearch, and
+Kibana as if they were running services with real URLs. `infra/docker-compose.yml` defines
+`mysql`, `redis-node-1`, `zookeeper`, `kafka-broker-1`, and `debezium` — no monitoring/logging
+stack. `infra/k8s/production/monitoring/` has one manifest that has never been applied to a
+real cluster (see §6). None of this exists yet; treat it as a real gap, not a running system.
 
 ## 11. Support & Documentation
 
@@ -339,17 +263,17 @@ fictional stack removed from §1 above):
 docker ps | grep mysql
 docker ps | grep redis
 
-# Restart
-docker-compose -f infra/docker-compose.yml restart mysql redis
+# Restart (real service names, per infra/docker-compose.yml — "redis", not "redis-node-1",
+# was a real bug in this doc until 2026-07-13)
+docker-compose -f infra/docker-compose.yml restart mysql redis-node-1
 ```
 
 ### High API Latency
-```bash
-# Check metrics
-curl http://localhost:9090/api/v1/query?query=http_request_duration_seconds
-# Scale up services
-kubectl scale deployment api-gateway --replicas=5
-```
+No metrics endpoint or auto-scaling exists to check (see §10 — corrected 2026-07-13, this
+subsection previously pointed at a non-existent Prometheus URL and `api-gateway` deployment,
+which is a stub with no replicas running anywhere, per §2). Today, diagnosing latency means
+reading application logs directly (`./gradlew :app:bootRun`'s stdout) or attaching a profiler —
+there is no dashboard.
 
 ## 15. Contact & Support
 
@@ -358,5 +282,5 @@ prototype repository, not a deployed service. Fill this in once those actually e
 
 ---
 
-**Last Updated**: 2026-07-10
+**Last Updated**: 2026-07-13
 **Status**: Prototype — see ARCHITECTURE.md for what's real vs. stub vs. target
