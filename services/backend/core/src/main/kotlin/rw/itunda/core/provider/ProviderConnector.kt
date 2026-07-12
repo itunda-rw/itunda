@@ -1,6 +1,7 @@
 package rw.itunda.core.provider
 
 import org.springframework.stereotype.Component
+import rw.itunda.core.incident.IncidentDetector
 import kotlin.random.Random
 
 class ProviderDeclinedException(message: String) : RuntimeException(message)
@@ -62,11 +63,16 @@ interface ProviderConnector {
  * failure against [RailProfile.successRate]. Offline rails always fail without
  * sleeping (matching a real fast-fail on a known-down rail); degraded rails get one
  * retry before declining, mirroring the design TOSS_PARITY_MATRIX.md describes.
+ *
+ * Every real decline is reported to IncidentDetector (2026-07-13) -- the single choke
+ * point every rail-calling flow passes through, so real incident auto-detection reacts to
+ * actual failures here, not a separate/duplicated failure-counting mechanism per caller.
  */
 @Component
-class SimulatedProviderConnector : ProviderConnector {
+class SimulatedProviderConnector(private val incidentDetector: IncidentDetector) : ProviderConnector {
     override fun attempt(rail: RailProfile, description: String) {
         if (rail.offline) {
+            incidentDetector.recordFailure(rail)
             throw ProviderDeclinedException("${rail.displayName} is currently offline")
         }
 
@@ -76,6 +82,7 @@ class SimulatedProviderConnector : ProviderConnector {
             if (attemptOnce(rail)) return
         }
 
+        incidentDetector.recordFailure(rail)
         throw ProviderDeclinedException("${rail.displayName} declined: $description")
     }
 

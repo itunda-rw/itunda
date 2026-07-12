@@ -355,6 +355,27 @@ payment flow) and never block a transaction — review-only by design. Rules: `H
 payment to that recipient). Errors: `404 FRAUD_FLAG_NOT_FOUND`,
 `409 FRAUD_FLAG_ALREADY_REVIEWED`.
 
+### Incidents — `/api/v1/system/incidents` (ADMIN role only)
+
+Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s Operations/Incidents
+row for the full account, including a real `@Transactional` propagation bug found and fixed
+during live verification.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/` | — | `{success, incidents: [...]}` | All incidents, newest-opened first |
+| POST | `/{incidentId}/resolve` | — | `{success, incident}` | Sets `RESOLVED`, records reviewer + timestamp |
+
+`IncidentDetector` (lives in `:core`) is hooked into `SimulatedProviderConnector.attempt` — the
+single choke point every rail-calling flow (`WalletService.confirmTransfer`,
+`BillsService.payBill`/`buyAirtime`) passes through. 2+ real provider declines from the same rail
+within a rolling 5-minute window auto-opens one `Incident` per rail (a second open incident for
+an already-`OPEN` rail is suppressed, not duplicated). Errors: `404 INCIDENT_NOT_FOUND`,
+`409 INCIDENT_ALREADY_RESOLVED`. Live-verified end to end: ~180 real attempts against an
+unmatched-provider rail produced 2 real declines and a real persisted `OPEN` incident; a
+non-admin token real-403s on resolve, the admin resolve real-200s, resolving again real-409s,
+resolving an unknown id real-404s.
+
 ## What does not exist (previously implied real, or plausible-sounding, but absent)
 
 Grepped for directly, confirmed absent as of 2026-07-13:
@@ -368,6 +389,9 @@ Grepped for directly, confirmed absent as of 2026-07-13:
   section) — no other module emits webhooks of any kind.
 
 ## What Changed Since the Last Version of This Document
+
+**2026-07-13, later still:** added `/api/v1/system/incidents` (real, ADMIN-gated auto-detection
+and resolve flow) — see the Incidents section above.
 
 The previous version described a generic, fictional REST API (`localhost:3000`, a
 `status`/`code`/`data`/`timestamp` envelope, endpoints like `/transactions/send` and
