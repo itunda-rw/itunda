@@ -70,7 +70,12 @@ class SaroniteBrownfieldModule(
     @ReactMethod
     fun closeView(promise: Promise) {
         try {
-            hostBridge.onCloseView(currentActivity)
+            // ReactContextBaseJavaModule's inherited currentActivity shortcut is
+            // deprecated as of RN 0.80.0 in favor of this explicit form (confirmed
+            // directly against react-native's own source, 2026-07-12, granite-
+            // adoption stage 3's RN 0.84.0 hop) -- the base-class shortcut stopped
+            // resolving as a bare reference at this RN version.
+            hostBridge.onCloseView(reactApplicationContext.currentActivity)
             promise.resolve(null)
         } catch (e: Exception) {
             promise.reject("SARONITE_CLOSE_VIEW_FAILED", e)

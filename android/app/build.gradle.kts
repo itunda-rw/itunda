@@ -15,7 +15,7 @@ react {
     // Hoisting location changes across `npm install` runs in packages/saronite as
     // the dependency graph shifts -- re-verify against settings.gradle.kts's
     // includeBuild path (same caveat) whenever this stops resolving.
-    reactNativeDir = file("../../packages/saronite/host-app/node_modules/react-native")
+    reactNativeDir = file("../../packages/saronite/node_modules/react-native")
     entryFile = file("../../packages/saronite/host-app/index.js")
 }
 

@@ -9,7 +9,7 @@ pluginManagement {
     // hoisting decision can move it (it was nested under host-app/node_modules
     // before the RN 0.72.17 -> 0.75.4 bump changed the dependency graph enough to
     // hoist it here instead).
-    includeBuild("../packages/saronite/host-app/node_modules/@react-native/gradle-plugin")
+    includeBuild("../packages/saronite/node_modules/@react-native/gradle-plugin")
     repositories {
         google()
         mavenCentral()

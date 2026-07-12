@@ -1,15 +1,13 @@
 {
+  // Extends the real, official @react-native/typescript-config@0.84.0 (granite-
+  // adoption stage 3, 2026-07-12) rather than a hand-picked subset of its options --
+  // a hand-picked jsx+customConditions pair (tried first) still left real component
+  // types (View/Text/etc.) failing to satisfy JSX.ElementClass under @types/react
+  // 19.2.x, meaning some other option in the official config matters too. Using the
+  // real package directly removes the risk of silently omitting one.
+  "extends": "@react-native/typescript-config",
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "lib": ["ES2020"],
-    "jsx": "react-jsx",
-    "strict": true,
     "declaration": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "noEmit": true
+    "forceConsistentCasingInFileNames": true
   }
 }

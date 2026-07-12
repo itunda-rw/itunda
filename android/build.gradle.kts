@@ -9,8 +9,11 @@ plugins {
     // module using com.android.library picks this up too; re-verify each still
     // builds (see the granite-adoption stage 2 checkpoint commit for what was
     // actually re-verified).
-    id("com.android.application") version "8.9.2" apply false
-    id("com.android.library") version "8.9.2" apply false
+    // Bumped again to 8.12.0 (2026-07-12, final granite-adoption stage 3 hop, RN
+    // 0.80.3 -> 0.84.0): same alignment reasoning as the 8.2.2 -> 8.9.2 bump above --
+    // @react-native/gradle-plugin@0.84.0's own libs.versions.toml declares this.
+    id("com.android.application") version "8.12.0" apply false
+    id("com.android.library") version "8.12.0" apply false
     // Bumped from 1.9.22 to 2.1.0 project-wide (2026-07-10): react-android:0.80.3's
     // stdlib metadata (already proven to compile at Kotlin 2.1.0 in
     // packages/saronite/packages/brownfield-module's standalone build) needs a Kotlin

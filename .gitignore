@@ -10,6 +10,10 @@ dist/
 build/
 .next/
 out/
+# CMake intermediate output -- appears under android/app/.cxx/ now that the real
+# React Native Gradle Plugin's native build step actually runs (granite-adoption
+# stage 2/3, 2026-07-12) -- see android/app/build.gradle.kts.
+.cxx/
 
 # Environment
 .env
