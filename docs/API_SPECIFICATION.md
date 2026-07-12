@@ -76,6 +76,7 @@ Errors: `409 PHONE_ALREADY_REGISTERED`, `401 INVALID_CREDENTIALS`, `404 USER_NOT
 | GET | `` | — | `{success, wallets: [...]}` | |
 | GET | `/{id}` | — | `{success, wallet: {...}}` | |
 | GET | `/transactions` | — | `{success, transactions: [...]}` | Real transaction history, backs the transaction-history screen on both mobile platforms |
+| GET | `/spending` | — | `{success, categories: [...], totalSpent}` | Built and live-verified 2026-07-13. Categorizes by looking up each wallet debit's real ledger counterpart, not the `transactions` table (only P2P transfers ever write a row there). `categories`: `[{name, amount}]`, largest first |
 | POST | `/transfer/quote` | `{amount, recipient, fromWalletId?, description?}` | `{success, quote: {...}}` | Quote expires after 60 seconds |
 | POST | `/transfer/confirm` | `{quoteId}` (+ `Idempotency-Key`) | `{success, message, transaction, newBalance}` | Requires the quote from `/transfer/quote`; posts through the double-entry ledger |
 
@@ -310,3 +311,8 @@ does not exist" list used to include `/rewards/*` entirely; it doesn't anymore.
 static, seed-data-only field with no endpoint at all; `GET /api/v1/credit-score` now computes
 it live from real account data and was verified to produce the exact expected value (300 base
 + 100 for a real KYC-verified test account, matching the documented factor weights).
+
+**Same day, a fourth time:** `GET /api/v1/wallet/spending` was added — categorization used to
+be `target` entirely. Live testing caught a real bug in the first version (bills, airtime, and
+transfers all share the `rail_suspense` ledger account, so they merged into one bucket); fixed
+using each debit's own memo and re-verified live before this document was updated.

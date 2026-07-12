@@ -20,6 +20,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.provider.ProviderConnector
 import rw.itunda.core.provider.ProviderDeclinedException
 import rw.itunda.core.provider.RailCatalog
+import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -50,6 +51,7 @@ import java.util.UUID
 class WalletService(
     private val walletRepository: WalletRepository,
     private val transactionRepository: TransactionRepository,
+    private val ledgerEntryRepository: LedgerEntryRepository,
     private val ledgerService: LedgerService,
     private val eventPublisher: EventPublisher,
     private val providerConnector: ProviderConnector,
@@ -57,6 +59,52 @@ class WalletService(
     private val quoteStore = QuoteStore()
 
     fun getWallets(userId: String): List<Wallet> = walletRepository.findByUserId(userId)
+
+    // Real spending categorization (2026-07-13) -- deliberately built over the ledger, not
+    // the `transactions` table. Every module (bills, loans, stocks, insurance, savings,
+    // rewards, merchant) posts through LedgerService directly; only WalletService.
+    // confirmTransfer ever writes a Transaction row, so categorizing by TransactionType
+    // would show ~100% "Transfer" regardless of what a user actually did. Every WALLET-
+    // account DEBIT is real money leaving the wallet; its sibling ledger legs (same
+    // transactionId) reveal what it actually paid for.
+    fun getSpendingInsight(userId: String): SpendingInsightResult {
+        val walletIds = walletRepository.findByUserId(userId).map { it.id }.toSet()
+        val debits = walletIds
+            .flatMap { ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc(it) }
+            .filter { it.direction == LedgerDirection.DEBIT }
+
+        val totals = linkedMapOf<String, BigDecimal>()
+        for (debit in debits) {
+            val siblings = ledgerEntryRepository.findByTransactionId(debit.transactionId)
+            val counterpart = siblings.firstOrNull { it.accountType != LedgerAccountType.WALLET }
+            val category = when (counterpart?.accountType) {
+                // RAIL_SUSPENSE is shared by three real modules (WalletService.confirmTransfer,
+                // BillsService.payBill, BillsService.buyAirtime -- confirmed live, all three post
+                // to the same "rail_suspense" clearing account), so accountType alone can't tell
+                // them apart. Each debit's own memo can, since every module writes a distinct
+                // prefix ("Transfer to X", "Bill payment X", "Airtime X") -- more precise than a
+                // shared clearing-account label, still grounded in real written data, not guessed.
+                LedgerAccountType.RAIL_SUSPENSE -> when {
+                    debit.memo.startsWith("Bill payment", ignoreCase = true) -> "Bills"
+                    debit.memo.startsWith("Airtime", ignoreCase = true) -> "Airtime"
+                    else -> "Transfers"
+                }
+                LedgerAccountType.LOAN_PAYABLE -> "Loans"
+                LedgerAccountType.SECURITIES_SUSPENSE -> "Investing"
+                LedgerAccountType.SAVINGS_GOAL_PAYABLE -> "Savings"
+                LedgerAccountType.INSURANCE_PREMIUM_REVENUE -> "Insurance"
+                LedgerAccountType.FEE_REVENUE -> "Fees"
+                LedgerAccountType.REWARDS_EXPENSE, LedgerAccountType.INTEREST_EXPENSE, null -> "Other"
+                LedgerAccountType.WALLET -> "Other"
+            }
+            totals[category] = (totals[category] ?: BigDecimal.ZERO) + debit.amount
+        }
+
+        val categories = totals.map { (name, amount) -> SpendingCategory(name, amount) }
+            .sortedByDescending { it.amount }
+        val total = totals.values.fold(BigDecimal.ZERO) { acc, v -> acc + v }
+        return SpendingInsightResult(categories, total)
+    }
 
     // Real transaction history (2026-07-12) -- TransactionRepository's
     // findBySenderIdOrRecipientIdOrderByCreatedAtDesc already existed with no

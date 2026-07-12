@@ -6,6 +6,9 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import rw.itunda.core.domain.LedgerAccountType
+import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.LedgerEntry
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.events.EventPublisher
@@ -14,6 +17,7 @@ import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.provider.ProviderConnector
 import rw.itunda.core.provider.ProviderDeclinedException
+import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -38,6 +42,7 @@ class WalletServiceTest : BehaviorSpec({
     Given("a user with a wallet holding 10000 RWF") {
         val walletRepository = mockk<WalletRepository>()
         val transactionRepository = mockk<TransactionRepository>()
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
         val ledgerService = mockk<LedgerService>()
         val eventPublisher = mockk<EventPublisher>(relaxed = true)
         // Relaxed: most Whens below don't care about provider behavior at all, only
@@ -45,7 +50,7 @@ class WalletServiceTest : BehaviorSpec({
         // BillsServiceTest, minus needing an explicit "accepts" stub in every other
         // When since relaxed already defaults to a no-op success.
         val providerConnector = mockk<ProviderConnector>(relaxed = true)
-        val service = WalletService(walletRepository, transactionRepository, ledgerService, eventPublisher, providerConnector)
+        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector)
 
         val senderWallet = wallet("wallet_1", "user_1", "10000")
 
@@ -162,6 +167,65 @@ class WalletServiceTest : BehaviorSpec({
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                     verify(exactly = 0) { transactionRepository.save(any()) }
                 }
+            }
+        }
+    }
+
+    Given("a user whose ledger has debits from real modules that share rail_suspense") {
+        val walletRepository = mockk<WalletRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val eventPublisher = mockk<EventPublisher>(relaxed = true)
+        val providerConnector = mockk<ProviderConnector>(relaxed = true)
+        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector)
+
+        fun entry(id: String, txnId: String, accountId: String, accountType: LedgerAccountType, direction: LedgerDirection, amount: String, memo: String = "test") = LedgerEntry(
+            id = id, transactionId = txnId, accountId = accountId, accountType = accountType, direction = direction,
+            amount = BigDecimal(amount), currency = "RWF", balanceAfter = BigDecimal.ZERO, memo = memo,
+        )
+
+        every { walletRepository.findByUserId("user_9") } returns listOf(wallet("wallet_9", "user_9", "0"))
+
+        // Live-discovered while testing this against a real backend: BillsService.payBill,
+        // BillsService.buyAirtime, and WalletService.confirmTransfer all post to the same
+        // "rail_suspense" clearing account -- accountType alone can't tell them apart, so this
+        // fixture matches the real memo prefixes each service actually writes.
+        val billDebit = entry("e1", "txn_bill", "wallet_9", LedgerAccountType.WALLET, LedgerDirection.DEBIT, "500", "Bill payment bill_2")
+        val billCounterpart = entry("e1b", "txn_bill", "rail_suspense", LedgerAccountType.RAIL_SUSPENSE, LedgerDirection.CREDIT, "500", "Biller settlement bill_2")
+        val airtimeDebit = entry("e6", "txn_airtime", "wallet_9", LedgerAccountType.WALLET, LedgerDirection.DEBIT, "200", "Airtime 0788000000")
+        val airtimeCounterpart = entry("e6b", "txn_airtime", "rail_suspense", LedgerAccountType.RAIL_SUSPENSE, LedgerDirection.CREDIT, "200", "Airtime settlement 0788000000")
+        val insuranceDebit = entry("e2", "txn_ins", "wallet_9", LedgerAccountType.WALLET, LedgerDirection.DEBIT, "1000")
+        val insuranceCounterpart = entry("e3", "txn_ins", "insurance_premium_revenue", LedgerAccountType.INSURANCE_PREMIUM_REVENUE, LedgerDirection.CREDIT, "1000")
+        val transferDebit = entry("e4", "txn_transfer", "wallet_9", LedgerAccountType.WALLET, LedgerDirection.DEBIT, "2000", "Transfer to 0788999999")
+        val transferCounterpart = entry("e5", "txn_transfer", "rail_suspense", LedgerAccountType.RAIL_SUSPENSE, LedgerDirection.CREDIT, "1980")
+        // A genuine "no distinguishing counterpart" case -- an internal wallet-to-wallet debit
+        // with only another WALLET-type sibling.
+        val internalDebit = entry("e7", "txn_internal", "wallet_9", LedgerAccountType.WALLET, LedgerDirection.DEBIT, "300")
+        val internalCounterpart = entry("e7b", "txn_internal", "wallet_savings_9", LedgerAccountType.WALLET, LedgerDirection.CREDIT, "300")
+
+        every { ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc("wallet_9") } returns
+            listOf(transferDebit, insuranceDebit, billDebit, airtimeDebit, internalDebit)
+        every { ledgerEntryRepository.findByTransactionId("txn_bill") } returns listOf(billDebit, billCounterpart)
+        every { ledgerEntryRepository.findByTransactionId("txn_airtime") } returns listOf(airtimeDebit, airtimeCounterpart)
+        every { ledgerEntryRepository.findByTransactionId("txn_ins") } returns listOf(insuranceDebit, insuranceCounterpart)
+        every { ledgerEntryRepository.findByTransactionId("txn_transfer") } returns listOf(transferDebit, transferCounterpart)
+        every { ledgerEntryRepository.findByTransactionId("txn_internal") } returns listOf(internalDebit, internalCounterpart)
+
+        When("computing the spending insight") {
+            val result = service.getSpendingInsight("user_9")
+
+            Then("bills, airtime, and transfers are correctly split despite sharing rail_suspense") {
+                result.totalSpent shouldBe BigDecimal("4000")
+                val byName = result.categories.associate { it.name to it.amount }
+                byName["Transfers"] shouldBe BigDecimal("2000")
+                byName["Bills"] shouldBe BigDecimal("500")
+                byName["Airtime"] shouldBe BigDecimal("200")
+                byName["Insurance"] shouldBe BigDecimal("1000")
+                byName["Other"] shouldBe BigDecimal("300")
+            }
+            Then("the largest category comes first") {
+                result.categories.first().name shouldBe "Transfers"
             }
         }
     }

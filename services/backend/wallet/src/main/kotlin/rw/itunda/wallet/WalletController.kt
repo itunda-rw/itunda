@@ -42,6 +42,14 @@ class WalletController(private val walletService: WalletService, private val ide
     fun getTransactionHistory(@AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true, "transactions" to walletService.getTransactionHistory(currentUser.userId)))
 
+    // Real spending categorization (2026-07-13) -- see WalletService.getSpendingInsight
+    // for why this is built over the ledger, not the transactions table.
+    @GetMapping("/spending")
+    fun getSpendingInsight(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> {
+        val result = walletService.getSpendingInsight(currentUser.userId)
+        return ResponseEntity.ok(mapOf("success" to true, "categories" to result.categories, "totalSpent" to result.totalSpent))
+    }
+
     @PostMapping("/transfer/quote")
     fun quoteTransfer(@RequestBody request: QuoteTransferRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> {
         val quote = walletService.quoteTransfer(currentUser.userId, request.fromWalletId, request.recipient, request.amount)
