@@ -264,6 +264,8 @@ private struct PointActionsCard: View {
 // MARK: - All tab
 
 struct EntireMenuScreen: View {
+    var onOpenSettings: () -> Void = {}
+
     var body: some View {
         ScrollView {
             VStack(spacing: IDS.Layout.sectionSpacing) {
@@ -277,7 +279,7 @@ struct EntireMenuScreen: View {
                 // workaround, each Group still contributes its children directly
                 // to the VStack's layout.
                 Group {
-                    TdsAllTopBar()
+                    TdsAllTopBar(onOpenSettings: onOpenSettings)
                     TdsSearchBar(placeholder: "Search")
                     IconGridSection(title: "Quick access", items: [
                         ("Mini", "square.grid.2x2.fill"),
@@ -378,16 +380,28 @@ struct EntireMenuScreen: View {
 }
 
 private struct TdsAllTopBar: View {
+    var onOpenSettings: () -> Void = {}
+
     var body: some View {
         HStack {
             Text("TUYIZERE ERIC")
                 .font(IDS.scaledFont(size: 26, weight: .bold, relativeTo: .largeTitle))
                 .foregroundColor(IDS.Colors.textPrimary)
             Spacer()
-            Image(systemName: "gearshape")
-                .font(IDS.scaledFont(size: 20, weight: .regular, relativeTo: .body))
-                .foregroundColor(IDS.Colors.textPrimary)
-                .accessibilityLabel("Settings")
+            // Real Settings screen (2026-07-12, see SettingsScreen.swift) --
+            // previously wired directly to logout with no screen behind it at all,
+            // same fix as Android's AllTopBar.
+            Button(action: onOpenSettings) {
+                Image(systemName: "gearshape")
+                    .font(IDS.scaledFont(size: 20, weight: .regular, relativeTo: .body))
+                    .foregroundColor(IDS.Colors.textPrimary)
+            }
+            // Found live via FocusOrderTests (2026-07-12): this button's action and
+            // icon were changed from direct-logout to opening the real Settings
+            // screen, but the accessibility label was never updated to match -- a
+            // VoiceOver user would have been told "Log out" for a button that
+            // actually opens Settings.
+            .accessibilityLabel("Settings")
         }
     }
 }

@@ -137,17 +137,19 @@ final class FocusOrderTests: XCTestCase {
         )
     }
 
-    /// TdsAllTopBar's Settings icon is likewise a bare Image(), not a Button
-    /// -- same reasoning as the Shop tab test above.
+    /// TdsAllTopBar's Settings icon was a bare Image() when this test was first
+    /// written; it's a real Button now (2026-07-12, see BenefitsShopAllScreens.swift
+    /// -- wired to the real Settings screen instead of direct logout), so this
+    /// queries app.buttons, not app.images.
     func testAllTabTopBarFocusOrderMatchesVisualOrder() throws {
         let app = XCUIApplication()
         app.launch()
         app.tabBars.buttons["All"].tap()
 
         let name = app.staticTexts["TUYIZERE ERIC"]
-        let settings = app.images["Settings"]
+        let settings = app.buttons["Settings"]
         XCTAssertTrue(name.waitForExistence(timeout: 10), "Name should exist on the All tab")
-        XCTAssertTrue(settings.exists, "Settings image should exist and be labeled on the All tab")
+        XCTAssertTrue(settings.waitForExistence(timeout: 10), "Settings button should exist and be labeled on the All tab")
 
         XCTAssertLessThan(
             name.frame.minX, settings.frame.minX,

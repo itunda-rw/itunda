@@ -9,16 +9,78 @@
 import SwiftUI
 import CoreDesignSystem
 
+/// A row for BankView's real "Savings" section -- plain primitives, not the App
+/// target's Wallet/SavingsGoal/InterestJar types, because Features/Banking (a Tuist
+/// Feature module) cannot depend back on App (App depends on Feature, never the
+/// reverse) -- see Project.swift's featureModules list. The caller (ContentView, in
+/// App, which does have access to NetworkClient's real types) is responsible for
+/// formatting real data into this shape, the same way it already formats
+/// TransferQuoteScreen's recipientName/amount/fee as plain strings.
+public struct SavingsRowData: Identifiable {
+    public let id = UUID()
+    public let title: String
+    public let subtitle: String
+    public let trailing: String
+    public let onTap: (() -> Void)?
+
+    public init(title: String, subtitle: String, trailing: String, onTap: (() -> Void)? = nil) {
+        self.title = title
+        self.subtitle = subtitle
+        self.trailing = trailing
+        self.onTap = onTap
+    }
+}
+
 public struct BankView: View {
-    public init() {}
+    private let balanceText: String
+    private let savingsRows: [SavingsRowData]
+    private let onSend: () -> Void
+    private let onOpenTransactionHistory: () -> Void
+
+    /// Real data (2026-07-11) -- balanceText/savingsRows previously didn't exist;
+    /// every number here was hardcoded ("RWF 1,284,350" etc). Defaults preserve the
+    /// old numbers so this compiles standalone (the Example target/previews render
+    /// something sensible without a real backend), but ContentView's real call site
+    /// always passes real values from BankViewModel. onSend added 2026-07-12 -- "Send
+    /// money now" was a decorative row with no action; it's the real entry point into
+    /// the send-money flow now, matching Android's WalletHeroCard "Send" button.
+    public init(
+        balanceText: String = "RWF 0",
+        savingsRows: [SavingsRowData] = [],
+        onSend: @escaping () -> Void = {},
+        onOpenTransactionHistory: @escaping () -> Void = {}
+    ) {
+        self.balanceText = balanceText
+        self.savingsRows = savingsRows
+        self.onSend = onSend
+        self.onOpenTransactionHistory = onOpenTransactionHistory
+    }
 
     public var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: IDS.Layout.cardGap) {
                 HomeTopBar()
-                AccountSummaryCard()
+                AccountSummaryCard(balanceText: balanceText, onSend: onSend)
                 QuickActionsRow()
-                HomeSectionCard(title: "Connected money", actionLabel: "Manage", rows: BankViewData.connectedMoney)
+                if !savingsRows.isEmpty {
+                    HomeSectionCard(
+                        title: "Savings",
+                        actionLabel: "View",
+                        rows: savingsRows.map {
+                            HomeRowData(title: $0.title, subtitle: $0.subtitle, trailing: $0.trailing, symbol: "leaf", iconBackground: IDS.Colors.successTint, onTap: $0.onTap)
+                        }
+                    )
+                }
+                // "Spent this month" wired to real transaction history (2026-07-12) --
+                // matching Android's "Spent in July" ShellRow real wiring; the other
+                // rows in this section stay illustrative (no real spend-by-category
+                // aggregation endpoint exists yet).
+                HomeSectionCard(
+                    title: "Connected money",
+                    actionLabel: "Manage",
+                    rows: [HomeRowData(title: "Spent this month", subtitle: "View transaction history", trailing: "", symbol: "list.bullet", iconBackground: IDS.Colors.chipBackground, onTap: onOpenTransactionHistory)]
+                        + BankViewData.connectedMoney
+                )
                 HomeSectionCard(title: "For life in Rwanda", actionLabel: "More", rows: BankViewData.rwandaServices)
                 HomeSectionCard(title: "Rewards and savings", actionLabel: "View", rows: BankViewData.rewards)
             }
@@ -56,6 +118,9 @@ private struct HomeRowData: Identifiable {
     let trailing: String
     let symbol: String
     let iconBackground: Color
+    // Added 2026-07-12 for the real Savings section's rows (deposit/claim) --
+    // default nil preserves every existing purely-promotional row unchanged.
+    var onTap: (() -> Void)? = nil
 }
 
 private struct HomeTopBar: View {
@@ -101,13 +166,16 @@ private struct TopBarActionButton: View {
 }
 
 private struct AccountSummaryCard: View {
+    let balanceText: String
+    let onSend: () -> Void
+
     var body: some View {
         VStack(alignment: .leading, spacing: IDS.Layout.cardGap) {
             VStack(alignment: .leading, spacing: IDS.Layout.tightGap) {
                 Text("Itunda total balance")
                     .font(IDS.Typography.sectionLabel)
                     .foregroundColor(IDS.Colors.textSecondary)
-                Text("RWF 1,284,350")
+                Text(balanceText)
                     .font(IDS.Typography.largeAmount)
                     .foregroundColor(IDS.Colors.textPrimary)
                 Text("Wallet, bank and mobile money in one place")
@@ -116,22 +184,25 @@ private struct AccountSummaryCard: View {
             }
 
             HStack(spacing: IDS.Layout.inlineGap) {
-                BalanceTile(title: "Main wallet", amount: "RWF 324,000")
+                BalanceTile(title: "Main wallet", amount: balanceText)
                 BalanceTile(title: "Spend today", amount: "RWF 18,200")
             }
 
-            HStack(spacing: IDS.Layout.tightGap) {
-                Text("Send money now")
-                    .font(IDS.Typography.bodyBold)
-                    .foregroundColor(IDS.Colors.textBrand)
-                Image(systemName: "chevron.right")
-                    .foregroundColor(IDS.Colors.textBrand)
-                    .font(IDS.scaledFont(size: 13, weight: .semibold, relativeTo: .footnote))
+            Button(action: onSend) {
+                HStack(spacing: IDS.Layout.tightGap) {
+                    Text("Send money now")
+                        .font(IDS.Typography.bodyBold)
+                        .foregroundColor(IDS.Colors.textBrand)
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(IDS.Colors.textBrand)
+                        .font(IDS.scaledFont(size: 13, weight: .semibold, relativeTo: .footnote))
+                }
+                .padding(.horizontal, IDS.Layout.cardPadding)
+                .padding(.vertical, IDS.Layout.inlineGap)
+                .background(IDS.Colors.pressed)
+                .clipShape(Capsule())
             }
-            .padding(.horizontal, IDS.Layout.cardPadding)
-            .padding(.vertical, IDS.Layout.inlineGap)
-            .background(IDS.Colors.pressed)
-            .clipShape(Capsule())
+            .buttonStyle(.plain)
         }
         .padding(IDS.Layout.cardPadding)
         .background(IDS.Colors.raisedCard)
@@ -229,6 +300,16 @@ private struct CompactListRow: View {
     let row: HomeRowData
 
     var body: some View {
+        Group {
+            if let onTap = row.onTap {
+                Button(action: onTap) { rowContent }.buttonStyle(.plain)
+            } else {
+                rowContent
+            }
+        }
+    }
+
+    private var rowContent: some View {
         HStack(spacing: IDS.Layout.inlineGap) {
             Image(systemName: row.symbol)
                 .font(IDS.scaledFont(size: 19, weight: .medium, relativeTo: .body))

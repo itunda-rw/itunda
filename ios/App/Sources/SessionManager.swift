@@ -1,0 +1,82 @@
+import Foundation
+
+enum SessionState: Equatable {
+    case loggedOut
+    case loggedIn(userId: String)
+}
+
+enum AuthResult {
+    case success
+    case failure(message: String)
+}
+
+/// The real login/session flow this app has never had (see NetworkClient.swift's
+/// header) -- orchestrates NetworkClient (services/backend's real /api/v1/auth/*
+/// endpoints) and KeychainTokenStore, exposing @Published session state so
+/// ItundaApp.swift can gate ContentView behind an actual login screen instead of
+/// rendering it unconditionally, mirroring Android's SessionManager.kt exactly.
+@MainActor
+final class SessionManager: ObservableObject {
+    static let shared = SessionManager()
+
+    @Published private(set) var sessionState: SessionState = .loggedOut
+
+    private init() {}
+
+    func restoreSession() {
+        let store = KeychainTokenStore.shared
+        if store.hasSession(), let userId = store.getUserId() {
+            sessionState = .loggedIn(userId: userId)
+        } else {
+            sessionState = .loggedOut
+        }
+    }
+
+    func login(phoneNumber: String, password: String) async -> AuthResult {
+        await runAuthCall { try await NetworkClient.shared.login(LoginRequest(phoneNumber: phoneNumber, password: password)) }
+    }
+
+    func register(phoneNumber: String, password: String, firstName: String, lastName: String, email: String? = nil) async -> AuthResult {
+        await runAuthCall {
+            try await NetworkClient.shared.register(
+                RegisterRequest(phoneNumber: phoneNumber, email: email, firstName: firstName, lastName: lastName, password: password)
+            )
+        }
+    }
+
+    func logout() async {
+        let store = KeychainTokenStore.shared
+        let accessToken = store.getAccessToken()
+        let refreshToken = store.getRefreshToken()
+        if let accessToken {
+            // Best-effort server-side revocation, same reasoning as
+            // SessionManager.kt's Android twin: a local "log out" tap must clear the
+            // on-device session regardless of whether the network call succeeds.
+            try? await NetworkClient.shared.logout(accessToken: accessToken, request: LogoutRequest(refreshToken: refreshToken))
+        }
+        store.clearSession()
+        sessionState = .loggedOut
+    }
+
+    private func runAuthCall(_ call: () async throws -> AuthResponse) async -> AuthResult {
+        do {
+            let response = try await call()
+            KeychainTokenStore.shared.saveSession(userId: response.user.id, accessToken: response.accessToken, refreshToken: response.refreshToken)
+            sessionState = .loggedIn(userId: response.user.id)
+            return .success
+        } catch let NetworkError.httpError(statusCode) {
+            return .failure(message: httpErrorMessage(statusCode))
+        } catch {
+            return .failure(message: "Couldn't reach itunda. Check your connection and try again.")
+        }
+    }
+
+    private func httpErrorMessage(_ statusCode: Int) -> String {
+        switch statusCode {
+        case 401: return "Incorrect phone number or password."
+        case 409: return "An account with this phone number already exists."
+        case 429: return "Too many attempts. Please wait a moment and try again."
+        default: return "Something went wrong. Please try again."
+        }
+    }
+}

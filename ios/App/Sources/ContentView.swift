@@ -22,8 +22,59 @@ private func scaledFont(size: CGFloat, weight: UIFont.Weight, relativeTo style: 
 // same discover-items data this screen's card content already resembles), and "All"
 // is the deliberate translation of Toss's 전체 tab Android's own ShopTab/AllTopBar
 // comments already establish -- "Entire" was simply the wrong word.
+/// Real savings deposit/claim flow (2026-07-12) -- see SavingsFlowContainer.swift.
+enum SavingsFlowStep: Identifiable {
+    case deposit(goalId: String, goalName: String)
+    case claimInterest
+
+    var id: String {
+        switch self {
+        case .deposit(let goalId, _): return "deposit-\(goalId)"
+        case .claimInterest: return "claim"
+        }
+    }
+}
+
 struct ContentView: View {
     @State private var selectedTab = 0
+    // Real wallet/savings data (2026-07-11) -- see BankViewModel.swift for why this
+    // lives here rather than inside BankView's own module.
+    @StateObject private var bankViewModel = BankViewModel()
+    // Real send-money flow (2026-07-12) -- "Send money now" was decorative until
+    // now; see TransferFlowContainer.swift.
+    @State private var showTransferFlow = false
+    // Real savings deposit/claim flow (2026-07-12) -- see SavingsFlowContainer.swift.
+    @State private var savingsFlowStep: SavingsFlowStep?
+    // Real transaction history (2026-07-12) -- see TransactionHistoryScreen.swift.
+    @State private var showTransactionHistory = false
+    // Real account settings screen (2026-07-12) -- see SettingsScreen.swift.
+    @State private var showSettings = false
+
+    // Real Savings section rows with real tap targets (2026-07-12) -- built here,
+    // not inside BankViewModel, because triggering savingsFlowStep needs
+    // ContentView's own @State (see BankView.swift's note on why Feature-module
+    // views take plain data rather than owning navigation state themselves).
+    private var savingsRows: [SavingsRowData] {
+        var rows: [SavingsRowData] = []
+        if let jar = bankViewModel.interestJar {
+            rows.append(SavingsRowData(
+                title: "Interest jar",
+                subtitle: "Earned this month",
+                trailing: "RWF \(Int(jar.earnedThisMonth))",
+                onTap: { savingsFlowStep = .claimInterest }
+            ))
+        }
+        for goal in bankViewModel.savingsGoals {
+            let percent = goal.targetAmount > 0 ? Int(goal.currentAmount / goal.targetAmount * 100) : 0
+            rows.append(SavingsRowData(
+                title: goal.name,
+                subtitle: "RWF \(Int(goal.currentAmount)) of \(Int(goal.targetAmount))",
+                trailing: "\(percent)%",
+                onTap: { savingsFlowStep = .deposit(goalId: goal.id, goalName: goal.name) }
+            ))
+        }
+        return rows
+    }
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -32,7 +83,47 @@ struct ContentView: View {
             // hardcoded-mock-data BankScreen struct that used to live in this file,
             // same "delete the unreachable duplicate, wire in the real one" fix
             // Android already went through for its own legacy BankScreen.kt.
-            BankView()
+            BankView(
+                balanceText: bankViewModel.balanceText,
+                savingsRows: savingsRows,
+                onSend: { showTransferFlow = true },
+                onOpenTransactionHistory: { showTransactionHistory = true }
+            )
+                .task { await bankViewModel.load() }
+                .fullScreenCover(isPresented: $showTransferFlow) {
+                    TransferFlowContainer(
+                        availableBalance: bankViewModel.availableBalance,
+                        onDone: {
+                            showTransferFlow = false
+                            Task { await bankViewModel.load() }
+                        }
+                    )
+                }
+                .fullScreenCover(item: $savingsFlowStep) { step in
+                    SavingsFlowContainer(
+                        step: step,
+                        availableBalance: bankViewModel.availableBalance,
+                        onDone: {
+                            savingsFlowStep = nil
+                            Task { await bankViewModel.load() }
+                        }
+                    )
+                }
+                .fullScreenCover(isPresented: $showTransactionHistory) {
+                    TransactionHistoryScreen(
+                        transactions: bankViewModel.transactions.map { tx in
+                            TransactionDisplayItem(
+                                id: tx.id,
+                                description: tx.description,
+                                amount: tx.amount,
+                                currency: tx.currency,
+                                status: tx.status,
+                                isOutgoing: tx.senderId == bankViewModel.currentUserId
+                            )
+                        },
+                        onBack: { showTransactionHistory = false }
+                    )
+                }
                 .tabItem {
                     Image(systemName: "house.fill")
                     Text("Home")
@@ -60,7 +151,10 @@ struct ContentView: View {
                 }
                 .tag(3)
 
-            EntireMenuScreen()
+            EntireMenuScreen(onOpenSettings: { showSettings = true })
+                .fullScreenCover(isPresented: $showSettings) {
+                    SettingsScreen(onDone: { showSettings = false })
+                }
                 .tabItem {
                     Image(systemName: "line.3.horizontal")
                     Text("All")

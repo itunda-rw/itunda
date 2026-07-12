@@ -135,6 +135,10 @@ appDependencies.append(.target(name: "CoreRisk"))
 // directly, same as ContentView.swift's own Dynamic Type fix needed UIKit, but this
 // one's a real cross-module type dependency, not just an inline helper.
 appDependencies.append(.target(name: "CoreDesignSystem"))
+// Added 2026-07-12 for TransferFlowContainer.swift's real biometric confirm gate
+// (NIDABiometricAuth) -- App needs its own direct dependency declared, not just
+// transitive access through FeaturePayments's own internal use of the same module.
+appDependencies.append(.target(name: "CoreIdentity"))
 
 allTargets.append(
     Target(
@@ -142,7 +146,16 @@ allTargets.append(
         platform: .iOS,
         product: .app,
         bundleId: "rw.itunda.app",
-        infoPlist: .default,
+        // Real login/session flow (2026-07-11, see App/Sources/NetworkClient.swift)
+        // talks to services/backend over plain HTTP -- no TLS cert to terminate
+        // against for a local dev backend. Same blanket, dev-only exception
+        // Android's AndroidManifest.xml already carries via
+        // android:usesCleartextTraffic="true"; ATS blocks this by default otherwise.
+        infoPlist: .extendingDefault(with: [
+            "NSAppTransportSecurity": [
+                "NSAllowsArbitraryLoads": true,
+            ],
+        ]),
         sources: ["App/Sources/**"],
         dependencies: appDependencies
     )
