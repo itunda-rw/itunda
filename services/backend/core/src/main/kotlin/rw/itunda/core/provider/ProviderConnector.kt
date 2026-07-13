@@ -51,6 +51,34 @@ object RailCatalog {
             else -> generic
         }
     }
+
+    /**
+     * Real per-rail routing for P2P wallet transfers (2026-07-13) -- closes the gap
+     * docs/TOSS_PARITY_MATRIX.md's Transfer row named: WalletService.confirmTransfer
+     * called [resolve] against `quote.recipient`, a phone number, not a provider name,
+     * so it always fell through to [generic] regardless of which real rail the
+     * recipient's number actually belongs to. A phone number's own prefix is a real,
+     * publicly documented signal of carrier assignment in Rwanda's national numbering
+     * plan (RURA, Rwanda's telecom regulator): 078 is allocated to MTN Rwanda, 072/073
+     * to Airtel Rwanda (confirmed via Wikipedia's "Telephone numbers in Rwanda" article,
+     * itself sourced from RURA's own numbering plan). Deliberately conservative: only
+     * routes the two prefix ranges confirmed from that source; anything else (a
+     * landline, an unrecognized prefix, a malformed number) falls back to [generic]
+     * rather than guessing, same discipline [resolve] above already follows.
+     */
+    fun resolveByPhoneNumber(phoneNumber: String): RailProfile {
+        val digits = phoneNumber.filter { it.isDigit() }
+        val national = when {
+            digits.startsWith("250") && digits.length >= 12 -> digits.substring(3)
+            digits.startsWith("0") && digits.length == 10 -> digits.substring(1)
+            else -> digits
+        }
+        return when (national.take(2)) {
+            "78" -> mtnMomo
+            "72", "73" -> airtelMoney
+            else -> generic
+        }
+    }
 }
 
 interface ProviderConnector {

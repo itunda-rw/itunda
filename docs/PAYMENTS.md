@@ -101,9 +101,18 @@ is started in `services/backend`.
 - **No merchant self-signup or dashboard UI.** Registration is a bare API call
   (`POST /api/v1/merchant/register`) with no KYB check; there is no web page for a merchant to
   view transactions, rotate credentials, or configure anything.
-- **No refund/cancel path specific to merchant collections.** (Webhooks themselves, including
-  real persistent retry matching Toss's documented schedule, are real as of 2026-07-13 — see
-  item 4 above. This bullet is scoped narrowly to what's still missing.)
+- ~~No refund/cancel path specific to merchant collections.~~ **Closed 2026-07-13**, as a side
+  effect of building `services/backend/support`'s real customer support ticket workflow (see
+  `docs/TOSS_PARITY_MATRIX.md`'s Non-Negotiable Gates "Customer support workflow" entry): its
+  refund action reverses the exact original ledger legs of *any* transaction, keyed only off
+  the shared `ledger_entries` table, not off transaction type — so it works for a merchant
+  collection exactly the same way it works for a P2P payment or a wallet transfer, with no
+  merchant-specific code needed. Live-verified: filed a real `PAYMENT_DISPUTE` ticket against a
+  real merchant collection, resolved it `REFUNDED`, confirmed the payer's wallet balance moved
+  by exactly the reversed amount. There is still no *merchant-initiated* cancel (a merchant
+  choosing to refund their own collection) — this closes the customer-side dispute path, not
+  that one. (Webhooks themselves, including real persistent retry matching Toss's documented
+  schedule, are also real as of 2026-07-13 — see item 4 above.)
 
 Sources for the Toss-facts section above: [Toss Payments API
 keys](https://docs.tosspayments.com/reference/using-api/api-keys), [Payment APIs

@@ -155,7 +155,12 @@ class WalletService(
             throw QuoteExpiredException("Transfer quote has expired, request a new quote")
         }
 
-        val rail = RailCatalog.resolve(quote.recipient)
+        // Real per-rail routing (2026-07-13) -- resolve() (used by bills/airtime,
+        // which get a real provider name) always fell through to generic here since
+        // quote.recipient is a phone number, not a provider name. See
+        // RailCatalog.resolveByPhoneNumber's own doc comment for the real, sourced
+        // (RURA numbering plan) prefix routing this now does instead.
+        val rail = RailCatalog.resolveByPhoneNumber(quote.recipient)
         try {
             providerConnector.attempt(rail, "Transfer to ${quote.recipient}")
         } catch (e: ProviderDeclinedException) {
