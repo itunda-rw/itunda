@@ -4,10 +4,16 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import rw.itunda.core.domain.IncidentStatus
+import rw.itunda.core.health.ProviderHealthTracker
+import rw.itunda.core.incident.IncidentDetector
 
 @RestController
 @RequestMapping("/api/v1/system")
-class SystemController {
+class SystemController(
+    private val providerHealthTracker: ProviderHealthTracker,
+    private val incidentDetector: IncidentDetector,
+) {
 
     // Simple mock endpoints for the system dashboard to complete the migration
     @GetMapping("/dashboard")
@@ -34,8 +40,27 @@ class SystemController {
         return ResponseEntity.ok(mapOf("success" to true, "parity" to emptyList<Any>(), "gates" to emptyList<Any>()))
     }
 
+    // Real per-rail health, built and live-verified 2026-07-13 -- see
+    // docs/TOSS_PARITY_MATRIX.md's Operations/Provider health row. Unlike the stubs
+    // above, this is measured from real attempts (ProviderHealthTracker), not a mock.
     @GetMapping("/rails")
     fun getPaymentRails(): ResponseEntity<Map<String, Any>> {
-        return ResponseEntity.ok(mapOf("success" to true, "rails" to emptyList<Any>()))
+        val openIncidentRailIds = incidentDetector.getIncidents()
+            .filter { it.status == IncidentStatus.OPEN }
+            .map { it.railId }
+            .toSet()
+        val rails = providerHealthTracker.snapshot().map { health ->
+            mapOf(
+                "railId" to health.railId,
+                "displayName" to health.displayName,
+                "totalAttempts" to health.totalAttempts,
+                "successCount" to health.successCount,
+                "failureCount" to health.failureCount,
+                "successRate" to health.successRate,
+                "avgLatencyMs" to health.avgLatencyMs,
+                "status" to if (health.railId in openIncidentRailIds) "INCIDENT" else "HEALTHY",
+            )
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "rails" to rails))
     }
 }

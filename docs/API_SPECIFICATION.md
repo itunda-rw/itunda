@@ -333,11 +333,28 @@ is no self-service role-promotion flow; `ADMIN` only exists via seed data today.
 | GET | `/dashboard` | **Stub** — returns hardcoded zero values (`todayVolume: 0`, `activeConsents: 0`), not real aggregated data. Controller's own comment: "Simple mock endpoints ... to complete the migration" |
 | GET | `/capabilities` | **Stub** — always returns empty `capabilities`/`summary` |
 | GET | `/parity` | **Stub** — always returns empty `parity`/`gates` |
-| GET | `/rails` | **Stub** — always returns empty `rails` |
+| GET | `/rails` | **Real, fixed 2026-07-13** — see below, no longer a stub |
 
-Unlike every other module in this file, `SystemController` is real infrastructure (real route,
-real RBAC gate) wired to entirely fake data — don't mistake "the endpoint exists and is
-protected" for "the endpoint returns anything real." Building this out is open work, not a bug.
+`/dashboard`, `/capabilities`, `/parity` remain wired to entirely fake data — don't mistake "the
+endpoint exists and is protected" for "the endpoint returns anything real." Building those out is
+open work, not a bug.
+
+### Rail health — `/api/v1/system/rails` (ADMIN role only)
+
+Fixed 2026-07-13 (previously always returned `{rails: []}`) — see
+`docs/TOSS_PARITY_MATRIX.md`'s Operations/Provider health row for the full account.
+
+| Method | Path | Success | Notes |
+|---|---|---|---|
+| GET | `/` | `{success, rails: [...]}` | Real, measured per-rail health |
+
+Each entry: `railId`, `displayName`, `totalAttempts`, `successCount`, `failureCount`,
+`successRate`, `avgLatencyMs`, `status` (`"HEALTHY"` or `"INCIDENT"` — cross-referenced against
+`IncidentDetector`'s open incidents). A rail with zero real attempts since the process started
+doesn't appear in the list at all — no fabricated zero-row. Built from `ProviderHealthTracker`
+(`:core`), which observes every real attempt through `SimulatedProviderConnector` — these are
+*measured* numbers, not a replay of the static per-rail simulation config, and will diverge from
+it over a small sample.
 
 ### Fraud review — `/api/v1/system/fraud` (ADMIN role only)
 
@@ -389,6 +406,9 @@ Grepped for directly, confirmed absent as of 2026-07-13:
   section) — no other module emits webhooks of any kind.
 
 ## What Changed Since the Last Version of This Document
+
+**2026-07-13, even later still:** `/api/v1/system/rails` fixed from an always-empty stub to a
+real, measured per-rail health endpoint — see the Rail health section above.
 
 **2026-07-13, later still:** added `/api/v1/system/incidents` (real, ADMIN-gated auto-detection
 and resolve flow) — see the Incidents section above.

@@ -1,6 +1,7 @@
 package rw.itunda.core.provider
 
 import org.springframework.stereotype.Component
+import rw.itunda.core.health.ProviderHealthTracker
 import rw.itunda.core.incident.IncidentDetector
 import kotlin.random.Random
 
@@ -67,12 +68,18 @@ interface ProviderConnector {
  * Every real decline is reported to IncidentDetector (2026-07-13) -- the single choke
  * point every rail-calling flow passes through, so real incident auto-detection reacts to
  * actual failures here, not a separate/duplicated failure-counting mechanism per caller.
+ * Every real attempt (success or failure) is also reported to ProviderHealthTracker
+ * (2026-07-13) with its real measured latency, for the same reason.
  */
 @Component
-class SimulatedProviderConnector(private val incidentDetector: IncidentDetector) : ProviderConnector {
+class SimulatedProviderConnector(
+    private val incidentDetector: IncidentDetector,
+    private val providerHealthTracker: ProviderHealthTracker,
+) : ProviderConnector {
     override fun attempt(rail: RailProfile, description: String) {
         if (rail.offline) {
             incidentDetector.recordFailure(rail)
+            providerHealthTracker.recordAttempt(rail.id, rail.displayName, success = false, latencyMs = 0)
             throw ProviderDeclinedException("${rail.displayName} is currently offline")
         }
 
@@ -87,7 +94,10 @@ class SimulatedProviderConnector(private val incidentDetector: IncidentDetector)
     }
 
     private fun attemptOnce(rail: RailProfile): Boolean {
+        val start = System.currentTimeMillis()
         Thread.sleep(rail.avgLatencyMs)
-        return Random.nextDouble() < rail.successRate
+        val ok = Random.nextDouble() < rail.successRate
+        providerHealthTracker.recordAttempt(rail.id, rail.displayName, ok, System.currentTimeMillis() - start)
+        return ok
     }
 }
