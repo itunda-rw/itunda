@@ -13,9 +13,11 @@
  * export surface, so the type is declared locally rather than imported, but
  * TypeScript's structural typing accepts it at the `Granite.registerApp`
  * call site all the same. Simple enough to satisfy correctly by hand for a
- * single-page mini-app: a callable module loader plus `keys()`/`resolve()`/
- * `id`. This is a real, correct implementation of that contract, not a stub
- * -- `pages/index` is genuinely the only route `pay-bills` has.
+ * small mini-app: a callable module loader plus `keys()`/`resolve()`/`id`.
+ * This is a real, correct implementation of that contract, not a stub --
+ * `pages/index` and `pages/_404` are genuinely pay-bills' only two routes
+ * (`_404` added 2026-07-13: granite's router requires one unconditionally,
+ * see `pages/_404.tsx`'s own header comment).
  */
 interface RequireContext {
   keys(): string[];
@@ -26,6 +28,7 @@ interface RequireContext {
 
 const pages: Record<string, () => unknown> = {
   './index': () => require('./pages/index'),
+  './_404': () => require('./pages/_404'),
 };
 
 export const context: RequireContext = Object.assign(

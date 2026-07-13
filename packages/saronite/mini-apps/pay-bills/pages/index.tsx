@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { createRoute } from '@granite-js/react-native';
 import { closeView, getPendingBills, payBill } from '@itunda/saronite-react-native';
 import type { PendingBill } from '@itunda/saronite-react-native';
 
@@ -17,29 +18,31 @@ import type { PendingBill } from '@itunda/saronite-react-native';
  * is one of the concrete categories Apps in Toss actually lists for
  * partner mini-apps (see saronite/README.md's research notes). Backed by
  * itunda's real `GET /bills/pending` and `POST /bills/pay`, not mock data.
+ * `closeView`/`getPendingBills`/`payBill` go through itunda's own
+ * `SaroniteBrownfieldModule` (legacy `NativeModules`, `SaroniteBridge.kt` --
+ * a completely separate bridge from granite's real `GraniteBrownfieldModule`
+ * TurboModule), so none of this component's own logic was ever affected by
+ * the upstream bug below -- only the route registration was blocked.
  *
- * Reverted from real granite back to itunda's own bridge (2026-07-12,
- * granite-adoption stage 7 wrap-up): the real native brick-module
- * infrastructure (android/brownfield-module-stub/, BrickModulePackage in
- * ItundaApplication.kt) is genuinely built, compiles, and independently
- * verified to construct and register the real GraniteBrownfieldModule
- * instance (confirmed via logcat: "BrickModuleRegistry: Registered module
- * 'GraniteBrownfieldModule'", "BrickModule successfully created"). But a
- * real, reproduced, diagnosed bug in the *vendored* `@granite-js/brownfield-module`
- * JS source itself blocks it from actually working end-to-end:
- * `GraniteBrownfieldModule.brick.ts`'s top-level
- * `BrickModule.get<GraniteBrownfieldModuleSpec>('GraniteBrownfieldModule')`
- * call eagerly invokes `TurboModuleRegistry.getEnforcing("BrickModule")`
- * (brick-module/src/BrickModule.ts) the instant the module is imported --
- * before the native TurboModuleManager has "BrickModule" resolvable yet --
- * with no try/catch, so the exception crashes the entire JS bundle
- * evaluation before `AppRegistry.registerComponent` for this mini-app ever
- * runs. Reproduced consistently across repeated runs (not a cold-start
- * fluke) -- see the granite-adoption stage 7 commit history for the full
- * diagnostic trail. Left as a real, specific, documented follow-up rather
- * than force a broken mini-app into the tree: `app.tsx`/`require.context.ts`/
- * `router.gen.ts` in this directory stay in place, real and correct, ready
- * to be re-wired the moment this upstream timing issue is resolved.
+ * Re-enabled on real granite (2026-07-13) after patching the actual root
+ * cause: the vendored `brick-module@0.5.2`'s `BrickModule.get()`
+ * (`node_modules/brick-module/dist/BrickModule.js`) eagerly called
+ * `TurboModuleRegistry.getEnforcing("BrickModule")` synchronously *inside*
+ * `get()` itself, before returning its Proxy -- so the instant anything
+ * imported `@granite-js/react-native` (`app.tsx` below, transitively via its
+ * `async-bridges.js`/`constant-bridges.js`, confirmed by reading those files
+ * directly: both `require("@granite-js/brownfield-module")` at their own
+ * top level), that eager resolution raced native's TurboModuleManager
+ * registration and crashed JS bundle evaluation before this mini-app could
+ * ever register -- not a granite-app-registration-time problem, a
+ * module-*import*-time problem. Fixed via `patch-package`
+ * (`packages/saronite/patches/brick-module+0.5.2.patch`): `get()` now only
+ * resolves the native module lazily, inside the Proxy's own property-access
+ * trap, the first time a method is actually called -- by then native
+ * registration has long since completed. `app.tsx`/`require.context.ts`/
+ * `router.gen.ts` were already real and correct (built 2026-07-12); this
+ * change is `pages/index.tsx`'s own real route registration plus
+ * re-including those three files in the active build (see tsconfig.json).
  */
 export default function PayBillsPage() {
   const [bills, setBills] = useState<PendingBill[] | null>(null);
@@ -114,6 +117,10 @@ export default function PayBillsPage() {
     </SafeAreaView>
   );
 }
+
+export const Route = createRoute('/', {
+  component: PayBillsPage,
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, backgroundColor: '#F2F4F6' },

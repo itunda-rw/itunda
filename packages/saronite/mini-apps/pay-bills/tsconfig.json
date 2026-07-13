@@ -2,14 +2,14 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "pages"
+    // Was "pages" while app.tsx/require.context.ts/router.gen.ts (package
+    // root, not pages/) were excluded -- now included, rootDir has to cover
+    // the package root too.
+    "rootDir": "."
   },
-  "include": ["pages"],
-  // app.tsx/require.context.ts/router.gen.ts (2026-07-12, granite-adoption
-  // stage 7 wrap-up) are real, correct, kept in the repo -- deliberately
-  // excluded from the active build/typecheck for now, pending the real,
-  // diagnosed upstream TurboModuleRegistry timing bug being resolved (see
-  // pages/index.tsx's header comment). Re-add them to "include" and revert
-  // pages/index.tsx/host-app/index.js to re-wire once that's fixed.
-  "exclude": ["app.tsx", "require.context.ts", "router.gen.ts"]
+  // app.tsx/require.context.ts/router.gen.ts re-included (2026-07-13): the
+  // real upstream TurboModuleRegistry timing bug they were blocked on is
+  // fixed (see patches/brick-module+0.5.2.patch and pages/index.tsx's own
+  // header comment for the full account).
+  "include": ["pages", "app.tsx", "require.context.ts", "router.gen.ts"]
 }

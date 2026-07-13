@@ -1,0 +1,17 @@
+diff --git a/node_modules/brick-module/dist/BrickModule.js b/node_modules/brick-module/dist/BrickModule.js
+index b58c3b2..afe53ea 100644
+--- a/node_modules/brick-module/dist/BrickModule.js
++++ b/node_modules/brick-module/dist/BrickModule.js
+@@ -20,11 +20,11 @@ function getNativeModule() {
+ function get(moduleName) {
+ 	const cacheKey = moduleName;
+ 	if (moduleCache.has(cacheKey)) return moduleCache.get(cacheKey);
+-	const nativeModuleInstance = getNativeModule();
+ 	let constantsCache = null;
+ 	const moduleProxy = new Proxy({}, {
+ 		get: (_target, property) => {
+ 			if (typeof property !== "string") return;
++			const nativeModuleInstance = getNativeModule();
+ 			if (property.startsWith("on") && property.length > 2 && property[2] === property[2].toUpperCase()) return (listener) => {
+ 				const nativeEventMethod = `${moduleName}_${property}`;
+ 				const nativeFn = nativeModuleInstance[nativeEventMethod];

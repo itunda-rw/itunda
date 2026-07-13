@@ -1,0 +1,68 @@
+diff --git a/node_modules/@granite-js/react-native/src/visibility/VisibilityProvider.tsx b/node_modules/@granite-js/react-native/src/visibility/VisibilityProvider.tsx
+index 14a512b..0a41c0a 100644
+--- a/node_modules/@granite-js/react-native/src/visibility/VisibilityProvider.tsx
++++ b/node_modules/@granite-js/react-native/src/visibility/VisibilityProvider.tsx
+@@ -33,12 +33,49 @@ export function VisibilityProvider({ isVisible, children }: Props): ReactElement
+   const [visible, setVisible] = useState(isVisible);
+ 
+   useEffect(() => {
+-    const subscription = GraniteBrownfieldModule.onVisibilityChanged(({ visible }) => {
+-      setVisible(visible);
+-    });
++    // Real fix (2026-07-13, granite-adoption stage 7 completion): the same
++    // Bridgeless TurboModule registration race documented in brick-module's
++    // own BrickModule.js and this package's onVisibilityChanged.ts (see their
++    // patch headers) also reaches here, even though this call already runs
++    // inside a post-mount useEffect. Confirmed live: Kotlin's reflection-based
++    // module instantiation (BrickModulePackage.getModule -> Class.forName +
++    // constructor/method reflection) is itself slow enough on a cold/
++    // interpreted (non-JIT'd) device -- ~250ms+, observed via adb logcat --
++    // that Bridgeless's synchronous TurboModuleRegistry.getEnforcing("BrickModule")
++    // call can still lose the race on its first attempt after mount, throwing
++    // "'BrickModule' could not be found" even though the native side logs a
++    // successful creation moments later. A bounded retry with backoff is the
++    // correct fix here (unlike the two eager-access sites, this one can't be
++    // fixed by deferring further -- it's already deferred to post-mount).
++    // Retry budget widened (2026-07-13, same-day follow-up): a first, tighter
++    // budget (5 attempts, <=500ms backoff) was confirmed live to still be too
++    // short -- on a cold/interpreted test device the reflection-heavy native
++    // side genuinely took over 10s to finish registering, well past that
++    // budget, so the retry itself was still exhausting and surfacing an
++    // uncaught error (non-fatal, but real). Capped exponential backoff up to
++    // 30 attempts (~30s total) comfortably covers that observed worst case
++    // while still giving up eventually rather than retrying forever.
++    let cancelled = false;
++    let subscription: { remove(): void } | undefined;
++    let retryTimeout: ReturnType<typeof setTimeout> | undefined;
++
++    const subscribe = (attempt: number) => {
++      if (cancelled) return;
++      try {
++        subscription = GraniteBrownfieldModule.onVisibilityChanged(({ visible }) => {
++          setVisible(visible);
++        });
++      } catch (error) {
++        if (attempt >= 30) throw error;
++        retryTimeout = setTimeout(() => subscribe(attempt + 1), Math.min(1000, 100 * (attempt + 1)));
++      }
++    };
++    subscribe(0);
+ 
+     return () => {
+-      subscription.remove();
++      cancelled = true;
++      if (retryTimeout) clearTimeout(retryTimeout);
++      subscription?.remove();
+     };
+   }, []);
+ 
+diff --git a/node_modules/@granite-js/react-native/src/visibility/onVisibilityChanged.ts b/node_modules/@granite-js/react-native/src/visibility/onVisibilityChanged.ts
+index afcb832..7d795ef 100644
+--- a/node_modules/@granite-js/react-native/src/visibility/onVisibilityChanged.ts
++++ b/node_modules/@granite-js/react-native/src/visibility/onVisibilityChanged.ts
+@@ -1,3 +1,4 @@
+ import { GraniteBrownfieldModule } from '@granite-js/brownfield-module';
+ 
+-export const onVisibilityChanged = GraniteBrownfieldModule.onVisibilityChanged;
++export const onVisibilityChanged: typeof GraniteBrownfieldModule.onVisibilityChanged = (listener) =>
++  GraniteBrownfieldModule.onVisibilityChanged(listener);

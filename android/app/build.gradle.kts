@@ -17,6 +17,35 @@ react {
     // includeBuild path (same caveat) whenever this stops resolving.
     reactNativeDir = file("../../packages/saronite/node_modules/react-native")
     entryFile = file("../../packages/saronite/host-app/index.js")
+    // Real fix (2026-07-13, granite-adoption stage 7 completion): react-native-safe-
+    // area-context's own generateCodegenSchemaFromJavaScript task crashed with
+    // "Cannot find module '.../host-app/node_modules/@react-native/codegen/...'".
+    // Traced into ReactPlugin.kt (com.facebook.react's own Gradle plugin source,
+    // read directly from node_modules): codegenDir is NOT resolved per-module --
+    // ReactPlugin only wires codegenDir from :app's own `react { }` extension into a
+    // single shared `rootExtension` (the "com.android.application" branch of
+    // ReactPlugin.apply), and every OTHER autolinked library module's codegen task
+    // reads that same shared value (`it.codegenDir.set(rootExtension.codegenDir)`).
+    // Left at its default it resolves to `root/node_modules/@react-native/codegen`
+    // == host-app/node_modules/@react-native/codegen, which doesn't exist -- npm
+    // hoists @react-native/codegen to packages/saronite/node_modules instead (a
+    // workspace root, not host-app), confirmed by `ls`. Explicit override needed
+    // here for exactly the same reason root/reactNativeDir already need one above.
+    codegenDir = file("../../packages/saronite/node_modules/@react-native/codegen")
+    // Real fix, same root cause as codegenDir above: PackageList.java correctly
+    // referenced com.th3rdwave.safeareacontext.SafeAreaContextPackage (autolinking.json
+    // discovery itself works), but compilation failed with "package ... does not
+    // exist" -- the actual Gradle *project dependency* (implementation(project(":react-
+    // native-safe-area-context"))) that makes those compiled classes visible to :app
+    // is not automatic. Read directly from ReactExtension.kt: settings.gradle.kts's
+    // autolinkLibrariesFromCommand() only settings.include()s the project; the
+    // dependency-wiring step is this separate function, which its own doc comment says
+    // "should be invoked inside the react {} block in the app's build.gradle" --
+    // itunda's block never did. brick-module/granite-js_brownfield-module never hit
+    // this because brick_modules.gradle wires their dependencies itself (see the
+    // Project Modules section below) -- only genuinely-standard-autolinked libraries
+    // like react-native-safe-area-context were missing it.
+    autolinkLibrariesWithApp()
 }
 
 // brick-module's own react-native-helpers.gradle (2026-07-12, granite-adoption

@@ -63,3 +63,18 @@ extra["compileSdkVersion"] = 34
 extra["minSdkVersion"] = 26
 extra["targetSdkVersion"] = 34
 extra["kotlinVersion"] = "2.1.20"
+
+// Real fix (2026-07-13, granite-adoption stage 7 completion): react-native-svg's
+// own android/build.gradle (a real, third-party Gradle script) reads this same
+// property name as app/build.gradle.kts's own REACT_NATIVE_NODE_MODULES_DIR
+// comment above documents for brick-module, but via `rootProject.ext.has(...)`
+// specifically (`safeExtGet`, read directly from react-native-svg/android/build.gradle)
+// rather than the app-project-scoped ext brick-module's own helper checks --
+// :app's own `extra[...]` assignment above is invisible here; Gradle project
+// `extra`/`ext` blocks are NOT inherited from child to root. Without this,
+// react-native-svg falls back to shelling out to `node --print
+// "require.resolve('react-native/package.json')"` from android/'s own working
+// directory, which fails in itunda's non-standard monorepo layout (confirmed
+// live: "Unable to resolve react-native location in node_modules").
+extra["REACT_NATIVE_NODE_MODULES_DIR"] = file("../packages/saronite/node_modules/react-native")
+
