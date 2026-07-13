@@ -3,6 +3,7 @@ package rw.itunda.core.provider
 import org.springframework.stereotype.Component
 import rw.itunda.core.health.ProviderHealthTracker
 import rw.itunda.core.incident.IncidentDetector
+import rw.itunda.core.reconciliation.ReconciliationService
 import kotlin.random.Random
 
 class ProviderDeclinedException(message: String) : RuntimeException(message)
@@ -69,17 +70,22 @@ interface ProviderConnector {
  * point every rail-calling flow passes through, so real incident auto-detection reacts to
  * actual failures here, not a separate/duplicated failure-counting mechanism per caller.
  * Every real attempt (success or failure) is also reported to ProviderHealthTracker
- * (2026-07-13) with its real measured latency, for the same reason.
+ * (2026-07-13) with its real measured latency, for the same reason, and persisted via
+ * ReconciliationService (2026-07-13) so it can be aggregated by rail/day after the fact --
+ * ProviderHealthTracker is in-memory and resets on restart, which is fine for a live-health
+ * view but not for a reconciliation report.
  */
 @Component
 class SimulatedProviderConnector(
     private val incidentDetector: IncidentDetector,
     private val providerHealthTracker: ProviderHealthTracker,
+    private val reconciliationService: ReconciliationService,
 ) : ProviderConnector {
     override fun attempt(rail: RailProfile, description: String) {
         if (rail.offline) {
             incidentDetector.recordFailure(rail)
             providerHealthTracker.recordAttempt(rail.id, rail.displayName, success = false, latencyMs = 0)
+            reconciliationService.logAttempt(rail, success = false, latencyMs = 0)
             throw ProviderDeclinedException("${rail.displayName} is currently offline")
         }
 
@@ -97,7 +103,9 @@ class SimulatedProviderConnector(
         val start = System.currentTimeMillis()
         Thread.sleep(rail.avgLatencyMs)
         val ok = Random.nextDouble() < rail.successRate
-        providerHealthTracker.recordAttempt(rail.id, rail.displayName, ok, System.currentTimeMillis() - start)
+        val latencyMs = System.currentTimeMillis() - start
+        providerHealthTracker.recordAttempt(rail.id, rail.displayName, ok, latencyMs)
+        reconciliationService.logAttempt(rail, ok, latencyMs)
         return ok
     }
 }

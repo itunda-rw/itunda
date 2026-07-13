@@ -376,6 +376,22 @@ doesn't appear in the list at all — no fabricated zero-row. Built from `Provid
 *measured* numbers, not a replay of the static per-rail simulation config, and will diverge from
 it over a small sample.
 
+### Reconciliation — `/api/v1/system/reconciliation` (ADMIN role only)
+
+Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s Operations/Reconciliation
+row for the full account, including why this replaced a previously false claim.
+
+| Method | Path | Query | Success | Notes |
+|---|---|---|---|---|
+| GET | `/` | `date` (optional, `YYYY-MM-DD`, defaults to today) | `{success, date, rails: [...]}` | Real per-rail totals for that day, from a real persisted attempt log |
+
+Each `rails` entry: `railId`, `displayName`, `totalAttempts`, `successCount`, `failureCount`,
+`successRate`, `avgLatencyMs` — the persisted, by-day counterpart to `/api/v1/system/rails`'s
+in-memory live view (that one resets on restart; this one doesn't — live-verified with a real
+process restart). Errors: `400 INVALID_DATE_FORMAT` for a malformed `date`. Still honestly
+one-sided: reconciles itunda's own attempt log against itself — there's no real external
+settlement file to diff it against.
+
 ### Fraud review — `/api/v1/system/fraud` (ADMIN role only)
 
 Unlike the stubs above, this one is genuinely real end to end. Built and live-verified
@@ -426,6 +442,9 @@ Grepped for directly, confirmed absent as of 2026-07-13:
   section) — no other module emits webhooks of any kind.
 
 ## What Changed Since the Last Version of This Document
+
+**2026-07-13, truly latest:** added `/api/v1/system/reconciliation` (real, live-verified,
+persisted per-rail-per-day report) — see the Reconciliation section above.
 
 **2026-07-13, latest:** added `/api/v1/actions/batch` and `/api/v1/actions/types` (real,
 live-verified offline-queue-replay endpoints) — see the Offline actions section above.
