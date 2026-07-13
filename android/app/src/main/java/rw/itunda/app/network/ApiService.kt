@@ -229,9 +229,34 @@ interface ApiService {
 
     @POST("api/v1/notifications/{id}/read")
     suspend fun markNotificationRead(@retrofit2.http.Path("id") id: String): MarkReadResponse
+
+    // Real offline-action-queue replay (2026-07-13) -- see network/OfflineActionQueue.kt.
+    @POST("api/v1/actions/batch")
+    suspend fun submitActionBatch(@Body request: BatchRequest): BatchResponse
 }
 
 data class TransactionHistoryResponse(val success: Boolean, val transactions: List<TransactionDto>)
+
+// Real offline-action-queue replay (2026-07-13) -- mirrors
+// services/backend/offline/src/main/kotlin/rw/itunda/offline/web/ActionsBatchController.kt
+// exactly. See network/OfflineActionQueue.kt for the local persisted queue this replays.
+data class BatchActionRequest(
+    val clientActionId: String,
+    val type: String,
+    val idempotencyKey: String,
+    val body: Map<String, @JvmSuppressWildcards Any?>,
+)
+
+data class BatchRequest(val actions: List<BatchActionRequest>)
+
+data class BatchActionResultDto(
+    val clientActionId: String,
+    val type: String,
+    val status: Int,
+    val body: Map<String, @JvmSuppressWildcards Any?>,
+)
+
+data class BatchResponse(val success: Boolean, val results: List<BatchActionResultDto>)
 
 // Network Client Singleton
 object NetworkClient {

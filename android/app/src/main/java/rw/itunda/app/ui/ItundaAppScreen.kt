@@ -231,6 +231,15 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                                                 isSendingTransfer = false
                                                 transferStep = null
                                             }
+                                            // sendTransfer never actually returns Queued -- a
+                                            // transfer confirm is deliberately never queued
+                                            // offline (see MainViewModel.depositToSavingsGoal's
+                                            // doc comment for why) -- handled only because
+                                            // MoneyActionResult is a shared sealed interface.
+                                            is rw.itunda.app.ui.MoneyActionResult.Queued -> {
+                                                isSendingTransfer = false
+                                                transferStep = null
+                                            }
                                             is rw.itunda.app.ui.MoneyActionResult.Failure -> {
                                                 isSendingTransfer = false
                                                 biometricError = result.message
@@ -259,6 +268,7 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
         var isSavingsSubmitting by remember { mutableStateOf(false) }
         var savingsError by remember { mutableStateOf<String?>(null) }
         val availableBalanceForSavings by viewModel.primaryWallet.collectAsState()
+        val savingsContext = androidx.compose.ui.platform.LocalContext.current
         if (savingsStep != null) {
             BackHandler { savingsFlowStep = null }
             when (savingsStep) {
@@ -275,6 +285,18 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                                 is rw.itunda.app.ui.MoneyActionResult.Success -> {
                                     isSavingsSubmitting = false
                                     savingsFlowStep = null
+                                }
+                                // Real offline queueing (2026-07-13, see
+                                // MainViewModel.depositToSavingsGoal): the deposit was
+                                // saved locally, not executed yet -- close the sheet
+                                // like a success (the user's intent was captured) but
+                                // surface the distinction via a real Toast rather than
+                                // silently treating it as identical to a completed
+                                // deposit.
+                                is rw.itunda.app.ui.MoneyActionResult.Queued -> {
+                                    isSavingsSubmitting = false
+                                    savingsFlowStep = null
+                                    android.widget.Toast.makeText(savingsContext, result.message, android.widget.Toast.LENGTH_LONG).show()
                                 }
                                 is rw.itunda.app.ui.MoneyActionResult.Failure -> {
                                     isSavingsSubmitting = false
@@ -295,6 +317,13 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                         coroutineScope.launch {
                             when (val result = viewModel.claimInterest()) {
                                 is rw.itunda.app.ui.MoneyActionResult.Success -> {
+                                    isSavingsSubmitting = false
+                                    savingsFlowStep = null
+                                }
+                                // claimInterest never actually returns Queued (only
+                                // SAVINGS_DEPOSIT is queued) -- handled only because
+                                // MoneyActionResult is a shared sealed interface.
+                                is rw.itunda.app.ui.MoneyActionResult.Queued -> {
                                     isSavingsSubmitting = false
                                     savingsFlowStep = null
                                 }

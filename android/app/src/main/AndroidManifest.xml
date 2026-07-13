@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Real connectivity-triggered offline-queue replay (2026-07-13):
+         ConnectivityManager.registerNetworkCallback requires this. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:name=".miniapps.ItundaApplication"

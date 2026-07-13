@@ -1,6 +1,7 @@
 package rw.itunda.app.ui
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,19 +14,35 @@ import rw.itunda.app.network.NetworkClient
 import rw.itunda.app.network.QuoteTransferRequest
 import rw.itunda.app.network.ConfirmTransferRequest
 import rw.itunda.app.network.DepositRequest
+import rw.itunda.app.network.BatchActionRequest
+import rw.itunda.app.network.BatchRequest
+import rw.itunda.app.network.ConnectivityObserver
+import rw.itunda.app.network.OfflineActionQueue
 import java.io.IOException
 import java.math.BigDecimal
 import java.util.UUID
 
 /** Shared outcome type for the real money-moving calls below (transfer/deposit/
  * claim) -- distinct from AuthResult (SessionManager.kt) since these carry a
- * user-facing amount/balance, not a session. */
+ * user-facing amount/balance, not a session. Queued (2026-07-13) is distinct from
+ * Success: the action wasn't actually executed yet, only durably saved locally for
+ * replay once connectivity returns -- see OfflineActionQueue.kt. */
 sealed interface MoneyActionResult {
     data class Success(val message: String) : MoneyActionResult
+    data class Queued(val message: String) : MoneyActionResult
     data class Failure(val message: String) : MoneyActionResult
 }
 
-class MainViewModel : ViewModel() {
+class MainViewModel(application: Application) : AndroidViewModel(application) {
+    // Real offline queue + connectivity signal (2026-07-13) -- see
+    // docs/TOSS_PARITY_MATRIX.md's Offline row. AndroidViewModel (not plain ViewModel)
+    // specifically so this has a real Context to construct these from, without a
+    // separate application-level singleton-holder just for that.
+    private val offlineQueue = OfflineActionQueue(application)
+    private val connectivityObserver = ConnectivityObserver(application)
+
+    private val _pendingActionCount = MutableStateFlow(offlineQueue.peekAll().size)
+    val pendingActionCount: StateFlow<Int> = _pendingActionCount
     private val _primaryWallet = MutableStateFlow<Wallet?>(null)
     val primaryWallet: StateFlow<Wallet?> = _primaryWallet
 
@@ -60,6 +77,19 @@ class MainViewModel : ViewModel() {
 
     init {
         fetchData()
+        // Real replay-on-reconnect (2026-07-13): the moment a validated network
+        // becomes available, flush anything queued while offline -- not just on the
+        // next manual pull-to-refresh. viewModelScope.launch here (not a raw
+        // coroutine) so this is cancelled automatically in onCleared() along with
+        // everything else this ViewModel owns.
+        connectivityObserver.start {
+            viewModelScope.launch { replayPendingActions() }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        connectivityObserver.stop()
     }
 
     private fun fetchData() {
@@ -75,9 +105,24 @@ class MainViewModel : ViewModel() {
                     _savingsGoals.value = savingsRes.goals
                 }
 
-                val jarRes = NetworkClient.apiService.getInterestJar()
-                if (jarRes.success) {
-                    _interestJar.value = jarRes.jar
+                // Real bug found live (2026-07-13): an account that has never made an
+                // interest-jar-eligible deposit gets a real 404 INTEREST_JAR_NOT_FOUND
+                // from the backend (confirmed directly against services/backend's
+                // SavingsController) -- a legitimate state for any new account, not a
+                // backend failure. This whole function's outer catch only handles
+                // IOException on purpose (see below), so an uncaught HttpException here
+                // was crashing the entire app on first launch for any new user, not
+                // "surfacing a real error" as intended -- a crash isn't a surfaced
+                // error, it's the absence of one. Scoped narrowly to 404 specifically;
+                // any other HTTP status still propagates to the outer catch as before.
+                try {
+                    val jarRes = NetworkClient.apiService.getInterestJar()
+                    if (jarRes.success) {
+                        _interestJar.value = jarRes.jar
+                    }
+                } catch (e: retrofit2.HttpException) {
+                    if (e.code() != 404) throw e
+                    _interestJar.value = null
                 }
 
                 val discoverRes = NetworkClient.apiService.getDiscoverItems()
@@ -180,6 +225,17 @@ class MainViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Real offline queueing (2026-07-13): on IOException (no connectivity at all --
+     * an HttpException, a real backend response, is never queued, only ever
+     * surfaced as a real Failure) the deposit intent is durably saved locally via
+     * OfflineActionQueue rather than dropped, and replayed automatically the moment
+     * ConnectivityObserver reports a real network again. Deliberately scoped to
+     * SAVINGS_DEPOSIT only, matching the backend batch endpoint's own supported
+     * action types (BILL_PAY, BUY_AIRTIME, SAVINGS_DEPOSIT) -- sendTransfer above is
+     * intentionally never queued, for the same 60-second-quote-expiry reason the
+     * backend's ActionsBatchController doesn't support a transfer action type at all.
+     */
     suspend fun depositToSavingsGoal(goalId: String, amountRwf: Long): MoneyActionResult {
         return try {
             val res = NetworkClient.apiService.depositToGoal(
@@ -191,7 +247,52 @@ class MainViewModel : ViewModel() {
         } catch (e: retrofit2.HttpException) {
             MoneyActionResult.Failure(backendErrorMessage(e))
         } catch (e: IOException) {
-            MoneyActionResult.Failure("Couldn't reach itunda. Check your connection and try again.")
+            offlineQueue.enqueue(
+                type = "SAVINGS_DEPOSIT",
+                body = mapOf("goalId" to goalId, "amount" to amountRwf),
+            )
+            _pendingActionCount.value = offlineQueue.peekAll().size
+            MoneyActionResult.Queued("Saved offline -- this deposit will go through automatically once you're back online.")
+        }
+    }
+
+    /**
+     * Real replay of everything OfflineActionQueue has saved, via the same
+     * POST /api/v1/actions/batch endpoint a mobile client is meant to call --
+     * see services/backend/offline/.../ActionsBatchController.kt. Each action
+     * carries its own already-generated idempotencyKey, so replaying the same
+     * queue twice (e.g. two connectivity blips in a row before this finishes) never
+     * double-executes an already-completed deposit -- the backend's own
+     * IdempotencyService.replayOrExecute guarantees that server-side. Only actions
+     * the backend actually accepted or definitively rejected (2xx or a real 4xx/5xx
+     * business response) are removed from the local queue; anything that couldn't
+     * even reach the backend this attempt (a transient IOException on the batch
+     * call itself) is left in place for the next reconnect.
+     */
+    suspend fun replayPendingActions() {
+        val pending = offlineQueue.peekAll()
+        if (pending.isEmpty()) return
+
+        try {
+            val response = NetworkClient.apiService.submitActionBatch(
+                BatchRequest(
+                    actions = pending.map {
+                        BatchActionRequest(
+                            clientActionId = it.clientActionId,
+                            type = it.type,
+                            idempotencyKey = it.idempotencyKey,
+                            body = it.body,
+                        )
+                    },
+                ),
+            )
+            val handledIds = response.results.map { it.clientActionId }.toSet()
+            offlineQueue.removeByClientActionIds(handledIds)
+            _pendingActionCount.value = offlineQueue.peekAll().size
+            if (handledIds.isNotEmpty()) fetchData()
+        } catch (_: IOException) {
+            // Still offline (or the reconnect was too brief) -- leave the queue
+            // intact, the next real connectivity callback will try again.
         }
     }
 
