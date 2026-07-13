@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "pages"
+    "rootDir": "."
   },
-  "include": ["pages"]
+  "include": ["pages", "app.tsx", "require.context.ts", "router.gen.ts"]
 }

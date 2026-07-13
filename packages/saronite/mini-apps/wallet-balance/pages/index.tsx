@@ -1,17 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { Button, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { createRoute } from '@granite-js/react-native';
 import { closeView, getWalletBalance, useVisibility } from '@itunda/saronite-react-native';
 import type { WalletBalanceResult } from '@itunda/saronite-react-native';
 
 /**
- * Entry page for the example mini-app — Granite's real routing convention
- * is file-based (`pages/index.tsx` = the root route); Saronite follows the
- * same convention rather than inventing its own.
+ * Entry page for the wallet-balance mini-app — Granite's real routing
+ * convention is file-based (`pages/index.tsx` = the root route); Saronite
+ * follows the same convention rather than inventing its own.
  *
  * This screen proves the bridge end-to-end: it calls the real
  * `getWalletBalance()` native method (backed by itunda's actual
  * `GET /wallet/balance`, not a mock) and renders whatever comes back,
  * including the real error path when there's no signed-in session.
+ *
+ * Migrated onto real granite (2026-07-13), same pattern pay-bills proved
+ * out first: `createRoute` registration added below, `app.tsx`/
+ * `require.context.ts`/`router.gen.ts` added alongside, `useVisibility`
+ * itself untouched -- it's itunda's own bridge hook
+ * (`@itunda/saronite-react-native`), unrelated to granite's routing layer.
  */
 export default function IndexPage() {
   const visible = useVisibility();
@@ -59,6 +66,10 @@ export default function IndexPage() {
     </SafeAreaView>
   );
 }
+
+export const Route = createRoute('/', {
+  component: IndexPage,
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, backgroundColor: '#F2F4F6' },

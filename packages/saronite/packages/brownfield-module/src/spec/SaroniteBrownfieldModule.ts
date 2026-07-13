@@ -83,6 +83,52 @@ export interface ClaimRewardResult {
   newBalance: number;
 }
 
+/** Mirrors a single plan from `GET /insurance/plans`
+ * (services/backend/insurance's InsuranceController.getPlans). */
+export interface InsurancePlan {
+  id: string;
+  name: string;
+  category: string;
+  provider: string;
+  monthlyPremium: number;
+  coverageAmount: number;
+  description: string;
+  features: string[];
+  rating: number;
+  enrolledCount: number;
+  color: string;
+}
+
+export interface InsurancePlansResult {
+  plans: InsurancePlan[];
+}
+
+/** Mirrors a single policy from `GET /insurance/my-policies`
+ * (services/backend/insurance's InsuranceController.getMyPolicies). */
+export interface InsurancePolicy {
+  id: string;
+  planId: string;
+  planName: string;
+  category: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  monthlyPremium: number;
+  nextPaymentDate: string;
+  policyNumber: string;
+}
+
+export interface MyPoliciesResult {
+  policies: InsurancePolicy[];
+}
+
+/** Mirrors the response of `POST /insurance/enroll`
+ * (services/backend/insurance's InsuranceController.enrollInPlan). */
+export interface EnrollInsuranceResult {
+  message: string;
+  policy: InsurancePolicy;
+}
+
 export interface SaroniteBrownfieldModuleConstants {
   /** The custom URL scheme the host app registered for returning to this mini-app. */
   schemeUri: string;
@@ -106,6 +152,9 @@ export interface SaroniteBrownfieldModuleSpec {
   ): Promise<PayBillResult>;
   getRewardTasks(): Promise<RewardTasksResult>;
   claimRewardTask(taskId: string): Promise<ClaimRewardResult>;
+  getInsurancePlans(): Promise<InsurancePlansResult>;
+  getMyPolicies(): Promise<MyPoliciesResult>;
+  enrollInsurance(planId: string): Promise<EnrollInsuranceResult>;
   /** Required by NativeEventEmitter on the old native-modules architecture. */
   addListener(eventName: string): void;
   removeListeners(count: number): void;

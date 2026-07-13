@@ -6,6 +6,9 @@ export {
   payBill,
   getRewardTasks,
   claimRewardTask,
+  getInsurancePlans,
+  getMyPolicies,
+  enrollInsurance,
 } from './async-bridges';
 export { getSchemeUri } from './constant-bridges';
 export { useVisibility } from './useVisibility';
@@ -18,4 +21,9 @@ export type {
   RewardTask,
   RewardTasksResult,
   ClaimRewardResult,
+  InsurancePlan,
+  InsurancePlansResult,
+  InsurancePolicy,
+  MyPoliciesResult,
+  EnrollInsuranceResult,
 } from '@itunda/saronite-brownfield-module';

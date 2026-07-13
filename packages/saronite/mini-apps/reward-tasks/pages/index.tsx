@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { createRoute } from '@granite-js/react-native';
 import { claimRewardTask, closeView, getRewardTasks } from '@itunda/saronite-react-native';
 import type { RewardTask } from '@itunda/saronite-react-native';
 
@@ -19,6 +20,10 @@ import type { RewardTask } from '@itunda/saronite-react-native';
  * `POST /rewards/claim`, including the real once-only claim guard the
  * backend enforces (a second claim attempt on an already-claimed task
  * correctly surfaces as a failure here, not a silent no-op).
+ *
+ * Migrated onto real granite (2026-07-13), same pattern pay-bills and
+ * wallet-balance proved out first: `createRoute` registration added below,
+ * `app.tsx`/`require.context.ts`/`router.gen.ts` added alongside.
  */
 export default function RewardTasksPage() {
   const [tasks, setTasks] = useState<RewardTask[] | null>(null);
@@ -99,6 +104,10 @@ export default function RewardTasksPage() {
     </SafeAreaView>
   );
 }
+
+export const Route = createRoute('/', {
+  component: RewardTasksPage,
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 24, backgroundColor: '#F2F4F6' },

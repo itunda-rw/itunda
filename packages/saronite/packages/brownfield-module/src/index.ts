@@ -14,4 +14,9 @@ export type {
   RewardTask,
   RewardTasksResult,
   ClaimRewardResult,
+  InsurancePlan,
+  InsurancePlansResult,
+  InsurancePolicy,
+  MyPoliciesResult,
+  EnrollInsuranceResult,
 } from './spec/SaroniteBrownfieldModule';

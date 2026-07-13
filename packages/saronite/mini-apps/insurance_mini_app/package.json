@@ -1,0 +1,19 @@
+{
+  "name": "saronite-miniapp-insurance",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A real mini-app for browsing insurance plans, viewing owned policies, and enrolling, modeled on the insurance/protection category of Toss's real Apps in Toss mini-app ecosystem",
+  "main": "pages/index.tsx",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@itunda/saronite-react-native": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "react": "19.2.3",
+    "react-native": "0.84.0",
+    "typescript": "^5.8.3"
+  }
+}

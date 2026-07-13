@@ -23,13 +23,21 @@ import org.junit.runner.RunWith
  * without crashing, not that its data actually loads (a real, separate concern --
  * the mini-app's own bridge calls will correctly fail with "no active session"
  * without a login, exactly as already documented elsewhere in this repo).
+ *
+ * Extended to all four mini-apps (2026-07-13) now that wallet-balance/reward-tasks/
+ * insurance all migrated onto real granite alongside pay-bills -- each one was also
+ * separately live-verified end-to-end (real data load, real writes: a reward claim
+ * and an insurance enrollment, both confirmed via direct MySQL queries afterward,
+ * not just this activity-alive check) against a real running backend, on a real
+ * emulator, per this session's own account in docs/TOSS_PARITY_MATRIX.md's Mini-app
+ * host row -- this test only covers the New-Architecture-doesn't-crash guarantee,
+ * a real but narrower claim than that full manual pass.
  */
 @RunWith(AndroidJUnit4::class)
 class MiniAppNewArchitectureTest {
 
-    @Test
-    fun payBillsMiniAppActivity_initializesUnderNewArchitectureWithoutCrashing() {
-        val scenario = ActivityScenario.launch(PayBillsMiniAppActivity::class.java)
+    private fun assertActivityAliveUnderNewArchitecture(activityClass: Class<out android.app.Activity>) {
+        val scenario = ActivityScenario.launch(activityClass)
         // Give the RN runtime (Fabric/TurboModule init under New Architecture) real
         // wall-clock time to either finish initializing or crash -- not an arbitrary
         // wait, matched to the same order of magnitude used for the on-device manual
@@ -42,5 +50,25 @@ class MiniAppNewArchitectureTest {
             )
         }
         scenario.close()
+    }
+
+    @Test
+    fun payBillsMiniAppActivity_initializesUnderNewArchitectureWithoutCrashing() {
+        assertActivityAliveUnderNewArchitecture(PayBillsMiniAppActivity::class.java)
+    }
+
+    @Test
+    fun walletBalanceMiniAppActivity_initializesUnderNewArchitectureWithoutCrashing() {
+        assertActivityAliveUnderNewArchitecture(WalletBalanceMiniAppActivity::class.java)
+    }
+
+    @Test
+    fun rewardTasksMiniAppActivity_initializesUnderNewArchitectureWithoutCrashing() {
+        assertActivityAliveUnderNewArchitecture(RewardTasksMiniAppActivity::class.java)
+    }
+
+    @Test
+    fun insuranceMiniAppActivity_initializesUnderNewArchitectureWithoutCrashing() {
+        assertActivityAliveUnderNewArchitecture(InsuranceMiniAppActivity::class.java)
     }
 }

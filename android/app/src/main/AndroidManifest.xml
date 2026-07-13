@@ -35,5 +35,9 @@
             android:name=".miniapps.RewardTasksMiniAppActivity"
             android:theme="@style/Theme.Itunda.MiniApp"
             android:exported="false" />
+        <activity
+            android:name=".miniapps.InsuranceMiniAppActivity"
+            android:theme="@style/Theme.Itunda.MiniApp"
+            android:exported="false" />
     </application>
 </manifest>

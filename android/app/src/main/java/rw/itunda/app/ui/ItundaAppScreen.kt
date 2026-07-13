@@ -851,6 +851,9 @@ private fun AllTab(onOpenSettings: () -> Unit) {
                 },
                 onRewardTasks = {
                     context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.RewardTasksMiniAppActivity::class.java))
+                },
+                onInsurance = {
+                    context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.InsuranceMiniAppActivity::class.java))
                 }
             )
         }
@@ -969,14 +972,16 @@ private fun AllTab(onOpenSettings: () -> Unit) {
 private fun MiniAppsSection(
     onWalletBalance: () -> Unit,
     onPayBills: () -> Unit,
-    onRewardTasks: () -> Unit
+    onRewardTasks: () -> Unit,
+    onInsurance: () -> Unit
 ) {
     FlatSection(
         title = "Mini apps",
         rows = listOf(
             FlatRow("Wallet balance", onClick = onWalletBalance),
             FlatRow("Pay bills", onClick = onPayBills),
-            FlatRow("Reward tasks", onClick = onRewardTasks)
+            FlatRow("Reward tasks", onClick = onRewardTasks),
+            FlatRow("Insurance", onClick = onInsurance)
         )
     )
 }

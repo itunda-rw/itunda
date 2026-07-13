@@ -5,3 +5,6 @@ export { getPendingBills } from './native-modules/natives/getPendingBills';
 export { payBill } from './native-modules/natives/payBill';
 export { getRewardTasks } from './native-modules/natives/getRewardTasks';
 export { claimRewardTask } from './native-modules/natives/claimRewardTask';
+export { getInsurancePlans } from './native-modules/natives/getInsurancePlans';
+export { getMyPolicies } from './native-modules/natives/getMyPolicies';
+export { enrollInsurance } from './native-modules/natives/enrollInsurance';

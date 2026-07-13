@@ -59,9 +59,11 @@ abstract class SaroniteMiniAppActivity : ReactActivity(), BrickModuleRegistrar {
     override fun getModuleRegistry(): BrickModuleRegistry = brickModuleRegistry
 }
 
+// All four mini-apps now register via real granite (`Granite.registerApp({ appName, ... })`
+// in each mini-app's own app.tsx, 2026-07-13) -- this `getMainComponentName()` must match that
+// `appName` exactly, same requirement as the old plain `AppRegistry.registerComponent` name it
+// replaced (granite calls that same underlying API internally, confirmed by reading its source).
 class WalletBalanceMiniAppActivity : SaroniteMiniAppActivity() {
-    // Must match the AppRegistry.registerComponent name in
-    // packages/saronite/host-app/index.js exactly.
     override fun getMainComponentName(): String = "SaroniteWalletBalance"
 }
 
@@ -71,4 +73,8 @@ class PayBillsMiniAppActivity : SaroniteMiniAppActivity() {
 
 class RewardTasksMiniAppActivity : SaroniteMiniAppActivity() {
     override fun getMainComponentName(): String = "SaroniteRewardTasks"
+}
+
+class InsuranceMiniAppActivity : SaroniteMiniAppActivity() {
+    override fun getMainComponentName(): String = "SaroniteInsurance"
 }

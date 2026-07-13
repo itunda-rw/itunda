@@ -135,6 +135,22 @@ class SaroniteBrownfieldModule(
         authorizedCall(post("api/v1/rewards/claim", body), promise, ::parseClaimRewardResult)
     }
 
+    @ReactMethod
+    fun getInsurancePlans(promise: Promise) {
+        authorizedCall(get("api/v1/insurance/plans"), promise, ::parseInsurancePlans)
+    }
+
+    @ReactMethod
+    fun getMyPolicies(promise: Promise) {
+        authorizedCall(get("api/v1/insurance/my-policies"), promise, ::parseMyPolicies)
+    }
+
+    @ReactMethod
+    fun enrollInsurance(planId: String, promise: Promise) {
+        val body = JsonObject().apply { addProperty("planId", planId) }
+        authorizedCall(post("api/v1/insurance/enroll", body), promise, ::parseEnrollInsuranceResult)
+    }
+
     private fun get(path: String): Request.Builder? {
         val token = hostBridge.getAuthToken() ?: return null
         return Request.Builder()
@@ -301,6 +317,67 @@ class SaroniteBrownfieldModule(
         result.putString("message", root.get("message")?.asString ?: "Reward claimed")
         result.putDouble("rewardAmount", root.get("rewardAmount")?.asDouble ?: 0.0)
         result.putDouble("newBalance", root.get("newBalance")?.asDouble ?: 0.0)
+        return result
+    }
+
+    // Real backend shape: services/backend/insurance's InsuranceService.insurancePlans
+    // (GET /api/v1/insurance/plans), read directly rather than guessed -- `features` is a
+    // real List<String>, `monthlyPremium`/`coverageAmount`/`enrolledCount` are real numbers.
+    private fun parseInsurancePlans(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val plans = Arguments.createArray()
+        root.getAsJsonArray("plans")?.forEach { element ->
+            val p = element.asJsonObject
+            val planMap = Arguments.createMap()
+            planMap.putString("id", p.get("id").asString)
+            planMap.putString("name", p.get("name").asString)
+            planMap.putString("category", p.get("category")?.asString ?: "")
+            planMap.putString("provider", p.get("provider")?.asString ?: "")
+            planMap.putDouble("monthlyPremium", p.get("monthlyPremium")?.asDouble ?: 0.0)
+            planMap.putDouble("coverageAmount", p.get("coverageAmount")?.asDouble ?: 0.0)
+            planMap.putString("description", p.get("description")?.asString ?: "")
+            val features = Arguments.createArray()
+            p.getAsJsonArray("features")?.forEach { f -> features.pushString(f.asString) }
+            planMap.putArray("features", features)
+            planMap.putDouble("rating", p.get("rating")?.asDouble ?: 0.0)
+            planMap.putDouble("enrolledCount", p.get("enrolledCount")?.asDouble ?: 0.0)
+            planMap.putString("color", p.get("color")?.asString ?: "")
+            plans.pushMap(planMap)
+        }
+        val result = Arguments.createMap()
+        result.putArray("plans", plans)
+        return result
+    }
+
+    private fun parsePolicy(p: JsonObject): WritableMap {
+        val policyMap = Arguments.createMap()
+        policyMap.putString("id", p.get("id").asString)
+        policyMap.putString("planId", p.get("planId")?.asString ?: "")
+        policyMap.putString("planName", p.get("planName")?.asString ?: "")
+        policyMap.putString("category", p.get("category")?.asString ?: "")
+        policyMap.putString("status", p.get("status")?.asString ?: "")
+        policyMap.putString("startDate", p.get("startDate")?.asString ?: "")
+        policyMap.putString("endDate", p.get("endDate")?.asString ?: "")
+        policyMap.putDouble("monthlyPremium", p.get("monthlyPremium")?.asDouble ?: 0.0)
+        policyMap.putString("nextPaymentDate", p.get("nextPaymentDate")?.asString ?: "")
+        policyMap.putString("policyNumber", p.get("policyNumber")?.asString ?: "")
+        return policyMap
+    }
+
+    private fun parseMyPolicies(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val policies = Arguments.createArray()
+        root.getAsJsonArray("policies")?.forEach { element -> policies.pushMap(parsePolicy(element.asJsonObject)) }
+        val result = Arguments.createMap()
+        result.putArray("policies", policies)
+        return result
+    }
+
+    private fun parseEnrollInsuranceResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val result = Arguments.createMap()
+        result.putString("message", root.get("message")?.asString ?: "Enrolled")
+        root.getAsJsonObject("policy")?.let { result.putMap("policy", parsePolicy(it)) }
         return result
     }
 
