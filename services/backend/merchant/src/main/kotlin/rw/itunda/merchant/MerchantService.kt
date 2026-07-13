@@ -102,7 +102,7 @@ class MerchantService(
     }
 
     @Transactional
-    fun collect(payerUserId: String, intentId: String): Map<String, Any?> {
+    fun collect(payerUserId: String, intentId: String, channel: String = "QR"): Map<String, Any?> {
         val intent = paymentIntentRepository.findById(intentId)
             .orElseThrow { PaymentIntentNotFoundException("Payment code not found") }
         if (intent.status != PaymentIntentStatus.PENDING) {
@@ -127,13 +127,17 @@ class MerchantService(
 
         val fee = intent.amount.multiply(feeRate).setScale(2, RoundingMode.HALF_UP)
         val netToMerchant = intent.amount.subtract(fee)
+        // channel-labeled memo/description (2026-07-13, added for Face Pay) -- keeps a
+        // real, honest audit trail of which authentication factor collected a given
+        // payment (QR scan vs Face Pay biometric match) rather than always saying "QR".
+        val channelLabel = if (channel == "FACE_PAY") "Face Pay" else "QR"
 
         val result = ledgerService.postLedgerTransaction(
             payerWallet.currency,
             listOf(
-                LedgerLeg(payerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, intent.amount, "QR payment - ${merchant.businessName}"),
-                LedgerLeg(merchantWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "QR collection - ${intent.description}"),
-                LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, fee, "QR payment fee - ${merchant.businessName}"),
+                LedgerLeg(payerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, intent.amount, "$channelLabel payment - ${merchant.businessName}"),
+                LedgerLeg(merchantWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "$channelLabel collection - ${intent.description}"),
+                LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, fee, "$channelLabel payment fee - ${merchant.businessName}"),
             ),
         )
 
@@ -161,7 +165,8 @@ class MerchantService(
             currency = payerWallet.currency,
             type = TransactionType.PAYMENT,
             status = TransactionStatus.COMPLETED,
-            description = "QR payment - ${merchant.businessName}",
+            description = "$channelLabel payment - ${merchant.businessName}",
+            channel = channel,
             completedAt = Instant.now(),
         )
         fraudRuleEngine.evaluate(payerUserId, merchant.ownerUserId, intent.amount, transaction.id)
@@ -178,6 +183,7 @@ class MerchantService(
             "amount" to intent.amount,
             "fee" to fee,
             "status" to "COMPLETED",
+            "channel" to channel,
             "completedAt" to Instant.now().toString(),
         )
         // Real webhook delivery -- no-op if the merchant never registered a URL. Called last,

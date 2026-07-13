@@ -254,6 +254,29 @@ Errors: `409 MERCHANT_ALREADY_REGISTERED`, `404 MERCHANT_NOT_FOUND`,
 `422 INSUFFICIENT_FUNDS`. No POS/card processing or B2B payroll — see
 `docs/TOSS_PARITY_MATRIX.md`'s Merchant row.
 
+## Face Pay — `/api/v1/facepay`
+
+Built and live-verified 2026-07-13, closing docs/TOSS_PARITY_MATRIX.md's Face Pay row —
+see that row for the full live-verified lifecycle account. Reuses the exact same
+`PaymentIntent`/ledger/fee/fraud flow as `POST /merchant/collect/{intentId}` (same
+`pi_...` ids from `POST /merchant/qr/generate`), differing only in the authentication
+factor: a real, on-device biometric enrollment (`NIDABiometricAuth`) instead of a QR
+scan. **Stores zero biometric data** — enrollment is a real, revocable opt-in flag, not
+a face template/image/hash.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/enroll` | — | `{success, enrollment: {...}}` | Idempotent — re-enrolling after a revoke reactivates the same row rather than creating a duplicate (`user_id` is unique) |
+| POST | `/revoke` | — | `{success, enrollment: {...}}` | `404 FACEPAY_NOT_ENROLLED` if never enrolled |
+| GET | `/status` | — | `{success, enrolled, enrollment}` | `enrollment` is `null` if never enrolled or currently revoked |
+| POST | `/collect/{intentId}` | (+ `Idempotency-Key`) | `{success, ..., channel: "FACE_PAY"}` | Requires an active enrollment (`403 FACEPAY_NOT_ENROLLED` otherwise); same ownership/expiry/self-payment/fraud checks as `/merchant/collect/{intentId}`. `Transaction.channel` is now real and populated for the first time in this backend (`"FACE_PAY"` here, `"QR"` for merchant collection) |
+
+Errors: `403 FACEPAY_NOT_ENROLLED`, `404 MERCHANT_NOT_FOUND`, `404 WALLET_NOT_FOUND`,
+`404 PAYMENT_CODE_NOT_FOUND`, `409 PAYMENT_CODE_NOT_PAYABLE`,
+`400 SELF_PAYMENT_NOT_ALLOWED`, `409 IDEMPOTENCY_KEY_CONFLICT`,
+`409 IDEMPOTENT_REQUEST_PROCESSING`, `400 IDEMPOTENCY_KEY_REQUIRED`,
+`422 INSUFFICIENT_FUNDS`, `403 WALLET_FROZEN`.
+
 ## Identity — `/api/v1/identity`
 
 Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s Compliance row for the
