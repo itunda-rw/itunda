@@ -8,17 +8,29 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
-import org.springframework.security.core.Authentication
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.repository.NotificationRepository
+import rw.itunda.core.security.CurrentUser
 import java.time.Instant
 import java.util.Optional
 
 /**
  * First test coverage for :notifications. Directly instantiates the controller with a
- * mocked repository and a mocked Authentication -- Authentication.name is exactly what
- * the JWT filter resolves the caller's userId into, no Spring context needed to
- * exercise the same logic Spring would invoke.
+ * mocked repository and a real CurrentUser -- no Spring context needed to exercise the
+ * same logic Spring would invoke.
+ *
+ * Real bug found and fixed live (2026-07-13): this controller previously took a plain
+ * `Authentication` parameter and read `auth.name` as the userId. For a non-String,
+ * non-UserDetails principal (CurrentUser, a Kotlin data class -- see
+ * JwtAuthenticationFilter), Authentication.name falls back to the principal's own
+ * toString(), something like "CurrentUser(userId=user_1, role=USER)" -- never matching
+ * any real stored userId. Confirmed live: a real notification was written to MySQL with
+ * the correct user_id, but this endpoint returned zero results for that same user. This
+ * test file's own previous version asserted the wrong premise ("Authentication.name is
+ * exactly what the JWT filter resolves the caller's userId into") and would have passed
+ * either way, since it stubbed `auth.name` directly rather than exercising a real
+ * CurrentUser principal -- fixed to use @AuthenticationPrincipal CurrentUser instead,
+ * matching every other controller in this backend.
  *
  * markAsRead has a real ownership check (n.userId == userId) before ever flipping
  * isRead -- this file exists to make sure that can't silently regress into marking
@@ -36,15 +48,14 @@ class NotificationControllerTest : BehaviorSpec({
     Given("an authenticated user with notifications") {
         val notificationRepository = mockk<NotificationRepository>()
         val controller = NotificationController(notificationRepository, objectMapper)
-        val auth = mockk<Authentication>()
-        every { auth.name } returns "user_1"
+        val currentUser = CurrentUser("user_1")
 
         When("listing notifications, some read and some not") {
             val mine = listOf(notification("n_1", "user_1", isRead = false), notification("n_2", "user_1", isRead = true))
             every { notificationRepository.findByUserIdOrderByCreatedAtDesc("user_1") } returns mine
 
             Then("it returns a real unread count, not a hardcoded one") {
-                val response = controller.getNotifications(auth)
+                val response = controller.getNotifications(currentUser)
                 @Suppress("UNCHECKED_CAST")
                 val body = response.body as Map<String, Any>
                 body["unreadCount"] shouldBe 1
@@ -61,7 +72,7 @@ class NotificationControllerTest : BehaviorSpec({
             every { notificationRepository.save(capture(saved)) } answers { saved.captured }
 
             Then("it flips isRead and saves it") {
-                controller.markAsRead("n_1", auth)
+                controller.markAsRead("n_1", currentUser)
                 saved.captured.isRead shouldBe true
             }
         }
@@ -71,7 +82,7 @@ class NotificationControllerTest : BehaviorSpec({
             every { notificationRepository.findById("n_9") } returns Optional.of(theirs)
 
             Then("it never saves -- ownership check blocks it before any write") {
-                controller.markAsRead("n_9", auth)
+                controller.markAsRead("n_9", currentUser)
                 verify(exactly = 0) { notificationRepository.save(any()) }
             }
         }
@@ -83,7 +94,7 @@ class NotificationControllerTest : BehaviorSpec({
             every { notificationRepository.saveAll(capture(saved)) } answers { saved.captured }
 
             Then("it batch-saves every unread notification as read") {
-                controller.markAsRead("all", auth)
+                controller.markAsRead("all", currentUser)
                 saved.captured.size shouldBe 2
                 saved.captured.all { it.isRead } shouldBe true
             }

@@ -24,6 +24,7 @@ import java.math.BigDecimal
 
 data class QuoteTransferRequest(val amount: BigDecimal, val recipient: String, val fromWalletId: String? = null, val description: String? = null)
 data class ConfirmTransferRequest(val quoteId: String)
+data class SetBudgetRequest(val category: String? = null, val monthlyLimit: BigDecimal)
 
 @RestController
 @RequestMapping("/api/v1/wallet")
@@ -50,6 +51,17 @@ class WalletController(private val walletService: WalletService, private val ide
         val result = walletService.getSpendingInsight(currentUser.userId)
         return ResponseEntity.ok(mapOf("success" to true, "categories" to result.categories, "totalSpent" to result.totalSpent))
     }
+
+    // Real budgeting/limits (2026-07-13) -- see WalletService.setBudget/getBudgets.
+    @PostMapping("/budgets")
+    fun setBudget(@RequestBody request: SetBudgetRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> {
+        val budget = walletService.setBudget(currentUser.userId, request.category, request.monthlyLimit)
+        return ResponseEntity.ok(mapOf("success" to true, "budget" to budget))
+    }
+
+    @GetMapping("/budgets")
+    fun getBudgets(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "budgets" to walletService.getBudgets(currentUser.userId)))
 
     @PostMapping("/transfer/quote")
     fun quoteTransfer(@RequestBody request: QuoteTransferRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> {

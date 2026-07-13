@@ -3,8 +3,9 @@ package rw.itunda.notifications.web
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.http.ResponseEntity
-import org.springframework.security.core.Authentication
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
+import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.repository.NotificationRepository
 
 @RestController
@@ -14,9 +15,18 @@ class NotificationController(
     private val objectMapper: ObjectMapper
 ) {
 
+    // Real bug found live (2026-07-13, while verifying the new budget-alert feature):
+    // this used to read `Authentication.name`, which for a non-String, non-UserDetails
+    // principal (our CurrentUser data class -- see JwtAuthenticationFilter) falls back
+    // to Kotlin's synthesized `toString()`, something like
+    // "CurrentUser(userId=user_1, role=USER)" -- never matching any real userId stored
+    // in the notifications table. Confirmed live: a real notification was written to
+    // MySQL with the correct user_id, but this endpoint returned zero results for that
+    // same user. Every other controller in this backend already uses
+    // @AuthenticationPrincipal CurrentUser; this one just hadn't been.
     @GetMapping
-    fun getNotifications(auth: Authentication): ResponseEntity<Map<String, Any>> {
-        val userId = auth.name
+    fun getNotifications(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> {
+        val userId = currentUser.userId
         val mine = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId)
         val unreadCount = mine.count { !it.isRead }
 
@@ -51,8 +61,8 @@ class NotificationController(
     }
 
     @PostMapping("/{id}/read")
-    fun markAsRead(@PathVariable id: String, auth: Authentication): ResponseEntity<Map<String, Any>> {
-        val userId = auth.name
+    fun markAsRead(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> {
+        val userId = currentUser.userId
         if (id == "all") {
             val unread = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId).filter { !it.isRead }
             unread.forEach { it.isRead = true }

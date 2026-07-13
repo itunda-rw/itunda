@@ -113,14 +113,16 @@ a real request past its `expiresAt` gets marked `EXPIRED` on the attempt, not si
 | GET | `/{id}` | — | `{success, wallet: {...}}` | |
 | GET | `/transactions` | — | `{success, transactions: [...]}` | Real transaction history, backs the transaction-history screen on both mobile platforms |
 | GET | `/spending` | — | `{success, categories: [...], totalSpent}` | Built and live-verified 2026-07-13. Categorizes by looking up each wallet debit's real ledger counterpart, not the `transactions` table (only P2P transfers ever write a row there). `categories`: `[{name, amount}]`, largest first |
+| POST | `/budgets` | `{category?, monthlyLimit}` | `{success, budget: {...}}` | Built and live-verified 2026-07-13. `category` null means an overall budget; otherwise must match a real `/spending` category name. Upserts the current real calendar month's budget |
+| GET | `/budgets` | — | `{success, budgets: [...]}` | Each entry: `{category, monthlyLimit, spent, remaining, percentUsed, status: "UNDER"\|"NEAR"\|"OVER"}`, `spent` computed live against `/spending`'s real categorization. Crossing 80%/100% writes a real `BUDGET_NEAR`/`BUDGET_OVER` notification (see `## Notifications` above), once per threshold per month |
 | POST | `/transfer/quote` | `{amount, recipient, fromWalletId?, description?}` | `{success, quote: {...}}` | Quote expires after 60 seconds |
-| POST | `/transfer/confirm` | `{quoteId}` (+ `Idempotency-Key`) | `{success, message, transaction, newBalance}` | Requires the quote from `/transfer/quote`; posts through the double-entry ledger |
+| POST | `/transfer/confirm` | `{quoteId}` (+ `Idempotency-Key`) | `{success, message, transaction, newBalance}` | Requires the quote from `/transfer/quote`; posts through the double-entry ledger. Real per-rail routing as of 2026-07-13 — `recipient`'s phone prefix (078 → MTN, 072/073 → Airtel, per RURA's numbering plan) resolves the real rail instead of always falling through to `generic` |
 
 Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
 `400 IDEMPOTENCY_KEY_REQUIRED`, `404 WALLET_NOT_FOUND`, `403 WALLET_NOT_OWNED`,
 `404 QUOTE_NOT_FOUND`, `409 QUOTE_EXPIRED`, `409 QUOTE_ALREADY_USED`,
-`422 INSUFFICIENT_FUNDS`, `502 PROVIDER_DECLINED` (the simulated provider connector declined
-the rail), `400 INVALID_REQUEST`.
+`422 INSUFFICIENT_FUNDS`, `403 WALLET_FROZEN` (see `## Support` below), `502 PROVIDER_DECLINED`
+(the simulated provider connector declined the rail), `400 INVALID_REQUEST`.
 
 ## Bills — `/api/v1/bills`
 
@@ -302,8 +304,12 @@ transfer" is honor-system today, not verified against the caller's actual transa
 
 | Method | Path | Body | Success | Notes |
 |---|---|---|---|---|
-| GET | `` | — | `{success, notifications: [...]}` | |
-| POST | `/{id}/read` | — | `{success, ...}` | |
+| GET | `` | — | `{success, notifications: [...], unreadCount}` | Real bug fixed 2026-07-13: previously read `Authentication.name` as the userId, which silently resolved to the stringified `CurrentUser` object rather than the real id, so this always returned zero results regardless of how many notifications actually existed for the caller — fixed to `@AuthenticationPrincipal CurrentUser`, matching every other controller |
+| POST | `/{id}/read` | — | `{success}` | `id` may be `"all"`. Real ownership check — a notification only flips to read if it belongs to the caller |
+
+As of 2026-07-13, real budget-threshold alerts (`BUDGET_NEAR`/`BUDGET_OVER`, see `## Wallet`
+below) are the only thing in this backend that actually writes to this table outside of demo
+seed data.
 
 ## Discover — `/api/v1/discover`
 

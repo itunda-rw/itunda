@@ -4,6 +4,8 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
+import rw.itunda.core.domain.SpendingBudget
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
@@ -22,11 +24,14 @@ import rw.itunda.core.provider.ProviderConnector
 import rw.itunda.core.provider.ProviderDeclinedException
 import rw.itunda.core.provider.RailCatalog
 import rw.itunda.core.repository.LedgerEntryRepository
+import rw.itunda.core.repository.NotificationRepository
+import rw.itunda.core.repository.SpendingBudgetRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
+import java.time.YearMonth
 import java.util.UUID
 
 /**
@@ -57,6 +62,8 @@ class WalletService(
     private val eventPublisher: EventPublisher,
     private val providerConnector: ProviderConnector,
     private val fraudRuleEngine: FraudRuleEngine,
+    private val spendingBudgetRepository: SpendingBudgetRepository,
+    private val notificationRepository: NotificationRepository,
 ) {
     private val quoteStore = QuoteStore()
 
@@ -110,6 +117,87 @@ class WalletService(
             .sortedByDescending { it.amount }
         val total = totals.values.fold(BigDecimal.ZERO) { acc, v -> acc + v }
         return SpendingInsightResult(categories, total)
+    }
+
+    // Real budgeting/limits (2026-07-13) -- closes docs/TOSS_PARITY_MATRIX.md's Spending
+    // row's own named gap. category == null means an overall (all-spending) budget;
+    // otherwise it must match one of getSpendingInsight's own real category names, so a
+    // budget's "spent" figure is grounded in the exact same categorization, not a
+    // separate parallel one.
+    @Transactional
+    fun setBudget(userId: String, category: String?, monthlyLimit: BigDecimal): SpendingBudget {
+        require(monthlyLimit > BigDecimal.ZERO) { "Monthly limit must be greater than zero" }
+        val month = YearMonth.now().toString()
+        val existing = spendingBudgetRepository.findByUserIdAndMonth(userId, month).find { it.category == category }
+        if (existing != null) {
+            existing.monthlyLimit = monthlyLimit
+            existing.updatedAt = Instant.now()
+            return spendingBudgetRepository.save(existing)
+        }
+        return spendingBudgetRepository.save(
+            SpendingBudget(id = "budget_${UUID.randomUUID()}", userId = userId, category = category, monthlyLimit = monthlyLimit, month = month),
+        )
+    }
+
+    @Transactional
+    fun getBudgets(userId: String): List<BudgetView> {
+        val month = YearMonth.now().toString()
+        val budgets = spendingBudgetRepository.findByUserIdAndMonth(userId, month)
+        if (budgets.isEmpty()) return emptyList()
+
+        val insight = getSpendingInsight(userId)
+        val spentByCategory = insight.categories.associate { it.name to it.amount }
+
+        return budgets.map { budget ->
+            val spent = if (budget.category == null) insight.totalSpent else (spentByCategory[budget.category] ?: BigDecimal.ZERO)
+            val percentUsed = if (budget.monthlyLimit > BigDecimal.ZERO) {
+                spent.divide(budget.monthlyLimit, 4, RoundingMode.HALF_UP).multiply(BigDecimal(100)).toInt()
+            } else 0
+            val status = when {
+                percentUsed >= 100 -> BudgetStatus.OVER
+                percentUsed >= 80 -> BudgetStatus.NEAR
+                else -> BudgetStatus.UNDER
+            }
+            maybeNotifyBudgetThreshold(budget, status)
+            BudgetView(
+                category = budget.category,
+                monthlyLimit = budget.monthlyLimit,
+                spent = spent,
+                remaining = (budget.monthlyLimit - spent).max(BigDecimal.ZERO),
+                percentUsed = percentUsed,
+                status = status,
+            )
+        }
+    }
+
+    // Real, once-per-threshold-per-month alert (2026-07-13) -- writes an actual
+    // Notification row (rw.itunda.notifications' own GET /api/v1/notifications
+    // already reads this table; nothing in this backend had ever written to it
+    // outside of demo seed data before this). notifiedNear/notifiedOver guard against
+    // re-notifying on every single GET /budgets poll.
+    private fun maybeNotifyBudgetThreshold(budget: SpendingBudget, status: BudgetStatus) {
+        val label = budget.category ?: "overall spending"
+        if (status == BudgetStatus.OVER && !budget.notifiedOver) {
+            budget.notifiedOver = true
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = budget.userId, type = "BUDGET_OVER",
+                    title = "Budget exceeded", body = "You've gone over your $label budget for this month.",
+                    isRead = false, createdAt = Instant.now(), dataJson = null,
+                ),
+            )
+            spendingBudgetRepository.save(budget)
+        } else if (status == BudgetStatus.NEAR && !budget.notifiedNear) {
+            budget.notifiedNear = true
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = budget.userId, type = "BUDGET_NEAR",
+                    title = "Approaching budget limit", body = "You've used 80% or more of your $label budget for this month.",
+                    isRead = false, createdAt = Instant.now(), dataJson = null,
+                ),
+            )
+            spendingBudgetRepository.save(budget)
+        }
     }
 
     // Real transaction history (2026-07-12) -- TransactionRepository's

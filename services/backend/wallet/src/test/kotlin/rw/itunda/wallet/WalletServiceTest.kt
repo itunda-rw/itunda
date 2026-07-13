@@ -9,6 +9,7 @@ import io.mockk.verify
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.LedgerEntry
+import rw.itunda.core.domain.SpendingBudget
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.events.EventPublisher
@@ -19,9 +20,12 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.provider.ProviderConnector
 import rw.itunda.core.provider.ProviderDeclinedException
 import rw.itunda.core.repository.LedgerEntryRepository
+import rw.itunda.core.repository.NotificationRepository
+import rw.itunda.core.repository.SpendingBudgetRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
+import java.time.YearMonth
 import java.util.Optional
 
 /**
@@ -52,7 +56,9 @@ class WalletServiceTest : BehaviorSpec({
         // When since relaxed already defaults to a no-op success.
         val providerConnector = mockk<ProviderConnector>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine)
+        val spendingBudgetRepository = mockk<SpendingBudgetRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, spendingBudgetRepository, notificationRepository)
 
         val senderWallet = wallet("wallet_1", "user_1", "10000")
 
@@ -181,7 +187,9 @@ class WalletServiceTest : BehaviorSpec({
         val eventPublisher = mockk<EventPublisher>(relaxed = true)
         val providerConnector = mockk<ProviderConnector>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine)
+        val spendingBudgetRepository = mockk<SpendingBudgetRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, spendingBudgetRepository, notificationRepository)
 
         fun entry(id: String, txnId: String, accountId: String, accountType: LedgerAccountType, direction: LedgerDirection, amount: String, memo: String = "test") = LedgerEntry(
             id = id, transactionId = txnId, accountId = accountId, accountType = accountType, direction = direction,
@@ -229,6 +237,41 @@ class WalletServiceTest : BehaviorSpec({
             }
             Then("the largest category comes first") {
                 result.categories.first().name shouldBe "Transfers"
+            }
+        }
+
+        When("a 1000 RWF Bills budget is checked against 500 actually spent on Bills") {
+            val budget = SpendingBudget(id = "budget_1", userId = "user_9", category = "Bills", monthlyLimit = BigDecimal("1000"), month = YearMonth.now().toString())
+            every { spendingBudgetRepository.findByUserIdAndMonth("user_9", any()) } returns listOf(budget)
+            every { spendingBudgetRepository.save(any()) } answers { firstArg() }
+
+            val budgets = service.getBudgets("user_9")
+
+            Then("it reports the real spent amount, 50% used, and UNDER status") {
+                budgets.size shouldBe 1
+                budgets[0].spent shouldBe BigDecimal("500")
+                budgets[0].percentUsed shouldBe 50
+                budgets[0].status shouldBe rw.itunda.wallet.BudgetStatus.UNDER
+            }
+            Then("no notification is written -- under threshold") {
+                verify(exactly = 0) { notificationRepository.save(any()) }
+            }
+        }
+
+        When("an overall 3500 RWF budget is checked against the real 4000 RWF actually spent") {
+            val budget = SpendingBudget(id = "budget_2", userId = "user_9", category = null, monthlyLimit = BigDecimal("3500"), month = YearMonth.now().toString())
+            every { spendingBudgetRepository.findByUserIdAndMonth("user_9", any()) } returns listOf(budget)
+            every { spendingBudgetRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
+
+            val budgets = service.getBudgets("user_9")
+
+            Then("it correctly reports OVER status against the real total spend") {
+                budgets[0].spent shouldBe BigDecimal("4000")
+                budgets[0].status shouldBe rw.itunda.wallet.BudgetStatus.OVER
+            }
+            Then("it writes one real over-budget notification, not a duplicate") {
+                verify(exactly = 1) { notificationRepository.save(any()) }
             }
         }
     }
