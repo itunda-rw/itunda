@@ -47,6 +47,16 @@ There is no separate "payment" entity with its own lifecycle (`READY`/`IN_PROGRE
 endpoint for merchant collections specifically (general wallet-transfer refunds exist per
 `docs/TOSS_PARITY_MATRIX.md`'s customer-support-workflow gate, but nothing merchant-specific).
 
+4. `POST /api/v1/merchant/webhook-url` + real webhook delivery on collection — a real
+   `PAYMENT_STATUS_CHANGED` event, matching Toss's own documented shape below. **Real
+   persistent retry built 2026-07-13**, matching Toss's actual documented schedule exactly
+   (not an approximation): up to 7 attempts, intervals 1, 4, 16, 64, 256, 1024, 4096 minutes
+   (each 4× the last), a ~2.8-day retry window, backed by a real `webhook_deliveries` table
+   and `WebhookRetryScheduler` (`@Scheduled` poll, same durable-outbox pattern as
+   `OutboxRelay`) so a multi-hour retry window survives a process restart — live-verified
+   including an actual mid-window restart. See `docs/TOSS_PARITY_MATRIX.md`'s Merchant row
+   for the full live-verified account.
+
 ## What real Toss Payments does (sourced reference, not a description of itunda)
 
 Kept for reference since it's accurate, sourced research and a real target shape to converge
@@ -76,11 +86,10 @@ If a future pass decides to converge itunda's merchant payments onto Toss's actu
 contract (hosted checkout, `confirm`/`cancel` lifecycle, `PAYMENT_STATUS_CHANGED` webhooks)
 rather than the current QR-collect model, that is a real, substantial rebuild — not a rename
 of the existing endpoints. It would need: a `Payment` entity with the real status enum, a
-payer-authorization step separate from merchant collection, a webhook delivery mechanism with
-persistent retry (an in-memory retry loop can't survive a process restart — the previous,
-now-deleted Express version's 3-attempt linear backoff was itself an acknowledged shortcut,
-not a real implementation of Toss's 7-attempt/4096-minute scheme), and a real hosted-checkout
-page. None of this is started in `services/backend`.
+payer-authorization step separate from merchant collection, and a real hosted-checkout page.
+(Webhook delivery with real persistent retry, matching Toss's actual 7-attempt/4096-minute
+scheme, is no longer part of this gap — see item 4 above, built 2026-07-13.) None of the rest
+is started in `services/backend`.
 
 ## Not done, and why
 
@@ -92,11 +101,9 @@ page. None of this is started in `services/backend`.
 - **No merchant self-signup or dashboard UI.** Registration is a bare API call
   (`POST /api/v1/merchant/register`) with no KYB check; there is no web page for a merchant to
   view transactions, rotate credentials, or configure anything.
-- **No webhooks at all.** Not "webhooks with reduced retry count" (as the pre-2026-07-13
-  version of this document claimed about the now-deleted Express implementation) — there is
-  no webhook mechanism anywhere in `services/backend` today. See
-  `docs/API_SPECIFICATION.md`'s "what does not exist" section.
-- **No refund/cancel path specific to merchant collections.**
+- **No refund/cancel path specific to merchant collections.** (Webhooks themselves, including
+  real persistent retry matching Toss's documented schedule, are real as of 2026-07-13 — see
+  item 4 above. This bullet is scoped narrowly to what's still missing.)
 
 Sources for the Toss-facts section above: [Toss Payments API
 keys](https://docs.tosspayments.com/reference/using-api/api-keys), [Payment APIs

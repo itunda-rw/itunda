@@ -243,7 +243,7 @@ Errors: `404 CLAIM_NOT_FOUND`, `409 CLAIM_NOT_PENDING` (already decided), `404 W
 | GET | `/me` | — | `{success, merchant: {...}}` | |
 | POST | `/webhook-url` | `{webhookUrl}` | `{success, merchant: {...}}` | Built and live-verified 2026-07-13. Registers the URL `collect` delivers `PAYMENT_STATUS_CHANGED` events to |
 | POST | `/qr/generate` | `{amount, description}` | `{success, paymentIntent: {...}}` | |
-| POST | `/collect/{intentId}` | (+ `Idempotency-Key`) | `{success, ...}` | Ownership-checked, ledger-backed, real 1.5% fee split. On success, if the merchant has a `webhookUrl`, delivers a real `PAYMENT_STATUS_CHANGED` HTTP POST (Toss Payments' documented shape) — single-attempt, failure never blocks or rolls back the payment, see `docs/TOSS_PARITY_MATRIX.md`'s Merchant row |
+| POST | `/collect/{intentId}` | (+ `Idempotency-Key`) | `{success, ...}` | Ownership-checked, ledger-backed, real 1.5% fee split. On success, if the merchant has a `webhookUrl`, delivers a real `PAYMENT_STATUS_CHANGED` HTTP POST (Toss Payments' documented shape). Real persistent retry as of 2026-07-13 (7 attempts, 1/4/16/64/256/1024/4096-minute schedule, matching Toss's own documented retry policy exactly) — failure never blocks or rolls back the payment, see `docs/TOSS_PARITY_MATRIX.md`'s Merchant row |
 
 Errors: `409 MERCHANT_ALREADY_REGISTERED`, `404 MERCHANT_NOT_FOUND`,
 `404 WALLET_NOT_FOUND`, `404 PAYMENT_CODE_NOT_FOUND`, `409 PAYMENT_CODE_NOT_PAYABLE`,
