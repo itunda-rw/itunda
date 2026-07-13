@@ -1,0 +1,84 @@
+package rw.itunda.core.domain
+
+import jakarta.persistence.Column
+import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
+import jakarta.persistence.Id
+import jakarta.persistence.Table
+import java.time.Instant
+
+enum class SupportTicketCategory { GENERAL, PAYMENT_DISPUTE, ACCOUNT_TAKEOVER }
+enum class SupportTicketStatus { OPEN, RESOLVED }
+enum class SupportTicketResolution { REFUNDED, REJECTED }
+
+/**
+ * Real customer support ticket, tied to a specific transaction -- closes a false claim
+ * this repo's own docs/TOSS_PARITY_MATRIX.md "Non-Negotiable Gates" section made
+ * (corrected 2026-07-13): it described "real ticket creation/listing... and a real
+ * refund action" as an already-met gate, but a repo-wide grep found no support/ticket
+ * module anywhere in services/backend. This is that real implementation.
+ *
+ * `dueBy` is a real, itunda-defined SLA -- Toss's own public documentation does not
+ * publish an exact numeric customer-support SLA to source, so this is itunda's own
+ * policy (tighter for ACCOUNT_TAKEOVER, reflecting real urgency prioritization), not a
+ * claimed Toss number. See [rw.itunda.core.support.SupportService] for the exact
+ * per-category values.
+ */
+@Entity
+@Table(name = "support_tickets")
+class SupportTicket(
+    @Id
+    @Column(length = 64)
+    val id: String,
+
+    @Column(name = "user_id", nullable = false, length = 64)
+    val userId: String,
+
+    @Column(name = "transaction_id", nullable = false, length = 64)
+    val transactionId: String,
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 24)
+    val category: SupportTicketCategory,
+
+    @Column(nullable = false, columnDefinition = "TEXT")
+    val description: String,
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    var status: SupportTicketStatus = SupportTicketStatus.OPEN,
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 16)
+    var resolution: SupportTicketResolution? = null,
+
+    @Column(name = "resolution_notes", columnDefinition = "TEXT")
+    var resolutionNotes: String? = null,
+
+    @Column(name = "refund_transaction_id", length = 64)
+    var refundTransactionId: String? = null,
+
+    // Set true when this ticket's category caused the transaction's source wallet to be
+    // frozen (Wallet.isActive = false) as the real account-takeover response; resolve()
+    // unfreezes it regardless of decision, since a ticket is always the end of the review.
+    @Column(name = "froze_wallet_id", length = 64)
+    var frozeWalletId: String? = null,
+
+    @Column(name = "due_by", nullable = false)
+    val dueBy: Instant,
+
+    @Column(name = "reviewed_by", length = 64)
+    var reviewedBy: String? = null,
+
+    @Column(name = "created_at", nullable = false)
+    val createdAt: Instant = Instant.now(),
+
+    @Column(name = "resolved_at")
+    var resolvedAt: Instant? = null,
+) {
+    protected constructor() : this(
+        id = "", userId = "", transactionId = "", category = SupportTicketCategory.GENERAL,
+        description = "", dueBy = Instant.now(),
+    )
+}

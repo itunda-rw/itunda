@@ -70,6 +70,19 @@ class LedgerService(
         for (leg in legs) {
             if (leg.accountType == LedgerAccountType.WALLET && leg.direction == LedgerDirection.DEBIT) {
                 val wallet = lockedWallets.getValue(leg.accountId)
+                // Real enforcement of Wallet.isActive (2026-07-13) -- this field existed
+                // on the entity already but was never read anywhere in the codebase
+                // (confirmed by a repo-wide grep), making it purely cosmetic. Enforced
+                // here, the single choke point every money-moving flow already passes
+                // through, so freezing a wallet (SupportService's real account-takeover
+                // response) actually blocks every outgoing debit system-wide rather than
+                // only whichever specific endpoint happened to check it. Incoming
+                // credits are still allowed -- a frozen account can still receive a
+                // refund or an incoming transfer while under review, matching how real
+                // account-freeze responses work.
+                if (!wallet.isActive) {
+                    throw WalletFrozenException("Wallet ${leg.accountId} is frozen pending review")
+                }
                 if (wallet.availableBalance < leg.amount) {
                     throw InsufficientFundsException("Insufficient available balance in ${leg.accountId}")
                 }

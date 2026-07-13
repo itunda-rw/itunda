@@ -323,6 +323,22 @@ No auth required on either route (no `@AuthenticationPrincipal` in the controlle
 
 Errors: `400 INVALID_REQUEST`.
 
+## Support — `/api/v1/support`
+
+Built and live-verified 2026-07-13, closing a false "real" claim
+`docs/TOSS_PARITY_MATRIX.md`'s Non-Negotiable Gates section previously made about this exact
+workflow with nothing actually built — see that section's Customer support entry for the full
+account, and `### Support review` above for the ADMIN-gated queue/resolve endpoints.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/tickets` | `{transactionId, category: "GENERAL" \| "PAYMENT_DISPUTE" \| "ACCOUNT_TAKEOVER", description}` | `{success, ticket}` | Ownership-checked — the transaction must involve the caller as sender or recipient. `ACCOUNT_TAKEOVER` real-freezes the caller's own wallet from that transaction (`Wallet.isActive = false`, genuinely enforced in `LedgerService`, not cosmetic) until a reviewer resolves the ticket |
+| GET | `/tickets` | — | `{success, tickets: [...]}` | Caller's own tickets, newest first |
+
+Real itunda-defined SLA (not a sourced Toss number — Toss doesn't publish one): 4 hours for
+`ACCOUNT_TAKEOVER`, 48 hours for `PAYMENT_DISPUTE`, 72 hours for `GENERAL`. Errors:
+`404 TRANSACTION_NOT_FOUND`, `403 TRANSACTION_NOT_OWNED`.
+
 ## Offline actions — `/api/v1/actions`
 
 Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s Offline row for the full
@@ -402,11 +418,26 @@ Unlike the stubs above, this one is genuinely real end to end. Built and live-ve
 | GET | `/queue` | — | `{success, queue: [...]}` | All unreviewed flags, oldest first |
 | POST | `/{flagId}/decide` | `{decision: "CLEARED" \| "CONFIRMED"}` | `{success, flag}` | Blocks re-deciding an already-reviewed flag |
 
-Flags are raised by `FraudRuleEngine` (lives in `:core`, currently only called from the P2P
-payment flow) and never block a transaction — review-only by design. Rules: `HIGH_VALUE`
-(≥100,000 RWF), `VELOCITY` (3+ outgoing transactions in 5 minutes), `NEW_RECIPIENT` (first-ever
-payment to that recipient). Errors: `404 FRAUD_FLAG_NOT_FOUND`,
-`409 FRAUD_FLAG_ALREADY_REVIEWED`.
+Flags are raised by `FraudRuleEngine` (lives in `:core`, called from P2P, wallet transfer, and
+merchant collection as of 2026-07-13 — every real money-moving flow in this backend except
+bills/loans/stocks/savings/insurance, which don't move money between two itunda users) and
+never block a transaction — review-only by design. Rules: `HIGH_VALUE` (≥100,000 RWF),
+`VELOCITY` (3+ outgoing transactions in 5 minutes), `NEW_RECIPIENT` (first-ever payment to that
+recipient). Errors: `404 FRAUD_FLAG_NOT_FOUND`, `409 FRAUD_FLAG_ALREADY_REVIEWED`.
+
+### Support review — `/api/v1/system/support` (ADMIN role only)
+
+Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s Non-Negotiable Gates
+"Customer support workflow" entry for the full account. See `## Support` below for the
+user-facing ticket-creation/listing endpoints this queue reviews.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/queue` | — | `{success, queue: [...]}` | Open tickets, overdue-first then soonest-due-first |
+| POST | `/{ticketId}/resolve` | `{resolution: "REFUNDED" \| "REJECTED", notes?}` | `{success, ticket}` | `REFUNDED` posts a real reversing ledger transaction (every original leg flipped, same accounts and amounts); either decision unfreezes a wallet the ticket froze. Blocks re-resolving |
+
+Errors: `404 SUPPORT_TICKET_NOT_FOUND`, `409 SUPPORT_TICKET_ALREADY_RESOLVED`,
+`422 REFUND_SOURCE_TRANSACTION_MISSING`.
 
 ### Incidents — `/api/v1/system/incidents` (ADMIN role only)
 

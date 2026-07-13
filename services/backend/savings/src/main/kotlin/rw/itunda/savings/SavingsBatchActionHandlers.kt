@@ -9,6 +9,7 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.ledger.InsufficientFundsException
+import rw.itunda.core.ledger.WalletFrozenException
 
 @Component
 class SavingsDepositBatchActionHandler(
@@ -33,6 +34,7 @@ class SavingsDepositBatchActionHandler(
             is NoWalletException -> 404 to mapOf("success" to false, "error" to mapOf("code" to "WALLET_NOT_FOUND", "message" to e.message))
             is WalletNotOwnedException -> 403 to mapOf("success" to false, "error" to mapOf("code" to "WALLET_NOT_OWNED", "message" to e.message))
             is InsufficientFundsException -> 422 to mapOf("success" to false, "error" to mapOf("code" to "INSUFFICIENT_FUNDS", "message" to e.message))
+            is WalletFrozenException -> 403 to mapOf("success" to false, "error" to mapOf("code" to "WALLET_FROZEN", "message" to e.message))
             is IllegalArgumentException -> 400 to mapOf("success" to false, "error" to mapOf("code" to "INVALID_ACTION_BODY", "message" to e.message))
             else -> throw e
         }

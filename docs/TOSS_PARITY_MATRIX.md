@@ -93,11 +93,37 @@ than any single feature row.
   approving a self-reported document number with no government database to check it against.
   A real NIDA/vendor integration remains blocked on regulatory/vendor access, same as before —
   that part of this gate didn't change, only the workflow surrounding it.
-- **Customer support workflow — real.** Real ticket creation/listing tied to a specific
-  transaction, and a real refund action that reverses the exact original ledger legs (same
-  accounts, flipped direction, including the fee) rather than a synthetic adjustment. Missing:
-  account-takeover-specific flow, an ops-side ticket queue UI, and a formal SLA/escalation
-  policy.
+- **Customer support workflow — real.** Corrected 2026-07-13: this gate previously claimed to
+  already be met, describing exactly the workflow below — but a repo-wide grep found no
+  support/ticket module anywhere in `services/backend` at the time; nothing had actually been
+  built. Built and live-verified same day (new `support` module + `SupportService` in `:core`,
+  same split as `FraudRuleEngine`): `POST /api/v1/support/tickets` (ownership-checked — a
+  transaction must actually involve the caller as sender or recipient, confirmed live: a
+  stranger real-403s), `GET /api/v1/support/tickets`; ADMIN-gated `GET
+  /api/v1/system/support/queue` (overdue-first, the real "escalation" half of a real
+  itunda-defined SLA policy — 4h for `ACCOUNT_TAKEOVER`, 48h for `PAYMENT_DISPUTE`, 72h for
+  `GENERAL`; not a sourced Toss number, Toss doesn't publish one, itunda's own honest policy)
+  and `POST /api/v1/system/support/{id}/decide` with a real `REFUNDED` action that reverses the
+  exact original ledger legs (same accounts, flipped direction, including the fee — a genuine
+  reversing entry, not a synthetic adjustment) or a `REJECTED` action with no money movement;
+  re-deciding an already-resolved ticket real-409s. **Real account-takeover-specific flow**:
+  filing an `ACCOUNT_TAKEOVER` ticket freezes the reporting user's own wallet from that
+  transaction (`Wallet.isActive = false`) — and this is now genuinely enforced, not cosmetic:
+  found live that `Wallet.isActive` existed on the entity already but was never read anywhere
+  in the codebase, so freezing was a no-op field flip until `LedgerService.postLedgerTransaction`
+  (the one choke point every money-moving flow passes through) was given a real check that
+  rejects any debit from a frozen wallet — confirmed live with a real transfer attempt against
+  a frozen wallet, which correctly failed. That live test also caught a real bug: the new
+  `WalletFrozenException` wasn't handled by any of the eight controllers whose flows can now
+  throw it, so it escaped as a raw `500` instead of a proper `403 WALLET_FROZEN` — fixed in all
+  eight (`loans`, `savings` + its batch handler, `stocks`, `bills` + its batch handler, `p2p`,
+  `wallet`, `insurance`, `merchant`) and re-verified live. Resolving a ticket (either decision)
+  always unfreezes the wallet — verified live end-to-end: froze wallet_1, confirmed a transfer
+  from it real-403s, admin-refunded the ticket, confirmed the balance moved by the exact
+  reversed amount and the wallet was active again, then confirmed a normal transfer from it
+  succeeded again. Still missing: no dedicated ops-side queue UI beyond the raw JSON endpoint
+  (same as every other ADMIN-gated queue in this backend — fraud, compliance, incidents,
+  reconciliation).
 - **Daily settlement and reconciliation — real, one-sided.** See the Reconciliation row above —
   computed from itunda's own real provider-attempt log, not yet diffed against an external
   settlement file (there isn't one to diff against without a real provider relationship).
@@ -109,6 +135,18 @@ than any single feature row.
   permission system across every endpoint.
 
 ## What Changed Since the Last Version of This Document
+
+**2026-07-13, newest:** The Customer support workflow gate moved from a false "real" claim
+(nothing built) to actually real — new `support` module, real ticket creation/listing,
+ADMIN-gated review queue with a real SLA/escalation policy, a real refund action that reverses
+the exact original ledger legs, and a real account-takeover flow that genuinely freezes a
+wallet (closing a separate, real gap found along the way: `Wallet.isActive` existed but was
+never enforced anywhere). See the Non-Negotiable Gates section's Customer support entry for
+the full live-verified account, including a real bug (`WalletFrozenException` uncaught in
+eight controllers) found and fixed during that verification. Also: fraud detection extended
+from P2P-only to itunda's other two real money-moving paths (wallet transfer, merchant
+collection), and merchant webhooks got real persistent retry matching Toss's actual documented
+schedule — see the Operations/Fraud and Merchant rows respectively.
 
 **2026-07-13, genuinely final:** Offline moved once more — `real (backend + Android) / target (iOS)`
 -> `real (backend + Android + iOS)`. The iOS client (queue + `NWPathMonitor` + a periodic retry

@@ -20,5 +20,6 @@ include(
     ":overview",
     ":p2p",
     ":offline",
+    ":support",
     ":app"
 )

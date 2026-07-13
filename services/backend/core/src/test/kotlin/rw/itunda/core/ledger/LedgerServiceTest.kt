@@ -103,6 +103,52 @@ class LedgerServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("a frozen wallet (isActive = false), same as SupportService's real account-takeover response") {
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerAccountRepository = mockk<LedgerAccountRepository>()
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        val eventPublisher = mockk<EventPublisher>(relaxed = true)
+        val service = LedgerService(walletRepository, ledgerAccountRepository, ledgerEntryRepository, eventPublisher)
+
+        val frozenWallet = wallet("wallet_frozen", "1000").apply { isActive = false }
+        val feeAccount = LedgerAccount(id = "fee_revenue", name = "Fee Revenue")
+
+        every { walletRepository.findByIdForUpdate("wallet_frozen") } returns Optional.of(frozenWallet)
+        every { ledgerAccountRepository.findByIdForUpdate("fee_revenue") } returns Optional.of(feeAccount)
+        every { ledgerEntryRepository.saveAll(any<List<rw.itunda.core.domain.LedgerEntry>>()) } answers { firstArg() }
+
+        When("attempting to debit it") {
+            Then("it throws WalletFrozenException before touching any balance") {
+                try {
+                    service.postLedgerTransaction(
+                        "RWF",
+                        listOf(
+                            LedgerLeg("wallet_frozen", LedgerAccountType.WALLET, LedgerDirection.DEBIT, BigDecimal("100"), "debit"),
+                            LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, BigDecimal("100"), "credit"),
+                        ),
+                    )
+                    error("expected WalletFrozenException")
+                } catch (e: WalletFrozenException) {
+                    frozenWallet.balance shouldBe BigDecimal("1000")
+                }
+            }
+        }
+
+        When("crediting it (e.g. a refund arriving while frozen)") {
+            val result = service.postLedgerTransaction(
+                "RWF",
+                listOf(
+                    LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.DEBIT, BigDecimal("50"), "debit"),
+                    LedgerLeg("wallet_frozen", LedgerAccountType.WALLET, LedgerDirection.CREDIT, BigDecimal("50"), "credit"),
+                ),
+            )
+            Then("it succeeds -- a frozen account can still receive money") {
+                frozenWallet.balance shouldBe BigDecimal("1050")
+                result.entries.size shouldBe 2
+            }
+        }
+    }
 }) {
     // Default Kotest behavior shares one spec instance (and therefore the mutable
     // `sourceWallet`/`feeAccount` fixtures) across every sibling When/Then under a
