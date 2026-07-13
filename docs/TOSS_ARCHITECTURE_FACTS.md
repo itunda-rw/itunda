@@ -88,7 +88,31 @@ Source: [toss/granite (GitHub)](https://github.com/toss/granite), [토스가 꿈
   design/dev/product. Not open-sourced as code, but publicly documented at
   [tossmini-docs.toss.im/tds-mobile](https://tossmini-docs.toss.im/tds-mobile/) and
   [developers-apps-in-toss.toss.im/design/components.html](https://developers-apps-in-toss.toss.im/design/components.html) —
-  usable as a real design reference even without the source.
+  usable as a real design reference even without the source. **Colors and typography now
+  actually sourced (2026-07-13)**, closing part of the gap `docs/ARCHITECTURE.md`'s own
+  backlog named ("the rest of the token surface... matching the real documented TDS, not
+  just colors") — fetched directly from the foundation sub-pages, not assumed:
+  - **Colors** ([.../foundation/colors](https://tossmini-docs.toss.im/tds-mobile/foundation/colors)):
+    real numbered scales (50-900) for grey/blue/red at minimum — grey50 `#f9fafb` through
+    grey900 `#191f28`, blue50 `#e8f3ff` through blue900 `#194aa6` (blue500 `#3182f6` is the
+    signature brand blue, already correctly used everywhere in itunda), red50 `#ffeeee`
+    through red900 `#a51926`. Orange/yellow/green/teal/purple scales exist (10 steps each)
+    but exact hex values weren't captured this pass.
+  - **Typography** ([.../foundation/typography](https://tossmini-docs.toss.im/tds-mobile/foundation/typography)):
+    a real 7-level scale, `Typography 1`-`7`: 30/40, 26/35, 22/31, 20/29, 17/25.5, 15/22.5,
+    13/19.5 (font size/line height, px). A prior session's `docs/ARCHITECTURE.md` note
+    (§6 item 6) explicitly said this wasn't available and only spacing/elevation were
+    genuinely unsourced — that spacing/elevation conclusion still holds, but typography
+    *was* findable by fetching the real sub-page directly rather than the top-level
+    landing page (which itself has zero numeric values, confirmed).
+  - **Found via this**: itunda's own `TdsColors`/`TdsTheme` had a real, live mislabeling
+    (its `Blue600`/`blue600` constant held the real TDS's blue700 value, `Blue100`/`blue100`
+    held blue50) — independently drifted identically on both Android and iOS, fixed
+    2026-07-13 (`android/.../TdsColors.kt`, `ios/.../TdsTheme.swift`). itunda's existing
+    semantic type scale (`Title1`/`Subtitle1`/etc.) does not match this real scale's exact
+    sizes and was deliberately left as-is (a visual-hierarchy change needs its own
+    live-verified pass) — the real scale was added alongside as `Typography1`-`7`/
+    `typography1`-`7` reference tokens instead.
 - Toss open-sources its own **frontend engineering principles** as
   [toss/frontend-fundamentals](https://github.com/toss/frontend-fundamentals): a rubric for
   code quality centered on readability/predictability/cohesion/coupling reasoning (not

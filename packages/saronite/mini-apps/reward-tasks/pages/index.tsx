@@ -118,7 +118,12 @@ const styles = StyleSheet.create({
   rowLeft: { flex: 1 },
   taskTitle: { fontSize: 15, fontWeight: '700', color: '#191F28' },
   subtitle: { fontSize: 12, color: '#8B95A1', marginTop: 2 },
-  rewardAmount: { fontSize: 14, fontWeight: '700', color: '#31CE66', marginRight: 12 },
+  // Real fix (2026-07-13): #31CE66 was a one-off green that didn't match itunda's
+  // own already-established Toss green500 (#04C065 -- android/.../TdsColors.kt,
+  // ios/.../TdsTheme.swift, packages/design-tokens/tokens.css all agree), the exact
+  // class of drift design-tokens.css's own header comment already documented fixing
+  // once for bank-mfe's green -- found again here via a repo-wide color audit.
+  rewardAmount: { fontSize: 14, fontWeight: '700', color: '#04C065', marginRight: 12 },
   claimButton: { backgroundColor: '#3182F6', borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
   claimButtonDone: { backgroundColor: '#E5E8EB' },
   claimButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },

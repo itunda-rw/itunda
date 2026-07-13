@@ -38,6 +38,16 @@ object TdsLayout {
     val chipCornerRadius = 20.dp
     val iconCornerRadius = 12.dp
 
+    // Real fix (2026-07-13) for the other half of the "elevation" gap this file's
+    // own header comment already named as open: Tds.colors.shadow existed but had
+    // zero call sites anywhere in the Android app (confirmed via a repo-wide
+    // design-token audit) -- every Card(...) in ItundaAppScreen.kt rendered
+    // perfectly flat, unlike iOS's BankView.swift, which does apply a real shadow
+    // (IDS.Colors.shadow, radius 8-10). A modest, subtle default -- Material3's
+    // ElevatedCard convention starts at 1dp; 2dp gives a real, visible-but-subtle
+    // lift without inventing an arbitrary large number.
+    val cardElevation = 2.dp
+
     // Established this session (2026-07-11) fixing a real WCAG/Material touch-target
     // gap -- see docs/ACCESSIBILITY.md §3. Centralized here now rather than left as a
     // magic number local to TopIconButton.

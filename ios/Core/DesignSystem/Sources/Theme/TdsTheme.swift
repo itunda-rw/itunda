@@ -7,10 +7,22 @@ import UIKit
 /// that should change between light/dark is IDS.Colors, matching Android's split
 /// between the static `TdsColors` object and the reactive `Tds.colors`.
 public struct TdsColors {
+    // Full numbered scale corrected/completed 2026-07-13 against Toss's own official,
+    // directly-fetched TDS docs (tossmini-docs.toss.im/tds-mobile/foundation/colors) --
+    // ported 1:1 from Android's TdsColors.kt fix, see that file's own doc comment for
+    // the full reasoning, including the real mislabeling found (the old blue600/
+    // blue100 held the real TDS's blue700/blue50 values respectively).
+    public static let blue50  = Color(hex: 0xE8F3FF)
+    public static let blue100 = Color(hex: 0xC9E2FF)
+    public static let blue200 = Color(hex: 0x90C2FF)
+    public static let blue300 = Color(hex: 0x64A8FF)
+    public static let blue400 = Color(hex: 0x4593FC)
     public static let blue500 = Color(hex: 0x3182F6)
-    public static let blue600 = Color(hex: 0x1B64DA)
-    public static let blue100 = Color(hex: 0xE8F3FF)
-    
+    public static let blue600 = Color(hex: 0x2272EB)
+    public static let blue700 = Color(hex: 0x1B64DA)
+    public static let blue800 = Color(hex: 0x1957C2)
+    public static let blue900 = Color(hex: 0x194AA6)
+
     public static let gray900 = Color(hex: 0x191F28) // Primary text
     public static let gray800 = Color(hex: 0x333D4B) // Secondary text
     public static let gray700 = Color(hex: 0x4E5968) // Tertiary text
@@ -22,8 +34,18 @@ public struct TdsColors {
     public static let gray100 = Color(hex: 0xF2F4F6) // Background (Cards)
     public static let gray50  = Color(hex: 0xF9FAFB) // Background (Screen)
 
-    public static let red500  = Color(hex: 0xF04452) // Destructive/Error
-    public static let green500 = Color(hex: 0x04C065) // Success
+    public static let red50  = Color(hex: 0xFFEEEE)
+    public static let red100 = Color(hex: 0xFFD4D6)
+    public static let red200 = Color(hex: 0xFEAFB4)
+    public static let red300 = Color(hex: 0xFB8890)
+    public static let red400 = Color(hex: 0xF66570)
+    public static let red500 = Color(hex: 0xF04452) // Destructive/Error
+    public static let red600 = Color(hex: 0xE42939)
+    public static let red700 = Color(hex: 0xD22030)
+    public static let red800 = Color(hex: 0xBC1B2A)
+    public static let red900 = Color(hex: 0xA51926)
+
+    public static let green500 = Color(hex: 0x04C065) // Success -- itunda's own established value; TDS's own full green scale isn't confirmed sourced yet, unlike grey/blue/red above.
     public static let white   = Color(hex: 0xFFFFFF)
 
     // Fixed product-icon accent colors (Benefits/Shop/All tab icon badges) -- real
@@ -66,6 +88,23 @@ extension Color {
 /// Sources/IDS.swift`) rather than a second copy of the same helper -- see its doc
 /// comment for the full reasoning. No call site needed to change.
 public struct TdsTypography {
+    // Real TDS typography scale (2026-07-13), sourced by directly fetching Toss's own
+    // official docs (tossmini-docs.toss.im/tds-mobile/foundation/typography) --
+    // ported 1:1 from Android's TdsTypography.kt Typography1-7 addition, see that
+    // file's own doc comment for the full reasoning (kept alongside, not replacing,
+    // the existing title1/subtitle1/etc. semantic scale below). Line height isn't
+    // expressible via IDS.scaledFont's UIFontMetrics-based API the way Android's
+    // TextStyle.lineHeight is -- SwiftUI derives line spacing from the Dynamic-Type
+    // text style itself, so only the real font sizes are ported directly; each is
+    // paired with the closest matching real Apple text style for its role.
+    public static let typography1 = IDS.scaledFont(size: 30, weight: .bold, relativeTo: .largeTitle)
+    public static let typography2 = IDS.scaledFont(size: 26, weight: .bold, relativeTo: .title1)
+    public static let typography3 = IDS.scaledFont(size: 22, weight: .bold, relativeTo: .title2)
+    public static let typography4 = IDS.scaledFont(size: 20, weight: .bold, relativeTo: .title3)
+    public static let typography5 = IDS.scaledFont(size: 17, weight: .regular, relativeTo: .body)
+    public static let typography6 = IDS.scaledFont(size: 15, weight: .regular, relativeTo: .subheadline)
+    public static let typography7 = IDS.scaledFont(size: 13, weight: .regular, relativeTo: .caption1)
+
     public static let title1 = IDS.scaledFont(size: 24, weight: .bold, relativeTo: .title1)
     public static let title2 = IDS.scaledFont(size: 20, weight: .bold, relativeTo: .title2)
     public static let subtitle1 = IDS.scaledFont(size: 17, weight: .semibold, relativeTo: .subheadline)

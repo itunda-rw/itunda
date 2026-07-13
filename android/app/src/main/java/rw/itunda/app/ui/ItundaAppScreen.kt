@@ -608,6 +608,7 @@ private fun WalletHeroCard(balanceText: String, onSend: () -> Unit) {
     Card(
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = TossCard),
+        elevation = CardDefaults.cardElevation(defaultElevation = Tds.layout.cardElevation),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -705,6 +706,7 @@ private fun ShellSection(title: String, rows: List<ShellRow>) {
     Card(
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = TossCard),
+        elevation = CardDefaults.cardElevation(defaultElevation = Tds.layout.cardElevation),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
@@ -1065,7 +1067,11 @@ private fun PlainTopBar(title: String) {
 
 @Composable
 private fun PromoBannerCard() {
-    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Color(0xFF5D2FE6))) {
+    Card(
+        shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF5D2FE6)),
+        elevation = CardDefaults.cardElevation(defaultElevation = Tds.layout.cardElevation),
+    ) {
         Box(modifier = Modifier.fillMaxWidth().height(220.dp).padding(20.dp)) {
             Column {
                 Text(
@@ -1103,7 +1109,11 @@ private fun PointPill(label: String) {
 
 @Composable
 private fun BenefitsVisitCard() {
-    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard)) {
+    Card(
+        shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = TossCard),
+        elevation = CardDefaults.cardElevation(defaultElevation = Tds.layout.cardElevation),
+    ) {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Text("Visit 3 of 4 services and earn points", color = TossText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             listOf(
@@ -1127,7 +1137,11 @@ private fun BenefitsVisitCard() {
 
 @Composable
 private fun CashbackChanceCard() {
-    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard)) {
+    Card(
+        shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = TossCard),
+        elevation = CardDefaults.cardElevation(defaultElevation = Tds.layout.cardElevation),
+    ) {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(
                 "🍀 3 chances to get money back",
@@ -1192,7 +1206,11 @@ private fun CategoryTabsRow(tabs: List<String>) {
 
 @Composable
 private fun ShopPromoCard() {
-    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Color(0xFFDDEFFC))) {
+    Card(
+        shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFDDEFFC)),
+        elevation = CardDefaults.cardElevation(defaultElevation = Tds.layout.cardElevation),
+    ) {
         Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
             Text("10,000 RWF early-bird", color = Color(0xFFE25A61), fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
@@ -1203,7 +1221,11 @@ private fun ShopPromoCard() {
 
 @Composable
 private fun PointActionsCard() {
-    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossBackground)) {
+    Card(
+        shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = TossBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = Tds.layout.cardElevation),
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text("Points and coupon tasks", color = TossText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
@@ -1242,7 +1264,11 @@ private fun PayTopBar() {
 
 @Composable
 private fun MapPlaceholder() {
-    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Color(0xFFEFE4D7))) {
+    Card(
+        shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFEFE4D7)),
+        elevation = CardDefaults.cardElevation(defaultElevation = Tds.layout.cardElevation),
+    ) {
         Box(modifier = Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.BottomCenter) {
             Box(modifier = Modifier.padding(bottom = 18.dp).clip(RoundedCornerShape(20.dp)).background(Color(0xFF202228)).padding(horizontal = 20.dp, vertical = 10.dp)) {
                 Text("5 nearby stores", color = TossText, fontWeight = FontWeight.Bold)
@@ -1253,7 +1279,11 @@ private fun MapPlaceholder() {
 
 @Composable
 private fun PayFeatureCard() {
-    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard)) {
+    Card(
+        shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = TossCard),
+        elevation = CardDefaults.cardElevation(defaultElevation = Tds.layout.cardElevation),
+    ) {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(TossChip), contentAlignment = Alignment.Center) {

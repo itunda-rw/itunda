@@ -129,7 +129,7 @@ Open-sourced as `toss/granite`. Third-party version of the same mechanism is **A
 |---|---|---|---|
 | Apps-in-Itunda mini-app host | `android/app/src/main/java/rw/itunda/app/miniapps/` + `packages/saronite/` | **real granite adoption, pay-bills live end-to-end on real granite (2026-07-13)** | **Superseded the 2026-07-12 "native side verified, JS bridge blocked" status** — the JS bug and every subsequent layer it uncovered are now fixed and live-verified on-device, not just code-reviewed. Real `@granite-js/react-native`/`native`/`brownfield-module` installed; official RN Gradle Plugin; RN 0.84.0; New Architecture (Fabric/TurboModules/Bridgeless). Five real, independently-diagnosed bugs found and fixed this pass, each confirmed by rebuilding and relaunching on a real emulator against the real backend: (1) `brick-module@0.5.2`'s `BrickModule.get()` eagerly resolved `TurboModuleRegistry.getEnforcing()` at Proxy-construction time instead of lazily inside the property-access trap — patched via `patch-package` (`patches/brick-module+0.5.2.patch`); (2) `@granite-js/react-native`'s `onVisibilityChanged.ts` re-exported the same eagerly-resolved reference instead of wrapping it in a lazy function — patched (`patches/@granite-js+react-native+1.0.36.patch`); (3) itunda never injected `global.__granite.app` the way granite's own CLI/bundler normally does for apps built with `granite dev`/`granite build` — fixed via a new `host-app/granite-globals.js`, imported first in `index.js`; (4) `react-native-safe-area-context` was only a transitive dependency so RN autolinking never discovered it, *and* itunda's `react { }` block never called the RN Gradle Plugin's required `autolinkLibrariesWithApp()`, *and* `codegenDir`/`REACT_NATIVE_NODE_MODULES_DIR` were only ever set on `:app`'s own `extra`/`react{}` scope rather than propagated to the shared `rootProject` state every autolinked library's codegen task actually reads — all three fixed in `android/app/build.gradle.kts` and `android/build.gradle.kts`; the same missing-direct-dependency gap recurred identically for `react-native-screens` (needed by granite's router) and `react-native-svg`, both added directly to `host-app/package.json`; (5) granite's router unconditionally requires a `/_404` route to exist (`getScreenPathMapConfig` throws if none is found) — pay-bills only had `pages/index.tsx`, so a real `pages/_404.tsx` was added and wired into `require.context.ts`/`router.gen.ts`. **Live-verified end-to-end:** pay-bills renders via granite's real router, loads its real bill list from `GET /bills/pending` through itunda's own legacy `SaroniteBrownfieldModule` bridge (unaffected by any of the granite-side bugs above), and a real `POST /bills/pay` attempt round-tripped a genuine `422 INSUFFICIENT_FUNDS` from the real ledger all the way back to a native error dialog. **One known, non-fatal residual:** on a sufficiently slow/cold (non-JIT'd) device, `VisibilityProvider`'s post-mount native-module resolution can still occasionally exhaust its retry budget and log an uncaught (but non-crashing, UI-isolated) error — affects only the optional screen-visibility API, not core navigation or data flow; documented with a widened retry budget in the same patch rather than fully root-caused. wallet-balance/reward-tasks remain on itunda's own hand-rolled bridge, untouched, as a deliberate scope boundary. iOS has no mini-app host at all. Full account: git log on `android/build.gradle.kts`, `android/app/build.gradle.kts`, `packages/saronite/patches/`, `packages/saronite/host-app/`, and `packages/saronite/mini-apps/pay-bills/` from 2026-07-13. |
 | Consumer web app | `services/micro-frontends/host-app` (root `package.json` is now a pure workspace root) | **demo** | Root previously had leftover `dev`/`build`/`vite` scripts and app deps from a deleted app with no `src/`; fixed 2026-07-10 by making root a pure Yarn workspace root that delegates to `host-app`. **Fixed (2026-07-11):** `host-app` previously rendered Toss Payments' real SDK/widget (`@tosspayments/payment-widget-sdk`, a real public Toss test key) with UI copy claiming "Secure payments via MTN MoMo, Airtel Money, and Bank Transfer" — a widget that can only actually process Toss's own Korean payment methods, not Rwandan rails. Removed entirely; see the Micro-frontends row above for what replaced it. |
-| Design system | none | **target** | TDS itself isn't open-source, but its components are documented (facts doc §3) and should be the literal reference for itunda's design tokens, not an invented "Itunda Design System (aligned with Toss Design System)" placeholder with no actual token file behind it. `ios/Core/DesignSystem` and `android/core/designsystem` exist as directories but were not verified to contain a real token set. |
+| Design system | `android/core/designsystem`, `ios/Core/DesignSystem`, `packages/design-tokens` | **real (colors + typography sourced), partial (no cross-platform single source of truth)** | Stale row, corrected 2026-07-13 — this had said "none"/"target" and "not verified to contain a real token set" long after real token files (`TdsColors.kt`/`TdsSemanticColors.kt`/`TdsTypography.kt`/`TdsLayout.kt`, `TdsTheme.swift`/`IDS.swift`, `packages/design-tokens/tokens.css`) already existed and had been through multiple real reconciliation passes (see §5/§6 above and `docs/ACCESSIBILITY.md`). What's genuinely true as of 2026-07-13: colors and typography are now sourced against Toss's own official TDS docs (facts doc §3, fetched directly, not assumed), a real mislabeling and four other real bugs found by that pass are fixed (see §6 item 6 above for the full account). What's still real, open scope: no single source of truth links the four independent token files across platforms — they converge only by manual reconciliation, with no build-time or codegen mechanism; corner radius and shadow/elevation values disagree at nearly every location they're defined; the Saronite mini-app host (`packages/saronite/mini-apps/*`) has no shared token dependency at all, each mini-app hardcodes its own hex literals independently. |
 
 **Decision this implies:** the mini-app host is no longer "a working brownfield integration
 modeled on Granite" — it now genuinely runs on real granite packages, the real official RN
@@ -401,6 +401,46 @@ In priority order, each item closes a specific gap identified above:
    Verified: `:app:assembleDebug` → `BUILD SUCCESSFUL`. Not live-verified on-device — the
    real "andros" emulator was under genuine, checked (`top`) resource strain (83%+ sys CPU)
    at the time, the same constraint noted elsewhere in this document.
+   **Typography sourced and real bugs fixed, same item, 2026-07-13**: a deep-dive audit
+   (design tokens across Android/iOS/web/mini-app-host) plus direct fetches of Toss's own
+   TDS docs (`tossmini-docs.toss.im/tds-mobile/foundation/{colors,typography}`, see
+   `docs/TOSS_ARCHITECTURE_FACTS.md` §3 for the full sourced values) found this backlog
+   item's "typography... never documented" premise was only half right — colors and
+   typography *are* published on the foundation sub-pages, just not the landing page a
+   prior pass apparently checked; spacing/elevation genuinely still aren't. Real TDS
+   `Typography1`-`7`/`typography1`-`7` (Android/iOS respectively) added as reference
+   tokens; a real, live mislabeling found and fixed (`Blue600`/`blue600` held the real
+   TDS's blue700 value, `Blue100`/`blue100` held blue50 — independently drifted
+   identically on both platforms). Four other real bugs found by the same audit and
+   fixed: (1) iOS's `TdsButton`/`TdsListRow` (`Core/DesignSystem/Sources/Components/
+   Components.swift`) read the static, non-theme-reactive `TdsColors` instead of
+   `IDS.Colors` — buttons and list rows stayed light-mode-colored in dark mode; Android's
+   equivalents already correctly used `Tds.colors.*`. (2) `@itunda/ids-react-native`'s
+   `colors.ts` had `textPrimary`/`textSecondary` both one semantic step off from every
+   other platform's convention (holding grey800/grey500's values instead of grey900/
+   grey700's). (3) The `reward-tasks` Saronite mini-app's reward-amount color, `#31CE66`,
+   didn't match itunda's own already-established green (`#04C065`) anywhere else in the
+   repo — the same class of drift `packages/design-tokens/tokens.css`'s own header
+   comment already documented fixing once for `bank-mfe`'s green, found again
+   independently in a different file. (4) Android's `Tds.colors.shadow` token existed but
+   had zero call sites anywhere (confirmed via repo-wide grep) — every `Card(...)` in
+   `ItundaAppScreen.kt` rendered completely flat, unlike iOS's `BankView.swift`, which
+   does apply a real shadow. Fixed with a new `Tds.layout.cardElevation` (2dp, a real,
+   modest Material3 `CardDefaults.cardElevation` value, not an invented large number)
+   wired into all 9 real `Card(...)` call sites in that file. Live-verified on the real
+   Android emulator: installed, launched, screenshotted — Home tab renders correctly with
+   real card elevation applied, zero visual regression. iOS changes `-parse`-clean, not
+   full-build-verified (same Tuist-toolchain caveat as the rest of this row). **Not
+   attempted this pass, and explicitly flagged as real, larger, separate scope**: a true
+   single source of truth for these tokens across Android/iOS/web/mini-app-host —
+   confirmed via the same audit that six independent, hand-authored copies of
+   substantially the same palette exist today (`TdsColors.kt`/`TdsSemanticColors.kt`,
+   `TdsTheme.swift`/`IDS.swift`, `packages/design-tokens/tokens.css`,
+   `ids-react-native/colors.ts`), converging today only through repeated manual
+   reconciliation passes, with no build-time or codegen link between any of them; corner
+   radius and shadow/elevation values disagree at essentially every location they're
+   independently defined, and the Saronite mini-app host layer (`pay-bills`/
+   `wallet-balance`/`reward-tasks`) has no shared token dependency reaching it at all.
 7. ~~Consolidate `infrastructure/k8s` and `infrastructure/kubernetes` into one
    directory.~~ **Already done, discovered stale (2026-07-11):** the 2026-07-10
    restructure (§5) already folded both into today's single `infra/k8s/` — confirmed
