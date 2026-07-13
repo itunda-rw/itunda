@@ -21,7 +21,98 @@ final class BankViewModel: ObservableObject {
     @Published private(set) var transactions: [TransactionDto] = []
     @Published private(set) var currentUserId: String?
 
+    // Real offline queue + connectivity signal (2026-07-13) -- see
+    // docs/TOSS_PARITY_MATRIX.md's Offline row. Started once, from init(), matching
+    // Android's MainViewModel.init{} calling connectivityObserver.start immediately.
+    private let connectivityObserver = ConnectivityObserver()
+    private var replayRetryTimer: Timer?
+
+    init() {
+        connectivityObserver.start { [weak self] in
+            Task { @MainActor in
+                await self?.replayPendingActions()
+            }
+        }
+        // Real bug found live (2026-07-13): the only other real replay trigger --
+        // load()'s own opportunistic retry, see its doc comment -- only fires once,
+        // right when a savings sheet closes (~1.5s after queuing, per
+        // SavingsFlowContainer.swift's own delay). Confirmed live: that first
+        // attempt lands *while the backend is still down* (a real outage doesn't
+        // resolve in 1.5 seconds), fails, and nothing ever tries again -- the app
+        // would sit on a permanently-stale queue until the user happened to
+        // background/reopen the app or manually pull-to-refresh. A periodic retry
+        // closes that gap for real: same idea as NWPathMonitor (react once
+        // reachable again) but on a timer instead of an interface-level signal,
+        // since nothing in this environment (host-shared Simulator networking, a
+        // specific backend being down rather than the whole device) can signal
+        // "the backend is back" proactively. 10s is a demo-appropriate interval,
+        // not tuned against any real production SLA.
+        replayRetryTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                await self?.replayPendingActions()
+            }
+        }
+    }
+
+    deinit {
+        connectivityObserver.stop()
+        replayRetryTimer?.invalidate()
+    }
+
+    /// Real replay of everything OfflineActionQueue has saved, via the same
+    /// POST /api/v1/actions/batch endpoint a mobile client is meant to call. Each
+    /// action carries its own already-generated idempotencyKey, so replaying the
+    /// same queue twice never double-executes an already-completed deposit -- the
+    /// backend's own IdempotencyService.replayOrExecute guarantees that
+    /// server-side. Mirrors Android's MainViewModel.replayPendingActions exactly.
+    /// Calls loadInternal(), not load(), to reload afterward -- see load()'s own
+    /// comment for why that distinction matters.
+    func replayPendingActions() async {
+        let pending = OfflineActionQueue.shared.peekAll()
+        guard !pending.isEmpty else { return }
+        do {
+            let actions = pending.map {
+                BatchActionRequest(
+                    clientActionId: $0.clientActionId,
+                    type: "SAVINGS_DEPOSIT",
+                    idempotencyKey: $0.idempotencyKey,
+                    body: SavingsDepositActionBody(goalId: $0.goalId, amount: $0.amount)
+                )
+            }
+            let response = try await NetworkClient.shared.submitActionBatch(BatchRequest(actions: actions))
+            let handledIds = Set(response.results.map { $0.clientActionId })
+            OfflineActionQueue.shared.removeByClientActionIds(handledIds)
+            if !handledIds.isEmpty {
+                await loadInternal()
+            }
+        } catch {
+            // Still offline (or the reconnect was too brief) -- leave the queue
+            // intact, the next real trigger will try again.
+        }
+    }
+
+    /// Real bug found live while building this (2026-07-13): NWPathMonitor only
+    /// observes the *device's* network interface state (Wi-Fi/cellular up or down)
+    /// -- it has no concept of whether *this app's specific backend* is reachable.
+    /// A backend that's down while the device's own network is perfectly fine
+    /// (confirmed live: killing the local dev backend process on the host Mac,
+    /// with the iOS Simulator's shared network interface never changing) never
+    /// flips NWPathMonitor's status, so connectivityObserver alone would never
+    /// trigger a replay in that real, common failure mode -- only a genuine
+    /// device-level connectivity loss would. So load() also opportunistically
+    /// tries a replay after every real successful fetch, not just on the proactive
+    /// NWPathMonitor signal: the next time the app proves the backend is actually
+    /// reachable (any successful load, e.g. the automatic reload ContentView
+    /// already triggers when a savings sheet closes), that's a strictly stronger
+    /// signal than "the network interface is up" anyway.
     func load() async {
+        await loadInternal()
+        if !isOffline {
+            await replayPendingActions()
+        }
+    }
+
+    private func loadInternal() async {
         do {
             let walletsRes = try await NetworkClient.shared.getWallets()
             if walletsRes.success, let wallet = walletsRes.wallets.first(where: { $0.type == "MAIN" }) ?? walletsRes.wallets.first {
@@ -37,14 +128,27 @@ final class BankViewModel: ObservableObject {
 
             var rows: [SavingsRowData] = []
 
-            let jarRes = try await NetworkClient.shared.getInterestJar()
-            if jarRes.success {
-                interestJar = jarRes.jar
-                rows.append(SavingsRowData(
-                    title: "Interest jar",
-                    subtitle: "Earned this month",
-                    trailing: formatAmount(jarRes.jar.earnedThisMonth, currency: "RWF")
-                ))
+            // Real bug found live (2026-07-13, same class as Android's
+            // MainViewModel.fetchData() fix): an account that has never made an
+            // interest-jar-eligible deposit gets a real 404 INTEREST_JAR_NOT_FOUND
+            // from the backend -- a legitimate state for any new account, not a
+            // failure. Left uncaught, that 404 (NetworkError.httpError, not
+            // URLError) would abort this whole do block, silently skipping the
+            // getSavingsGoals() call below too -- so a brand-new account's savings
+            // goals would never load. Scoped narrowly to 404; any other status
+            // still propagates to the outer catch as before.
+            do {
+                let jarRes = try await NetworkClient.shared.getInterestJar()
+                if jarRes.success {
+                    interestJar = jarRes.jar
+                    rows.append(SavingsRowData(
+                        title: "Interest jar",
+                        subtitle: "Earned this month",
+                        trailing: formatAmount(jarRes.jar.earnedThisMonth, currency: "RWF")
+                    ))
+                }
+            } catch let NetworkError.httpError(statusCode) where statusCode == 404 {
+                interestJar = nil
             }
 
             let savingsRes = try await NetworkClient.shared.getSavingsGoals()

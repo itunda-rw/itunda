@@ -98,6 +98,12 @@ struct TransferFlowContainer: View {
                 switch result {
                 case .success:
                     onDone()
+                // sendTransfer never actually returns .queued -- a transfer confirm
+                // is deliberately never queued offline (see
+                // TransferViewModel.depositToSavingsGoal's doc comment for why) --
+                // handled only because MoneyActionResult is a shared enum.
+                case .queued:
+                    onDone()
                 case .failure(let message):
                     errorMessage = message
                 }

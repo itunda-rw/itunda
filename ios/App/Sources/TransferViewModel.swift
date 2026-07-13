@@ -2,6 +2,10 @@ import Foundation
 
 enum MoneyActionResult {
     case success(String)
+    // Queued (2026-07-13) is distinct from success: the action wasn't executed yet,
+    // only durably saved locally for replay once connectivity returns -- see
+    // OfflineActionQueue.swift. Mirrors Android's MoneyActionResult.Queued exactly.
+    case queued(String)
     case failure(String)
 }
 
@@ -23,12 +27,24 @@ final class TransferViewModel: ObservableObject {
         }
     }
 
+    /// Real offline queueing (2026-07-13): on a genuine connectivity failure
+    /// (URLError -- an HTTP error is a real backend response and is never queued,
+    /// only ever surfaced as a real failure) the deposit intent is durably saved
+    /// locally via OfflineActionQueue rather than dropped, and replayed
+    /// automatically once BankViewModel's ConnectivityObserver reports a real
+    /// network again. Mirrors Android's MainViewModel.depositToSavingsGoal exactly,
+    /// including the same scope decision: sendTransfer above is intentionally never
+    /// queued, for the same 60-second-quote-expiry reason the backend's
+    /// ActionsBatchController doesn't support a transfer action type at all.
     func depositToSavingsGoal(goalId: String, amountRwf: Int) async -> MoneyActionResult {
         do {
             let response = try await NetworkClient.shared.depositToGoal(goalId: goalId, amount: Double(amountRwf))
             return .success(response.message)
         } catch let NetworkError.httpError(statusCode) {
             return .failure(Self.errorMessage(statusCode))
+        } catch is URLError {
+            OfflineActionQueue.shared.enqueueSavingsDeposit(goalId: goalId, amount: Double(amountRwf))
+            return .queued("Saved offline -- this deposit will go through automatically once you're back online.")
         } catch {
             return .failure("Couldn't reach itunda. Check your connection and try again.")
         }

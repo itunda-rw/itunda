@@ -267,6 +267,30 @@ struct DepositRequest: Encodable { let goalId: String; let amount: Double }
 struct DepositResponse: Decodable { let success: Bool; let message: String; let goal: SavingsGoal }
 struct ClaimInterestResponse: Decodable { let success: Bool; let message: String }
 
+// Real offline-action-queue replay (2026-07-13) -- mirrors
+// services/backend/offline/src/main/kotlin/rw/itunda/offline/web/ActionsBatchController.kt
+// exactly. See OfflineActionQueue.swift for the local persisted queue this replays.
+// Scoped to SAVINGS_DEPOSIT's real body shape rather than a generic [String: Any]
+// body -- see OfflineActionQueue.swift's header for why that's the right scope here.
+struct SavingsDepositActionBody: Encodable { let goalId: String; let amount: Double }
+
+struct BatchActionRequest: Encodable {
+    let clientActionId: String
+    let type: String
+    let idempotencyKey: String
+    let body: SavingsDepositActionBody
+}
+
+struct BatchRequest: Encodable { let actions: [BatchActionRequest] }
+
+struct BatchActionResultDto: Decodable {
+    let clientActionId: String
+    let type: String
+    let status: Int
+}
+
+struct BatchResponse: Decodable { let success: Bool; let results: [BatchActionResultDto] }
+
 // Mirrors services/backend/auth's AuthController.kt / notifications's
 // NotificationController.kt (2026-07-12) -- backs the new Settings screen.
 struct ProfileResponse: Decodable { let success: Bool; let user: PublicUser }
@@ -311,6 +335,13 @@ extension NetworkClient {
             body: EmptyBody(),
             idempotencyKey: UUID().uuidString
         )
+    }
+
+    // Real offline-action-queue replay (2026-07-13) -- see OfflineActionQueue.swift.
+    // No Idempotency-Key header on the batch call itself -- each individual action
+    // inside it carries its own, exactly like the backend controller expects.
+    func submitActionBatch(_ request: BatchRequest) async throws -> BatchResponse {
+        try await authenticatedPost("api/v1/actions/batch", body: request)
     }
 }
 

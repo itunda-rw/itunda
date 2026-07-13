@@ -8,6 +8,9 @@ struct SavingsFlowContainer: View {
     @StateObject private var viewModel = TransferViewModel()
     @State private var isSubmitting = false
     @State private var errorMessage: String?
+    // Real offline queueing (2026-07-13) -- distinct from errorMessage (red) since
+    // this isn't an error, it's confirmation the deposit was saved for later.
+    @State private var queuedMessage: String?
     let step: SavingsFlowStep
     let availableBalance: Double
     let onDone: () -> Void
@@ -55,6 +58,13 @@ struct SavingsFlowContainer: View {
                     .padding(.horizontal, 24)
                     .padding(.top, 8)
             }
+            if let queuedMessage {
+                Text(queuedMessage)
+                    .font(.system(size: 13))
+                    .foregroundColor(.blue)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 8)
+            }
         }
         // Defensive, matching TransferFlowContainer.swift's real fix (2026-07-12) --
         // this container isn't reachable via the exact same keyboard-focus-then-step-
@@ -68,6 +78,9 @@ struct SavingsFlowContainer: View {
     private func handle(_ result: MoneyActionResult) {
         switch result {
         case .success: onDone()
+        case .queued(let message):
+            queuedMessage = message
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { onDone() }
         case .failure(let message): errorMessage = message
         }
     }
