@@ -18,6 +18,14 @@
  * BankDashboard.tsx/host-app's shell CSS, so this is a drop-in replacement for the
  * hand-copied block each file used to have -- not a rename that would require
  * touching every consuming component.
+ *
+ * Grey/blue/red base values below (2026-07-13) are drawn from
+ * packages/design-tokens/tokens.json, this repo's real single source of truth for
+ * the primitive color scale (sourced from Toss's own official TDS docs) -- verified
+ * to match, not codegen'd directly into this file, since this file's own shape is
+ * semantic/light-dark-reactive (--toss-blue-active, grey-100 as "app background"),
+ * not a raw numbered primitive scale like Android's TdsColors.kt/iOS's TdsTheme.swift
+ * TdsColors struct, which generate-tokens.js does regenerate directly.
  */
 
 :root {

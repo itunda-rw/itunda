@@ -7,12 +7,19 @@ import UIKit
 /// that should change between light/dark is IDS.Colors, matching Android's split
 /// between the static `TdsColors` object and the reactive `Tds.colors`.
 public struct TdsColors {
-    // Full numbered scale corrected/completed 2026-07-13 against Toss's own official,
-    // directly-fetched TDS docs (tossmini-docs.toss.im/tds-mobile/foundation/colors) --
-    // ported 1:1 from Android's TdsColors.kt fix, see that file's own doc comment for
-    // the full reasoning, including the real mislabeling found (the old blue600/
-    // blue100 held the real TDS's blue700/blue50 values respectively).
-    public static let blue50  = Color(hex: 0xE8F3FF)
+    // GENERATED:BEGIN -- do not hand-edit; regenerate with packages/design-tokens/generate-tokens.js from tokens.json. gray900 is primary text, gray700 secondary, gray500 tertiary/placeholder by established convention (see IDS.Colors for the theme-reactive equivalents).
+    public static let gray50 = Color(hex: 0xF9FAFB)
+    public static let gray100 = Color(hex: 0xF2F4F6)
+    public static let gray200 = Color(hex: 0xE5E8EB)
+    public static let gray300 = Color(hex: 0xD1D6DB)
+    public static let gray400 = Color(hex: 0xB0B8C1)
+    public static let gray500 = Color(hex: 0x8B95A1)
+    public static let gray600 = Color(hex: 0x6B7684)
+    public static let gray700 = Color(hex: 0x4E5968)
+    public static let gray800 = Color(hex: 0x333D4B)
+    public static let gray900 = Color(hex: 0x191F28)
+
+    public static let blue50 = Color(hex: 0xE8F3FF)
     public static let blue100 = Color(hex: 0xC9E2FF)
     public static let blue200 = Color(hex: 0x90C2FF)
     public static let blue300 = Color(hex: 0x64A8FF)
@@ -23,30 +30,20 @@ public struct TdsColors {
     public static let blue800 = Color(hex: 0x1957C2)
     public static let blue900 = Color(hex: 0x194AA6)
 
-    public static let gray900 = Color(hex: 0x191F28) // Primary text
-    public static let gray800 = Color(hex: 0x333D4B) // Secondary text
-    public static let gray700 = Color(hex: 0x4E5968) // Tertiary text
-    public static let gray600 = Color(hex: 0x6B7684) // Placeholder
-    public static let gray500 = Color(hex: 0x8B95A1)
-    public static let gray400 = Color(hex: 0xB0B8C1) // Disabled elements
-    public static let gray300 = Color(hex: 0xD1D6DB) // Borders
-    public static let gray200 = Color(hex: 0xE5E8EB) // Divider
-    public static let gray100 = Color(hex: 0xF2F4F6) // Background (Cards)
-    public static let gray50  = Color(hex: 0xF9FAFB) // Background (Screen)
-
-    public static let red50  = Color(hex: 0xFFEEEE)
+    public static let red50 = Color(hex: 0xFFEEEE)
     public static let red100 = Color(hex: 0xFFD4D6)
     public static let red200 = Color(hex: 0xFEAFB4)
     public static let red300 = Color(hex: 0xFB8890)
     public static let red400 = Color(hex: 0xF66570)
-    public static let red500 = Color(hex: 0xF04452) // Destructive/Error
+    public static let red500 = Color(hex: 0xF04452)
     public static let red600 = Color(hex: 0xE42939)
     public static let red700 = Color(hex: 0xD22030)
     public static let red800 = Color(hex: 0xBC1B2A)
     public static let red900 = Color(hex: 0xA51926)
 
-    public static let green500 = Color(hex: 0x04C065) // Success -- itunda's own established value; TDS's own full green scale isn't confirmed sourced yet, unlike grey/blue/red above.
-    public static let white   = Color(hex: 0xFFFFFF)
+    public static let green500 = Color(hex: 0x04C065)
+    public static let white = Color(hex: 0xFFFFFF)
+    // GENERATED:END
 
     // Fixed product-icon accent colors (Benefits/Shop/All tab icon badges) -- real
     // Toss brand/product colors, not semantic theme colors, so like the rest of this

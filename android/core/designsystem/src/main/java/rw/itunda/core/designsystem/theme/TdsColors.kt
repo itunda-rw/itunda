@@ -20,7 +20,7 @@ import androidx.compose.ui.graphics.Color
  * correctly-numbered constants below.
  */
 object TdsColors {
-    // Real TDS grey scale (tossmini-docs.toss.im/tds-mobile/foundation/colors).
+    // GENERATED:BEGIN -- do not hand-edit; regenerate with packages/design-tokens/generate-tokens.js from tokens.json (see doc comment above).
     val Grey50 = Color(0xFFF9FAFB)
     val Grey100 = Color(0xFFF2F4F6)
     val Grey200 = Color(0xFFE5E8EB)
@@ -32,32 +32,31 @@ object TdsColors {
     val Grey800 = Color(0xFF333D4B)
     val Grey900 = Color(0xFF191F28)
 
-    // Real TDS blue scale.
     val Blue50 = Color(0xFFE8F3FF)
     val Blue100 = Color(0xFFC9E2FF)
     val Blue200 = Color(0xFF90C2FF)
     val Blue300 = Color(0xFF64A8FF)
     val Blue400 = Color(0xFF4593FC)
-    val Blue500 = Color(0xFF3182F6) // Toss Signature Blue
+    val Blue500 = Color(0xFF3182F6)
     val Blue600 = Color(0xFF2272EB)
     val Blue700 = Color(0xFF1B64DA)
     val Blue800 = Color(0xFF1957C2)
     val Blue900 = Color(0xFF194AA6)
 
-    // Real TDS red scale.
     val Red50 = Color(0xFFFFEEEE)
     val Red100 = Color(0xFFFFD4D6)
     val Red200 = Color(0xFFFEAFB4)
     val Red300 = Color(0xFFFB8890)
     val Red400 = Color(0xFFF66570)
-    val Red500 = Color(0xFFF04452) // Destructive/Error
+    val Red500 = Color(0xFFF04452)
     val Red600 = Color(0xFFE42939)
     val Red700 = Color(0xFFD22030)
     val Red800 = Color(0xFFBC1B2A)
     val Red900 = Color(0xFFA51926)
 
-    val Green500 = Color(0xFF04C065) // Success -- itunda's own established value; TDS's own full green scale isn't confirmed sourced yet, unlike grey/blue/red above.
+    val Green500 = Color(0xFF04C065)
     val White = Color(0xFFFFFFFF)
+    // GENERATED:END
 
     // Semantic aliases used across existing screens -- kept for source compatibility.
     val Gray900 = Grey900 // Primary text
