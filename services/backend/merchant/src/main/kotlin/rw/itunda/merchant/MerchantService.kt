@@ -8,11 +8,16 @@ import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.domain.PaymentIntent
 import rw.itunda.core.domain.PaymentIntentStatus
+import rw.itunda.core.domain.Transaction
+import rw.itunda.core.domain.TransactionStatus
+import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.PaymentIntentRepository
+import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -43,6 +48,8 @@ class MerchantService(
     private val walletRepository: WalletRepository,
     private val ledgerService: LedgerService,
     private val webhookDeliveryService: WebhookDeliveryService,
+    private val transactionRepository: TransactionRepository,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     // Toss Payments' real published fee schedule tiers wallet-based payments
     // ("Toss Pay") at 0.8%-1.8% depending on merchant volume (see
@@ -129,6 +136,36 @@ class MerchantService(
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, fee, "QR payment fee - ${merchant.businessName}"),
             ),
         )
+
+        // Real Transaction row + fraud review wired in (2026-07-13) -- this method
+        // previously only posted ledger legs and never wrote a Transaction row at all
+        // (confirmed live: TransactionRepository wasn't even injected here). That's a
+        // real, separate gap beyond just fraud review: WalletService.getTransactionHistory
+        // and FraudRuleEngine's own VELOCITY/NEW_RECIPIENT rules both key off the
+        // transactions table, so merchant payments were invisible to both a payer's/
+        // merchant's own transaction history *and* to fraud history checks for every
+        // other flow -- a repeat-merchant-payment could never trigger VELOCITY, and a
+        // brand-new merchant recipient could never be flagged NEW_RECIPIENT. Persisting
+        // this row here, before the fraud evaluate() call (same ordering reasoning as
+        // P2pService.payRequest and WalletService.confirmTransfer: evaluating after the
+        // save would let this transaction match itself as prior history), fixes both.
+        val transaction = Transaction(
+            id = result.transactionId,
+            referenceNumber = "MERC${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
+            senderId = payerUserId,
+            recipientId = merchant.ownerUserId,
+            fromWalletId = payerWallet.id,
+            toWalletId = merchantWallet.id,
+            amount = intent.amount,
+            fee = fee,
+            currency = payerWallet.currency,
+            type = TransactionType.PAYMENT,
+            status = TransactionStatus.COMPLETED,
+            description = "QR payment - ${merchant.businessName}",
+            completedAt = Instant.now(),
+        )
+        fraudRuleEngine.evaluate(payerUserId, merchant.ownerUserId, intent.amount, transaction.id)
+        transactionRepository.save(transaction)
 
         intent.status = PaymentIntentStatus.COMPLETED
         intent.completedTransactionId = result.transactionId

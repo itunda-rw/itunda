@@ -15,11 +15,13 @@ import rw.itunda.core.domain.PaymentIntent
 import rw.itunda.core.domain.PaymentIntentStatus
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.PaymentIntentRepository
+import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Instant
@@ -45,7 +47,14 @@ class MerchantServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val webhookDeliveryService = mockk<WebhookDeliveryService>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService)
+        // Not relaxed for save() specifically: mockk's relaxed default can't correctly
+        // infer JpaRepository's generic `<S extends T> S save(S)` signature, returning a
+        // raw mock Object that then fails a real ClassCastException back in the caller
+        // (confirmed live) -- same reason WalletServiceTest explicitly stubs this too.
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        every { transactionRepository.save(any()) } answers { firstArg() }
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine)
 
         val ownerWallet = wallet("wallet_merchant", "owner_1")
         val merchant = Merchant(
@@ -250,7 +259,14 @@ class MerchantServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val webhookDeliveryService = mockk<WebhookDeliveryService>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService)
+        // Not relaxed for save() specifically: mockk's relaxed default can't correctly
+        // infer JpaRepository's generic `<S extends T> S save(S)` signature, returning a
+        // raw mock Object that then fails a real ClassCastException back in the caller
+        // (confirmed live) -- same reason WalletServiceTest explicitly stubs this too.
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        every { transactionRepository.save(any()) } answers { firstArg() }
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine)
 
         val merchant = Merchant(id = "merchant_3", ownerUserId = "owner_3", walletId = "wallet_3", businessName = "Test Shop")
         every { merchantRepository.findByOwnerUserId("owner_3") } returns merchant

@@ -14,6 +14,7 @@ import rw.itunda.core.events.PaymentProviderFailedEvent
 import rw.itunda.core.events.TOPIC_PAYMENT_PROVIDER_FAILED
 import rw.itunda.core.events.TOPIC_TRANSFER_CONFIRMED
 import rw.itunda.core.events.TransferConfirmedEvent
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
@@ -55,6 +56,7 @@ class WalletService(
     private val ledgerService: LedgerService,
     private val eventPublisher: EventPublisher,
     private val providerConnector: ProviderConnector,
+    private val fraudRuleEngine: FraudRuleEngine,
 ) {
     private val quoteStore = QuoteStore()
 
@@ -203,6 +205,15 @@ class WalletService(
             completedAt = Instant.now(),
             createdAt = quote.createdAt,
         )
+        // Fraud review wired in (2026-07-13) -- same real FraudRuleEngine already wired
+        // into P2pService.payRequest, extended to itunda's other real money-moving path.
+        // recipientUserId is null, not "external": this flow has no real itunda-user
+        // recipient concept (confirmed in P2pService's own doc comment -- transfer always
+        // routes through the simulated external rail), so NEW_RECIPIENT simply never
+        // fires here, which is correct rather than a gap. Called before the save, same
+        // ordering reasoning as P2pService.payRequest's own inline comment: evaluating
+        // after would let this transaction match itself as prior history.
+        fraudRuleEngine.evaluate(wallet.userId, null, quote.amount, transaction.id)
         transactionRepository.save(transaction)
 
         eventPublisher.publishAfterCommit(

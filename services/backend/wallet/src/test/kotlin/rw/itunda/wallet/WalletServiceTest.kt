@@ -12,6 +12,7 @@ import rw.itunda.core.domain.LedgerEntry
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.events.EventPublisher
+import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
@@ -50,7 +51,8 @@ class WalletServiceTest : BehaviorSpec({
         // BillsServiceTest, minus needing an explicit "accepts" stub in every other
         // When since relaxed already defaults to a no-op success.
         val providerConnector = mockk<ProviderConnector>(relaxed = true)
-        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine)
 
         val senderWallet = wallet("wallet_1", "user_1", "10000")
 
@@ -178,7 +180,8 @@ class WalletServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val eventPublisher = mockk<EventPublisher>(relaxed = true)
         val providerConnector = mockk<ProviderConnector>(relaxed = true)
-        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine)
 
         fun entry(id: String, txnId: String, accountId: String, accountType: LedgerAccountType, direction: LedgerDirection, amount: String, memo: String = "test") = LedgerEntry(
             id = id, transactionId = txnId, accountId = accountId, accountType = accountType, direction = direction,
