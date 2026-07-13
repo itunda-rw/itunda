@@ -323,6 +323,26 @@ No auth required on either route (no `@AuthenticationPrincipal` in the controlle
 
 Errors: `400 INVALID_REQUEST`.
 
+## Offline actions — `/api/v1/actions`
+
+Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s Offline row for the full
+account, including what's still missing on the mobile client side.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| GET | `/types` | — | `{success, types: [...]}` | Every registered `BatchActionHandler`'s action type, e.g. `["BILL_PAY", "BUY_AIRTIME", "SAVINGS_DEPOSIT"]` |
+| POST | `/batch` | `{actions: [{clientActionId, type, idempotencyKey, body}]}` | `{success, results: [...]}` | Always `200` at the batch level — each action carries its own `status`/`body`, matching exactly what that action's own single-action endpoint would have returned |
+
+Each action's `body` is dispatched to the real domain service for its `type`, through the same
+`IdempotencyService.replayOrExecute` path the equivalent single-action endpoint already uses —
+resubmitting a batch with the same `idempotencyKey`s replays already-completed actions rather
+than double-executing them (live-verified: two identical batch submissions with a fixed key
+returned the same transaction id both times). One action failing never fails the rest of the
+batch — live-verified a real 3-action batch that returned a real `200` (airtime purchase), a real
+`400` (`UNKNOWN_ACTION_TYPE`), and a real `404` (`GOAL_NOT_FOUND`) together in one response.
+Deliberately has no `WALLET_TRANSFER` action type — `WalletService`'s quote/confirm split has a
+real 60-second quote expiry that a queued-while-offline confirm can't honor safely.
+
 ## System — `/api/v1/system` (ADMIN role only)
 
 Requires the `ADMIN` role JWT claim — a `USER`-role token gets a real `403`, not `401`. There
@@ -406,6 +426,9 @@ Grepped for directly, confirmed absent as of 2026-07-13:
   section) — no other module emits webhooks of any kind.
 
 ## What Changed Since the Last Version of This Document
+
+**2026-07-13, latest:** added `/api/v1/actions/batch` and `/api/v1/actions/types` (real,
+live-verified offline-queue-replay endpoints) — see the Offline actions section above.
 
 **2026-07-13, even later still:** `/api/v1/system/rails` fixed from an always-empty stub to a
 real, measured per-rail health endpoint — see the Rail health section above.

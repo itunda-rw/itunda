@@ -19,5 +19,6 @@ include(
     ":creditscore",
     ":overview",
     ":p2p",
+    ":offline",
     ":app"
 )
