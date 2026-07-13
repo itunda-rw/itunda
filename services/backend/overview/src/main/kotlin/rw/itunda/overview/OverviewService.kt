@@ -1,9 +1,11 @@
 package rw.itunda.overview
 
 import org.springframework.stereotype.Service
+import rw.itunda.core.domain.LinkedAccountStatus
 import rw.itunda.core.domain.LoanStatus
 import rw.itunda.core.repository.HoldingRepository
 import rw.itunda.core.repository.InsurancePolicyRepository
+import rw.itunda.core.repository.LinkedAccountRepository
 import rw.itunda.core.repository.LoanAccountRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.WalletRepository
@@ -14,6 +16,10 @@ data class SavingsSummary(val totalSaved: BigDecimal, val goalCount: Int)
 data class LoansSummary(val totalOutstanding: BigDecimal, val activeCount: Int)
 data class InvestmentsSummary(val totalCostBasis: BigDecimal, val holdingCount: Int)
 data class InsuranceSummary(val activePolicyCount: Int, val totalMonthlyPremium: BigDecimal)
+// Deliberately no `balance` field -- see LinkedAccount.kt's own doc comment for why:
+// itunda has no real provider access to fetch a live external balance from, and
+// fabricating one would misrepresent this as more integrated than it honestly is.
+data class LinkedAccountSummary(val id: String, val provider: String, val maskedAccountNumber: String, val status: String)
 data class OverviewResult(
     val netWorth: BigDecimal,
     val accounts: List<AccountSummary>,
@@ -21,6 +27,7 @@ data class OverviewResult(
     val loans: LoansSummary,
     val investments: InvestmentsSummary,
     val insurance: InsuranceSummary,
+    val linkedAccounts: List<LinkedAccountSummary>,
 )
 
 /**
@@ -51,6 +58,7 @@ class OverviewService(
     private val loanAccountRepository: LoanAccountRepository,
     private val holdingRepository: HoldingRepository,
     private val insurancePolicyRepository: InsurancePolicyRepository,
+    private val linkedAccountRepository: LinkedAccountRepository,
 ) {
 
     fun getOverview(userId: String): OverviewResult {
@@ -74,8 +82,17 @@ class OverviewService(
         val premiumTotal = activePolicies.fold(BigDecimal.ZERO) { acc, p -> acc + p.monthlyPremium }
         val insurance = InsuranceSummary(activePolicies.size, premiumTotal)
 
+        // Real external bank/MoMo linking (2026-07-13) -- closes this file's own
+        // header comment's named gap. Deliberately excluded from netWorth, same
+        // reasoning as insurance being excluded above: there's no real balance to
+        // add. Only genuinely LINKED accounts are surfaced -- VERIFICATION_FAILED
+        // never got real consent, UNLINKED has been revoked.
+        val linkedAccounts = linkedAccountRepository.findByUserIdOrderByLinkedAtDesc(userId)
+            .filter { it.status == LinkedAccountStatus.LINKED }
+            .map { LinkedAccountSummary(it.id, it.provider, it.externalAccountNumberMasked, it.status.name) }
+
         val netWorth = walletTotal + savingsTotal + costBasisTotal - outstandingTotal
 
-        return OverviewResult(netWorth, accounts, savings, loans, investments, insurance)
+        return OverviewResult(netWorth, accounts, savings, loans, investments, insurance, linkedAccounts)
     }
 }

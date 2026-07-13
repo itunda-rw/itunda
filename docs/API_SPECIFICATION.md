@@ -72,19 +72,40 @@ Errors: `409 PHONE_ALREADY_REGISTERED`, `401 INVALID_CREDENTIALS`, `404 USER_NOT
 ## Overview — `/api/v1/overview`
 
 Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s Account aggregation
-row. Aggregates every real itunda product into one net-worth figure; does not touch external
-bank/MoMo linking, which remains fully target.
+row. Aggregates every real itunda product into one net-worth figure, plus (also 2026-07-13)
+real linked external bank/MoMo accounts — see the Accounts section below for the linking flow
+itself.
 
 | Method | Path | Body | Success | Notes |
 |---|---|---|---|---|
-| GET | `` | — | `{success, netWorth, accounts: [...], savings, loans, investments, insurance}` | `netWorth` = wallet balances + savings + investment cost basis − active loan outstanding. Insurance is excluded from `netWorth` (a paid premium is a sunk expense, not an asset) and reported separately as a coverage summary |
+| GET | `` | — | `{success, netWorth, accounts: [...], savings, loans, investments, insurance, linkedAccounts: [...]}` | `netWorth` = wallet balances + savings + investment cost basis − active loan outstanding. Insurance is excluded from `netWorth` (a paid premium is a sunk expense, not an asset) and reported separately as a coverage summary. `linkedAccounts` is excluded from `netWorth` too — no real external balance exists to add |
 
 `accounts`: `[{id, type, name, balance, currency}]`. `savings`: `{totalSaved, goalCount}`.
 `loans`: `{totalOutstanding, activeCount}` (active loans only — a fully `PAID` loan doesn't
 count against outstanding). `investments`: `{totalCostBasis, holdingCount}` — cost basis
 (`shares × avgPrice`), not live market value; the stock price catalog lives in the `:stocks`
 module and no module in this backend depends on another feature module. `insurance`:
-`{activePolicyCount, totalMonthlyPremium}`.
+`{activePolicyCount, totalMonthlyPremium}`. `linkedAccounts`:
+`[{id, provider, maskedAccountNumber, status}]` — only rows still in `LINKED` status; no
+balance field, ever (see the Accounts section for why).
+
+## Accounts — `/api/v1/accounts`
+
+Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s Account aggregation
+row. A real external bank/MoMo consent registry (`LinkedAccount`/`linked_accounts`), closing
+what that row previously named as fully target. Verification is a real call through the same
+`RailCatalog`/`ProviderConnector` simulation every other rail-calling flow in this backend
+uses (transfers, bills, airtime) — linking "MTN MoMo" genuinely exercises the `mtn_momo` rail
+profile's real latency/success-rate, including a real chance of `VERIFICATION_FAILED`, not an
+unconditional success. **Deliberately never stores or surfaces a live external balance** —
+this backend has no real provider access to fetch one from, and fabricating one would
+misrepresent this as more integrated than it honestly is.
+
+| Method | Path | Body | Success | Notes |
+|---|---|---|---|---|
+| POST | `/link` | `{provider, externalAccountNumber}` | `{success, linkedAccount}` | `externalAccountNumber` must be ≥4 chars (`400 INVALID_REQUEST` otherwise); only the last 4 digits are ever stored, as `•••• 1234`. `linkedAccount.status` is `LINKED` on a successful provider verification or `VERIFICATION_FAILED` (with `failureReason`) on a real decline — both are saved, a decline is not an error response |
+| GET | `/linked` | — | `{success, linkedAccounts: [...]}` | Caller's own full history, most recent first — includes `VERIFICATION_FAILED` and `UNLINKED` rows, unlike `GET /overview`'s filtered view |
+| POST | `/link/{accountId}/unlink` | — | `{success, linkedAccount}` | Sets `status: UNLINKED`, `unlinkedAt`. `404 LINKED_ACCOUNT_NOT_FOUND` if the id doesn't exist, `403 LINKED_ACCOUNT_NOT_OWNED` if it belongs to a different user, `409 LINKED_ACCOUNT_ALREADY_UNLINKED` if already unlinked |
 
 ## P2P — `/api/v1/p2p`
 
@@ -502,6 +523,11 @@ Grepped for directly, confirmed absent as of 2026-07-13:
   section) — no other module emits webhooks of any kind.
 
 ## What Changed Since the Last Version of This Document
+
+**2026-07-13, latest of all:** added `/api/v1/accounts/link`, `/api/v1/accounts/linked`,
+`/api/v1/accounts/link/{accountId}/unlink` (real, live-verified external bank/MoMo consent
+registry) and extended `GET /api/v1/overview` with a `linkedAccounts` field — see the Accounts
+and Overview sections above.
 
 **2026-07-13, truly latest:** added `/api/v1/system/reconciliation` (real, live-verified,
 persisted per-rail-per-day report) — see the Reconciliation section above.

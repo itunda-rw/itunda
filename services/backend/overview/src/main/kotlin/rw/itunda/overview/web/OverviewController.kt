@@ -24,6 +24,7 @@ class OverviewController(private val overviewService: OverviewService) {
                 "loans" to result.loans,
                 "investments" to result.investments,
                 "insurance" to result.insurance,
+                "linkedAccounts" to result.linkedAccounts,
             ),
         )
     }
