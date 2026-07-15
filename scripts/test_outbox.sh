@@ -18,7 +18,7 @@ curl -s -X POST -H "Accept:application/json" -H "Content-Type:application/json" 
     "database.server.id": "184054",
     "topic.prefix": "dbserver1",
     "database.include.list": "itunda_ledger",
-    "table.include.list": "itunda_ledger.outbox_event_entity",
+    "table.include.list": "itunda_ledger.outbox_events",
     "schema.history.internal.kafka.bootstrap.servers": "kafka-broker-1:29092",
     "schema.history.internal.kafka.topic": "schema-changes.itunda_ledger",
     "transforms": "outbox",
@@ -37,7 +37,7 @@ sleep 5
 echo ""
 
 echo "3. Triggering P2P Transfer in Ledger Service..."
-curl -s -X POST http://localhost:8080/api/v1/ledger/transfer \
+curl -s -X POST http://localhost:8082/api/v1/ledger/transfer \
 -H "Content-Type: application/json" \
 -d '{
   "sourceAccountId": "acc_001",

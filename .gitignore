@@ -56,6 +56,7 @@ docker-compose.override.yml
 # the negation pattern keeps dump files ignored without doing that again.
 *.sql
 !**/db/migration/*.sql
+!infra/mysql-init/*.sql
 *.db
 *.sqlite
 
@@ -80,3 +81,6 @@ ios/Derived/
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Code local (personal, not shared) settings
+.claude/settings.local.json

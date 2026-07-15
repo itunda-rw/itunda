@@ -1,0 +1,239 @@
+# =============================================================================
+# ArgoCD AppProject - Itunda Platform
+# Kigali DC1 - Project-level RBAC, resource restrictions, and cluster scoping
+# =============================================================================
+# Design decisions:
+# - Strict source repo whitelist prevents unauthorized repo syncing
+# - Destination restrictions limit where ArgoCD can deploy
+# - Resource blacklist blocks dangerous resources (LimitRange, ResourceQuota
+#   must be managed by cluster admins, not app teams)
+# - Roles scoped to this project for fine-grained RBAC
+# - Signed commits enforcement (signatureKeys) for production auditing
+# =============================================================================
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: itunda-platform
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: itunda-platform
+    app.kubernetes.io/part-of: itunda-platform
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  description: >
+    Itunda fintech platform - Rwanda's mobile money and payment processing
+    infrastructure. PCI-DSS compliant. Deployed to Kigali DC1.
+
+  # ===========================================================================
+  # Source Repository Whitelist
+  # Only these repos can be synced to this project
+  # ===========================================================================
+  sourceRepos:
+  - git@github.com:itunda/infra.git
+  - git@github.com:itunda/platform.git
+  - git@github.com:itunda/helm-charts.git
+  # Harbor Helm chart repository
+  - https://registry.itunda.rw/chartrepo/itunda
+
+  # ===========================================================================
+  # Destination Clusters and Namespaces
+  # Restrict where applications in this project can deploy
+  # ===========================================================================
+  destinations:
+  # Primary cluster - Kigali DC1
+  - server: https://kubernetes.default.svc
+    namespace: itunda
+  - server: https://kubernetes.default.svc
+    namespace: itunda-staging
+  - server: https://kubernetes.default.svc
+    namespace: monitoring
+  - server: https://kubernetes.default.svc
+    namespace: observability
+  - server: https://kubernetes.default.svc
+    namespace: harbor
+  - server: https://kubernetes.default.svc
+    namespace: litmus
+  - server: https://kubernetes.default.svc
+    namespace: itunda-lb
+  - server: https://kubernetes.default.svc
+    namespace: argocd
+  # DR cluster - Kigali DC2 (active-active)
+  - server: https://dc2-api.itunda.rw:6443
+    namespace: itunda
+  - server: https://dc2-api.itunda.rw:6443
+    namespace: itunda-staging
+  - server: https://dc2-api.itunda.rw:6443
+    namespace: monitoring
+  - server: https://dc2-api.itunda.rw:6443
+    namespace: observability
+
+  # ===========================================================================
+  # Cluster Resource Whitelist
+  # CRDs and cluster-scoped resources this project is allowed to create
+  # ===========================================================================
+  clusterResourceWhitelist:
+  - group: ""
+    kind: Namespace
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRole
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRoleBinding
+  - group: networking.k8s.io
+    kind: IngressClass
+  - group: cert-manager.io
+    kind: ClusterIssuer
+  - group: policy
+    kind: PodSecurityPolicy
+  - group: external-secrets.io
+    kind: ClusterSecretStore
+  - group: monitoring.coreos.com
+    kind: PrometheusRule
+
+  # ===========================================================================
+  # Namespace Resource Blacklist
+  # Prevent applications from creating these resource types
+  # (should only be managed by cluster admins)
+  # ===========================================================================
+  namespaceResourceBlacklist:
+  - group: ""
+    kind: LimitRange
+  - group: ""
+    kind: ResourceQuota
+  - group: policy
+    kind: PodSecurityPolicy
+
+  # ===========================================================================
+  # Namespace Resource Whitelist (explicit allow list)
+  # If specified, only these resource kinds can be created in namespaces
+  # ===========================================================================
+  namespaceResourceWhitelist:
+  - group: "*"
+    kind: "*"
+
+  # ===========================================================================
+  # Orphaned Resources Monitoring
+  # Warn when resources exist in destination namespaces but aren't tracked
+  # ===========================================================================
+  orphanedResources:
+    warn: true
+    ignore:
+    - group: ""
+      kind: ConfigMap
+      name: kube-root-ca.crt
+    - group: ""
+      kind: ServiceAccount
+      name: default
+    - group: ""
+      kind: Secret
+      name: default-token-*
+
+  # ===========================================================================
+  # Project-Level Roles
+  # These roles are scoped to the itunda-platform project only
+  # ===========================================================================
+  roles:
+  # ---------------------------------------------------------------------------
+  # Admin: Full project access (SRE/Platform Engineering)
+  # ---------------------------------------------------------------------------
+  - name: admin
+    description: Full access to all applications in itunda-platform project
+    policies:
+    - p, proj:itunda-platform:admin, applications, *, itunda-platform/*, allow
+    - p, proj:itunda-platform:admin, repositories, *, itunda-platform/*, allow
+    - p, proj:itunda-platform:admin, clusters, *, itunda-platform/*, allow
+    - p, proj:itunda-platform:admin, logs, get, itunda-platform/*, allow
+    - p, proj:itunda-platform:admin, exec, create, itunda-platform/*, allow
+    groups:
+    - itunda-sre
+    - itunda-platform-eng
+
+  # ---------------------------------------------------------------------------
+  # Developer: Deploy to staging, view production
+  # ---------------------------------------------------------------------------
+  - name: developer
+    description: Deploy to staging environments, read-only production access
+    policies:
+    - p, proj:itunda-platform:developer, applications, get, itunda-platform/*, allow
+    - p, proj:itunda-platform:developer, applications, sync, itunda-platform/itunda-staging-*, allow
+    - p, proj:itunda-platform:developer, applications, action/*, itunda-platform/itunda-staging-*, allow
+    - p, proj:itunda-platform:developer, logs, get, itunda-platform/*, allow
+    groups:
+    - itunda-developers
+    - itunda-devops
+
+  # ---------------------------------------------------------------------------
+  # Viewer: Read-only access (management, auditors)
+  # ---------------------------------------------------------------------------
+  - name: viewer
+    description: Read-only access to all applications for monitoring and auditing
+    policies:
+    - p, proj:itunda-platform:viewer, applications, get, itunda-platform/*, allow
+    - p, proj:itunda-platform:viewer, logs, get, itunda-platform/*, allow
+    groups:
+    - itunda-management
+    - itunda-auditors
+    - itunda-compliance
+
+  # ---------------------------------------------------------------------------
+  # CI: Automated deployments from CI/CD pipeline
+  # ---------------------------------------------------------------------------
+  - name: ci
+    description: CI/CD pipeline service account for automated deployments
+    policies:
+    - p, proj:itunda-platform:ci, applications, get, itunda-platform/*, allow
+    - p, proj:itunda-platform:ci, applications, sync, itunda-platform/*, allow
+    - p, proj:itunda-platform:ci, applications, action/argoproj.io/Rollout/retry, itunda-platform/*, allow
+    - p, proj:itunda-platform:ci, applications, action/argoproj.io/Rollout/promote, itunda-platform/*, allow
+    # CI JWT tokens generated by GitHub Actions
+    jwtTokens:
+    - iat: 1720000000  # Token issued-at timestamp
+      id: ci-pipeline-token
+
+  # ===========================================================================
+  # Sync Windows
+  # Restrict when syncs can occur for production stability
+  # ===========================================================================
+  syncWindows:
+  # Allow syncs during business hours (EAT: UTC+2)
+  - kind: allow
+    schedule: "0 6 * * 1-5"  # Mon-Fri 06:00 EAT
+    duration: 12h              # Until 18:00 EAT
+    applications:
+    - "*"
+    namespaces:
+    - itunda
+    - itunda-staging
+    manualSync: true
+
+  # Block production syncs during peak hours (12:00-14:00 EAT)
+  - kind: deny
+    schedule: "0 10 * * 1-5"  # Mon-Fri 10:00 UTC (12:00 EAT)
+    duration: 2h
+    applications:
+    - itunda-production
+    - itunda-data-layer
+    namespaces:
+    - itunda
+    manualSync: true  # Allow manual override by admin
+
+  # Allow maintenance window syncs (Sunday 02:00-06:00 EAT)
+  - kind: allow
+    schedule: "0 0 * * 0"  # Sunday 00:00 UTC (02:00 EAT)
+    duration: 4h
+    applications:
+    - "*"
+    namespaces:
+    - "*"
+    manualSync: true
+
+  # ===========================================================================
+  # Signature Keys for Signed Commits (PCI-DSS audit requirement)
+  # ===========================================================================
+  signatureKeys:
+  - keyID: itunda-release-signing-key

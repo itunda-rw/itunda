@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-07-14",
+  "platform": {
+    "name": "itunda-private-cloud",
+    "targetShape": "toss-style-openstack-active-active",
+    "managementPod": "pod0-management",
+    "pods": [
+      {
+        "name": "pod0-management",
+        "role": "management",
+        "cloud": "openstack",
+        "clusters": [
+          "itunda-mgmt"
+        ]
+      },
+      {
+        "name": "pod1-live",
+        "role": "workload",
+        "cloud": "openstack",
+        "failureDomain": "dc-a",
+        "clusters": [
+          "itunda-live3"
+        ]
+      },
+      {
+        "name": "pod2-live",
+        "role": "workload",
+        "cloud": "openstack",
+        "failureDomain": "dc-b",
+        "clusters": [
+          "itunda-live4"
+        ]
+      }
+    ],
+    "clusters": [
+      {
+        "name": "itunda-mgmt",
+        "role": "management",
+        "provider": "cluster-api-openstack",
+        "purpose": "cluster-lifecycle-and-gitops"
+      },
+      {
+        "name": "itunda-live3",
+        "liveZone": "live3",
+        "role": "workload",
+        "provider": "cluster-api-openstack",
+        "failureDomain": "dc-a",
+        "trafficMode": "active-active"
+      },
+      {
+        "name": "itunda-live4",
+        "liveZone": "live4",
+        "role": "workload",
+        "provider": "cluster-api-openstack",
+        "failureDomain": "dc-b",
+        "trafficMode": "active-active"
+      }
+    ],
+    "nodes": [
+      {
+        "name": "itunda-dc-a",
+        "ip": "192.168.252.2",
+        "status": "enabled",
+        "failureDomain": "dc-a",
+        "roles": [
+          "multipass-lab-node",
+          "kubeadm-control-plane",
+          "mysql-replica",
+          "kafka-dc-a"
+        ]
+      },
+      {
+        "name": "itunda-dc-b",
+        "ip": "192.168.252.3",
+        "status": "enabled",
+        "failureDomain": "dc-b",
+        "roles": [
+          "multipass-lab-node",
+          "kubeadm-worker",
+          "mysql-writer",
+          "redis-master",
+          "kafka-dc-b"
+        ]
+      }
+    ],
+    "services": [
+      {
+        "name": "registry",
+        "implementation": "harbor",
+        "mode": "shared",
+        "status": "planned"
+      },
+      {
+        "name": "progressive-delivery",
+        "mesh": "istio",
+        "controller": "argo-rollouts",
+        "status": "scaffolded"
+      },
+      {
+        "name": "mysql",
+        "mode": "single-writer-failover",
+        "writerNode": "itunda-dc-b",
+        "replicaNodes": [
+          "itunda-dc-a"
+        ]
+      },
+      {
+        "name": "redis",
+        "mode": "singleton",
+        "masterNode": "itunda-dc-b",
+        "targetMode": "sentinel-or-managed-ha"
+      },
+      {
+        "name": "kafka",
+        "mode": "dual-cluster-active-active",
+        "clusters": [
+          "dc-a",
+          "dc-b"
+        ],
+        "baselineMirror": "mm2",
+        "targetMirror": "custom-sink-connector-with-same-topic-contract"
+      },
+      {
+        "name": "observability",
+        "components": [
+          "prometheus",
+          "grafana",
+          "mimir-or-long-term-store",
+          "zabbix-or-host-monitoring"
+        ],
+        "status": "partial"
+      }
+    ]
+  }
+}

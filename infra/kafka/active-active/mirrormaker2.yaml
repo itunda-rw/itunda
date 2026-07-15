@@ -1,0 +1,119 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kafka-replication
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: itunda-mirrormaker2
+  namespace: kafka-replication
+data:
+  connect-mirror-maker-safe.properties: |
+    clusters = dc-a, dc-b
+    dc-a.bootstrap.servers = kafka-dc-a.kafka.svc.cluster.local:9092
+    dc-b.bootstrap.servers = kafka-dc-b.kafka.svc.cluster.local:9092
+
+    dc-a->dc-b.enabled = true
+    dc-b->dc-a.enabled = true
+
+    topics = ledger\..*|payment\..*|transfer\..*
+    topics.exclude = mm2.*\.internal,.*\.replica,__.*
+    groups = itunda-.*
+    groups.exclude = console-consumer-.*,connect-.*,__.*
+
+    refresh.topics.enabled = true
+    refresh.topics.interval.seconds = 30
+    refresh.groups.enabled = true
+    refresh.groups.interval.seconds = 30
+    emit.heartbeats.enabled = true
+    emit.offset-syncs.enabled = true
+    sync.group.offsets.enabled = true
+    sync.group.offsets.interval.seconds = 10
+    emit.checkpoints.enabled = true
+    emit.checkpoints.interval.seconds = 10
+    offset-syncs.topic.location = source
+
+    tasks.max = 16
+    replication.factor = 3
+    config.storage.topic = itunda-mm2-configs
+    offset.storage.topic = itunda-mm2-offsets
+    status.storage.topic = itunda-mm2-status
+    config.storage.replication.factor = 3
+    offset.storage.replication.factor = 3
+    status.storage.replication.factor = 3
+    checkpoints.topic.replication.factor = 3
+    heartbeats.topic.replication.factor = 3
+    offset-syncs.topic.replication.factor = 3
+
+  connect-mirror-maker-identity-experiment.properties: |
+    # This file reflects the same-topic contract Toss publicly described,
+    # but stock MM2 is not enough to run this bidirectionally without extra
+    # loop-prevention and offset-sync logic.
+    clusters = dc-a, dc-b
+    dc-a.bootstrap.servers = kafka-dc-a.kafka.svc.cluster.local:9092
+    dc-b.bootstrap.servers = kafka-dc-b.kafka.svc.cluster.local:9092
+
+    dc-a->dc-b.enabled = true
+    dc-b->dc-a.enabled = true
+    replication.policy.class = org.apache.kafka.connect.mirror.IdentityReplicationPolicy
+
+    topics = ledger\..*|payment\..*|transfer\..*
+    groups = itunda-.*
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: itunda-mirrormaker2
+  namespace: kafka-replication
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: itunda-mirrormaker2
+  template:
+    metadata:
+      labels:
+        app: itunda-mirrormaker2
+    spec:
+      containers:
+      - name: mm2
+        image: apache/kafka:4.2.0
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/bash", "-lc"]
+        args:
+        - /opt/kafka/bin/connect-mirror-maker.sh /etc/kafka/mm2/connect-mirror-maker-safe.properties
+        ports:
+        - containerPort: 8083
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+            ephemeral-storage: "256Mi"
+          limits:
+            cpu: "1000m"
+            memory: "768Mi"
+            ephemeral-storage: "1Gi"
+        volumeMounts:
+        - name: mm2-config
+          mountPath: /etc/kafka/mm2
+      volumes:
+      - name: mm2-config
+        configMap:
+          name: itunda-mirrormaker2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: itunda-mirrormaker2
+  namespace: kafka-replication
+spec:
+  selector:
+    app: itunda-mirrormaker2
+  ports:
+  - name: rest
+    port: 8083
+    targetPort: 8083
+  type: ClusterIP

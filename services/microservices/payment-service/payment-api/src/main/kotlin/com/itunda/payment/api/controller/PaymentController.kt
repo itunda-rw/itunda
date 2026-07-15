@@ -2,6 +2,7 @@ package com.itunda.payment.api.controller
 
 import com.itunda.payment.application.ConfirmPaymentCommand
 import com.itunda.payment.application.ConfirmPaymentUseCase
+import com.itunda.payment.infrastructure.TOPIC_PAYMENT_EVENTS
 import org.springframework.http.ResponseEntity
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.web.bind.annotation.*
@@ -48,7 +49,7 @@ class PaymentController(
             val payment = confirmPaymentUseCase.confirm(command)
 
             val eventPayload = """{"paymentKey": "${request.paymentKey}", "status": "${payment.status}"}"""
-            kafkaTemplate.send("payment-events", eventPayload)
+            kafkaTemplate.send(TOPIC_PAYMENT_EVENTS, eventPayload)
 
             ResponseEntity.ok(
                 mapOf(

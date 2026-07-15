@@ -1,0 +1,59 @@
+# Pod0 host and platform monitoring for the Toss-style private-cloud target.
+#
+# Source-backed assumptions:
+# - Toss explicitly names Zabbix in the private-cloud monitoring layer.
+# - The upstream Zabbix community chart supports Postgresql/TimescaleDB and recommends enabling
+#   persistence for real history retention.
+# - This chart can expose the web frontend through an Ingress.
+#
+# Replace every placeholder before use.
+
+zabbixImageTag: ubuntu-7.0.23
+
+zabbixServer:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+zabbixWeb:
+  enabled: true
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+postgresql:
+  enabled: true
+  persistence:
+    enabled: true
+    storageSize: 50Gi
+    storageClass: cinder-csi
+  extraRuntimeParameters:
+    max_connections: 250
+    shared_buffers: 1GB
+    work_mem: 64MB
+    maintenance_work_mem: 256MB
+    effective_cache_size: 2GB
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  hosts:
+    - host: zabbix.platform.itunda.internal
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: zabbix-platform-itunda-tls
+      hosts:
+        - zabbix.platform.itunda.internal

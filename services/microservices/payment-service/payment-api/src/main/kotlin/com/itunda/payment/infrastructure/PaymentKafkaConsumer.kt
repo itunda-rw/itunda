@@ -10,7 +10,7 @@ class PaymentKafkaConsumer(
     private val confirmPaymentUseCase: ConfirmPaymentUseCase
 ) {
 
-    @KafkaListener(topics = ["ledger-transfer-events"], groupId = "payment-service-group")
+    @KafkaListener(topics = [TOPIC_TRANSFER_CONFIRMED], groupId = "payment-service-group")
     fun consumeLedgerEvent(message: String) {
         println("[Kafka Consumer] Received ledger transfer event: \$message")
         

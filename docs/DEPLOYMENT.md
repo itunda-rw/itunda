@@ -37,19 +37,25 @@ those as pods, and only for local cluster development.
 The fastest real path, and the one actually exercised in this repo's own verification history:
 
 ```bash
-# Databases, cache, Kafka -- infra/docker-compose.yml
-cd infra && docker compose up -d
-
-# Canonical backend
-cd services/backend && ./gradlew :app:bootRun
-
-# Microservices (separate terminals)
-cd services/microservices/ledger-service && ../gradlew bootRun
-cd services/microservices/payment-service && ../gradlew bootRun
-
-# Gateway
-cd services/api-gateway && BACKEND_URL=http://localhost:4001 yarn node index.js
+yarn install
+yarn audit:private-cloud
+yarn env:private-cloud > .env
+yarn dev:ecosystem
 ```
+
+That canonical path assumes MySQL, Redis, and Kafka already exist in your private cloud
+or another reachable environment and brings up locally:
+
+- the canonical backend on `4001`
+- the API gateway on `3000`
+- the web shell on `5000` with remotes on `5001` and `5002`
+
+If you want the pieces separately, use `yarn dev:infra`, `yarn dev:backend`,
+`yarn dev:gateway`, and `yarn dev`.
+
+For a full local-only fallback, use `yarn dev:ecosystem:local`. That starts
+`infra/docker-compose.yml` first, then injects the Docker-mapped ports below into the
+backend process automatically.
 
 MySQL runs on host port `3307` (container port `3306`), Redis on `16379`, matching
 `infra/docker-compose.yml`'s pinned `mysql:8.0.39` (see that file's own comment on why it's
@@ -94,6 +100,23 @@ kubectl rollout status deployment/backend -n itunda
 Every service exposes Spring Boot Actuator at `/actuator/health` (added specifically so these
 liveness/readiness probes have something real to hit — see `docs/ARCHITECTURE.md` §4) and
 `/actuator/prometheus` for the Grafana/Prometheus manifests under `infra/k8s/monitoring/`.
+
+## 3a. Multipass private-cloud deployment
+
+If you're deploying onto the two local Multipass VMs instead of an existing cluster:
+
+```bash
+yarn audit:private-cloud
+yarn verify:private-cloud
+yarn private-cloud:bootstrap
+yarn private-cloud:topics
+yarn private-cloud:deploy
+```
+
+That workflow is documented in [docs/PRIVATE_CLOUD_OPERATIONS.md](PRIVATE_CLOUD_OPERATIONS.md).
+It installs a kubeadm-based Kubernetes cluster on the two VMs, provisions the Kafka topics the real services expect, renders
+the external-service ConfigMaps/Secrets from `.env` or the live audit, and applies the
+Kubernetes manifests plus fixed NodePort entrypoints for gateway/backend/monitoring.
 
 **Not yet decided or built, and not asserted here as if they were:** which cloud provider (or
 whether this stays self-hosted), managed-MySQL provisioning, DNS, TLS certificate issuance, a

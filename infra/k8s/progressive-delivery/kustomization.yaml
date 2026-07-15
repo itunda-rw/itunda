@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ingress-gateway.yaml
+- hpas.yaml
+- api-gateway-rollout.yaml
+- backend-rollout.yaml
+- ledger-service-rollout.yaml
+- payment-service-rollout.yaml

@@ -4,7 +4,9 @@ Itunda is a Rwanda-first financial super-app prototype modeled on the Toss produ
 
 The goal is not to copy Toss visually only. The product target is Toss-like simplicity on top of Rwanda-native rails: MTN Mobile Money, Airtel Money, bank transfers, eKash-style interoperability, Irembo/RRA bill flows, RWF-first money formatting, National ID KYC, merchant QR, Face Pay concepts, settlement monitoring, fraud review, and reconciliation.
 
-The canonical product, architecture, and UI/UX map is [docs/TOSS_RWANDA_ALIGNMENT.md](/Users/me/rwanda/itunda/docs/TOSS_RWANDA_ALIGNMENT.md). The implementation checklist is [docs/TOSS_PARITY_MATRIX.md](/Users/me/rwanda/itunda/docs/TOSS_PARITY_MATRIX.md). The source-backed product map is [docs/FACT_CHECKED_TOSS_RWANDA_MAP.md](/Users/me/rwanda/itunda/docs/FACT_CHECKED_TOSS_RWANDA_MAP.md).
+The canonical product, architecture, and UI/UX map is [docs/TOSS_RWANDA_ALIGNMENT.md](docs/TOSS_RWANDA_ALIGNMENT.md). The implementation checklist is [docs/TOSS_PARITY_MATRIX.md](docs/TOSS_PARITY_MATRIX.md). The source-backed product map is [docs/FACT_CHECKED_TOSS_RWANDA_MAP.md](docs/FACT_CHECKED_TOSS_RWANDA_MAP.md).
+The current private-cloud gap analysis and Toss comparison is [docs/PRIVATE_CLOUD_BLUEPRINT.md](docs/PRIVATE_CLOUD_BLUEPRINT.md).
+The operational private-cloud workflow is [docs/PRIVATE_CLOUD_OPERATIONS.md](docs/PRIVATE_CLOUD_OPERATIONS.md).
 
 ## Current Surfaces
 
@@ -81,20 +83,47 @@ separate npm workspaces, install those independently):
 yarn install
 ```
 
-Run the web app:
+Start the full local demo stack:
 
 ```bash
+yarn audit:private-cloud
+yarn env:private-cloud > .env
+yarn dev:ecosystem
+```
+
+This assumes MySQL, Redis, and Kafka already exist in your private cloud or another
+reachable environment and are configured through env vars (`.env` is loaded automatically
+by `scripts/local-ecosystem.sh`).
+
+That brings up locally:
+
+- the canonical backend on `http://localhost:4001`
+- the API gateway on `http://localhost:3000`
+- the federated web shell on `http://localhost:5000`
+- the two required remotes on `http://localhost:5001` and `http://localhost:5002`
+
+If you want a full local-only fallback instead, use:
+
+```bash
+yarn dev:ecosystem:local
+```
+
+That starts `infra/docker-compose.yml` first and maps MySQL/Redis/Kafka to `3307`, `16379`,
+and `9092`.
+
+If you only want the web shell, `yarn dev` now starts `bank-mfe`, `kyc-mfe`, and `host-app`
+together instead of only the host shell.
+
+Manual pieces, if you want them separately:
+
+```bash
+yarn dev:infra
+yarn dev:backend
+yarn dev:gateway
 yarn dev
 ```
 
-Run the canonical backend:
-
-```bash
-cd services/backend
-./gradlew :app:bootRun
-```
-
-Build the web app:
+Build the full web surface:
 
 ```bash
 yarn build

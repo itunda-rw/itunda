@@ -1,0 +1,169 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: itunda
+spec:
+  selector:
+    app: backend
+  ports:
+  - port: 4001
+    targetPort: 4001
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-stable
+  namespace: itunda
+spec:
+  selector:
+    app: backend
+  ports:
+  - port: 4001
+    targetPort: 4001
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-canary
+  namespace: itunda
+spec:
+  selector:
+    app: backend
+  ports:
+  - port: 4001
+    targetPort: 4001
+  type: ClusterIP
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: backend
+  namespace: itunda
+spec:
+  replicas: 4
+  minReadySeconds: 10
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: backend
+  strategy:
+    canary:
+      stableService: backend-stable
+      canaryService: backend-canary
+      trafficRouting:
+        istio:
+          virtualServices:
+          - name: backend
+            routes:
+            - primary
+      steps:
+      - setWeight: 10
+      - pause:
+          duration: 5m
+      - setWeight: 25
+      - pause:
+          duration: 10m
+      - setWeight: 50
+      - pause: {}
+  template:
+    metadata:
+      labels:
+        app: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: "4001"
+        sidecar.istio.io/proxyCPU: "50m"
+        sidecar.istio.io/proxyCPULimit: "200m"
+        sidecar.istio.io/proxyMemory: "64Mi"
+        sidecar.istio.io/proxyMemoryLimit: "128Mi"
+    spec:
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 30
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: backend
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: backend
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: backend
+        image: ghcr.io/itunda/backend:latest
+        ports:
+        - containerPort: 4001
+        env:
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-db-config
+              key: host
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-db-config
+              key: port
+        - name: DB_NAME
+          value: "itunda"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: itunda-db-credentials
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: itunda-db-credentials
+              key: password
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-redis-config
+              key: host
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-redis-config
+              key: port
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: itunda-jwt-secret
+              key: secret
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        startupProbe:
+          httpGet:
+            path: /actuator/health
+            port: 4001
+          failureThreshold: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 4001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 4001
+          initialDelaySeconds: 45
+          periodSeconds: 15

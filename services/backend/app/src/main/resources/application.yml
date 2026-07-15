@@ -12,6 +12,10 @@ spring:
     exclude:
       - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   datasource:
+    # Defaults stay on the standard MySQL port for private-cloud/external-infra
+    # deployments. The repo's optional local Docker fallback maps MySQL to 3307;
+    # scripts/local-ecosystem.sh exports that override automatically in all-local
+    # mode so this file doesn't need to hard-code one environment's host port.
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:itunda}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: ${DB_USER:itunda}
     # Matches infra/docker-compose.yml's local MySQL default. Production and CI
@@ -22,6 +26,8 @@ spring:
   data:
     redis:
       host: ${REDIS_HOST:localhost}
+      # Same reasoning as the MySQL default above: standard external Redis by
+      # default, local-Docker override injected by scripts/local-ecosystem.sh.
       port: ${REDIS_PORT:6379}
   # Real event backbone for ledger.posted (see core/.../events/, 2026-07-11 fix) --
   # same env var convention as services/microservices' KAFKA_BOOTSTRAP_SERVERS.

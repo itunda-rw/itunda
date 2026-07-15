@@ -43,31 +43,29 @@ backbone across services.
 ```bash
 cd /Users/me/rwanda
 
-# Start infrastructure — infra/docker-compose.yml is the only docker-compose file in this
-# repo (there is no root-level one); it also defines Zookeeper/Kafka/Debezium for the
-# transactional-outbox relay, real but not required just to run the API
-docker-compose -f infra/docker-compose.yml up -d mysql redis-node-1
-
-# Start the Spring Boot Backend
-cd services/backend
-DB_HOST=localhost DB_PORT=3306 DB_NAME=itunda DB_USER=itunda DB_PASSWORD=itunda ./gradlew :app:bootRun
-# Listens on :4001 (services/backend/app/src/main/resources/application.yml), not :3000
-
-# In a new terminal, start the root yarn workspace — "yarn dev" resolves to
-# services/micro-frontends/host-app (a real Vite app; see its package.json "name": "host-app")
-cd /Users/me/rwanda
 yarn install
-yarn dev
+yarn dev:ecosystem
 
 # Access
-Web:    http://localhost:5173
+Web:    http://localhost:5000
+Gateway: http://localhost:3000
 Backend: http://localhost:4001/api/v1/...
 ```
 
-No admin portal or API gateway currently runs at a fixed port — `services/api-gateway` is a
-stub (see ARCHITECTURE.md §1), not a running service to point a URL at. The Android/iOS mobile
-apps and the `packages/saronite` mini-app host are separate build targets (see §13) — `yarn dev`
-does not touch them.
+`yarn dev:ecosystem` is the current canonical local run path. It assumes MySQL, Redis,
+and Kafka already exist in your private cloud or another reachable environment and starts:
+
+- the canonical backend on `:4001`
+- the API gateway on `:3000`
+- the federated host app on `:5000`
+- the `kyc-mfe` and `bank-mfe` remotes on `:5001` and `:5002`
+
+If you only want the web shell, `yarn dev` now starts all three Vite apps together. The
+Android/iOS apps and the `packages/saronite` mini-app host are still separate build targets.
+
+For a full local-only fallback, use `yarn dev:ecosystem:local`. That starts
+`infra/docker-compose.yml` first and injects the Docker-mapped ports (`3307`, `16379`,
+`9092`) into the backend process automatically.
 
 ## 3. Key Features
 
@@ -112,8 +110,7 @@ markdown file is the only API reference that exists.
 
 ### Development
 ```bash
-docker-compose -f infra/docker-compose.yml up -d
-yarn dev
+yarn dev:ecosystem
 ```
 
 ### Staging / Production

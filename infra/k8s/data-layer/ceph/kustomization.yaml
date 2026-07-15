@@ -1,0 +1,27 @@
+# =============================================================================
+# Kustomization - Ceph Storage Layer
+# =============================================================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: itunda-ceph
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+namespace: itunda-ceph
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: itunda-platform
+      app.kubernetes.io/managed-by: kustomize
+      datacenter: kigali-dc1
+
+resources:
+  - cluster.yaml
+  - storage-classes.yaml
+  - object-store.yaml
+
+commonAnnotations:
+  itunda.rw/layer: data
+  itunda.rw/component: ceph-storage

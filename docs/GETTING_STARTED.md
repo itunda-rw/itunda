@@ -20,23 +20,76 @@ The root workspace covers `packages/shared-utils`, `services/micro-frontends/*`,
 yarn install
 ```
 
-## Run the web app
+## Run the full local ecosystem
+
+```bash
+yarn audit:private-cloud
+yarn verify:private-cloud
+yarn env:private-cloud > .env
+yarn dev:ecosystem
+```
+
+This is the canonical local demo path. It starts:
+
+- the canonical backend at `http://localhost:4001`
+- the API gateway at `http://localhost:3000`
+- the federated web shell at `http://localhost:5000`
+- both required remotes at `http://localhost:5001` and `http://localhost:5002`
+
+It assumes MySQL, Redis, and Kafka already exist in your private cloud or another
+reachable environment and are configured through env vars. `scripts/local-ecosystem.sh`
+automatically loads `.env` if present.
+
+## Full local-only fallback
+
+```bash
+yarn dev:ecosystem:local
+```
+
+That starts `infra/docker-compose.yml` first and then boots the same backend/gateway/web
+processes against the Docker-mapped ports (`3307` MySQL, `16379` Redis, `9092` Kafka).
+
+## Bootstrap the Multipass private cloud
+
+If you want the repo's Kubernetes app layer on the two Multipass nodes themselves:
+
+```bash
+yarn private-cloud:bootstrap
+yarn private-cloud:topics
+yarn private-cloud:deploy
+```
+
+The full operator flow is in [PRIVATE_CLOUD_OPERATIONS.md](PRIVATE_CLOUD_OPERATIONS.md).
+
+## Run only the web shell
 
 ```bash
 yarn dev
 ```
 
-This runs `services/micro-frontends/host-app`.
+Unlike the old setup, `yarn dev` now starts all three required Vite apps together
+(`bank-mfe`, `kyc-mfe`, and `host-app`). The host shell depends on the two remotes, so
+starting only `host-app` was not a complete local run.
 
 ## Run the canonical backend
 
 ```bash
-cd services/backend
-./gradlew :app:bootRun
+yarn dev:backend
 ```
 
-Needs a real MySQL + Redis (see `services/backend/README.md` for the one-line `docker run`
-setup). There is no demo/mock-data fallback here — this is the real Kotlin/Spring backend.
+By default the backend reads its upstream addresses from your env:
+
+- MySQL: `DB_HOST` / `DB_PORT` from your env
+- Redis: `REDIS_HOST` / `REDIS_PORT` from your env
+- Kafka: `KAFKA_BOOTSTRAP_SERVERS` from your env
+
+If you use the Docker fallback (`yarn dev:ecosystem:local`), those values are injected as:
+
+- MySQL: `localhost:3307`
+- Redis: `localhost:16379`
+- Kafka: `localhost:9092`
+
+If you want to start only the fallback infra yourself, run `yarn dev:infra` first.
 
 ## Build the web app
 
@@ -159,6 +212,7 @@ itunda/
 
 ```bash
 yarn lint
+yarn lint:web
 yarn tsc --noEmit
 cd services/backend && ./gradlew build
 cd services/microservices && ./gradlew build

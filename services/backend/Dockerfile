@@ -7,7 +7,9 @@
 FROM eclipse-temurin:17-jdk-jammy AS builder
 WORKDIR /app
 COPY . .
-RUN ./gradlew :app:bootJar --no-daemon -x test
+RUN ./gradlew :app:bootJar --no-daemon -x test \
+  -Dorg.gradle.jvmargs='-Xmx768m -XX:MaxMetaspaceSize=256m' \
+  -Dkotlin.daemon.jvm.options='-Xmx384m'
 
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app

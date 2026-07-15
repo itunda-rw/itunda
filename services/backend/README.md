@@ -152,21 +152,28 @@ Still remaining as future enhancements:
 ## Running it
 
 ```bash
-# 1. Start MySQL and Redis (one-time, or reuse existing containers)
-docker run -d --name itunda-mysql -p 3306:3306 \
-  -e MYSQL_ROOT_PASSWORD=rootpass -e MYSQL_DATABASE=itunda \
-  -e MYSQL_USER=itunda -e MYSQL_PASSWORD=itunda \
-  mysql:8.0 --default-authentication-plugin=mysql_native_password
-docker run -d --name itunda-redis -p 6379:6379 redis:7-alpine
+# 1. Point DB_HOST/DB_PORT, REDIS_HOST/REDIS_PORT, and KAFKA_BOOTSTRAP_SERVERS
+#    at your private-cloud services (or put them in /path/to/rwanda/.env)
 
 # 2. Run the app (Gradle wrapper is committed, no local Gradle install needed)
 cd services/backend
-DB_HOST=localhost DB_PORT=3306 DB_NAME=itunda DB_USER=itunda DB_PASSWORD=itunda \
-  ./gradlew :app:bootRun
+./gradlew :app:bootRun
 ```
 
-Listens on `:4001` (the Express backend uses `:4000`, so both can run side by side
-during migration). Live: `GET /health`, `POST /api/v1/auth/{register,login,refresh,logout}`,
+For a full local-only fallback instead of private-cloud infra:
+
+```bash
+cd /path/to/rwanda
+docker compose -f infra/docker-compose.yml up -d mysql redis-node-1 kafka-broker-1 zookeeper debezium
+cd services/backend
+DB_PORT=3307 REDIS_PORT=16379 KAFKA_BOOTSTRAP_SERVERS=localhost:9092 ./gradlew :app:bootRun
+```
+
+Standard defaults in `application.yml` are private-cloud friendly (`3306` MySQL, `6379`
+Redis). The local Docker fallback deliberately overrides them because the committed Compose
+stack maps those services onto host ports `3307` and `16379`.
+
+Listens on `:4001`. Live: `GET /health`, `POST /api/v1/auth/{register,login,refresh,logout}`,
 `GET /api/v1/auth/profile`, `GET /api/v1/wallet[/{id}]`, `POST
 /api/v1/wallet/transfer/{quote,confirm}`, `GET /api/v1/bills/{providers,pending}`,
 `POST /api/v1/bills/{pay,airtime}`, `GET /api/v1/loans/{offers,my-loans}`, `POST

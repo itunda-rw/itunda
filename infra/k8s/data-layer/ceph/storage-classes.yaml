@@ -1,0 +1,196 @@
+# =============================================================================
+# Ceph Storage Classes - Itunda Platform
+# =============================================================================
+# Provides tiered storage for different workload profiles:
+#   - ceph-block-ssd:    High-IOPS NVMe-backed RBD for databases
+#   - ceph-block-hdd:    Standard throughput RBD for logs/backups
+#   - ceph-filesystem:   Shared CephFS for config, assets, shared data
+#   - ceph-object:       S3-compatible for backups, log archives, artifacts
+# =============================================================================
+
+---
+# =============================================================================
+# ceph-block-ssd - High-performance block storage (databases)
+# =============================================================================
+# Used by: Vitess VTTablet PVCs, etcd, Redis persistence
+# Characteristics: NVMe-backed, no compression, 3x replication, fast failover
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ceph-block-ssd
+  labels:
+    app.kubernetes.io/name: ceph-storage
+    app.kubernetes.io/part-of: itunda-platform
+    app.kubernetes.io/component: storage-class
+    storage-tier: premium
+    storage-type: block
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+    itunda.rw/description: "High-performance SSD block storage for databases"
+    itunda.rw/use-cases: "Vitess tablets, etcd, Redis, any latency-sensitive workload"
+provisioner: rook-ceph.rbd.csi.ceph.com
+parameters:
+  clusterID: itunda-ceph
+  pool: itunda-ssd-pool
+  imageFormat: "2"
+  imageFeatures: layering,fast-diff,object-map,deep-flatten,exclusive-lock
+  # CSI driver parameters
+  csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
+  csi.storage.k8s.io/provisioner-secret-namespace: itunda-ceph
+  csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
+  csi.storage.k8s.io/controller-expand-secret-namespace: itunda-ceph
+  csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
+  csi.storage.k8s.io/node-stage-secret-namespace: itunda-ceph
+  csi.storage.k8s.io/fstype: ext4
+  # PCI-DSS: encryption at rest via dm-crypt
+  encrypted: "true"
+reclaimPolicy: Retain  # Retain for databases - manual cleanup required
+allowVolumeExpansion: true
+mountOptions:
+  - discard  # Enable TRIM/discard for NVMe
+volumeBindingMode: WaitForFirstConsumer
+
+---
+# =============================================================================
+# ceph-block-hdd - Standard block storage (logs, backups, non-critical)
+# =============================================================================
+# Used by: Loki storage, backup staging, non-latency-sensitive workloads
+# Characteristics: Compressed, 2x replication, cost-optimized
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ceph-block-hdd
+  labels:
+    app.kubernetes.io/name: ceph-storage
+    app.kubernetes.io/part-of: itunda-platform
+    app.kubernetes.io/component: storage-class
+    storage-tier: standard
+    storage-type: block
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+    itunda.rw/description: "Standard block storage for logs and backups"
+    itunda.rw/use-cases: "Loki, log aggregation, backup staging, general purpose"
+provisioner: rook-ceph.rbd.csi.ceph.com
+parameters:
+  clusterID: itunda-ceph
+  pool: itunda-hdd-pool
+  imageFormat: "2"
+  imageFeatures: layering,fast-diff,object-map,deep-flatten,exclusive-lock
+  csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
+  csi.storage.k8s.io/provisioner-secret-namespace: itunda-ceph
+  csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
+  csi.storage.k8s.io/controller-expand-secret-namespace: itunda-ceph
+  csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
+  csi.storage.k8s.io/node-stage-secret-namespace: itunda-ceph
+  csi.storage.k8s.io/fstype: ext4
+reclaimPolicy: Delete
+allowVolumeExpansion: true
+mountOptions:
+  - discard
+volumeBindingMode: WaitForFirstConsumer
+
+---
+# =============================================================================
+# ceph-filesystem - Shared CephFS storage
+# =============================================================================
+# Used by: Shared config files, static assets, ML models, shared data
+# Characteristics: POSIX-compliant, ReadWriteMany, snapshotting, auto-scaling
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ceph-filesystem
+  labels:
+    app.kubernetes.io/name: ceph-storage
+    app.kubernetes.io/part-of: itunda-platform
+    app.kubernetes.io/component: storage-class
+    storage-tier: standard
+    storage-type: filesystem
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+    itunda.rw/description: "Shared CephFS storage with ReadWriteMany support"
+    itunda.rw/use-cases: "Config files, static assets, shared data between pods"
+provisioner: rook-ceph.cephfs.csi.ceph.com
+parameters:
+  clusterID: itunda-ceph
+  fsName: itunda-cephfs
+  pool: itunda-cephfs-data0
+  csi.storage.k8s.io/provisioner-secret-name: rook-csi-cephfs-provisioner
+  csi.storage.k8s.io/provisioner-secret-namespace: itunda-ceph
+  csi.storage.k8s.io/controller-expand-secret-name: rook-csi-cephfs-provisioner
+  csi.storage.k8s.io/controller-expand-secret-namespace: itunda-ceph
+  csi.storage.k8s.io/node-stage-secret-name: rook-csi-cephfs-node
+  csi.storage.k8s.io/node-stage-secret-namespace: itunda-ceph
+reclaimPolicy: Retain
+allowVolumeExpansion: true
+volumeBindingMode: Immediate
+
+---
+# =============================================================================
+# ceph-object - S3-compatible object storage (via StorageClass annotation)
+# =============================================================================
+# Note: Ceph object storage is accessed via the RGW S3 API, not via PVCs.
+# This StorageClass is a placeholder used by Rook for CephObjectStoreUser
+# bucket provisioning via the COSI (Container Object Storage Interface).
+#
+# Used by: Velero backups, Vitess backups, Loki log archives, Mimir metrics
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ceph-object
+  labels:
+    app.kubernetes.io/name: ceph-storage
+    app.kubernetes.io/part-of: itunda-platform
+    app.kubernetes.io/component: storage-class
+    storage-tier: archive
+    storage-type: object
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+    itunda.rw/description: "S3-compatible object storage for backups and archives"
+    itunda.rw/use-cases: "Velero backups, Vitess XtraBackup, Loki chunks, Mimir blocks"
+    itunda.rw/access-method: "S3 API via rook-ceph-rgw-itunda-store.itunda-ceph.svc.cluster.local"
+provisioner: rook-ceph.ceph.rook.io/bucket
+parameters:
+  objectStoreName: itunda-store
+  objectStoreNamespace: itunda-ceph
+  region: kigali-dc1
+reclaimPolicy: Delete
+
+---
+# =============================================================================
+# VolumeSnapshotClass - for CSI snapshots (block)
+# =============================================================================
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: ceph-block-snapshot
+  labels:
+    app.kubernetes.io/name: ceph-storage
+    app.kubernetes.io/part-of: itunda-platform
+    app.kubernetes.io/component: snapshot
+  annotations:
+    snapshot.storage.kubernetes.io/is-default-class: "true"
+driver: rook-ceph.rbd.csi.ceph.com
+parameters:
+  clusterID: itunda-ceph
+  csi.storage.k8s.io/snapshotter-secret-name: rook-csi-rbd-provisioner
+  csi.storage.k8s.io/snapshotter-secret-namespace: itunda-ceph
+deletionPolicy: Retain
+
+---
+# =============================================================================
+# VolumeSnapshotClass - for CSI snapshots (filesystem)
+# =============================================================================
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: ceph-filesystem-snapshot
+  labels:
+    app.kubernetes.io/name: ceph-storage
+    app.kubernetes.io/part-of: itunda-platform
+    app.kubernetes.io/component: snapshot
+driver: rook-ceph.cephfs.csi.ceph.com
+parameters:
+  clusterID: itunda-ceph
+  csi.storage.k8s.io/snapshotter-secret-name: rook-csi-cephfs-provisioner
+  csi.storage.k8s.io/snapshotter-secret-namespace: itunda-ceph
+deletionPolicy: Retain

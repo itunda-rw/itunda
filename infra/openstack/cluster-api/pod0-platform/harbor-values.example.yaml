@@ -1,0 +1,46 @@
+expose:
+  type: ingress
+  tls:
+    enabled: true
+    certSource: secret
+    secret:
+      secretName: harbor-tls
+  ingress:
+    controller: f5-bigip
+    className: itunda-private
+    hosts:
+      core: harbor.platform.itunda.internal
+
+externalURL: https://harbor.platform.itunda.internal
+
+persistence:
+  enabled: true
+  resourcePolicy: keep
+  persistentVolumeClaim:
+    registry:
+      storageClass: cinder-csi
+      size: 5Gi
+    jobservice:
+      jobLog:
+        storageClass: cinder-csi
+        size: 1Gi
+    database:
+      storageClass: cinder-csi
+      size: 1Gi
+    redis:
+      storageClass: cinder-csi
+      size: 1Gi
+    trivy:
+      storageClass: cinder-csi
+      size: 5Gi
+
+redis:
+  type: internal
+
+trivy:
+  enabled: true
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true

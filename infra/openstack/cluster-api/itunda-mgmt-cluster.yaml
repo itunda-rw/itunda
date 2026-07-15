@@ -1,0 +1,219 @@
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: itunda-mgmt
+  namespace: capo-itunda
+  labels:
+    itunda.io/pod: pod0-management
+    itunda.io/role: management
+    itunda.io/provider: openstack
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+      - 10.20.0.0/16
+    services:
+      cidrBlocks:
+      - 10.96.0.0/12
+    serviceDomain: cluster.local
+  controlPlaneRef:
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+    kind: KubeadmControlPlane
+    name: itunda-mgmt-control-plane
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+    kind: OpenStackCluster
+    name: itunda-mgmt
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackCluster
+metadata:
+  name: itunda-mgmt
+  namespace: capo-itunda
+  labels:
+    itunda.io/pod: pod0-management
+    itunda.io/role: management
+spec:
+  apiServer:
+    managedLoadBalancer:
+      enabled: true
+  externalNetwork:
+    id: "REPLACE_WITH_OPENSTACK_EXTERNAL_NETWORK_ID"
+  identityRef:
+    cloudName: openstack
+    name: openstack-cloud-config
+  managedSubnets:
+  - cidr: 10.20.0.0/24
+    dnsNameservers:
+    - 1.1.1.1
+    - 8.8.8.8
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: itunda-mgmt-control-plane
+  namespace: capo-itunda
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: m1.large
+      image:
+        filter:
+          name: ubuntu-2204-kube-v1.32
+      sshKeyName: itunda-private-cloud
+      serverMetadata:
+        cluster-role: management
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: KubeadmControlPlane
+metadata:
+  name: itunda-mgmt-control-plane
+  namespace: capo-itunda
+spec:
+  replicas: 3
+  version: v1.32.4
+  machineTemplate:
+    metadata:
+      labels:
+        itunda.io/pod: pod0-management
+        itunda.io/node-pool: control-plane
+    infrastructureRef:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+      kind: OpenStackMachineTemplate
+      name: itunda-mgmt-control-plane
+    nodeDrainTimeout: 5m
+    nodeDeletionTimeout: 10m
+    nodeVolumeDetachTimeout: 10m
+  kubeadmConfigSpec:
+    clusterConfiguration:
+      apiServer:
+        extraArgs:
+          cloud-provider: external
+      controllerManager:
+        extraArgs:
+          cloud-provider: external
+    initConfiguration:
+      nodeRegistration:
+        name: '{{ local_hostname }}'
+        kubeletExtraArgs:
+        - name: cloud-provider
+          value: external
+        - name: provider-id
+          value: openstack://'{{ instance_id }}'
+    joinConfiguration:
+      nodeRegistration:
+        name: '{{ local_hostname }}'
+        kubeletExtraArgs:
+        - name: cloud-provider
+          value: external
+        - name: provider-id
+          value: openstack://'{{ instance_id }}'
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: KubeadmConfigTemplate
+metadata:
+  name: itunda-mgmt-workers
+  namespace: capo-itunda
+spec:
+  template:
+    spec:
+      joinConfiguration:
+        nodeRegistration:
+          name: '{{ local_hostname }}'
+          kubeletExtraArgs:
+          - name: cloud-provider
+            value: external
+          - name: provider-id
+            value: openstack://'{{ instance_id }}'
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: itunda-mgmt-workers
+  namespace: capo-itunda
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: m1.large
+      image:
+        filter:
+          name: ubuntu-2204-kube-v1.32
+      sshKeyName: itunda-private-cloud
+      serverMetadata:
+        cluster-role: management-worker
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: itunda-mgmt-workers
+  namespace: capo-itunda
+spec:
+  clusterName: itunda-mgmt
+  replicas: 2
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/deployment-name: itunda-mgmt-workers
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/deployment-name: itunda-mgmt-workers
+        itunda.io/pod: pod0-management
+        itunda.io/node-pool: workers
+    spec:
+      clusterName: itunda-mgmt
+      version: v1.32.4
+      bootstrap:
+        configRef:
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+          kind: KubeadmConfigTemplate
+          name: itunda-mgmt-workers
+      infrastructureRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+        kind: OpenStackMachineTemplate
+        name: itunda-mgmt-workers
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineHealthCheck
+metadata:
+  name: itunda-mgmt-control-plane
+  namespace: capo-itunda
+spec:
+  clusterName: itunda-mgmt
+  maxUnhealthy: 100%
+  nodeStartupTimeout: 20m
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: itunda-mgmt
+      cluster.x-k8s.io/control-plane: ""
+  unhealthyConditions:
+  - type: Ready
+    status: Unknown
+    timeout: 300s
+  - type: Ready
+    status: "False"
+    timeout: 300s
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineHealthCheck
+metadata:
+  name: itunda-mgmt-workers
+  namespace: capo-itunda
+spec:
+  clusterName: itunda-mgmt
+  maxUnhealthy: 40%
+  nodeStartupTimeout: 20m
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: itunda-mgmt
+      cluster.x-k8s.io/deployment-name: itunda-mgmt-workers
+  unhealthyConditions:
+  - type: Ready
+    status: Unknown
+    timeout: 300s
+  - type: Ready
+    status: "False"
+    timeout: 300s

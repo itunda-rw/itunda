@@ -1,0 +1,31 @@
+apiVersion: platform.itunda.io/v1alpha1
+kind: KafkaMirrorContract
+metadata:
+  name: toss-style-same-topic
+spec:
+  topology: active-active
+  clusters:
+  - dc-a
+  - dc-b
+  topicNaming:
+    mode: identity
+    requirement: same-topic-name-in-both-dcs
+  loopPrevention:
+    mode: message-header
+    requiredHeaders:
+    - x-itunda-source-dc
+    - x-itunda-source-topic
+    - x-itunda-source-partition
+    - x-itunda-source-offset
+  consistency:
+    dlqEnabled: true
+    dlqTopicPattern: _mirror_dlq.<target-cluster>.<topic>
+    noLoss: true
+  offsetSync:
+    plannedMaintenanceMode: header-reference
+    disasterMode: timestamp-search
+  operations:
+    exposeMetrics: true
+    publishLagByTopic: true
+    publishLoopDrops: true
+    publishDlqVolume: true

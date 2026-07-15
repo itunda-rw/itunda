@@ -1,0 +1,693 @@
+# =============================================================================
+# Ceph Storage Cluster - Itunda Platform (Rook Operator)
+# =============================================================================
+# Production-grade Ceph cluster for Kigali DC1 providing:
+#   - Block storage (RBD) for databases (Vitess, Redis)
+#   - Object storage (RGW) for backups, logs, artifacts
+#   - Shared filesystem (CephFS) for config/assets
+#
+# Architecture:
+#   - 3 MON daemons (quorum-based)
+#   - 3 OSD daemons (NVMe devices from hardware inventory)
+#   - 2 MDS daemons for CephFS (active-standby)
+#   - 2 RGW daemons for S3-compatible API
+#   - Dashboard enabled with Prometheus integration
+#   - CRUSH rules for rack/failure-domain awareness
+#
+# Network:
+#   - Public network: 192.168.252.0/24 (client access)
+#   - Cluster network: 192.168.253.0/24 (OSD replication, dedicated)
+# =============================================================================
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: itunda-ceph
+  labels:
+    app.kubernetes.io/name: rook-ceph
+    app.kubernetes.io/part-of: itunda-platform
+    app.kubernetes.io/component: storage
+    app.kubernetes.io/managed-by: kustomize
+  annotations:
+    scheduler.alpha.kubernetes.io/node-selector: "topology.kubernetes.io/zone=kigali-dc1"
+---
+# =============================================================================
+# CephCluster CRD - Main cluster definition
+# =============================================================================
+apiVersion: ceph.rook.io/v1
+kind: CephCluster
+metadata:
+  name: itunda-ceph
+  namespace: itunda-ceph
+  labels:
+    app.kubernetes.io/name: ceph
+    app.kubernetes.io/instance: itunda-ceph
+    app.kubernetes.io/part-of: itunda-platform
+    app.kubernetes.io/component: storage-cluster
+    datacenter: kigali-dc1
+  annotations:
+    itunda.rw/owner: "platform-team"
+    itunda.rw/description: "Production Ceph storage cluster for Kigali DC1"
+spec:
+  # ---------------------------------------------------------------------------
+  # Ceph version
+  # ---------------------------------------------------------------------------
+  cephVersion:
+    image: quay.io/ceph/ceph:v18.2.2
+    allowUnsupported: false
+
+  # ---------------------------------------------------------------------------
+  # Data directory on host
+  # ---------------------------------------------------------------------------
+  dataDirHostPath: /var/lib/rook
+
+  # ---------------------------------------------------------------------------
+  # Skip upgrade checks (set to false in production)
+  # ---------------------------------------------------------------------------
+  skipUpgradeChecks: false
+  continueUpgradeAfterChecksEvenIfNotHealthy: false
+
+  # ---------------------------------------------------------------------------
+  # Wait for clean PG state before upgrade
+  # ---------------------------------------------------------------------------
+  waitTimeoutForHealthyOSDInMinutes: 10
+
+  # ---------------------------------------------------------------------------
+  # MON configuration (3 monitors for quorum)
+  # ---------------------------------------------------------------------------
+  mon:
+    count: 3
+    allowMultiplePerNode: false
+    volumeClaimTemplate:
+      spec:
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 20Gi
+
+  # ---------------------------------------------------------------------------
+  # MGR configuration
+  # ---------------------------------------------------------------------------
+  mgr:
+    count: 2
+    allowMultiplePerNode: false
+    modules:
+      - name: pg_autoscaler
+        enabled: true
+      - name: rook
+        enabled: true
+      - name: prometheus
+        enabled: true
+      - name: dashboard
+        enabled: true
+      - name: balancer
+        enabled: true
+      - name: crash
+        enabled: true
+
+  # ---------------------------------------------------------------------------
+  # Dashboard
+  # ---------------------------------------------------------------------------
+  dashboard:
+    enabled: true
+    port: 8443
+    ssl: true
+    urlPrefix: /ceph-dashboard
+
+  # ---------------------------------------------------------------------------
+  # Monitoring (Prometheus integration)
+  # ---------------------------------------------------------------------------
+  monitoring:
+    enabled: true
+    metricsDisabled: false
+
+  # ---------------------------------------------------------------------------
+  # Network configuration
+  # ---------------------------------------------------------------------------
+  network:
+    provider: host
+    connections:
+      encryption:
+        enabled: true
+      compression:
+        enabled: true
+      requireMsgr2: true
+    # Separate public and cluster networks for performance
+    # Public: client access (VTTablet, RGW clients, CephFS mounts)
+    # Cluster: OSD replication traffic (dedicated NIC/VLAN)
+    selectors:
+      public: "192.168.252.0/24"
+      cluster: "192.168.253.0/24"
+
+  # ---------------------------------------------------------------------------
+  # Crash collector
+  # ---------------------------------------------------------------------------
+  crashCollector:
+    disable: false
+    daysToRetain: 30
+
+  # ---------------------------------------------------------------------------
+  # Log collector
+  # ---------------------------------------------------------------------------
+  logCollector:
+    enabled: true
+    periodicity: daily
+    maxLogSize: 500M
+
+  # ---------------------------------------------------------------------------
+  # Cleanup policy (only if cluster is being decommissioned)
+  # ---------------------------------------------------------------------------
+  cleanupPolicy:
+    confirmation: ""
+    sanitizeDisks:
+      method: quick
+      dataSource: zero
+      iteration: 1
+    allowUninstallWithVolumes: false
+
+  # ---------------------------------------------------------------------------
+  # Placement for components
+  # ---------------------------------------------------------------------------
+  placement:
+    all:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: topology.kubernetes.io/zone
+                  operator: In
+                  values:
+                    - kigali-dc1
+      tolerations:
+        - key: storage-node
+          operator: Exists
+    mon:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                    - rook-ceph-mon
+            topologyKey: kubernetes.io/hostname
+    osd:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - rook-ceph-osd
+              topologyKey: kubernetes.io/hostname
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: node-role.kubernetes.io/storage
+                  operator: Exists
+    mgr:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - rook-ceph-mgr
+              topologyKey: kubernetes.io/hostname
+
+  # ---------------------------------------------------------------------------
+  # Resources for Ceph daemons
+  # ---------------------------------------------------------------------------
+  resources:
+    mon:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+    mgr:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    osd:
+      requests:
+        cpu: "1"
+        memory: 4Gi
+      limits:
+        cpu: "2"
+        memory: 8Gi
+    prepareosd:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    mgr-sidecar:
+      requests:
+        cpu: 100m
+        memory: 64Mi
+      limits:
+        cpu: 250m
+        memory: 128Mi
+    crashcollector:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+    logcollector:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+    cleanup:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    exporter:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+
+  # ---------------------------------------------------------------------------
+  # Storage (OSD) configuration - NVMe devices
+  # ---------------------------------------------------------------------------
+  storage:
+    useAllNodes: false
+    useAllDevices: false
+    config:
+      # Bluestore settings for NVMe
+      osdsPerDevice: "1"
+      encryptedDevice: "true"  # PCI-DSS: encrypt data at rest
+    nodes:
+      - name: "storage-node-01"
+        devices:
+          - name: "/dev/nvme0n1"
+            config:
+              deviceClass: ssd
+      - name: "storage-node-02"
+        devices:
+          - name: "/dev/nvme0n1"
+            config:
+              deviceClass: ssd
+      - name: "storage-node-03"
+        devices:
+          - name: "/dev/nvme0n1"
+            config:
+              deviceClass: ssd
+
+  # ---------------------------------------------------------------------------
+  # Priority class
+  # ---------------------------------------------------------------------------
+  priorityClassNames:
+    mon: system-node-critical
+    osd: system-node-critical
+    mgr: system-cluster-critical
+
+  # ---------------------------------------------------------------------------
+  # Security
+  # ---------------------------------------------------------------------------
+  security:
+    kms:
+      connectionDetails: {}
+    keyRotation:
+      enabled: true
+      schedule: "@weekly"
+
+  # ---------------------------------------------------------------------------
+  # Health check intervals
+  # ---------------------------------------------------------------------------
+  healthCheck:
+    daemonHealth:
+      mon:
+        disabled: false
+        interval: 45s
+      osd:
+        disabled: false
+        interval: 60s
+      status:
+        disabled: false
+        interval: 60s
+    livenessProbe:
+      mon:
+        disabled: false
+      mgr:
+        disabled: false
+      osd:
+        disabled: false
+    startupProbe:
+      mon:
+        disabled: false
+      mgr:
+        disabled: false
+      osd:
+        disabled: false
+
+  # ---------------------------------------------------------------------------
+  # Disruption management
+  # ---------------------------------------------------------------------------
+  disruptionManagement:
+    managePodBudgets: true
+    osdMaintenanceTimeout: 30
+    pgHealthCheckTimeout: 0
+    manageMachineDisruptionBudgets: false
+---
+# =============================================================================
+# CephFilesystem - Shared filesystem (CephFS)
+# =============================================================================
+apiVersion: ceph.rook.io/v1
+kind: CephFilesystem
+metadata:
+  name: itunda-cephfs
+  namespace: itunda-ceph
+  labels:
+    app.kubernetes.io/name: cephfs
+    app.kubernetes.io/part-of: itunda-platform
+    app.kubernetes.io/component: shared-filesystem
+spec:
+  metadataPool:
+    replicated:
+      size: 3
+      requireSafeReplicaSize: true
+    parameters:
+      compression_mode: none
+  dataPools:
+    - name: data0
+      failureDomain: host
+      replicated:
+        size: 3
+        requireSafeReplicaSize: true
+      parameters:
+        compression_mode: aggressive
+        target_size_ratio: "0.5"
+  preserveFilesystemOnDelete: true
+  metadataServer:
+    activeCount: 1
+    activeStandby: true
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: "1"
+        memory: 4Gi
+    placement:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - rook-ceph-mds
+              topologyKey: kubernetes.io/hostname
+    priorityClassName: system-cluster-critical
+---
+# =============================================================================
+# CephBlockPool - High-performance SSD pool (for databases)
+# =============================================================================
+apiVersion: ceph.rook.io/v1
+kind: CephBlockPool
+metadata:
+  name: itunda-ssd-pool
+  namespace: itunda-ceph
+  labels:
+    app.kubernetes.io/name: ceph-block-pool
+    app.kubernetes.io/part-of: itunda-platform
+    app.kubernetes.io/component: block-storage
+    pool-class: ssd
+spec:
+  failureDomain: host
+  replicated:
+    size: 3
+    requireSafeReplicaSize: true
+    # Hybrid replication: primary on SSD, secondaries can be SSD
+    replicasPerFailureDomain: 1
+  parameters:
+    compression_mode: none  # No compression for databases (latency-sensitive)
+    target_size_ratio: "0.4"
+  deviceClass: ssd
+  # CRUSH rule for rack awareness
+  crushRoot: default
+  enableRBDStats: true
+  mirroring:
+    enabled: false
+  statusCheck:
+    mirror:
+      disabled: true
+  quotas:
+    maxSize: "500Gi"
+---
+# =============================================================================
+# CephBlockPool - Standard HDD pool (for logs/backups)
+# =============================================================================
+apiVersion: ceph.rook.io/v1
+kind: CephBlockPool
+metadata:
+  name: itunda-hdd-pool
+  namespace: itunda-ceph
+  labels:
+    app.kubernetes.io/name: ceph-block-pool
+    app.kubernetes.io/part-of: itunda-platform
+    app.kubernetes.io/component: block-storage
+    pool-class: hdd
+spec:
+  failureDomain: host
+  replicated:
+    size: 2
+    requireSafeReplicaSize: true
+  parameters:
+    compression_mode: aggressive  # Compress logs/backup data
+    target_size_ratio: "0.3"
+  enableRBDStats: true
+---
+# =============================================================================
+# CRUSH rules for rack-aware placement
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ceph-crush-rules
+  namespace: itunda-ceph
+  labels:
+    app.kubernetes.io/name: ceph
+    app.kubernetes.io/part-of: itunda-platform
+    app.kubernetes.io/component: crush-config
+  annotations:
+    itunda.rw/description: "CRUSH rules for rack-aware data placement in Kigali DC1"
+data:
+  crush-rules.sh: |
+    #!/bin/bash
+    # ==========================================================================
+    # CRUSH Rules for Kigali DC1 rack-aware placement
+    # ==========================================================================
+    # This script configures CRUSH rules to ensure data replicas are placed
+    # across different racks for fault tolerance.
+    #
+    # Rack layout (Kigali DC1):
+    #   - rack-a: storage-node-01, storage-node-02  (failure domain: dc-a)
+    #   - rack-b: storage-node-03                   (failure domain: dc-b)
+    # ==========================================================================
+
+    set -e
+
+    TOOLBOX_POD=$(kubectl -n itunda-ceph get pod -l app=rook-ceph-tools -o jsonpath='{.items[0].metadata.name}')
+
+    # Create rack hierarchy in CRUSH map
+    kubectl -n itunda-ceph exec "${TOOLBOX_POD}" -- ceph osd crush add-bucket rack-a rack
+    kubectl -n itunda-ceph exec "${TOOLBOX_POD}" -- ceph osd crush add-bucket rack-b rack
+    kubectl -n itunda-ceph exec "${TOOLBOX_POD}" -- ceph osd crush move rack-a root=default
+    kubectl -n itunda-ceph exec "${TOOLBOX_POD}" -- ceph osd crush move rack-b root=default
+
+    # Move hosts into racks
+    kubectl -n itunda-ceph exec "${TOOLBOX_POD}" -- ceph osd crush move storage-node-01 rack=rack-a
+    kubectl -n itunda-ceph exec "${TOOLBOX_POD}" -- ceph osd crush move storage-node-02 rack=rack-a
+    kubectl -n itunda-ceph exec "${TOOLBOX_POD}" -- ceph osd crush move storage-node-03 rack=rack-b
+
+    # Create rack-aware CRUSH rule
+    kubectl -n itunda-ceph exec "${TOOLBOX_POD}" -- ceph osd crush rule create-replicated \
+      rack-replicated default rack host
+
+    echo "CRUSH rules configured successfully"
+    kubectl -n itunda-ceph exec "${TOOLBOX_POD}" -- ceph osd crush rule ls
+    kubectl -n itunda-ceph exec "${TOOLBOX_POD}" -- ceph osd tree
+---
+# =============================================================================
+# ServiceMonitor for Ceph metrics
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ceph-metrics
+  namespace: itunda-ceph
+  labels:
+    app.kubernetes.io/name: ceph
+    app.kubernetes.io/part-of: itunda-platform
+    app.kubernetes.io/component: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - itunda-ceph
+  selector:
+    matchLabels:
+      app: rook-ceph-mgr
+      rook_cluster: itunda-ceph
+  endpoints:
+    - port: http-metrics
+      path: /metrics
+      interval: 30s
+---
+# =============================================================================
+# PrometheusRule for Ceph alerts
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ceph-alerts
+  namespace: itunda-ceph
+  labels:
+    app.kubernetes.io/name: ceph
+    app.kubernetes.io/part-of: itunda-platform
+    app.kubernetes.io/component: alerting
+spec:
+  groups:
+    - name: ceph-cluster-health
+      rules:
+        - alert: CephClusterHealthWarning
+          expr: ceph_health_status == 1
+          for: 15m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Ceph cluster health is WARN"
+            description: "Ceph cluster {{ $labels.cluster }} has been in HEALTH_WARN for 15 minutes."
+        - alert: CephClusterHealthCritical
+          expr: ceph_health_status == 2
+          for: 5m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "Ceph cluster health is CRITICAL"
+            description: "Ceph cluster {{ $labels.cluster }} is in HEALTH_ERR state."
+        - alert: CephOSDDown
+          expr: ceph_osd_up == 0
+          for: 5m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "Ceph OSD {{ $labels.ceph_daemon }} is down"
+            description: "OSD {{ $labels.ceph_daemon }} has been down for 5 minutes."
+        - alert: CephStorageNearFull
+          expr: (ceph_cluster_total_used_bytes / ceph_cluster_total_bytes) > 0.80
+          for: 15m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Ceph storage usage above 80%"
+            description: "Ceph cluster storage is at {{ $value | humanizePercentage }}."
+        - alert: CephStorageCriticallyFull
+          expr: (ceph_cluster_total_used_bytes / ceph_cluster_total_bytes) > 0.90
+          for: 5m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "Ceph storage usage above 90%"
+            description: "Ceph cluster storage is critically full at {{ $value | humanizePercentage }}."
+---
+# =============================================================================
+# Rook Ceph Toolbox (for admin operations)
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rook-ceph-tools
+  namespace: itunda-ceph
+  labels:
+    app: rook-ceph-tools
+    app.kubernetes.io/name: ceph-tools
+    app.kubernetes.io/part-of: itunda-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rook-ceph-tools
+  template:
+    metadata:
+      labels:
+        app: rook-ceph-tools
+        app.kubernetes.io/part-of: itunda-platform
+    spec:
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: rook-ceph-tools
+          image: quay.io/ceph/ceph:v18.2.2
+          command:
+            - /bin/bash
+            - -c
+            - |
+              # Keep container running for interactive admin use
+              while true; do sleep 3600; done
+          env:
+            - name: ROOK_CEPH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: rook-ceph-mon
+                  key: ceph-username
+            - name: ROOK_CEPH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: rook-ceph-mon
+                  key: ceph-secret
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - mountPath: /etc/ceph
+              name: ceph-config
+            - name: mon-endpoint-volume
+              mountPath: /etc/rook
+      volumes:
+        - name: ceph-config
+          configMap:
+            name: rook-ceph-config
+            items:
+              - key: ceph.conf
+                path: ceph.conf
+        - name: mon-endpoint-volume
+          configMap:
+            name: rook-ceph-mon-endpoints
+            items:
+              - key: data
+                path: mon-endpoints
