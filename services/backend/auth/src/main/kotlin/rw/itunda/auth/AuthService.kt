@@ -39,6 +39,13 @@ class AuthService(
         if (userRepository.existsByPhoneNumber(request.phoneNumber)) {
             throw PhoneAlreadyRegisteredException("An account with this phone number already exists")
         }
+        // Real, not honor-system: an invalid/typo'd code fails registration loudly
+        // rather than silently registering with no attribution, matching this repo's
+        // general "don't swallow the error" convention.
+        val referredByUserId = request.referralCode?.let { code ->
+            userRepository.findByReferralCode(code)?.id
+                ?: throw ReferralCodeNotFoundException("Referral code not found")
+        }
         val user = User(
             id = "user_${UUID.randomUUID()}",
             phoneNumber = request.phoneNumber,
@@ -49,6 +56,8 @@ class AuthService(
             kycVerified = false,
             creditScore = 0,
             createdAt = Instant.now(),
+            referralCode = generateReferralCode(),
+            referredByUserId = referredByUserId,
         )
         userRepository.save(user)
 
@@ -139,8 +148,14 @@ class AuthService(
 
     private fun generateAccountNumber(): String = (2024100000L + (Math.random() * 900000).toLong()).toString()
 
+    // No collision-avoidance loop, same accepted-risk precedent as generateAccountNumber
+    // above -- a UUID-derived 6-char code has a negligible real collision chance, and the
+    // real DB unique constraint on referral_code is the actual backstop.
+    private fun generateReferralCode(): String = "ITD" + UUID.randomUUID().toString().replace("-", "").take(6).uppercase()
+
     private fun User.toPublic() = PublicUser(
         id = id, phoneNumber = phoneNumber, email = email, firstName = firstName,
         lastName = lastName, kycVerified = kycVerified, creditScore = creditScore, createdAt = createdAt,
+        referralCode = referralCode,
     )
 }

@@ -67,4 +67,8 @@ class AuthController(private val authService: AuthService) {
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =
         ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
+
+    @ExceptionHandler(ReferralCodeNotFoundException::class)
+    fun handleReferralCodeNotFound(ex: ReferralCodeNotFoundException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("REFERRAL_CODE_NOT_FOUND", ex.message ?: "Referral code not found"))
 }

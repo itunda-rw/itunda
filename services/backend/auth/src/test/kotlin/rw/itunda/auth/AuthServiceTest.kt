@@ -65,6 +65,40 @@ class AuthServiceTest : BehaviorSpec({
             }
         }
 
+        When("registering with a valid referral code") {
+            val referrer = User(
+                id = "user_referrer", phoneNumber = "+250788000010", firstName = "Ref", lastName = "R",
+                passwordHash = "unused", referralCode = "ITDREF01", createdAt = Instant.now(),
+            )
+            every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+            every { userRepository.existsByPhoneNumber("+250788000011") } returns false
+            every { userRepository.findByReferralCode("ITDREF01") } returns referrer
+            val userSlot = mutableListOf<User>()
+            every { userRepository.save(capture(userSlot)) } answers { firstArg() }
+            every { walletRepository.save(any()) } answers { firstArg() }
+
+            service.register(RegisterRequest("+250788000011", null, "New", "User", "password123", "ITDREF01"))
+
+            Then("the new user is saved with a real referredByUserId pointing at the referrer") {
+                userSlot.single().referredByUserId shouldBe "user_referrer"
+            }
+        }
+
+        When("registering with a referral code that doesn't belong to anyone") {
+            every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+            every { userRepository.existsByPhoneNumber("+250788000012") } returns false
+            every { userRepository.findByReferralCode("BOGUSCODE") } returns null
+
+            Then("it throws ReferralCodeNotFoundException before ever saving a user -- an invalid code fails loudly, not silently") {
+                try {
+                    service.register(RegisterRequest("+250788000012", null, "New", "User", "password123", "BOGUSCODE"))
+                    error("expected ReferralCodeNotFoundException")
+                } catch (e: ReferralCodeNotFoundException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+
         When("registering a phone number that's already taken") {
             every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
             every { userRepository.existsByPhoneNumber("+250788000002") } returns true

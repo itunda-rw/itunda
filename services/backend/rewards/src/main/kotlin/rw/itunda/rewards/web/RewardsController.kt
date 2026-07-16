@@ -21,6 +21,7 @@ import rw.itunda.rewards.RewardTaskNotEligibleException
 import rw.itunda.rewards.RewardTaskNotFoundException
 import rw.itunda.rewards.RewardsNoWalletException
 import rw.itunda.rewards.RewardsService
+import rw.itunda.rewards.RewardsUserNotFoundException
 
 data class ClaimRewardRequest(val taskId: String)
 
@@ -36,6 +37,21 @@ class RewardsController(private val rewardsService: RewardsService, private val 
     fun getTasks(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> {
         val result = rewardsService.getTasks(currentUser.userId)
         return ResponseEntity.ok(mapOf("success" to true, "tasks" to result.tasks, "rewardsTotal" to result.rewardsTotal))
+    }
+
+    // Real referral subsystem (2026-07-17): the caller's own share code plus real
+    // progress toward task_referral -- see RewardsService.getReferralInfo.
+    @GetMapping("/referral")
+    fun referral(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val result = rewardsService.getReferralInfo(currentUser.userId)
+        return ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "referralCode" to result.referralCode,
+                "referredCount" to result.referredCount,
+                "completedReferralCount" to result.completedReferralCount,
+            ),
+        )
     }
 
     // Idempotency-Key required, same convention as every other money-moving endpoint in this
@@ -82,4 +98,8 @@ class RewardsController(private val rewardsService: RewardsService, private val 
     @ExceptionHandler(RewardsNoWalletException::class)
     fun handleNoWallet(ex: RewardsNoWalletException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(RewardsUserNotFoundException::class)
+    fun handleUserNotFound(ex: RewardsUserNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("USER_NOT_FOUND", ex.message ?: "Not found"))
 }

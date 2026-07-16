@@ -13,6 +13,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.RewardClaimRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.TransactionRepository
+import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Instant
@@ -22,11 +23,13 @@ class RewardTaskNotFoundException(message: String) : RuntimeException(message)
 class RewardTaskAlreadyClaimedException(message: String) : RuntimeException(message)
 class RewardTaskNotEligibleException(message: String) : RuntimeException(message)
 class RewardsNoWalletException(message: String) : RuntimeException(message)
+class RewardsUserNotFoundException(message: String) : RuntimeException(message)
 
 data class RewardTaskDef(val id: String, val title: String, val subtitle: String, val rewardAmount: BigDecimal)
 data class RewardTaskView(val id: String, val title: String, val subtitle: String, val rewardAmount: BigDecimal, val claimed: Boolean, val claimedAt: Instant?, val eligible: Boolean)
 data class RewardTasksResult(val tasks: List<RewardTaskView>, val rewardsTotal: BigDecimal)
 data class ClaimRewardResult(val message: String, val rewardAmount: BigDecimal, val newBalance: BigDecimal)
+data class ReferralInfo(val referralCode: String?, val referredCount: Int, val completedReferralCount: Int)
 
 @Service
 class RewardsService(
@@ -35,6 +38,7 @@ class RewardsService(
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
     private val savingsGoalRepository: SavingsGoalRepository,
+    private val userRepository: UserRepository,
 ) {
 
     // Static catalog, same convention as InsuranceService's insurancePlans / LoansService's
@@ -54,17 +58,32 @@ class RewardsService(
     // savings goal both use existing repository queries; task_first_bill only became
     // checkable once BillsService started writing a real Transaction row -- see that
     // file's own doc comment). `task_profile` (no profile-photo/email-verification
-    // schema or flow exists anywhere in this backend) and `task_referral` (no referral
-    // subsystem -- codes, attribution, completion detection -- exists at all) stay
-    // honor-system on purpose: building either prerequisite is a genuinely separate,
-    // larger feature, not a query away like the other three. Always eligible rather
-    // than silently rejecting real users' honest claims on those two until that work
-    // is done -- see docs/TOSS_PARITY_MATRIX.md's Rewards row for the tracked gap.
+    // schema or flow exists anywhere in this backend) stays honor-system on purpose:
+    // building that prerequisite is a genuinely separate, larger feature. Always
+    // eligible rather than silently rejecting real users' honest claims until that
+    // work is done -- see docs/TOSS_PARITY_MATRIX.md's Rewards row for the tracked gap.
+    //
+    // task_referral closed for real (2026-07-17): matches the task's own copy, "Invite
+    // a friend who completes their first transaction" -- eligible once any user this
+    // one referred (User.referredByUserId, set at registration via AuthService) has a
+    // real COMPLETED TRANSFER-type Transaction of their own.
     private fun isEligible(userId: String, taskId: String): Boolean = when (taskId) {
         "task_first_transfer" -> transactionRepository.existsBySenderIdAndTypeAndStatus(userId, TransactionType.TRANSFER, TransactionStatus.COMPLETED)
         "task_first_bill" -> transactionRepository.existsBySenderIdAndTypeAndStatus(userId, TransactionType.BILL, TransactionStatus.COMPLETED)
         "task_savings_goal" -> savingsGoalRepository.existsByUserId(userId)
-        else -> true // task_profile, task_referral: still honor-system, see comment above
+        "task_referral" -> userRepository.findAllByReferredByUserId(userId).any { referred ->
+            transactionRepository.existsBySenderIdAndTypeAndStatus(referred.id, TransactionType.TRANSFER, TransactionStatus.COMPLETED)
+        }
+        else -> true // task_profile: still honor-system, see comment above
+    }
+
+    // Backs a real "share your code" UI: current referral code plus real progress
+    // toward task_referral, not just the eligible boolean claim() itself checks.
+    fun getReferralInfo(userId: String): ReferralInfo {
+        val user = userRepository.findById(userId).orElseThrow { RewardsUserNotFoundException("User not found") }
+        val referred = userRepository.findAllByReferredByUserId(userId)
+        val completed = referred.count { transactionRepository.existsBySenderIdAndTypeAndStatus(it.id, TransactionType.TRANSFER, TransactionStatus.COMPLETED) }
+        return ReferralInfo(user.referralCode, referred.size, completed)
     }
 
     fun getTasks(userId: String): RewardTasksResult {

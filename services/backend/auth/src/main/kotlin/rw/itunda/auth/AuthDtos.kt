@@ -8,6 +8,9 @@ data class RegisterRequest(
     val firstName: String,
     val lastName: String,
     val password: String,
+    // An existing user's referral_code, optional. Resolved to that user's id and stored
+    // as the new user's referredByUserId -- see AuthService.register.
+    val referralCode: String? = null,
 )
 
 data class LoginRequest(val phoneNumber: String, val password: String)
@@ -28,6 +31,7 @@ data class PublicUser(
     val kycVerified: Boolean,
     val creditScore: Int,
     val createdAt: Instant,
+    val referralCode: String?,
 )
 
 data class AuthResponse(

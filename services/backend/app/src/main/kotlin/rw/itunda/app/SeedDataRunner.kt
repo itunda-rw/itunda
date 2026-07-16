@@ -71,6 +71,7 @@ class SeedDataRunner(
                 kycVerified = true,
                 creditScore = 720,
                 createdAt = Instant.now(),
+                referralCode = "ITDJEAN1",
             ),
         )
 

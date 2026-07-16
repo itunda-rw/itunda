@@ -52,7 +52,7 @@
 
 | Method | Path | Auth | Body | Success | Notes |
 |---|---|---|---|---|---|
-| POST | `/register` | none | `{phoneNumber, email?, firstName, lastName, password}` | `201` `AuthResponse` | |
+| POST | `/register` | none | `{phoneNumber, email?, firstName, lastName, password, referralCode?}` | `201` `AuthResponse` | Added 2026-07-17: `referralCode` is an existing user's own code, optional. Resolved to a real `referredByUserId` — see the Rewards section's `task_referral` |
 | POST | `/login` | none | `{phoneNumber, password}` | `200` `AuthResponse` | |
 | POST | `/refresh` | none (refresh token is the credential) | `{refreshToken}` | `200` `AuthResponse` | Rotates the refresh token; the old one is revoked immediately |
 | POST | `/logout` | Bearer | `{refreshToken?}` (optional body) | `200` `{"success": true}` | Revokes the exact access token used to call this, and the refresh token too if provided |
@@ -62,12 +62,15 @@
 refreshToken: string}`.
 
 `PublicUser`: `{id, phoneNumber, email, firstName, lastName, kycVerified, creditScore,
-createdAt}`. **`kycVerified` is real as a field, but nothing in this backend can ever set it
-`true` outside of demo seed data** — see the Compliance row in `docs/TOSS_PARITY_MATRIX.md`;
-there is no verification endpoint anywhere in this API.
+createdAt, referralCode}`. **`kycVerified` is real as a field, but nothing in this backend can
+ever set it `true` outside of demo seed data** — see the Compliance row in
+`docs/TOSS_PARITY_MATRIX.md`; there is no verification endpoint anywhere in this API.
+`referralCode` (added 2026-07-17) is lazily issued at registration — nullable for accounts
+that predate this feature.
 
 Errors: `409 PHONE_ALREADY_REGISTERED`, `401 INVALID_CREDENTIALS`, `404 USER_NOT_FOUND`,
-`401 INVALID_REFRESH_TOKEN`, `429 RATE_LIMITED`.
+`401 INVALID_REFRESH_TOKEN`, `429 RATE_LIMITED`, `400 REFERRAL_CODE_NOT_FOUND` (register only —
+an invalid referral code fails loudly rather than silently registering with no attribution).
 
 ## Overview — `/api/v1/overview`
 
@@ -327,22 +330,26 @@ re-deciding is blocked, not silently overwritten), `404 USER_NOT_FOUND`.
 
 Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s Rewards row for the
 full account, including what this corrects (a previous version of that row falsely claimed
-this already existed).
+this already existed). Real per-task activity verification (not honor-system) added
+2026-07-16/17 for 4 of the 5 catalog tasks — see that same row for the full account of each.
 
 | Method | Path | Body | Success | Notes |
 |---|---|---|---|---|
-| GET | `/tasks` | — | `{success, tasks: [...], rewardsTotal}` | Static 5-task catalog merged with the caller's own claim status |
+| GET | `/tasks` | — | `{success, tasks: [...], rewardsTotal}` | Static 5-task catalog merged with the caller's own claim status and a real per-task `eligible` boolean |
 | POST | `/claim` | `{taskId}` (+ `Idempotency-Key`) | `{success, message, rewardAmount, newBalance}` | `newBalance` is the caller's new cumulative claimed-rewards total, not their overall wallet balance. Real ledger transaction posts the reward straight into the caller's MAIN wallet |
+| GET | `/referral` | — | `{success, referralCode, referredCount, completedReferralCount}` | Added 2026-07-17. The caller's own referral code (nullable — accounts created before this feature have none until they register again isn't applicable; see `AuthService`) plus real progress toward `task_referral` |
 
 `RewardTask` shape (as returned in `tasks`): `{id, title, subtitle, rewardAmount, claimed,
-claimedAt}`.
+claimedAt, eligible}`.
 
 Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
 `400 IDEMPOTENCY_KEY_REQUIRED`, `404 REWARD_TASK_NOT_FOUND`,
+`403 REWARD_TASK_NOT_ELIGIBLE` (real activity check, before ever touching the wallet or ledger),
 `409 REWARD_TASK_ALREADY_CLAIMED` (a real DB-unique-constraint guard, not just an
 application-level check — a race between two concurrent claims for the same task can't both
-succeed), `404 WALLET_NOT_FOUND`. The task catalog is static — claiming "Make your first
-transfer" is honor-system today, not verified against the caller's actual transaction history.
+succeed), `404 WALLET_NOT_FOUND`, `404 USER_NOT_FOUND`. `task_first_transfer`, `task_first_bill`,
+`task_savings_goal`, and `task_referral` are all real-activity-verified now; `task_profile`
+remains honor-system (no profile-photo/email-verification schema exists in this backend).
 
 ## Notifications — `/api/v1/notifications`
 
@@ -523,6 +530,14 @@ Grepped for directly, confirmed absent as of 2026-07-13:
   section) — no other module emits webhooks of any kind.
 
 ## What Changed Since the Last Version of This Document
+
+**2026-07-17:** added `GET /api/v1/rewards/referral` (real referral code + progress) and a
+`referralCode` field to `POST /api/v1/auth/register`'s request and `PublicUser` — see the Auth
+and Rewards sections above. This doc otherwise wasn't kept current through several passes
+between 2026-07-13 and 2026-07-17 (merchant reports, webhook retry, all-four-mini-app iOS work,
+etc. shipped without a matching entry here) — `docs/TOSS_PARITY_MATRIX.md` is the source of
+truth for what's real as of any given date; treat gaps in this changelog as this doc's own
+staleness, not as those features not existing.
 
 **2026-07-13, latest of all:** added `/api/v1/accounts/link`, `/api/v1/accounts/linked`,
 `/api/v1/accounts/link/{accountId}/unlink` (real, live-verified external bank/MoMo consent

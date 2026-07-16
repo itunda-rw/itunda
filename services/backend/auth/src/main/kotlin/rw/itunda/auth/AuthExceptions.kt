@@ -4,3 +4,4 @@ class PhoneAlreadyRegisteredException(message: String) : RuntimeException(messag
 class InvalidCredentialsException(message: String) : RuntimeException(message)
 class UserNotFoundException(message: String) : RuntimeException(message)
 class InvalidRefreshTokenException(message: String) : RuntimeException(message)
+class ReferralCodeNotFoundException(message: String) : RuntimeException(message)

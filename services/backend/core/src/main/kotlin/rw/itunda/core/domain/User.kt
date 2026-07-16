@@ -46,6 +46,16 @@ class User(
 
     @Column(name = "created_at", nullable = false)
     var createdAt: Instant = Instant.now(),
+
+    // Real referral subsystem (2026-07-17): a lazily-issued code (nullable -- accounts
+    // created before this migration have none) an existing user shares, plus which
+    // existing user's code a new registrant used, if any. See AuthService.register and
+    // RewardsService's task_referral eligibility check.
+    @Column(name = "referral_code", unique = true, length = 16)
+    var referralCode: String? = null,
+
+    @Column(name = "referred_by_user_id", length = 64)
+    var referredByUserId: String? = null,
 ) {
     // JPA requires a no-arg constructor; Kotlin generates one only when every
     // property has a default, which id/phoneNumber/etc. intentionally don't.

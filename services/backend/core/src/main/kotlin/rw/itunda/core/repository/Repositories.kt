@@ -55,6 +55,8 @@ interface LedgerAccountRepository : JpaRepository<LedgerAccount, String> {
 interface UserRepository : JpaRepository<User, String> {
     fun findByPhoneNumber(phoneNumber: String): User?
     fun existsByPhoneNumber(phoneNumber: String): Boolean
+    fun findByReferralCode(referralCode: String): User?
+    fun findAllByReferredByUserId(referredByUserId: String): List<User>
 }
 
 interface WalletRepository : JpaRepository<Wallet, String> {
