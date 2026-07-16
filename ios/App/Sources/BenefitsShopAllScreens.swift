@@ -266,13 +266,17 @@ private struct PointActionsCard: View {
 struct EntireMenuScreen: View {
     var onOpenSettings: () -> Void = {}
 
-    // Real granite mini-app launch (2026-07-16), closing this file's own "MiniAppsSection...
-    // plain, non-functional list rows" gap for "Pay bills" specifically -- the CocoaPods/Tuist
-    // bridge (see docs/ARCHITECTURE.md's mini-app host row) makes a real RN root view
-    // presentable here now. Wallet balance / Reward tasks stay inert until they get their own
-    // view controller subclasses, same one-mini-app-at-a-time rollout Android itself did
-    // (pay-bills first, independently verified, before wallet-balance/reward-tasks followed).
+    // Real granite mini-app launch, closing this file's own "MiniAppsSection... plain,
+    // non-functional list rows" gap for real -- the CocoaPods/Tuist bridge plus the real
+    // Fabric root-cause fix (see docs/ARCHITECTURE.md's mini-app host row, 2026-07-16→17)
+    // makes a real RN root view presentable here. `pay-bills` proved the host out first,
+    // independently verified (`SaroniteMiniAppLiveTest`); `wallet-balance`/`reward-tasks`/
+    // `insurance` followed the same day once the host itself was proven real -- same
+    // one-first-then-the-rest rollout Android itself did (2026-07-13→14).
     @State private var showPayBillsMiniApp = false
+    @State private var showWalletBalanceMiniApp = false
+    @State private var showRewardTasksMiniApp = false
+    @State private var showInsuranceMiniApp = false
 
     var body: some View {
         ScrollView {
@@ -295,13 +299,13 @@ struct EntireMenuScreen: View {
                         ("Bank", "building.columns.fill"),
                         ("Pick", "star.fill"),
                     ])
-                    // "Pay bills" now opens a real granite mini-app (see this file's
-                    // header) -- Wallet balance/Reward tasks stay plain, inert rows
-                    // until they get their own view controller subclasses.
+                    // All four now open real granite mini-apps (see this file's header) --
+                    // matching Android's own real four-mini-app parity.
                     FlatSection(title: "Mini apps", rows: [
-                        FlatRow(title: "Wallet balance"),
+                        FlatRow(title: "Wallet balance", showChevron: true, action: { showWalletBalanceMiniApp = true }),
                         FlatRow(title: "Pay bills", showChevron: true, action: { showPayBillsMiniApp = true }),
-                        FlatRow(title: "Reward tasks"),
+                        FlatRow(title: "Reward tasks", showChevron: true, action: { showRewardTasksMiniApp = true }),
+                        FlatRow(title: "Insurance", showChevron: true, action: { showInsuranceMiniApp = true }),
                     ])
                     IconGridSection(title: "Recent services", items: [
                         ("Open acct", "plus.circle"),
@@ -385,6 +389,15 @@ struct EntireMenuScreen: View {
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .sheet(isPresented: $showPayBillsMiniApp) {
             SaronitePayBillsView()
+        }
+        .sheet(isPresented: $showWalletBalanceMiniApp) {
+            SaroniteWalletBalanceView()
+        }
+        .sheet(isPresented: $showRewardTasksMiniApp) {
+            SaroniteRewardTasksView()
+        }
+        .sheet(isPresented: $showInsuranceMiniApp) {
+            SaroniteInsuranceView()
         }
     }
 }

@@ -126,3 +126,44 @@ final class PayBillsMiniAppViewController: SaroniteMiniAppViewController {
         fatalError("init(coder:) has not been implemented")
     }
 }
+
+/// `wallet-balance`/`reward-tasks`/`insurance` migrated onto the now-proven-working iOS host
+/// the same way they migrated onto Android's real granite bridge (2026-07-13→14, see
+/// `docs/ARCHITECTURE.md`'s mini-app host row): zero new native *logic* needed beyond a
+/// concrete subclass naming its own `mainComponentName`/`miniAppScheme` -- the generic base
+/// class and `SaroniteBrownfieldModule`'s full method surface (`getWalletBalance`,
+/// `getRewardTasks`/`claimRewardTask`, `getInsurancePlans`/`getMyPolicies`/`enrollInsurance`)
+/// were already built alongside `payBill` during the pay-bills pass, matching Android's own
+/// `SaroniteBridge.kt` one-for-one.
+final class WalletBalanceMiniAppViewController: SaroniteMiniAppViewController {
+    init() {
+        super.init(mainComponentName: "SaroniteWalletBalance", miniAppScheme: "itunda://saronite/wallet-balance")
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+
+final class RewardTasksMiniAppViewController: SaroniteMiniAppViewController {
+    init() {
+        super.init(mainComponentName: "SaroniteRewardTasks", miniAppScheme: "itunda://saronite/reward-tasks")
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+
+final class InsuranceMiniAppViewController: SaroniteMiniAppViewController {
+    init() {
+        super.init(mainComponentName: "SaroniteInsurance", miniAppScheme: "itunda://saronite/insurance")
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
