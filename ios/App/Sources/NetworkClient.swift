@@ -60,7 +60,10 @@ final class NetworkClient {
     // address needed here. A physical iOS device would need the host's real LAN IP
     // instead (see android/app/build.gradle.kts's apiBaseUrl comment for the Android
     // equivalent of this same problem).
-    private let baseURL = URL(string: "http://localhost:4001/")!
+    // static/internal (2026-07-16) so SaroniteBrownfieldModule can reuse the exact same
+    // value rather than a second hardcoded literal that could drift out of sync.
+    static let baseURLString = "http://localhost:4001/"
+    private let baseURL = URL(string: NetworkClient.baseURLString)!
     private let session = URLSession(configuration: .default)
 
     private lazy var encoder: JSONEncoder = JSONEncoder()

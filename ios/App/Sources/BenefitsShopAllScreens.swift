@@ -266,6 +266,14 @@ private struct PointActionsCard: View {
 struct EntireMenuScreen: View {
     var onOpenSettings: () -> Void = {}
 
+    // Real granite mini-app launch (2026-07-16), closing this file's own "MiniAppsSection...
+    // plain, non-functional list rows" gap for "Pay bills" specifically -- the CocoaPods/Tuist
+    // bridge (see docs/ARCHITECTURE.md's mini-app host row) makes a real RN root view
+    // presentable here now. Wallet balance / Reward tasks stay inert until they get their own
+    // view controller subclasses, same one-mini-app-at-a-time rollout Android itself did
+    // (pay-bills first, independently verified, before wallet-balance/reward-tasks followed).
+    @State private var showPayBillsMiniApp = false
+
     var body: some View {
         ScrollView {
             VStack(spacing: IDS.Layout.sectionSpacing) {
@@ -287,13 +295,12 @@ struct EntireMenuScreen: View {
                         ("Bank", "building.columns.fill"),
                         ("Pick", "star.fill"),
                     ])
-                    // Android's MiniAppsSection launches real ReactActivity mini-app
-                    // bundles -- no equivalent runtime exists on iOS yet (see this
-                    // file's own header), so these three rows are plain, inert list
-                    // items rather than fake-functional buttons.
+                    // "Pay bills" now opens a real granite mini-app (see this file's
+                    // header) -- Wallet balance/Reward tasks stay plain, inert rows
+                    // until they get their own view controller subclasses.
                     FlatSection(title: "Mini apps", rows: [
                         FlatRow(title: "Wallet balance"),
-                        FlatRow(title: "Pay bills"),
+                        FlatRow(title: "Pay bills", showChevron: true, action: { showPayBillsMiniApp = true }),
                         FlatRow(title: "Reward tasks"),
                     ])
                     IconGridSection(title: "Recent services", items: [
@@ -376,6 +383,9 @@ struct EntireMenuScreen: View {
             .padding(.bottom, IDS.Layout.sectionSpacing)
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+        .sheet(isPresented: $showPayBillsMiniApp) {
+            SaronitePayBillsView()
+        }
     }
 }
 
@@ -459,6 +469,11 @@ private struct FlatRow {
     var symbol: String? = nil
     var tint: Color = .accentBlue
     var showChevron: Bool = false
+    // Real granite mini-app launch (2026-07-16) -- see this file's own header for the
+    // "MiniAppsSection...plain, non-functional list rows" note this closes for "Pay
+    // bills" specifically. Optional, defaulting nil, so every other FlatRow call site
+    // in this file is unaffected.
+    var action: (() -> Void)? = nil
 }
 
 private struct FlatSection: View {
@@ -503,6 +518,8 @@ private struct FlatSection: View {
                     }
                 }
                 .padding(.vertical, 10)
+                .contentShape(Rectangle())
+                .onTapGesture { row.action?() }
             }
         }
     }

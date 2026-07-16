@@ -157,7 +157,16 @@ allTargets.append(
             ],
         ]),
         sources: ["App/Sources/**"],
-        dependencies: appDependencies
+        dependencies: appDependencies,
+        // Real granite mini-app host (2026-07-16, see App/Sources/Saronite/) needs one
+        // small ObjC helper (SaroniteBrickBridge.m) for two RN-internal APIs Swift's
+        // ClangImporter can't see directly (RCTHost's real type, RCTModuleRegistry's
+        // undocumented -moduleForName:) -- Tuist generates the Xcode project
+        // non-interactively, so there's no Xcode UI prompt to auto-wire a bridging header
+        // the way adding an ObjC file via Xcode normally would; set explicitly instead.
+        settings: .settings(base: [
+            "SWIFT_OBJC_BRIDGING_HEADER": "App/Sources/Saronite/Itunda-Bridging-Header.h",
+        ])
     )
 )
 

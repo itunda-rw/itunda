@@ -22,6 +22,33 @@ target 'ItundaApp' do
 
   pod 'BrickModule', :path => '../packages/saronite/node_modules/brick-module'
   pod 'GraniteBrownfield', :path => '../packages/saronite/node_modules/@granite-js/brownfield-module'
+  # Real `brick-codegen --platform ios` output (regenerate via
+  # `cd packages/saronite/host-app && node ../node_modules/.bin/brick-codegen
+  # --platform ios --output-ios ../../../ios/.brick --projectRoot .` whenever a
+  # mini-app's *.brick.ts spec changes) -- its own podspec is the sanctioned
+  # integration path (mirrors android/.brick's own separate-module convention),
+  # not something to hand-merge into App/Sources.
+  pod 'BrickCodegen', :path => '.brick'
+
+  # Real RN third-party native deps pay-bills (via granite/React Native core) actually
+  # renders with -- confirmed live: without these, the mini-app screen rendered a real
+  # "Unimplemented component: <RNCSafeAreaProvider>" error instead of real content, the
+  # same class of missing-native-dependency/autolinking gap Android's pay-bills hit
+  # originally (see docs/ARCHITECTURE.md's mini-app host row). Added explicitly by path
+  # rather than via `use_native_modules!`'s CLI-based autodiscovery, which needs a
+  # `react-native config` run from `host-app`'s own directory -- more moving parts for the
+  # same three, already-known dependencies `host-app/package.json` lists.
+  #
+  # react-native-safe-area-context also needed a real, live-found native patch (see
+  # packages/saronite/patches/react-native-safe-area-context+5.6.2.patch and its own
+  # in-source comment in RNCSafeAreaProvider.m): its onInsetsChange dispatch used the
+  # legacy RCTEventDispatcher path, which itunda's bridgeless RCTHost setup never
+  # registers as a callable JS module -- confirmed as a bridgeless-vs-legacy-bridge gap,
+  # not a New-Architecture-specific one (reproduced identically with
+  # RCT_REMOVE_LEGACY_ARCH set to both 0 and 1).
+  pod 'react-native-safe-area-context', :path => '../packages/saronite/node_modules/react-native-safe-area-context'
+  pod 'RNScreens', :path => '../packages/saronite/node_modules/react-native-screens'
+  pod 'RNSVG', :path => '../packages/saronite/node_modules/react-native-svg'
 
   post_install do |installer|
     react_native_post_install(
