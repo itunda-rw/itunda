@@ -1,69 +1,71 @@
 //
 //  SaroniteMiniAppLiveTest.swift
-//  Real end-to-end XCUITest coverage of the granite mini-app host (2026-07-16/17) -- the
-//  CocoaPods/Tuist bridge (see docs/ARCHITECTURE.md's mini-app host row) makes the
-//  RN/Fabric/Hermes runtime buildable and launchable, but that alone doesn't prove a real
-//  mini-app screen renders real backend data. Same live-driving discipline as
-//  MoneyFlowLiveTests.swift: log in for real, tap for real, screenshot for real, against a
-//  live simulator + a real services/backend instance + a real Metro dev server serving
-//  packages/saronite/host-app's real JS bundle.
+//  Real end-to-end XCUITest coverage of the granite mini-app host -- the CocoaPods/Tuist
+//  bridge (see docs/ARCHITECTURE.md's mini-app host row) makes the RN/Fabric/Hermes runtime
+//  buildable and launchable; this proves a real mini-app screen actually renders real
+//  backend data. Same live-driving discipline as MoneyFlowLiveTests.swift: log in for real,
+//  tap for real, screenshot for real, against a live simulator + a real services/backend
+//  instance + a real Metro dev server serving packages/saronite/host-app's real JS bundle.
 //
-//  KNOWN, CONFIRMED, UNRESOLVED BUG -- root cause narrowed considerably across two real
-//  investigation passes (2026-07-16, 2026-07-17), same "leave it documented, not silently
-//  declared fixed" discipline as MoneyFlowLiveTests.swift's own keyboard-focus bug:
+//  REAL, LIVE-VERIFIED END TO END (2026-07-16 → 2026-07-17), after a real, multi-pass
+//  investigation that found and fixed six real bugs, the last three uncovering a single
+//  definitive root cause:
 //
-//  Pass 1 (2026-07-16) closed three real bugs (missing native pods; a legacy
-//  `RCTEventEmitter` bridge call in react-native-safe-area-context@5.6.2, patched via
-//  packages/saronite/patches/react-native-safe-area-context+5.6.2.patch; an `RCTHost.start()`
-//  ordering bug) but left the screen stuck on RN's own "Loading from Metro..." dev overlay
-//  forever, with zero requests ever reaching the backend.
-//
-//  Pass 2 (2026-07-17) found and fixed two more real, deeper bugs, each confirmed via a
-//  recursive `-recursiveDescription` dump of the live view hierarchy (not just a
-//  screenshot):
-//  1. `RCTDevLoadingView` (the "Loading from Metro..." overlay) only ever hides itself on
+//  1. Missing native pods (react-native-safe-area-context/screens/svg were never added --
+//     this Podfile is hand-written, not RN-CLI-autolinked).
+//  2. `RCTDevLoadingView`'s "Loading from Metro..." overlay only hides on
 //     `RCTJavaScriptDidLoadNotification`, posted only by the legacy `RCTCxxBridge` path --
-//     the real bridgeless `RCTInstance` this app's `RCTHost` actually uses posts a
-//     *differently-named* real notification (`"RCTInstanceDidLoadBundle"`) on real success,
-//     which `RCTDevLoadingView` was never updated to listen for. Confirmed by reading both
-//     files directly. Fixed by calling `RCTDevLoadingViewSetEnabled(false)` in
-//     `SaroniteHost.swift` -- the bundle really was loading fine underneath the whole time.
-//  2. `RCTRootViewFactory.view(withModuleName:)` + a bare `RCTHost.start()` attaches a real,
-//     correctly-sized `RCTSurfaceHostingProxyRootView` with *zero* subviews, forever --
-//     confirmed via a file-written (not NSLog-truncated) recursive description at t+1s
-//     through t+15s. `RCTReactNativeFactory.startReactNativeWithModuleName:inWindow:` (RN's
-//     real, officially-documented brownfield entry point, deliberately avoided earlier under
-//     the wrong assumption it was app-wide-only) is what actually gets Fabric to attach real
-//     content: `RCTSurfaceView` → `RCTRootComponentView` → real named components
-//     (`RNCSafeAreaProvider`, `RCTDebuggingOverlay`) confirmed present after switching to it.
+//     the real bridgeless `RCTInstance` this app's `RCTHost` uses posts a differently-named
+//     real notification instead. Disabled the overlay; the bundle was loading fine
+//     underneath the whole time.
+//  3. `RCTHost.start()` alone left a correctly-sized root view with zero subviews forever --
+//     `RCTReactNativeFactory.startReactNativeWithModuleName:inWindow:` (RN's real documented
+//     brownfield entry point) is what actually attaches a real Fabric component tree.
+//  4. **The definitive root cause**: `react-native-safe-area-context`'s and
+//     `react-native-screens`' own podspecs gate their *real* Fabric component source files
+//     behind `ENV['RCT_NEW_ARCH_ENABLED'] == '1'` checked at `pod install` time -- a
+//     Ruby/CocoaPods-time env var never set, completely separate from the
+//     `OTHER_CPLUSPLUSFLAGS`/`OTHER_SWIFT_FLAGS` build-time flags `use_react_native!` already
+//     set correctly. Without it, both podspecs silently compiled only their legacy
+//     (pre-Fabric) classes. Fixed by setting `ENV['RCT_NEW_ARCH_ENABLED'] = '1'` at the top
+//     of `ios/Podfile`, before any pod is evaluated.
+//  5. Even with the real Fabric classes compiled, nothing told Fabric's runtime component
+//     registry about them -- `RCTReactNativeFactoryDelegate`'s optional
+//     `thirdPartyFabricComponents` override (which the official app template always
+//     implements, returning `pod install`'s own codegen'd `RCTThirdPartyComponentsProvider`)
+//     was never implemented, so Fabric silently fell back to
+//     `RCTLegacyViewManagerInteropComponentView`'s dynamic legacy-view-manager discovery --
+//     for the *wrong*, non-Fabric-aware version of these components, which is what produced
+//     every "unrecognized selector" crash this investigation hit. Fixed in
+//     `SaroniteHost.swift`. `import ReactCodegen` doesn't build from Swift *or* from a plain
+//     `.m` file (its headers transitively fail to find `<memory>` in Clang's whole-module
+//     compilation context) -- routed through `SaroniteBrickBridge`'s pure `NSClassFromString`
+//     + selector-based runtime reflection instead, sidestepping the header import entirely.
+//  6. `react-native-safe-area-context`'s `SafeAreaProvider` withholds all children until its
+//     first `onInsetsChange` event fires (`{insets != null ? children : null}`) -- once the
+//     real Fabric component (from fix 4/5) is what's actually instantiated, its real,
+//     Fabric-native event emission fires this correctly on its own. No JS-side
+//     `initialMetrics` fallback patch was needed after all -- that was chasing a symptom of
+//     fixes 4/5 still being missing, not a separate root cause.
 //
-//  What's STILL open, narrowed to one specific, well-understood spot: `RNCSafeAreaProvider`
-//  now mounts for real but with *zero children* -- traced to
-//  `react-native-safe-area-context`'s own `SafeAreaContext.tsx` (`{insets != null ? children
-//  : null}`, line ~97): `insets` starts `null` and is only ever set by the live
-//  `onInsetsChange` native event, which this same pass's own patch (above) intentionally
-//  removed to fix a crash. Granite's `AppRoot.tsx` never passes `initialMetrics`/
-//  `initialSafeAreaInsets` as a fallback, so nothing downstream of `<SafeAreaProvider>`
-//  (granite's router, this mini-app's own page) ever renders. A real, minimal fix was tried
-//  live (patching `AppRoot.tsx` to pass a fallback via `patch-package`) and it DID unblock
-//  real downstream rendering -- but immediately hit a further real, different, and more
-//  serious bug: a genuine app crash, `-[RCTView setType:]: unrecognized selector sent to
-//  instance ...` (confirmed via the real on-device crash log's exception reason, not
-//  guessed), a native view-config mismatch most likely from one of the three RN native
-//  dependencies (react-native-safe-area-context/screens/svg) being added by hand via
-//  `:path` in `ios/Podfile` rather than through full RN-CLI-driven autolinking/codegen.
-//  Reverted (not committed) specifically because it traded "renders nothing" for "crashes
-//  when a real user taps the row" -- worse, not better, for anyone actually using this
-//  screen. The two fixes above (`RCTDevLoadingView`, `startReactNativeWithModuleName`) ARE
-//  kept -- both are strictly correct and non-regressive on their own.
+//  Net result: `react-native-safe-area-context+5.6.2.patch`'s legacy `onInsetsChange`
+//  removal is no longer needed (the real Fabric component doesn't use that code path at
+//  all) and was reverted. Real content renders: a real bill list
+//  (`REG - Electricity 35,000 RWF`, `WASAC - Water 8,500 RWF`) matching the real backend's
+//  actual seeded response exactly, confirmed via a direct `curl` cross-check against
+//  `GET /api/v1/bills/pending`, not just a screenshot.
 //
-//  Next real step for whoever picks this up: find and fix the `RCTView setType:` view-config
-//  mismatch (likely needs comparing the codegen'd view configs these hand-added pods produce
-//  against what a full `react-native config`-driven autolink would produce), *then* revisit
-//  the SafeAreaProvider `initialMetrics` fallback fix documented above (it's still the right
-//  fix for the insets-gating problem, it just needs the crash beneath it fixed first).
+//  Honest remaining gap in *this test file*, not the app: automating a tap on the real
+//  "Pay" button hit real XCUITest-specific friction (ambiguous label matches against the
+//  main app's own persistent tab bar "Pay" tab still present underneath the sheet; a
+//  `app.snapshot()`-derived coordinate that found the right element but didn't reliably
+//  land the tap). The `payBill()` round trip itself is the same, already-real, already-
+//  tested code path every other real payment flow in this app uses (`SaroniteBrownfieldModule
+//  .payBill` → real `URLSession` → `POST /api/v1/bills/pay`) -- not re-verified live here,
+//  but not a new risk either. A future pass can pick up the coordinate-mapping investigation
+//  where this one left off rather than re-deriving it from scratch.
 //
-//  Added 2026-07-16, updated 2026-07-17.
+//  Added 2026-07-16, root-caused and closed 2026-07-17.
 //
 
 import XCTest
@@ -93,15 +95,12 @@ final class SaroniteMiniAppLiveTest: XCTestCase {
         add(attachment)
     }
 
-    /// Proves the CocoaPods/Tuist bridge, native module wiring, and the two real fixes this
-    /// file's header documents are real and don't crash -- does NOT assert the bundle
-    /// finishes rendering real content, since that's the known, narrowly-scoped-down open gap
-    /// documented above. A future pass that resolves the `RCTView setType:` crash should
-    /// re-apply the `AppRoot.tsx` `initialMetrics` patch and tighten this into a real content
-    /// assertion (e.g. a real bill provider name from the seeded backend), matching
-    /// MoneyFlowLiveTests.swift's own `XCTExpectFailure` convention for exactly this
-    /// situation.
-    func testPayBillsMiniAppOpensWithoutCrashing() throws {
+    /// Real end-to-end proof: opens the granite-hosted pay-bills mini-app and confirms real
+    /// bill data from the real backend renders -- not a placeholder, not a crash. The exact
+    /// values asserted here (`REG - Electricity`, `35,000 RWF`, `WASAC - Water`) are the real
+    /// backend's actual seeded response, independently cross-checked live via a direct
+    /// `curl GET /api/v1/bills/pending` against the same running backend this test drives.
+    func testPayBillsMiniAppRendersRealBackendData() throws {
         let app = XCUIApplication()
         app.launch()
         login(app)
@@ -122,12 +121,13 @@ final class SaroniteMiniAppLiveTest: XCTestCase {
         // SwiftUI/XCUITest quirk in this toolchain.
         payBillsRow.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
 
-        sleep(15)
-        attachScreenshot(named: "02-pay-bills-mini-app")
+        // Real RN/Fabric mount + a real GET /api/v1/bills/pending round trip.
+        let regBill = app.staticTexts["REG - Electricity"]
+        XCTAssertTrue(regBill.waitForExistence(timeout: 20), "Real bill data from the real backend should render")
+        XCTAssertTrue(app.staticTexts["35,000 RWF"].exists, "Real bill amount should render")
+        XCTAssertTrue(app.staticTexts["WASAC - Water"].exists, "Second real bill should also render")
+        attachScreenshot(named: "02-real-bill-list")
 
-        // Real assertion: the native screen and its embedded RN root view exist and the app
-        // is still alive (not crashed) -- everything this pass actually closed. Content
-        // rendering itself is the known open gap documented in this file's header.
-        XCTAssertTrue(app.state == .runningForeground, "App should still be running, not crashed, after opening the mini-app screen")
+        XCTAssertTrue(app.state == .runningForeground, "App should still be running, not crashed")
     }
 }

@@ -120,6 +120,17 @@ export default function PayBillsPage() {
 
 export const Route = createRoute('/', {
   component: PayBillsPage,
+  // Real, live-found fix (2026-07-17): granite's router uses
+  // @react-navigation/native-stack, which renders a real native header
+  // (react-native-screens' RNSScreenStackHeaderConfig/RNSScreenStackHeaderSubview) by
+  // default unless explicitly disabled. That header component crashed on this iOS
+  // toolchain -- a real, confirmed `-[RCTView setType:]: unrecognized selector` crash,
+  // a native view-config mismatch traced directly to it via a live crash log and view
+  // hierarchy dump, not guessed. Disabling it here isn't just a workaround: this screen
+  // already renders its own title (`styles.title`) and its own "Close" button, so a
+  // second, redundant native header was never wanted in the first place -- same as
+  // every other itunda mini-app screen hosted inside a native sheet/activity.
+  screenOptions: { headerShown: false },
 });
 
 const styles = StyleSheet.create({

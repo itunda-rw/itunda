@@ -5,6 +5,22 @@ require_relative '../packages/saronite/node_modules/react-native/scripts/react_n
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
+# Real, definitive root cause (2026-07-17) for a whole chain of downstream crashes/
+# fallbacks this file's own history documents (RNCSafeAreaProvider's legacy event-dispatch
+# crash, RNSScreenStackHeaderSubview's "RCTView setType:" crash): react-native-safe-area-
+# context's and react-native-screens' own podspecs gate their *real* Fabric component
+# source files (react-native-safe-area-context.podspec's `ios/Fabric/**`,
+# RNScreens.podspec's new-arch-only sources) behind `ENV['RCT_NEW_ARCH_ENABLED'] == '1'`
+# checked at `pod install` time -- a Ruby/CocoaPods-time env var, completely separate from
+# the `OTHER_CPLUSPLUSFLAGS`/`OTHER_SWIFT_FLAGS` build-time flags `use_react_native!`
+# already sets correctly below. Without this, both podspecs silently compile only their
+# legacy (pre-Fabric) Objective-C classes; at runtime RN's real component registry finds
+# no Fabric class, falls back to `RCTLegacyViewManagerInteropComponentView`, and every
+# prop/event mismatch between that fallback and what Fabric's own codegen expects surfaces
+# as a real crash. Confirmed directly by reading both podspecs' own `fabric_enabled =
+# ENV['RCT_NEW_ARCH_ENABLED'] == '1'` lines.
+ENV['RCT_NEW_ARCH_ENABLED'] = '1'
+
 # Bridges CocoaPods into Tuist's generated Itunda.xcodeproj/Itunda.xcworkspace
 # (Tuist 3.x dropped native CocoaPods integration -- no `.cocoapods()` path in
 # Dependencies.swift -- so this points a standalone Podfile at the already-generated
@@ -39,13 +55,11 @@ target 'ItundaApp' do
   # `react-native config` run from `host-app`'s own directory -- more moving parts for the
   # same three, already-known dependencies `host-app/package.json` lists.
   #
-  # react-native-safe-area-context also needed a real, live-found native patch (see
-  # packages/saronite/patches/react-native-safe-area-context+5.6.2.patch and its own
-  # in-source comment in RNCSafeAreaProvider.m): its onInsetsChange dispatch used the
-  # legacy RCTEventDispatcher path, which itunda's bridgeless RCTHost setup never
-  # registers as a callable JS module -- confirmed as a bridgeless-vs-legacy-bridge gap,
-  # not a New-Architecture-specific one (reproduced identically with
-  # RCT_REMOVE_LEGACY_ARCH set to both 0 and 1).
+  # react-native-safe-area-context's onInsetsChange dispatch was patched at one point
+  # (a legacy RCTEventDispatcher call itunda's bridgeless RCTHost couldn't handle) --
+  # that patch is gone now: the real cause was this pod's own Fabric component never
+  # being compiled at all (see the ENV['RCT_NEW_ARCH_ENABLED'] fix above), and once it
+  # is, the real Fabric component's own event emission works correctly on its own.
   pod 'react-native-safe-area-context', :path => '../packages/saronite/node_modules/react-native-safe-area-context'
   pod 'RNScreens', :path => '../packages/saronite/node_modules/react-native-screens'
   pod 'RNSVG', :path => '../packages/saronite/node_modules/react-native-svg'

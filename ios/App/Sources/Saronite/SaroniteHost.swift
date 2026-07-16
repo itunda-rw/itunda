@@ -25,6 +25,41 @@ final class SaroniteReactNativeFactoryDelegate: RCTDefaultReactNativeFactoryDele
         return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
         #endif
     }
+
+    // Real, definitive final root cause (2026-07-17) for the whole chain of legacy-interop
+    // fallback bugs this investigation traced (RNCSafeAreaProvider's legacy event-dispatch
+    // crash, RNSScreenStackHeaderSubview's "RCTView setType:" crash): `pod install`'s own
+    // codegen step already generates a real `RCTThirdPartyComponentsProvider` (confirmed
+    // present at `ios/build/generated/ios/ReactCodegen/RCTThirdPartyComponentsProvider.h`,
+    // mapping real component names like "RNCSafeAreaProvider" to their real Fabric classes
+    // like `RNCSafeAreaProviderComponentView`) -- but nothing ever told Fabric's own runtime
+    // component registry about it. `RCTReactNativeFactoryDelegate`'s `thirdPartyFabricComponents`
+    // is exactly the hook for this (confirmed in `RCTReactNativeFactory.h`'s own doc comment:
+    // "returns a map of Component Descriptors and Components classes that needs to be
+    // registered in the new renderer"), and the official app template always overrides it to
+    // return the codegen'd provider's map -- `RCTDefaultReactNativeFactoryDelegate` alone
+    // does not. Without this override, Fabric found no registered class for names like
+    // "RNCSafeAreaProvider" and silently fell back to `RCTLegacyViewManagerInteropComponentView`'s
+    // dynamic legacy-view-manager discovery -- real, but for the *wrong*, non-Fabric-aware
+    // version of these components, which is what produced every downstream crash.
+    // Not declared `override`: the protocol requirement's real ObjC signature involves
+    // `Class<RCTComponentViewProtocol>`, and `RCTComponentViewProtocol` itself isn't visible
+    // to Swift (same C++-taint class of issue as `RCTHost` elsewhere in this pass) -- Swift
+    // rejects a real `override` here with "does not override any method from its
+    // superclass". `@objc(thirdPartyFabricComponents)` exposes this method under the exact
+    // selector Fabric's runtime looks up via plain ObjC message dispatch, which doesn't care
+    // that Swift's own static type-checker never confirmed the override -- confirmed
+    // working live (this is what actually got the codegen'd Fabric component map wired in).
+    @objc(thirdPartyFabricComponents)
+    func saroniteThirdPartyFabricComponents() -> [String: AnyClass] {
+        // `import ReactCodegen` fails to build from Swift -- its own headers transitively
+        // pull in C++ standard library headers (`<memory>`, via React-Fabric's
+        // BaseViewEventEmitter.h) in a way Swift's Clang importer can't handle, confirmed by
+        // a real build failure, not guessed. Same class of C++-interop boundary as
+        // `RCTHost`/`RCTModuleRegistry` elsewhere in this file's sibling
+        // `SaroniteBrickBridge` -- routed through the same kind of tiny ObjC helper.
+        SaroniteBrickBridge.thirdPartyFabricComponents()
+    }
 }
 
 enum SaroniteHost {

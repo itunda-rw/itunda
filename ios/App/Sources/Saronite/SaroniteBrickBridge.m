@@ -1,5 +1,19 @@
 #import "SaroniteBrickBridge.h"
 
+// `#import <ReactCodegen/RCTThirdPartyComponentsProvider.h>` (both modular and plain
+// textual form) fails to build here -- Clang tries to build `ReactCodegen` as a whole
+// module even for a textual include, and that module's own transitive headers
+// (React-Fabric's BaseViewEventEmitter.h) can't find `<memory>` in that specific
+// module-compilation context, confirmed by a real, repeatable build failure, not guessed.
+// `RCTThirdPartyComponentsProvider` is still a real, compiled, linked class (it's part of
+// the same Pods build ItundaApp already links against) -- reached here via
+// `NSClassFromString` + a plain class-method message send instead, the same technique
+// (and the same reasoning) as `brickModuleFromRootViewFactory:`/`startReactHost:` above use
+// for `RCTHost`/`RCTModuleRegistry`.
+@protocol SaroniteThirdPartyComponentsProviderLookup <NSObject>
++ (NSDictionary<NSString *, Class> *)thirdPartyFabricComponents;
+@end
+
 // `RCTModuleRegistry` (the real runtime type of `RCTHost.moduleRegistry`) ships no public
 // header anywhere in the installed `react-native` package -- confirmed by a direct search --
 // even though `-moduleForName:` is a real, compiled, exported method (`RCTModuleRegistry.m`'s
@@ -48,6 +62,14 @@
     }
     id<SaroniteReactHostLifecycle> lifecycle = reactHost;
     [lifecycle start];
+}
+
++ (NSDictionary<NSString *, Class> *)thirdPartyFabricComponents {
+    Class<SaroniteThirdPartyComponentsProviderLookup> providerClass = NSClassFromString(@"RCTThirdPartyComponentsProvider");
+    if (!providerClass || ![providerClass respondsToSelector:@selector(thirdPartyFabricComponents)]) {
+        return @{};
+    }
+    return [providerClass thirdPartyFabricComponents] ?: @{};
 }
 
 @end

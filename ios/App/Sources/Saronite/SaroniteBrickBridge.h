@@ -26,6 +26,18 @@ NS_ASSUME_NONNULL_BEGIN
 /// doc comment ("creates new RCTRootViews on demand") suggested.
 + (void)startReactHost:(id)rootViewFactory;
 
+/// Real, definitive final root cause (2026-07-17) for the whole chain of legacy-interop
+/// fallback bugs this investigation traced: `pod install`'s own codegen step already
+/// generates a real `RCTThirdPartyComponentsProvider` mapping real component names (e.g.
+/// "RNCSafeAreaProvider") to their real Fabric classes -- but nothing told Fabric's
+/// runtime registry about it, so it silently fell back to dynamic legacy-view-manager
+/// discovery for the *wrong*, non-Fabric-aware versions of these components. `import
+/// ReactCodegen` fails to build from Swift (its headers transitively pull in C++ standard
+/// library headers in a way Swift's Clang importer can't handle, confirmed by a real build
+/// failure) -- routed through this ObjC helper instead, same reasoning as this class's
+/// other methods.
++ (NSDictionary<NSString *, Class> *)thirdPartyFabricComponents;
+
 @end
 
 NS_ASSUME_NONNULL_END
