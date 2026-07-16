@@ -13,6 +13,8 @@ import rw.itunda.core.domain.LedgerEntry
 import rw.itunda.core.domain.LoanAccount
 import rw.itunda.core.domain.SavingsGoal
 import rw.itunda.core.domain.Transaction
+import rw.itunda.core.domain.TransactionStatus
+import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
@@ -33,6 +35,7 @@ interface HoldingRepository : JpaRepository<Holding, String> {
 
 interface SavingsGoalRepository : JpaRepository<SavingsGoal, String> {
     fun findByUserId(userId: String): List<SavingsGoal>
+    fun existsByUserId(userId: String): Boolean
 }
 
 interface InterestJarRepository : JpaRepository<InterestJar, String>
@@ -69,4 +72,5 @@ interface LedgerEntryRepository : JpaRepository<LedgerEntry, String> {
 
 interface TransactionRepository : JpaRepository<Transaction, String> {
     fun findBySenderIdOrRecipientIdOrderByCreatedAtDesc(senderId: String, recipientId: String): List<Transaction>
+    fun existsBySenderIdAndTypeAndStatus(senderId: String, type: TransactionType, status: TransactionStatus): Boolean
 }

@@ -4,6 +4,9 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Transaction
+import rw.itunda.core.domain.TransactionStatus
+import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.events.EventPublisher
 import rw.itunda.core.events.PaymentProviderFailedEvent
 import rw.itunda.core.events.PaymentProviderSucceededEvent
@@ -15,18 +18,17 @@ import rw.itunda.core.provider.ProviderConnector
 import rw.itunda.core.provider.ProviderDeclinedException
 import rw.itunda.core.provider.RailCatalog
 import rw.itunda.core.provider.RailProfile
+import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import rw.itunda.core.domain.WalletType
 import java.math.BigDecimal
 import java.time.Instant
+import java.util.UUID
 
 class NoWalletException(message: String) : RuntimeException(message)
 
 /**
- * Port of backend/src/controllers/bills.controller.ts's payBill/buyAirtime. Same
- * omission as the Express version carries forward faithfully: these don't create a
- * persisted Transaction row, only ledger legs — bills/airtime never went through the
- * same transaction-history path as P2P transfers there either.
+ * Port of backend/src/controllers/bills.controller.ts's payBill/buyAirtime.
  *
  * Fixed (2026-07-11): every payment here previously always succeeded against a flat
  * rail with no provider simulation at all -- explicitly flagged open in
@@ -36,6 +38,16 @@ class NoWalletException(message: String) : RuntimeException(message)
  * core/.../provider/ProviderConnector.kt's own doc comment for why these are
  * rebuilt fresh rather than a literal port (the Express file they mirror the design
  * of no longer exists in this repo).
+ *
+ * Fixed (2026-07-16): the omission this file's doc comment used to name here ("these
+ * don't create a persisted Transaction row, only ledger legs") is closed -- both flows
+ * now save a real `Transaction` row, same shape/convention as
+ * `WalletService.confirmTransfer`. Found while wiring rewards-task verification
+ * (RewardsService's `task_first_bill`): without a real Transaction row there was
+ * nothing for a "has this user ever paid a bill" query to check, and bill/airtime
+ * payments were invisible to `GET /wallet/transactions` the same way merchant
+ * collections were before that gap was closed (see the Merchant row in
+ * docs/TOSS_PARITY_MATRIX.md) -- the identical class of bug, same fix.
  */
 @Service
 class BillsService(
@@ -43,6 +55,7 @@ class BillsService(
     private val ledgerService: LedgerService,
     private val providerConnector: ProviderConnector,
     private val eventPublisher: EventPublisher,
+    private val transactionRepository: TransactionRepository,
 ) {
     fun getProviders() = BillsCatalog.providers
     fun getPendingBills() = BillsCatalog.pendingBills
@@ -87,6 +100,25 @@ class BillsService(
                 LedgerLeg("rail_suspense", LedgerAccountType.RAIL_SUSPENSE, LedgerDirection.CREDIT, amount, "Biller settlement $billId"),
             ),
         )
+        val referenceNumber = "BILL${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}"
+        val completedAt = Instant.now()
+        val description = "Bill payment - $billId${accountNumber?.let { " ($it)" } ?: ""}"
+        transactionRepository.save(
+            Transaction(
+                id = result.transactionId,
+                referenceNumber = referenceNumber,
+                senderId = userId,
+                recipientId = "external",
+                fromWalletId = wallet.id,
+                amount = amount,
+                fee = BigDecimal.ZERO,
+                currency = wallet.currency,
+                type = TransactionType.BILL,
+                status = TransactionStatus.COMPLETED,
+                description = description,
+                completedAt = completedAt,
+            ),
+        )
         eventPublisher.publishAfterCommit(
             TOPIC_PAYMENT_PROVIDER_SUCCEEDED,
             result.transactionId,
@@ -102,13 +134,13 @@ class BillsService(
         )
         return mapOf(
             "id" to result.transactionId,
-            "referenceNumber" to "BILL${System.currentTimeMillis()}",
+            "referenceNumber" to referenceNumber,
             "amount" to amount,
             "fee" to BigDecimal.ZERO,
             "type" to "BILL",
             "status" to "COMPLETED",
-            "description" to "Bill payment - $billId${accountNumber?.let { " ($it)" } ?: ""}",
-            "completedAt" to Instant.now().toString(),
+            "description" to description,
+            "completedAt" to completedAt.toString(),
         )
     }
 
@@ -126,6 +158,25 @@ class BillsService(
                 LedgerLeg("rail_suspense", LedgerAccountType.RAIL_SUSPENSE, LedgerDirection.CREDIT, amount, "Airtime settlement $phoneNumber"),
             ),
         )
+        val referenceNumber = "AIR${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}"
+        val completedAt = Instant.now()
+        val description = "${provider ?: "MTN"} Airtime - $phoneNumber"
+        transactionRepository.save(
+            Transaction(
+                id = result.transactionId,
+                referenceNumber = referenceNumber,
+                senderId = userId,
+                recipientId = "external",
+                fromWalletId = wallet.id,
+                amount = amount,
+                fee = BigDecimal.ZERO,
+                currency = wallet.currency,
+                type = TransactionType.AIRTIME,
+                status = TransactionStatus.COMPLETED,
+                description = description,
+                completedAt = completedAt,
+            ),
+        )
         eventPublisher.publishAfterCommit(
             TOPIC_PAYMENT_PROVIDER_SUCCEEDED,
             result.transactionId,
@@ -141,13 +192,13 @@ class BillsService(
         )
         return mapOf(
             "id" to result.transactionId,
-            "referenceNumber" to "AIR${System.currentTimeMillis()}",
+            "referenceNumber" to referenceNumber,
             "amount" to amount,
             "fee" to BigDecimal.ZERO,
             "type" to "AIRTIME",
             "status" to "COMPLETED",
-            "description" to "${provider ?: "MTN"} Airtime - $phoneNumber",
-            "completedAt" to Instant.now().toString(),
+            "description" to description,
+            "completedAt" to completedAt.toString(),
         )
     }
 }

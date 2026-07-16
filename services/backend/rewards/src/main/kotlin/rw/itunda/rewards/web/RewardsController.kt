@@ -17,6 +17,7 @@ import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.rewards.RewardTaskAlreadyClaimedException
+import rw.itunda.rewards.RewardTaskNotEligibleException
 import rw.itunda.rewards.RewardTaskNotFoundException
 import rw.itunda.rewards.RewardsNoWalletException
 import rw.itunda.rewards.RewardsService
@@ -73,6 +74,10 @@ class RewardsController(private val rewardsService: RewardsService, private val 
     @ExceptionHandler(RewardTaskAlreadyClaimedException::class)
     fun handleAlreadyClaimed(ex: RewardTaskAlreadyClaimedException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("REWARD_TASK_ALREADY_CLAIMED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(RewardTaskNotEligibleException::class)
+    fun handleNotEligible(ex: RewardTaskNotEligibleException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("REWARD_TASK_NOT_ELIGIBLE", ex.message ?: "Forbidden"))
 
     @ExceptionHandler(RewardsNoWalletException::class)
     fun handleNoWallet(ex: RewardsNoWalletException) =

@@ -14,6 +14,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.provider.ProviderConnector
 import rw.itunda.core.provider.ProviderDeclinedException
 import rw.itunda.core.provider.RailProfile
+import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 
@@ -36,9 +37,14 @@ class BillsServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val providerConnector = mockk<ProviderConnector>()
         val eventPublisher = mockk<EventPublisher>(relaxed = true)
-        val service = BillsService(walletRepository, ledgerService, providerConnector, eventPublisher)
+        val transactionRepository = mockk<TransactionRepository>()
+        val service = BillsService(walletRepository, ledgerService, providerConnector, eventPublisher, transactionRepository)
 
         every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet()
+        // relaxed=true mishandles JpaRepository's generic `<S extends T> S save(S)` and
+        // returns a raw Object, ClassCastException-ing at the call site -- same fix as
+        // RewardsServiceTest's rewardClaimRepository.save stub.
+        every { transactionRepository.save(any()) } answers { firstArg() }
 
         When("the provider accepts the payment") {
             every { providerConnector.attempt(any(), any()) } returns Unit
@@ -46,9 +52,16 @@ class BillsServiceTest : BehaviorSpec({
 
             val result = service.payBill("user_1", "bill_1", BigDecimal("35000"), "REG-12345", "REG")
 
-            Then("it calls the provider connector before posting to the ledger, and completes") {
+            Then("it calls the provider connector before posting to the ledger, saves a real Transaction row, and completes") {
                 verify(exactly = 1) { providerConnector.attempt(any(), any()) }
                 verify(exactly = 1) { ledgerService.postLedgerTransaction(any(), any()) }
+                verify(exactly = 1) {
+                    transactionRepository.save(match {
+                        it.id == "ledgertxn_1" && it.senderId == "user_1" &&
+                            it.type == rw.itunda.core.domain.TransactionType.BILL &&
+                            it.status == rw.itunda.core.domain.TransactionStatus.COMPLETED
+                    })
+                }
                 result["status"] shouldBe "COMPLETED"
                 result["id"] shouldBe "ledgertxn_1"
             }

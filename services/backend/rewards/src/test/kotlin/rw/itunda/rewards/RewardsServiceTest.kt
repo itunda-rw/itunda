@@ -10,12 +10,16 @@ import io.mockk.verify
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.RewardClaim
+import rw.itunda.core.domain.TransactionStatus
+import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.RewardClaimRepository
+import rw.itunda.core.repository.SavingsGoalRepository
+import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Instant
@@ -27,13 +31,17 @@ class RewardsServiceTest : BehaviorSpec({
         type = WalletType.MAIN, balance = BigDecimal("10000"), availableBalance = BigDecimal("10000"),
     )
 
-    Given("a user who hasn't claimed anything yet") {
+    Given("a user who hasn't claimed anything yet and hasn't done any of the checkable tasks") {
         val rewardClaimRepository = mockk<RewardClaimRepository>()
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService)
+        val transactionRepository = mockk<TransactionRepository>()
+        val savingsGoalRepository = mockk<SavingsGoalRepository>()
+        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository)
 
         every { rewardClaimRepository.findByUserId("user_1") } returns emptyList()
+        every { transactionRepository.existsBySenderIdAndTypeAndStatus("user_1", any(), TransactionStatus.COMPLETED) } returns false
+        every { savingsGoalRepository.existsByUserId("user_1") } returns false
 
         When("listing tasks") {
             val result = service.getTasks("user_1")
@@ -43,16 +51,27 @@ class RewardsServiceTest : BehaviorSpec({
                 result.tasks.all { !it.claimed } shouldBe true
                 result.rewardsTotal shouldBe BigDecimal.ZERO
             }
+            Then("only the two unverifiable tasks (profile, referral) show eligible=true -- the other three require real activity that hasn't happened") {
+                val byId = result.tasks.associateBy { it.id }
+                byId.getValue("task_first_transfer").eligible shouldBe false
+                byId.getValue("task_first_bill").eligible shouldBe false
+                byId.getValue("task_savings_goal").eligible shouldBe false
+                byId.getValue("task_profile").eligible shouldBe true
+                byId.getValue("task_referral").eligible shouldBe true
+            }
         }
     }
 
-    Given("a user claiming a real task for the first time") {
+    Given("a user who has completed a real transfer, claiming task_first_transfer for the first time") {
         val rewardClaimRepository = mockk<RewardClaimRepository>()
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService)
+        val transactionRepository = mockk<TransactionRepository>()
+        val savingsGoalRepository = mockk<SavingsGoalRepository>()
+        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository)
 
         every { rewardClaimRepository.existsByUserIdAndTaskId("user_2", "task_first_transfer") } returns false
+        every { transactionRepository.existsBySenderIdAndTypeAndStatus("user_2", TransactionType.TRANSFER, TransactionStatus.COMPLETED) } returns true
         every { walletRepository.findByUserIdAndType("user_2", WalletType.MAIN) } returns wallet("wallet_main", "user_2")
         val legsSlot = slot<List<LedgerLeg>>()
         every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_1", emptyList())
@@ -83,11 +102,38 @@ class RewardsServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a user who has NOT completed a real transfer, trying to claim task_first_transfer") {
+        val rewardClaimRepository = mockk<RewardClaimRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val savingsGoalRepository = mockk<SavingsGoalRepository>()
+        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository)
+
+        every { rewardClaimRepository.existsByUserIdAndTaskId("user_6", "task_first_transfer") } returns false
+        every { transactionRepository.existsBySenderIdAndTypeAndStatus("user_6", TransactionType.TRANSFER, TransactionStatus.COMPLETED) } returns false
+
+        When("claiming it") {
+            Then("it throws RewardTaskNotEligibleException before ever touching the wallet or ledger -- this is the real fix for the honor-system gap") {
+                try {
+                    service.claim("user_6", "task_first_transfer")
+                    error("expected RewardTaskNotEligibleException")
+                } catch (e: RewardTaskNotEligibleException) {
+                    verify(exactly = 0) { walletRepository.findByUserIdAndType(any(), any()) }
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                    verify(exactly = 0) { rewardClaimRepository.save(any()) }
+                }
+            }
+        }
+    }
+
     Given("a task that's already been claimed") {
         val rewardClaimRepository = mockk<RewardClaimRepository>()
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService)
+        val transactionRepository = mockk<TransactionRepository>()
+        val savingsGoalRepository = mockk<SavingsGoalRepository>()
+        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository)
 
         every { rewardClaimRepository.existsByUserIdAndTaskId("user_3", "task_profile") } returns true
 
@@ -108,7 +154,9 @@ class RewardsServiceTest : BehaviorSpec({
         val rewardClaimRepository = mockk<RewardClaimRepository>()
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService)
+        val transactionRepository = mockk<TransactionRepository>()
+        val savingsGoalRepository = mockk<SavingsGoalRepository>()
+        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository)
 
         When("claiming it") {
             Then("it throws RewardTaskNotFoundException before checking claim status at all") {
@@ -126,7 +174,9 @@ class RewardsServiceTest : BehaviorSpec({
         val rewardClaimRepository = mockk<RewardClaimRepository>()
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService)
+        val transactionRepository = mockk<TransactionRepository>()
+        val savingsGoalRepository = mockk<SavingsGoalRepository>()
+        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository)
 
         every { rewardClaimRepository.existsByUserIdAndTaskId("user_5", "task_profile") } returns false
         every { walletRepository.findByUserIdAndType("user_5", WalletType.MAIN) } returns null
