@@ -20,6 +20,9 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/hostname: itunda-dc-a
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        effect: NoSchedule
       containers:
       - name: registry
         image: registry:3

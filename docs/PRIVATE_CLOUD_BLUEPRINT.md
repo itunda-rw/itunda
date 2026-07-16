@@ -66,16 +66,18 @@ Current state:
 - **Kafka mirroring**: a Kubernetes-hosted MM2 worker is now live against the two brokers
 - **Registry plumbing**: an arm64-safe OCI registry rehearsal is now live on
   `http://192.168.252.2:32000`, and worker-node pull has been verified through `containerd`
-- **Application ingress**: Istio NodePort is live, but the app rollouts still need the repo app
-  images to be built and pushed into that private registry
+- **Application ingress**: Istio NodePort is live, and as of 2026-07-16 all four app images
+  (`api-gateway`, `backend`, `ledger-service`, `payment-service`) are built, pushed to that
+  private registry, and running — `kubectl get pods -n itunda` shows all four `2/2 Running`
+  behind the Istio sidecar.
 
 That means the current private cloud is **not** active-active end to end. It is closer to:
 
 - active-passive for MySQL, with the promotion path now proven by a live round-trip drill
 - master+replica for Redis, with no automated failover yet
 - split Kafka clusters with a real MM2 baseline but not Toss-equivalent same-topic mirroring
-- stateless app orchestration is present, and the private-registry path now exists, but the full
-  app image set still needs to be published into it
+- stateless app orchestration is present, the private-registry path is live, and the full app
+  image set is now published and running behind Istio and Argo Rollouts
 
 ### Known hardware ceiling (found 2026-07-16)
 
@@ -103,19 +105,58 @@ That is the real, current bottleneck, not a code bug:
   back in place; a genuinely idle third node (or more host CPU) is what this actually needs, not
   a scheduling trick.
 - Net effect of the fixes above: cluster-wide dead/unknown pod count dropped from 800+ to
-  roughly 20, and both nodes' 1-minute load average was trending back down by the end of the
-  session. Full stability under the complete stack (Istio + Rollouts + MM2 + Prometheus/Grafana +
-  4 JVM/Node services + MySQL/Redis/Kafka) on 2×(2 vCPU/4GiB) is still not guaranteed — this is a
-  hardware ceiling to size around, not something the next config tweak fixes.
+  roughly 20, and both nodes' 1-minute load average was trending back down.
+
+### Building the `backend` image hit the ceiling directly (resolved 2026-07-16)
+
+`api-gateway` (Node) built and pushed cleanly on the first attempt. `backend` (Spring Boot +
+Kotlin, a much heavier Gradle/Kotlin compile) did not fit in the standing footprint three times
+in a row, on both nodes, before it worked:
+
+1. Building on `itunda-dc-a` (the control-plane node) drove its own SSH/kubectl unresponsive for
+   several minutes from pure CPU contention with `kube-apiserver`/`etcd`.
+2. Building on `itunda-dc-b` (after scaling Istio/MM2/Prometheus/Grafana/Argo Rollouts to zero
+   first to free RAM) still ran memory down to ~20MB available with no swap configured, and the
+   OOM killer took out Grafana and Prometheus (both already scaled down elsewhere, so this was
+   residual) before the build died on its own. MySQL/Redis/Kafka were never touched by the OOM
+   killer in either incident — kubelet's own oom_score_adj protected them as higher-priority
+   pods, which held.
+3. What actually fixed it: **Multipass doesn't support live/elastic VM resizing, but a
+   stop → resize → start cycle gets the same effect.** `itunda-dc-a` was stopped entirely
+   (it only hosted the MySQL/Redis *replicas*, not the writer, so this was safe), freeing its
+   4GiB. `itunda-dc-b` was stopped, resized from 4GiB to 7GiB, and restarted — the build then
+   completed in 2m17s (vs. 30+ minutes of thrashing before). After the build and push,
+   `itunda-dc-b` was resized back down to 4GiB and `itunda-dc-a` was restarted, restoring the
+   normal two-node topology. `docker stop`/`start` on `redis-b`/`mysql-b`/`kafka-b` was never
+   needed — Docker's `restart: unless-stopped` policy brought them back automatically each time
+   a VM rebooted, and none of them lost data or state across any of this.
+4. A second, independent ceiling then showed up: disk pressure kept evicting `istiod`,
+   `istio-ingressgateway`, and freshly-scheduled app pods on `itunda-dc-b` in a loop, even after
+   the memory issue was fixed and the images existed. Unlike the memory problem, this was judged
+   a standing issue (not a one-off build spike), so `itunda-dc-b`'s disk was grown
+   **permanently** from 10GB to 20GB the same way (stop → `multipass set
+   local.itunda-dc-b.disk=20G` → start). The guest's `sda1` partition auto-grew to fill it on
+   boot — no manual `growpart`/`resize2fs` needed. Disk pressure cleared immediately and stayed
+   clear.
+
+After both fixes, all four app rollouts reached `2/2 Running` behind Istio, and the whole cluster
+(24 pods) settled to 100% `Running` with zero dead/evicted pods — the first time that happened
+all session.
+
+**Takeaway for future sessions:** if a build or workload needs more headroom than the standing
+2 vCPU/4GiB/10GB-disk footprint provides, prefer temporarily stopping the *other* node (verify
+first it's not hosting a writer/master) and resizing the *build* node up, over fighting the
+problem in place. Grow memory back down after use since the host has none to spare; grow disk
+can stay permanent since host disk has real headroom (~27GB free at last check).
 
 ## Toss vs. Itunda gap table
 
 | Layer | Toss pattern | Itunda now | Gap |
 |---|---|---|---|
-| Private-cloud control plane | Real private cloud, independent pods/clusters | Two Ubuntu Multipass VMs running a kubeadm cluster | Local demo scale only; no real OpenStack Pod0/Pod1/Pod2 yet; VMs are at their host's CPU/RAM ceiling |
+| Private-cloud control plane | Real private cloud, independent pods/clusters | Two Ubuntu Multipass VMs running a kubeadm cluster (`dc-a`: 2 vCPU/4GiB/10GB disk, `dc-b`: 2 vCPU/4GiB/20GB disk as of 2026-07-16) | Local demo scale only; no real OpenStack Pod0/Pod1/Pod2 yet; VMs are at their host's CPU/RAM ceiling |
 | Infra lifecycle | Terraform + Ansible + golden images + CMDB | Repo-native bootstrap, CMDB, and workload scripts exist | Still no real Terraform/Ansible/golden-image pipeline |
 | Traffic management | Active-active traffic steering, remove failed site from ingress | Istio ingress is live on the rehearsal cluster | No cross-cluster traffic steering or site cutover yet |
-| App runtime | Real workload scheduling across failure domains | Argo Rollouts resources exist on multi-node k8s and the arm64 rehearsal registry path is live | `api-gateway`/`backend` rollouts still unhealthy pending pushed images into the private registry; `ledger-service`/`payment-service` already run real images |
+| App runtime | Real workload scheduling across failure domains | All four rollouts (`api-gateway`, `backend`, `ledger-service`, `payment-service`) are `2/2 Running` behind Istio as of 2026-07-16, images built/pushed into the private registry | Still single-node in practice (`dc-b` only, since `dc-a` stays tainted for control-plane stability); no real cross-node app HA yet |
 | MySQL | Honest site HA, not pretend multi-master | `dc-b` writer, `dc-a` replica | Failover promotion automation now exists and was verified live (2026-07-16 round-trip drill); still need scheduled/repeatable drills and backup/restore scripts |
 | Redis | Platform-grade HA strategy | `dc-b` master with a live `dc-a` replica (2026-07-16) | No Sentinel/automated failover; promotion is still manual |
 | Kafka | Two independent clusters with real mirroring + offset sync | Two independent clusters plus live MM2 baseline | Need repeated offset-sync drills and Toss-style same-topic mirroring contract enforcement |

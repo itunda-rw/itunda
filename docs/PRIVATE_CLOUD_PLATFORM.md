@@ -150,7 +150,7 @@ curl -H 'Host: api.itunda.internal' http://<primary-ip>:30082/health
 
 ## Current limit
 
-The progressive manifests are real, but they still use the repo's app images:
+The progressive manifests are real, and by default they reference the repo's placeholder images:
 
 - `ghcr.io/itunda/api-gateway:latest`
 - `ghcr.io/itunda/backend:latest`
@@ -158,7 +158,13 @@ The progressive manifests are real, but they still use the repo's app images:
 - `ghcr.io/itunda/payment-service:latest`
 
 If those images are not pullable in the cluster, the rollout resources will exist but the pods
-will not become healthy.
+will not become healthy. As of 2026-07-16, all four services have been built and pushed into the
+arm64 rehearsal registry (`192.168.252.2:32000/itunda/*:2026-07-16`) and the live rollouts patched
+to use them — `kubectl get pods -n itunda` shows all four `2/2 Running`. Building `backend`
+(Spring Boot + Kotlin) needed more RAM/disk than the standing per-node footprint; see the
+"Building the `backend` image hit the ceiling directly" section in
+[docs/PRIVATE_CLOUD_BLUEPRINT.md](PRIVATE_CLOUD_BLUEPRINT.md) for the stop/resize/start recipe
+that fixed it.
 
 Use these env vars to point the rollouts at a private registry instead:
 
