@@ -1,0 +1,33 @@
+source 'https://cdn.cocoapods.org/'
+
+require_relative '../packages/saronite/node_modules/react-native/scripts/react_native_pods'
+
+platform :ios, min_ios_version_supported
+prepare_react_native_project!
+
+# Bridges CocoaPods into Tuist's generated Itunda.xcodeproj/Itunda.xcworkspace
+# (Tuist 3.x dropped native CocoaPods integration -- no `.cocoapods()` path in
+# Dependencies.swift -- so this points a standalone Podfile at the already-generated
+# project the same way apps did before Tuist ever had built-in CocoaPods support).
+# Regenerating via `tuist generate` overwrites Itunda.xcodeproj; re-run `pod install`
+# immediately after any `tuist generate` to reintegrate.
+project 'Itunda.xcodeproj'
+
+target 'ItundaApp' do
+  use_react_native!(
+    path: '../packages/saronite/node_modules/react-native',
+    app_path: '../packages/saronite/host-app',
+    config_file_dir: '../packages/saronite/host-app'
+  )
+
+  pod 'BrickModule', :path => '../packages/saronite/node_modules/brick-module'
+  pod 'GraniteBrownfield', :path => '../packages/saronite/node_modules/@granite-js/brownfield-module'
+
+  post_install do |installer|
+    react_native_post_install(
+      installer,
+      '../packages/saronite/node_modules/react-native',
+      mac_catalyst_enabled: false
+    )
+  end
+end
