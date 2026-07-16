@@ -49,7 +49,9 @@ class LoansService(
     private val ledgerService: LedgerService,
     private val creditScoreService: CreditScoreService,
 ) {
-    fun getOffers() = LoanCatalog.offers
+    fun getOffers(lenderId: String? = null) = if (lenderId == null) LoanCatalog.offers else LoanCatalog.findByLender(lenderId)
+
+    fun getLenders() = LenderCatalog.lenders
 
     fun getMyLoans(userId: String) = loanAccountRepository.findByUserId(userId).map {
         mapOf(

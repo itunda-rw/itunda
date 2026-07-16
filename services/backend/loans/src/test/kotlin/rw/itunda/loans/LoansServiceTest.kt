@@ -228,6 +228,41 @@ class LoansServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("the multi-lender marketplace") {
+        val walletRepository = mockk<WalletRepository>()
+        val loanAccountRepository = mockk<LoanAccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val creditScoreService = mockk<CreditScoreService>()
+        val service = LoansService(walletRepository, loanAccountRepository, ledgerService, creditScoreService)
+
+        When("listing all offers with no lender filter") {
+            val offers = service.getOffers()
+
+            Then("it returns offers from more than one real lender, not just itunda's own book") {
+                offers.map { it.lenderId }.toSet().size shouldBe 4
+                offers.any { it.lenderId == "lender_itunda" } shouldBe true
+                offers.any { it.lenderId == "lender_bk" } shouldBe true
+            }
+        }
+
+        When("filtering offers by a specific lender") {
+            val offers = service.getOffers("lender_bk")
+
+            Then("it returns only that lender's offers") {
+                offers.size shouldBe 1
+                offers.first().lenderName shouldBe "Bank of Kigali"
+            }
+        }
+
+        When("listing lenders") {
+            val lenders = service.getLenders()
+
+            Then("it returns the real, named lender catalog") {
+                lenders.map { it.name } shouldBe listOf("Itunda", "Bank of Kigali", "Equity Bank Rwanda", "Urwego Bank")
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

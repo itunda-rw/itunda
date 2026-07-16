@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
@@ -28,7 +29,11 @@ data class RepayLoanRequest(val loanId: String, val amount: BigDecimal)
 class LoansController(private val loansService: LoansService, private val idempotencyService: IdempotencyService) {
 
     @GetMapping("/offers")
-    fun getOffers() = ResponseEntity.ok(mapOf("success" to true, "offers" to loansService.getOffers()))
+    fun getOffers(@RequestParam(required = false) lenderId: String?) =
+        ResponseEntity.ok(mapOf("success" to true, "offers" to loansService.getOffers(lenderId)))
+
+    @GetMapping("/lenders")
+    fun getLenders() = ResponseEntity.ok(mapOf("success" to true, "lenders" to loansService.getLenders()))
 
     @GetMapping("/my-loans")
     fun getMyLoans(@AuthenticationPrincipal currentUser: CurrentUser) =
