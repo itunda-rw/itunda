@@ -22,6 +22,8 @@ import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.UUID
 
 class MerchantAlreadyRegisteredException(message: String) : RuntimeException(message)
@@ -30,6 +32,15 @@ class MerchantNoWalletException(message: String) : RuntimeException(message)
 class PaymentIntentNotFoundException(message: String) : RuntimeException(message)
 class PaymentIntentNotPayableException(message: String) : RuntimeException(message)
 class SelfPaymentException(message: String) : RuntimeException(message)
+
+data class MerchantReportDay(
+    val date: LocalDate,
+    val collectionCount: Int,
+    val grossAmount: BigDecimal,
+    val fees: BigDecimal,
+    val netAmount: BigDecimal,
+    val byChannel: Map<String, Int>,
+)
 
 /**
  * A real, minimal subset of docs/MERCHANT_SERVICES.md's product surface --
@@ -192,5 +203,36 @@ class MerchantService(
         // that already moved.
         webhookDeliveryService.deliverPaymentStatusChanged(merchant.webhookUrl, resultMap + ("paymentIntentId" to intentId) + ("payerId" to payerUserId))
         return resultMap
+    }
+
+    // Real merchant reports (2026-07-16) -- closes the "reports" half of the target
+    // capability named in docs/TOSS_PARITY_MATRIX.md's Merchant row (QR, POS, reports,
+    // settlements). Grouped in-memory by day rather than a JPQL date-function GROUP BY
+    // (ReconciliationService's approach) since Transaction.createdAt is a timestamp, not
+    // a pre-truncated date column like ProviderAttemptLog.occurredDate -- fine at this
+    // scale, and avoids a database-specific date-truncation function. "Settlement" here
+    // is just Transaction.status == COMPLETED: collect() posts to the merchant's own
+    // wallet synchronously in the same ledger transaction as the collection, so there's
+    // no separate pending-settlement state to report on, unlike a real payout batch.
+    fun getReport(ownerUserId: String, from: LocalDate, to: LocalDate): List<MerchantReportDay> {
+        val merchant = getMyMerchant(ownerUserId)
+        val fromInstant = from.atStartOfDay(ZoneOffset.UTC).toInstant()
+        val toInstant = to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()
+        val transactions = transactionRepository.findByRecipientIdAndTypeAndCreatedAtBetween(
+            merchant.ownerUserId, TransactionType.PAYMENT, fromInstant, toInstant,
+        )
+        return transactions
+            .groupBy { LocalDate.ofInstant(it.createdAt, ZoneOffset.UTC) }
+            .map { (date, dayTransactions) ->
+                MerchantReportDay(
+                    date = date,
+                    collectionCount = dayTransactions.size,
+                    grossAmount = dayTransactions.fold(BigDecimal.ZERO) { acc, t -> acc + t.amount },
+                    fees = dayTransactions.fold(BigDecimal.ZERO) { acc, t -> acc + t.fee },
+                    netAmount = dayTransactions.fold(BigDecimal.ZERO) { acc, t -> acc + (t.amount - t.fee) },
+                    byChannel = dayTransactions.groupingBy { it.channel ?: "QR" }.eachCount(),
+                )
+            }
+            .sortedBy { it.date }
     }
 }

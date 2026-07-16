@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
@@ -20,6 +21,8 @@ import rw.itunda.core.ledger.WalletFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
+import java.time.LocalDate
+import java.time.format.DateTimeParseException
 
 data class RegisterMerchantRequest(val businessName: String)
 data class GenerateQrRequest(val amount: BigDecimal, val description: String)
@@ -75,6 +78,34 @@ class MerchantController(
         }
         return ResponseEntity.status(status).body(body)
     }
+
+    // Real merchant reports (2026-07-16) -- see MerchantService.getReport's doc comment.
+    // Defaults to the last 7 days, same "sensible default when unspecified" convention
+    // as SystemController.getReconciliation defaulting to today.
+    @GetMapping("/reports")
+    fun getReport(
+        @RequestParam(required = false) from: String?,
+        @RequestParam(required = false) to: String?,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val toDate = to?.let { LocalDate.parse(it) } ?: LocalDate.now()
+        val fromDate = from?.let { LocalDate.parse(it) } ?: toDate.minusDays(6)
+        val report = merchantService.getReport(currentUser.userId, fromDate, toDate).map { day ->
+            mapOf(
+                "date" to day.date.toString(),
+                "collectionCount" to day.collectionCount,
+                "grossAmount" to day.grossAmount,
+                "fees" to day.fees,
+                "netAmount" to day.netAmount,
+                "byChannel" to day.byChannel,
+            )
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "from" to fromDate.toString(), "to" to toDate.toString(), "days" to report))
+    }
+
+    @ExceptionHandler(DateTimeParseException::class)
+    fun handleBadDate(ex: DateTimeParseException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_DATE_FORMAT", "from/to must be in YYYY-MM-DD format"))
 
     @ExceptionHandler(MerchantAlreadyRegisteredException::class)
     fun handleAlreadyRegistered(ex: MerchantAlreadyRegisteredException) =

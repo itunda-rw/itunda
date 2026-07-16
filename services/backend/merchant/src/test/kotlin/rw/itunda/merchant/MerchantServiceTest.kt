@@ -13,6 +13,9 @@ import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.domain.PaymentIntent
 import rw.itunda.core.domain.PaymentIntentStatus
+import rw.itunda.core.domain.Transaction
+import rw.itunda.core.domain.TransactionStatus
+import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.fraud.FraudRuleEngine
@@ -25,6 +28,8 @@ import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.Optional
 
 /**
@@ -278,6 +283,83 @@ class MerchantServiceTest : BehaviorSpec({
             Then("it's saved onto the real merchant record") {
                 updated.webhookUrl shouldBe "https://myshop.example/webhooks/itunda"
                 verify(exactly = 1) { merchantRepository.save(merchant) }
+            }
+        }
+    }
+
+    Given("a merchant with real collections spread across two days and two channels") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val paymentIntentRepository = mockk<PaymentIntentRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val webhookDeliveryService = mockk<WebhookDeliveryService>(relaxed = true)
+        val transactionRepository = mockk<TransactionRepository>()
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine)
+
+        val merchant = Merchant(id = "merchant_4", ownerUserId = "owner_4", walletId = "wallet_4", businessName = "Report Cafe")
+        every { merchantRepository.findByOwnerUserId("owner_4") } returns merchant
+
+        fun txn(id: String, day: LocalDate, amount: String, fee: String, channel: String) = Transaction(
+            id = id, referenceNumber = "REF$id", senderId = "payer_x", recipientId = "owner_4",
+            amount = BigDecimal(amount), fee = BigDecimal(fee), currency = "RWF",
+            type = TransactionType.PAYMENT, status = TransactionStatus.COMPLETED,
+            description = "QR collection", channel = channel,
+            createdAt = day.atTime(10, 0).toInstant(ZoneOffset.UTC),
+        )
+
+        val day1 = LocalDate.of(2026, 7, 10)
+        val day2 = LocalDate.of(2026, 7, 11)
+        every {
+            transactionRepository.findByRecipientIdAndTypeAndCreatedAtBetween("owner_4", TransactionType.PAYMENT, any(), any())
+        } returns listOf(
+            txn("t1", day1, "10000", "150.00", "QR"),
+            txn("t2", day1, "5000", "75.00", "FACE_PAY"),
+            txn("t3", day2, "20000", "300.00", "QR"),
+        )
+
+        When("requesting the report for that range") {
+            val report = service.getReport("owner_4", day1, day2)
+
+            Then("it groups by day with correct per-day totals and channel breakdown") {
+                report.size shouldBe 2
+
+                val reportDay1 = report.first { it.date == day1 }
+                reportDay1.collectionCount shouldBe 2
+                reportDay1.grossAmount shouldBe BigDecimal("15000")
+                reportDay1.fees shouldBe BigDecimal("225.00")
+                reportDay1.netAmount shouldBe BigDecimal("14775.00")
+                reportDay1.byChannel shouldBe mapOf("QR" to 1, "FACE_PAY" to 1)
+
+                val reportDay2 = report.first { it.date == day2 }
+                reportDay2.collectionCount shouldBe 1
+                reportDay2.grossAmount shouldBe BigDecimal("20000")
+                reportDay2.fees shouldBe BigDecimal("300.00")
+                reportDay2.netAmount shouldBe BigDecimal("19700.00")
+                reportDay2.byChannel shouldBe mapOf("QR" to 1)
+            }
+        }
+
+        When("requesting a report for an account that isn't a merchant") {
+            every { merchantRepository.findByOwnerUserId("not_a_merchant") } returns null
+
+            Then("it throws MerchantNotFoundException before ever querying transactions") {
+                try {
+                    service.getReport("not_a_merchant", day1, day2)
+                    error("expected MerchantNotFoundException")
+                } catch (e: MerchantNotFoundException) {
+                    verify(exactly = 0) { transactionRepository.findByRecipientIdAndTypeAndCreatedAtBetween(any(), any(), any(), any()) }
+                }
+            }
+        }
+
+        When("requesting a report for a range with no collections") {
+            every {
+                transactionRepository.findByRecipientIdAndTypeAndCreatedAtBetween("owner_4", TransactionType.PAYMENT, any(), any())
+            } returns emptyList()
+
+            Then("it returns an empty list, not an error") {
+                service.getReport("owner_4", day1, day1).size shouldBe 0
             }
         }
     }

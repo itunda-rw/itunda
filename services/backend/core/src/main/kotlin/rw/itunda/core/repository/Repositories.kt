@@ -18,6 +18,7 @@ import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
+import java.time.Instant
 import java.util.Optional
 
 interface LoanAccountRepository : JpaRepository<LoanAccount, String> {
@@ -73,4 +74,14 @@ interface LedgerEntryRepository : JpaRepository<LedgerEntry, String> {
 interface TransactionRepository : JpaRepository<Transaction, String> {
     fun findBySenderIdOrRecipientIdOrderByCreatedAtDesc(senderId: String, recipientId: String): List<Transaction>
     fun existsBySenderIdAndTypeAndStatus(senderId: String, type: TransactionType, status: TransactionStatus): Boolean
+
+    // Merchant reports (2026-07-16): a merchant collection's Transaction row has
+    // recipientId = the merchant owner's userId (see MerchantService.collect), so this
+    // is the real join key -- not a merchant id or wallet id.
+    fun findByRecipientIdAndTypeAndCreatedAtBetween(
+        recipientId: String,
+        type: TransactionType,
+        from: Instant,
+        to: Instant,
+    ): List<Transaction>
 }
