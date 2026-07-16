@@ -109,6 +109,14 @@ That is the real, current bottleneck, not a code bug:
   a scheduling trick.
 - Net effect of the fixes above: cluster-wide dead/unknown pod count dropped from 800+ to
   roughly 20, and both nodes' 1-minute load average was trending back down.
+- **Standing posture as of 2026-07-16**: rather than collapsing to a single VM (which would
+  eliminate the independent-failure-domain pattern this whole setup exists to rehearse), the
+  default is now "lean mode" -- `scripts/private-cloud-platform-mode.sh` scales Istio, Argo
+  Rollouts, Prometheus/Grafana, and the registry to zero, leaving only the always-on core
+  (control plane, MySQL, Redis, Kafka+MM2, the four app services) running continuously. See
+  "Lean mode" in [docs/PRIVATE_CLOUD_OPERATIONS.md](PRIVATE_CLOUD_OPERATIONS.md). The real,
+  durable fix for running the full stack continuously is more host RAM -- nothing in software
+  changes the fact that 8GB split across two VMs isn't enough for all of it at once.
 
 ### Building the `backend` image hit the ceiling directly (resolved 2026-07-16)
 

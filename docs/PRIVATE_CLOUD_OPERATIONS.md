@@ -31,6 +31,33 @@ This is the repo-native workflow for the current Multipass private cloud.
 This is still not a full Toss-style active-active data plane. The goal here is to make the
 stateless app layer deployable across both nodes while keeping the stateful roles explicit.
 
+## 0. Lean mode (default posture)
+
+The two VMs share an 8GB host and cannot run the full platform stack continuously without
+repeated CPU/disk/memory pressure -- see "Known hardware ceiling" in
+[docs/PRIVATE_CLOUD_BLUEPRINT.md](PRIVATE_CLOUD_BLUEPRINT.md). Rather than dropping to a single
+VM (which would eliminate the independent-failure-domain pattern this whole setup exists to
+rehearse), the default posture keeps only the always-on core running and scales the rest to zero:
+
+Always on: the kubeadm control plane, MySQL (writer + replica), Redis (master + replica),
+Kafka (both brokers) + MM2 mirroring, and the four app services (`api-gateway`, `backend`,
+`ledger-service`, `payment-service`). This is the actual Toss pattern being rehearsed.
+
+Scaled to zero by default: Istio (`istiod`, `istio-ingressgateway`), the Argo Rollouts
+controller, Prometheus, Grafana, and the private registry. These are platform capabilities to
+switch on only while actively rehearsing that specific thing (a canary rollout, a dashboard
+check, pushing a new image), then switch back off.
+
+```bash
+yarn private-cloud:mode:status   # see what's currently toggled
+yarn private-cloud:mode:full     # turn platform extras on before rehearsing one of them
+yarn private-cloud:mode:lean     # back to the default posture when done
+```
+
+Existing app pods are untouched by this toggle either way -- their already-injected Istio
+sidecars keep running even with `istiod` at zero replicas; only new pod creation needs the
+webhook, so switch to `full` before a rollout/restart of the app layer.
+
 ## 1. Audit the VMs
 
 ```bash
