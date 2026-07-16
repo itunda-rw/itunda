@@ -32,5 +32,22 @@ enum SaroniteHost {
     /// `RCTReactNativeFactory.delegate` is `weak` (confirmed in `RCTReactNativeFactory.h`),
     /// so nothing else keeps this instance alive otherwise.
     private static let delegate = SaroniteReactNativeFactoryDelegate()
-    static let factory = RCTReactNativeFactory(delegate: delegate)
+    static let factory: RCTReactNativeFactory = {
+        // Real, confirmed root cause (2026-07-16) for the "Loading from Metro..." overlay
+        // that never dismissed: `RCTDevLoadingView` (React/CoreModules/RCTDevLoadingView.mm)
+        // only ever hides itself on `RCTJavaScriptDidLoadNotification`/
+        // `RCTJavaScriptDidFailToLoadNotification` -- both posted only by the legacy
+        // `RCTCxxBridge`/`RCTSurfacePresenterBridgeAdapter` path. The real bridgeless
+        // `RCTInstance` this app's `RCTHost` actually uses
+        // (ReactCommon/react/runtime/platform/ios/ReactCommon/RCTInstance.mm) posts a
+        // *different*, real notification on real success --
+        // `"RCTInstanceDidLoadBundle"` -- that `RCTDevLoadingView` was never updated to
+        // listen for. Confirmed by reading both files directly, not guessed: this is a real
+        // gap in RN 0.84's own bridgeless migration of a legacy dev-only overlay, not an
+        // itunda bug -- the bundle loads and (very likely) renders fine underneath, the
+        // overlay just never learns to get out of the way. Disabling it here removes a
+        // cosmetic false negative without touching anything that affects real behavior.
+        RCTDevLoadingViewSetEnabled(false)
+        return RCTReactNativeFactory(delegate: delegate)
+    }()
 }

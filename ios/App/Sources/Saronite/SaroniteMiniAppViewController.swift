@@ -63,14 +63,22 @@ class SaroniteMiniAppViewController: UIViewController, BrickModuleRegistrableVie
         guard !didAttachRootView else { return }
         didAttachRootView = true
 
-        // Ordering matters, confirmed via real NSLog diagnostics: `RCTRootViewFactory`
-        // creates its `RCTHost` lazily, the *first* time `view(withModuleName:)` is called
-        // -- calling `startReactHost` before that (this file's own earlier attempt) hit a
-        // real, silently-still-nil `reactHost` every time. Create the root view first, so a
-        // real host exists, then start it.
-        let rootView = SaroniteHost.factory.rootViewFactory.view(withModuleName: mainComponentName)
-        SaroniteBrickBridge.startReactHost(SaroniteHost.factory.rootViewFactory)
+        // Ordering matters, confirmed via real diagnostics: `RCTRootViewFactory` creates its
+        // `RCTHost` lazily, the *first* time a view/start call touches it.
+        //
+        // Real, live-found gap (2026-07-17): a bare `RCTHost.start()` left the created
+        // `RCTSurfaceHostingProxyRootView` with a real, correctly-sized frame but *zero*
+        // subviews forever (confirmed via a recursive-description dump at t+1s through
+        // t+15s) -- the Fabric surface itself never actually attached any content view.
+        // `RCTReactNativeFactory.startReactNativeWithModuleName:inWindow:` is RN's real,
+        // officially-documented brownfield entry point (used even when the RN screen isn't
+        // the whole app's own window) and does real additional work `RCTHost.start()` alone
+        // doesn't -- switching to it here is what got a real Fabric component tree
+        // (`RCTSurfaceView` → `RCTRootComponentView` → real named components) to attach at
+        // all, confirmed via the same recursive-description technique.
+        SaroniteHost.factory.startReactNative(withModuleName: mainComponentName, in: view.window)
 
+        let rootView = SaroniteHost.factory.rootViewFactory.view(withModuleName: mainComponentName)
         rootView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(rootView)
         NSLayoutConstraint.activate([
