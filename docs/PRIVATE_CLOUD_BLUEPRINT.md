@@ -63,7 +63,10 @@ Current state:
   `replicaof`-linked, confirmed with `INFO replication` showing `master_link_status:up` and
   `connected_slaves:1`). No Sentinel/automated failover yet — promotion would still be manual.
 - **Kafka**: one single-broker KRaft cluster per node, not one shared cluster
-- **Kafka mirroring**: a Kubernetes-hosted MM2 worker is now live against the two brokers
+- **Kafka mirroring**: a Kubernetes-hosted MM2 worker exists against the two brokers. A real,
+  dated (since 2026-07-13) broker misconfiguration was found and fixed 2026-07-16 -- see
+  "Kafka group coordination was silently broken since 2026-07-13" below. A separate MM2
+  crash-loop is still open and unresolved.
 - **Registry plumbing**: an arm64-safe OCI registry rehearsal is now live on
   `http://192.168.252.2:32000`, and worker-node pull has been verified through `containerd`
 - **Application ingress**: Istio NodePort is live, and as of 2026-07-16 all four app images
@@ -149,6 +152,49 @@ first it's not hosting a writer/master) and resizing the *build* node up, over f
 problem in place. Grow memory back down after use since the host has none to spare; grow disk
 can stay permanent since host disk has real headroom (~27GB free at last check).
 
+### Kafka group coordination was silently broken since 2026-07-13 (found and partly fixed 2026-07-16)
+
+Running the new scheduled drill (see [docs/PRIVATE_CLOUD_OPERATIONS.md](PRIVATE_CLOUD_OPERATIONS.md)
+"Scheduled drills") caught a real, dated bug that had nothing to do with tonight's VM/build work:
+
+- **Root cause**: `offsets.topic.replication.factor` defaults to `3` in stock Kafka, but each
+  cluster here has exactly one broker. `__consumer_offsets` (the internal topic every consumer
+  group, including Kafka Connect's own `DistributedHerder`, needs to do group coordination) was
+  silently failing to auto-create as a result. Both brokers had been retrying the creation
+  request roughly once per second, continuously, since **2026-07-13 23:18** -- three days before
+  this was ever noticed. This broke MM2 mirroring specifically, but it broke *all* consumer-group
+  usage on both clusters, not just MM2.
+- **Diagnosis path that got there**: `kubectl logs` on the MM2 pod stalled after ~10 lines with
+  no error; a JVM thread dump (`kubectl exec ... kill -3 1`, then read the dump from the pod's
+  stdout log) showed both `MirrorHerder-*` threads parked in
+  `AbstractCoordinator.ensureCoordinatorReady`; running `kafka-consumer-groups.sh --describe`
+  directly against the broker (from inside its own container) failed with the same
+  `FIND_COORDINATOR` timeout, which pointed at the broker/topic level rather than MM2 itself;
+  `kafka-topics.sh --describe --topic __consumer_offsets` then confirmed the topic simply didn't
+  exist.
+- **Fix, and why it took two attempts**: editing `server.properties` directly via `docker exec`
+  did not stick -- these containers use the official `apache/kafka:3.7.0` image's
+  `/etc/kafka/docker/run` entrypoint, which regenerates the effective config from `KAFKA_*`
+  environment variables on every start, silently discarding in-place file edits on the next
+  restart. The real fix was recreating both containers (`docker stop` / `docker rm` / `docker
+  run`, reattaching the same named volumes so no data was lost) with
+  `KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1`,
+  `KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1`, and
+  `KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1` added. `__consumer_offsets` then auto-created on both
+  brokers immediately, and a subsequent MM2 restart produced real, verified heartbeat and
+  checkpoint mirroring in two separate bidirectional drill runs (`dc-a.checkpoints.internal`,
+  `dc-a.heartbeats`, etc. showing up as live synced topics -- something that had never worked
+  before, not just "not verified").
+- **Still open**: the specific `MirrorSourceConnector` (the one that mirrors real `ledger.*` /
+  `payment.*` / `transfer.*` data topics, as opposed to heartbeats/checkpoints) never showed up as
+  running in `itunda-mm2-status`, and drill topics never mirrored within the drill's timeout on
+  either of two attempts. Worse, the MM2 pod was then observed crash-looping (8 restarts in 31
+  minutes) with a clean ~100-second self-exit each time (`Reason: Error`, exit code 1) and *no*
+  visible exception, OOM, eviction, or probe failure in logs or `kubectl events` -- `Back-off
+  restarting failed container` is the only signal. This was not resolved and needs fresh
+  investigation next session; don't assume the `__consumer_offsets` fix alone means MM2 is
+  healthy end-to-end. `yarn private-cloud:kafka:drill` is the fastest way to check current state.
+
 ## Toss vs. Itunda gap table
 
 | Layer | Toss pattern | Itunda now | Gap |
@@ -157,11 +203,11 @@ can stay permanent since host disk has real headroom (~27GB free at last check).
 | Infra lifecycle | Terraform + Ansible + golden images + CMDB | Repo-native bootstrap, CMDB, and workload scripts exist | Still no real Terraform/Ansible/golden-image pipeline |
 | Traffic management | Active-active traffic steering, remove failed site from ingress | Istio ingress is live on the rehearsal cluster | No cross-cluster traffic steering or site cutover yet |
 | App runtime | Real workload scheduling across failure domains | All four rollouts (`api-gateway`, `backend`, `ledger-service`, `payment-service`) are `2/2 Running` behind Istio as of 2026-07-16, images built/pushed into the private registry | Still single-node in practice (`dc-b` only, since `dc-a` stays tainted for control-plane stability); no real cross-node app HA yet |
-| MySQL | Honest site HA, not pretend multi-master | `dc-b` writer, `dc-a` replica | Failover promotion automation now exists and was verified live (2026-07-16 round-trip drill); still need scheduled/repeatable drills and backup/restore scripts |
+| MySQL | Honest site HA, not pretend multi-master | `dc-b` writer, `dc-a` replica | Failover promotion automation now exists and was verified live (2026-07-16 round-trip drill); deliberately not scheduled unattended (mutates the live writer role), rehearse by hand; still need backup/restore scripts |
 | Redis | Platform-grade HA strategy | `dc-b` master with a live `dc-a` replica (2026-07-16) | No Sentinel/automated failover; promotion is still manual |
-| Kafka | Two independent clusters with real mirroring + offset sync | Two independent clusters plus live MM2 baseline | Need repeated offset-sync drills and Toss-style same-topic mirroring contract enforcement |
+| Kafka | Two independent clusters with real mirroring + offset sync | Two independent clusters; `__consumer_offsets`/group-coordination bug (dated to 2026-07-13) found and fixed 2026-07-16; heartbeat/checkpoint mirroring verified working | MM2 has an unresolved crash-loop and the actual data-topic mirror (`MirrorSourceConnector`) isn't confirmed running yet; still need Toss-style same-topic mirroring contract enforcement |
 | Observability | Prometheus/Mimir/Grafana/Zabbix-class platform | Prometheus/Grafana plus live node and VM-service metrics; Prometheus retention is now bounded so it can't fill the disk again | Still need long-term storage and broader Zabbix/Mimir-class coverage |
-| Failure drills | Active-active claims backed by drills | Live MySQL failover round-trip drill and Redis replication verified 2026-07-16; audit script now reports Redis HA state instead of always calling it a singleton | Need scheduled/repeatable drills, not one-off manual runs |
+| Failure drills | Active-active claims backed by drills | Live MySQL failover round-trip drill and Redis replication verified 2026-07-16; audit script now reports Redis HA state instead of always calling it a singleton; audit + Kafka MM2 drill now run on a repeating schedule (macOS launchd, every 6h) via `scripts/private-cloud-scheduled-drills.sh` | MySQL failover round-trip stays manual by design (mutates live writer role); need the same treatment on Linux/CI hosts, not just macOS launchd |
 
 ## What should become real next
 

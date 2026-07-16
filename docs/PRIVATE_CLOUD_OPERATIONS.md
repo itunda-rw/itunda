@@ -295,3 +295,26 @@ yarn dev:ecosystem
 
 That uses the live MySQL/Redis/Kafka roles from the audited private cloud while keeping the web
 and backend processes local.
+
+## 7. Scheduled drills
+
+`scripts/private-cloud-scheduled-drills.sh run` runs the audit plus a bidirectional Kafka MM2
+drill and appends timestamped output to `~/Library/Logs/itunda-private-cloud/drills.log`. Both
+are read-only/non-mutating against the live MySQL/Redis roles, so it's safe to run unattended.
+
+Install it as a recurring macOS launchd job (every 6 hours):
+
+```bash
+bash scripts/private-cloud-drill-schedule-install.sh install
+bash scripts/private-cloud-drill-schedule-install.sh status
+bash scripts/private-cloud-drill-schedule-install.sh uninstall
+```
+
+Deliberately not included: an automated MySQL failover round-trip. That mutates the live writer
+role twice and isn't safe to run unattended on a machine that can sleep or lose network mid-drill.
+Rehearse it by hand instead:
+
+```bash
+yarn private-cloud:failover promote <standby-node>
+yarn private-cloud:failover promote <original-writer-node>
+```
