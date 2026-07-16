@@ -129,6 +129,7 @@ start_gateway() {
 start_web_dev() {
   run_workspace_in_background "bank-mfe" "dev"
   run_workspace_in_background "kyc-mfe" "dev"
+  run_workspace_in_background "ops-mfe" "dev"
   run_workspace_in_background "host-app" "dev"
   wait
 }
@@ -136,12 +137,14 @@ start_web_dev() {
 build_web() {
   run_workspace "bank-mfe" "build"
   run_workspace "kyc-mfe" "build"
+  run_workspace "ops-mfe" "build"
   run_workspace "host-app" "build"
 }
 
 lint_web() {
   run_workspace "bank-mfe" "lint"
   run_workspace "kyc-mfe" "lint"
+  run_workspace "ops-mfe" "lint"
   run_workspace "host-app" "lint"
 }
 
@@ -156,6 +159,7 @@ start_all() {
   CHILD_PIDS+=("$!")
   run_workspace_in_background "bank-mfe" "dev"
   run_workspace_in_background "kyc-mfe" "dev"
+  run_workspace_in_background "ops-mfe" "dev"
   run_workspace_in_background "host-app" "dev"
   wait
 }
@@ -177,9 +181,9 @@ Commands:
   infra       Start local Docker dependencies (MySQL, Redis, Kafka, Debezium)
   backend     Run the canonical Kotlin backend against the configured infra
   gateway     Run the API gateway against the canonical backend
-  web-dev     Run bank-mfe, kyc-mfe, and host-app together
-  web-build   Build bank-mfe, kyc-mfe, and host-app
-  web-lint    Lint bank-mfe, kyc-mfe, and host-app
+  web-dev     Run bank-mfe, kyc-mfe, ops-mfe, and host-app together
+  web-build   Build bank-mfe, kyc-mfe, ops-mfe, and host-app
+  web-lint    Lint bank-mfe, kyc-mfe, ops-mfe, and host-app
   all         Start backend, gateway, and web apps against existing infra
   all-local   Start Docker infra first, then backend, gateway, and web apps
 EOF

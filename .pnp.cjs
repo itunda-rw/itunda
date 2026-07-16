@@ -37,6 +37,10 @@ const RAW_RUNTIME_STATE =
     {\
       "name": "kyc-mfe",\
       "reference": "workspace:services/micro-frontends/kyc-mfe"\
+    },\
+    {\
+      "name": "ops-mfe",\
+      "reference": "workspace:services/micro-frontends/ops-mfe"\
     }\
   ],\
   "enableTopLevelFallback": true,\
@@ -49,7 +53,8 @@ const RAW_RUNTIME_STATE =
     ["bank-mfe", ["workspace:services/micro-frontends/bank-mfe"]],\
     ["host-app", ["workspace:services/micro-frontends/host-app"]],\
     ["itunda", ["workspace:."]],\
-    ["kyc-mfe", ["workspace:services/micro-frontends/kyc-mfe"]]\
+    ["kyc-mfe", ["workspace:services/micro-frontends/kyc-mfe"]],\
+    ["ops-mfe", ["workspace:services/micro-frontends/ops-mfe"]]\
   ],\
   "fallbackPool": [\
   ],\
@@ -1453,6 +1458,30 @@ const RAW_RUNTIME_STATE =
         ],\
         "linkType": "SOFT"\
       }],\
+      ["virtual:3a2a574c6f160c9d0f3566d1204f895b1ce6f3f6b95bf7b0457ba2d3361d7a1bba11dca4dac34e318a8b819af1de5eeedfa95e43f73300eec814e062e69e2f92#npm:11.18.2", {\
+        "packageLocation": "./.yarn/__virtual__/framer-motion-virtual-90bf96d63c/2/.yarn/berry/cache/framer-motion-npm-11.18.2-badab02ede-10c0.zip/node_modules/framer-motion/",\
+        "packageDependencies": [\
+          ["@emotion/is-prop-valid", null],\
+          ["@types/emotion__is-prop-valid", null],\
+          ["@types/react", "npm:19.2.17"],\
+          ["@types/react-dom", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:19.2.3"],\
+          ["framer-motion", "virtual:3a2a574c6f160c9d0f3566d1204f895b1ce6f3f6b95bf7b0457ba2d3361d7a1bba11dca4dac34e318a8b819af1de5eeedfa95e43f73300eec814e062e69e2f92#npm:11.18.2"],\
+          ["motion-dom", "npm:11.18.1"],\
+          ["motion-utils", "npm:11.18.1"],\
+          ["react", "npm:19.2.7"],\
+          ["react-dom", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:19.2.7"],\
+          ["tslib", "npm:2.8.1"]\
+        ],\
+        "packagePeers": [\
+          "@emotion/is-prop-valid",\
+          "@types/emotion__is-prop-valid",\
+          "@types/react-dom",\
+          "@types/react",\
+          "react-dom",\
+          "react"\
+        ],\
+        "linkType": "HARD"\
+      }],\
       ["virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:11.18.2", {\
         "packageLocation": "./.yarn/__virtual__/framer-motion-virtual-1277f38795/2/.yarn/berry/cache/framer-motion-npm-11.18.2-badab02ede-10c0.zip/node_modules/framer-motion/",\
         "packageDependencies": [\
@@ -2240,6 +2269,29 @@ const RAW_RUNTIME_STATE =
           ["wrappy", "npm:1.0.2"]\
         ],\
         "linkType": "HARD"\
+      }]\
+    ]],\
+    ["ops-mfe", [\
+      ["workspace:services/micro-frontends/ops-mfe", {\
+        "packageLocation": "./services/micro-frontends/ops-mfe/",\
+        "packageDependencies": [\
+          ["@itunda/design-tokens", "workspace:packages/design-tokens"],\
+          ["@originjs/vite-plugin-federation", "npm:1.4.1"],\
+          ["@types/node", "npm:24.13.2"],\
+          ["@types/react", "npm:19.2.17"],\
+          ["@types/react-dom", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:19.2.3"],\
+          ["@vitejs/plugin-react", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:6.0.3"],\
+          ["framer-motion", "virtual:3a2a574c6f160c9d0f3566d1204f895b1ce6f3f6b95bf7b0457ba2d3361d7a1bba11dca4dac34e318a8b819af1de5eeedfa95e43f73300eec814e062e69e2f92#npm:11.18.2"],\
+          ["lucide-react", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:0.454.0"],\
+          ["ops-mfe", "workspace:services/micro-frontends/ops-mfe"],\
+          ["overlay-kit", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:1.9.0"],\
+          ["oxlint", "virtual:b8ff5402e982b8ed9596db3ac35c94f3ce99202243034da986f5ead687ac240a0f7cc0d2349ef0d4a8db361a93ff6303b573638f1423c9aee0e1f39970e14466#npm:1.73.0"],\
+          ["react", "npm:19.2.7"],\
+          ["react-dom", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:19.2.7"],\
+          ["typescript", "patch:typescript@npm%3A6.0.3#optional!builtin<compat/typescript>::version=6.0.3&hash=5786d5"],\
+          ["vite", "virtual:fd399670d6da3205e99d801e1696b96c13cac77e4162a6d9c97e13f4a2ddbadceffe0ae788e0aa5f497d8b01bcc3e60ad98e20de752c11ff40a0457413a82143#npm:8.1.3"]\
+        ],\
+        "linkType": "SOFT"\
       }]\
     ]],\
     ["overlay-kit", [\

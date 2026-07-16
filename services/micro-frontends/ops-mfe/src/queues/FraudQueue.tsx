@@ -1,0 +1,97 @@
+import { useState } from 'react';
+import { useQueue } from '../hooks/useQueue';
+import { decideFraud, fetchFraudQueue, type FraudFlag } from '../lib/queues';
+import { QueueEmpty, QueueError, QueueHeader, QueueSkeleton } from '../QueueState';
+
+const RULE_LABEL: Record<FraudFlag['rule'], string> = {
+  HIGH_VALUE: 'High value',
+  VELOCITY: 'Velocity',
+  NEW_RECIPIENT: 'New recipient',
+};
+
+function FraudCard({ flag, onDecided }: { flag: FraudFlag; onDecided: (id: string) => void }) {
+  const [pending, setPending] = useState(false);
+
+  const decide = async (decision: 'CLEARED' | 'CONFIRMED') => {
+    setPending(true);
+    try {
+      await decideFraud(flag.id, decision);
+      onDecided(flag.id);
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <span
+            style={{
+              display: 'inline-block',
+              fontSize: '12px',
+              fontWeight: 700,
+              color: 'var(--toss-blue)',
+              backgroundColor: 'var(--toss-blue-light)',
+              padding: '2px 8px',
+              borderRadius: '6px',
+              marginBottom: '6px',
+            }}
+          >
+            {RULE_LABEL[flag.rule]}
+          </span>
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--toss-grey-900)' }}>{flag.description}</p>
+        </div>
+        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
+          {flag.amount.toLocaleString()} RWF
+        </span>
+      </div>
+      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+        User {flag.userId} · Transaction {flag.transactionId} · Flagged {new Date(flag.createdAt).toLocaleString()}
+      </p>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button
+          className="toss-btn toss-btn-secondary"
+          style={{ flex: 1 }}
+          disabled={pending}
+          onClick={() => decide('CLEARED')}
+        >
+          Clear
+        </button>
+        <button
+          className="toss-btn toss-btn-danger"
+          style={{ flex: 1 }}
+          disabled={pending}
+          onClick={() => decide('CONFIRMED')}
+        >
+          Confirm fraud
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function FraudQueue() {
+  const { items, error, refreshing, reload } = useQueue(fetchFraudQueue);
+
+  const handleDecided = (id: string) => {
+    reload();
+    void id;
+  };
+
+  return (
+    <div>
+      <QueueHeader title="Fraud review" count={items?.length ?? null} onReload={reload} refreshing={refreshing} />
+      {error && <QueueError message={error} onRetry={reload} />}
+      {!error && items === null && <QueueSkeleton />}
+      {!error && items !== null && items.length === 0 && <QueueEmpty label="No unreviewed fraud flags." />}
+      {!error && items !== null && items.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {items.map((flag) => (
+            <FraudCard key={flag.id} flag={flag} onDecided={handleDecided} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

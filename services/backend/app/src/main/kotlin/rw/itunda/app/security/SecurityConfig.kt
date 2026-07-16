@@ -1,5 +1,6 @@
 package rw.itunda.app.security
 
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -9,6 +10,9 @@ import org.springframework.security.web.access.AccessDeniedHandler
 import org.springframework.security.web.authentication.HttpStatusEntryPoint
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.http.HttpStatus
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.CorsConfigurationSource
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 
 /**
  * Every route requires a verified JWT except register/login/health — the opposite
@@ -17,12 +21,33 @@ import org.springframework.http.HttpStatus
  * SECURITY.md). Stateless: no server-side session, matching the token-based design.
  */
 @Configuration
-class SecurityConfig(private val jwtAuthenticationFilter: JwtAuthenticationFilter) {
+class SecurityConfig(
+    private val jwtAuthenticationFilter: JwtAuthenticationFilter,
+    // No CORS config existed anywhere in this backend until ops-mfe (2026-07-16) --
+    // bank-mfe/kyc-mfe never actually called it from a browser (mocked fetch only), so
+    // the gap was never hit. Origins are the micro-frontends' Vite dev ports; override
+    // via ITUNDA_CORS_ALLOWED_ORIGINS (comma-separated) for non-local environments.
+    @Value("\${itunda.cors.allowed-origins:http://localhost:5000,http://localhost:5001,http://localhost:5002,http://localhost:5003}")
+    private val allowedOrigins: List<String>,
+) {
+
+    @Bean
+    fun corsConfigurationSource(): CorsConfigurationSource {
+        val config = CorsConfiguration()
+        config.allowedOrigins = allowedOrigins
+        config.allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+        config.allowedHeaders = listOf("Authorization", "Content-Type")
+        config.allowCredentials = true
+        val source = UrlBasedCorsConfigurationSource()
+        source.registerCorsConfiguration("/**", config)
+        return source
+    }
 
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
         http
             .csrf { it.disable() }
+            .cors { it.configurationSource(corsConfigurationSource()) }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { auth ->
                 auth

@@ -121,9 +121,25 @@ than any single feature row.
   always unfreezes the wallet — verified live end-to-end: froze wallet_1, confirmed a transfer
   from it real-403s, admin-refunded the ticket, confirmed the balance moved by the exact
   reversed amount and the wallet was active again, then confirmed a normal transfer from it
-  succeeded again. Still missing: no dedicated ops-side queue UI beyond the raw JSON endpoint
-  (same as every other ADMIN-gated queue in this backend — fraud, compliance, incidents,
-  reconciliation).
+  succeeded again. **Ops-side queue UI built and live-verified 2026-07-16**: new `ops-mfe`
+  (Vite + React 19, `services/micro-frontends/ops-mfe`, port 5003), the same micro-frontend
+  stack and design tokens as `bank-mfe`/`kyc-mfe`, but deliberately not federated into the
+  consumer `host-app` — this is an admin surface, not part of the super-app. Real login (no
+  frontend anywhere in this repo had ever made an authenticated call before this — the two
+  existing MFEs use mocked `setTimeout` data only), real JWT storage, and five queue views
+  (Fraud, Compliance, Incidents, Reconciliation, Support) all calling the real
+  `/api/v1/system/**` endpoints, not mocks. Building it surfaced a real, previously-unhit gap:
+  **no CORS configuration existed anywhere in the backend** (added to `SecurityConfig.kt`,
+  origin allowlist covers all four MFE dev ports). Live-verified end-to-end with Playwright
+  against a running backend (isolated local MySQL/Redis, not the shared private-cloud
+  instance, to avoid touching its live credentials): logged in as the seeded ADMIN account,
+  confirmed all five queues render real seeded rows with correct data (a reconciliation
+  aggregate's 66.7% success rate and averaged latency were checked against the raw rows, not
+  just visually), then exercised one real mutating action (`Clear` on a fraud flag) through
+  the UI and confirmed via a direct database query — not the app — that `reviewed`,
+  `decision`, and `reviewed_by` were actually written. Zero console errors, zero failed
+  network requests. Same UI/UX gap remains for the 6th queue not in this row's original scope
+  (insurance claims, `InsuranceClaimsAdminController`) — same pattern, not yet built.
 - **Daily settlement and reconciliation — real, one-sided.** See the Reconciliation row above —
   computed from itunda's own real provider-attempt log, not yet diffed against an external
   settlement file (there isn't one to diff against without a real provider relationship).
@@ -135,6 +151,15 @@ than any single feature row.
   permission system across every endpoint.
 
 ## What Changed Since the Last Version of This Document
+
+**2026-07-16, latest of all:** Ops queue UI built and live-verified — the "no dedicated ops-side
+queue UI beyond the raw JSON endpoint" gap named in the Customer support gate (and shared by
+fraud, compliance, incidents, and reconciliation) is closed. New `ops-mfe` micro-frontend with
+real login and five real queue views against `/api/v1/system/**`. Also closed a previously
+unhit gap this surfaced: no CORS configuration existed anywhere in the backend, since neither
+existing MFE had ever made a real authenticated call before. See the Customer support gate
+entry for the full live-verification account (Playwright against a running backend, a real
+mutating action confirmed via direct database query).
 
 **2026-07-14, latest of all:** Mini-app host's remaining first-party gap closed — `wallet-balance`
 and `reward-tasks` migrated onto real granite (same pattern `pay-bills` proved out, zero native
