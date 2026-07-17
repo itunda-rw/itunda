@@ -24,5 +24,6 @@ include(
     ":offline",
     ":support",
     ":messaging",
+    ":marketplace",
     ":app"
 )

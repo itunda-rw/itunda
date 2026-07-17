@@ -1,0 +1,111 @@
+package rw.itunda.marketplace.web
+
+import org.springframework.data.domain.Pageable
+import org.springframework.data.web.PageableDefault
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.ExceptionHandler
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RestController
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.core.security.CurrentUser
+import rw.itunda.core.web.ApiError
+import rw.itunda.core.web.pageMeta
+import rw.itunda.marketplace.InvalidListingException
+import rw.itunda.marketplace.ListingNotActiveException
+import rw.itunda.marketplace.ListingNotFoundException
+import rw.itunda.marketplace.MarketplaceService
+import rw.itunda.marketplace.OwnListingException
+import java.math.BigDecimal
+
+data class CreateListingRequest(val title: String, val description: String, val price: BigDecimal, val category: String)
+
+// Real 당근마켓-style marketplace -- see MarketplaceService's own doc comment. Normal
+// itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
+@RestController
+@RequestMapping("/api/v1/marketplace")
+class MarketplaceController(private val marketplaceService: MarketplaceService) {
+
+    @PostMapping("/listings")
+    fun createListing(
+        @RequestBody request: CreateListingRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val listing = marketplaceService.createListing(
+            currentUser.userId, request.title, request.description, request.price, request.category,
+        )
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "listing" to listing))
+    }
+
+    @GetMapping("/listings")
+    fun browse(
+        @RequestParam(required = false) category: String?,
+        @PageableDefault(size = 20) pageable: Pageable,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = marketplaceService.browse(pageable, category)
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content) + pageMeta(page))
+    }
+
+    @GetMapping("/listings/{listingId}")
+    fun getListing(@PathVariable listingId: String): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "listing" to marketplaceService.getListing(listingId)))
+
+    @GetMapping("/my-listings")
+    fun getMyListings(
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = marketplaceService.getMyListings(currentUser.userId, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content) + pageMeta(page))
+    }
+
+    @PostMapping("/listings/{listingId}/mark-sold")
+    fun markSold(
+        @PathVariable listingId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "listing" to marketplaceService.markSold(currentUser.userId, listingId)))
+
+    @DeleteMapping("/listings/{listingId}")
+    fun removeListing(
+        @PathVariable listingId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "listing" to marketplaceService.removeListing(currentUser.userId, listingId)))
+
+    @PostMapping("/listings/{listingId}/contact-seller")
+    fun contactSeller(
+        @PathVariable listingId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val conversation = marketplaceService.contactSeller(currentUser.userId, listingId)
+        return ResponseEntity.ok(mapOf("success" to true, "conversation" to conversation))
+    }
+
+    @ExceptionHandler(ListingNotFoundException::class)
+    fun handleNotFound(ex: ListingNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("LISTING_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(InvalidListingException::class)
+    fun handleInvalid(ex: InvalidListingException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_LISTING", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(ListingNotActiveException::class)
+    fun handleNotActive(ex: ListingNotActiveException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("LISTING_NOT_ACTIVE", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(OwnListingException::class)
+    fun handleOwnListing(ex: OwnListingException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("OWN_LISTING", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(RateLimitExceededException::class)
+    fun handleRateLimit(ex: RateLimitExceededException) =
+        ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
+}
