@@ -4,7 +4,7 @@ import { ArrowUpRight, LogOut, Plus, ScanFace, ShieldCheck, ShoppingBag, Wallet 
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { fetchTransactions, fetchWallets, type Transaction, type Wallet } from './lib/wallet';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
-import { fetchShoppingCatalog, type ShoppingMerchant } from './lib/shopping';
+import { collectPayment, fetchShoppingCatalog, type CollectPaymentResult, type ShoppingMerchant } from './lib/shopping';
 
 type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING';
 
@@ -257,9 +257,72 @@ function CertificateView() {
   );
 }
 
+function PayByCodeCard({ onPaid }: { onPaid: (result: CollectPaymentResult) => void }) {
+  const [code, setCode] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      const result = await collectPayment(code.trim());
+      onPaid(result);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not complete this payment.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="toss-card" style={{ marginBottom: '16px' }}>
+      <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Pay by code</h3>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '14px' }}>
+        No camera scanner in this app yet -- enter the merchant's real payment code (the same id their QR encodes)
+        to complete a real purchase and earn real cashback.
+      </p>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px' }}>
+        <input
+          type="text"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          placeholder="pi_..."
+          required
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        />
+        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+          {submitting ? 'Paying…' : 'Pay'}
+        </button>
+      </form>
+      {error && (
+        <p style={{ fontSize: '13px', color: '#E53935', marginTop: '10px' }} role="alert">{error}</p>
+      )}
+    </div>
+  );
+}
+
+function PaymentConfirmation({ result, onDone }: { result: CollectPaymentResult; onDone: () => void }) {
+  return (
+    <div className="toss-card" style={{ textAlign: 'center', padding: '28px' }}>
+      <ShieldCheck size={36} color="var(--toss-green)" style={{ marginBottom: '10px' }} />
+      <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '4px' }}>Paid {result.merchantName}</h3>
+      <p style={{ fontSize: '22px', fontWeight: 700, marginBottom: '4px' }}>{result.amount.toLocaleString()} RWF</p>
+      {result.cashbackEarned > 0 && (
+        <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-green)', marginBottom: '16px' }}>
+          +{result.cashbackEarned.toLocaleString()} RWF cashback earned
+        </p>
+      )}
+      <button className="toss-btn toss-btn-secondary" onClick={onDone} style={{ marginTop: '8px' }}>Done</button>
+    </div>
+  );
+}
+
 function ShoppingView() {
   const [merchants, setMerchants] = useState<ShoppingMerchant[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [paymentResult, setPaymentResult] = useState<CollectPaymentResult | null>(null);
 
   const load = () => {
     setError(null);
@@ -269,6 +332,10 @@ function ShoppingView() {
   };
 
   useEffect(load, []);
+
+  if (paymentResult) {
+    return <PaymentConfirmation result={paymentResult} onDone={() => setPaymentResult(null)} />;
+  }
 
   if (error) {
     return (
@@ -285,6 +352,7 @@ function ShoppingView() {
 
   return (
     <div>
+      <PayByCodeCard onPaid={setPaymentResult} />
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px', padding: '0 4px' }}>
         Real cashback on purchases at itunda's own registered merchants.
       </p>
@@ -301,7 +369,7 @@ function ShoppingView() {
               </div>
               <div style={{ flex: 1 }}>
                 <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{m.businessName}</p>
-                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Pay by QR in-store to earn cashback</p>
+                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Pay by QR or code to earn cashback</p>
               </div>
               <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-green)' }}>{m.cashbackRate} back</span>
             </div>
