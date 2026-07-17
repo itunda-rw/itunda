@@ -81,6 +81,14 @@ class SecurityConfig(
                     // endpoint but /register still real-401s without a valid key. See
                     // PartnerController's own doc comment.
                     .requestMatchers("/api/v1/partners/**").permitAll()
+                    // Real public-key signature verification/status lookup never needs a
+                    // secret -- a real third party checking a document someone signed
+                    // with their itunda certificate has no itunda account of their own.
+                    // See CertificateController's own doc comment: a real bug this
+                    // pass's own live verification caught (both real-401'd every caller
+                    // before this fix). /issue, /me, /revoke stay behind the default
+                    // JWT gate below -- those manage a real user's own certificate.
+                    .requestMatchers("/api/v1/certificate/verify", "/api/v1/certificate/status/**").permitAll()
                     // Fixed (2026-07-11): previously any authenticated user -- not just an
                     // operator -- could read fraud/compliance/reconciliation data from
                     // /api/v1/system/**, exactly the gap SECURITY.md names as still open.
