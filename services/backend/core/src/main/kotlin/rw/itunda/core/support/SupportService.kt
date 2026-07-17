@@ -1,5 +1,7 @@
 package rw.itunda.core.support
 
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.LedgerDirection
@@ -91,12 +93,13 @@ class SupportService(
 
     // Overdue-first: an open ticket past its own dueBy is the one that needs a
     // reviewer's attention right now, ahead of a ticket that still has time left --
-    // the real "escalation" half of the SLA/escalation policy this closes.
-    fun getQueue(): List<SupportTicket> {
-        val now = Instant.now()
-        return supportTicketRepository.findByStatusOrderByDueByAsc(SupportTicketStatus.OPEN)
-            .sortedWith(compareByDescending<SupportTicket> { it.dueBy.isBefore(now) }.thenBy { it.dueBy })
-    }
+    // the real "escalation" half of the SLA/escalation policy this closes. In practice
+    // this is already what `ORDER BY dueBy ASC` gives for free (every overdue ticket's
+    // dueBy, by definition, sorts before every not-yet-due ticket's), so no separate
+    // in-memory re-sort is needed once the DB query itself is the source of truth (see
+    // this method's own history before pagination, which re-sorted redundantly).
+    fun getQueue(pageable: Pageable): Page<SupportTicket> =
+        supportTicketRepository.findByStatusOrderByDueByAsc(SupportTicketStatus.OPEN, pageable)
 
     @Transactional
     fun resolve(ticketId: String, reviewerId: String, resolution: SupportTicketResolution, notes: String?): SupportTicket {

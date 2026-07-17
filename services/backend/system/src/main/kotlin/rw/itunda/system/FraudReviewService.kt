@@ -1,5 +1,7 @@
 package rw.itunda.system
 
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.FraudFlag
@@ -13,7 +15,7 @@ class FraudFlagAlreadyReviewedException(message: String) : RuntimeException(mess
 @Service
 class FraudReviewService(private val fraudFlagRepository: FraudFlagRepository) {
 
-    fun getQueue(): List<FraudFlag> = fraudFlagRepository.findByReviewedFalseOrderByCreatedAtAsc()
+    fun getQueue(pageable: Pageable): Page<FraudFlag> = fraudFlagRepository.findByReviewedFalseOrderByCreatedAtAsc(pageable)
 
     @Transactional
     fun decide(flagId: String, reviewerId: String, decision: FraudFlagDecision): FraudFlag {

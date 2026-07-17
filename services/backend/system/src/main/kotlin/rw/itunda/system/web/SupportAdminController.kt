@@ -1,5 +1,7 @@
 package rw.itunda.system.web
 
+import org.springframework.data.domain.Pageable
+import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -17,6 +19,7 @@ import rw.itunda.core.support.SupportTicketAlreadyResolvedException
 import rw.itunda.core.support.SupportTicketNotFoundException
 import rw.itunda.core.support.SupportTransactionNotFoundException
 import rw.itunda.core.web.ApiError
+import rw.itunda.core.web.pageMeta
 
 data class ResolveTicketRequest(val resolution: SupportTicketResolution, val notes: String? = null)
 
@@ -28,8 +31,10 @@ data class ResolveTicketRequest(val resolution: SupportTicketResolution, val not
 class SupportAdminController(private val supportService: SupportService) {
 
     @GetMapping("/queue")
-    fun queue(): ResponseEntity<Map<String, Any>> =
-        ResponseEntity.ok(mapOf("success" to true, "queue" to supportService.getQueue()))
+    fun queue(@PageableDefault(size = 20) pageable: Pageable): ResponseEntity<Map<String, Any>> {
+        val page = supportService.getQueue(pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "queue" to page.content) + pageMeta(page))
+    }
 
     @PostMapping("/{ticketId}/resolve")
     fun resolve(
