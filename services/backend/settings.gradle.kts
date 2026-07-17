@@ -25,5 +25,6 @@ include(
     ":support",
     ":messaging",
     ":marketplace",
+    ":commerce",
     ":app"
 )
