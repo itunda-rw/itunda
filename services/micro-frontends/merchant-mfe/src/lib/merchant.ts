@@ -27,6 +27,17 @@ export interface IdentitySubmission {
   autoVerificationDetail: string | null;
 }
 
+// Real merchant product catalog -- the register-software half of "Toss Place" (see
+// MerchantProductService.kt's own doc comment).
+export interface MerchantProduct {
+  id: string;
+  merchantId: string;
+  name: string;
+  price: number;
+  active: boolean;
+  createdAt: string;
+}
+
 export interface PaymentIntent {
   id: string;
   merchantId: string;
@@ -140,6 +151,26 @@ export const chargeCard = (
     headers: { 'Idempotency-Key': crypto.randomUUID() },
     body: JSON.stringify({ amount, description, cardNumber, expiryMonth, expiryYear, cvc }),
   });
+
+export const addProduct = (name: string, price: number) =>
+  apiFetch<{ success: boolean; product: MerchantProduct }>('/api/v1/merchant/products', {
+    method: 'POST',
+    body: JSON.stringify({ name, price }),
+  }).then((r) => r.product);
+
+export const getProductCatalog = () =>
+  apiFetch<{ success: boolean; products: MerchantProduct[] }>('/api/v1/merchant/products').then((r) => r.products);
+
+export const updateProduct = (productId: string, name: string, price: number) =>
+  apiFetch<{ success: boolean; product: MerchantProduct }>(`/api/v1/merchant/products/${productId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ name, price }),
+  }).then((r) => r.product);
+
+export const removeProduct = (productId: string) =>
+  apiFetch<{ success: boolean; product: MerchantProduct }>(`/api/v1/merchant/products/${productId}`, {
+    method: 'DELETE',
+  }).then((r) => r.product);
 
 export const getReport = (from?: string, to?: string) => {
   const params = new URLSearchParams();
