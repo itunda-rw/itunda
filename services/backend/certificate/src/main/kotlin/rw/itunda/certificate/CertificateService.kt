@@ -2,6 +2,7 @@ package rw.itunda.certificate
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Certificate
 import rw.itunda.core.domain.CertificateStatus
 import rw.itunda.core.repository.CertificateRepository
@@ -11,6 +12,7 @@ import java.security.KeyPairGenerator
 import java.security.SecureRandom
 import java.security.Signature
 import java.security.spec.X509EncodedKeySpec
+import java.time.Duration
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Base64
@@ -50,6 +52,7 @@ data class VerificationResult(
 class CertificateService(
     private val certificateRepository: CertificateRepository,
     private val userRepository: UserRepository,
+    private val rateLimiter: RateLimiter,
 ) {
     private val secureRandom = SecureRandom()
 
@@ -60,6 +63,11 @@ class CertificateService(
 
     @Transactional
     fun issue(userId: String): Pair<Certificate, String> {
+        // Authenticated (JWT-gated, see SecurityConfig), but still a real Ed25519 keygen
+        // + DB write per call and every reissue silently revokes the caller's own prior
+        // certificate -- same "bound how fast a sensitive action repeats" discipline
+        // AuthService already applies to register/login.
+        rateLimiter.checkLimit("certificate:issue:$userId", limit = 5, window = Duration.ofMinutes(10))
         val user = userRepository.findById(userId).orElseThrow { CertificateUserNotFoundException("User not found") }
         // Real precondition mirroring Toss's own real requirement -- a real phone number
         // and a real ID must already be verified before Toss issues its certificate

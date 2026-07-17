@@ -12,6 +12,10 @@ dependencyManagement {
 
 dependencies {
     implementation(project(":core"))
+    // For RateLimiter -- registration is public/unauthenticated (permitAll, see
+    // SecurityConfig), so it's the same brute-force/enumeration surface
+    // AuthService.register already guards with the same mechanism.
+    implementation(project(":auth"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

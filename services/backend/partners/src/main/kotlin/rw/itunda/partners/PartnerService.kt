@@ -2,6 +2,7 @@ package rw.itunda.partners
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Partner
 import rw.itunda.core.domain.PartnerMiniApp
 import rw.itunda.core.domain.PartnerMiniAppStatus
@@ -10,6 +11,7 @@ import rw.itunda.core.repository.PartnerMiniAppRepository
 import rw.itunda.core.repository.PartnerRepository
 import java.security.MessageDigest
 import java.security.SecureRandom
+import java.time.Duration
 import java.util.UUID
 
 class PartnerEmailAlreadyRegisteredException(message: String) : RuntimeException(message)
@@ -55,11 +57,20 @@ object PartnerMiniAppPermissions {
 class PartnerService(
     private val partnerRepository: PartnerRepository,
     private val partnerMiniAppRepository: PartnerMiniAppRepository,
+    private val rateLimiter: RateLimiter,
 ) {
     private val secureRandom = SecureRandom()
 
     @Transactional
     fun register(companyName: String, contactEmail: String): Pair<Partner, String> {
+        // /register is public/permitAll (see SecurityConfig -- a partner has no itunda
+        // account yet, so it can't sit behind the JWT gate) and the "already registered"
+        // check below doubles as an email-enumeration oracle (409 vs 201 reveals whether
+        // an email has a partner account). Same real gap and same fix
+        // AuthService.register already applies to itunda's own user registration --
+        // without this, the endpoint has no bound at all on registration spam or on how
+        // fast that oracle can be probed.
+        rateLimiter.checkLimit("partner:register:$contactEmail", limit = 3, window = Duration.ofMinutes(10))
         if (partnerRepository.findByContactEmail(contactEmail) != null) {
             throw PartnerEmailAlreadyRegisteredException("A partner account already exists for this email")
         }

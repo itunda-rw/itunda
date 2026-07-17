@@ -12,6 +12,10 @@ dependencyManagement {
 
 dependencies {
     implementation(project(":core"))
+    // For RateLimiter -- issuance does real Ed25519 keygen + a real KYC-gated DB write
+    // per call; same "bound how fast a sensitive, authenticated action can be repeated"
+    // discipline AuthService.register/login already apply.
+    implementation(project(":auth"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

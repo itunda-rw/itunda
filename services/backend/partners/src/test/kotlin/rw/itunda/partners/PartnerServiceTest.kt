@@ -8,6 +8,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Partner
 import rw.itunda.core.domain.PartnerMiniApp
 import rw.itunda.core.domain.PartnerMiniAppStatus
@@ -24,7 +25,9 @@ class PartnerServiceTest : BehaviorSpec({
     Given("a new company registering as a partner") {
         val partnerRepository = mockk<PartnerRepository>()
         val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
-        val service = PartnerService(partnerRepository, partnerMiniAppRepository)
+        val rateLimiter = mockk<RateLimiter>()
+        every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+        val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
 
         every { partnerRepository.findByContactEmail("dev@acme.rw") } returns null
         val savedSlot = slot<Partner>()
@@ -64,7 +67,9 @@ class PartnerServiceTest : BehaviorSpec({
     Given("a registered partner submitting a mini-app for review") {
         val partnerRepository = mockk<PartnerRepository>()
         val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
-        val service = PartnerService(partnerRepository, partnerMiniAppRepository)
+        val rateLimiter = mockk<RateLimiter>()
+        every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+        val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
 
         val partner = Partner(id = "partner_1", companyName = "Acme Rwanda", contactEmail = "dev@acme.rw", apiKeyHash = sha256("sk_test_real_key"), status = PartnerStatus.ACTIVE)
         every { partnerRepository.findByApiKeyHash(sha256("sk_test_real_key")) } returns partner
@@ -128,7 +133,9 @@ class PartnerServiceTest : BehaviorSpec({
     Given("an ADMIN reviewing a real PENDING mini-app submission") {
         val partnerRepository = mockk<PartnerRepository>()
         val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
-        val service = PartnerService(partnerRepository, partnerMiniAppRepository)
+        val rateLimiter = mockk<RateLimiter>()
+        every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+        val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
 
         val miniApp = PartnerMiniApp(
             id = "partner_app_1", partnerId = "partner_1", name = "Acme Delivery", description = "desc",
@@ -182,7 +189,9 @@ class PartnerServiceTest : BehaviorSpec({
     Given("the real published mini-app catalog") {
         val partnerRepository = mockk<PartnerRepository>()
         val partnerMiniAppRepository = mockk<PartnerMiniAppRepository>()
-        val service = PartnerService(partnerRepository, partnerMiniAppRepository)
+        val rateLimiter = mockk<RateLimiter>()
+        every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
+        val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
 
         val approved = PartnerMiniApp(id = "partner_app_1", partnerId = "partner_1", name = "Acme Delivery", description = "desc", bundleUrl = "z", permissions = "", status = PartnerMiniAppStatus.APPROVED)
         every { partnerMiniAppRepository.findByStatus(PartnerMiniAppStatus.APPROVED) } returns listOf(approved)

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.web.ApiError
 import rw.itunda.partners.InvalidApiKeyException
 import rw.itunda.partners.InvalidPermissionScopeException
@@ -84,4 +85,8 @@ class PartnerController(private val partnerService: PartnerService) {
     @ExceptionHandler(MissingRequestHeaderException::class)
     fun handleMissingHeader(ex: MissingRequestHeaderException) =
         ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiError("API_KEY_REQUIRED", "X-Api-Key header is required"))
+
+    @ExceptionHandler(RateLimitExceededException::class)
+    fun handleRateLimit(ex: RateLimitExceededException) =
+        ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
 }
