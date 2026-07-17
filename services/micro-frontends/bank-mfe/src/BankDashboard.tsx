@@ -6,8 +6,9 @@ import { fetchTransactions, fetchWallets, type Transaction, type Wallet } from '
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
 import { collectPayment, fetchShoppingCatalog, type CollectPaymentResult, type ShoppingMerchant } from './lib/shopping';
 import { fetchConversations, fetchMessages, sendMessage, startConversation, type ConversationSummary, type Message } from './lib/messaging';
+import { contactSeller, createListing, fetchListings, fetchMyListings, markListingSold, removeListing, type Listing } from './lib/marketplace';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'MESSAGES';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'MESSAGES' | 'MARKETPLACE';
 
 function AccountBalance({ wallet }: { wallet: Wallet | null }) {
   return (
@@ -527,7 +528,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   );
 }
 
-function MessagesView() {
+function MessagesView({ initialConversationId, onConsumedInitial }: { initialConversationId?: string | null; onConsumedInitial?: () => void }) {
   const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openConversationId, setOpenConversationId] = useState<string | null>(null);
@@ -540,6 +541,18 @@ function MessagesView() {
   };
 
   useEffect(load, []);
+
+  // Real "jump straight into the chat" hand-off from MarketplaceView's "Message
+  // seller" button -- contactSeller() returns a real conversation id (either freshly
+  // created or an existing one reused), which this opens directly once it shows up in
+  // the real conversation list, rather than making the buyer find it themselves.
+  useEffect(() => {
+    if (initialConversationId && conversations?.some((c) => c.conversationId === initialConversationId)) {
+      setOpenConversationId(initialConversationId);
+      onConsumedInitial?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialConversationId, conversations]);
 
   const openConversation = conversations?.find((c) => c.conversationId === openConversationId);
   if (openConversation) {
@@ -610,8 +623,237 @@ function MessagesView() {
   );
 }
 
+function NewListingCard({ onCreated }: { onCreated: () => void }) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
+  const [category, setCategory] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      await createListing(title, description, Number(price), category);
+      setTitle('');
+      setDescription('');
+      setPrice('');
+      setCategory('');
+      setOpen(false);
+      onCreated();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not create this listing.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button className="toss-btn toss-btn-primary" style={{ width: '100%', marginBottom: '16px' }} onClick={() => setOpen(true)}>
+        + List an item
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="toss-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <h3 style={{ fontSize: '15px', fontWeight: 700 }}>List an item</h3>
+      <input
+        type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What are you selling?" required
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      />
+      <textarea
+        value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" required rows={3}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
+      />
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <input
+          type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Price (RWF)" required min="1"
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        />
+        <input
+          type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Category" required
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        />
+      </div>
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
+          {submitting ? 'Listing…' : 'List it'}
+        </button>
+      </div>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+    </form>
+  );
+}
+
+function ListingCard({ listing, isMine, onChanged, onMessageSeller }: {
+  listing: Listing;
+  isMine: boolean;
+  onChanged: () => void;
+  onMessageSeller: (conversationId: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleMarkSold = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await markListingSold(listing.id);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update this listing.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await removeListing(listing.id);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not remove this listing.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleMessage = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const conversation = await contactSeller(listing.id);
+      onMessageSeller(conversation.id);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not message this seller.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
+            {listing.title}
+            {listing.status === 'SOLD' && (
+              <span style={{ marginLeft: '8px', fontSize: '11px', fontWeight: 700, color: 'var(--toss-grey-500)', backgroundColor: 'var(--toss-grey-100)', padding: '2px 8px', borderRadius: '8px' }}>
+                SOLD
+              </span>
+            )}
+          </p>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{listing.category}</p>
+        </div>
+        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{listing.price.toLocaleString()} RWF</span>
+      </div>
+      <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>{listing.description}</p>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        {isMine ? (
+          <>
+            {listing.status === 'ACTIVE' && (
+              <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={handleMarkSold}>
+                Mark sold
+              </button>
+            )}
+            {listing.status !== 'REMOVED' && (
+              <button className="toss-btn toss-btn-danger" style={{ flex: 1 }} disabled={busy} onClick={handleRemove}>
+                Remove
+              </button>
+            )}
+          </>
+        ) : (
+          listing.status === 'ACTIVE' && (
+            <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={handleMessage}>
+              {busy ? 'Starting…' : 'Message seller'}
+            </button>
+          )
+        )}
+      </div>
+      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
+function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId: string) => void }) {
+  const [view, setView] = useState<'BROWSE' | 'MINE'>('BROWSE');
+  const [listings, setListings] = useState<Listing[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const currentUser = getStoredUser();
+
+  const load = () => {
+    setError(null);
+    setListings(null);
+    const fetcher = view === 'BROWSE' ? fetchListings() : fetchMyListings();
+    fetcher
+      .then(setListings)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load listings.'));
+  };
+
+  useEffect(load, [view]);
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+        {(['BROWSE', 'MINE'] as const).map((v) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            style={{
+              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
+              color: view === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+              backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
+            }}
+          >
+            {v === 'BROWSE' ? 'Browse' : 'My listings'}
+          </button>
+        ))}
+      </div>
+
+      {view === 'MINE' && <NewListingCard onCreated={load} />}
+
+      {error && (
+        <div className="toss-card">
+          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+          <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+        </div>
+      )}
+      {!error && listings === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
+      {!error && listings !== null && listings.length === 0 && (
+        <div className="toss-card">
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+            {view === 'BROWSE' ? 'No listings yet.' : "You haven't listed anything yet."}
+          </p>
+        </div>
+      )}
+      {!error && listings !== null && listings.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {listings.map((listing) => (
+            <ListingCard
+              key={listing.id}
+              listing={listing}
+              isMine={view === 'MINE' || listing.sellerId === currentUser?.id}
+              onChanged={load}
+              onMessageSeller={onMessageSeller}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>('HOME');
+  const [pendingConversationId, setPendingConversationId] = useState<string | null>(null);
   const user = getStoredUser();
 
   const handleLogout = () => {
@@ -619,9 +861,18 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     onLogout();
   };
 
+  // Real "message seller" hand-off from MarketplaceView: switches straight to the
+  // Messages tab with that real conversation already open, rather than dropping the
+  // buyer on a conversation list they'd have to search through themselves.
+  const handleMessageSeller = (conversationId: string) => {
+    setPendingConversationId(conversationId);
+    setTab('MESSAGES');
+  };
+
   const TABS: { id: Tab; label: string }[] = [
     { id: 'HOME', label: 'Home' },
     { id: 'MESSAGES', label: 'Messages' },
+    { id: 'MARKETPLACE', label: 'Marketplace' },
     { id: 'CERTIFICATE', label: 'Certificate' },
     { id: 'SHOPPING', label: 'Shopping' },
   ];
@@ -660,7 +911,13 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       </div>
 
       {tab === 'HOME' && <HomeView />}
-      {tab === 'MESSAGES' && <MessagesView />}
+      {tab === 'MESSAGES' && (
+        <MessagesView
+          initialConversationId={pendingConversationId}
+          onConsumedInitial={() => setPendingConversationId(null)}
+        />
+      )}
+      {tab === 'MARKETPLACE' && <MarketplaceView onMessageSeller={handleMessageSeller} />}
       {tab === 'CERTIFICATE' && <CertificateView />}
       {tab === 'SHOPPING' && <ShoppingView />}
     </div>
