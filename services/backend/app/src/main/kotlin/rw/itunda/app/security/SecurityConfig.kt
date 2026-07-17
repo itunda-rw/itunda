@@ -27,7 +27,8 @@ class SecurityConfig(
     // bank-mfe/kyc-mfe never actually called it from a browser (mocked fetch only), so
     // the gap was never hit. Origins are the micro-frontends' Vite dev ports; override
     // via ITUNDA_CORS_ALLOWED_ORIGINS (comma-separated) for non-local environments.
-    @Value("\${itunda.cors.allowed-origins:http://localhost:5000,http://localhost:5001,http://localhost:5002,http://localhost:5003}")
+    // Port 5004 added 2026-07-17 for merchant-mfe.
+    @Value("\${itunda.cors.allowed-origins:http://localhost:5000,http://localhost:5001,http://localhost:5002,http://localhost:5003,http://localhost:5004}")
     private val allowedOrigins: List<String>,
 ) {
 
