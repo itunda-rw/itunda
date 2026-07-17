@@ -111,7 +111,7 @@ export default function ComplianceQueue() {
 
   return (
     <div>
-      <QueueHeader title="Compliance (KYC)" count={items?.length ?? null} onReload={reload} refreshing={refreshing} />
+      <QueueHeader title="Compliance (KYC/KYB)" count={items?.length ?? null} onReload={reload} refreshing={refreshing} />
       {error && <QueueError message={error} onRetry={reload} />}
       {!error && items === null && <QueueSkeleton />}
       {!error && items !== null && items.length === 0 && <QueueEmpty label="No pending KYC submissions." />}

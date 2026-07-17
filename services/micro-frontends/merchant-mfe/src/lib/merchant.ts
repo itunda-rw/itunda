@@ -8,7 +8,23 @@ export interface Merchant {
   ownerUserId: string;
   businessName: string;
   webhookUrl: string | null;
+  kybVerified: boolean;
   createdAt: string;
+}
+
+// Real demo KYB structural pre-check (see DemoKybVerificationService.kt's own doc
+// comment) -- reuses the same /api/v1/identity/submit + human-review pipeline personal
+// KYC already uses, with documentType = "BUSINESS_TIN" instead of "NATIONAL_ID".
+export interface IdentitySubmission {
+  id: string;
+  userId: string;
+  documentType: string;
+  documentNumber: string;
+  documentReference: string;
+  status: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  submittedAt: string;
+  autoVerificationStatus: 'MATCHED' | 'NOT_FOUND' | 'INVALID_FORMAT' | null;
+  autoVerificationDetail: string | null;
 }
 
 export interface PaymentIntent {
@@ -134,6 +150,15 @@ export const getReport = (from?: string, to?: string) => {
     `/api/v1/merchant/reports${qs ? `?${qs}` : ''}`,
   );
 };
+
+export const submitKyb = (tin: string) =>
+  apiFetch<{ success: boolean; submission: IdentitySubmission }>('/api/v1/identity/submit', {
+    method: 'POST',
+    body: JSON.stringify({ documentType: 'BUSINESS_TIN', documentNumber: tin, documentReference: `TIN ${tin}` }),
+  }).then((r) => r.submission);
+
+export const getMyIdentitySubmissions = () =>
+  apiFetch<{ success: boolean; submissions: IdentitySubmission[] }>('/api/v1/identity/status').then((r) => r.submissions);
 
 export const addPayrollEmployee = (phoneNumber: string, salaryAmount: number) =>
   apiFetch<{ success: boolean; employee: PayrollEmployee }>('/api/v1/merchant/payroll/employees', {
