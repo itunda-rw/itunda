@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowUpRight, LogOut, Plus, ScanFace, ShieldCheck, ShoppingBag, Wallet as WalletIcon } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, LogOut, MessageCircle, Plus, ScanFace, Send, ShieldCheck, ShoppingBag, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { fetchTransactions, fetchWallets, type Transaction, type Wallet } from './lib/wallet';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
 import { collectPayment, fetchShoppingCatalog, type CollectPaymentResult, type ShoppingMerchant } from './lib/shopping';
+import { fetchConversations, fetchMessages, sendMessage, startConversation, type ConversationSummary, type Message } from './lib/messaging';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'MESSAGES';
 
 function AccountBalance({ wallet }: { wallet: Wallet | null }) {
   return (
@@ -378,6 +379,237 @@ function ShoppingView() {
   );
 }
 
+function NewChatCard({ onStarted }: { onStarted: (conversationId: string) => void }) {
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      const conversation = await startConversation(phoneNumber.trim());
+      setPhoneNumber('');
+      onStarted(conversation.id);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not start this chat.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="toss-card" style={{ marginBottom: '16px' }}>
+      <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>New chat</h3>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '14px' }}>
+        Enter their phone number to start a conversation.
+      </p>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px' }}>
+        <input
+          type="tel"
+          value={phoneNumber}
+          onChange={(e) => setPhoneNumber(e.target.value)}
+          placeholder="+250788123456"
+          required
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        />
+        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+          {submitting ? 'Starting…' : 'Chat'}
+        </button>
+      </form>
+      {error && (
+        <p style={{ fontSize: '13px', color: '#E53935', marginTop: '10px' }} role="alert">{error}</p>
+      )}
+    </div>
+  );
+}
+
+function ConversationThread({ conversation, onBack }: { conversation: ConversationSummary; onBack: () => void }) {
+  const [messages, setMessages] = useState<Message[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+  const [sending, setSending] = useState(false);
+  const currentUser = getStoredUser();
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  const load = () =>
+    fetchMessages(conversation.conversationId)
+      .then(setMessages)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this conversation.'));
+
+  useEffect(() => {
+    load();
+    // Real poll-based "live" delivery -- MessagingService's own doc comment names this
+    // as the honest current scope (no WebSocket/push transport yet). 4s comfortably
+    // reads as responsive in a real conversation without hammering the backend.
+    const interval = setInterval(load, 4000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversation.conversationId]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const body = draft.trim();
+    if (!body) return;
+    setSending(true);
+    setError(null);
+    try {
+      const sent = await sendMessage(conversation.conversationId, body);
+      setMessages((prev) => [...(prev ?? []), sent]);
+      setDraft('');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send this message.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100svh - 180px)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to conversations">
+          <ArrowLeft size={20} />
+        </button>
+        <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{conversation.otherUserName}</h3>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px' }}>
+        {messages === null && <div className="toss-card skeleton" style={{ height: '120px' }} />}
+        {messages !== null && messages.length === 0 && (
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', textAlign: 'center', marginTop: '20px' }}>
+            Say hello — no messages yet.
+          </p>
+        )}
+        {messages?.map((m) => {
+          const isMine = m.senderId === currentUser?.id;
+          return (
+            <div key={m.id} style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
+              <div
+                style={{
+                  maxWidth: '75%',
+                  padding: '10px 14px',
+                  borderRadius: '16px',
+                  fontSize: '14px',
+                  backgroundColor: isMine ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+                  color: isMine ? 'var(--toss-white)' : 'var(--toss-grey-900)',
+                }}
+              >
+                {m.body}
+              </div>
+            </div>
+          );
+        })}
+        <div ref={bottomRef} />
+      </div>
+
+      {error && (
+        <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>
+      )}
+
+      <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px' }}>
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Message"
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        />
+        <button type="submit" className="toss-btn toss-btn-primary" disabled={sending || !draft.trim()} style={{ padding: '10px 16px' }}>
+          <Send size={16} />
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function MessagesView() {
+  const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [openConversationId, setOpenConversationId] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchConversations()
+      .then(setConversations)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your conversations.'));
+  };
+
+  useEffect(load, []);
+
+  const openConversation = conversations?.find((c) => c.conversationId === openConversationId);
+  if (openConversation) {
+    return (
+      <ConversationThread
+        conversation={openConversation}
+        onBack={() => {
+          setOpenConversationId(null);
+          load();
+        }}
+      />
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="toss-card">
+        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+      </div>
+    );
+  }
+
+  if (conversations === null) {
+    return <div className="toss-card skeleton" style={{ height: '220px' }} />;
+  }
+
+  return (
+    <div>
+      <NewChatCard onStarted={(id) => { load(); setOpenConversationId(id); }} />
+      {conversations.length === 0 ? (
+        <div className="toss-card">
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No conversations yet.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {conversations.map((c) => (
+            <button
+              key={c.conversationId}
+              onClick={() => setOpenConversationId(c.conversationId)}
+              className="toss-card"
+              style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%' }}
+            >
+              <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <MessageCircle size={20} color="var(--toss-blue)" />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{c.otherUserName}</p>
+                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {c.lastMessagePreview ?? 'No messages yet'}
+                </p>
+              </div>
+              {c.unreadCount > 0 && (
+                <span
+                  style={{
+                    fontSize: '11px', fontWeight: 700, color: 'var(--toss-white)', backgroundColor: 'var(--toss-blue)',
+                    borderRadius: '10px', padding: '2px 8px', flexShrink: 0,
+                  }}
+                >
+                  {c.unreadCount}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>('HOME');
   const user = getStoredUser();
@@ -389,6 +621,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
 
   const TABS: { id: Tab; label: string }[] = [
     { id: 'HOME', label: 'Home' },
+    { id: 'MESSAGES', label: 'Messages' },
     { id: 'CERTIFICATE', label: 'Certificate' },
     { id: 'SHOPPING', label: 'Shopping' },
   ];
@@ -427,6 +660,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       </div>
 
       {tab === 'HOME' && <HomeView />}
+      {tab === 'MESSAGES' && <MessagesView />}
       {tab === 'CERTIFICATE' && <CertificateView />}
       {tab === 'SHOPPING' && <ShoppingView />}
     </div>

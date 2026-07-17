@@ -82,6 +82,33 @@ class MessagingServiceTest : BehaviorSpec({
             }
         }
 
+        When("starting a conversation by the other person's real phone number") {
+            every { userRepository.findByPhoneNumber("+250788999111") } returns user("user_b", "Beata")
+            every { userRepository.findById("user_b") } returns Optional.of(user("user_b", "Beata"))
+            every { conversationRepository.findByParticipantAIdAndParticipantBId("user_a", "user_b") } returns null
+            every { conversationRepository.save(any()) } answers { firstArg() }
+
+            val conversation = service.startOrGetConversationByPhoneNumber("user_a", "+250788999111")
+
+            Then("it resolves the phone number to that user's real account and starts a real conversation with them") {
+                conversation.participantAId shouldBe "user_a"
+                conversation.participantBId shouldBe "user_b"
+            }
+        }
+
+        When("starting a conversation by a phone number with no real itunda account") {
+            every { userRepository.findByPhoneNumber("+250700000000") } returns null
+
+            Then("it throws RecipientNotFoundException") {
+                try {
+                    service.startOrGetConversationByPhoneNumber("user_a", "+250700000000")
+                    error("expected RecipientNotFoundException")
+                } catch (e: RecipientNotFoundException) {
+                    // expected
+                }
+            }
+        }
+
         When("sending a message in a conversation you're a real participant of") {
             val conversation = Conversation(id = "conversation_1", participantAId = "user_a", participantBId = "user_b")
             every { conversationRepository.findById("conversation_1") } returns Optional.of(conversation)

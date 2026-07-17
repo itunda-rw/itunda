@@ -20,9 +20,14 @@ import rw.itunda.messaging.ConversationNotFoundException
 import rw.itunda.messaging.EmptyMessageException
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.RecipientNotFoundException
+import rw.itunda.messaging.RecipientRequiredException
 import rw.itunda.messaging.SelfConversationException
 
-data class StartConversationRequest(val otherUserId: String)
+// One of the two must be set. phoneNumber is the real human-friendly entry point (see
+// MessagingService.startOrGetConversationByPhoneNumber's own doc comment); otherUserId
+// stays available for a future call site that already resolved a real user id (e.g. a
+// "message this merchant" action from a merchant's own profile screen).
+data class StartConversationRequest(val phoneNumber: String? = null, val otherUserId: String? = null)
 data class SendMessageRequest(val body: String)
 
 // Real 1:1 messaging -- see MessagingService's own doc comment for the full account.
@@ -37,7 +42,13 @@ class MessagingController(private val messagingService: MessagingService) {
         @RequestBody request: StartConversationRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val conversation = messagingService.startOrGetConversation(currentUser.userId, request.otherUserId)
+        val conversation = when {
+            !request.phoneNumber.isNullOrBlank() ->
+                messagingService.startOrGetConversationByPhoneNumber(currentUser.userId, request.phoneNumber)
+            !request.otherUserId.isNullOrBlank() ->
+                messagingService.startOrGetConversation(currentUser.userId, request.otherUserId)
+            else -> throw RecipientRequiredException("phoneNumber or otherUserId is required")
+        }
         return ResponseEntity.ok(mapOf("success" to true, "conversation" to conversation))
     }
 
@@ -73,6 +84,10 @@ class MessagingController(private val messagingService: MessagingService) {
     @ExceptionHandler(RecipientNotFoundException::class)
     fun handleRecipientNotFound(ex: RecipientNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RECIPIENT_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(RecipientRequiredException::class)
+    fun handleRecipientRequired(ex: RecipientRequiredException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("RECIPIENT_REQUIRED", ex.message ?: "Bad request"))
 
     @ExceptionHandler(SelfConversationException::class)
     fun handleSelfConversation(ex: SelfConversationException) =

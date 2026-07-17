@@ -18,6 +18,7 @@ import java.time.Instant
 import java.util.UUID
 
 class RecipientNotFoundException(message: String) : RuntimeException(message)
+class RecipientRequiredException(message: String) : RuntimeException(message)
 class SelfConversationException(message: String) : RuntimeException(message)
 class ConversationNotFoundException(message: String) : RuntimeException(message)
 class EmptyMessageException(message: String) : RuntimeException(message)
@@ -77,6 +78,17 @@ class MessagingService(
         return conversationRepository.save(
             Conversation(id = "conversation_${UUID.randomUUID()}", participantAId = a, participantBId = b),
         )
+    }
+
+    /** Same as [startOrGetConversation], resolved by the other person's real phone
+     * number -- the human-friendly entry point a real UI needs (a user doesn't know
+     * anyone else's internal `user_...` id, only their phone number, the same real
+     * identifier `PayrollService.addEmployee` already resolves a roster addition by). */
+    @Transactional
+    fun startOrGetConversationByPhoneNumber(userId: String, otherPhoneNumber: String): Conversation {
+        val otherUser = userRepository.findByPhoneNumber(otherPhoneNumber)
+            ?: throw RecipientNotFoundException("No itunda account found for this phone number")
+        return startOrGetConversation(userId, otherUser.id)
     }
 
     private fun requireParticipant(userId: String, conversationId: String): Conversation {
