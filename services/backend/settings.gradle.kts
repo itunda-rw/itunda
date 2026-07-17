@@ -15,6 +15,7 @@ include(
     ":system",
     ":merchant",
     ":identity",
+    ":partners",
     ":rewards",
     ":creditscore",
     ":overview",

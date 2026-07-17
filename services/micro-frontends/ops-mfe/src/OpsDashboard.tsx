@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, CircleDollarSign, HeartPulse, LifeBuoy, LogOut, ShieldCheck, Siren } from 'lucide-react';
+import { AlertTriangle, CircleDollarSign, HeartPulse, LifeBuoy, LogOut, Puzzle, ShieldCheck, Siren } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
 import FraudQueue from './queues/FraudQueue';
 import ComplianceQueue from './queues/ComplianceQueue';
@@ -7,8 +7,9 @@ import IncidentsQueue from './queues/IncidentsQueue';
 import ReconciliationView from './queues/ReconciliationView';
 import SupportQueue from './queues/SupportQueue';
 import InsuranceClaimsQueue from './queues/InsuranceClaimsQueue';
+import PartnersQueue from './queues/PartnersQueue';
 
-type Tab = 'fraud' | 'compliance' | 'incidents' | 'reconciliation' | 'support' | 'insurance';
+type Tab = 'fraud' | 'compliance' | 'incidents' | 'reconciliation' | 'support' | 'insurance' | 'partners';
 
 const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'fraud', label: 'Fraud', icon: AlertTriangle },
@@ -17,6 +18,7 @@ const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'reconciliation', label: 'Reconciliation', icon: CircleDollarSign },
   { id: 'support', label: 'Support', icon: LifeBuoy },
   { id: 'insurance', label: 'Insurance claims', icon: HeartPulse },
+  { id: 'partners', label: 'Partner mini-apps', icon: Puzzle },
 ];
 
 export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
@@ -89,6 +91,7 @@ export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
         {tab === 'reconciliation' && <ReconciliationView />}
         {tab === 'support' && <SupportQueue />}
         {tab === 'insurance' && <InsuranceClaimsQueue />}
+        {tab === 'partners' && <PartnersQueue />}
       </main>
     </div>
   );

@@ -69,6 +69,23 @@ export interface TwoSidedReconciliationRow {
   isExternalCountDemo: boolean;
 }
 
+// Real third-party developer platform (see PartnerService.kt's own doc comment) --
+// closes the "allow partners to build apps in itunda like apps in Toss" gap.
+export interface PartnerMiniAppSubmission {
+  id: string;
+  partnerId: string;
+  name: string;
+  description: string;
+  iconUrl: string | null;
+  bundleUrl: string;
+  permissions: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
+  createdAt: string;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  decisionReason: string | null;
+}
+
 export interface InsuranceClaim {
   id: string;
   policyId: string;
@@ -132,6 +149,15 @@ export const fetchTwoSidedReconciliation = (date?: string) =>
   apiFetch<{ success: boolean; rails: TwoSidedReconciliationRow[] }>(
     `/api/v1/system/reconciliation/two-sided${date ? `?date=${date}` : ''}`,
   ).then((r) => r.rails);
+
+export const fetchPartnersQueue = () =>
+  apiFetch<{ success: boolean; queue: PartnerMiniAppSubmission[] }>('/api/v1/system/partners/queue').then((r) => r.queue);
+
+export const decidePartnerMiniApp = (miniAppId: string, approve: boolean, reason?: string) =>
+  apiFetch(`/api/v1/system/partners/${miniAppId}/decide`, {
+    method: 'POST',
+    body: JSON.stringify({ approve, reason }),
+  });
 
 export const fetchInsuranceClaimsQueue = () =>
   apiFetch<{ success: boolean; queue: InsuranceClaim[] }>('/api/v1/system/insurance-claims/queue').then((r) => r.queue);

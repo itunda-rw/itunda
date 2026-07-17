@@ -74,6 +74,13 @@ class SecurityConfig(
                     // ADMIN-only /api/v1/system/** came back 401 instead of 403 until this
                     // was added.
                     .requestMatchers("/health", "/actuator/health", "/error", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
+                    // Partner-facing endpoints authenticate with a real partner API key
+                    // (X-Api-Key header, checked inside PartnerService.resolvePartner),
+                    // not a itunda-user JWT -- a partner has no itunda user account.
+                    // permitAll here just means "skip JWT auth for this prefix"; every
+                    // endpoint but /register still real-401s without a valid key. See
+                    // PartnerController's own doc comment.
+                    .requestMatchers("/api/v1/partners/**").permitAll()
                     // Fixed (2026-07-11): previously any authenticated user -- not just an
                     // operator -- could read fraud/compliance/reconciliation data from
                     // /api/v1/system/**, exactly the gap SECURITY.md names as still open.

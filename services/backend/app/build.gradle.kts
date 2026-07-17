@@ -26,6 +26,7 @@ dependencies {
     implementation(project(":system"))
     implementation(project(":merchant"))
     implementation(project(":identity"))
+    implementation(project(":partners"))
     implementation(project(":rewards"))
     implementation(project(":creditscore"))
     implementation(project(":overview"))
