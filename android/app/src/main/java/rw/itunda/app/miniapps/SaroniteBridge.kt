@@ -97,11 +97,19 @@ class SaroniteBrownfieldModule(
 
     @ReactMethod
     fun getWalletBalance(promise: Promise) {
+        // The one bridge call a partner mini-app can actually be granted today --
+        // PartnerMiniAppPermissions.ALLOWED's "wallet:read" scope maps directly onto this
+        // real read-only endpoint. See requireScope's own doc comment.
+        if (!requireScope("wallet:read", promise)) return
         authorizedCall(get("api/v1/wallet"), promise, ::parseWalletBalance)
     }
 
     @ReactMethod
     fun getPendingBills(promise: Promise) {
+        // No real backend scope covers bill data at all (PartnerMiniAppPermissions.ALLOWED
+        // is wallet:read/transactions:read/profile:read only) -- always denied for a
+        // partner mini-app, unconditionally, not gated behind a scope name that doesn't exist.
+        if (!requireScope(null, promise)) return
         // Real bug fixed (2026-07-13): was missing the /api/v1 prefix every other
         // endpoint on this same class already uses correctly (getWalletBalance) --
         // resolved to the wrong URL relative to BuildConfig.API_BASE_URL and 404'd
@@ -111,6 +119,9 @@ class SaroniteBrownfieldModule(
 
     @ReactMethod
     fun payBill(billId: String, amount: Double, accountNumber: String, provider: String, promise: Promise) {
+        // Money movement -- never allowed for a partner mini-app in this pass, regardless
+        // of any scope it holds; no scope in PartnerMiniAppPermissions.ALLOWED grants writes.
+        if (!requireScope(null, promise)) return
         val body = JsonObject().apply {
             addProperty("billId", billId)
             addProperty("amount", amount)
@@ -123,6 +134,7 @@ class SaroniteBrownfieldModule(
 
     @ReactMethod
     fun getRewardTasks(promise: Promise) {
+        if (!requireScope(null, promise)) return
         // Same missing-prefix bug as getPendingBills/payBill, fixed 2026-07-13 alongside the
         // real backend these calls hit for the first time (services/backend's new rewards
         // module -- see docs/API_SPECIFICATION.md's Rewards section).
@@ -131,46 +143,74 @@ class SaroniteBrownfieldModule(
 
     @ReactMethod
     fun claimRewardTask(taskId: String, promise: Promise) {
+        if (!requireScope(null, promise)) return
         val body = JsonObject().apply { addProperty("taskId", taskId) }
         authorizedCall(post("api/v1/rewards/claim", body), promise, ::parseClaimRewardResult)
     }
 
     @ReactMethod
     fun getInsurancePlans(promise: Promise) {
+        if (!requireScope(null, promise)) return
         authorizedCall(get("api/v1/insurance/plans"), promise, ::parseInsurancePlans)
     }
 
     @ReactMethod
     fun getMyPolicies(promise: Promise) {
+        if (!requireScope(null, promise)) return
         authorizedCall(get("api/v1/insurance/my-policies"), promise, ::parseMyPolicies)
     }
 
     @ReactMethod
     fun enrollInsurance(planId: String, promise: Promise) {
+        if (!requireScope(null, promise)) return
         val body = JsonObject().apply { addProperty("planId", planId) }
         authorizedCall(post("api/v1/insurance/enroll", body), promise, ::parseEnrollInsuranceResult)
     }
 
     @ReactMethod
     fun getReferralInfo(promise: Promise) {
+        if (!requireScope(null, promise)) return
         authorizedCall(get("api/v1/rewards/referral"), promise, ::parseReferralInfo)
     }
 
     @ReactMethod
     fun updateProfilePhoto(profilePhotoUrl: String, promise: Promise) {
+        // A write -- "profile:read" (the only profile-adjacent scope that exists) does
+        // not cover it.
+        if (!requireScope(null, promise)) return
         val body = JsonObject().apply { addProperty("profilePhotoUrl", profilePhotoUrl) }
         authorizedCall(put("api/v1/auth/profile/photo", body), promise, ::parseProfileResult)
     }
 
     @ReactMethod
     fun requestEmailVerification(promise: Promise) {
+        if (!requireScope(null, promise)) return
         authorizedCall(post("api/v1/auth/profile/verify-email", JsonObject()), promise, { Arguments.createMap() })
     }
 
     @ReactMethod
     fun confirmEmailVerification(token: String, promise: Promise) {
+        if (!requireScope(null, promise)) return
         val body = JsonObject().apply { addProperty("token", token) }
         authorizedCall(post("api/v1/auth/profile/verify-email/confirm", body), promise, ::parseProfileResult)
+    }
+
+    // Real, minimal runtime scope enforcement for partner mini-apps (2026-07-17) -- see
+    // MiniAppSecurityContext's own doc comment (PartnerMiniAppLoader.kt) for the full
+    // design. Returns false (and rejects `promise` with a real, specific error) when a
+    // partner mini-app is the one currently loaded and this call's `requiredScope` isn't
+    // one it was actually approved for; every call site above must check this before
+    // doing anything real. A first-party mini-app is always allowed (unchanged, trusted
+    // behavior) since MiniAppSecurityContext.activeScopes is null whenever one of those
+    // four is what's loaded.
+    private fun requireScope(requiredScope: String?, promise: Promise): Boolean {
+        if (MiniAppSecurityContext.isAllowed(requiredScope)) return true
+        promise.reject(
+            "SARONITE_SCOPE_DENIED",
+            "This mini-app's approved permissions do not include" +
+                (requiredScope?.let { " \"$it\"" } ?: " this call"),
+        )
+        return false
     }
 
     private fun get(path: String): Request.Builder? {

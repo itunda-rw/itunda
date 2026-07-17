@@ -8,6 +8,8 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Partner
 import rw.itunda.core.domain.PartnerMiniApp
@@ -194,13 +196,14 @@ class PartnerServiceTest : BehaviorSpec({
         val service = PartnerService(partnerRepository, partnerMiniAppRepository, rateLimiter)
 
         val approved = PartnerMiniApp(id = "partner_app_1", partnerId = "partner_1", name = "Acme Delivery", description = "desc", bundleUrl = "z", permissions = "", status = PartnerMiniAppStatus.APPROVED)
-        every { partnerMiniAppRepository.findByStatus(PartnerMiniAppStatus.APPROVED) } returns listOf(approved)
+        val pageable = PageRequest.of(0, 20)
+        every { partnerMiniAppRepository.findByStatus(PartnerMiniAppStatus.APPROVED, pageable) } returns PageImpl(listOf(approved))
 
         When("fetched") {
-            val catalog = service.getCatalog()
+            val catalog = service.getCatalog(pageable)
 
             Then("it only ever contains real APPROVED entries -- never PENDING/REJECTED ones") {
-                catalog shouldBe listOf(approved)
+                catalog.content shouldBe listOf(approved)
             }
         }
     }

@@ -1,5 +1,7 @@
 package rw.itunda.identity.web
 
+import org.springframework.data.domain.Pageable
+import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
+import rw.itunda.core.web.pageMeta
 import rw.itunda.identity.IdentityService
 import rw.itunda.identity.IdentityUserNotFoundException
 import rw.itunda.identity.SubmissionNotFoundException
@@ -27,8 +30,10 @@ data class DecideSubmissionRequest(val approve: Boolean, val reason: String? = n
 class ComplianceController(private val identityService: IdentityService) {
 
     @GetMapping("/queue")
-    fun queue(): ResponseEntity<Map<String, Any>> =
-        ResponseEntity.ok(mapOf("success" to true, "queue" to identityService.getQueue()))
+    fun queue(@PageableDefault(size = 20) pageable: Pageable): ResponseEntity<Map<String, Any>> {
+        val page = identityService.getQueue(pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "queue" to page.content) + pageMeta(page))
+    }
 
     @PostMapping("/{submissionId}/decide")
     fun decide(

@@ -1,5 +1,7 @@
 package rw.itunda.partners
 
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
@@ -112,13 +114,15 @@ class PartnerService(
         return partnerMiniAppRepository.findByPartnerIdOrderByCreatedAtDesc(partner.id)
     }
 
-    fun getQueue(): List<PartnerMiniApp> = partnerMiniAppRepository.findByStatusOrderByCreatedAtAsc(PartnerMiniAppStatus.PENDING)
+    fun getQueue(pageable: Pageable): Page<PartnerMiniApp> =
+        partnerMiniAppRepository.findByStatusOrderByCreatedAtAsc(PartnerMiniAppStatus.PENDING, pageable)
 
     // Real published catalog -- what a mobile Saronite host client would fetch to know
     // which third-party mini-apps are approved and available, the same real "app store"
     // surface Toss's own mini-app platform exposes. See this class's own doc comment for
     // why the mobile side doesn't actually consume/render this yet.
-    fun getCatalog(): List<PartnerMiniApp> = partnerMiniAppRepository.findByStatus(PartnerMiniAppStatus.APPROVED)
+    fun getCatalog(pageable: Pageable): Page<PartnerMiniApp> =
+        partnerMiniAppRepository.findByStatus(PartnerMiniAppStatus.APPROVED, pageable)
 
     @Transactional
     fun decide(miniAppId: String, reviewerId: String, approve: Boolean, reason: String?): PartnerMiniApp {

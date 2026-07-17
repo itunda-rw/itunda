@@ -1,0 +1,18 @@
+{
+  "name": "saronite-miniapp-partner-demo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A real, minimal third-party mini-app used to live-verify the Partner SDK's mobile runtime loader (PartnerMiniAppLoader.kt, 2026-07-17) -- built to prove a REAL approved partner's REAL bundle can be downloaded and rendered on-device, not shipped as part of itunda's own host-app bundle at build time. See docs/TOSS_PARITY_MATRIX.md's Partner SDK row.",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@itunda/saronite-react-native": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "react": "19.2.3",
+    "react-native": "0.84.0",
+    "typescript": "^5.8.3"
+  }
+}

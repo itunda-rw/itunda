@@ -1,5 +1,7 @@
 package rw.itunda.identity
 
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.KycSubmission
@@ -62,7 +64,7 @@ class IdentityService(
 
     fun getMySubmissions(userId: String) = kycSubmissionRepository.findByUserIdOrderBySubmittedAtDesc(userId)
 
-    fun getQueue() = kycSubmissionRepository.findByStatusOrderBySubmittedAtAsc("PENDING")
+    fun getQueue(pageable: Pageable): Page<KycSubmission> = kycSubmissionRepository.findByStatusOrderBySubmittedAtAsc("PENDING", pageable)
 
     @Transactional
     fun decide(submissionId: String, reviewerId: String, approve: Boolean, reason: String?): KycSubmission {

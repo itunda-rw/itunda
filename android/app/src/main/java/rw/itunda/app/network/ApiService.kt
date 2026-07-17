@@ -193,6 +193,28 @@ data class NotificationDto(
 data class NotificationsResponse(val success: Boolean, val notifications: List<NotificationDto>, val unreadCount: Int)
 data class MarkReadResponse(val success: Boolean)
 
+// Mirrors services/backend/partners's PartnerMiniApp entity exactly (field names match
+// its real Jackson-serialized JSON) -- the real "app store" catalog a mobile Saronite
+// host client fetches to know which third-party mini-apps are approved and available
+// (2026-07-17, closing the mobile half of the Partner SDK gap named in
+// docs/TOSS_PARITY_MATRIX.md's Partner SDK row). `permissions` is the same real
+// comma-joined scope string PartnerService.submitMiniApp stored at submission time
+// (validated then against PartnerMiniAppPermissions.ALLOWED) -- split on "," client-side
+// by MiniAppSecurityContext before a partner bundle is actually loaded.
+data class PartnerMiniAppDto(
+    val id: String,
+    val partnerId: String,
+    val name: String,
+    val description: String,
+    val iconUrl: String?,
+    val bundleUrl: String,
+    val permissions: String,
+    val status: String,
+    val createdAt: String,
+)
+
+data class MiniAppCatalogResponse(val success: Boolean, val miniApps: List<PartnerMiniAppDto>)
+
 // Retrofit Interface to map to your Spring endpoints -- all require the real
 // Bearer token NetworkClient's authInterceptor now injects (2026-07-11).
 interface ApiService {
@@ -234,6 +256,14 @@ interface ApiService {
     // Real offline-action-queue replay (2026-07-13) -- see network/OfflineActionQueue.kt.
     @POST("api/v1/actions/batch")
     suspend fun submitActionBatch(@Body request: BatchRequest): BatchResponse
+
+    // Real Partner SDK catalog (2026-07-17) -- services/backend/partners's
+    // MiniAppCatalogController, itunda-user-JWT-gated like every other endpoint on this
+    // interface (no ADMIN role, no partner API key -- this is the public "app store"
+    // surface a logged-in itunda user's own client fetches). See
+    // miniapps/PartnerMiniAppLoader.kt for what actually happens when one of these is tapped.
+    @GET("api/v1/mini-apps/catalog")
+    suspend fun getMiniAppCatalog(): MiniAppCatalogResponse
 }
 
 data class TransactionHistoryResponse(val success: Boolean, val transactions: List<TransactionDto>)

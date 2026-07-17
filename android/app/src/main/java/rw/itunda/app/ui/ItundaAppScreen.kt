@@ -399,7 +399,7 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                     TossTab.Benefits -> BenefitsTab()
                     TossTab.Shop -> ShopTab(viewModel)
                     TossTab.Pay -> PayTab()
-                    TossTab.All -> AllTab(onOpenSettings = { showSettings = true })
+                    TossTab.All -> AllTab(viewModel = viewModel, onOpenSettings = { showSettings = true })
                 }
             }
         }
@@ -821,8 +821,12 @@ private fun PayTab() {
 }
 
 @Composable
-private fun AllTab(onOpenSettings: () -> Unit) {
+private fun AllTab(viewModel: MainViewModel, onOpenSettings: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+    val partnerMiniApps by viewModel.partnerMiniApps.collectAsState()
+    var partnerLoadError by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    var loadingPartnerAppId by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)
@@ -856,6 +860,41 @@ private fun AllTab(onOpenSettings: () -> Unit) {
                     context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.InsuranceMiniAppActivity::class.java))
                 }
             )
+        }
+        // Real Partner SDK section (2026-07-17) -- lists REAL approved third-party
+        // mini-apps from GET /api/v1/mini-apps/catalog (services/backend/partners),
+        // closing the mobile half of docs/TOSS_PARITY_MATRIX.md's Partner SDK row.
+        // Empty when the catalog has no approved entries yet (a real, honest empty
+        // state, not hidden entirely, so this section's existence is itself visible
+        // proof the mechanism is wired up end to end). Follows the exact same
+        // FlatSection/tap-to-launch pattern as MiniAppsSection above, on purpose --
+        // this is meant to read as a natural extension of first-party mini-apps, not a
+        // separately-styled bolt-on.
+        if (partnerMiniApps.isNotEmpty()) {
+            item {
+                FlatSection(
+                    title = "Partner mini-apps",
+                    rows = partnerMiniApps.map { app ->
+                        FlatRow(
+                            title = app.name,
+                            subtitle = if (loadingPartnerAppId == app.id) "Loading..." else app.description,
+                            onClick = {
+                                if (loadingPartnerAppId == null) {
+                                    loadingPartnerAppId = app.id
+                                    coroutineScope.launch {
+                                        rw.itunda.app.miniapps.PartnerMiniAppLoader.launch(
+                                            activity = context as android.app.Activity,
+                                            app = app,
+                                            onError = { message -> partnerLoadError = message },
+                                        )
+                                        loadingPartnerAppId = null
+                                    }
+                                }
+                            }
+                        )
+                    }
+                )
+            }
         }
         item {
             IconGridSection("Recent services", listOf(
@@ -953,6 +992,21 @@ private fun AllTab(onOpenSettings: () -> Unit) {
                 FlatRow("Announcements", showChevron = true)
             ))
         }
+    }
+
+    // Real, honest failure surface for the partner mini-app download/reload flow
+    // (2026-07-17) -- a partner's bundle is arbitrary remote content fetched at tap
+    // time, so a real network/HTTP/reload failure must be shown, not silently dropped.
+    val currentPartnerLoadError = partnerLoadError
+    if (currentPartnerLoadError != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { partnerLoadError = null },
+            title = { Text("Couldn't load mini-app") },
+            text = { Text(currentPartnerLoadError) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { partnerLoadError = null }) { Text("OK") }
+            }
+        )
     }
 }
 

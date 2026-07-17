@@ -39,5 +39,13 @@
             android:name=".miniapps.InsuranceMiniAppActivity"
             android:theme="@style/Theme.Itunda.MiniApp"
             android:exported="false" />
+        <!-- Real, dynamically-loaded partner mini-app (2026-07-17); see
+             miniapps/PartnerMiniAppLoader.kt. Unlike the four above, its JS bundle is
+             downloaded at runtime from a real approved partner's bundleUrl, not bundled
+             into this app at build time. -->
+        <activity
+            android:name=".miniapps.PartnerMiniAppActivity"
+            android:theme="@style/Theme.Itunda.MiniApp"
+            android:exported="false" />
     </application>
 </manifest>

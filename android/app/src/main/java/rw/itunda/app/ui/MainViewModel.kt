@@ -67,6 +67,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _unreadNotificationCount = MutableStateFlow(0)
     val unreadNotificationCount: StateFlow<Int> = _unreadNotificationCount
 
+    // Real Partner SDK catalog (2026-07-17) -- approved third-party mini-apps a user can
+    // actually tap into, closing the mobile half of docs/TOSS_PARITY_MATRIX.md's Partner
+    // SDK row. See miniapps/PartnerMiniAppLoader.kt for the download/render mechanism.
+    private val _partnerMiniApps = MutableStateFlow<List<rw.itunda.app.network.PartnerMiniAppDto>>(emptyList())
+    val partnerMiniApps: StateFlow<List<rw.itunda.app.network.PartnerMiniAppDto>> = _partnerMiniApps
+
     // Distinguishes "showing real data" from "backend unreachable, showing offline
     // placeholder" -- the UI should be honest about which one it's rendering rather
     // than silently presenting fallback numbers as if they were real (2026-07-11 fix,
@@ -133,6 +139,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val transactionsRes = NetworkClient.apiService.getTransactionHistory()
                 if (transactionsRes.success) {
                     _transactions.value = transactionsRes.transactions
+                }
+
+                // Real Partner SDK catalog fetch (2026-07-17). Scoped in its own try/catch,
+                // same discipline as getInterestJar's 404 handling above: a partner-catalog
+                // hiccup (e.g. this environment's partners module not deployed) must never
+                // block the rest of Home from loading real data.
+                try {
+                    val catalogRes = NetworkClient.apiService.getMiniAppCatalog()
+                    if (catalogRes.success) {
+                        _partnerMiniApps.value = catalogRes.miniApps
+                    }
+                } catch (e: retrofit2.HttpException) {
+                    _partnerMiniApps.value = emptyList()
                 }
                 _isOffline.value = false
             } catch (e: IOException) {

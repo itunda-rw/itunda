@@ -1,5 +1,7 @@
 package rw.itunda.partners.web
 
+import org.springframework.data.domain.Pageable
+import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
+import rw.itunda.core.web.pageMeta
 import rw.itunda.partners.PartnerMiniAppNotFoundException
 import rw.itunda.partners.PartnerMiniAppNotPendingException
 import rw.itunda.partners.PartnerService
@@ -26,8 +29,10 @@ data class DecidePartnerMiniAppRequest(val approve: Boolean, val reason: String?
 class PartnerAdminController(private val partnerService: PartnerService) {
 
     @GetMapping("/queue")
-    fun queue(): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "queue" to partnerService.getQueue()))
+    fun queue(@PageableDefault(size = 20) pageable: Pageable): ResponseEntity<Map<String, Any?>> {
+        val page = partnerService.getQueue(pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "queue" to page.content) + pageMeta(page))
+    }
 
     @PostMapping("/{miniAppId}/decide")
     fun decide(

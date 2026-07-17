@@ -78,3 +78,34 @@ class RewardTasksMiniAppActivity : SaroniteMiniAppActivity() {
 class InsuranceMiniAppActivity : SaroniteMiniAppActivity() {
     override fun getMainComponentName(): String = "SaroniteInsurance"
 }
+
+/**
+ * The real, dynamic fifth mini-app Activity (2026-07-17) -- unlike the four above, this
+ * one's JS was never bundled into the app at build time. `PartnerMiniAppLoader.launch`
+ * downloads a REAL approved partner's real `bundleUrl`, reloads it into the shared
+ * ReactHost, and only then starts this Activity; see that file's own header comment for
+ * the full architecture and why this reuses the same single ReactHost/bridge rather
+ * than a second one.
+ *
+ * `getMainComponentName()` is fixed, not per-partner: every partner bundle must register
+ * under this one well-known name (`PartnerMiniAppLoader.PARTNER_COMPONENT_NAME`), the
+ * real, honest, one-partner-active-at-a-time constraint this pass's approach implies --
+ * documented in docs/TOSS_PARITY_MATRIX.md's Partner SDK row, not hidden.
+ *
+ * `onDestroy` restores the shared ReactHost back to the first-party bundle so
+ * Wallet/PayBills/RewardTasks/Insurance keep working the next time any of them opens --
+ * without this, the host would stay pointed at the partner's bundle forever and every
+ * first-party mini-app Activity would try (and fail) to find its own component name in
+ * JS that no longer registers it. Fired via `PartnerMiniAppLoader`'s own
+ * process-lifetime coroutine scope, deliberately not this Activity's `lifecycleScope` --
+ * that scope is cancelled by the very `ON_DESTROY` event this method runs inside, so a
+ * `lifecycleScope.launch` called from here would race its own cancellation.
+ */
+class PartnerMiniAppActivity : SaroniteMiniAppActivity() {
+    override fun getMainComponentName(): String = PartnerMiniAppLoader.PARTNER_COMPONENT_NAME
+
+    override fun onDestroy() {
+        PartnerMiniAppLoader.restoreFirstPartyBundleAsync(this)
+        super.onDestroy()
+    }
+}
