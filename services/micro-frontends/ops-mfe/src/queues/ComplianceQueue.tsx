@@ -7,6 +7,13 @@ import { QueueEmpty, QueueError, QueueHeader, QueueLoadMore, QueueSkeleton } fro
 // comment) -- a reviewer aid, never an auto-decision. Colors mirror this pre-check's own
 // honesty: MATCHED is a real positive signal (green), the other three are all real
 // reasons a human needs to look closer (amber), not a hard red "reject" verdict.
+const AUTO_VERIFICATION_LABEL: Record<NonNullable<KycSubmission['autoVerificationStatus']>, string> = {
+  MATCHED: 'Matched',
+  NOT_FOUND: 'Not found',
+  INVALID_FORMAT: 'Invalid format',
+  UNSUPPORTED_DOCUMENT_TYPE: 'Unsupported document type',
+};
+
 function AutoVerificationBadge({ submission }: { submission: KycSubmission }) {
   if (!submission.autoVerificationStatus) return null;
   const isMatch = submission.autoVerificationStatus === 'MATCHED';
@@ -25,7 +32,7 @@ function AutoVerificationBadge({ submission }: { submission: KycSubmission }) {
         marginTop: '6px',
       }}
     >
-      Auto-check: {submission.autoVerificationStatus.replace(/_/g, ' ')}
+      Auto-check: {AUTO_VERIFICATION_LABEL[submission.autoVerificationStatus]}
       {submission.autoVerificationDetail && (
         <span style={{ fontWeight: 400, opacity: 0.85 }}>· {submission.autoVerificationDetail}</span>
       )}

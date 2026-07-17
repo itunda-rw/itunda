@@ -19,7 +19,7 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError('Could not reach the backend. Is it running on the expected port?');
+        setError("Couldn't connect. Check your network and try again.");
       }
     } finally {
       setSubmitting(false);
@@ -38,7 +38,7 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
           <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>Itunda Ops</h1>
         </div>
         <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginTop: '-8px' }}>
-          ADMIN-role account required.
+          You'll need an admin account to sign in.
         </p>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
