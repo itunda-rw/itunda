@@ -20,6 +20,16 @@ data class RailReconciliation(
     val avgLatencyMs: Long,
 )
 
+data class TwoSidedRailReconciliation(
+    val railId: String,
+    val railDisplayName: String,
+    val itundaSuccessCount: Long,
+    val externalSettledCount: Long,
+    val matched: Boolean,
+    val discrepancy: Long,
+    val isExternalCountDemo: Boolean,
+)
+
 /**
  * Real reconciliation, aggregated by rail/day from a real persisted attempt log -- see
  * docs/TOSS_PARITY_MATRIX.md's Operations/Reconciliation row for the full account, including
@@ -34,7 +44,10 @@ data class RailReconciliation(
  * the event this log most needs to durably capture -- it must not roll back with the caller.
  */
 @Service
-class ReconciliationService(private val repository: ProviderAttemptLogRepository) {
+class ReconciliationService(
+    private val repository: ProviderAttemptLogRepository,
+    private val demoExternalSettlementService: DemoExternalSettlementService,
+) {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     fun logAttempt(rail: RailProfile, success: Boolean, latencyMs: Long) {
@@ -66,4 +79,22 @@ class ReconciliationService(private val repository: ProviderAttemptLogRepository
                 )
             }
             .sortedBy { it.railId }
+
+    // Real demo two-sided reconciliation (2026-07-17) -- see
+    // DemoExternalSettlementService's own doc comment for why the external count is a
+    // real, deterministic simulation rather than a real settlement file, and why this
+    // stays count-level only, not amount-level.
+    fun reportTwoSided(date: LocalDate): List<TwoSidedRailReconciliation> =
+        report(date).map { rail ->
+            val externalCount = demoExternalSettlementService.simulateExternalSettledCount(rail.railId, date, rail.successCount)
+            TwoSidedRailReconciliation(
+                railId = rail.railId,
+                railDisplayName = rail.railDisplayName,
+                itundaSuccessCount = rail.successCount,
+                externalSettledCount = externalCount,
+                matched = rail.successCount == externalCount,
+                discrepancy = rail.successCount - externalCount,
+                isExternalCountDemo = true,
+            )
+        }
 }

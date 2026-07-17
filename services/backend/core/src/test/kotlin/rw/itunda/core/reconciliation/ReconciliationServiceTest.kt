@@ -20,7 +20,8 @@ class ReconciliationServiceTest : BehaviorSpec({
 
     Given("a real provider attempt") {
         val repository = mockk<ProviderAttemptLogRepository>()
-        val service = ReconciliationService(repository)
+        val demoExternalSettlementService = DemoExternalSettlementService()
+        val service = ReconciliationService(repository, demoExternalSettlementService)
         val saved = slot<ProviderAttemptLog>()
         every { repository.save(capture(saved)) } answers { saved.captured }
 
@@ -38,7 +39,8 @@ class ReconciliationServiceTest : BehaviorSpec({
 
     Given("a day with real aggregated attempts across two rails") {
         val repository = mockk<ProviderAttemptLogRepository>()
-        val service = ReconciliationService(repository)
+        val demoExternalSettlementService = DemoExternalSettlementService()
+        val service = ReconciliationService(repository, demoExternalSettlementService)
         val date = LocalDate.of(2026, 7, 13)
 
         val wasacAgg = mockk<RailDayAggregate>()
@@ -68,7 +70,8 @@ class ReconciliationServiceTest : BehaviorSpec({
 
     Given("a day with no attempts at all") {
         val repository = mockk<ProviderAttemptLogRepository>()
-        val service = ReconciliationService(repository)
+        val demoExternalSettlementService = DemoExternalSettlementService()
+        val service = ReconciliationService(repository, demoExternalSettlementService)
         val date = LocalDate.of(2026, 1, 1)
 
         every { repository.aggregateByDate(date) } returns emptyList()
@@ -76,6 +79,44 @@ class ReconciliationServiceTest : BehaviorSpec({
         When("the report is generated") {
             Then("it's an empty report, not a fabricated zero-row") {
                 service.report(date).shouldBeEmpty()
+            }
+        }
+    }
+
+    Given("a day with real aggregated attempts, requesting the real demo two-sided view") {
+        val repository = mockk<ProviderAttemptLogRepository>()
+        val demoExternalSettlementService = DemoExternalSettlementService()
+        val service = ReconciliationService(repository, demoExternalSettlementService)
+        val date = LocalDate.of(2026, 7, 17)
+
+        val wasacAgg = mockk<RailDayAggregate>()
+        every { wasacAgg.getRailId() } returns "wasac"
+        every { wasacAgg.getRailDisplayName() } returns "WASAC - Water"
+        every { wasacAgg.getTotalAttempts() } returns 10L
+        every { wasacAgg.getSuccessCount() } returns 9L
+        every { wasacAgg.getAvgLatencyMs() } returns 705.0
+        every { repository.aggregateByDate(date) } returns listOf(wasacAgg)
+
+        When("the two-sided report is generated") {
+            val report = service.reportTwoSided(date)
+
+            Then("it carries itunda's own real success count, a real demo external count, and is honestly marked as a demo") {
+                report.size shouldBe 1
+                val entry = report.first()
+                entry.railId shouldBe "wasac"
+                entry.itundaSuccessCount shouldBe 9L
+                entry.isExternalCountDemo shouldBe true
+                entry.discrepancy shouldBe (entry.itundaSuccessCount - entry.externalSettledCount)
+                entry.matched shouldBe (entry.discrepancy == 0L)
+            }
+        }
+
+        When("the two-sided report is generated twice for the same rail/day") {
+            val first = service.reportTwoSided(date)
+            val second = service.reportTwoSided(date)
+
+            Then("the real demo external count is deterministic -- not randomly flaky") {
+                first.first().externalSettledCount shouldBe second.first().externalSettledCount
             }
         }
     }

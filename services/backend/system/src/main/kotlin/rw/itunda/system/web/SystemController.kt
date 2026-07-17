@@ -99,6 +99,29 @@ class SystemController(
         return ResponseEntity.ok(mapOf("success" to true, "date" to reportDate.toString(), "rails" to report))
     }
 
+    // Real demo two-sided reconciliation (2026-07-17) -- see
+    // ReconciliationService.reportTwoSided's own doc comment for why the external side
+    // is a real, deterministic simulation, not a real settlement file. Separate
+    // endpoint rather than a query param on /reconciliation so the one-sided report
+    // (itunda's own real numbers) and the demo-augmented view are never accidentally
+    // conflated by a client that only reads one field.
+    @GetMapping("/reconciliation/two-sided")
+    fun getTwoSidedReconciliation(@RequestParam(required = false) date: String?): ResponseEntity<Map<String, Any>> {
+        val reportDate = date?.let { LocalDate.parse(it) } ?: LocalDate.now()
+        val report = reconciliationService.reportTwoSided(reportDate).map { rail ->
+            mapOf(
+                "railId" to rail.railId,
+                "displayName" to rail.railDisplayName,
+                "itundaSuccessCount" to rail.itundaSuccessCount,
+                "externalSettledCount" to rail.externalSettledCount,
+                "matched" to rail.matched,
+                "discrepancy" to rail.discrepancy,
+                "isExternalCountDemo" to rail.isExternalCountDemo,
+            )
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "date" to reportDate.toString(), "rails" to report))
+    }
+
     // Real, administratively-triggered connectivity proof against MTN's real MoMo
     // Collection sandbox (2026-07-17) -- see MtnMomoSandboxClient's own doc comment for
     // why this is deliberately NOT wired into any real user-facing transfer/bill flow.
