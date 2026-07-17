@@ -21,6 +21,10 @@ dependencies {
     // designed (transfer.confirmed, ledger.posted, etc.) -- previously documented but
     // never emitted anywhere from this backend (2026-07-11 fix, see LedgerService.kt).
     api("org.springframework.kafka:spring-kafka")
+    // RestClient only (not spring-boot-starter-web) -- MtnMomoProviderConnector needs a
+    // real synchronous HTTP client to call MTN's real sandbox API, not an embedded
+    // servlet container, which this library module has no business pulling in.
+    implementation("org.springframework:spring-web")
     implementation("com.mysql:mysql-connector-j")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     // Toss's own engineering blog (toss.tech/article/test-strategy-server) and multiple

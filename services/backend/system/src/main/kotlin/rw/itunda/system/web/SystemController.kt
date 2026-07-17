@@ -4,12 +4,16 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.core.domain.IncidentStatus
 import rw.itunda.core.health.ProviderHealthTracker
 import rw.itunda.core.incident.IncidentDetector
+import rw.itunda.core.provider.MtnMomoNotConfiguredException
+import rw.itunda.core.provider.MtnMomoRequestFailedException
+import rw.itunda.core.provider.MtnMomoSandboxClient
 import rw.itunda.core.reconciliation.ReconciliationService
 import rw.itunda.core.web.ApiError
 import java.time.LocalDate
@@ -21,6 +25,7 @@ class SystemController(
     private val providerHealthTracker: ProviderHealthTracker,
     private val incidentDetector: IncidentDetector,
     private val reconciliationService: ReconciliationService,
+    private val mtnMomoSandboxClient: MtnMomoSandboxClient,
 ) {
 
     // Simple mock endpoints for the system dashboard to complete the migration
@@ -93,6 +98,34 @@ class SystemController(
         }
         return ResponseEntity.ok(mapOf("success" to true, "date" to reportDate.toString(), "rails" to report))
     }
+
+    // Real, administratively-triggered connectivity proof against MTN's real MoMo
+    // Collection sandbox (2026-07-17) -- see MtnMomoSandboxClient's own doc comment for
+    // why this is deliberately NOT wired into any real user-facing transfer/bill flow.
+    // ADMIN-gated the same way every other /api/v1/system/** route already is (see
+    // SecurityConfig) -- this makes a real, live external call, not something a normal
+    // user action should ever trigger.
+    @PostMapping("/mtn-momo/connectivity-test")
+    fun testMtnMomoConnectivity(): ResponseEntity<Map<String, Any?>> {
+        val result = mtnMomoSandboxClient.testConnectivity()
+        return ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "referenceId" to result.referenceId,
+                "status" to result.status,
+                "financialTransactionId" to result.financialTransactionId,
+                "latencyMs" to result.latencyMs,
+            ),
+        )
+    }
+
+    @ExceptionHandler(MtnMomoNotConfiguredException::class)
+    fun handleMtnMomoNotConfigured(ex: MtnMomoNotConfiguredException) =
+        ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(ApiError("MTN_MOMO_NOT_CONFIGURED", ex.message ?: "Not configured"))
+
+    @ExceptionHandler(MtnMomoRequestFailedException::class)
+    fun handleMtnMomoRequestFailed(ex: MtnMomoRequestFailedException) =
+        ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(ApiError("MTN_MOMO_REQUEST_FAILED", ex.message ?: "Request failed"))
 
     @ExceptionHandler(DateTimeParseException::class)
     fun handleBadDate(ex: DateTimeParseException) =
