@@ -41,6 +41,45 @@ export interface CardChargeResult {
   completedAt: string;
 }
 
+// Real B2B payroll -- see PayrollService.kt's own doc comment for why this is real
+// wallet-to-wallet money movement, not a demo/simulation (unlike card processing).
+export interface PayrollEmployee {
+  id: string;
+  merchantId: string;
+  employeeUserId: string;
+  employeeName: string;
+  salaryAmount: number;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface PayrollRun {
+  id: string;
+  merchantId: string;
+  ledgerTransactionId: string;
+  totalAmount: number;
+  employeeCount: number;
+  createdAt: string;
+}
+
+export interface Payslip {
+  id: string;
+  payrollRunId: string;
+  employeeUserId: string;
+  employeeName: string;
+  amount: number;
+  transactionId: string;
+  createdAt: string;
+}
+
+export interface PayrollRunResult {
+  payrollRunId: string;
+  totalAmount: number;
+  employeeCount: number;
+  completedAt: string;
+  payslips: { employeeName: string; amount: number; transactionId: string }[];
+}
+
 // GET /api/v1/merchant/me real-404s (MERCHANT_NOT_FOUND) when the caller hasn't
 // registered yet -- that's an expected, common state here (any itunda user can open
 // this app before ever becoming a merchant), not an error condition, so it's translated
@@ -95,6 +134,33 @@ export const getReport = (from?: string, to?: string) => {
     `/api/v1/merchant/reports${qs ? `?${qs}` : ''}`,
   );
 };
+
+export const addPayrollEmployee = (phoneNumber: string, salaryAmount: number) =>
+  apiFetch<{ success: boolean; employee: PayrollEmployee }>('/api/v1/merchant/payroll/employees', {
+    method: 'POST',
+    body: JSON.stringify({ phoneNumber, salaryAmount }),
+  }).then((r) => r.employee);
+
+export const getPayrollRoster = () =>
+  apiFetch<{ success: boolean; employees: PayrollEmployee[] }>('/api/v1/merchant/payroll/employees').then((r) => r.employees);
+
+export const removePayrollEmployee = (employeeId: string) =>
+  apiFetch<{ success: boolean; employee: PayrollEmployee }>(`/api/v1/merchant/payroll/employees/${employeeId}`, {
+    method: 'DELETE',
+  }).then((r) => r.employee);
+
+// Money-moving -- real Idempotency-Key convention, same as chargeCard/collect above.
+export const runPayroll = () =>
+  apiFetch<{ success: boolean } & PayrollRunResult>('/api/v1/merchant/payroll/run', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': crypto.randomUUID() },
+  });
+
+export const getPayrollHistory = () =>
+  apiFetch<{ success: boolean; runs: PayrollRun[] }>('/api/v1/merchant/payroll/runs').then((r) => r.runs);
+
+export const getPayslips = (payrollRunId: string) =>
+  apiFetch<{ success: boolean; payslips: Payslip[] }>(`/api/v1/merchant/payroll/runs/${payrollRunId}/payslips`).then((r) => r.payslips);
 
 // The backend deliberately returns a reference/code, not a QR image (see
 // PaymentIntent.kt's own doc comment) -- this is the client-side encoding convention:

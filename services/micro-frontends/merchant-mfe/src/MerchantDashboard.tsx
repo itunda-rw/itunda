@@ -1,18 +1,20 @@
 import { useEffect, useState } from 'react';
-import { CircleDollarSign, LogOut, QrCode, Settings, Store } from 'lucide-react';
+import { CircleDollarSign, LogOut, QrCode, Settings, Store, Users } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
 import { getMyMerchant, type Merchant } from './lib/merchant';
 import RegisterScreen from './RegisterScreen';
 import CollectScreen from './screens/CollectScreen';
+import PayrollScreen from './screens/PayrollScreen';
 import ReportsScreen from './screens/ReportsScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import { QueueError, QueueSkeleton } from './QueueState';
 
-type Tab = 'collect' | 'reports' | 'settings';
+type Tab = 'collect' | 'reports' | 'payroll' | 'settings';
 
 const TABS: { id: Tab; label: string; icon: typeof QrCode }[] = [
   { id: 'collect', label: 'Collect', icon: QrCode },
   { id: 'reports', label: 'Reports', icon: CircleDollarSign },
+  { id: 'payroll', label: 'Payroll', icon: Users },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
@@ -121,6 +123,7 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
       <main style={{ flex: 1, padding: '32px 40px', maxWidth: '960px' }}>
         {tab === 'collect' && <CollectScreen />}
         {tab === 'reports' && <ReportsScreen />}
+        {tab === 'payroll' && <PayrollScreen />}
         {tab === 'settings' && <SettingsScreen merchant={merchant} onUpdated={setMerchant} />}
       </main>
     </div>

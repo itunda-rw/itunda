@@ -15,11 +15,13 @@ enum class MerchantStatus { ACTIVE, SUSPENDED }
  * Reuses the owner's existing MAIN wallet as the settlement wallet rather than
  * introducing a new WalletType, since AuthService.register already provisions one
  * for every user. See rw.itunda.merchant.MerchantService for the real subset of
- * docs/MERCHANT_SERVICES.md this implements (QR-style payment collection). POS/
- * cards/B2B payroll genuinely need real PSP-level infrastructure this repo has no
- * path to certify -- webhooks don't, and are real as of 2026-07-13 (webhookUrl
- * below), corrected from an earlier version of this comment that grouped all four
- * together as equally out of reach.
+ * docs/MERCHANT_SERVICES.md this implements (QR-style payment collection). Card
+ * network/PSP integration stays genuinely blocked on a real commercial relationship
+ * this repo has no path to certify (see MerchantService.chargeCard's real Luhn-
+ * validated demo instead) -- webhooks and B2B payroll don't need one: webhooks are
+ * real as of 2026-07-13 (webhookUrl below), and payroll (rw.itunda.merchant.
+ * PayrollService, 2026-07-17) is a real WALLET-to-WALLET disbursement to an
+ * employee's own itunda account, no external rail involved at all.
  */
 @Entity
 @Table(name = "merchants")
