@@ -23,5 +23,6 @@ include(
     ":p2p",
     ":offline",
     ":support",
+    ":messaging",
     ":app"
 )
