@@ -8,9 +8,13 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
+import rw.itunda.core.domain.EmailVerificationToken
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.repository.EmailVerificationTokenRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
 import java.time.Instant
@@ -41,7 +45,12 @@ class AuthServiceTest : BehaviorSpec({
         val jwtService = JwtService(testSecret)
         val tokenBlocklistService = mockk<TokenBlocklistService>()
         val rateLimiter = mockk<RateLimiter>()
-        val service = AuthService(userRepository, walletRepository, jwtService, tokenBlocklistService, rateLimiter)
+        val emailVerificationTokenRepository = mockk<EmailVerificationTokenRepository>()
+        val notificationRepository = mockk<NotificationRepository>()
+        val service = AuthService(
+            userRepository, walletRepository, jwtService, tokenBlocklistService, rateLimiter,
+            emailVerificationTokenRepository, notificationRepository,
+        )
 
         When("registering a brand-new phone number") {
             every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
@@ -198,6 +207,153 @@ class AuthServiceTest : BehaviorSpec({
                     error("expected InvalidRefreshTokenException")
                 } catch (e: InvalidRefreshTokenException) {
                     // expected
+                }
+            }
+        }
+
+        When("updating a real profile photo URL") {
+            val user = User(
+                id = "user_6", phoneNumber = "+250788000008", firstName = "Jean", lastName = "B",
+                passwordHash = "unused", createdAt = Instant.now(),
+            )
+            every { userRepository.findById("user_6") } returns Optional.of(user)
+            every { userRepository.save(any()) } answers { firstArg() }
+
+            val result = service.updateProfilePhoto("user_6", "https://cdn.itunda.rw/avatars/user_6.jpg")
+
+            Then("it saves the real URL and returns it on the public profile") {
+                result.profilePhotoUrl shouldBe "https://cdn.itunda.rw/avatars/user_6.jpg"
+            }
+        }
+
+        When("requesting email verification with no email on file") {
+            val user = User(
+                id = "user_7", phoneNumber = "+250788000009", firstName = "Jean", lastName = "B",
+                passwordHash = "unused", email = null, createdAt = Instant.now(),
+            )
+            every { userRepository.findById("user_7") } returns Optional.of(user)
+
+            Then("it throws NoEmailOnFileException before creating any token or notification") {
+                try {
+                    service.requestEmailVerification("user_7")
+                    error("expected NoEmailOnFileException")
+                } catch (e: NoEmailOnFileException) {
+                    verify(exactly = 0) { emailVerificationTokenRepository.save(any()) }
+                    verify(exactly = 0) { notificationRepository.save(any()) }
+                }
+            }
+        }
+
+        When("requesting email verification when it's already verified") {
+            val user = User(
+                id = "user_8", phoneNumber = "+250788000013", firstName = "Jean", lastName = "B",
+                passwordHash = "unused", email = "jean@itunda.rw", emailVerified = true, createdAt = Instant.now(),
+            )
+            every { userRepository.findById("user_8") } returns Optional.of(user)
+
+            Then("it throws EmailAlreadyVerifiedException") {
+                try {
+                    service.requestEmailVerification("user_8")
+                    error("expected EmailAlreadyVerifiedException")
+                } catch (e: EmailAlreadyVerifiedException) {
+                    verify(exactly = 0) { emailVerificationTokenRepository.save(any()) }
+                }
+            }
+        }
+
+        When("requesting email verification with a real, unverified email on file") {
+            val user = User(
+                id = "user_9", phoneNumber = "+250788000014", firstName = "Jean", lastName = "B",
+                passwordHash = "unused", email = "jean@itunda.rw", emailVerified = false, createdAt = Instant.now(),
+            )
+            every { userRepository.findById("user_9") } returns Optional.of(user)
+            val tokenSlot = mutableListOf<EmailVerificationToken>()
+            every { emailVerificationTokenRepository.save(capture(tokenSlot)) } answers { firstArg() }
+            val notificationSlot = mutableListOf<Notification>()
+            every { notificationRepository.save(capture(notificationSlot)) } answers { firstArg() }
+
+            service.requestEmailVerification("user_9")
+
+            Then("it saves a real single-use token and delivers it via a real in-app notification, never in this call's own return value") {
+                tokenSlot.single().userId shouldBe "user_9"
+                tokenSlot.single().usedAt shouldBe null
+                val notification = notificationSlot.single()
+                notification.userId shouldBe "user_9"
+                notification.type shouldBe "PROFILE_EMAIL_VERIFICATION"
+                notification.body.contains(tokenSlot.single().token) shouldBe true
+            }
+        }
+
+        When("confirming email verification with the real token just issued") {
+            val user = User(
+                id = "user_12", phoneNumber = "+250788000015", firstName = "Jean", lastName = "B",
+                passwordHash = "unused", email = "jean12@itunda.rw", emailVerified = false, createdAt = Instant.now(),
+            )
+            val tokenRecord = EmailVerificationToken(
+                id = "evt_1", userId = "user_12", token = "realtoken123",
+                expiresAt = Instant.now().plusSeconds(1800),
+            )
+            every { emailVerificationTokenRepository.findByToken("realtoken123") } returns tokenRecord
+            every { emailVerificationTokenRepository.save(any()) } answers { firstArg() }
+            every { userRepository.findById("user_12") } returns Optional.of(user)
+            every { userRepository.save(any()) } answers { firstArg() }
+
+            val result = service.confirmEmailVerification("user_12", "realtoken123")
+
+            Then("it flips emailVerified to true and marks the token used, once") {
+                result.emailVerified shouldBe true
+                tokenRecord.usedAt shouldNotBe null
+                verify(exactly = 1) { emailVerificationTokenRepository.save(any()) }
+            }
+        }
+
+        When("confirming email verification with a token that belongs to a different user") {
+            val tokenRecord = EmailVerificationToken(
+                id = "evt_2", userId = "user_other", token = "stolentoken",
+                expiresAt = Instant.now().plusSeconds(1800),
+            )
+            every { emailVerificationTokenRepository.findByToken("stolentoken") } returns tokenRecord
+
+            Then("it throws InvalidVerificationTokenException -- ownership is checked, not just token validity") {
+                try {
+                    service.confirmEmailVerification("user_13", "stolentoken")
+                    error("expected InvalidVerificationTokenException")
+                } catch (e: InvalidVerificationTokenException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+
+        When("confirming email verification with an expired token") {
+            val tokenRecord = EmailVerificationToken(
+                id = "evt_3", userId = "user_14", token = "expiredtoken",
+                expiresAt = Instant.now().minusSeconds(60),
+            )
+            every { emailVerificationTokenRepository.findByToken("expiredtoken") } returns tokenRecord
+
+            Then("it throws InvalidVerificationTokenException -- a stale token can't verify an email") {
+                try {
+                    service.confirmEmailVerification("user_14", "expiredtoken")
+                    error("expected InvalidVerificationTokenException")
+                } catch (e: InvalidVerificationTokenException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+
+        When("confirming email verification with an already-used token") {
+            val tokenRecord = EmailVerificationToken(
+                id = "evt_4", userId = "user_15", token = "usedtoken",
+                expiresAt = Instant.now().plusSeconds(1800), usedAt = Instant.now().minusSeconds(60),
+            )
+            every { emailVerificationTokenRepository.findByToken("usedtoken") } returns tokenRecord
+
+            Then("it throws InvalidVerificationTokenException -- a token verifies an email exactly once") {
+                try {
+                    service.confirmEmailVerification("user_15", "usedtoken")
+                    error("expected InvalidVerificationTokenException")
+                } catch (e: InvalidVerificationTokenException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
                 }
             }
         }

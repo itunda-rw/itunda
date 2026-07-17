@@ -52,21 +52,20 @@ class RewardsService(
         RewardTaskDef("task_referral", "Refer a friend", "Invite a friend who completes their first transaction", BigDecimal("5000")),
     )
 
-    // Real-activity verification (2026-07-16). Closes the parity matrix's "claiming is
-    // honor-system today, not verified against real user activity" gap for the three
-    // tasks where verification data already exists in the system (transfer, bill,
-    // savings goal both use existing repository queries; task_first_bill only became
-    // checkable once BillsService started writing a real Transaction row -- see that
-    // file's own doc comment). `task_profile` (no profile-photo/email-verification
-    // schema or flow exists anywhere in this backend) stays honor-system on purpose:
-    // building that prerequisite is a genuinely separate, larger feature. Always
-    // eligible rather than silently rejecting real users' honest claims until that
-    // work is done -- see docs/TOSS_PARITY_MATRIX.md's Rewards row for the tracked gap.
-    //
-    // task_referral closed for real (2026-07-17): matches the task's own copy, "Invite
-    // a friend who completes their first transaction" -- eligible once any user this
-    // one referred (User.referredByUserId, set at registration via AuthService) has a
-    // real COMPLETED TRANSFER-type Transaction of their own.
+    // Real-activity verification (2026-07-16/17). Closes the parity matrix's "claiming
+    // is honor-system today, not verified against real user activity" gap for all five
+    // catalog tasks. transfer/bill/savings goal use existing repository queries
+    // (task_first_bill only became checkable once BillsService started writing a real
+    // Transaction row -- see that file's own doc comment). task_referral matches the
+    // task's own copy, "Invite a friend who completes their first transaction" --
+    // eligible once any user this one referred (User.referredByUserId, set at
+    // registration via AuthService) has a real COMPLETED TRANSFER-type Transaction of
+    // their own. task_profile matches its own copy, "Add a profile photo and verify
+    // your email" -- eligible once both User.profilePhotoUrl is set and
+    // User.emailVerified is true (see AuthService's profile endpoints). `else -> false`
+    // fails closed, not open: every real catalog task is covered above, so this branch
+    // should be unreachable in practice, but a future never-explicitly-handled task
+    // should not silently become claimable by default.
     private fun isEligible(userId: String, taskId: String): Boolean = when (taskId) {
         "task_first_transfer" -> transactionRepository.existsBySenderIdAndTypeAndStatus(userId, TransactionType.TRANSFER, TransactionStatus.COMPLETED)
         "task_first_bill" -> transactionRepository.existsBySenderIdAndTypeAndStatus(userId, TransactionType.BILL, TransactionStatus.COMPLETED)
@@ -74,7 +73,10 @@ class RewardsService(
         "task_referral" -> userRepository.findAllByReferredByUserId(userId).any { referred ->
             transactionRepository.existsBySenderIdAndTypeAndStatus(referred.id, TransactionType.TRANSFER, TransactionStatus.COMPLETED)
         }
-        else -> true // task_profile: still honor-system, see comment above
+        "task_profile" -> userRepository.findById(userId)
+            .map { it.profilePhotoUrl != null && it.emailVerified }
+            .orElse(false)
+        else -> false
     }
 
     // Backs a real "share your code" UI: current referral code plus real progress

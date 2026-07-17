@@ -3,9 +3,13 @@ package rw.itunda.auth
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.core.domain.EmailVerificationToken
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.repository.EmailVerificationTokenRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -27,6 +31,8 @@ class AuthService(
     private val jwtService: JwtService,
     private val tokenBlocklistService: TokenBlocklistService,
     private val rateLimiter: RateLimiter,
+    private val emailVerificationTokenRepository: EmailVerificationTokenRepository,
+    private val notificationRepository: NotificationRepository,
 ) {
     private val passwordEncoder = BCryptPasswordEncoder()
 
@@ -139,6 +145,61 @@ class AuthService(
         return issueAuthResponse(user, "Token refreshed")
     }
 
+    // Real, buildable half of task_profile (2026-07-17): a URL, not a binary upload --
+    // see UpdateProfilePhotoRequest's doc comment for why.
+    @Transactional
+    fun updateProfilePhoto(userId: String, profilePhotoUrl: String): PublicUser {
+        val user = userRepository.findById(userId).orElseThrow { UserNotFoundException("User not found") }
+        user.profilePhotoUrl = profilePhotoUrl
+        userRepository.save(user)
+        return user.toPublic()
+    }
+
+    // Real, single-use, 30-minute token -- see EmailVerificationToken's doc comment.
+    // Delivered via a real Notification (this backend's own existing in-app delivery
+    // mechanism, already used for budget alerts) rather than a real email, since there
+    // is no SMTP relay anywhere in this backend -- the token itself is real and never
+    // echoed back in this endpoint's own response, so a client can't self-verify without
+    // actually receiving it through that real channel.
+    @Transactional
+    fun requestEmailVerification(userId: String) {
+        val user = userRepository.findById(userId).orElseThrow { UserNotFoundException("User not found") }
+        if (user.email == null) throw NoEmailOnFileException("No email address on file to verify")
+        if (user.emailVerified) throw EmailAlreadyVerifiedException("Email is already verified")
+
+        val token = UUID.randomUUID().toString().replace("-", "")
+        emailVerificationTokenRepository.save(
+            EmailVerificationToken(
+                id = "evt_${UUID.randomUUID()}", userId = userId, token = token,
+                expiresAt = Instant.now().plusSeconds(1800), createdAt = Instant.now(),
+            ),
+        )
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = userId, type = "PROFILE_EMAIL_VERIFICATION",
+                title = "Verify your email", body = "Your email verification code is $token. It expires in 30 minutes.",
+                isRead = false, createdAt = Instant.now(), dataJson = null,
+            ),
+        )
+    }
+
+    @Transactional
+    fun confirmEmailVerification(userId: String, token: String): PublicUser {
+        val record = emailVerificationTokenRepository.findByToken(token)
+            ?.takeIf { it.userId == userId }
+            ?: throw InvalidVerificationTokenException("Invalid or expired verification token")
+        if (record.usedAt != null || record.expiresAt.isBefore(Instant.now())) {
+            throw InvalidVerificationTokenException("Invalid or expired verification token")
+        }
+        record.usedAt = Instant.now()
+        emailVerificationTokenRepository.save(record)
+
+        val user = userRepository.findById(userId).orElseThrow { UserNotFoundException("User not found") }
+        user.emailVerified = true
+        userRepository.save(user)
+        return user.toPublic()
+    }
+
     private fun issueAuthResponse(user: User, message: String) = AuthResponse(
         message = message,
         user = user.toPublic(),
@@ -156,6 +217,6 @@ class AuthService(
     private fun User.toPublic() = PublicUser(
         id = id, phoneNumber = phoneNumber, email = email, firstName = firstName,
         lastName = lastName, kycVerified = kycVerified, creditScore = creditScore, createdAt = createdAt,
-        referralCode = referralCode,
+        referralCode = referralCode, profilePhotoUrl = profilePhotoUrl, emailVerified = emailVerified,
     )
 }

@@ -32,6 +32,8 @@ data class PublicUser(
     val creditScore: Int,
     val createdAt: Instant,
     val referralCode: String?,
+    val profilePhotoUrl: String?,
+    val emailVerified: Boolean,
 )
 
 data class AuthResponse(
@@ -41,3 +43,9 @@ data class AuthResponse(
     val accessToken: String,
     val refreshToken: String,
 )
+
+/** A URL, not a binary upload -- there is no file-storage layer in this backend, same
+ * honest simplification IdentityController.kt's documentReference already established. */
+data class UpdateProfilePhotoRequest(val profilePhotoUrl: String)
+
+data class ConfirmEmailVerificationRequest(val token: String)

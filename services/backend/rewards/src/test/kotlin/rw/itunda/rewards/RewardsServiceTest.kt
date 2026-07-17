@@ -46,6 +46,9 @@ class RewardsServiceTest : BehaviorSpec({
         every { transactionRepository.existsBySenderIdAndTypeAndStatus("user_1", any(), TransactionStatus.COMPLETED) } returns false
         every { savingsGoalRepository.existsByUserId("user_1") } returns false
         every { userRepository.findAllByReferredByUserId("user_1") } returns emptyList()
+        every { userRepository.findById("user_1") } returns java.util.Optional.of(
+            User(id = "user_1", phoneNumber = "+250788000001", firstName = "Jean", lastName = "B", passwordHash = "unused"),
+        )
 
         When("listing tasks") {
             val result = service.getTasks("user_1")
@@ -55,13 +58,74 @@ class RewardsServiceTest : BehaviorSpec({
                 result.tasks.all { !it.claimed } shouldBe true
                 result.rewardsTotal shouldBe BigDecimal.ZERO
             }
-            Then("only the one truly-unverifiable task (profile) shows eligible=true -- the other four require real activity that hasn't happened") {
+            Then("every task shows eligible=false -- all five are now real-activity-verified, and this user hasn't done any of them") {
                 val byId = result.tasks.associateBy { it.id }
                 byId.getValue("task_first_transfer").eligible shouldBe false
                 byId.getValue("task_first_bill").eligible shouldBe false
                 byId.getValue("task_savings_goal").eligible shouldBe false
                 byId.getValue("task_referral").eligible shouldBe false
-                byId.getValue("task_profile").eligible shouldBe true
+                byId.getValue("task_profile").eligible shouldBe false
+            }
+        }
+    }
+
+    Given("a user with a real profile photo and a verified email, claiming task_profile for the first time") {
+        val rewardClaimRepository = mockk<RewardClaimRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val savingsGoalRepository = mockk<SavingsGoalRepository>()
+        val userRepository = mockk<UserRepository>()
+        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository)
+
+        val completeUser = User(
+            id = "user_10", phoneNumber = "+250788000095", firstName = "Eve", lastName = "R",
+            passwordHash = "unused", profilePhotoUrl = "https://cdn.itunda.rw/avatars/user_10.jpg", emailVerified = true,
+        )
+        every { rewardClaimRepository.existsByUserIdAndTaskId("user_10", "task_profile") } returns false
+        every { userRepository.findById("user_10") } returns java.util.Optional.of(completeUser)
+        every { walletRepository.findByUserIdAndType("user_10", WalletType.MAIN) } returns wallet("wallet_main", "user_10")
+        every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_3", emptyList())
+        every { rewardClaimRepository.save(any()) } answers { firstArg() }
+        every { rewardClaimRepository.findByUserId("user_10") } returns listOf(
+            RewardClaim(id = "rwc_3", userId = "user_10", taskId = "task_profile", amount = BigDecimal("500"), claimedAt = Instant.now()),
+        )
+
+        When("claiming task_profile (500 RWF)") {
+            val result = service.claim("user_10", "task_profile")
+
+            Then("it succeeds -- both a real photo URL and real emailVerified are set") {
+                result.rewardAmount shouldBe BigDecimal("500")
+                verify(exactly = 1) { rewardClaimRepository.save(any()) }
+            }
+        }
+    }
+
+    Given("a user with a profile photo but an unverified email, trying to claim task_profile") {
+        val rewardClaimRepository = mockk<RewardClaimRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val savingsGoalRepository = mockk<SavingsGoalRepository>()
+        val userRepository = mockk<UserRepository>()
+        val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository)
+
+        val partialUser = User(
+            id = "user_11", phoneNumber = "+250788000094", firstName = "Frank", lastName = "R",
+            passwordHash = "unused", profilePhotoUrl = "https://cdn.itunda.rw/avatars/user_11.jpg", emailVerified = false,
+        )
+        every { rewardClaimRepository.existsByUserIdAndTaskId("user_11", "task_profile") } returns false
+        every { userRepository.findById("user_11") } returns java.util.Optional.of(partialUser)
+
+        When("claiming it") {
+            Then("it throws RewardTaskNotEligibleException -- a photo alone isn't a complete profile") {
+                try {
+                    service.claim("user_11", "task_profile")
+                    error("expected RewardTaskNotEligibleException")
+                } catch (e: RewardTaskNotEligibleException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                    verify(exactly = 0) { rewardClaimRepository.save(any()) }
+                }
             }
         }
     }
@@ -285,6 +349,12 @@ class RewardsServiceTest : BehaviorSpec({
         val service = RewardsService(rewardClaimRepository, walletRepository, ledgerService, transactionRepository, savingsGoalRepository, userRepository)
 
         every { rewardClaimRepository.existsByUserIdAndTaskId("user_5", "task_profile") } returns false
+        every { userRepository.findById("user_5") } returns java.util.Optional.of(
+            User(
+                id = "user_5", phoneNumber = "+250788000093", firstName = "Grace", lastName = "R",
+                passwordHash = "unused", profilePhotoUrl = "https://cdn.itunda.rw/avatars/user_5.jpg", emailVerified = true,
+            ),
+        )
         every { walletRepository.findByUserIdAndType("user_5", WalletType.MAIN) } returns null
 
         When("claiming a valid, unclaimed task") {

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.Contact
+import rw.itunda.core.domain.EmailVerificationToken
 import rw.itunda.core.domain.Holding
 import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.LedgerAccount
@@ -57,6 +58,10 @@ interface UserRepository : JpaRepository<User, String> {
     fun existsByPhoneNumber(phoneNumber: String): Boolean
     fun findByReferralCode(referralCode: String): User?
     fun findAllByReferredByUserId(referredByUserId: String): List<User>
+}
+
+interface EmailVerificationTokenRepository : JpaRepository<EmailVerificationToken, String> {
+    fun findByToken(token: String): EmailVerificationToken?
 }
 
 interface WalletRepository : JpaRepository<Wallet, String> {

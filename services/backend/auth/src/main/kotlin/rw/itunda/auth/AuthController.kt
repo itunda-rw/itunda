@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
@@ -48,6 +49,30 @@ class AuthController(private val authService: AuthService) {
     fun profile(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> =
         ResponseEntity.ok(mapOf("success" to true, "user" to authService.getProfile(currentUser.userId)))
 
+    // Real, buildable half of Rewards' task_profile -- see UpdateProfilePhotoRequest's
+    // doc comment for why this is a URL, not a binary upload.
+    @PutMapping("/profile/photo")
+    fun updateProfilePhoto(
+        @RequestBody request: UpdateProfilePhotoRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "user" to authService.updateProfilePhoto(currentUser.userId, request.profilePhotoUrl)))
+
+    // See AuthService.requestEmailVerification's doc comment: the real token is
+    // delivered via a real Notification, never echoed back here.
+    @PostMapping("/profile/verify-email")
+    fun requestEmailVerification(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Boolean>> {
+        authService.requestEmailVerification(currentUser.userId)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    @PostMapping("/profile/verify-email/confirm")
+    fun confirmEmailVerification(
+        @RequestBody request: ConfirmEmailVerificationRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "user" to authService.confirmEmailVerification(currentUser.userId, request.token)))
+
     @ExceptionHandler(PhoneAlreadyRegisteredException::class)
     fun handleConflict(ex: PhoneAlreadyRegisteredException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("PHONE_ALREADY_REGISTERED", ex.message ?: "Conflict"))
@@ -71,4 +96,16 @@ class AuthController(private val authService: AuthService) {
     @ExceptionHandler(ReferralCodeNotFoundException::class)
     fun handleReferralCodeNotFound(ex: ReferralCodeNotFoundException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("REFERRAL_CODE_NOT_FOUND", ex.message ?: "Referral code not found"))
+
+    @ExceptionHandler(NoEmailOnFileException::class)
+    fun handleNoEmail(ex: NoEmailOnFileException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("NO_EMAIL_ON_FILE", ex.message ?: "No email on file"))
+
+    @ExceptionHandler(EmailAlreadyVerifiedException::class)
+    fun handleEmailAlreadyVerified(ex: EmailAlreadyVerifiedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("EMAIL_ALREADY_VERIFIED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(InvalidVerificationTokenException::class)
+    fun handleInvalidVerificationToken(ex: InvalidVerificationTokenException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_VERIFICATION_TOKEN", ex.message ?: "Invalid or expired token"))
 }

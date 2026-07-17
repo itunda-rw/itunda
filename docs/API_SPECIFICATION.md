@@ -57,20 +57,26 @@
 | POST | `/refresh` | none (refresh token is the credential) | `{refreshToken}` | `200` `AuthResponse` | Rotates the refresh token; the old one is revoked immediately |
 | POST | `/logout` | Bearer | `{refreshToken?}` (optional body) | `200` `{"success": true}` | Revokes the exact access token used to call this, and the refresh token too if provided |
 | GET | `/profile` | Bearer | — | `200` `{"success": true, "user": PublicUser}` | |
+| PUT | `/profile/photo` | Bearer | `{profilePhotoUrl}` | `200` `{"success": true, "user": PublicUser}` | Added 2026-07-17. A URL, not a binary upload — no file-storage layer exists in this backend |
+| POST | `/profile/verify-email` | Bearer | — | `200` `{"success": true}` | Added 2026-07-17. Generates a real single-use, 30-minute token and delivers it via a real in-app `Notification` (`GET /api/v1/notifications`) — never in this endpoint's own response, since there is no SMTP relay in this backend to send a real email through |
+| POST | `/profile/verify-email/confirm` | Bearer | `{token}` | `200` `{"success": true, "user": PublicUser}` | Added 2026-07-17. Real ownership + expiry + single-use check |
 
 `AuthResponse`: `{success: true, message: string, user: PublicUser, accessToken: string,
 refreshToken: string}`.
 
 `PublicUser`: `{id, phoneNumber, email, firstName, lastName, kycVerified, creditScore,
-createdAt, referralCode}`. **`kycVerified` is real as a field, but nothing in this backend can
-ever set it `true` outside of demo seed data** — see the Compliance row in
-`docs/TOSS_PARITY_MATRIX.md`; there is no verification endpoint anywhere in this API.
-`referralCode` (added 2026-07-17) is lazily issued at registration — nullable for accounts
-that predate this feature.
+createdAt, referralCode, profilePhotoUrl, emailVerified}`. **`kycVerified` is real as a field,
+but nothing in this backend can ever set it `true` outside of demo seed data** — see the
+Compliance row in `docs/TOSS_PARITY_MATRIX.md`; there is no verification endpoint anywhere in
+this API. `referralCode` (added 2026-07-17) is lazily issued at registration — nullable for
+accounts that predate this feature. `profilePhotoUrl`/`emailVerified` (added 2026-07-17) back
+Rewards' `task_profile` — see that section below.
 
 Errors: `409 PHONE_ALREADY_REGISTERED`, `401 INVALID_CREDENTIALS`, `404 USER_NOT_FOUND`,
 `401 INVALID_REFRESH_TOKEN`, `429 RATE_LIMITED`, `400 REFERRAL_CODE_NOT_FOUND` (register only —
-an invalid referral code fails loudly rather than silently registering with no attribution).
+an invalid referral code fails loudly rather than silently registering with no attribution),
+`400 NO_EMAIL_ON_FILE`, `409 EMAIL_ALREADY_VERIFIED`, `400 INVALID_VERIFICATION_TOKEN` (bogus,
+expired, already-used, or belongs to a different user — profile endpoints only).
 
 ## Overview — `/api/v1/overview`
 
@@ -331,7 +337,7 @@ re-deciding is blocked, not silently overwritten), `404 USER_NOT_FOUND`.
 Built and live-verified 2026-07-13 — see `docs/TOSS_PARITY_MATRIX.md`'s Rewards row for the
 full account, including what this corrects (a previous version of that row falsely claimed
 this already existed). Real per-task activity verification (not honor-system) added
-2026-07-16/17 for 4 of the 5 catalog tasks — see that same row for the full account of each.
+2026-07-16/17 for all 5 of the 5 catalog tasks — see that same row for the full account of each.
 
 | Method | Path | Body | Success | Notes |
 |---|---|---|---|---|
@@ -347,9 +353,10 @@ Errors: `409 IDEMPOTENCY_KEY_CONFLICT`, `409 IDEMPOTENT_REQUEST_PROCESSING`,
 `403 REWARD_TASK_NOT_ELIGIBLE` (real activity check, before ever touching the wallet or ledger),
 `409 REWARD_TASK_ALREADY_CLAIMED` (a real DB-unique-constraint guard, not just an
 application-level check — a race between two concurrent claims for the same task can't both
-succeed), `404 WALLET_NOT_FOUND`, `404 USER_NOT_FOUND`. `task_first_transfer`, `task_first_bill`,
-`task_savings_goal`, and `task_referral` are all real-activity-verified now; `task_profile`
-remains honor-system (no profile-photo/email-verification schema exists in this backend).
+succeed), `404 WALLET_NOT_FOUND`, `404 USER_NOT_FOUND`. All 5 catalog tasks
+(`task_first_transfer`, `task_first_bill`, `task_savings_goal`, `task_referral`,
+`task_profile`) are real-activity-verified as of 2026-07-17 — see the Auth section above for
+the `profile/photo` and `profile/verify-email` endpoints `task_profile` checks.
 
 ## Notifications — `/api/v1/notifications`
 
@@ -530,6 +537,11 @@ Grepped for directly, confirmed absent as of 2026-07-13:
   section) — no other module emits webhooks of any kind.
 
 ## What Changed Since the Last Version of This Document
+
+**2026-07-17, later the same day:** added `PUT /api/v1/auth/profile/photo`,
+`POST /api/v1/auth/profile/verify-email`, and `POST /api/v1/auth/profile/verify-email/confirm`
+— closes `task_profile`, the last of Rewards' 5 catalog tasks to become real-activity-verified.
+See the Auth and Rewards sections above.
 
 **2026-07-17:** added `GET /api/v1/rewards/referral` (real referral code + progress) and a
 `referralCode` field to `POST /api/v1/auth/register`'s request and `PublicUser` — see the Auth

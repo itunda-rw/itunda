@@ -56,6 +56,14 @@ class User(
 
     @Column(name = "referred_by_user_id", length = 64)
     var referredByUserId: String? = null,
+
+    // Real "complete your profile" state (2026-07-17) -- backs task_profile's real
+    // eligibility check in RewardsService, see AuthService's profile endpoints.
+    @Column(name = "profile_photo_url", length = 512)
+    var profilePhotoUrl: String? = null,
+
+    @Column(name = "email_verified", nullable = false)
+    var emailVerified: Boolean = false,
 ) {
     // JPA requires a no-arg constructor; Kotlin generates one only when every
     // property has a default, which id/phoneNumber/etc. intentionally don't.
