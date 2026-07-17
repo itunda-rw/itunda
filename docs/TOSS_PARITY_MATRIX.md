@@ -157,8 +157,23 @@ than any single feature row.
   just visually), then exercised one real mutating action (`Clear` on a fraud flag) through
   the UI and confirmed via a direct database query — not the app — that `reviewed`,
   `decision`, and `reviewed_by` were actually written. Zero console errors, zero failed
-  network requests. Same UI/UX gap remains for the 6th queue not in this row's original scope
-  (insurance claims, `InsuranceClaimsAdminController`) — same pattern, not yet built.
+  network requests. **6th queue (insurance claims) built and live-verified, 2026-07-17,
+  closing the gap this row previously named.** New `InsuranceClaimsQueue.tsx`, same exact
+  card/approve/reject-with-reason pattern as `ComplianceQueue.tsx`, talking to the already-real
+  `InsuranceClaimsAdminController` (`GET /api/v1/system/insurance-claims/queue`,
+  `POST /api/v1/system/insurance-claims/{id}/decide`) — no backend changes needed, only the
+  missing UI. `ops-mfe` now has 6 tabs, not 5. Live-verified end to end with a real headless
+  Chromium browser (Playwright) against a running backend (isolated local MySQL/Redis, same
+  convention as the original five-queue verification): enrolled the seeded demo user in a real
+  insurance plan, submitted a real claim (`POST /api/v1/insurance/claims`), logged into
+  `ops-mfe` as the seeded ADMIN account, confirmed the real claim's description and amount
+  rendered in the Insurance claims tab, clicked Approve through the UI, confirmed the queue
+  correctly emptied afterward (it only lists `SUBMITTED` claims), and confirmed via a direct
+  MySQL query — not the app — that the claim's `status` flipped to `APPROVED` with a real
+  `reviewed_by`/`reviewed_at`, and that the real double-entry payout posted (`WALLET` credit /
+  `INSURANCE_CLAIMS_EXPENSE` debit, 250,000 RWF). Zero console errors, zero failed network
+  requests. `tsc -b && vite build` (the real production build script, not just `--noEmit`)
+  succeeds.
 - **Daily settlement and reconciliation — real, one-sided.** See the Reconciliation row above —
   computed from itunda's own real provider-attempt log, not yet diffed against an external
   settlement file (there isn't one to diff against without a real provider relationship).
@@ -170,6 +185,8 @@ than any single feature row.
   permission system across every endpoint.
 
 ## What Changed Since the Last Version of This Document
+
+**2026-07-17, latest of this batch — ops-mfe's 6th queue (insurance claims) built (superseding the "later still" entry below):** The Ops Queues row named a real, scoped gap: `ops-mfe`'s five admin queues (Fraud, Compliance, Incidents, Reconciliation, Support) didn't cover the already-real `InsuranceClaimsAdminController`. Closed with a new `InsuranceClaimsQueue.tsx`, mirroring `ComplianceQueue.tsx`'s approve/reject-with-reason pattern exactly — no backend changes needed. Live-verified with a real headless Chromium browser (Playwright): submitted a real claim, logged into `ops-mfe` as ADMIN, confirmed it rendered, approved it through the UI, confirmed via direct MySQL query the real status flip, reviewer attribution, and double-entry payout. Zero console errors, zero failed requests, real production build (`tsc -b && vite build`) succeeds. See the Ops Queues row for the full account.
 
 **2026-07-17, later still — task_profile closed for real, all 5 of 5 Rewards tasks now activity-verified (superseding the "later than that" entry below):** The last honor-system reward task is real: `users.profile_photo_url`/`email_verified` (`V20__profile_completion.sql`), a real single-use expiring `EmailVerificationToken` delivered via itunda's own existing real in-app Notification system (no SMTP relay exists in this backend, so a real email can't be sent -- the token is real and never echoed back in any API response, only delivered through that real channel). New `PUT /api/v1/auth/profile/photo`, `POST /api/v1/auth/profile/verify-email`, `POST /api/v1/auth/profile/verify-email/confirm`. Live-verified end-to-end: set a real photo (confirmed still ineligible -- a photo alone isn't enough), requested verification and confirmed the real token arrived via `GET /api/v1/notifications`, confirmed a bogus token 400s, confirmed the real token verifies and flips eligibility, confirmed reuse 400s, claimed the real 500 RWF reward (confirmed via direct MySQL query the claim row, the double-entry ledger legs, and the token's used_at), confirmed a second claim 409s. See the Rewards row for the full account.
 

@@ -53,6 +53,19 @@ export interface ReconciliationRow {
   avgLatencyMs: number;
 }
 
+export interface InsuranceClaim {
+  id: string;
+  policyId: string;
+  userId: string;
+  description: string;
+  amount: number;
+  status: 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+  submittedAt: string;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  decisionReason: string | null;
+}
+
 export interface SupportTicket {
   id: string;
   userId: string;
@@ -98,6 +111,15 @@ export const fetchReconciliation = (date?: string) =>
   apiFetch<{ success: boolean; rails: ReconciliationRow[] }>(
     `/api/v1/system/reconciliation${date ? `?date=${date}` : ''}`,
   ).then((r) => r.rails);
+
+export const fetchInsuranceClaimsQueue = () =>
+  apiFetch<{ success: boolean; queue: InsuranceClaim[] }>('/api/v1/system/insurance-claims/queue').then((r) => r.queue);
+
+export const decideInsuranceClaim = (claimId: string, approve: boolean, reason?: string) =>
+  apiFetch(`/api/v1/system/insurance-claims/${claimId}/decide`, {
+    method: 'POST',
+    body: JSON.stringify({ approve, reason }),
+  });
 
 export const fetchSupportQueue = () =>
   apiFetch<{ success: boolean; queue: SupportTicket[] }>('/api/v1/system/support/queue').then((r) => r.queue);
