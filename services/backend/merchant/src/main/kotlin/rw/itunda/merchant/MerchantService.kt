@@ -32,6 +32,7 @@ class MerchantNoWalletException(message: String) : RuntimeException(message)
 class PaymentIntentNotFoundException(message: String) : RuntimeException(message)
 class PaymentIntentNotPayableException(message: String) : RuntimeException(message)
 class SelfPaymentException(message: String) : RuntimeException(message)
+class CardDeclinedException(message: String) : RuntimeException(message)
 
 data class MerchantReportDay(
     val date: LocalDate,
@@ -46,11 +47,11 @@ data class MerchantReportDay(
  * A real, minimal subset of docs/MERCHANT_SERVICES.md's product surface --
  * registration + QR-style fixed-amount payment collection into the merchant's
  * settlement wallet, ledger-backed like every other money-moving flow in this
- * backend. Deliberately does not implement that doc's POS/card-processing/B2B-
- * payroll/webhook surface -- that doc's own header already flags those as an
- * invented spec that never checked a real provider's actual API; building them
- * for real would mean building actual PSP-level card infrastructure this repo
- * has no path to certify, not writing more Kotlin.
+ * backend. Real production card processing needs actual PSP-level infrastructure
+ * this repo has no path to certify, not more Kotlin -- but `chargeCard` below is a
+ * real demo card-authorization flow (real Luhn validation, real ledger legs, a real
+ * simulated decision), same "real simulation, not a real integration" bar every
+ * other blocked-on-external-access flow in this backend already holds itself to.
  */
 @Service
 class MerchantService(
@@ -61,6 +62,7 @@ class MerchantService(
     private val webhookDeliveryService: WebhookDeliveryService,
     private val transactionRepository: TransactionRepository,
     private val fraudRuleEngine: FraudRuleEngine,
+    private val demoCardAuthorizationService: DemoCardAuthorizationService,
 ) {
     // Toss Payments' real published fee schedule tiers wallet-based payments
     // ("Toss Pay") at 0.8%-1.8% depending on merchant volume (see
@@ -202,6 +204,79 @@ class MerchantService(
         // unreachable webhook endpoint can only delay the response, never roll back real money
         // that already moved.
         webhookDeliveryService.deliverPaymentStatusChanged(merchant.webhookUrl, resultMap + ("paymentIntentId" to intentId) + ("payerId" to payerUserId))
+        return resultMap
+    }
+
+    // Real demo card-processing flow (2026-07-17), closing the actionable half of this
+    // row's previously fully-blocked "POS, card processing" gap -- see
+    // DemoCardAuthorizationService's own doc comment for the real Luhn validation +
+    // simulated authorization this runs before any ledger posting. Unlike collect()'s
+    // QR flow, there is no real itunda payer wallet on the other side of a card charge
+    // (a real card is issued by a real bank/network outside this system) -- the debit
+    // leg goes to a real RAIL_SUSPENSE clearing account (card_network_clearing),
+    // same "money entering from outside the system" pattern WalletService's own
+    // external-rail transfers already use, rather than inventing a fake payer wallet.
+    @Transactional
+    fun chargeCard(
+        ownerUserId: String, amount: BigDecimal, description: String,
+        cardNumber: String, expiryMonth: Int, expiryYear: Int, cvc: String,
+    ): Map<String, Any?> {
+        val merchant = getMyMerchant(ownerUserId)
+        val merchantWallet = walletRepository.findById(merchant.walletId)
+            .orElseThrow { MerchantNoWalletException("Merchant settlement wallet not found") }
+
+        val authResult = demoCardAuthorizationService.authorize(cardNumber, expiryMonth, expiryYear, cvc)
+        if (authResult.status != CardAuthorizationStatus.APPROVED) {
+            throw CardDeclinedException(authResult.detail)
+        }
+
+        val fee = amount.multiply(feeRate).setScale(2, RoundingMode.HALF_UP)
+        val netToMerchant = amount.subtract(fee)
+
+        val result = ledgerService.postLedgerTransaction(
+            merchantWallet.currency,
+            listOf(
+                LedgerLeg("card_network_clearing", LedgerAccountType.RAIL_SUSPENSE, LedgerDirection.DEBIT, amount, "Card payment - ${merchant.businessName}"),
+                LedgerLeg(merchantWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "Card collection - $description"),
+                LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, fee, "Card payment fee - ${merchant.businessName}"),
+            ),
+        )
+
+        // "external_card" mirrors WalletService.confirmTransfer's own "external"
+        // recipientId convention for money that enters/leaves through a real external
+        // rail rather than another itunda wallet -- senderId/recipientId are plain
+        // strings with no FK constraint (confirmed directly against Transaction.kt).
+        // channel = "CARD" means this shows up in getReport()'s existing byChannel
+        // breakdown automatically, no changes needed there.
+        val transaction = Transaction(
+            id = result.transactionId,
+            referenceNumber = "CARD${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
+            senderId = "external_card_${authResult.last4}",
+            recipientId = merchant.ownerUserId,
+            fromWalletId = null,
+            toWalletId = merchantWallet.id,
+            amount = amount,
+            fee = fee,
+            currency = merchantWallet.currency,
+            type = TransactionType.PAYMENT,
+            status = TransactionStatus.COMPLETED,
+            description = "Card payment - ${merchant.businessName}",
+            channel = "CARD",
+            completedAt = Instant.now(),
+        )
+        transactionRepository.save(transaction)
+
+        val resultMap = mapOf(
+            "transactionId" to result.transactionId,
+            "merchantName" to merchant.businessName,
+            "amount" to amount,
+            "fee" to fee,
+            "status" to "COMPLETED",
+            "channel" to "CARD",
+            "cardLast4" to authResult.last4,
+            "completedAt" to Instant.now().toString(),
+        )
+        webhookDeliveryService.deliverPaymentStatusChanged(merchant.webhookUrl, resultMap + ("payerId" to "external_card_${authResult.last4}"))
         return resultMap
     }
 

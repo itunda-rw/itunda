@@ -30,6 +30,17 @@ export interface ReportDay {
   byChannel: Record<string, number>;
 }
 
+export interface CardChargeResult {
+  transactionId: string;
+  merchantName: string;
+  amount: number;
+  fee: number;
+  status: string;
+  channel: string;
+  cardLast4: string;
+  completedAt: string;
+}
+
 // GET /api/v1/merchant/me real-404s (MERCHANT_NOT_FOUND) when the caller hasn't
 // registered yet -- that's an expected, common state here (any itunda user can open
 // this app before ever becoming a merchant), not an error condition, so it's translated
@@ -61,6 +72,19 @@ export const setWebhookUrl = (webhookUrl: string) =>
     method: 'POST',
     body: JSON.stringify({ webhookUrl }),
   }).then((r) => r.merchant);
+
+// Real demo card-processing flow -- see MerchantService.chargeCard's own doc comment
+// on the backend for why this is a real Luhn-validated + simulated authorization, not
+// a real PSP integration. Idempotency-Key required, same convention as every other
+// money-moving endpoint this app calls.
+export const chargeCard = (
+  amount: number, description: string, cardNumber: string, expiryMonth: number, expiryYear: number, cvc: string,
+) =>
+  apiFetch<{ success: boolean } & CardChargeResult>('/api/v1/merchant/card/charge', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': crypto.randomUUID() },
+    body: JSON.stringify({ amount, description, cardNumber, expiryMonth, expiryYear, cvc }),
+  });
 
 export const getReport = (from?: string, to?: string) => {
   const params = new URLSearchParams();

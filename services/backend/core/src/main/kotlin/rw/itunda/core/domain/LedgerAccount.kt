@@ -37,6 +37,13 @@ class LedgerAccount(
             "insurance_premium_revenue" to "Insurance Premium Revenue",
             "rewards_expense" to "Rewards Expense",
             "insurance_claims_expense" to "Insurance Claims Expense",
+            // A dedicated clearing account for MerchantService.chargeCard's demo card
+            // authorization flow (2026-07-17) -- deliberately separate from the shared
+            // "rail_suspense" account (bills/airtime/external transfers) so card
+            // settlement can be reconciled independently, matching how real accounting
+            // systems use a granular suspense account per settlement channel rather
+            // than one shared bucket.
+            "card_network_clearing" to "Card Network Settlement Clearing",
         )
     }
 }

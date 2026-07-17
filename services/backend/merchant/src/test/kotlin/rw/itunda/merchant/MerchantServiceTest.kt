@@ -59,7 +59,8 @@ class MerchantServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         every { transactionRepository.save(any()) } answers { firstArg() }
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine)
+        val demoCardAuthorizationService = DemoCardAuthorizationService()
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService)
 
         val ownerWallet = wallet("wallet_merchant", "owner_1")
         val merchant = Merchant(
@@ -256,6 +257,67 @@ class MerchantServiceTest : BehaviorSpec({
                 verify(exactly = 1) { webhookDeliveryService.deliverPaymentStatusChanged("https://merchant.example/hooks", any()) }
             }
         }
+
+        When("charging a real Luhn-valid demo test card that authorizes") {
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
+            every { walletRepository.findById("wallet_merchant") } returns Optional.of(ownerWallet)
+            val legsSlot = slot<List<LedgerLeg>>()
+            every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_card_1", emptyList())
+
+            val result = service.chargeCard(
+                "owner_1", BigDecimal("8000"), "2x Coffee",
+                DemoCardAuthorizationService.TEST_CARD_APPROVE, 12, 2030, "123",
+            )
+
+            Then("it posts real ledger legs from a real clearing account, not a fake payer wallet") {
+                val clearingLeg = legsSlot.captured.first { it.accountType == LedgerAccountType.RAIL_SUSPENSE }
+                clearingLeg.accountId shouldBe "card_network_clearing"
+                clearingLeg.direction shouldBe LedgerDirection.DEBIT
+                clearingLeg.amount shouldBe BigDecimal("8000")
+
+                val merchantLeg = legsSlot.captured.first { it.accountType == LedgerAccountType.WALLET }
+                merchantLeg.accountId shouldBe "wallet_merchant"
+                merchantLeg.direction shouldBe LedgerDirection.CREDIT
+                merchantLeg.amount shouldBe BigDecimal("7880.00")
+            }
+            Then("it saves a real CARD-channel Transaction and returns a real result") {
+                result["channel"] shouldBe "CARD"
+                result["status"] shouldBe "COMPLETED"
+                verify(exactly = 1) { transactionRepository.save(any()) }
+            }
+        }
+
+        When("charging a demo test card that declines") {
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
+            every { walletRepository.findById("wallet_merchant") } returns Optional.of(ownerWallet)
+
+            Then("it throws CardDeclinedException before ever touching the ledger -- a real decline must not move money") {
+                try {
+                    service.chargeCard(
+                        "owner_1", BigDecimal("5000"), "Declined test",
+                        DemoCardAuthorizationService.TEST_CARD_DECLINE_GENERIC, 12, 2030, "123",
+                    )
+                    error("expected CardDeclinedException")
+                } catch (e: CardDeclinedException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                    verify(exactly = 0) { transactionRepository.save(any()) }
+                }
+            }
+        }
+
+        When("charging a card number that fails the real Luhn checksum") {
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
+            every { walletRepository.findById("wallet_merchant") } returns Optional.of(ownerWallet)
+
+            Then("it throws CardDeclinedException as an invalid card, never touching the ledger") {
+                try {
+                    service.chargeCard("owner_1", BigDecimal("5000"), "Bad card", "1234567812345678", 12, 2030, "123")
+                    error("expected CardDeclinedException")
+                } catch (e: CardDeclinedException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
     }
 
     Given("a registered merchant with no webhook configured yet") {
@@ -271,7 +333,8 @@ class MerchantServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         every { transactionRepository.save(any()) } answers { firstArg() }
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine)
+        val demoCardAuthorizationService = DemoCardAuthorizationService()
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService)
 
         val merchant = Merchant(id = "merchant_3", ownerUserId = "owner_3", walletId = "wallet_3", businessName = "Test Shop")
         every { merchantRepository.findByOwnerUserId("owner_3") } returns merchant
@@ -295,7 +358,8 @@ class MerchantServiceTest : BehaviorSpec({
         val webhookDeliveryService = mockk<WebhookDeliveryService>(relaxed = true)
         val transactionRepository = mockk<TransactionRepository>()
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine)
+        val demoCardAuthorizationService = DemoCardAuthorizationService()
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService)
 
         val merchant = Merchant(id = "merchant_4", ownerUserId = "owner_4", walletId = "wallet_4", businessName = "Report Cafe")
         every { merchantRepository.findByOwnerUserId("owner_4") } returns merchant

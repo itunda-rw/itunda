@@ -37,7 +37,13 @@ class SecurityConfig(
         val config = CorsConfiguration()
         config.allowedOrigins = allowedOrigins
         config.allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-        config.allowedHeaders = listOf("Authorization", "Content-Type")
+        // Real bug found live (2026-07-17): merchant-mfe's card-charge screen was the
+        // first browser-based flow in this repo to ever send the real Idempotency-Key
+        // header itunda's own money-moving POST endpoints require -- every prior MFE
+        // flow either didn't need it (QR generation) or was only ever exercised via
+        // curl, not a real browser, so this CORS preflight failure was never hit before.
+        // A real headless-Chromium check caught a real net::ERR_FAILED, not a guess.
+        config.allowedHeaders = listOf("Authorization", "Content-Type", "Idempotency-Key")
         config.allowCredentials = true
         val source = UrlBasedCorsConfigurationSource()
         source.registerCorsConfiguration("/**", config)

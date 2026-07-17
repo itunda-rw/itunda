@@ -1,10 +1,41 @@
 import { useState } from 'react';
 import QRCode from 'qrcode';
-import { RefreshCw } from 'lucide-react';
+import { CreditCard, RefreshCw } from 'lucide-react';
 import { ApiError } from '../lib/api';
-import { generateQr, paymentIntentQrPayload, type PaymentIntent } from '../lib/merchant';
+import { chargeCard, generateQr, paymentIntentQrPayload, type CardChargeResult, type PaymentIntent } from '../lib/merchant';
+
+type Mode = 'QR' | 'CARD';
 
 export default function CollectScreen() {
+  const [mode, setMode] = useState<Mode>('QR');
+
+  return (
+    <div style={{ maxWidth: '400px' }}>
+      <div className="toss-card" style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px' }}>
+        {(['QR', 'CARD'] as const).map((m) => (
+          <button
+            key={m}
+            onClick={() => setMode(m)}
+            style={{
+              flex: 1,
+              padding: '10px',
+              borderRadius: '10px',
+              fontSize: '14px',
+              fontWeight: 700,
+              color: mode === m ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+              backgroundColor: mode === m ? 'var(--toss-blue)' : 'transparent',
+            }}
+          >
+            {m === 'QR' ? 'QR code' : 'Card'}
+          </button>
+        ))}
+      </div>
+      {mode === 'QR' ? <QrCollect /> : <CardCollect />}
+    </div>
+  );
+}
+
+function QrCollect() {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [intent, setIntent] = useState<PaymentIntent | null>(null);
@@ -57,7 +88,7 @@ export default function CollectScreen() {
   }
 
   return (
-    <div className="toss-card" style={{ maxWidth: '400px' }}>
+    <div className="toss-card">
       <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>Collect a payment</h2>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -91,6 +122,149 @@ export default function CollectScreen() {
         )}
         <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
           {submitting ? 'Generating…' : 'Generate QR code'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// Real demo card-processing UI -- backed by MerchantService.chargeCard's real Luhn
+// validation + simulated authorization (see that file's own doc comment for why this
+// is a genuine demo, not a real PSP integration, and why that's the honest, correct
+// scope). itunda's own fixed demo test cards (same convention real PSPs like Stripe
+// publish) let a real person testing this screen reliably see both outcomes.
+function CardCollect() {
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiryMonth, setExpiryMonth] = useState('');
+  const [expiryYear, setExpiryYear] = useState('');
+  const [cvc, setCvc] = useState('');
+  const [result, setResult] = useState<CardChargeResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    setResult(null);
+    try {
+      const charge = await chargeCard(
+        Number(amount), description, cardNumber.replace(/\s/g, ''), Number(expiryMonth), Number(expiryYear), cvc,
+      );
+      setResult(charge);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not charge this card.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const reset = () => {
+    setResult(null);
+    setAmount('');
+    setDescription('');
+    setCardNumber('');
+    setExpiryMonth('');
+    setExpiryYear('');
+    setCvc('');
+  };
+
+  if (result) {
+    return (
+      <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px', textAlign: 'center' }}>
+        <CreditCard size={40} color="var(--toss-blue)" />
+        <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Card charged</h2>
+        <p style={{ fontSize: '24px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
+          {result.amount.toLocaleString()} RWF
+        </p>
+        <p style={{ fontSize: '14px', color: 'var(--toss-grey-500)' }}>
+          •••• {result.cardLast4} · fee {result.fee.toLocaleString()} RWF
+        </p>
+        <button className="toss-btn toss-btn-secondary" style={{ gap: '6px', padding: '10px 20px' }} onClick={reset}>
+          <RefreshCw size={14} /> Charge another card
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="toss-card">
+      <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>Charge a card</h2>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+        Demo authorization only — try 4242 4242 4242 4242 (approves) or 4000 0000 0000 0002 (declines).
+      </p>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Amount (RWF)</span>
+          <input
+            type="number"
+            min="1"
+            step="1"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="8000"
+            required
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+          />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Description</span>
+          <input
+            type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="2x Coffee"
+            required
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+          />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Card number</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={cardNumber}
+            onChange={(e) => setCardNumber(e.target.value)}
+            placeholder="4242 4242 4242 4242"
+            required
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+          />
+        </label>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Expiry month</span>
+            <input
+              type="number" min="1" max="12" value={expiryMonth} onChange={(e) => setExpiryMonth(e.target.value)}
+              placeholder="12" required
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+            />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Expiry year</span>
+            <input
+              type="number" min="2026" value={expiryYear} onChange={(e) => setExpiryYear(e.target.value)}
+              placeholder="2030" required
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+            />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>CVC</span>
+            <input
+              type="text" inputMode="numeric" value={cvc} onChange={(e) => setCvc(e.target.value)}
+              placeholder="123" required
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+            />
+          </label>
+        </div>
+        {error && (
+          <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">
+            {error}
+          </p>
+        )}
+        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+          {submitting ? 'Charging…' : 'Charge card'}
         </button>
       </form>
     </div>

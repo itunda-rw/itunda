@@ -27,6 +27,14 @@ import java.time.format.DateTimeParseException
 data class RegisterMerchantRequest(val businessName: String)
 data class GenerateQrRequest(val amount: BigDecimal, val description: String)
 data class SetWebhookUrlRequest(val webhookUrl: String)
+data class ChargeCardRequest(
+    val amount: BigDecimal,
+    val description: String,
+    val cardNumber: String,
+    val expiryMonth: Int,
+    val expiryYear: Int,
+    val cvc: String,
+)
 
 @RestController
 @RequestMapping("/api/v1/merchant")
@@ -75,6 +83,24 @@ class MerchantController(
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/merchant/collect/$intentId", idempotencyKey, intentId) {
             200 to merchantService.collect(currentUser.userId, intentId)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    // Real demo card-processing endpoint (2026-07-17) -- see
+    // MerchantService.chargeCard's own doc comment. Idempotency-Key required, same
+    // convention as every other money-moving endpoint in this backend.
+    @PostMapping("/card/charge")
+    fun chargeCard(
+        @RequestBody request: ChargeCardRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/merchant/card/charge", idempotencyKey, request) {
+            200 to merchantService.chargeCard(
+                currentUser.userId, request.amount, request.description,
+                request.cardNumber, request.expiryMonth, request.expiryYear, request.cvc,
+            )
         }
         return ResponseEntity.status(status).body(body)
     }
@@ -130,6 +156,10 @@ class MerchantController(
     @ExceptionHandler(SelfPaymentException::class)
     fun handleSelfPayment(ex: SelfPaymentException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("SELF_PAYMENT_NOT_ALLOWED", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(CardDeclinedException::class)
+    fun handleCardDeclined(ex: CardDeclinedException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("CARD_DECLINED", ex.message ?: "Card declined"))
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) =
