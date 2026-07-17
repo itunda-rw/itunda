@@ -423,5 +423,13 @@ exists anymore. The Express backend was fully ported to `services/backend` and t
 real, smaller, deliberately-kept-separate MSA prototype). If any other document in this repo
 still describes `backend/src/...` paths, treat it as stale — see `docs/ARCHITECTURE.md`'s own
 doc-staleness notes for which ones were already caught and fixed as of this pass
-(`docs/DEPLOYMENT.md`, `docs/TOSS_FEATURE_SPECIFICATION.md`) and which are still open
-(`docs/API_SPECIFICATION.md`, `docs/IMPLEMENTATION_GUIDE.md`, `docs/PAYMENTS.md`).
+(`docs/DEPLOYMENT.md`, `docs/TOSS_FEATURE_SPECIFICATION.md`). **Update, 2026-07-17: the other
+three named here are no longer stale either** — `docs/PAYMENTS.md` and
+`docs/IMPLEMENTATION_GUIDE.md` were both already rewritten the same day this note was
+originally written (each carries its own "Rewritten 2026-07-13" header and correctly describes
+`services/backend`, not the deleted Express backend — re-checked directly, no remaining
+`backend/src/` references outside PAYMENTS.md's own deliberate "here's what this doc used to
+wrongly claim" callout). `docs/API_SPECIFICATION.md` has been kept current through this
+session's own passes (Auth/Rewards sections, changelog entries) — see its own "What Changed"
+section for the honest account of which earlier gaps in *that* doc's own changelog coverage
+remain (not the same thing as describing the deleted backend).
