@@ -2,13 +2,20 @@ package rw.itunda.merchant.web
 
 import org.springframework.data.domain.Pageable
 import org.springframework.data.web.PageableDefault
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.core.domain.MerchantStatus
+import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
+
+class ShoppingMerchantNotFoundException(message: String) : RuntimeException(message)
 
 // The real "browse partner merchants" half of "Toss Shopping" -- see
 // ShoppingCashbackService's own doc comment for why itunda's own real registered
@@ -18,7 +25,10 @@ import rw.itunda.core.web.pageMeta
 // browsing where they can earn cashback, not a public/partner-authenticated surface.
 @RestController
 @RequestMapping("/api/v1/shopping")
-class ShoppingController(private val merchantRepository: MerchantRepository) {
+class ShoppingController(
+    private val merchantRepository: MerchantRepository,
+    private val merchantProductRepository: MerchantProductRepository,
+) {
 
     @GetMapping("/merchants")
     fun getEligibleMerchants(@PageableDefault(size = 20) pageable: Pageable): ResponseEntity<Map<String, Any?>> {
@@ -32,4 +42,24 @@ class ShoppingController(private val merchantRepository: MerchantRepository) {
         }
         return ResponseEntity.ok(mapOf("success" to true, "merchants" to merchants) + pageMeta(page))
     }
+
+    // Real public per-merchant product browse -- the missing piece a buyer needs to see
+    // a specific seller's real catalog before checking out via the new Coupang-style
+    // rw.itunda.commerce module (POST /api/v1/orders needs a real, already-resolved
+    // productId per line item). MerchantProductController's own /merchant/products
+    // endpoint is deliberately owner-only (a merchant managing their own catalog); this
+    // is the read-only public counterpart a shopper needs instead, reusing the exact
+    // same real MerchantProductRepository.findByMerchantIdAndActiveTrue query
+    // MerchantProductService.getCatalog already established.
+    @GetMapping("/merchants/{merchantId}/products")
+    fun getMerchantProducts(@PathVariable merchantId: String): ResponseEntity<Map<String, Any?>> {
+        val merchant = merchantRepository.findById(merchantId)
+            .orElseThrow { ShoppingMerchantNotFoundException("Merchant not found") }
+        val products = merchantProductRepository.findByMerchantIdAndActiveTrue(merchant.id)
+        return ResponseEntity.ok(mapOf("success" to true, "merchant" to mapOf("id" to merchant.id, "businessName" to merchant.businessName), "products" to products))
+    }
+
+    @ExceptionHandler(ShoppingMerchantNotFoundException::class)
+    fun handleMerchantNotFound(ex: ShoppingMerchantNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_NOT_FOUND", ex.message ?: "Not found"))
 }

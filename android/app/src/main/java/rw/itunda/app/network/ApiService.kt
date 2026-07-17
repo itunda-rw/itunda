@@ -6,9 +6,12 @@ import okhttp3.Interceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
+import retrofit2.http.Path
+import retrofit2.http.Query
 import rw.itunda.app.BuildConfig
 
 // Mirrors services/backend/auth/src/main/kotlin/rw/itunda/auth/AuthDtos.kt exactly --
@@ -215,6 +218,99 @@ data class PartnerMiniAppDto(
 
 data class MiniAppCatalogResponse(val success: Boolean, val miniApps: List<PartnerMiniAppDto>)
 
+// Mirrors services/backend/messaging's real DTOs exactly (2026-07-18) -- backs the new
+// "Talk" bottom-nav tab (Kakao-style 1:1 chat). See rw.itunda.messaging.MessagingService
+// / MessagingController's own doc comments for the full backend account, including the
+// honest "poll-based delivery, no live transport yet" scope this mobile client matches.
+data class ConversationDto(
+    val id: String,
+    val participantAId: String,
+    val participantBId: String,
+    val lastMessageAt: String,
+    val createdAt: String,
+)
+
+// What GET /api/v1/messages/conversations actually returns per row -- a different,
+// flatter shape than ConversationDto above (MessagingService.ConversationSummary).
+data class ConversationSummaryDto(
+    val conversationId: String,
+    val otherUserId: String,
+    val otherUserName: String,
+    val lastMessageAt: String,
+    val lastMessagePreview: String?,
+    val unreadCount: Int,
+)
+
+data class MessageDto(
+    val id: String,
+    val conversationId: String,
+    val senderId: String,
+    val body: String,
+    val sentAt: String,
+    val readAt: String?,
+)
+
+data class StartConversationRequest(val phoneNumber: String? = null, val otherUserId: String? = null)
+data class SendMessageRequest(val body: String)
+
+data class ConversationResponse(val success: Boolean, val conversation: ConversationDto)
+data class ConversationsResponse(val success: Boolean, val conversations: List<ConversationSummaryDto>)
+data class MessagesResponse(val success: Boolean, val messages: List<MessageDto>)
+data class MessageResponse(val success: Boolean, val message: MessageDto)
+
+// Mirrors services/backend/marketplace's real DTOs exactly (2026-07-18) -- backs the
+// new "Hood" bottom-nav tab (당근마켓/Danggeun-style neighborhood marketplace). See
+// rw.itunda.marketplace.MarketplaceService's own doc comment for the honest "no real
+// location data" scope this mobile client inherits unchanged.
+data class ListingDto(
+    val id: String,
+    val sellerId: String,
+    val title: String,
+    val description: String,
+    val price: Double,
+    val category: String,
+    val status: String,
+    val createdAt: String,
+)
+
+data class CreateListingRequest(val title: String, val description: String, val price: Double, val category: String)
+data class ListingResponse(val success: Boolean, val listing: ListingDto)
+data class ListingsResponse(val success: Boolean, val listings: List<ListingDto>)
+data class ContactSellerResponse(val success: Boolean, val conversation: ConversationDto)
+
+// Mirrors services/backend/commerce's real DTOs exactly (2026-07-18) -- backs the new
+// "Shop" bottom-nav tab (Coupang-style multi-item checkout), replacing the old Shop
+// tab's Toss-Shopping-cashback content. See rw.itunda.commerce.OrderService's own doc
+// comment for the honest "self-declared fulfillment, no real courier network" scope.
+data class ShoppingMerchantDto(val merchantId: String, val businessName: String, val cashbackRate: String)
+data class ShoppingMerchantsResponse(val success: Boolean, val merchants: List<ShoppingMerchantDto>)
+
+// Mirrors services/backend/core's real MerchantProduct entity exactly.
+data class MerchantProductDto(val id: String, val merchantId: String, val name: String, val price: Double, val active: Boolean, val createdAt: String)
+data class MerchantSummaryDto(val id: String, val businessName: String)
+data class MerchantProductsResponse(val success: Boolean, val merchant: MerchantSummaryDto, val products: List<MerchantProductDto>)
+
+data class OrderItemRequest(val productId: String, val quantity: Int)
+data class PlaceOrderRequest(val merchantId: String, val items: List<OrderItemRequest>, val deliveryAddress: String)
+data class UpdateOrderStatusRequest(val status: String)
+
+data class OrderDto(
+    val id: String,
+    val buyerId: String,
+    val merchantId: String,
+    val deliveryAddress: String,
+    val totalAmount: Double,
+    val fee: Double,
+    val transactionId: String,
+    val status: String,
+    val createdAt: String,
+    val updatedAt: String,
+)
+
+data class OrderItemDto(val id: String, val orderId: String, val productId: String, val productName: String, val unitPrice: Double, val quantity: Int)
+data class OrderDetailResponse(val success: Boolean, val order: OrderDto, val items: List<OrderItemDto>)
+data class OrdersResponse(val success: Boolean, val orders: List<OrderDto>)
+
 // Retrofit Interface to map to your Spring endpoints -- all require the real
 // Bearer token NetworkClient's authInterceptor now injects (2026-07-11).
 interface ApiService {
@@ -264,6 +360,56 @@ interface ApiService {
     // miniapps/PartnerMiniAppLoader.kt for what actually happens when one of these is tapped.
     @GET("api/v1/mini-apps/catalog")
     suspend fun getMiniAppCatalog(): MiniAppCatalogResponse
+
+    // Real 1:1 messaging (2026-07-18) -- see rw.itunda.messaging.web.MessagingController.
+    @POST("api/v1/messages/conversations")
+    suspend fun startConversation(@Body request: StartConversationRequest): ConversationResponse
+
+    @GET("api/v1/messages/conversations")
+    suspend fun getConversations(): ConversationsResponse
+
+    @GET("api/v1/messages/conversations/{id}/messages")
+    suspend fun getMessages(@Path("id") conversationId: String): MessagesResponse
+
+    @POST("api/v1/messages/conversations/{id}/messages")
+    suspend fun sendMessage(@Path("id") conversationId: String, @Body request: SendMessageRequest): MessageResponse
+
+    // Real 당근마켓-style marketplace (2026-07-18) -- see rw.itunda.marketplace.web.MarketplaceController.
+    @POST("api/v1/marketplace/listings")
+    suspend fun createListing(@Body request: CreateListingRequest): ListingResponse
+
+    @GET("api/v1/marketplace/listings")
+    suspend fun browseListings(@Query("category") category: String? = null): ListingsResponse
+
+    @GET("api/v1/marketplace/my-listings")
+    suspend fun getMyListings(): ListingsResponse
+
+    @POST("api/v1/marketplace/listings/{id}/mark-sold")
+    suspend fun markListingSold(@Path("id") listingId: String): ListingResponse
+
+    @DELETE("api/v1/marketplace/listings/{id}")
+    suspend fun removeListing(@Path("id") listingId: String): ListingResponse
+
+    @POST("api/v1/marketplace/listings/{id}/contact-seller")
+    suspend fun contactSeller(@Path("id") listingId: String): ContactSellerResponse
+
+    // Real per-merchant public product browse (2026-07-18) -- see
+    // rw.itunda.merchant.web.ShoppingController.getMerchantProducts.
+    @GET("api/v1/shopping/merchants")
+    suspend fun getShoppingMerchants(): ShoppingMerchantsResponse
+
+    @GET("api/v1/shopping/merchants/{id}/products")
+    suspend fun getMerchantProducts(@Path("id") merchantId: String): MerchantProductsResponse
+
+    // Real Coupang-style multi-item checkout (2026-07-18) -- see rw.itunda.commerce.web.OrderController.
+    @POST("api/v1/orders")
+    suspend fun placeOrder(@Header("Idempotency-Key") idempotencyKey: String, @Body request: PlaceOrderRequest): OrderDetailResponse
+
+    @GET("api/v1/orders/my-orders")
+    suspend fun getMyOrders(): OrdersResponse
+
+    @GET("api/v1/orders/{id}")
+    suspend fun getOrder(@Path("id") orderId: String): OrderDetailResponse
 }
 
 data class TransactionHistoryResponse(val success: Boolean, val transactions: List<TransactionDto>)

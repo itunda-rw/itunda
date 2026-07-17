@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.AttachMoney
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.CalendarMonth
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.Casino
+import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Checkroom
 import androidx.compose.material.icons.outlined.ChevronRight
@@ -45,6 +47,7 @@ import androidx.compose.material.icons.outlined.HomeWork
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.LocalShipping
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Payments
@@ -110,21 +113,24 @@ import rw.itunda.core.designsystem.theme.Tds
 // aliases (not a full rename) since this file's Composables all reference
 // these names throughout; the fix was making the values real, not renaming
 // every call site.
-private val TossBlue: Color
+// internal (not private): SuperAppTabs.kt (Talk/Hood/Shop -- the new
+// Messaging/Marketplace/Commerce tabs, 2026-07-18) shares this exact same visual
+// language rather than hand-rolling a second palette.
+internal val TossBlue: Color
     @Composable get() = Tds.colors.brand
 private val TossBackground: Color
     @Composable get() = Tds.colors.background
-private val TossCard: Color
+internal val TossCard: Color
     @Composable get() = Tds.colors.surface
-private val TossCardSoft: Color
+internal val TossCardSoft: Color
     @Composable get() = Tds.colors.surfaceSoft
-private val TossText: Color
+internal val TossText: Color
     @Composable get() = Tds.colors.textPrimary
-private val TossSecondary: Color
+internal val TossSecondary: Color
     @Composable get() = Tds.colors.textSecondary
-private val TossTertiary: Color
+internal val TossTertiary: Color
     @Composable get() = Tds.colors.textTertiary
-private val TossLine: Color
+internal val TossLine: Color
     @Composable get() = Tds.colors.divider
 private val TossChip: Color
     @Composable get() = Tds.colors.chip
@@ -133,20 +139,28 @@ private val TossChip: Color
 // FlatSection rows (갈아타기/서비스/외화/목돈굴리기/연금/대출 등) -- these are
 // brand/product colors in real Toss, not semantic theme colors, so unlike
 // TossBlue etc. above they intentionally stay constant across light/dark.
-private val AccentBlue = Color(0xFF3182F6)
-private val AccentTeal = Color(0xFF14AE85)
-private val AccentPurple = Color(0xFF7C5CFC)
-private val AccentOrange = Color(0xFFF2A93B)
-private val AccentRed = Color(0xFFFF5B5B)
+internal val AccentBlue = Color(0xFF3182F6)
+internal val AccentTeal = Color(0xFF14AE85)
+internal val AccentPurple = Color(0xFF7C5CFC)
+internal val AccentOrange = Color(0xFFF2A93B)
+internal val AccentRed = Color(0xFFFF5B5B)
 private val AccentPink = Color(0xFFEC5F8C)
-private val AccentGray = Color(0xFF6B7684)
+internal val AccentGray = Color(0xFF6B7684)
 
-private enum class TossTab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+// Real super-app bottom nav (2026-07-18): Home/Shop/Hood/Talk/My, replacing the
+// previous Home/Benefits/Shop/Pay/All layout now that itunda has real Coupang-style
+// commerce (Shop), 당근마켓-style marketplace (Hood), and Kakao-style messaging (Talk)
+// backends to put behind top-level tabs. Benefits and Pay lose their own tabs -- both
+// were already either fully static/promotional (Benefits) or backed by a dead,
+// never-wired QR button (Pay -- HomeTopBar's own scan icon has no onClick either) --
+// and are now reachable as real rows inside My instead of losing their reachability
+// outright.
+internal enum class TossTab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     Home("Home", Icons.Outlined.Home),
-    Benefits("Benefits", Icons.Outlined.CardGiftcard),
     Shop("Shop", Icons.Outlined.ShoppingBag),
-    Pay("Pay", Icons.Outlined.QrCodeScanner),
-    All("All", Icons.Outlined.Apps)
+    Hood("Hood", Icons.Outlined.LocationOn),
+    Talk("Talk", Icons.Outlined.Chat),
+    My("My", Icons.Outlined.Person)
 }
 
 /**
@@ -181,6 +195,14 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
         var savingsFlowStep by rememberSaveable { mutableStateOf<SavingsFlowStep?>(null) }
         var showTransactionHistory by rememberSaveable { mutableStateOf(false) }
         var showSettings by rememberSaveable { mutableStateOf(false) }
+        var showBenefits by rememberSaveable { mutableStateOf(false) }
+        var showPay by rememberSaveable { mutableStateOf(false) }
+        // Real "message seller" hand-off from Hood to Talk (2026-07-18) -- mirrors
+        // bank-mfe's BankDashboard.tsx pendingConversationId/onConsumedInitial pattern
+        // exactly: HoodTab's contactSeller() switches the selected tab AND stashes the
+        // real returned conversation id here, so TalkTab opens straight into that real
+        // chat thread instead of dropping the buyer on a conversation list.
+        var pendingConversationId by rememberSaveable { mutableStateOf<String?>(null) }
         var biometricError by remember { mutableStateOf<String?>(null) }
         val activity = androidx.compose.ui.platform.LocalContext.current as androidx.fragment.app.FragmentActivity
         val biometricAuth = remember(activity) { rw.itunda.core.identity.NIDABiometricAuth(activity) }
@@ -376,6 +398,23 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
             return@TdsTheme
         }
 
+        // Benefits/Pay folded into My as real full-screen entry points (2026-07-18)
+        // rather than dropped outright -- same reachability, one fewer top-level tab.
+        if (showBenefits) {
+            BackHandler { showBenefits = false }
+            Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
+                Box(modifier = Modifier.fillMaxSize().padding(padding)) { BenefitsTab(onBack = { showBenefits = false }) }
+            }
+            return@TdsTheme
+        }
+        if (showPay) {
+            BackHandler { showPay = false }
+            Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
+                Box(modifier = Modifier.fillMaxSize().padding(padding)) { PayTab(onBack = { showPay = false }) }
+            }
+            return@TdsTheme
+        }
+
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
@@ -396,10 +435,23 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                         onClaimInterest = { savingsFlowStep = SavingsFlowStep.ClaimInterest },
                         onOpenTransactionHistory = { showTransactionHistory = true },
                     )
-                    TossTab.Benefits -> BenefitsTab()
-                    TossTab.Shop -> ShopTab(viewModel)
-                    TossTab.Pay -> PayTab()
-                    TossTab.All -> AllTab(viewModel = viewModel, onOpenSettings = { showSettings = true })
+                    TossTab.Shop -> ShopTab()
+                    TossTab.Hood -> HoodTab(
+                        onMessageSeller = { conversationId ->
+                            pendingConversationId = conversationId
+                            selectedTab = TossTab.Talk
+                        },
+                    )
+                    TossTab.Talk -> TalkTab(
+                        initialConversationId = pendingConversationId,
+                        onConsumedInitial = { pendingConversationId = null },
+                    )
+                    TossTab.My -> AllTab(
+                        viewModel = viewModel,
+                        onOpenSettings = { showSettings = true },
+                        onOpenBenefits = { showBenefits = true },
+                        onOpenPay = { showPay = true },
+                    )
                 }
             }
         }
@@ -586,7 +638,7 @@ private fun HomeTopBar() {
 // that flexible space rather than causing overflow -- checked each of the 3 call
 // sites' surrounding layout before changing this shared component.
 @Composable
-private fun TopIconButton(
+internal fun TopIconButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     contentDescription: String,
     onClick: () -> Unit = {},
@@ -677,7 +729,7 @@ private fun WalletMiniRow(amount: String, subtitle: String, action: String) {
 }
 
 @Composable
-private fun SmallBlueButton(label: String) {
+internal fun SmallBlueButton(label: String) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
@@ -762,14 +814,14 @@ private fun ShellSection(title: String, rows: List<ShellRow>) {
 }
 
 @Composable
-private fun BenefitsTab() {
+private fun BenefitsTab(onBack: () -> Unit = {}) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)
     ) {
-        item { PlainTopBar("Benefits") }
+        item { BackTopBar("Benefits", onBack) }
         item { PromoBannerCard() }
         item { PointPill("P 137") }
         item { BenefitsVisitCard() }
@@ -778,39 +830,12 @@ private fun BenefitsTab() {
 }
 
 @Composable
-private fun ShopTab(viewModel: MainViewModel) {
-    val discoverItems by viewModel.discoverItems.collectAsState()
-
+private fun PayTab(onBack: () -> Unit = {}) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)
     ) {
-        item { ShopTopBar() }
-        item { CategoryTabsRow(listOf("Home", "Categories", "Cycling", "Deals", "Summer food")) }
-        item { ShopPromoCard() }
-        
-        if (discoverItems.isNotEmpty()) {
-            item {
-                ShellSection(
-                    title = "Discover",
-                    rows = discoverItems.take(3).map { item ->
-                        ShellRow(item.title, item.subtitle, item.badge ?: ">", Icons.Outlined.Storefront, AccentTeal)
-                    }
-                )
-            }
-        }
-
-        item { PointActionsCard() }
-    }
-}
-
-@Composable
-private fun PayTab() {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
-        verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)
-    ) {
-        item { PayTopBar() }
+        item { BackTopBar("Pay", onBack) }
         item { MapPlaceholder() }
         item { PayFeatureCard() }
         item { ShellSection("", listOf(
@@ -821,7 +846,12 @@ private fun PayTab() {
 }
 
 @Composable
-private fun AllTab(viewModel: MainViewModel, onOpenSettings: () -> Unit) {
+private fun AllTab(
+    viewModel: MainViewModel,
+    onOpenSettings: () -> Unit,
+    onOpenBenefits: () -> Unit = {},
+    onOpenPay: () -> Unit = {},
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
     val partnerMiniApps by viewModel.partnerMiniApps.collectAsState()
@@ -837,6 +867,18 @@ private fun AllTab(viewModel: MainViewModel, onOpenSettings: () -> Unit) {
         // reference more faithfully -- logout is one row inside it, not the trigger.
         item { AllTopBar(onOpenSettings = onOpenSettings) }
         item { SearchBar("Search") }
+        // Benefits/Pay folded in here (2026-07-18) -- both lost their own top-level
+        // tab when the bottom nav became Home/Shop/Hood/Talk/My, but stay just as
+        // reachable as a real row instead of being dropped.
+        item {
+            FlatSection(
+                "Quick links",
+                listOf(
+                    FlatRow("Pay", subtitle = "Scan or pay by code", icon = Icons.Outlined.QrCodeScanner, iconColor = AccentBlue, onClick = onOpenPay),
+                    FlatRow("Benefits", subtitle = "Points, coupons, rewards", icon = Icons.Outlined.CardGiftcard, iconColor = AccentOrange, onClick = onOpenBenefits),
+                ),
+            )
+        }
         item {
             IconGridSection("Quick access", listOf(
                 "Mini" to Icons.Outlined.Apps,
@@ -1040,7 +1082,7 @@ private fun MiniAppsSection(
     )
 }
 
-private data class FlatRow(
+internal data class FlatRow(
     val title: String,
     val subtitle: String? = null,
     val trailing: String? = null,
@@ -1065,7 +1107,7 @@ private data class FlatRow(
  * showChevron since both patterns can appear in the same screen.
  */
 @Composable
-private fun FlatSection(title: String, rows: List<FlatRow>) {
+internal fun FlatSection(title: String, rows: List<FlatRow>) {
     Column {
         Text(
             title,
@@ -1117,7 +1159,7 @@ private fun FlatSection(title: String, rows: List<FlatRow>) {
 }
 
 @Composable
-private fun PlainTopBar(title: String) {
+internal fun PlainTopBar(title: String) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text(title, color = TossText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
         Text("...", color = TossText, fontSize = 24.sp)
@@ -1228,21 +1270,6 @@ private fun CashbackChanceCard() {
 }
 
 @Composable
-private fun ShopTopBar() {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        SearchBar("Search products")
-        Spacer(modifier = Modifier.width(12.dp))
-        // Fixed (2026-07-11): standalone icon-only buttons, no adjacent text label --
-        // contentDescription = null left a screen reader with no way to know what
-        // either one does, unlike the many *decorative* icons elsewhere in this file
-        // that correctly stay null because they sit next to their own visible Text().
-        Icon(Icons.Outlined.Person, contentDescription = "Profile", tint = TossText)
-        Spacer(modifier = Modifier.width(12.dp))
-        Icon(Icons.Outlined.ShoppingCart, contentDescription = "Cart", tint = TossText)
-    }
-}
-
-@Composable
 private fun SearchBar(placeholder: String) {
     Box(
         modifier = Modifier
@@ -1254,70 +1281,27 @@ private fun SearchBar(placeholder: String) {
     }
 }
 
+// Real back affordance for Benefits/Pay now that both are full-screen entry points
+// reached from My rather than top-level tabs (2026-07-18) -- BackHandler alone covers
+// hardware/gesture back but not a visible on-screen way back, same reasoning
+// SettingsScreen.kt's own back row already established (reuses its exact icon).
 @Composable
-private fun CategoryTabsRow(tabs: List<String>) {
-    Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-        tabs.forEachIndexed { index, tab ->
-            Text(tab, color = if (index == 0) TossText else TossSecondary, fontSize = 17.sp, fontWeight = if (index == 0) FontWeight.Bold else FontWeight.Medium)
-        }
-    }
-}
-
-@Composable
-private fun ShopPromoCard() {
-    Card(
-        shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFDDEFFC)),
-        elevation = CardDefaults.cardElevation(defaultElevation = Tds.layout.cardElevation),
+internal fun BackTopBar(title: String, onBack: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
-            Text("10,000 RWF early-bird", color = Color(0xFFE25A61), fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Calcium + Magnesium\n90 tablets 3,900 RWF", color = Color(0xFF151515), fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
+        Box(
+            modifier = Modifier
+                .size(Tds.layout.minTouchTarget)
+                .clip(CircleShape)
+                .clickable(onClick = onBack),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Back", modifier = Modifier.size(18.dp), tint = TossText)
         }
-    }
-}
-
-@Composable
-private fun PointActionsCard() {
-    Card(
-        shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = TossBackground),
-        elevation = CardDefaults.cardElevation(defaultElevation = Tds.layout.cardElevation),
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text("Points and coupon tasks", color = TossText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                listOf(
-                    "Check-in" to Icons.Outlined.EventAvailable,
-                    "Scroll" to Icons.Outlined.Swipe,
-                    "Feed" to Icons.Outlined.DynamicFeed,
-                    "Cat" to Icons.Outlined.Pets,
-                    "Pick" to Icons.Outlined.Star
-                ).forEach { (label, icon) ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(TossCardSoft), contentAlignment = Alignment.Center) {
-                            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = TossText)
-                        }
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(label, color = TossSecondary, fontSize = 12.sp)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PayTopBar() {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text("itunda pay", color = TossText, fontWeight = FontWeight.ExtraBold, fontSize = 28.sp)
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            // Fixed (2026-07-11): standalone icon-only buttons -- "itunda pay" above
-            // is this screen's title, not a label for these two icons specifically.
-            Icon(Icons.Outlined.QrCodeScanner, contentDescription = "Scan QR code", tint = TossText)
-            Icon(Icons.Outlined.Public, contentDescription = "Language", tint = TossText)
-        }
+        Text(title, color = TossText, fontSize = 22.sp, fontWeight = FontWeight.Bold)
     }
 }
 
