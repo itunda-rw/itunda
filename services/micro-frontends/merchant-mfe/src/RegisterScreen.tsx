@@ -16,7 +16,7 @@ export default function RegisterScreen({ onRegistered }: { onRegistered: (mercha
       const merchant = await registerMerchant(businessName);
       onRegistered(merchant);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Registration failed.');
+      setError(err instanceof ApiError ? err.message : 'Could not register your business. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -34,7 +34,7 @@ export default function RegisterScreen({ onRegistered }: { onRegistered: (mercha
           <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>Register your business</h1>
         </div>
         <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginTop: '-8px' }}>
-          This account isn't a merchant yet. Register to start collecting real payments.
+          This account isn't a merchant yet. Register your business to start collecting payments.
         </p>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>

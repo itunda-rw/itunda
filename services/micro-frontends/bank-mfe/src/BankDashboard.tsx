@@ -211,8 +211,7 @@ function CertificateView() {
         <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Itunda Certificate</h2>
       </div>
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '20px' }}>
-        A real digital signing certificate, usable to sign real agreements inside itunda -- the same real shape as
-        Toss's own certificate, requiring your identity to already be verified.
+        A digital certificate you can use to sign agreements in Itunda. You'll need a verified identity first.
       </p>
 
       {certificate && certificate.status === 'ACTIVE' ? (
@@ -232,7 +231,7 @@ function CertificateView() {
         <div>
           {certificate && (
             <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
-              Previous certificate {certificate.status.toLowerCase()}.
+              Your previous certificate was {certificate.status.toLowerCase()}.
             </p>
           )}
           <button className="toss-btn toss-btn-primary" onClick={handleIssue} disabled={busy}>
@@ -244,7 +243,7 @@ function CertificateView() {
       {issuedPrivateKey && (
         <div style={{ marginTop: '20px', padding: '16px', borderRadius: '12px', backgroundColor: '#FFF4E5' }}>
           <p style={{ fontSize: '13px', fontWeight: 700, color: '#B25E09', marginBottom: '6px' }}>
-            Save this private key now -- it will never be shown again.
+            Save this private key now — you won't be able to see it again.
           </p>
           <p style={{ fontSize: '11px', fontFamily: 'monospace', wordBreak: 'break-all', color: '#B25E09' }}>{issuedPrivateKey}</p>
         </div>
@@ -280,15 +279,14 @@ function PayByCodeCard({ onPaid }: { onPaid: (result: CollectPaymentResult) => v
     <div className="toss-card" style={{ marginBottom: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Pay by code</h3>
       <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '14px' }}>
-        No camera scanner in this app yet -- enter the merchant's real payment code (the same id their QR encodes)
-        to complete a real purchase and earn real cashback.
+        No scanner handy? Enter the payment code the merchant shows you to pay instantly and earn cashback.
       </p>
       <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px' }}>
         <input
           type="text"
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          placeholder="pi_..."
+          placeholder="Payment code"
           required
           style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
         />
@@ -354,7 +352,7 @@ function ShoppingView() {
     <div>
       <PayByCodeCard onPaid={setPaymentResult} />
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px', padding: '0 4px' }}>
-        Real cashback on purchases at itunda's own registered merchants.
+        Earn cashback every time you shop with Itunda merchants.
       </p>
       {merchants.length === 0 ? (
         <div className="toss-card">

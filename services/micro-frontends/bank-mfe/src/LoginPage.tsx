@@ -19,7 +19,7 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
-        setError('Could not reach the backend. Is it running on the expected port?');
+        setError("Can't connect right now. Please try again in a moment.");
       }
     } finally {
       setSubmitting(false);
@@ -38,7 +38,7 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
           <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>Itunda</h1>
         </div>
         <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginTop: '-8px' }}>
-          Sign in with your itunda account.
+          Sign in to your Itunda account.
         </p>
 
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>

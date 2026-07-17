@@ -44,7 +44,7 @@ export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merc
               style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
             />
             <span style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
-              Real PAYMENT_STATUS_CHANGED events post here on every collection, retried up to 7 times over ~2.8 days.
+              We'll notify this address every time a payment completes. If it doesn't respond, we'll keep retrying for about 3 days.
             </span>
           </label>
 
@@ -104,6 +104,12 @@ function KybCard({ merchant }: { merchant: Merchant }) {
   const latestKyb = submissions?.filter((s) => s.documentType === 'BUSINESS_TIN').sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))[0] ?? null;
   const pending = latestKyb?.status === 'PENDING';
 
+  const autoCheckLabel: Record<string, string> = {
+    MATCHED: 'Your TIN checked out automatically.',
+    NOT_FOUND: "We couldn't find a match yet — a team member will take a look.",
+    INVALID_FORMAT: 'The TIN format looked off — a team member will double-check it.',
+  };
+
   return (
     <div className="toss-card">
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
@@ -115,10 +121,10 @@ function KybCard({ merchant }: { merchant: Merchant }) {
         <p style={{ fontSize: '13px', color: 'var(--toss-green)', fontWeight: 600 }}>Verified</p>
       ) : pending ? (
         <div>
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)', marginBottom: '4px' }}>Pending human review.</p>
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)', marginBottom: '4px' }}>We're reviewing your business details.</p>
           {latestKyb?.autoVerificationStatus && (
             <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
-              Auto-check: {latestKyb.autoVerificationStatus.replace(/_/g, ' ')}
+              {autoCheckLabel[latestKyb.autoVerificationStatus] ?? 'A team member will take a look soon.'}
             </p>
           )}
         </div>

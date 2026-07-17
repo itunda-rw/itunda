@@ -30,7 +30,7 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
     setLoadError(null);
     getMyMerchant()
       .then(setMerchant)
-      .catch((err) => setLoadError(err instanceof Error ? err.message : 'Failed to load.'));
+      .catch((err) => setLoadError(err instanceof Error ? err.message : 'Could not load your business account.'));
   };
 
   useEffect(load, []);

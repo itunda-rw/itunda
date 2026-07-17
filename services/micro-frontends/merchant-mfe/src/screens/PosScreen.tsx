@@ -128,7 +128,7 @@ function RegisterView() {
         {products.length === 0 ? (
           <div className="toss-card">
             <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-              No products yet -- add some in the Catalog tab first.
+              No products yet — add some in the Catalog tab first.
             </p>
           </div>
         ) : (
@@ -273,7 +273,7 @@ function QrCheckout({ amount, description, onDone }: { amount: number; descripti
       <div style={{ textAlign: 'center' }}>
         <img src={qrDataUrl} alt="Payment QR code" width={220} height={220} style={{ borderRadius: '16px', marginBottom: '12px' }} />
         <button className="toss-btn toss-btn-primary" style={{ width: '100%' }} onClick={onDone}>
-          Done -- new sale
+          Done — new sale
         </button>
       </div>
     );
@@ -320,9 +320,9 @@ function CardCheckout({ amount, description, onDone }: { amount: number; descrip
     return (
       <div style={{ textAlign: 'center' }}>
         <CreditCard size={32} color="var(--toss-blue)" style={{ marginBottom: '8px' }} />
-        <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '12px' }}>Card charged -- •••• {result.cardLast4}</p>
+        <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '12px' }}>Card charged — •••• {result.cardLast4}</p>
         <button className="toss-btn toss-btn-primary" style={{ width: '100%' }} onClick={onDone}>
-          Done -- new sale
+          Done — new sale
         </button>
       </div>
     );

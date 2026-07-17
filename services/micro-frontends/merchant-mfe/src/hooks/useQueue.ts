@@ -13,7 +13,7 @@ export function useQueue<T>(fetcher: () => Promise<T[]>) {
       const result = await fetcher();
       setItems(result);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to load.');
+      setError(err instanceof ApiError ? err.message : 'Could not load this. Please try again.');
     } finally {
       setRefreshing(false);
     }

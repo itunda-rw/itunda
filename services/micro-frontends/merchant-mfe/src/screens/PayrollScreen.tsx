@@ -70,7 +70,7 @@ function AddEmployeeForm({ onAdded }: { onAdded: () => void }) {
     <div className="toss-card">
       <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>Add an employee</h2>
       <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
-        Must be an existing itunda user's phone number -- payroll pays directly into their itunda wallet.
+        Must be an existing Itunda user's phone number — payroll pays directly into their wallet.
       </p>
       <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 2, minWidth: '180px' }}>

@@ -16,7 +16,7 @@ function App() {
 
   return (
     <OverlayProvider>
-      <Suspense fallback={<div>Loading Bank Data...</div>}>
+      <Suspense fallback={<div>Loading your account…</div>}>
         {authed ? <BankDashboard onLogout={() => setAuthed(false)} /> : <LoginPage onLogin={() => setAuthed(true)} />}
       </Suspense>
     </OverlayProvider>
