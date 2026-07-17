@@ -59,6 +59,16 @@ export interface ReconciliationRow {
   avgLatencyMs: number;
 }
 
+export interface TwoSidedReconciliationRow {
+  railId: string;
+  displayName: string;
+  itundaSuccessCount: number;
+  externalSettledCount: number;
+  matched: boolean;
+  discrepancy: number;
+  isExternalCountDemo: boolean;
+}
+
 export interface InsuranceClaim {
   id: string;
   policyId: string;
@@ -116,6 +126,11 @@ export const resolveIncident = (incidentId: string) =>
 export const fetchReconciliation = (date?: string) =>
   apiFetch<{ success: boolean; rails: ReconciliationRow[] }>(
     `/api/v1/system/reconciliation${date ? `?date=${date}` : ''}`,
+  ).then((r) => r.rails);
+
+export const fetchTwoSidedReconciliation = (date?: string) =>
+  apiFetch<{ success: boolean; rails: TwoSidedReconciliationRow[] }>(
+    `/api/v1/system/reconciliation/two-sided${date ? `?date=${date}` : ''}`,
   ).then((r) => r.rails);
 
 export const fetchInsuranceClaimsQueue = () =>
