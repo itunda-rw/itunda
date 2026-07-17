@@ -151,6 +151,28 @@ class SaroniteBrownfieldModule(
         authorizedCall(post("api/v1/insurance/enroll", body), promise, ::parseEnrollInsuranceResult)
     }
 
+    @ReactMethod
+    fun getReferralInfo(promise: Promise) {
+        authorizedCall(get("api/v1/rewards/referral"), promise, ::parseReferralInfo)
+    }
+
+    @ReactMethod
+    fun updateProfilePhoto(profilePhotoUrl: String, promise: Promise) {
+        val body = JsonObject().apply { addProperty("profilePhotoUrl", profilePhotoUrl) }
+        authorizedCall(put("api/v1/auth/profile/photo", body), promise, ::parseProfileResult)
+    }
+
+    @ReactMethod
+    fun requestEmailVerification(promise: Promise) {
+        authorizedCall(post("api/v1/auth/profile/verify-email", JsonObject()), promise, { Arguments.createMap() })
+    }
+
+    @ReactMethod
+    fun confirmEmailVerification(token: String, promise: Promise) {
+        val body = JsonObject().apply { addProperty("token", token) }
+        authorizedCall(post("api/v1/auth/profile/verify-email/confirm", body), promise, ::parseProfileResult)
+    }
+
     private fun get(path: String): Request.Builder? {
         val token = hostBridge.getAuthToken() ?: return null
         return Request.Builder()
@@ -167,6 +189,19 @@ class SaroniteBrownfieldModule(
             .header("Authorization", "Bearer $token")
             .header("Idempotency-Key", UUID.randomUUID().toString())
             .post(requestBody)
+    }
+
+    // First real PUT this bridge issues -- every prior endpoint was GET/POST. No
+    // Idempotency-Key: PUT /auth/profile/photo is naturally idempotent (it just sets
+    // the field to the given value, same effect no matter how many times it's called),
+    // unlike the money-moving POST endpoints above that need real replay protection.
+    private fun put(path: String, body: JsonObject): Request.Builder? {
+        val token = hostBridge.getAuthToken() ?: return null
+        val requestBody = body.toString().toRequestBody("application/json".toMediaType())
+        return Request.Builder()
+            .url("${hostBridge.getApiBaseUrl()}$path")
+            .header("Authorization", "Bearer $token")
+            .put(requestBody)
     }
 
     private fun authorizedCall(
@@ -378,6 +413,31 @@ class SaroniteBrownfieldModule(
         val result = Arguments.createMap()
         result.putString("message", root.get("message")?.asString ?: "Enrolled")
         root.getAsJsonObject("policy")?.let { result.putMap("policy", parsePolicy(it)) }
+        return result
+    }
+
+    // Real backend shape: services/backend/rewards's RewardsController.referral
+    // (GET /api/v1/rewards/referral) -- referralCode is nullable (accounts that
+    // predate the feature have none yet).
+    private fun parseReferralInfo(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val result = Arguments.createMap()
+        root.get("referralCode")?.takeIf { !it.isJsonNull }?.let { result.putString("referralCode", it.asString) }
+            ?: result.putNull("referralCode")
+        result.putInt("referredCount", root.get("referredCount")?.asInt ?: 0)
+        result.putInt("completedReferralCount", root.get("completedReferralCount")?.asInt ?: 0)
+        return result
+    }
+
+    // Real backend shape: services/backend/auth's PublicUser -- only the two fields
+    // task_profile eligibility actually needs on the mini-app side.
+    private fun parseProfileResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val user = root.getAsJsonObject("user") ?: root
+        val result = Arguments.createMap()
+        user.get("profilePhotoUrl")?.takeIf { !it.isJsonNull }?.let { result.putString("profilePhotoUrl", it.asString) }
+            ?: result.putNull("profilePhotoUrl")
+        result.putBoolean("emailVerified", user.get("emailVerified")?.asBoolean ?: false)
         return result
     }
 

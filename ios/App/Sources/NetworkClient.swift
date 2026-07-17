@@ -8,6 +8,7 @@ struct RegisterRequest: Encodable {
     let firstName: String
     let lastName: String
     let password: String
+    let referralCode: String?
 }
 
 struct LoginRequest: Encodable {

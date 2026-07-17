@@ -14,6 +14,7 @@ struct LoginScreen: View {
     @State private var password = ""
     @State private var firstName = ""
     @State private var lastName = ""
+    @State private var referralCode = ""
     @State private var isSubmitting = false
     @State private var errorMessage: String?
 
@@ -43,6 +44,8 @@ struct LoginScreen: View {
                         TextField("First name", text: $firstName)
                             .textFieldStyle()
                         TextField("Last name", text: $lastName)
+                            .textFieldStyle()
+                        TextField("Referral code (optional)", text: $referralCode)
                             .textFieldStyle()
                     }
 
@@ -102,8 +105,12 @@ struct LoginScreen: View {
         errorMessage = nil
         isSubmitting = true
         Task {
+            let trimmedReferralCode = referralCode.trimmingCharacters(in: .whitespaces)
             let result = isRegisterMode
-                ? await sessionManager.register(phoneNumber: phoneNumber, password: password, firstName: firstName, lastName: lastName)
+                ? await sessionManager.register(
+                    phoneNumber: phoneNumber, password: password, firstName: firstName, lastName: lastName,
+                    referralCode: trimmedReferralCode.isEmpty ? nil : trimmedReferralCode
+                )
                 : await sessionManager.login(phoneNumber: phoneNumber, password: password)
             isSubmitting = false
             if case let .failure(message) = result {

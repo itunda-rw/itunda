@@ -43,8 +43,9 @@ object SessionManager {
         firstName: String,
         lastName: String,
         email: String? = null,
+        referralCode: String? = null,
     ): AuthResult = runAuthCall {
-        NetworkClient.authApi.register(RegisterRequest(phoneNumber, email, firstName, lastName, password))
+        NetworkClient.authApi.register(RegisterRequest(phoneNumber, email, firstName, lastName, password, referralCode))
     }
 
     suspend fun logout() {

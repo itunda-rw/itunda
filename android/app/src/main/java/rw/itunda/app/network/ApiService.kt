@@ -19,6 +19,7 @@ data class RegisterRequest(
     val firstName: String,
     val lastName: String,
     val password: String,
+    val referralCode: String? = null,
 )
 
 data class LoginRequest(val phoneNumber: String, val password: String)

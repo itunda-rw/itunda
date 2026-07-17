@@ -178,8 +178,45 @@ final class SaroniteBrownfieldModule: NSObject {
         }
     }
 
+    @objc func getReferralInfo(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/rewards/referral", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+            [
+                // Explicit NSNull, not an omitted key -- ReferralInfo.referralCode is
+                // typed `string | null` on the JS side, not optional/undefined.
+                "referralCode": (root["referralCode"] as? String) ?? NSNull(),
+                "referredCount": (root["referredCount"] as? NSNumber)?.intValue ?? 0,
+                "completedReferralCount": (root["completedReferralCount"] as? NSNumber)?.intValue ?? 0,
+            ]
+        }
+    }
+
+    @objc func updateProfilePhoto(_ profilePhotoUrl: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/auth/profile/photo", method: "PUT", body: ["profilePhotoUrl": profilePhotoUrl], resolve: resolve, reject: reject, parse: Self.mapProfileResult)
+    }
+
+    // body: [:] (not nil) -- authorizedCall gates the real Content-Type/Idempotency-Key
+    // headers on body being non-nil, and this is a real POST even with nothing to send.
+    @objc func requestEmailVerification(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/auth/profile/verify-email", method: "POST", body: [:], resolve: resolve, reject: reject) { _ in [:] }
+    }
+
+    @objc func confirmEmailVerification(_ token: String, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/auth/profile/verify-email/confirm", method: "POST", body: ["token": token], resolve: resolve, reject: reject, parse: Self.mapProfileResult)
+    }
+
     @objc func addListener(_ eventName: String) {}
     @objc func removeListeners(_ count: NSNumber) {}
+
+    // Real backend shape: services/backend/auth's PublicUser, nested under "user" in
+    // both PUT /auth/profile/photo and POST /auth/profile/verify-email/confirm's real
+    // response body -- only the two fields task_profile eligibility actually needs.
+    private static func mapProfileResult(_ root: [String: Any]) -> [String: Any] {
+        let user = (root["user"] as? [String: Any]) ?? root
+        return [
+            "profilePhotoUrl": (user["profilePhotoUrl"] as? String) ?? NSNull(),
+            "emailVerified": user["emailVerified"] as? Bool ?? false,
+        ]
+    }
 
     private static func mapPolicy(_ p: [String: Any]) -> [String: Any] {
         [

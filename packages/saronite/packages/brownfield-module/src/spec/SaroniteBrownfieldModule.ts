@@ -129,6 +129,23 @@ export interface EnrollInsuranceResult {
   policy: InsurancePolicy;
 }
 
+/** Mirrors the response of `GET /rewards/referral`
+ * (services/backend/rewards's RewardsController.referral). */
+export interface ReferralInfo {
+  referralCode: string | null;
+  referredCount: number;
+  completedReferralCount: number;
+}
+
+/** Mirrors the response of `PUT /auth/profile/photo` and
+ * `POST /auth/profile/verify-email/confirm` (services/backend/auth's
+ * AuthController). Only the fields task_profile eligibility actually needs
+ * on the mini-app side -- the rest of PublicUser isn't relevant here. */
+export interface ProfileResult {
+  profilePhotoUrl: string | null;
+  emailVerified: boolean;
+}
+
 export interface SaroniteBrownfieldModuleConstants {
   /** The custom URL scheme the host app registered for returning to this mini-app. */
   schemeUri: string;
@@ -155,6 +172,10 @@ export interface SaroniteBrownfieldModuleSpec {
   getInsurancePlans(): Promise<InsurancePlansResult>;
   getMyPolicies(): Promise<MyPoliciesResult>;
   enrollInsurance(planId: string): Promise<EnrollInsuranceResult>;
+  getReferralInfo(): Promise<ReferralInfo>;
+  updateProfilePhoto(profilePhotoUrl: string): Promise<ProfileResult>;
+  requestEmailVerification(): Promise<void>;
+  confirmEmailVerification(token: string): Promise<ProfileResult>;
   /** Required by NativeEventEmitter on the old native-modules architecture. */
   addListener(eventName: string): void;
   removeListeners(count: number): void;

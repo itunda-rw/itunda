@@ -46,6 +46,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
         var password by remember { mutableStateOf("") }
         var firstName by remember { mutableStateOf("") }
         var lastName by remember { mutableStateOf("") }
+        var referralCode by remember { mutableStateOf("") }
         var isSubmitting by remember { mutableStateOf(false) }
         var errorMessage by remember { mutableStateOf<String?>(null) }
         val scope = rememberCoroutineScope()
@@ -55,7 +56,10 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
             isSubmitting = true
             scope.launch {
                 val result = if (isRegisterMode) {
-                    SessionManager.register(phoneNumber, password, firstName, lastName)
+                    SessionManager.register(
+                        phoneNumber, password, firstName, lastName,
+                        referralCode = referralCode.trim().ifBlank { null },
+                    )
                 } else {
                     SessionManager.login(phoneNumber, password)
                 }
@@ -97,6 +101,15 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     value = lastName,
                     onValueChange = { lastName = it },
                     label = { Text("Last name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = tdsTextFieldColors(),
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = referralCode,
+                    onValueChange = { referralCode = it },
+                    label = { Text("Referral code (optional)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     colors = tdsTextFieldColors(),

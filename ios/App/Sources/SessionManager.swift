@@ -36,10 +36,16 @@ final class SessionManager: ObservableObject {
         await runAuthCall { try await NetworkClient.shared.login(LoginRequest(phoneNumber: phoneNumber, password: password)) }
     }
 
-    func register(phoneNumber: String, password: String, firstName: String, lastName: String, email: String? = nil) async -> AuthResult {
+    func register(
+        phoneNumber: String, password: String, firstName: String, lastName: String,
+        email: String? = nil, referralCode: String? = nil
+    ) async -> AuthResult {
         await runAuthCall {
             try await NetworkClient.shared.register(
-                RegisterRequest(phoneNumber: phoneNumber, email: email, firstName: firstName, lastName: lastName, password: password)
+                RegisterRequest(
+                    phoneNumber: phoneNumber, email: email, firstName: firstName, lastName: lastName,
+                    password: password, referralCode: referralCode
+                )
             )
         }
     }

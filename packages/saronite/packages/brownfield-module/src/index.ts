@@ -19,4 +19,6 @@ export type {
   InsurancePolicy,
   MyPoliciesResult,
   EnrollInsuranceResult,
+  ReferralInfo,
+  ProfileResult,
 } from './spec/SaroniteBrownfieldModule';

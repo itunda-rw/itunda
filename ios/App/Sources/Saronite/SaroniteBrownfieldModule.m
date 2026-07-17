@@ -20,6 +20,10 @@ RCT_EXTERN_METHOD(claimRewardTask:(NSString *)taskId resolver:(RCTPromiseResolve
 RCT_EXTERN_METHOD(getInsurancePlans:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(getMyPolicies:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(enrollInsurance:(NSString *)planId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(getReferralInfo:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(updateProfilePhoto:(NSString *)profilePhotoUrl resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(requestEmailVerification:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(confirmEmailVerification:(NSString *)token resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
 RCT_EXTERN_METHOD(addListener:(NSString *)eventName)
 RCT_EXTERN_METHOD(removeListeners:(nonnull NSNumber *)count)
 

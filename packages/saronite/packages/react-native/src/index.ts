@@ -9,6 +9,10 @@ export {
   getInsurancePlans,
   getMyPolicies,
   enrollInsurance,
+  getReferralInfo,
+  updateProfilePhoto,
+  requestEmailVerification,
+  confirmEmailVerification,
 } from './async-bridges';
 export { getSchemeUri } from './constant-bridges';
 export { useVisibility } from './useVisibility';
@@ -26,4 +30,6 @@ export type {
   InsurancePolicy,
   MyPoliciesResult,
   EnrollInsuranceResult,
+  ReferralInfo,
+  ProfileResult,
 } from '@itunda/saronite-brownfield-module';
