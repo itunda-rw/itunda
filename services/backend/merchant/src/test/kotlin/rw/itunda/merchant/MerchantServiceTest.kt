@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Merchant
@@ -61,7 +62,8 @@ class MerchantServiceTest : BehaviorSpec({
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val demoCardAuthorizationService = DemoCardAuthorizationService()
         val shoppingCashbackService = mockk<ShoppingCashbackService>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter)
 
         val ownerWallet = wallet("wallet_merchant", "owner_1")
         val merchant = Merchant(
@@ -363,7 +365,8 @@ class MerchantServiceTest : BehaviorSpec({
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val demoCardAuthorizationService = DemoCardAuthorizationService()
         val shoppingCashbackService = mockk<ShoppingCashbackService>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter)
 
         val merchant = Merchant(id = "merchant_3", ownerUserId = "owner_3", walletId = "wallet_3", businessName = "Test Shop")
         every { merchantRepository.findByOwnerUserId("owner_3") } returns merchant
@@ -389,7 +392,8 @@ class MerchantServiceTest : BehaviorSpec({
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val demoCardAuthorizationService = DemoCardAuthorizationService()
         val shoppingCashbackService = mockk<ShoppingCashbackService>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter)
 
         val merchant = Merchant(id = "merchant_4", ownerUserId = "owner_4", walletId = "wallet_4", businessName = "Report Cafe")
         every { merchantRepository.findByOwnerUserId("owner_4") } returns merchant

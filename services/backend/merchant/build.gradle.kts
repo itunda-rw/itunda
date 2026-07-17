@@ -12,6 +12,10 @@ dependencyManagement {
 
 dependencies {
     implementation(project(":core"))
+    // For RateLimiter -- MerchantService.chargeCard's demo card-authorization endpoint
+    // needs the same real anti-abuse rate limit PartnerService/CertificateService
+    // already use, see MerchantService.kt's own doc comment on that call site.
+    implementation(project(":auth"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

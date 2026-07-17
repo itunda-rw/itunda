@@ -2,6 +2,7 @@ package rw.itunda.merchant
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Merchant
@@ -21,6 +22,7 @@ import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -64,6 +66,7 @@ class MerchantService(
     private val fraudRuleEngine: FraudRuleEngine,
     private val demoCardAuthorizationService: DemoCardAuthorizationService,
     private val shoppingCashbackService: ShoppingCashbackService,
+    private val rateLimiter: RateLimiter,
 ) {
     // Toss Payments' real published fee schedule tiers wallet-based payments
     // ("Toss Pay") at 0.8%-1.8% depending on merchant volume (see
@@ -238,6 +241,19 @@ class MerchantService(
         ownerUserId: String, amount: BigDecimal, description: String,
         cardNumber: String, expiryMonth: Int, expiryYear: Int, cvc: String,
     ): Map<String, Any?> {
+        // Real rate limit (2026-07-17, found by this pass's own security review) --
+        // DemoCardAuthorizationService.simulateOutcome APPROVEs ~85% of any Luhn-valid
+        // card number and this method credits that approval as real, spendable ledger
+        // balance into the merchant's real wallet. Unlike a real PSP integration (where
+        // a genuine issuer/network sits between an attempt and any money moving), this
+        // demo has no external gate at all -- without a limit here, a scripted burst of
+        // random Luhn-valid numbers against this one endpoint would mint real balance
+        // with no bound, the same class of risk PartnerService.register/CertificateService
+        // .issue already guard against on this exact codebase's own established
+        // convention. 10/minute comfortably covers a real busy shop's checkout pace
+        // while making brute-force card generation impractical.
+        rateLimiter.checkLimit("merchant:chargeCard:$ownerUserId", limit = 10, window = Duration.ofMinutes(1))
+
         val merchant = getMyMerchant(ownerUserId)
         val merchantWallet = walletRepository.findById(merchant.walletId)
             .orElseThrow { MerchantNoWalletException("Merchant settlement wallet not found") }
