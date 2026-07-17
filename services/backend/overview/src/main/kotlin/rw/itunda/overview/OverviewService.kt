@@ -16,10 +16,14 @@ data class SavingsSummary(val totalSaved: BigDecimal, val goalCount: Int)
 data class LoansSummary(val totalOutstanding: BigDecimal, val activeCount: Int)
 data class InvestmentsSummary(val totalCostBasis: BigDecimal, val holdingCount: Int)
 data class InsuranceSummary(val activePolicyCount: Int, val totalMonthlyPremium: BigDecimal)
-// Deliberately no `balance` field -- see LinkedAccount.kt's own doc comment for why:
-// itunda has no real provider access to fetch a live external balance from, and
-// fabricating one would misrepresent this as more integrated than it honestly is.
-data class LinkedAccountSummary(val id: String, val provider: String, val maskedAccountNumber: String, val status: String)
+// demoBalance (2026-07-17) is a real, honestly-labeled demo value -- see
+// LinkedAccount.kt's own doc comment. isDemoBalance is always true when present,
+// carried explicitly (not left for a client to infer) so no UI can accidentally
+// present it as a real live balance.
+data class LinkedAccountSummary(
+    val id: String, val provider: String, val maskedAccountNumber: String, val status: String,
+    val demoBalance: BigDecimal?, val demoBalanceCurrency: String?, val isDemoBalance: Boolean,
+)
 data class OverviewResult(
     val netWorth: BigDecimal,
     val accounts: List<AccountSummary>,
@@ -89,7 +93,12 @@ class OverviewService(
         // never got real consent, UNLINKED has been revoked.
         val linkedAccounts = linkedAccountRepository.findByUserIdOrderByLinkedAtDesc(userId)
             .filter { it.status == LinkedAccountStatus.LINKED }
-            .map { LinkedAccountSummary(it.id, it.provider, it.externalAccountNumberMasked, it.status.name) }
+            .map {
+                LinkedAccountSummary(
+                    it.id, it.provider, it.externalAccountNumberMasked, it.status.name,
+                    it.demoBalance, it.demoBalanceCurrency, isDemoBalance = it.demoBalance != null,
+                )
+            }
 
         val netWorth = walletTotal + savingsTotal + costBasisTotal - outstandingTotal
 

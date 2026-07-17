@@ -26,6 +26,7 @@ class LinkedAccountAlreadyUnlinkedException(message: String) : RuntimeException(
 class LinkedAccountService(
     private val linkedAccountRepository: LinkedAccountRepository,
     private val providerConnector: ProviderConnector,
+    private val demoExternalBalanceService: DemoExternalBalanceService,
 ) {
     @Transactional
     fun link(userId: String, provider: String, externalAccountNumber: String): LinkedAccount {
@@ -43,6 +44,12 @@ class LinkedAccountService(
 
         try {
             providerConnector.attempt(rail, "Account verification for $provider")
+            // Real demo balance (2026-07-17), only generated on a real successful
+            // verification -- see DemoExternalBalanceService's own doc comment. A
+            // VERIFICATION_FAILED account never got real consent, so it shouldn't show
+            // a balance of any kind, demo or otherwise.
+            account.demoBalance = demoExternalBalanceService.generate(provider, externalAccountNumber)
+            account.demoBalanceCurrency = "RWF"
         } catch (e: ProviderDeclinedException) {
             account.status = LinkedAccountStatus.VERIFICATION_FAILED
             account.failureReason = e.message

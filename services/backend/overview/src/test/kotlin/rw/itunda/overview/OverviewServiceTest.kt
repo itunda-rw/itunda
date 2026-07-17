@@ -52,7 +52,10 @@ class OverviewServiceTest : BehaviorSpec({
             InsurancePolicy(id = "p1", userId = "user_1", planId = "ins_1", planName = "Health Shield", category = "health", status = "active", startDate = LocalDate.now(), endDate = LocalDate.now().plusYears(1), monthlyPremium = BigDecimal("15000"), nextPaymentDate = LocalDate.now(), policyNumber = "POL-1"),
         )
         every { linkedAccountRepository.findByUserIdOrderByLinkedAtDesc("user_1") } returns listOf(
-            LinkedAccount(id = "linked_1", userId = "user_1", provider = "MTN MoMo", externalAccountNumberMasked = "•••• 1234", status = LinkedAccountStatus.LINKED),
+            LinkedAccount(
+                id = "linked_1", userId = "user_1", provider = "MTN MoMo", externalAccountNumberMasked = "•••• 1234",
+                status = LinkedAccountStatus.LINKED, demoBalance = BigDecimal("450000"), demoBalanceCurrency = "RWF",
+            ),
             LinkedAccount(id = "linked_2", userId = "user_1", provider = "Bank of Kigali", externalAccountNumberMasked = "•••• 5678", status = LinkedAccountStatus.UNLINKED),
         )
 
@@ -61,6 +64,8 @@ class OverviewServiceTest : BehaviorSpec({
 
             Then("net worth is wallets + savings + investment cost basis - active loan outstanding, not double-counted") {
                 // 50000 (wallet) + 20000 (savings) + 5000 (10 shares * 500 avgPrice) - 15000 (only the ACTIVE loan, not the PAID one) = 60000
+                // Deliberately does NOT include the linked account's real 450000 demo balance below --
+                // that's the actual point of the assertion two blocks down.
                 result.netWorth shouldBe BigDecimal("60000")
             }
             Then("each product summary reflects real data, not just the net figure") {
@@ -74,12 +79,17 @@ class OverviewServiceTest : BehaviorSpec({
                 result.insurance.activePolicyCount shouldBe 1
                 result.insurance.totalMonthlyPremium shouldBe BigDecimal("15000")
             }
-            Then("only genuinely linked external accounts surface, unlinked ones don't, and no balance is ever exposed") {
+            Then("only genuinely linked external accounts surface, unlinked ones don't") {
                 result.linkedAccounts.size shouldBe 1
                 result.linkedAccounts[0].id shouldBe "linked_1"
                 result.linkedAccounts[0].provider shouldBe "MTN MoMo"
                 result.linkedAccounts[0].maskedAccountNumber shouldBe "•••• 1234"
                 result.linkedAccounts[0].status shouldBe "LINKED"
+            }
+            Then("a real demo balance is carried through, explicitly marked as demo, and never silently presented as real") {
+                result.linkedAccounts[0].demoBalance shouldBe BigDecimal("450000")
+                result.linkedAccounts[0].demoBalanceCurrency shouldBe "RWF"
+                result.linkedAccounts[0].isDemoBalance shouldBe true
             }
         }
     }

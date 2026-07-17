@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import java.math.BigDecimal
 import java.time.Instant
 
 enum class LinkedAccountStatus { LINKED, VERIFICATION_FAILED, UNLINKED }
@@ -19,12 +20,14 @@ enum class LinkedAccountStatus { LINKED, VERIFICATION_FAILED, UNLINKED }
  * flow in this backend already uses (transfers, bills, airtime) -- rather than
  * inventing a separate, parallel "fake OTP" system for this one feature.
  *
- * Deliberately never stores or surfaces a live external balance: itunda has no real
- * Open Banking / provider API access to fetch one from, and fabricating a number
- * would misrepresent this as more integrated than it is. A linked account is real
- * consent-and-registry state, honestly presented as "connected, no live balance
- * available" -- see OverviewService for how this is surfaced without contributing to
- * netWorth.
+ * A real live external balance fetch remains genuinely blocked: itunda has no real
+ * Open Banking / provider API access to fetch one from. `demoBalance` (2026-07-17) is
+ * a real, honestly-labeled demo balance instead -- deterministically generated at link
+ * time (see LinkedAccountService.link's own comment), same "real simulation, not a
+ * real integration" discipline DemoNidaVerificationService/DemoCardAuthorizationService
+ * already established, so a linked account shows something real-looking in the UI
+ * rather than being permanently blank. Never counted in real `netWorth` -- see
+ * OverviewService for why that stays a hard line, not a demo-blurred one.
  */
 @Entity
 @Table(name = "linked_accounts")
@@ -54,6 +57,12 @@ class LinkedAccount(
 
     @Column(name = "unlinked_at")
     var unlinkedAt: Instant? = null,
+
+    @Column(name = "demo_balance", precision = 18, scale = 2)
+    var demoBalance: BigDecimal? = null,
+
+    @Column(name = "demo_balance_currency", length = 8)
+    var demoBalanceCurrency: String? = null,
 ) {
     protected constructor() : this(
         id = "", userId = "", provider = "", externalAccountNumberMasked = "", status = LinkedAccountStatus.LINKED,
