@@ -3,6 +3,36 @@ import { useQueue } from '../hooks/useQueue';
 import { decideCompliance, fetchComplianceQueue, type KycSubmission } from '../lib/queues';
 import { QueueEmpty, QueueError, QueueHeader, QueueSkeleton } from '../QueueState';
 
+// Real demo NIDA structural pre-check result (see lib/queues.ts's KycSubmission doc
+// comment) -- a reviewer aid, never an auto-decision. Colors mirror this pre-check's own
+// honesty: MATCHED is a real positive signal (green), the other three are all real
+// reasons a human needs to look closer (amber), not a hard red "reject" verdict.
+function AutoVerificationBadge({ submission }: { submission: KycSubmission }) {
+  if (!submission.autoVerificationStatus) return null;
+  const isMatch = submission.autoVerificationStatus === 'MATCHED';
+  return (
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+        padding: '4px 10px',
+        borderRadius: '8px',
+        backgroundColor: isMatch ? '#E3F9E5' : '#FFF4E5',
+        color: isMatch ? '#1B8A3D' : '#B25E09',
+        fontSize: '12px',
+        fontWeight: 600,
+        marginTop: '6px',
+      }}
+    >
+      Auto-check: {submission.autoVerificationStatus.replace(/_/g, ' ')}
+      {submission.autoVerificationDetail && (
+        <span style={{ fontWeight: 400, opacity: 0.85 }}>· {submission.autoVerificationDetail}</span>
+      )}
+    </div>
+  );
+}
+
 function ComplianceCard({ submission, onDecided }: { submission: KycSubmission; onDecided: () => void }) {
   const [pending, setPending] = useState(false);
   const [rejecting, setRejecting] = useState(false);
@@ -38,6 +68,7 @@ function ComplianceCard({ submission, onDecided }: { submission: KycSubmission; 
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
           Submitted {new Date(submission.submittedAt).toLocaleString()}
         </p>
+        <AutoVerificationBadge submission={submission} />
       </div>
 
       {rejecting && (

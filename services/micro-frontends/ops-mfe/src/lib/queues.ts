@@ -29,6 +29,12 @@ export interface KycSubmission {
   reviewedBy: string | null;
   reviewedAt: string | null;
   decisionReason: string | null;
+  // Real demo NIDA structural pre-check (2026-07-17) -- see
+  // DemoNidaVerificationService's own doc comment. Never auto-decides; shown here so the
+  // human reviewer sees it before deciding, same as a real KYC dashboard would surface an
+  // automated pre-check result.
+  autoVerificationStatus: 'MATCHED' | 'NOT_FOUND' | 'INVALID_FORMAT' | 'UNSUPPORTED_DOCUMENT_TYPE' | null;
+  autoVerificationDetail: string | null;
 }
 
 export interface Incident {

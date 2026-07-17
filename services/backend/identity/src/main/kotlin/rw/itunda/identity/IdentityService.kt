@@ -17,6 +17,7 @@ class IdentityUserNotFoundException(message: String) : RuntimeException(message)
 class IdentityService(
     private val kycSubmissionRepository: KycSubmissionRepository,
     private val userRepository: UserRepository,
+    private val demoNidaVerificationService: DemoNidaVerificationService,
 ) {
 
     @Transactional
@@ -25,6 +26,12 @@ class IdentityService(
         if (existing.any { it.status == "PENDING" }) {
             throw SubmissionAlreadyPendingException("A KYC submission is already pending review")
         }
+        // Real automated pre-check, not a real NIDA lookup -- see
+        // DemoNidaVerificationService's own doc comment. Shown to the human reviewer,
+        // never auto-decides the submission on its own: a structural/simulated match is
+        // real signal, not the same thing as a real government database confirming this
+        // person's actual identity.
+        val autoResult = demoNidaVerificationService.verify(documentType, documentNumber)
         val submission = KycSubmission(
             id = "kyc_${UUID.randomUUID()}",
             userId = userId,
@@ -33,6 +40,8 @@ class IdentityService(
             documentReference = documentReference,
             status = "PENDING",
             submittedAt = Instant.now(),
+            autoVerificationStatus = autoResult.status.name,
+            autoVerificationDetail = autoResult.detail,
         )
         return kycSubmissionRepository.save(submission)
     }

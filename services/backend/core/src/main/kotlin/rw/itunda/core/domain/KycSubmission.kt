@@ -46,6 +46,15 @@ class KycSubmission(
 
     @Column(name = "decision_reason")
     var decisionReason: String? = null,
+
+    // Real, honestly-scoped demo NIDA structural verification (2026-07-17) -- see
+    // DemoNidaVerificationService's own doc comment. Populated at submit time, shown to
+    // the human reviewer alongside the submission; never auto-decides on its own.
+    @Column(name = "auto_verification_status", length = 24)
+    var autoVerificationStatus: String? = null,
+
+    @Column(name = "auto_verification_detail")
+    var autoVerificationDetail: String? = null,
 ) {
     protected constructor() : this(id = "", userId = "", documentType = "", documentNumber = "", documentReference = "", status = "", submittedAt = Instant.now())
 }
