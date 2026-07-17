@@ -2,6 +2,7 @@ package rw.itunda.app.miniapps
 
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import kotlinx.coroutines.runBlocking
@@ -71,15 +72,20 @@ class PartnerMiniAppLiveVerificationTest {
             PartnerMiniAppLoader.launch(
                 activity = hostActivity!!,
                 app = PartnerMiniAppDto(
-                    id = "partner_app_8ab9124e-03e0-47b4-a609-6d1eb4733859",
-                    partnerId = "partner_4a7583d8-6ae5-414e-87c1-3d504433e7fb",
-                    name = "Partner Demo Mini App",
-                    description = "Hello from Partner Demo Co - live verification bundle",
+                    id = "partner_app_aa868698-54ff-4e1e-8d57-eb7abcb1d1f2",
+                    partnerId = "partner_2138e03e-3006-4360-92ea-4903c8393a63",
+                    name = "OnDevice Partner Demo",
+                    description = "Real on-device Partner SDK verification bundle",
                     iconUrl = null,
-                    bundleUrl = "http://10.0.2.2:8098/partner-demo.bundle.js",
+                    // "localhost" here (not the emulator-only "10.0.2.2" alias) because this
+                    // test now runs on a real physical device reached via `adb reverse
+                    // tcp:8098 tcp:8098` -- the device's own "localhost:8098" is forwarded to
+                    // this host machine over the USB connection, same convention
+                    // BuildConfig.API_BASE_URL's own physical-device override already uses.
+                    bundleUrl = "http://localhost:8098/partner-demo.bundle.js",
                     permissions = "wallet:read",
                     status = "APPROVED",
-                    createdAt = "2026-07-17T12:19:29.083007Z",
+                    createdAt = "2026-07-17T14:41:38.290861Z",
                 ),
                 onError = { message -> loadError = message },
             )
@@ -92,7 +98,16 @@ class PartnerMiniAppLiveVerificationTest {
         // uses for the four first-party mini-apps.
         Thread.sleep(10000)
 
-        val resumedActivities = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
+        // ActivityLifecycleMonitorRegistry.getActivitiesInStage() asserts it's called on
+        // the main thread internally (ActivityLifecycleMonitorImpl.checkMainThread) --
+        // this test method itself runs on the instrumentation test-runner thread, not
+        // main, so the query must be dispatched via runOnMainSync, not called directly
+        // (a real bug this pass's own on-device run caught: the direct call threw
+        // IllegalStateException every time, never actually reaching the assertions below).
+        var resumedActivities: Collection<android.app.Activity> = emptyList()
+        InstrumentationRegistry.getInstrumentation().runOnMainSync {
+            resumedActivities = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
+        }
         val partnerActivity = resumedActivities.filterIsInstance<PartnerMiniAppActivity>().firstOrNull()
         assertNotNull(
             "PartnerMiniAppActivity should be the real, live, resumed Activity after " +
