@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useQueue } from '../hooks/useQueue';
+import { usePagedQueue } from '../hooks/useQueue';
 import { decideFraud, fetchFraudQueue, type FraudFlag } from '../lib/queues';
-import { QueueEmpty, QueueError, QueueHeader, QueueSkeleton } from '../QueueState';
+import { QueueEmpty, QueueError, QueueHeader, QueueLoadMore, QueueSkeleton } from '../QueueState';
 
 const RULE_LABEL: Record<FraudFlag['rule'], string> = {
   HIGH_VALUE: 'High value',
@@ -72,7 +72,7 @@ function FraudCard({ flag, onDecided }: { flag: FraudFlag; onDecided: (id: strin
 }
 
 export default function FraudQueue() {
-  const { items, error, refreshing, reload } = useQueue(fetchFraudQueue);
+  const { items, error, refreshing, reload, loadMore, loadingMore, totalElements, hasMore } = usePagedQueue(fetchFraudQueue);
 
   const handleDecided = (id: string) => {
     reload();
@@ -81,7 +81,7 @@ export default function FraudQueue() {
 
   return (
     <div>
-      <QueueHeader title="Fraud review" count={items?.length ?? null} onReload={reload} refreshing={refreshing} />
+      <QueueHeader title="Fraud review" count={totalElements} onReload={reload} refreshing={refreshing} />
       {error && <QueueError message={error} onRetry={reload} />}
       {!error && items === null && <QueueSkeleton />}
       {!error && items !== null && items.length === 0 && <QueueEmpty label="No unreviewed fraud flags." />}
@@ -90,6 +90,7 @@ export default function FraudQueue() {
           {items.map((flag) => (
             <FraudCard key={flag.id} flag={flag} onDecided={handleDecided} />
           ))}
+          {hasMore && <QueueLoadMore onLoadMore={loadMore} loading={loadingMore} />}
         </div>
       )}
     </div>

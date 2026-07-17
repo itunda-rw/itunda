@@ -38,6 +38,19 @@ export function QueueEmpty({ label }: { label: string }) {
   );
 }
 
+export function QueueLoadMore({ onLoadMore, loading }: { onLoadMore: () => void; loading: boolean }) {
+  return (
+    <button
+      className="toss-btn toss-btn-secondary"
+      onClick={onLoadMore}
+      disabled={loading}
+      style={{ alignSelf: 'center', marginTop: '12px', padding: '10px 20px' }}
+    >
+      {loading ? 'Loading…' : 'Load more'}
+    </button>
+  );
+}
+
 export function QueueHeader({ title, count, onReload, refreshing, children }: {
   title: string;
   count: number | null;

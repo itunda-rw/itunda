@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { AlertOctagon } from 'lucide-react';
-import { useQueue } from '../hooks/useQueue';
+import { usePagedQueue } from '../hooks/useQueue';
 import { ApiError } from '../lib/api';
 import { fetchSupportQueue, resolveSupportTicket, type SupportTicket } from '../lib/queues';
-import { QueueEmpty, QueueError, QueueHeader, QueueSkeleton } from '../QueueState';
+import { QueueEmpty, QueueError, QueueHeader, QueueLoadMore, QueueSkeleton } from '../QueueState';
 
 const CATEGORY_LABEL: Record<SupportTicket['category'], string> = {
   GENERAL: 'General',
@@ -122,11 +122,11 @@ function SupportCard({ ticket, onResolved }: { ticket: SupportTicket; onResolved
 }
 
 export default function SupportQueue() {
-  const { items, error, refreshing, reload } = useQueue(fetchSupportQueue);
+  const { items, error, refreshing, reload, loadMore, loadingMore, totalElements, hasMore } = usePagedQueue(fetchSupportQueue);
 
   return (
     <div>
-      <QueueHeader title="Support" count={items?.length ?? null} onReload={reload} refreshing={refreshing} />
+      <QueueHeader title="Support" count={totalElements} onReload={reload} refreshing={refreshing} />
       {error && <QueueError message={error} onRetry={reload} />}
       {!error && items === null && <QueueSkeleton />}
       {!error && items !== null && items.length === 0 && <QueueEmpty label="No open support tickets." />}
@@ -135,6 +135,7 @@ export default function SupportQueue() {
           {items.map((ticket) => (
             <SupportCard key={ticket.id} ticket={ticket} onResolved={reload} />
           ))}
+          {hasMore && <QueueLoadMore onLoadMore={loadMore} loading={loadingMore} />}
         </div>
       )}
     </div>

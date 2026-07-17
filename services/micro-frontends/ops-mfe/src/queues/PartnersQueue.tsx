@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useQueue } from '../hooks/useQueue';
+import { usePagedQueue } from '../hooks/useQueue';
 import { decidePartnerMiniApp, fetchPartnersQueue, type PartnerMiniAppSubmission } from '../lib/queues';
-import { QueueEmpty, QueueError, QueueHeader, QueueSkeleton } from '../QueueState';
+import { QueueEmpty, QueueError, QueueHeader, QueueLoadMore, QueueSkeleton } from '../QueueState';
 
 // Real third-party mini-app review queue -- closes the "allow partners to build apps
 // in itunda like apps in Toss" gap. See PartnerService.kt's own doc comment for the
@@ -98,11 +98,11 @@ function PartnerMiniAppCard({ submission, onDecided }: { submission: PartnerMini
 }
 
 export default function PartnersQueue() {
-  const { items, error, refreshing, reload } = useQueue(fetchPartnersQueue);
+  const { items, error, refreshing, reload, loadMore, loadingMore, totalElements, hasMore } = usePagedQueue(fetchPartnersQueue);
 
   return (
     <div>
-      <QueueHeader title="Partner mini-apps" count={items?.length ?? null} onReload={reload} refreshing={refreshing} />
+      <QueueHeader title="Partner mini-apps" count={totalElements} onReload={reload} refreshing={refreshing} />
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
         Third-party mini-app submissions built on itunda's Saronite SDK, pending review before appearing in the
         real published catalog.
@@ -115,6 +115,7 @@ export default function PartnersQueue() {
           {items.map((submission) => (
             <PartnerMiniAppCard key={submission.id} submission={submission} onDecided={reload} />
           ))}
+          {hasMore && <QueueLoadMore onLoadMore={loadMore} loading={loadingMore} />}
         </div>
       )}
     </div>

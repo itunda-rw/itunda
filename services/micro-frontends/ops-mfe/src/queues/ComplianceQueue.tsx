@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useQueue } from '../hooks/useQueue';
+import { usePagedQueue } from '../hooks/useQueue';
 import { decideCompliance, fetchComplianceQueue, type KycSubmission } from '../lib/queues';
-import { QueueEmpty, QueueError, QueueHeader, QueueSkeleton } from '../QueueState';
+import { QueueEmpty, QueueError, QueueHeader, QueueLoadMore, QueueSkeleton } from '../QueueState';
 
 // Real demo NIDA structural pre-check result (see lib/queues.ts's KycSubmission doc
 // comment) -- a reviewer aid, never an auto-decision. Colors mirror this pre-check's own
@@ -107,11 +107,11 @@ function ComplianceCard({ submission, onDecided }: { submission: KycSubmission; 
 }
 
 export default function ComplianceQueue() {
-  const { items, error, refreshing, reload } = useQueue(fetchComplianceQueue);
+  const { items, error, refreshing, reload, loadMore, loadingMore, totalElements, hasMore } = usePagedQueue(fetchComplianceQueue);
 
   return (
     <div>
-      <QueueHeader title="Compliance (KYC/KYB)" count={items?.length ?? null} onReload={reload} refreshing={refreshing} />
+      <QueueHeader title="Compliance (KYC/KYB)" count={totalElements} onReload={reload} refreshing={refreshing} />
       {error && <QueueError message={error} onRetry={reload} />}
       {!error && items === null && <QueueSkeleton />}
       {!error && items !== null && items.length === 0 && <QueueEmpty label="No pending KYC submissions." />}
@@ -120,6 +120,7 @@ export default function ComplianceQueue() {
           {items.map((submission) => (
             <ComplianceCard key={submission.id} submission={submission} onDecided={reload} />
           ))}
+          {hasMore && <QueueLoadMore onLoadMore={loadMore} loading={loadingMore} />}
         </div>
       )}
     </div>

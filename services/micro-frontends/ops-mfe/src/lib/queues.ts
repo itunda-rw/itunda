@@ -4,6 +4,21 @@ import { apiFetch } from './api';
 // KycSubmission, Incident, SupportTicket) -- see docs/TOSS_PARITY_MATRIX.md's Ops
 // Queues row for the source-of-truth controllers this talks to.
 
+// Real pagination (2026-07-17, see rw.itunda.core.web.pageMeta): the fraud, compliance,
+// partners, and support queue endpoints now return a bounded page (20 by default), not
+// an unbounded dump -- a queue past 20 pending items would otherwise be silently
+// truncated with no way for a reviewer to reach the rest. `usePagedQueue` (hooks/
+// useQueue.ts) is what actually surfaces `totalElements`/`hasMore` to each queue view.
+export interface PagedQueue<T> {
+  items: T[];
+  totalElements: number;
+  hasMore: boolean;
+}
+
+function toPagedQueue<T>(response: { queue: T[]; totalElements: number; totalPages: number; page: number }): PagedQueue<T> {
+  return { items: response.queue, totalElements: response.totalElements, hasMore: response.page + 1 < response.totalPages };
+}
+
 export interface FraudFlag {
   id: string;
   userId: string;
@@ -116,8 +131,10 @@ export interface SupportTicket {
   resolvedAt: string | null;
 }
 
-export const fetchFraudQueue = () =>
-  apiFetch<{ success: boolean; queue: FraudFlag[] }>('/api/v1/system/fraud/queue').then((r) => r.queue);
+export const fetchFraudQueue = (page = 0) =>
+  apiFetch<{ success: boolean; queue: FraudFlag[]; page: number; totalElements: number; totalPages: number }>(
+    `/api/v1/system/fraud/queue?page=${page}`,
+  ).then(toPagedQueue);
 
 export const decideFraud = (flagId: string, decision: 'CLEARED' | 'CONFIRMED') =>
   apiFetch(`/api/v1/system/fraud/${flagId}/decide`, {
@@ -125,8 +142,10 @@ export const decideFraud = (flagId: string, decision: 'CLEARED' | 'CONFIRMED') =
     body: JSON.stringify({ decision }),
   });
 
-export const fetchComplianceQueue = () =>
-  apiFetch<{ success: boolean; queue: KycSubmission[] }>('/api/v1/system/compliance/queue').then((r) => r.queue);
+export const fetchComplianceQueue = (page = 0) =>
+  apiFetch<{ success: boolean; queue: KycSubmission[]; page: number; totalElements: number; totalPages: number }>(
+    `/api/v1/system/compliance/queue?page=${page}`,
+  ).then(toPagedQueue);
 
 export const decideCompliance = (submissionId: string, approve: boolean, reason?: string) =>
   apiFetch(`/api/v1/system/compliance/${submissionId}/decide`, {
@@ -150,8 +169,10 @@ export const fetchTwoSidedReconciliation = (date?: string) =>
     `/api/v1/system/reconciliation/two-sided${date ? `?date=${date}` : ''}`,
   ).then((r) => r.rails);
 
-export const fetchPartnersQueue = () =>
-  apiFetch<{ success: boolean; queue: PartnerMiniAppSubmission[] }>('/api/v1/system/partners/queue').then((r) => r.queue);
+export const fetchPartnersQueue = (page = 0) =>
+  apiFetch<{ success: boolean; queue: PartnerMiniAppSubmission[]; page: number; totalElements: number; totalPages: number }>(
+    `/api/v1/system/partners/queue?page=${page}`,
+  ).then(toPagedQueue);
 
 export const decidePartnerMiniApp = (miniAppId: string, approve: boolean, reason?: string) =>
   apiFetch(`/api/v1/system/partners/${miniAppId}/decide`, {
@@ -168,8 +189,10 @@ export const decideInsuranceClaim = (claimId: string, approve: boolean, reason?:
     body: JSON.stringify({ approve, reason }),
   });
 
-export const fetchSupportQueue = () =>
-  apiFetch<{ success: boolean; queue: SupportTicket[] }>('/api/v1/system/support/queue').then((r) => r.queue);
+export const fetchSupportQueue = (page = 0) =>
+  apiFetch<{ success: boolean; queue: SupportTicket[]; page: number; totalElements: number; totalPages: number }>(
+    `/api/v1/system/support/queue?page=${page}`,
+  ).then(toPagedQueue);
 
 export const resolveSupportTicket = (ticketId: string, resolution: 'REFUNDED' | 'REJECTED', notes?: string) =>
   apiFetch(`/api/v1/system/support/${ticketId}/resolve`, {
