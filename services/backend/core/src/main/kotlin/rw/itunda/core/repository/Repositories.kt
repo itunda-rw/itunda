@@ -68,6 +68,12 @@ interface WalletRepository : JpaRepository<Wallet, String> {
     fun findByUserId(userId: String): List<Wallet>
     fun findByUserIdAndType(userId: String, type: WalletType): Wallet?
 
+    // Batch form of findByUserIdAndType -- PayrollService.runPayroll uses this to fetch
+    // every employee's wallet in one round trip instead of one findByUserIdAndType call
+    // per roster row (a real N+1 a large payroll roster would otherwise pay for on every
+    // run).
+    fun findByUserIdInAndType(userIds: List<String>, type: WalletType): List<Wallet>
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select w from Wallet w where w.id = :id")
     fun findByIdForUpdate(@Param("id") id: String): Optional<Wallet>

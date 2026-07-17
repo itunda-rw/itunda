@@ -140,8 +140,14 @@ class PayrollService(
             throw EmptyPayrollRosterException("No active employees on the payroll roster")
         }
 
+        // Batch-fetched in one query rather than one findByUserIdAndType call per roster
+        // row -- a real N+1 fixed live during this pass's own performance review (a
+        // payroll run for a large roster was issuing N wallet lookups instead of 1).
+        val walletsByUserId = walletRepository.findByUserIdInAndType(
+            roster.map { it.employeeUserId }, WalletType.MAIN,
+        ).associateBy { it.userId }
         val employeeWallets = roster.associateWith { employee ->
-            walletRepository.findByUserIdAndType(employee.employeeUserId, WalletType.MAIN)
+            walletsByUserId[employee.employeeUserId]
                 ?: throw EmployeeNoWalletException("${employee.employeeName} has no wallet to receive payroll")
         }
         val totalAmount = roster.fold(BigDecimal.ZERO) { acc, employee -> acc + employee.salaryAmount }

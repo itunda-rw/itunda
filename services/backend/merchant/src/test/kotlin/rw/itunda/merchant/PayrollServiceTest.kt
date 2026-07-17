@@ -176,8 +176,11 @@ class PayrollServiceTest : BehaviorSpec({
         val emp1 = PayrollEmployee(id = "payroll_emp_1", merchantId = "merchant_1", employeeUserId = "emp_1", employeeName = "Alice U", salaryAmount = BigDecimal("150000"))
         val emp2 = PayrollEmployee(id = "payroll_emp_2", merchantId = "merchant_1", employeeUserId = "emp_2", employeeName = "Bob T", salaryAmount = BigDecimal("120000"))
         every { payrollEmployeeRepository.findByMerchantIdAndActiveTrue("merchant_1") } returns listOf(emp1, emp2)
-        every { walletRepository.findByUserIdAndType("emp_1", WalletType.MAIN) } returns wallet("wallet_emp_1", "emp_1")
-        every { walletRepository.findByUserIdAndType("emp_2", WalletType.MAIN) } returns wallet("wallet_emp_2", "emp_2")
+        // Batch-fetched in one call (findByUserIdInAndType), not one findByUserIdAndType
+        // call per roster row -- see PayrollService.runPayroll's own comment on the N+1
+        // this replaced.
+        every { walletRepository.findByUserIdInAndType(listOf("emp_1", "emp_2"), WalletType.MAIN) } returns
+            listOf(wallet("wallet_emp_1", "emp_1"), wallet("wallet_emp_2", "emp_2"))
 
         val service = buildService(
             merchantRepository = merchantRepository, payrollEmployeeRepository = payrollEmployeeRepository,
@@ -221,7 +224,8 @@ class PayrollServiceTest : BehaviorSpec({
         }
 
         When("an employee on the roster has no wallet") {
-            every { walletRepository.findByUserIdAndType("emp_2", WalletType.MAIN) } returns null
+            every { walletRepository.findByUserIdInAndType(listOf("emp_1", "emp_2"), WalletType.MAIN) } returns
+                listOf(wallet("wallet_emp_1", "emp_1"))
 
             Then("the whole run fails before any ledger posting -- nobody gets partially paid") {
                 try {
