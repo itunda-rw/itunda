@@ -63,6 +63,7 @@ class MerchantService(
     private val transactionRepository: TransactionRepository,
     private val fraudRuleEngine: FraudRuleEngine,
     private val demoCardAuthorizationService: DemoCardAuthorizationService,
+    private val shoppingCashbackService: ShoppingCashbackService,
 ) {
     // Toss Payments' real published fee schedule tiers wallet-based payments
     // ("Toss Pay") at 0.8%-1.8% depending on merchant volume (see
@@ -190,6 +191,21 @@ class MerchantService(
         intent.paidByUserId = payerUserId
         paymentIntentRepository.save(intent)
 
+        // Real "Toss Shopping" cashback (2026-07-17) -- see ShoppingCashbackService's own
+        // doc comment for why this only applies here (a real itunda payer wallet exists)
+        // and not in chargeCard (an external card payer has no itunda wallet to credit).
+        // Explicitly caught, not propagated: a cashback failure must never roll back or
+        // fail a real payment that already succeeded, the same "auxiliary side-effect
+        // can't block real money movement" discipline the webhook call below already
+        // established -- REQUIRES_NEW alone doesn't guarantee that (an uncaught exception
+        // here would still roll back this method's own transaction), so this needs its
+        // own explicit try/catch, not just the inner service's propagation setting.
+        val cashbackEarned = try {
+            shoppingCashbackService.awardCashback(payerWallet, intent.amount, merchant.businessName)
+        } catch (e: Exception) {
+            BigDecimal.ZERO
+        }
+
         val resultMap = mapOf(
             "transactionId" to result.transactionId,
             "merchantName" to merchant.businessName,
@@ -198,6 +214,7 @@ class MerchantService(
             "status" to "COMPLETED",
             "channel" to channel,
             "completedAt" to Instant.now().toString(),
+            "cashbackEarned" to cashbackEarned,
         )
         // Real webhook delivery -- no-op if the merchant never registered a URL. Called last,
         // after the ledger transaction and intent status are already saved, so a slow or

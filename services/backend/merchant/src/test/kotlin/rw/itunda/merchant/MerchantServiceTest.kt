@@ -60,7 +60,8 @@ class MerchantServiceTest : BehaviorSpec({
         every { transactionRepository.save(any()) } answers { firstArg() }
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val demoCardAuthorizationService = DemoCardAuthorizationService()
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService)
+        val shoppingCashbackService = mockk<ShoppingCashbackService>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService)
 
         val ownerWallet = wallet("wallet_merchant", "owner_1")
         val merchant = Merchant(
@@ -165,6 +166,10 @@ class MerchantServiceTest : BehaviorSpec({
                 intent.paidByUserId shouldBe "payer_1"
                 intent.completedTransactionId shouldBe "ledgertxn_test"
             }
+            Then("real Toss Shopping cashback is awarded for the real payer wallet and purchase amount") {
+                verify(exactly = 1) { shoppingCashbackService.awardCashback(payerWallet, BigDecimal("5000"), "Kigali Coffee") }
+                result.containsKey("cashbackEarned") shouldBe true
+            }
         }
 
         When("collecting an already-completed payment intent") {
@@ -258,6 +263,29 @@ class MerchantServiceTest : BehaviorSpec({
             }
         }
 
+        When("the real cashback service itself fails during a collection") {
+            val payerWallet = wallet("wallet_payer3", "payer_3")
+            val intent = PaymentIntent(
+                id = "pi_cashback_fail", merchantId = "merchant_1", amount = BigDecimal("2000"),
+                description = "tea", expiresAt = Instant.now().plusSeconds(600),
+            )
+            every { paymentIntentRepository.findById("pi_cashback_fail") } returns Optional.of(intent)
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+            every { walletRepository.findByUserIdAndType("payer_3", WalletType.MAIN) } returns payerWallet
+            every { walletRepository.findById("wallet_merchant") } returns Optional.of(ownerWallet)
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_cb_fail", emptyList())
+            every { paymentIntentRepository.save(any()) } answers { firstArg() }
+            every { shoppingCashbackService.awardCashback(any(), any(), any()) } throws RuntimeException("simulated cashback outage")
+
+            val result = service.collect("payer_3", "pi_cashback_fail")
+
+            Then("the real payment still succeeds -- an auxiliary cashback failure must never roll back real money already moved") {
+                result["status"] shouldBe "COMPLETED"
+                intent.status shouldBe PaymentIntentStatus.COMPLETED
+                result["cashbackEarned"] shouldBe BigDecimal.ZERO
+            }
+        }
+
         When("charging a real Luhn-valid demo test card that authorizes") {
             every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
             every { walletRepository.findById("wallet_merchant") } returns Optional.of(ownerWallet)
@@ -334,7 +362,8 @@ class MerchantServiceTest : BehaviorSpec({
         every { transactionRepository.save(any()) } answers { firstArg() }
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val demoCardAuthorizationService = DemoCardAuthorizationService()
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService)
+        val shoppingCashbackService = mockk<ShoppingCashbackService>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService)
 
         val merchant = Merchant(id = "merchant_3", ownerUserId = "owner_3", walletId = "wallet_3", businessName = "Test Shop")
         every { merchantRepository.findByOwnerUserId("owner_3") } returns merchant
@@ -359,7 +388,8 @@ class MerchantServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val demoCardAuthorizationService = DemoCardAuthorizationService()
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService)
+        val shoppingCashbackService = mockk<ShoppingCashbackService>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService)
 
         val merchant = Merchant(id = "merchant_4", ownerUserId = "owner_4", walletId = "wallet_4", businessName = "Report Cafe")
         every { merchantRepository.findByOwnerUserId("owner_4") } returns merchant
