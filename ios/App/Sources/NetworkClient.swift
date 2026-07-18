@@ -462,6 +462,42 @@ struct OrderItemDto: Decodable, Identifiable { let id: String; let orderId: Stri
 struct OrderDetailResponse: Decodable { let success: Bool; let order: OrderDto; let items: [OrderItemDto] }
 struct OrdersResponse: Decodable { let success: Bool; let orders: [OrderDto] }
 
+/// Mirrors services/backend/eats's real DTOs exactly (2026-07-18) -- restaurant/menu
+/// browsing reuses ShoppingMerchantDto/MerchantProductDto above (a restaurant IS a
+/// Merchant, a menu item IS a MerchantProduct -- see rw.itunda.eats.EatsOrderService's
+/// own doc comment).
+struct EatsOrderItemRequest: Encodable { let menuItemId: String; let quantity: Int }
+struct PlaceEatsOrderRequest: Encodable {
+    let restaurantId: String
+    let items: [EatsOrderItemRequest]
+    let deliveryAddress: String
+}
+struct UpdateEatsOrderStatusRequest: Encodable { let status: String }
+struct SetRiderAvailabilityRequest: Encodable { let available: Bool }
+
+struct EatsOrderDto: Decodable, Identifiable {
+    let id: String
+    let buyerId: String
+    let restaurantId: String
+    let riderId: String?
+    let deliveryAddress: String
+    let itemsSubtotal: Double
+    let deliveryFee: Double
+    let platformFee: Double
+    let totalAmount: Double
+    let transactionId: String
+    let deliveryPayoutTransactionId: String?
+    let status: String
+    let createdAt: String
+    let updatedAt: String
+}
+struct EatsOrderItemDto: Decodable, Identifiable { let id: String; let orderId: String; let productId: String; let productName: String; let unitPrice: Double; let quantity: Int }
+struct EatsOrderDetailResponse: Decodable { let success: Bool; let order: EatsOrderDto; let items: [EatsOrderItemDto] }
+struct EatsOrdersResponse: Decodable { let success: Bool; let orders: [EatsOrderDto] }
+
+struct RiderDto: Decodable, Identifiable { let id: String; let userId: String; let walletId: String; let status: String; let available: Bool; let createdAt: String }
+struct RiderResponse: Decodable { let success: Bool; let rider: RiderDto }
+
 extension NetworkClient {
     func startConversation(phoneNumber: String) async throws -> ConversationResponse {
         try await authenticatedPost("api/v1/messages/conversations", body: StartConversationRequest(phoneNumber: phoneNumber, otherUserId: nil))
@@ -514,6 +550,33 @@ extension NetworkClient {
     }
 
     func getMyOrders() async throws -> OrdersResponse { try await get("api/v1/orders/my-orders") }
+
+    // Real Coupang Eats-style food delivery (2026-07-18) -- see rw.itunda.eats.web.EatsController.
+    func placeEatsOrder(_ request: PlaceEatsOrderRequest) async throws -> EatsOrderDetailResponse {
+        try await authenticatedPost("api/v1/eats/orders", body: request, idempotencyKey: UUID().uuidString)
+    }
+
+    func getMyEatsOrders() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/my-orders") }
+    func getRiderDeliveries() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/rider-deliveries") }
+    func getAvailableDeliveries() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/available") }
+
+    func claimDelivery(_ orderId: String) async throws -> EatsOrderDetailResponse {
+        try await authenticatedPost("api/v1/eats/orders/\(orderId)/claim", body: EmptyBody())
+    }
+
+    func updateRiderOrderStatus(_ orderId: String, status: String) async throws -> EatsOrderDetailResponse {
+        try await authenticatedPost("api/v1/eats/orders/\(orderId)/rider-status", body: UpdateEatsOrderStatusRequest(status: status))
+    }
+
+    func registerRider() async throws -> RiderResponse {
+        try await authenticatedPost("api/v1/eats/riders/register", body: EmptyBody())
+    }
+
+    func getMyRiderProfile() async throws -> RiderResponse { try await get("api/v1/eats/riders/me") }
+
+    func setRiderAvailability(_ available: Bool) async throws -> RiderResponse {
+        try await authenticatedPost("api/v1/eats/riders/availability", body: SetRiderAvailabilityRequest(available: available))
+    }
 
     /// Real DELETE support -- every other authenticated call so far was GET/POST only,
     /// see `authenticatedPost`'s own doc comment for why the Idempotency-Key handling

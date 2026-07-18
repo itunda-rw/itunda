@@ -6,7 +6,35 @@ import CoreDesignSystem
 /// DiscoverScreen entirely. See NetworkClient.swift's Commerce extension and
 /// rw.itunda.commerce.OrderService's own doc comment for the full backend account,
 /// including the honest "self-declared fulfillment, no real courier network" scope.
+///
+/// Folds in real Coupang Eats-style food delivery (2026-07-18) via a Shop/Eats segmented
+/// control -- the bottom nav has no free tab slot, mirrors Android's identical fold-in
+/// in ShopTab (SuperAppTabs.kt). See EatsContent's own doc comment below.
+private enum ShopMode { case shop, eats }
+
 struct ShopScreen: View {
+    @State private var mode: ShopMode = .shop
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Picker("", selection: $mode) {
+                Text("Shop").tag(ShopMode.shop)
+                Text("Eats").tag(ShopMode.eats)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, IDS.Layout.screenHorizontal)
+            .padding(.top, 8)
+
+            switch mode {
+            case .shop: CommerceShopContent()
+            case .eats: EatsContent()
+            }
+        }
+        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+    }
+}
+
+private struct CommerceShopContent: View {
     @State private var merchants: [ShoppingMerchantDto]?
     @State private var error: String?
     @State private var selectedMerchant: ShoppingMerchantDto?
