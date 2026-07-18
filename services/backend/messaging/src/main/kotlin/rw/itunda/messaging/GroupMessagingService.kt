@@ -79,7 +79,31 @@ class GroupMessagingService(
         distinctOtherMembers.forEach { id ->
             userRepository.findById(id).orElseThrow { GroupMemberNotFoundException("No itunda account found for one of the invited members") }
         }
+        return createGroupInternal(creatorUserId, trimmedName, distinctOtherMembers)
+    }
 
+    /** Same as [createGroup], resolved by each real member's real phone number -- the
+     * human-friendly entry point a real UI needs, same reasoning
+     * `MessagingService.startOrGetConversationByPhoneNumber` already established for
+     * 1:1 chat (a user only ever knows someone else's phone number, never their
+     * internal id). */
+    @Transactional
+    fun createGroupByPhoneNumbers(creatorUserId: String, name: String, memberPhoneNumbers: List<String>): GroupConversation {
+        val trimmedName = name.trim()
+        if (trimmedName.isEmpty()) {
+            throw GroupNameRequiredException("A group needs a name")
+        }
+        val distinctOtherMembers = memberPhoneNumbers.map { it.trim() }.filter { it.isNotEmpty() }.distinct().map { phone ->
+            userRepository.findByPhoneNumber(phone)?.id
+                ?: throw GroupMemberNotFoundException("No itunda account found for phone number $phone")
+        }.filter { it != creatorUserId }.distinct()
+        if (distinctOtherMembers.isEmpty()) {
+            throw GroupNeedsMoreMembersException("A group needs at least one other real member")
+        }
+        return createGroupInternal(creatorUserId, trimmedName, distinctOtherMembers)
+    }
+
+    private fun createGroupInternal(creatorUserId: String, trimmedName: String, distinctOtherMembers: List<String>): GroupConversation {
         val group = groupConversationRepository.save(
             GroupConversation(id = "group_${UUID.randomUUID()}", name = trimmedName, createdBy = creatorUserId),
         )

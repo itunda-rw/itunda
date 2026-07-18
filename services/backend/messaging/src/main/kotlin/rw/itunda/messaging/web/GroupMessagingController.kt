@@ -25,7 +25,10 @@ import rw.itunda.messaging.GroupNameRequiredException
 import rw.itunda.messaging.GroupNeedsMoreMembersException
 import rw.itunda.messaging.GroupNotFoundException
 
-data class CreateGroupRequest(val name: String, val memberUserIds: List<String>)
+// memberPhoneNumbers is the real human-friendly entry point (same reasoning as
+// StartConversationRequest.phoneNumber); memberUserIds stays available for a call site
+// that already resolved real user ids.
+data class CreateGroupRequest(val name: String, val memberUserIds: List<String> = emptyList(), val memberPhoneNumbers: List<String> = emptyList())
 data class SendGroupMessageRequest(val body: String)
 data class AddGroupMemberRequest(val userId: String)
 
@@ -40,7 +43,11 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
         @RequestBody request: CreateGroupRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val group = groupMessagingService.createGroup(currentUser.userId, request.name, request.memberUserIds)
+        val group = if (request.memberPhoneNumbers.isNotEmpty()) {
+            groupMessagingService.createGroupByPhoneNumbers(currentUser.userId, request.name, request.memberPhoneNumbers)
+        } else {
+            groupMessagingService.createGroup(currentUser.userId, request.name, request.memberUserIds)
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "group" to group))
     }
 

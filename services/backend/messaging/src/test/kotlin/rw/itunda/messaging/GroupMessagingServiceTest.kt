@@ -87,6 +87,32 @@ class GroupMessagingServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        When("creating a group by real phone numbers") {
+            every { userRepository.findByPhoneNumber("+250780000002") } returns user("user_b", "Beata")
+            val savedSlot = slot<GroupConversation>()
+            every { groupConversationRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            val group = service.createGroupByPhoneNumbers("user_a", "Phone Group", listOf("+250780000002"))
+
+            Then("it resolves the real phone number to the real member") {
+                group.name shouldBe "Phone Group"
+                verify { groupConversationMemberRepository.saveAll(match<List<GroupConversationMember>> { it.map { m -> m.userId }.toSet() == setOf("user_a", "user_b") }) }
+            }
+        }
+
+        When("creating a group by an unknown phone number") {
+            every { userRepository.findByPhoneNumber("+250780000099") } returns null
+
+            Then("it throws GroupMemberNotFoundException") {
+                try {
+                    service.createGroupByPhoneNumbers("user_a", "Group", listOf("+250780000099"))
+                    error("expected GroupMemberNotFoundException")
+                } catch (e: GroupMemberNotFoundException) {
+                    // expected
+                }
+            }
+        }
     }
 
     Given("a real group with three real members") {
