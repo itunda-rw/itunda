@@ -29,4 +29,20 @@ object GeoUtils {
 
     fun isValidCoordinate(latitude: Double, longitude: Double): Boolean =
         latitude in -90.0..90.0 && longitude in -180.0..180.0
+
+    // Rwanda's real geographic extent (sourced), with a real ~0.1deg (~11km) buffer so a
+    // legitimate near-border point isn't rejected -- NOT a precise national-boundary
+    // check, just a sanity envelope. Found live (2026-07-18): itunda's own Rwanda-only
+    // OSRM instance has no configured max-matching-radius, so a coordinate far outside
+    // Rwanda silently snaps to the nearest network node it has -- e.g. (0,0) snapped
+    // 3,224km away to Rwanda's own southwestern corner and returned a real-looking but
+    // meaningless route. Callers should use this to skip OSRM entirely for out-of-Rwanda
+    // points and fall straight back to GeoUtils.haversineKm instead.
+    private const val RWANDA_MIN_LAT = -2.940
+    private const val RWANDA_MAX_LAT = -0.947
+    private const val RWANDA_MIN_LNG = 28.761
+    private const val RWANDA_MAX_LNG = 30.999
+
+    fun isWithinRwanda(latitude: Double, longitude: Double): Boolean =
+        latitude in RWANDA_MIN_LAT..RWANDA_MAX_LAT && longitude in RWANDA_MIN_LNG..RWANDA_MAX_LNG
 }

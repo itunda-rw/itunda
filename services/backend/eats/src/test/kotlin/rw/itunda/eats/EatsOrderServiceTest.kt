@@ -19,6 +19,7 @@ import rw.itunda.core.domain.Rider
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.fraud.FraudRuleEngine
+import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
@@ -55,10 +56,12 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { transactionRepository.save(any()) } answers { firstArg() }
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        every { osrmRoutingClient.routeDistanceKm(any(), any(), any(), any()) } returns null
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
-            ledgerEntryRepository,
+            ledgerEntryRepository, osrmRoutingClient,
         )
 
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
@@ -170,6 +173,58 @@ class EatsOrderServiceTest : BehaviorSpec({
             }
         }
 
+        When("itunda's own self-hosted OSRM has a real route between the restaurant and the buyer") {
+            val restaurantWithLocation = Merchant(
+                id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill",
+                status = MerchantStatus.ACTIVE, latitude = -1.9441, longitude = 30.0619,
+            )
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithLocation)
+            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_3", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+            // A real road distance is longer than the straight line between the same two
+            // points (the road detours), proving the service used OSRM's real number, not
+            // silently falling back to Haversine's straight-line approximation.
+            every { osrmRoutingClient.routeDistanceKm(-1.9441, 30.0619, -1.9941, 30.0619) } returns 7.234
+
+            val detail = service.placeOrder(
+                "buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 2)), "KG 9 Ave",
+                deliveryLatitude = -1.9941, deliveryLongitude = 30.0619,
+            )
+
+            Then("it uses the real OSRM road distance, not the Haversine straight-line one") {
+                detail.order.distanceKm shouldBe BigDecimal("7.234")
+                // base 500 + 250 * 7.234 = 2308.50
+                detail.order.deliveryFee shouldBe BigDecimal("2308.50")
+            }
+        }
+
+        When("the delivery point is real but far outside Rwanda") {
+            val restaurantWithLocation = Merchant(
+                id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill",
+                status = MerchantStatus.ACTIVE, latitude = -1.9441, longitude = 30.0619,
+            )
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithLocation)
+            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_4", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            // (0,0) -- real coordinates, but nowhere near Rwanda's own road network.
+            val detail = service.placeOrder(
+                "buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 1)), "Somewhere unrouteable",
+                deliveryLatitude = 0.0, deliveryLongitude = 0.0,
+            )
+
+            Then("it never calls OSRM -- itunda's Rwanda-only router has no configured max-matching-radius and would silently snap to the nearest network node instead of correctly finding no route -- and uses Haversine directly") {
+                io.mockk.verify(exactly = 0) { osrmRoutingClient.routeDistanceKm(any(), any(), any(), any()) }
+                detail.order.deliveryFee shouldBe BigDecimal("5000") // bounded at the real max, not a runaway number
+            }
+        }
+
         When("submitting only one of deliveryLatitude/deliveryLongitude") {
             Then("it throws InvalidEatsCoordinatesException before even looking up the restaurant") {
                 try {
@@ -218,10 +273,12 @@ class EatsOrderServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        every { osrmRoutingClient.routeDistanceKm(any(), any(), any(), any()) } returns null
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
-            ledgerEntryRepository,
+            ledgerEntryRepository, osrmRoutingClient,
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
         val order = EatsOrder(
@@ -388,10 +445,12 @@ class EatsOrderServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        every { osrmRoutingClient.routeDistanceKm(any(), any(), any(), any()) } returns null
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
-            ledgerEntryRepository,
+            ledgerEntryRepository, osrmRoutingClient,
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
         val readyOrder = EatsOrder(
@@ -458,10 +517,12 @@ class EatsOrderServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        every { osrmRoutingClient.routeDistanceKm(any(), any(), any(), any()) } returns null
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
-            ledgerEntryRepository,
+            ledgerEntryRepository, osrmRoutingClient,
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
         val riderWallet = wallet("wallet_rider", "rider_user_1")

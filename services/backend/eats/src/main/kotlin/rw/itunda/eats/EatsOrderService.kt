@@ -15,6 +15,7 @@ import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.geo.GeoUtils
+import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.EatsOrderItemRepository
@@ -75,6 +76,7 @@ class EatsOrderService(
     private val transactionRepository: TransactionRepository,
     private val fraudRuleEngine: FraudRuleEngine,
     private val ledgerEntryRepository: LedgerEntryRepository,
+    private val osrmRoutingClient: OsrmRoutingClient,
 ) {
     // Same 1.5% Toss Payments fee-schedule reasoning OrderService.feeRate/
     // MerchantService.feeRate already give -- reused rather than inventing a third number
@@ -160,7 +162,20 @@ class EatsOrderService(
         val restaurantLat = restaurant.latitude
         val restaurantLng = restaurant.longitude
         val distanceKm = if (deliveryLatitude != null && deliveryLongitude != null && restaurantLat != null && restaurantLng != null) {
-            GeoUtils.haversineKm(restaurantLat, restaurantLng, deliveryLatitude, deliveryLongitude)
+            // Real road distance via itunda's own self-hosted, Rwanda-only OSRM when
+            // both points are plausibly within Rwanda (real Rwanda road network, not a
+            // straight line) -- outside that envelope OSRM has no configured
+            // max-matching-radius and would silently snap to the nearest network node
+            // instead of correctly finding no route (found live, 2026-07-18), so this
+            // skips straight to the honest Haversine straight-line distance instead.
+            // Also falls back to Haversine when OSRM isn't configured/reachable/finds
+            // no route -- never a fabricated number either way.
+            if (GeoUtils.isWithinRwanda(restaurantLat, restaurantLng) && GeoUtils.isWithinRwanda(deliveryLatitude, deliveryLongitude)) {
+                osrmRoutingClient.routeDistanceKm(restaurantLat, restaurantLng, deliveryLatitude, deliveryLongitude)
+                    ?: GeoUtils.haversineKm(restaurantLat, restaurantLng, deliveryLatitude, deliveryLongitude)
+            } else {
+                GeoUtils.haversineKm(restaurantLat, restaurantLng, deliveryLatitude, deliveryLongitude)
+            }
         } else {
             null
         }

@@ -74,6 +74,13 @@ itunda:
     user-id: ${MTN_MOMO_USER_ID:}
     api-key: ${MTN_MOMO_API_KEY:}
     base-url: ${MTN_MOMO_BASE_URL:https://sandbox.momodeveloper.mtn.com}
+  # Real self-hosted OSRM routing (2026-07-18) -- itunda's own Rwanda-only road network,
+  # not a third-party Maps API. See OsrmRoutingClient's own doc comment and
+  # docs/TOSS_PARITY_MATRIX.md's Maps row. Empty by default: without a configured
+  # base-url, every caller falls back to GeoUtils.haversineKm's straight-line distance,
+  # exactly as before this integration existed. Never required for local dev/CI.
+  osrm:
+    base-url: ${OSRM_BASE_URL:}
 
 # Real Prometheus scrape target (2026-07-11, alongside micrometer-registry-prometheus
 # in app/build.gradle.kts and infra/k8s/monitoring/prometheus-config.yaml's
