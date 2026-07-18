@@ -56,6 +56,16 @@ class Merchant(
 
     @Column(name = "kyb_verified", nullable = false)
     var kybVerified: Boolean = false,
+
+    // Real lat/lng (2026-07-18), the foundation of itunda's own self-hosted maps effort
+    // -- see rw.itunda.core.geo.GeoUtils and docs/TOSS_PARITY_MATRIX.md's Maps row.
+    // Nullable: a merchant that hasn't set a location yet falls back to the pre-existing
+    // flat-fee/no-proximity behavior, never a fabricated coordinate.
+    @Column(nullable = true)
+    var latitude: Double? = null,
+
+    @Column(nullable = true)
+    var longitude: Double? = null,
 ) {
     protected constructor() : this(id = "", ownerUserId = "", walletId = "", businessName = "")
 }

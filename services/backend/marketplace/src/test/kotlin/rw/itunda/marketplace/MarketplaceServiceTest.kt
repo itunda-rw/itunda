@@ -153,6 +153,107 @@ class MarketplaceServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("a seller listing a real item with a real location") {
+        val listingRepository = mockk<ListingRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val messagingService = mockk<MessagingService>()
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService)
+
+        When("only one of latitude/longitude is given") {
+            Then("it throws InvalidCoordinatesException") {
+                try {
+                    service.createListing("seller_1", "Bike", "desc", BigDecimal("100"), "sports", latitude = -1.9441)
+                    error("expected InvalidCoordinatesException")
+                } catch (e: InvalidCoordinatesException) {
+                    // expected
+                }
+            }
+        }
+
+        When("an out-of-range coordinate is given") {
+            Then("it throws InvalidCoordinatesException") {
+                try {
+                    service.createListing("seller_1", "Bike", "desc", BigDecimal("100"), "sports", latitude = 999.0, longitude = 30.0)
+                    error("expected InvalidCoordinatesException")
+                } catch (e: InvalidCoordinatesException) {
+                    // expected
+                }
+            }
+        }
+
+        When("a real valid location is given") {
+            val savedSlot = slot<Listing>()
+            every { listingRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            service.createListing("seller_1", "Bike", "desc", BigDecimal("100"), "sports", latitude = -1.9441, longitude = 30.0619)
+
+            Then("it's saved on the real listing") {
+                savedSlot.captured.latitude shouldBe -1.9441
+                savedSlot.captured.longitude shouldBe 30.0619
+            }
+        }
+    }
+
+    Given("real listings at different real distances from a searcher") {
+        val listingRepository = mockk<ListingRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val messagingService = mockk<MessagingService>()
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService)
+
+        // Searcher at (-1.9441, 30.0619). Same longitude as both listings, only latitude
+        // differs, so a real Haversine distance along a meridian is exact:
+        // 6371km * (latitude difference in radians).
+        val near = Listing(
+            id = "listing_near", sellerId = "seller_1", title = "Near", description = "d",
+            price = BigDecimal("100"), category = "sports", latitude = -1.9541, longitude = 30.0619, // ~1.11km away
+        )
+        val far = Listing(
+            id = "listing_far", sellerId = "seller_1", title = "Far", description = "d",
+            price = BigDecimal("100"), category = "sports", latitude = -2.9441, longitude = 30.0619, // ~111.2km away
+        )
+        // Deliberately returned out of distance order -- proves the service does the
+        // real sorting, not just passing through whatever order the repository gave it.
+        every { listingRepository.findByStatusAndLatitudeIsNotNullAndLongitudeIsNotNull(ListingStatus.ACTIVE) } returns listOf(far, near)
+
+        When("searching within a real 5km radius") {
+            val page = service.nearby(-1.9441, 30.0619, 5.0, PageRequest.of(0, 20))
+
+            Then("only the real near listing is returned") {
+                page.content.map { it.id } shouldBe listOf("listing_near")
+            }
+        }
+
+        When("searching within a real 200km radius") {
+            val page = service.nearby(-1.9441, 30.0619, 200.0, PageRequest.of(0, 20))
+
+            Then("both real listings are returned, closest first") {
+                page.content.map { it.id } shouldBe listOf("listing_near", "listing_far")
+            }
+        }
+
+        When("searching with an out-of-range coordinate") {
+            Then("it throws InvalidCoordinatesException") {
+                try {
+                    service.nearby(999.0, 30.0, 5.0, PageRequest.of(0, 20))
+                    error("expected InvalidCoordinatesException")
+                } catch (e: InvalidCoordinatesException) {
+                    // expected
+                }
+            }
+        }
+
+        When("searching with a zero radius") {
+            Then("it throws InvalidCoordinatesException") {
+                try {
+                    service.nearby(-1.9441, 30.0619, 0.0, PageRequest.of(0, 20))
+                    error("expected InvalidCoordinatesException")
+                } catch (e: InvalidCoordinatesException) {
+                    // expected
+                }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

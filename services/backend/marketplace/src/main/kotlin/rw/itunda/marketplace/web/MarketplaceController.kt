@@ -18,6 +18,7 @@ import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
+import rw.itunda.marketplace.InvalidCoordinatesException
 import rw.itunda.marketplace.InvalidListingException
 import rw.itunda.marketplace.ListingNotActiveException
 import rw.itunda.marketplace.ListingNotFoundException
@@ -25,7 +26,14 @@ import rw.itunda.marketplace.MarketplaceService
 import rw.itunda.marketplace.OwnListingException
 import java.math.BigDecimal
 
-data class CreateListingRequest(val title: String, val description: String, val price: BigDecimal, val category: String)
+data class CreateListingRequest(
+    val title: String,
+    val description: String,
+    val price: BigDecimal,
+    val category: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+)
 
 // Real 당근마켓-style marketplace -- see MarketplaceService's own doc comment. Normal
 // itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
@@ -40,6 +48,7 @@ class MarketplaceController(private val marketplaceService: MarketplaceService) 
     ): ResponseEntity<Map<String, Any?>> {
         val listing = marketplaceService.createListing(
             currentUser.userId, request.title, request.description, request.price, request.category,
+            request.latitude, request.longitude,
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "listing" to listing))
     }
@@ -50,6 +59,20 @@ class MarketplaceController(private val marketplaceService: MarketplaceService) 
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
         val page = marketplaceService.browse(pageable, category)
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content) + pageMeta(page))
+    }
+
+    // Real proximity search (2026-07-18) -- see MarketplaceService.nearby's own doc
+    // comment. radiusKm defaults to 5km, a reasonable real walkable/boda-boda-trip
+    // neighborhood radius for Rwanda's urban density.
+    @GetMapping("/listings/nearby")
+    fun nearby(
+        @RequestParam latitude: Double,
+        @RequestParam longitude: Double,
+        @RequestParam(required = false, defaultValue = "5.0") radiusKm: Double,
+        @PageableDefault(size = 20) pageable: Pageable,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = marketplaceService.nearby(latitude, longitude, radiusKm, pageable)
         return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content) + pageMeta(page))
     }
 
@@ -108,4 +131,8 @@ class MarketplaceController(private val marketplaceService: MarketplaceService) 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =
         ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
+
+    @ExceptionHandler(InvalidCoordinatesException::class)
+    fun handleInvalidCoordinates(ex: InvalidCoordinatesException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_COORDINATES", ex.message ?: "Bad request"))
 }

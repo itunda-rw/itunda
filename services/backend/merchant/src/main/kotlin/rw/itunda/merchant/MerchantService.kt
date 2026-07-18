@@ -14,6 +14,7 @@ import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.fraud.FraudRuleEngine
+import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.MerchantRepository
@@ -31,6 +32,7 @@ import java.util.UUID
 class MerchantAlreadyRegisteredException(message: String) : RuntimeException(message)
 class MerchantNotFoundException(message: String) : RuntimeException(message)
 class MerchantNoWalletException(message: String) : RuntimeException(message)
+class InvalidCoordinatesException(message: String) : RuntimeException(message)
 class PaymentIntentNotFoundException(message: String) : RuntimeException(message)
 class PaymentIntentNotPayableException(message: String) : RuntimeException(message)
 class SelfPaymentException(message: String) : RuntimeException(message)
@@ -102,6 +104,21 @@ class MerchantService(
     fun setWebhookUrl(ownerUserId: String, webhookUrl: String): Merchant {
         val merchant = getMyMerchant(ownerUserId)
         merchant.webhookUrl = webhookUrl
+        return merchantRepository.save(merchant)
+    }
+
+    // Real location (2026-07-18) -- the foundation of itunda's own self-hosted maps
+    // effort. A separate settable field rather than a `register()` param so an existing
+    // merchant can add a location later without re-registering, matching the same
+    // pattern `setWebhookUrl` already established.
+    @Transactional
+    fun setLocation(ownerUserId: String, latitude: Double, longitude: Double): Merchant {
+        if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
+            throw InvalidCoordinatesException("Latitude must be between -90 and 90, longitude between -180 and 180")
+        }
+        val merchant = getMyMerchant(ownerUserId)
+        merchant.latitude = latitude
+        merchant.longitude = longitude
         return merchantRepository.save(merchant)
     }
 

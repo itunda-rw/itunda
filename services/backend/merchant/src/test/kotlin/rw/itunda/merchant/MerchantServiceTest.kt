@@ -112,6 +112,31 @@ class MerchantServiceTest : BehaviorSpec({
             }
         }
 
+        When("setting a real valid location") {
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
+            every { merchantRepository.save(any()) } answers { firstArg() }
+
+            val result = service.setLocation("owner_1", -1.9441, 30.0619)
+
+            Then("it saves the real coordinates") {
+                result.latitude shouldBe -1.9441
+                result.longitude shouldBe 30.0619
+            }
+        }
+
+        When("setting an out-of-range location") {
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
+
+            Then("it throws InvalidCoordinatesException") {
+                try {
+                    service.setLocation("owner_1", 999.0, 30.0)
+                    error("expected InvalidCoordinatesException")
+                } catch (e: InvalidCoordinatesException) {
+                    // expected
+                }
+            }
+        }
+
         When("generating a QR payment intent") {
             every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
             every { paymentIntentRepository.save(any()) } answers { firstArg() }

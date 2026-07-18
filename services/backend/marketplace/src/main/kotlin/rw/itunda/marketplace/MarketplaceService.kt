@@ -1,6 +1,7 @@
 package rw.itunda.marketplace
 
 import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -8,6 +9,7 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.Listing
 import rw.itunda.core.domain.ListingStatus
+import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.repository.ListingRepository
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
@@ -20,6 +22,7 @@ class ListingNotOwnedException(message: String) : RuntimeException(message)
 class InvalidListingException(message: String) : RuntimeException(message)
 class ListingNotActiveException(message: String) : RuntimeException(message)
 class OwnListingException(message: String) : RuntimeException(message)
+class InvalidCoordinatesException(message: String) : RuntimeException(message)
 
 /**
  * A real 당근마켓 (Danggeun/Karrot Market)-style secondhand marketplace -- the second
@@ -49,7 +52,15 @@ class MarketplaceService(
     }
 
     @Transactional
-    fun createListing(sellerId: String, title: String, description: String, price: BigDecimal, category: String): Listing {
+    fun createListing(
+        sellerId: String,
+        title: String,
+        description: String,
+        price: BigDecimal,
+        category: String,
+        latitude: Double? = null,
+        longitude: Double? = null,
+    ): Listing {
         val trimmedTitle = title.trim()
         val trimmedDescription = description.trim()
         val trimmedCategory = category.trim()
@@ -58,6 +69,14 @@ class MarketplaceService(
         }
         if (price <= BigDecimal.ZERO) {
             throw InvalidListingException("Price must be greater than zero")
+        }
+        // Real optional location (2026-07-18) -- see this class's own doc comment on why
+        // it's no longer honestly out of reach. Both-or-neither, never a fabricated pair.
+        if ((latitude == null) != (longitude == null)) {
+            throw InvalidCoordinatesException("Both latitude and longitude are required together")
+        }
+        if (latitude != null && longitude != null && !GeoUtils.isValidCoordinate(latitude, longitude)) {
+            throw InvalidCoordinatesException("Latitude must be between -90 and 90, longitude between -180 and 180")
         }
         // Real anti-spam limit on user-generated listings -- same convention this
         // session's own security review already established for every other
@@ -70,8 +89,33 @@ class MarketplaceService(
             Listing(
                 id = "listing_${UUID.randomUUID()}", sellerId = sellerId, title = trimmedTitle,
                 description = trimmedDescription, price = price, category = trimmedCategory,
+                latitude = latitude, longitude = longitude,
             ),
         )
+    }
+
+    // Real proximity search (2026-07-18) -- the hyperlocal-discovery gap this class's own
+    // doc comment originally named as impossible without real location data, now closed
+    // for listings that have set one. Distance computed via GeoUtils.haversineKm over the
+    // bounded set of ACTIVE listings that have coordinates (see ListingRepository's own
+    // note on why this is in-app, not a real geospatial DB index, at current scale).
+    fun nearby(latitude: Double, longitude: Double, radiusKm: Double, pageable: Pageable): Page<Listing> {
+        if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
+            throw InvalidCoordinatesException("Latitude must be between -90 and 90, longitude between -180 and 180")
+        }
+        if (radiusKm <= 0.0) {
+            throw InvalidCoordinatesException("radiusKm must be greater than zero")
+        }
+        val candidates = listingRepository.findByStatusAndLatitudeIsNotNullAndLongitudeIsNotNull(ListingStatus.ACTIVE)
+        val sorted = candidates
+            .map { it to GeoUtils.haversineKm(latitude, longitude, it.latitude!!, it.longitude!!) }
+            .filter { (_, distanceKm) -> distanceKm <= radiusKm }
+            .sortedBy { (_, distanceKm) -> distanceKm }
+            .map { (listing, _) -> listing }
+
+        val start = (pageable.pageNumber * pageable.pageSize).coerceAtMost(sorted.size)
+        val end = (start + pageable.pageSize).coerceAtMost(sorted.size)
+        return PageImpl(sorted.subList(start, end), pageable, sorted.size.toLong())
     }
 
     fun browse(pageable: Pageable, category: String?): Page<Listing> =

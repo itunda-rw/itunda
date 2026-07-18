@@ -17,14 +17,11 @@ enum class ListingStatus { ACTIVE, SOLD, REMOVED }
  * Kakao-style messaging, built first specifically so this phase could reuse it for real
  * buyer/seller negotiation -- see MarketplaceService's own doc comment).
  *
- * Honestly, no real location/proximity data exists anywhere in this backend (`User`
- * has no address/district field) -- 당근마켓's actual defining feature is hyperlocal
- * discovery by neighborhood, which this can't build for real without inventing location
- * data that doesn't exist. Same "Rwanda adaptation" discipline this document already
- * uses elsewhere (e.g. Toss Shopping reusing itunda's own Merchant directory instead of
- * fabricating an external partner network): this is a real, working general marketplace
- * (list, browse, buy via real in-app chat) without the real proximity ranking a true
- * 당근마켓 clone would need -- an honest, named simplification, not a hidden one.
+ * Real optional lat/lng (2026-07-18, see below) now closes the hyperlocal-discovery gap
+ * this doc comment used to name as impossible -- `MarketplaceService.nearby` ranks by
+ * real Haversine distance for any listing whose seller chose to set a location. `User`
+ * still has no address/district field, so a listing without coordinates simply doesn't
+ * appear in proximity results -- an honest, named fallback, not a hidden one.
  */
 @Entity
 @Table(name = "listings")
@@ -54,6 +51,17 @@ class Listing(
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
+
+    // Real lat/lng (2026-07-18) -- the location data this class's own doc comment
+    // originally named as not existing anywhere in this backend now exists, real and
+    // optional. See rw.itunda.core.geo.GeoUtils and MarketplaceService.nearby for the
+    // real proximity search this unlocks. A listing without coordinates simply doesn't
+    // appear in proximity results, same honest fallback as Merchant's own fields.
+    @Column(nullable = true)
+    var latitude: Double? = null,
+
+    @Column(nullable = true)
+    var longitude: Double? = null,
 ) {
     protected constructor() : this(
         id = "", sellerId = "", title = "", description = "", price = BigDecimal.ZERO, category = "",

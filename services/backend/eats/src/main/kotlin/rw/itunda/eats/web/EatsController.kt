@@ -32,6 +32,7 @@ import rw.itunda.eats.EatsOrderNotYetDeliveredException
 import rw.itunda.eats.EatsOrderService
 import rw.itunda.eats.EatsReviewService
 import rw.itunda.eats.EmptyEatsOrderException
+import rw.itunda.eats.InvalidEatsCoordinatesException
 import rw.itunda.eats.InvalidEatsDeliveryAddressException
 import rw.itunda.eats.InvalidEatsOrderStatusTransitionException
 import rw.itunda.eats.InvalidEatsQuantityException
@@ -47,7 +48,13 @@ import rw.itunda.eats.RiderNotRegisteredException
 import rw.itunda.eats.RiderService
 import rw.itunda.eats.SelfEatsOrderException
 
-data class PlaceEatsOrderRequest(val restaurantId: String, val items: List<EatsOrderItemRequest>, val deliveryAddress: String)
+data class PlaceEatsOrderRequest(
+    val restaurantId: String,
+    val items: List<EatsOrderItemRequest>,
+    val deliveryAddress: String,
+    val deliveryLatitude: Double? = null,
+    val deliveryLongitude: Double? = null,
+)
 data class UpdateEatsOrderStatusRequest(val status: EatsOrderStatus)
 data class SetRiderAvailabilityRequest(val available: Boolean)
 data class SubmitEatsReviewRequest(
@@ -61,8 +68,9 @@ data class SubmitEatsReviewRequest(
 // deliberately reuse the existing GET /api/v1/shopping/merchants and GET
 // /api/v1/shopping/merchants/{id}/products endpoints (a restaurant IS a Merchant, a menu
 // item IS a MerchantProduct) -- no duplicate catalog-browsing endpoint added here. See
-// EatsOrderService's own doc comment for the full account, including the honest "flat
-// delivery fee, no real geo/distance data" scope. Normal itunda-user JWT gate.
+// EatsOrderService's own doc comment for the full account, including the real
+// distance-based delivery fee (2026-07-18) computed when both restaurant and buyer
+// coordinates exist. Normal itunda-user JWT gate.
 @RestController
 @RequestMapping("/api/v1/eats")
 class EatsController(
@@ -99,7 +107,10 @@ class EatsController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/eats/orders", idempotencyKey, request) {
-            val detail = eatsOrderService.placeOrder(currentUser.userId, request.restaurantId, request.items, request.deliveryAddress)
+            val detail = eatsOrderService.placeOrder(
+                currentUser.userId, request.restaurantId, request.items, request.deliveryAddress,
+                request.deliveryLatitude, request.deliveryLongitude,
+            )
             201 to mapOf("success" to true, "order" to detail.order, "items" to detail.items)
         }
         return ResponseEntity.status(status).body(body)
@@ -242,6 +253,10 @@ class EatsController(
     @ExceptionHandler(InvalidEatsDeliveryAddressException::class)
     fun handleInvalidAddress(ex: InvalidEatsDeliveryAddressException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_DELIVERY_ADDRESS", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidEatsCoordinatesException::class)
+    fun handleInvalidCoordinates(ex: InvalidEatsCoordinatesException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_COORDINATES", ex.message ?: "Bad request"))
 
     @ExceptionHandler(InvalidEatsQuantityException::class)
     fun handleInvalidQuantity(ex: InvalidEatsQuantityException) =

@@ -88,6 +88,20 @@ class EatsOrder(
 
     @Column(name = "refund_transaction_id", length = 64)
     var refundTransactionId: String? = null,
+
+    // Real delivery coordinates + real Haversine distance (2026-07-18), replacing this
+    // class's own doc comment's prior "no real distance/geo data exists" limitation. Both
+    // nullable: a buyer who doesn't submit coordinates (or a restaurant with no location
+    // set) falls back to the pre-existing flat delivery fee, never a fabricated distance.
+    // See EatsOrderService.computeDeliveryFee.
+    @Column(name = "delivery_latitude")
+    val deliveryLatitude: Double? = null,
+
+    @Column(name = "delivery_longitude")
+    val deliveryLongitude: Double? = null,
+
+    @Column(name = "distance_km", precision = 8, scale = 3)
+    val distanceKm: BigDecimal? = null,
 ) {
     protected constructor() : this(
         id = "", buyerId = "", restaurantId = "", deliveryAddress = "", itemsSubtotal = BigDecimal.ZERO,

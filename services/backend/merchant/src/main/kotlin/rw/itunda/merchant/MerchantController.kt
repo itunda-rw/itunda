@@ -28,6 +28,7 @@ import java.time.format.DateTimeParseException
 data class RegisterMerchantRequest(val businessName: String)
 data class GenerateQrRequest(val amount: BigDecimal, val description: String)
 data class SetWebhookUrlRequest(val webhookUrl: String)
+data class SetLocationRequest(val latitude: Double, val longitude: Double)
 data class ChargeCardRequest(
     val amount: BigDecimal,
     val description: String,
@@ -73,6 +74,16 @@ class MerchantController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val merchant = merchantService.setWebhookUrl(currentUser.userId, request.webhookUrl)
+        return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
+    }
+
+    // Real location (2026-07-18) -- see MerchantService.setLocation's own doc comment.
+    @PostMapping("/location")
+    fun setLocation(
+        @RequestBody request: SetLocationRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val merchant = merchantService.setLocation(currentUser.userId, request.latitude, request.longitude)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
@@ -185,4 +196,8 @@ class MerchantController(
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =
         ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
+
+    @ExceptionHandler(InvalidCoordinatesException::class)
+    fun handleInvalidCoordinates(ex: InvalidCoordinatesException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_COORDINATES", ex.message ?: "Bad request"))
 }

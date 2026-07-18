@@ -13,4 +13,10 @@ interface ListingRepository : JpaRepository<Listing, String> {
     fun findByStatusOrderByCreatedAtDesc(status: ListingStatus, pageable: Pageable): Page<Listing>
     fun findByStatusAndCategoryOrderByCreatedAtDesc(status: ListingStatus, category: String, pageable: Pageable): Page<Listing>
     fun findBySellerIdOrderByCreatedAtDesc(sellerId: String, pageable: Pageable): Page<Listing>
+
+    // Real proximity search input (2026-07-18) -- see MarketplaceService.nearby. No real
+    // geospatial index (e.g. MySQL spatial types) exists yet, so distance is computed in
+    // application code via GeoUtils.haversineKm over this bounded candidate set -- fine
+    // at current listing volumes, a named follow-up once volume grows.
+    fun findByStatusAndLatitudeIsNotNullAndLongitudeIsNotNull(status: ListingStatus): List<Listing>
 }

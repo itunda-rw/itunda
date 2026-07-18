@@ -140,6 +140,61 @@ class EatsOrderServiceTest : BehaviorSpec({
             }
         }
 
+        When("a real buyer places a real order with real delivery coordinates and the restaurant has a real location") {
+            val restaurantWithLocation = Merchant(
+                id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill",
+                status = MerchantStatus.ACTIVE, latitude = -1.9441, longitude = 30.0619,
+            )
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithLocation)
+            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            val legsSlot = slot<List<LedgerLeg>>()
+            every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_2", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            // Same longitude, 0.05 degrees south -- a real Haversine distance along a
+            // meridian is exact: 6371km * (0.05deg in radians) = ~5.560km.
+            val detail = service.placeOrder(
+                "buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 2)), "KG 9 Ave",
+                deliveryLatitude = -1.9941, deliveryLongitude = 30.0619,
+            )
+
+            Then("it computes a real distance-based fee (base 500 + 250/km) instead of the flat amount") {
+                detail.order.distanceKm shouldBe BigDecimal("5.560")
+                detail.order.deliveryFee shouldBe BigDecimal("1890.00")
+                detail.order.totalAmount shouldBe BigDecimal("7890.00")
+
+                val holdingLeg = legsSlot.captured.first { it.accountId == "eats_delivery_holding" }
+                holdingLeg.amount shouldBe BigDecimal("1890.00")
+            }
+        }
+
+        When("submitting only one of deliveryLatitude/deliveryLongitude") {
+            Then("it throws InvalidEatsCoordinatesException before even looking up the restaurant") {
+                try {
+                    service.placeOrder("buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 1)), "addr", deliveryLatitude = -1.9441)
+                    error("expected InvalidEatsCoordinatesException")
+                } catch (e: InvalidEatsCoordinatesException) {
+                    // expected
+                }
+            }
+        }
+
+        When("submitting an out-of-range delivery coordinate") {
+            Then("it throws InvalidEatsCoordinatesException") {
+                try {
+                    service.placeOrder(
+                        "buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 1)), "addr",
+                        deliveryLatitude = 999.0, deliveryLongitude = 30.0,
+                    )
+                    error("expected InvalidEatsCoordinatesException")
+                } catch (e: InvalidEatsCoordinatesException) {
+                    // expected
+                }
+            }
+        }
+
         When("placing an order with an empty item list") {
             Then("it throws EmptyEatsOrderException before even looking up the restaurant") {
                 try {

@@ -14,6 +14,7 @@ import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.fraud.FraudRuleEngine
+import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.EatsOrderItemRepository
@@ -42,6 +43,7 @@ class InvalidEatsOrderStatusTransitionException(message: String) : RuntimeExcept
 class RiderNotAvailableException(message: String) : RuntimeException(message)
 class DeliveryAlreadyClaimedException(message: String) : RuntimeException(message)
 class NotAssignedRiderException(message: String) : RuntimeException(message)
+class InvalidEatsCoordinatesException(message: String) : RuntimeException(message)
 
 data class EatsOrderItemRequest(val menuItemId: String, val quantity: Int)
 data class EatsOrderDetail(val order: EatsOrder, val items: List<EatsOrderItem>)
@@ -51,16 +53,15 @@ data class EatsOrderDetail(val order: EatsOrder, val items: List<EatsOrderItem>)
  * `rw.itunda.commerce.OrderService` -- reuses the exact same real `Merchant`/
  * `MerchantProduct` catalog as restaurants/menu items (no second catalog system
  * invented) and the exact same real wallet-to-wallet ledger movement pattern
- * `MerchantService.collect()` established, just with a real flat delivery fee on top
- * that's held in `eats_delivery_holding` until a real rider completes the delivery, then
- * paid straight into that rider's own itunda wallet -- real money to a real person, the
+ * `MerchantService.collect()` established, just with a real delivery fee on top that's
+ * held in `eats_delivery_holding` until a real rider completes the delivery, then paid
+ * straight into that rider's own itunda wallet -- real money to a real person, the
  * same disbursement shape `PayrollService` already proved out, not a simulation.
  *
- * Honestly scoped like every other new module this session: `deliveryFee` is a real flat
- * amount (no real distance/geo data exists anywhere in this backend -- the same "no real
- * location data" limitation already named for the neighborhood marketplace), and order
- * cancellation/refunds are deliberately not built here either, matching commerce's own
- * scoping. See `EatsOrder.kt`'s own doc comment for the full account.
+ * `deliveryFee` is real distance-based (2026-07-18, see `computeDeliveryFee`) via
+ * `GeoUtils.haversineKm` when both the restaurant and buyer have real coordinates, and
+ * falls back to the original flat amount otherwise -- never a fabricated distance. See
+ * `EatsOrder.kt`'s own doc comment for the full account.
  */
 @Service
 class EatsOrderService(
@@ -80,9 +81,25 @@ class EatsOrderService(
     // for what is, underneath, the same kind of wallet-to-wallet merchant collection.
     private val platformFeeRate = BigDecimal("0.015")
 
-    // A real flat delivery fee -- see this class's own doc comment on why flat, not
-    // distance-based.
-    private val deliveryFee = BigDecimal("1500")
+    // Real distance-based delivery fee (2026-07-18), computed from GeoUtils.haversineKm
+    // when both the restaurant and the buyer's delivery point have real coordinates --
+    // a real base pickup fee plus a real per-km rate, bounded so a wildly out-of-range
+    // coordinate can't produce a runaway or negligible fee. Falls back to the original
+    // flat amount when either side has no coordinates yet (an older restaurant that
+    // hasn't set a location, or a client that hasn't been updated to submit one) --
+    // never a fabricated distance.
+    private val legacyFlatDeliveryFee = BigDecimal("1500")
+    private val baseDeliveryFee = BigDecimal("500")
+    private val perKmDeliveryRate = BigDecimal("250")
+    private val minDeliveryFee = BigDecimal("1000")
+    private val maxDeliveryFee = BigDecimal("5000")
+
+    private fun computeDeliveryFee(distanceKm: Double?): Pair<BigDecimal, BigDecimal?> {
+        if (distanceKm == null) return legacyFlatDeliveryFee to null
+        val distance = BigDecimal(distanceKm).setScale(3, RoundingMode.HALF_UP)
+        val raw = baseDeliveryFee.add(perKmDeliveryRate.multiply(distance)).setScale(2, RoundingMode.HALF_UP)
+        return raw.max(minDeliveryFee).min(maxDeliveryFee) to distance
+    }
 
     private val restaurantStatusOrder = listOf(
         EatsOrderStatus.PLACED, EatsOrderStatus.ACCEPTED, EatsOrderStatus.PREPARING, EatsOrderStatus.READY_FOR_PICKUP,
@@ -90,13 +107,26 @@ class EatsOrderService(
     private val riderStatusOrder = listOf(EatsOrderStatus.RIDER_ASSIGNED, EatsOrderStatus.PICKED_UP, EatsOrderStatus.DELIVERED)
 
     @Transactional
-    fun placeOrder(buyerId: String, restaurantId: String, items: List<EatsOrderItemRequest>, deliveryAddress: String): EatsOrderDetail {
+    fun placeOrder(
+        buyerId: String,
+        restaurantId: String,
+        items: List<EatsOrderItemRequest>,
+        deliveryAddress: String,
+        deliveryLatitude: Double? = null,
+        deliveryLongitude: Double? = null,
+    ): EatsOrderDetail {
         if (items.isEmpty()) {
             throw EmptyEatsOrderException("An order needs at least one item")
         }
         val trimmedAddress = deliveryAddress.trim()
         if (trimmedAddress.isEmpty()) {
             throw InvalidEatsDeliveryAddressException("A delivery address is required")
+        }
+        if ((deliveryLatitude == null) != (deliveryLongitude == null)) {
+            throw InvalidEatsCoordinatesException("Both deliveryLatitude and deliveryLongitude are required together")
+        }
+        if (deliveryLatitude != null && deliveryLongitude != null && !GeoUtils.isValidCoordinate(deliveryLatitude, deliveryLongitude)) {
+            throw InvalidEatsCoordinatesException("Latitude must be between -90 and 90, longitude between -180 and 180")
         }
         val restaurant = merchantRepository.findById(restaurantId)
             .orElseThrow { RestaurantNotFoundException("Restaurant not found") }
@@ -126,6 +156,15 @@ class EatsOrderService(
         val itemsSubtotal = resolved.fold(BigDecimal.ZERO) { acc, r -> acc + r.unitPrice.multiply(BigDecimal(r.quantity)) }
         val platformFee = itemsSubtotal.multiply(platformFeeRate).setScale(2, RoundingMode.HALF_UP)
         val netToRestaurant = itemsSubtotal.subtract(platformFee)
+
+        val restaurantLat = restaurant.latitude
+        val restaurantLng = restaurant.longitude
+        val distanceKm = if (deliveryLatitude != null && deliveryLongitude != null && restaurantLat != null && restaurantLng != null) {
+            GeoUtils.haversineKm(restaurantLat, restaurantLng, deliveryLatitude, deliveryLongitude)
+        } else {
+            null
+        }
+        val (deliveryFee, distanceKmRounded) = computeDeliveryFee(distanceKm)
         val totalAmount = itemsSubtotal.add(deliveryFee)
 
         val result = ledgerService.postLedgerTransaction(
@@ -162,6 +201,7 @@ class EatsOrderService(
                 id = "eats_order_${UUID.randomUUID()}", buyerId = buyerId, restaurantId = restaurantId,
                 deliveryAddress = trimmedAddress, itemsSubtotal = itemsSubtotal, deliveryFee = deliveryFee,
                 platformFee = platformFee, totalAmount = totalAmount, transactionId = result.transactionId,
+                deliveryLatitude = deliveryLatitude, deliveryLongitude = deliveryLongitude, distanceKm = distanceKmRounded,
             ),
         )
         val orderItems = resolved.map {
