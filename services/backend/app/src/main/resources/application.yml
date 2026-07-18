@@ -81,6 +81,13 @@ itunda:
   # exactly as before this integration existed. Never required for local dev/CI.
   osrm:
     base-url: ${OSRM_BASE_URL:}
+  # Real self-hosted Nominatim geocoding (2026-07-18) -- itunda's own Rwanda-only
+  # address index, not a third-party geocoding API. See NominatimGeocodingClient's own
+  # doc comment. Empty by default: without a configured base-url, a buyer's free-text
+  # deliveryAddress simply doesn't resolve to coordinates and Eats falls back to its
+  # original flat delivery fee, exactly as before this integration existed.
+  nominatim:
+    base-url: ${NOMINATIM_BASE_URL:}
 
 # Real Prometheus scrape target (2026-07-11, alongside micrometer-registry-prometheus
 # in app/build.gradle.kts and infra/k8s/monitoring/prometheus-config.yaml's

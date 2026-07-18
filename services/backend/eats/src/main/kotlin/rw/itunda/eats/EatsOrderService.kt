@@ -15,6 +15,7 @@ import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.geo.GeoUtils
+import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
@@ -77,6 +78,7 @@ class EatsOrderService(
     private val fraudRuleEngine: FraudRuleEngine,
     private val ledgerEntryRepository: LedgerEntryRepository,
     private val osrmRoutingClient: OsrmRoutingClient,
+    private val nominatimGeocodingClient: NominatimGeocodingClient,
 ) {
     // Same 1.5% Toss Payments fee-schedule reasoning OrderService.feeRate/
     // MerchantService.feeRate already give -- reused rather than inventing a third number
@@ -161,7 +163,22 @@ class EatsOrderService(
 
         val restaurantLat = restaurant.latitude
         val restaurantLng = restaurant.longitude
-        val distanceKm = if (deliveryLatitude != null && deliveryLongitude != null && restaurantLat != null && restaurantLng != null) {
+
+        // Real geocoding fallback (2026-07-18): when the buyer didn't submit explicit
+        // coordinates, try resolving the free-text delivery address via itunda's own
+        // self-hosted Nominatim -- lets the existing deliveryAddress field drive a real
+        // distance-based fee without needing any client UI changes yet. Falls back to
+        // no coordinates (and therefore the flat fee below) if geocoding is
+        // unconfigured/unreachable/finds no match -- never a fabricated location.
+        val geocoded = if (deliveryLatitude == null && deliveryLongitude == null) {
+            nominatimGeocodingClient.geocode(trimmedAddress)
+        } else {
+            null
+        }
+        val resolvedDeliveryLat = deliveryLatitude ?: geocoded?.latitude
+        val resolvedDeliveryLng = deliveryLongitude ?: geocoded?.longitude
+
+        val distanceKm = if (resolvedDeliveryLat != null && resolvedDeliveryLng != null && restaurantLat != null && restaurantLng != null) {
             // Real road distance via itunda's own self-hosted, Rwanda-only OSRM when
             // both points are plausibly within Rwanda (real Rwanda road network, not a
             // straight line) -- outside that envelope OSRM has no configured
@@ -170,11 +187,11 @@ class EatsOrderService(
             // skips straight to the honest Haversine straight-line distance instead.
             // Also falls back to Haversine when OSRM isn't configured/reachable/finds
             // no route -- never a fabricated number either way.
-            if (GeoUtils.isWithinRwanda(restaurantLat, restaurantLng) && GeoUtils.isWithinRwanda(deliveryLatitude, deliveryLongitude)) {
-                osrmRoutingClient.routeDistanceKm(restaurantLat, restaurantLng, deliveryLatitude, deliveryLongitude)
-                    ?: GeoUtils.haversineKm(restaurantLat, restaurantLng, deliveryLatitude, deliveryLongitude)
+            if (GeoUtils.isWithinRwanda(restaurantLat, restaurantLng) && GeoUtils.isWithinRwanda(resolvedDeliveryLat, resolvedDeliveryLng)) {
+                osrmRoutingClient.routeDistanceKm(restaurantLat, restaurantLng, resolvedDeliveryLat, resolvedDeliveryLng)
+                    ?: GeoUtils.haversineKm(restaurantLat, restaurantLng, resolvedDeliveryLat, resolvedDeliveryLng)
             } else {
-                GeoUtils.haversineKm(restaurantLat, restaurantLng, deliveryLatitude, deliveryLongitude)
+                GeoUtils.haversineKm(restaurantLat, restaurantLng, resolvedDeliveryLat, resolvedDeliveryLng)
             }
         } else {
             null
@@ -216,7 +233,7 @@ class EatsOrderService(
                 id = "eats_order_${UUID.randomUUID()}", buyerId = buyerId, restaurantId = restaurantId,
                 deliveryAddress = trimmedAddress, itemsSubtotal = itemsSubtotal, deliveryFee = deliveryFee,
                 platformFee = platformFee, totalAmount = totalAmount, transactionId = result.transactionId,
-                deliveryLatitude = deliveryLatitude, deliveryLongitude = deliveryLongitude, distanceKm = distanceKmRounded,
+                deliveryLatitude = resolvedDeliveryLat, deliveryLongitude = resolvedDeliveryLng, distanceKm = distanceKmRounded,
             ),
         )
         val orderItems = resolved.map {
