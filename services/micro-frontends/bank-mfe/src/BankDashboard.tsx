@@ -12,8 +12,12 @@ import {
   fetchMyRiderProfile, fetchRestaurantOrders, fetchRestaurants, fetchRiderDeliveries, placeEatsOrder, registerRider,
   setRiderAvailability, type EatsOrder, type EatsOrderStatus, type MenuItem, type Rider,
 } from './lib/eats';
+import {
+  advanceOrderStatus, fetchMerchantOrders, fetchMerchantProducts, fetchMyOrders, placeOrder,
+  type CommerceOrder, type CommerceOrderStatus, type CommerceProduct,
+} from './lib/commerce';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'MESSAGES' | 'MARKETPLACE' | 'EATS';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'MESSAGES' | 'MARKETPLACE' | 'EATS';
 
 function AccountBalance({ wallet }: { wallet: Wallet | null }) {
   return (
@@ -869,7 +873,7 @@ const EATS_STATUS_LABEL: Record<EatsOrderStatus, string> = {
 const RESTAURANT_STATUS_CHAIN: EatsOrderStatus[] = ['PLACED', 'ACCEPTED', 'PREPARING', 'READY_FOR_PICKUP'];
 const RIDER_STATUS_CHAIN: EatsOrderStatus[] = ['RIDER_ASSIGNED', 'PICKED_UP', 'DELIVERED'];
 
-function nextInChain(chain: EatsOrderStatus[], current: EatsOrderStatus): EatsOrderStatus | null {
+function nextInChain<T>(chain: T[], current: T): T | null {
   const idx = chain.indexOf(current);
   return idx >= 0 && idx + 1 < chain.length ? chain[idx + 1] : null;
 }
@@ -1422,6 +1426,354 @@ function EatsView() {
   );
 }
 
+const COMMERCE_STATUS_LABEL: Record<CommerceOrderStatus, string> = {
+  PLACED: 'Placed',
+  PACKED: 'Packed',
+  SHIPPED: 'Shipped',
+  DELIVERED: 'Delivered',
+};
+
+const COMMERCE_STATUS_CHAIN: CommerceOrderStatus[] = ['PLACED', 'PACKED', 'SHIPPED', 'DELIVERED'];
+
+function CommerceOrderCard({ order, action }: { order: CommerceOrder; action?: React.ReactNode }) {
+  return (
+    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-blue)' }}>{COMMERCE_STATUS_LABEL[order.status]}</p>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{order.deliveryAddress}</p>
+        </div>
+        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{order.totalAmount.toLocaleString()} RWF</span>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function ProductCatalogView({ merchant, onBack, onOrderPlaced }: { merchant: ShoppingMerchant; onBack: () => void; onOrderPlaced: (order: CommerceOrder) => void }) {
+  const [catalog, setCatalog] = useState<{ businessName: string; products: CommerceProduct[] } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [cart, setCart] = useState<Record<string, number>>({});
+  const [address, setAddress] = useState('');
+  const [placing, setPlacing] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
+
+  const load = () => {
+    setError(null);
+    fetchMerchantProducts(merchant.merchantId)
+      .then((r) => setCatalog({ businessName: r.merchant.businessName, products: r.products }))
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this catalog.'));
+  };
+
+  useEffect(load, [merchant.merchantId]);
+
+  const cartItems = Object.entries(cart).filter(([, qty]) => qty > 0);
+  const cartCount = cartItems.reduce((sum, [, qty]) => sum + qty, 0);
+  const setQty = (id: string, qty: number) => setCart((c) => ({ ...c, [id]: Math.max(0, qty) }));
+
+  const handlePlaceOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!catalog) return;
+    setPlacing(true);
+    setError(null);
+    try {
+      const items = cartItems.map(([productId, quantity]) => ({ productId, quantity }));
+      const result = await placeOrder(merchant.merchantId, items, address.trim());
+      onOrderPlaced(result.order);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not place this order.');
+    } finally {
+      setPlacing(false);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="toss-card">
+        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+      </div>
+    );
+  }
+
+  if (catalog === null) {
+    return <div className="toss-card skeleton" style={{ height: '220px' }} />;
+  }
+
+  if (showCheckout) {
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+          <button onClick={() => setShowCheckout(false)} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to catalog">
+            <ArrowLeft size={20} />
+          </button>
+          <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Checkout</h3>
+        </div>
+        <form onSubmit={handlePlaceOrder} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {cartItems.map(([id, qty]) => {
+            const item = catalog.products.find((p) => p.id === id);
+            if (!item) return null;
+            return (
+              <div key={id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                <span>{item.name} x{qty}</span>
+                <span>{(item.price * qty).toLocaleString()} RWF</span>
+              </div>
+            );
+          })}
+          <input
+            type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Delivery address" required
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={placing || !address.trim()}>
+            {placing ? 'Placing order…' : 'Place order'}
+          </button>
+          {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+        </form>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to merchants">
+          <ArrowLeft size={20} />
+        </button>
+        <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{catalog.businessName}</h3>
+      </div>
+      {catalog.products.length === 0 ? (
+        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No products yet.</p></div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: cartCount > 0 ? '80px' : 0 }}>
+          {catalog.products.map((item) => (
+            <div key={item.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <p style={{ fontSize: '15px', fontWeight: 700 }}>{item.name}</p>
+                <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{item.price.toLocaleString()} RWF</p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button onClick={() => setQty(item.id, (cart[item.id] ?? 0) - 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>−</button>
+                <span style={{ minWidth: '16px', textAlign: 'center', fontWeight: 700 }}>{cart[item.id] ?? 0}</span>
+                <button onClick={() => setQty(item.id, (cart[item.id] ?? 0) + 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>+</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {cartCount > 0 && (
+        <button
+          className="toss-btn toss-btn-primary"
+          style={{ position: 'fixed', bottom: '24px', left: '20px', right: '20px', maxWidth: '440px', margin: '0 auto' }}
+          onClick={() => setShowCheckout(true)}
+        >
+          Checkout ({cartCount} item{cartCount === 1 ? '' : 's'})
+        </button>
+      )}
+    </div>
+  );
+}
+
+function MyCommerceOrdersView() {
+  const [orders, setOrders] = useState<CommerceOrder[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchMyOrders().then(setOrders).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your orders.'));
+  };
+
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (error) {
+    return (
+      <div className="toss-card">
+        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+      </div>
+    );
+  }
+  if (orders === null) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
+  if (orders.length === 0) return <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No orders yet.</p></div>;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {orders.map((o) => <CommerceOrderCard key={o.id} order={o} />)}
+    </div>
+  );
+}
+
+function MerchantOrdersView() {
+  const [orders, setOrders] = useState<CommerceOrder[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
+
+  const load = () => {
+    fetchMerchantOrders()
+      .then(setOrders)
+      .catch((err) => {
+        // A real, expected error for any account that hasn't registered as a merchant --
+        // stays silent rather than alarming the common case of a buyer-only account.
+        if (err instanceof ApiError && err.code === 'MERCHANT_NOT_FOUND') {
+          setOrders([]);
+        } else {
+          setError(err instanceof ApiError ? err.message : 'Could not load your store orders.');
+        }
+      });
+  };
+
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleAdvance = async (order: CommerceOrder) => {
+    const next = nextInChain(COMMERCE_STATUS_CHAIN, order.status);
+    if (!next) return;
+    setBusyOrderId(order.id);
+    setError(null);
+    try {
+      await advanceOrderStatus(order.id, next);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update this order.');
+    } finally {
+      setBusyOrderId(null);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="toss-card">
+        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+      </div>
+    );
+  }
+  if (orders === null) return <div className="toss-card skeleton" style={{ height: '180px' }} />;
+  if (orders.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom: '20px' }}>
+      <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Orders for your store</h4>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {orders.map((o) => {
+          const next = nextInChain(COMMERCE_STATUS_CHAIN, o.status);
+          return (
+            <CommerceOrderCard
+              key={o.id}
+              order={o}
+              action={next && (
+                <button className="toss-btn toss-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleAdvance(o)}>
+                  {busyOrderId === o.id ? 'Updating…' : `Mark ${COMMERCE_STATUS_LABEL[next].toLowerCase()}`}
+                </button>
+              )}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ShopView() {
+  const [view, setView] = useState<'BROWSE' | 'ORDERS'>('BROWSE');
+  const [merchants, setMerchants] = useState<ShoppingMerchant[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<ShoppingMerchant | null>(null);
+  const [confirmed, setConfirmed] = useState<CommerceOrder | null>(null);
+
+  // Real Coupang-style commerce (rw.itunda.commerce) -- deliberately reuses the same
+  // GET /api/v1/shopping/merchants catalog the Shopping tab (Toss Shopping cashback
+  // browsing) already uses, matching how Android/iOS's own Shop tab reuses the same
+  // merchant directory rather than inventing a second one.
+  const load = () => {
+    setError(null);
+    fetchShoppingCatalog().then(setMerchants).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load merchants.'));
+  };
+
+  useEffect(load, []);
+
+  if (confirmed) {
+    return (
+      <div className="toss-card" style={{ textAlign: 'center', padding: '28px' }}>
+        <ShieldCheck size={36} color="var(--toss-green)" style={{ marginBottom: '10px' }} />
+        <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '4px' }}>Order placed</h3>
+        <p style={{ fontSize: '22px', fontWeight: 700, marginBottom: '4px' }}>{confirmed.totalAmount.toLocaleString()} RWF</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>Delivering to {confirmed.deliveryAddress}</p>
+        <button
+          className="toss-btn toss-btn-secondary"
+          onClick={() => { setConfirmed(null); setSelected(null); setView('ORDERS'); }}
+        >
+          Track order
+        </button>
+      </div>
+    );
+  }
+
+  if (selected) {
+    return <ProductCatalogView merchant={selected} onBack={() => setSelected(null)} onOrderPlaced={setConfirmed} />;
+  }
+
+  return (
+    <div>
+      <MerchantOrdersView />
+
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+        {(['BROWSE', 'ORDERS'] as const).map((v) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            style={{
+              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
+              color: view === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+              backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
+            }}
+          >
+            {v === 'BROWSE' ? 'Merchants' : 'My orders'}
+          </button>
+        ))}
+      </div>
+
+      {view === 'ORDERS' ? (
+        <MyCommerceOrdersView />
+      ) : error ? (
+        <div className="toss-card">
+          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+          <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+        </div>
+      ) : merchants === null ? (
+        <div className="toss-card skeleton" style={{ height: '220px' }} />
+      ) : merchants.length === 0 ? (
+        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No merchants registered yet.</p></div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {merchants.map((m) => (
+            <button
+              key={m.merchantId}
+              onClick={() => setSelected(m)}
+              className="toss-card"
+              style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%' }}
+            >
+              <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <ShoppingBag size={20} color="var(--toss-blue)" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{m.businessName}</p>
+                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Real cart checkout, real delivery tracking</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>('HOME');
   const [pendingConversationId, setPendingConversationId] = useState<string | null>(null);
@@ -1442,6 +1794,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
 
   const TABS: { id: Tab; label: string }[] = [
     { id: 'HOME', label: 'Home' },
+    { id: 'SHOP', label: 'Shop' },
     { id: 'EATS', label: 'Eats' },
     { id: 'MESSAGES', label: 'Messages' },
     { id: 'MARKETPLACE', label: 'Marketplace' },
@@ -1483,6 +1836,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       </div>
 
       {tab === 'HOME' && <HomeView />}
+      {tab === 'SHOP' && <ShopView />}
       {tab === 'EATS' && <EatsView />}
       {tab === 'MESSAGES' && (
         <MessagesView
