@@ -1,8 +1,13 @@
 package rw.itunda.app.network
 
 import android.content.Context
+import com.google.gson.Gson
+import com.google.gson.JsonObject
 import okhttp3.OkHttpClient
 import okhttp3.Interceptor
+import okhttp3.Request
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
@@ -575,4 +580,38 @@ object NetworkClient {
 
     val apiService: ApiService by lazy { retrofit.create(ApiService::class.java) }
     val authApi: AuthApi by lazy { retrofit.create(AuthApi::class.java) }
+
+    // Real WebSocket live-transport (2026-07-18) -- see
+    // rw.itunda.app.websocket.MessagingWebSocketHandler's own doc comment for the real
+    // backend push shape this mirrors exactly. Ported from bank-mfe's own
+    // connectMessagingSocket, which established this session's push-payload contract.
+    // Group-message pushes ("group_message") are parsed but silently ignored here --
+    // group chat itself hasn't been ported to Android yet, a real, explicitly open next
+    // step (see docs/TOSS_PARITY_MATRIX.md's Messaging row).
+    private val gson = Gson()
+
+    fun connectMessagingSocket(onMessage: (MessageDto) -> Unit): WebSocket {
+        val token = tokenStore?.getAccessToken().orEmpty()
+        val wsUrl = BASE_URL.replaceFirst("http://", "ws://").replaceFirst("https://", "wss://") + "ws/messaging?token=$token"
+        val request = Request.Builder().url(wsUrl).build()
+        return okHttpClient.newWebSocket(
+            request,
+            object : WebSocketListener() {
+                override fun onMessage(webSocket: WebSocket, text: String) {
+                    try {
+                        val json = gson.fromJson(text, JsonObject::class.java)
+                        if (json.get("type")?.asString == "message") {
+                            onMessage(gson.fromJson(json.get("message"), MessageDto::class.java))
+                        }
+                        // "group_message" real payloads are received but not yet acted
+                        // on -- see this function's own doc comment.
+                    } catch (e: Exception) {
+                        // Real, non-critical -- a malformed/unexpected push shouldn't
+                        // crash the socket listener; the 4s poll stays as the real
+                        // fallback delivery path regardless.
+                    }
+                }
+            },
+        )
+    }
 }

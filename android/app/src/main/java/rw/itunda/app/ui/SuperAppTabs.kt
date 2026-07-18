@@ -35,6 +35,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -49,6 +50,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
@@ -288,14 +290,31 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
         }
     }
 
-    // Real poll-based "live" delivery -- MessagingService's own doc comment names
-    // this as the honest current scope (no WebSocket/push transport yet). 4s matches
-    // bank-mfe's own ConversationThread poll interval exactly.
+    // Real poll, kept as an always-correct fallback delivery path alongside the real
+    // WebSocket push below -- matches bank-mfe's own ConversationThread exactly (poll
+    // interval unchanged, push appended live on top).
     LaunchedEffect(conversation.conversationId) {
         while (true) {
             refresh()
             delay(4000)
         }
+    }
+    // Real WebSocket live-transport (2026-07-18) -- see NetworkClient.connectMessagingSocket's
+    // own doc comment. Pushed messages are de-duped by id against whatever the poll
+    // already fetched, and appended on the main thread since OkHttp's listener callback
+    // runs on its own background thread, not safe to mutate Compose state from directly.
+    DisposableEffect(conversation.conversationId) {
+        val socket = NetworkClient.connectMessagingSocket { pushed ->
+            if (pushed.conversationId == conversation.conversationId) {
+                coroutineScope.launch(Dispatchers.Main) {
+                    val current = messages ?: emptyList()
+                    if (current.none { it.id == pushed.id }) {
+                        messages = current + pushed
+                    }
+                }
+            }
+        }
+        onDispose { socket.close(1000, "leaving chat thread") }
     }
     LaunchedEffect(messages?.size) {
         val count = messages?.size ?: 0

@@ -189,6 +189,7 @@ private struct ChatThreadScreen: View {
     @State private var draft = ""
     @State private var sending = false
     @State private var error: String?
+    @State private var socketTask: URLSessionWebSocketTask?
     private let currentUserId = KeychainTokenStore.shared.getUserId()
 
     var body: some View {
@@ -252,13 +253,29 @@ private struct ChatThreadScreen: View {
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .task { await refresh() }
-        // Real poll-based "live" delivery -- see this file's own header comment for
-        // why (matches bank-mfe/Android's identical 4s interval).
+        // Real poll, kept as an always-correct fallback delivery path alongside the
+        // real WebSocket push below -- matches bank-mfe/Android exactly (poll interval
+        // unchanged, push appended live on top).
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 4_000_000_000)
                 await refresh()
             }
+        }
+        // Real WebSocket live-transport (2026-07-18) -- see
+        // NetworkClient.connectMessagingSocket's own doc comment.
+        .onAppear {
+            socketTask = NetworkClient.shared.connectMessagingSocket { pushedConversationId, pushedMessage in
+                guard pushedConversationId == conversation.conversationId else { return }
+                Task { @MainActor in
+                    if !(messages ?? []).contains(where: { $0.id == pushedMessage.id }) {
+                        messages = (messages ?? []) + [pushedMessage]
+                    }
+                }
+            }
+        }
+        .onDisappear {
+            socketTask?.cancel(with: .goingAway, reason: nil)
         }
     }
 

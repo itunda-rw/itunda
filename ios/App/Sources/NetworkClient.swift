@@ -386,6 +386,11 @@ struct MessageDto: Decodable, Identifiable {
     let readAt: String?
 }
 
+// Real WebSocket push envelopes (2026-07-18) -- see
+// NetworkClient.connectMessagingSocket's own doc comment.
+struct MessagingSocketTypeEnvelope: Decodable { let type: String }
+struct MessagingSocketMessageEnvelope: Decodable { let type: String; let conversationId: String; let message: MessageDto }
+
 struct StartConversationRequest: Encodable {
     let phoneNumber: String?
     let otherUserId: String?
@@ -529,6 +534,50 @@ extension NetworkClient {
 
     func sendMessage(conversationId: String, body: String) async throws -> MessageResponse {
         try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/messages", body: SendMessageRequest(body: body))
+    }
+
+    /// Real WebSocket live-transport (2026-07-18) -- see
+    /// rw.itunda.app.websocket.MessagingWebSocketHandler's own doc comment for the real
+    /// backend push shape this mirrors exactly (also ported to Android the same day).
+    /// Native `URLSessionWebSocketTask`, no third-party dependency. Group-message
+    /// pushes ("group_message") are received but not yet acted on -- group chat itself
+    /// hasn't been ported to iOS yet, a real, explicitly open next step (see
+    /// docs/TOSS_PARITY_MATRIX.md's Messaging row).
+    func connectMessagingSocket(onMessage: @escaping (String, MessageDto) -> Void) -> URLSessionWebSocketTask {
+        let wsBase = NetworkClient.baseURLString
+            .replacingOccurrences(of: "http://", with: "ws://")
+            .replacingOccurrences(of: "https://", with: "wss://")
+        let token = KeychainTokenStore.shared.getAccessToken() ?? ""
+        let url = URL(string: "\(wsBase)ws/messaging?token=\(token)")!
+        let task = session.webSocketTask(with: url)
+        task.resume()
+        receiveMessagingSocketFrame(task, onMessage: onMessage)
+        return task
+    }
+
+    private func receiveMessagingSocketFrame(_ task: URLSessionWebSocketTask, onMessage: @escaping (String, MessageDto) -> Void) {
+        task.receive { [weak self] result in
+            guard let self else { return }
+            if case .success(.string(let text)) = result, let data = text.data(using: .utf8) {
+                // Two-pass decode: only fully decode `message` as MessageDto once we've
+                // confirmed type == "message" -- a group_message push's nested message
+                // object has a different shape (groupConversationId, not conversationId)
+                // and would otherwise fail MessageDto's strict decode.
+                if let typeEnvelope = try? JSONDecoder().decode(MessagingSocketTypeEnvelope.self, from: data),
+                   typeEnvelope.type == "message",
+                   let envelope = try? JSONDecoder().decode(MessagingSocketMessageEnvelope.self, from: data) {
+                    onMessage(envelope.conversationId, envelope.message)
+                }
+            }
+            // Real, non-critical -- a malformed/unexpected push or a transient receive
+            // error shouldn't kill the app; the 4s poll stays as the real fallback
+            // delivery path regardless. Only a genuinely closed socket stops the loop.
+            if case .success = result {
+                self.receiveMessagingSocketFrame(task, onMessage: onMessage)
+            } else if case .failure = result {
+                // Socket closed/errored -- stop listening, poll takes over.
+            }
+        }
     }
 
     func createListing(title: String, description: String, price: Double, category: String) async throws -> ListingResponse {
