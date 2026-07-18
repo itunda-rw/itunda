@@ -41,6 +41,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    // Real live-transport for messaging (2026-07-18) -- see
+    // rw.itunda.app.websocket.MessagingWebSocketHandler's own doc comment.
+    implementation("org.springframework.boot:spring-boot-starter-websocket")
     // Real k8s liveness/readiness probes need a real health endpoint -- added
     // 2026-07-11 alongside infra/k8s/production/backend.yaml, which would
     // otherwise crash-loop every pod probing a path that didn't exist.

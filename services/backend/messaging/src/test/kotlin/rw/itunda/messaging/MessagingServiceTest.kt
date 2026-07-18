@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 import rw.itunda.auth.RateLimiter
@@ -13,6 +14,7 @@ import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.Message
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.User
+import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.ConversationRepository
 import rw.itunda.core.repository.MessageRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -30,7 +32,8 @@ class MessagingServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = MessagingService(conversationRepository, messageRepository, userRepository, notificationRepository, rateLimiter)
+        val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
+        val service = MessagingService(conversationRepository, messageRepository, userRepository, notificationRepository, rateLimiter, realtimeMessagePublisher)
 
         When("starting a conversation between user_a and user_b for the first time") {
             every { userRepository.findById("user_b") } returns Optional.of(user("user_b", "Beata"))
@@ -124,6 +127,10 @@ class MessagingServiceTest : BehaviorSpec({
                 message.body shouldBe "Hey there"
                 message.senderId shouldBe "user_a"
                 notifSlot.captured.userId shouldBe "user_b"
+            }
+
+            Then("it real-time-pushes the trimmed message to the OTHER participant, not the sender") {
+                verify { realtimeMessagePublisher.publishNewMessage("conversation_1", "user_b", message) }
             }
         }
 

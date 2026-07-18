@@ -74,6 +74,15 @@ class SecurityConfig(
                     // ADMIN-only /api/v1/system/** came back 401 instead of 403 until this
                     // was added.
                     .requestMatchers("/health", "/actuator/health", "/error", "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
+                    // Real WebSocket live-transport for messaging (2026-07-18) -- the
+                    // handshake carries its own JWT as a `?token=` query param (a native
+                    // WebSocket client can't set a custom Authorization header), verified
+                    // by MessagingWebSocketConfig's own HandshakeInterceptor before the
+                    // upgrade completes. permitAll here just skips this filter chain's
+                    // header-based JWT check for this one path -- it is NOT unauthenticated,
+                    // the interceptor is the real gate, same as PartnerController's own
+                    // API-key-based permitAll above.
+                    .requestMatchers("/ws/**").permitAll()
                     // Partner-facing endpoints authenticate with a real partner API key
                     // (X-Api-Key header, checked inside PartnerService.resolvePartner),
                     // not a itunda-user JWT -- a partner has no itunda user account.

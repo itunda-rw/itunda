@@ -9,6 +9,7 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.Message
 import rw.itunda.core.domain.Notification
+import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.ConversationRepository
 import rw.itunda.core.repository.MessageRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -41,14 +42,18 @@ data class ConversationSummary(
  * a real, general-purpose 1:1 conversation system avoids building it three times.
  *
  * Honestly scoped like every other module this session: real conversations, real
- * persisted messages, real unread tracking, real spam rate-limiting -- but delivery is
- * poll-based (a client re-fetches `getMessages`/`listConversations`), not a live
- * WebSocket/push channel. A real-time transport is a separate, genuinely larger
- * infrastructure concern (a persistent connection layer this backend has never needed
- * before) -- this pass reuses the existing real `Notification` system (the same one
- * `WalletService`'s budget alerts already use) so a new message at least surfaces as a
- * real in-app notification, rather than inventing a half-real push mechanism. A live
- * transport is the natural next step, not attempted here.
+ * persisted messages, real unread tracking, real spam rate-limiting. This pass also
+ * reuses the existing real `Notification` system (the same one `WalletService`'s
+ * budget alerts already use) so a new message always surfaces as a real in-app
+ * notification, regardless of whether the recipient has a live connection open.
+ *
+ * **Real live-transport added 2026-07-18** (`RealtimeMessagePublisher`, implemented by
+ * `rw.itunda.app.websocket.MessagingWebSocketHandler`): `sendMessage` pushes the new
+ * message straight to the recipient's open WebSocket session, if any, the moment it's
+ * persisted. A client without a live connection (or on a poll-only build that hasn't
+ * adopted the socket yet) still gets the message via the unchanged poll-based
+ * `getMessages`/`listConversations` -- the live push is a real latency improvement
+ * layered on top of the always-correct poll path, not a replacement for it.
  */
 @Service
 class MessagingService(
@@ -57,6 +62,7 @@ class MessagingService(
     private val userRepository: UserRepository,
     private val notificationRepository: NotificationRepository,
     private val rateLimiter: RateLimiter,
+    private val realtimeMessagePublisher: RealtimeMessagePublisher,
 ) {
     /** Canonical ordering so a real DB unique constraint on (participantAId,
      * participantBId) can enforce "at most one conversation per pair" without a
@@ -132,6 +138,9 @@ class MessagingService(
                 isRead = false, createdAt = Instant.now(), dataJson = "{\"conversationId\":\"$conversationId\"}",
             ),
         )
+        // Real live push, on a best-effort basis -- the message is already durably
+        // persisted above regardless of whether anyone is listening right now.
+        realtimeMessagePublisher.publishNewMessage(conversationId, recipientId, message)
         return message
     }
 
