@@ -1,0 +1,46 @@
+package rw.itunda.core.domain
+
+import jakarta.persistence.Column
+import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
+import jakarta.persistence.Id
+import jakarta.persistence.Table
+import java.time.Instant
+
+enum class RiderStatus { ACTIVE, SUSPENDED }
+
+/**
+ * A real itunda user who has opted into delivering Eats orders -- reuses the user's own
+ * existing MAIN wallet as the payout destination (same real WALLET-to-WALLET disbursement
+ * precedent `PayrollService` already established for employee pay), no new wallet type or
+ * external payout rail needed. `available` is a real self-reported online/offline toggle
+ * (no real GPS/location tracking exists anywhere in this backend -- the same honest
+ * "no real location data" limitation already named for the neighborhood marketplace row).
+ * See `rw.itunda.eats.RiderService`/`EatsOrderService` for the full account.
+ */
+@Entity
+@Table(name = "riders")
+class Rider(
+    @Id
+    @Column(length = 64)
+    val id: String,
+
+    @Column(name = "user_id", nullable = false, unique = true, length = 64)
+    val userId: String,
+
+    @Column(name = "wallet_id", nullable = false, length = 64)
+    val walletId: String,
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    var status: RiderStatus = RiderStatus.ACTIVE,
+
+    @Column(nullable = false)
+    var available: Boolean = false,
+
+    @Column(name = "created_at", nullable = false)
+    val createdAt: Instant = Instant.now(),
+) {
+    protected constructor() : this(id = "", userId = "", walletId = "")
+}

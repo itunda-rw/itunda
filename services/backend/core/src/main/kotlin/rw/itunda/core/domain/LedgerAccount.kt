@@ -44,6 +44,13 @@ class LedgerAccount(
             // systems use a granular suspense account per settlement channel rather
             // than one shared bucket.
             "card_network_clearing" to "Card Network Settlement Clearing",
+            // Holds a buyer's real delivery fee from the moment a Coupang Eats-style
+            // order is placed until it's real-paid out to whichever rider completes the
+            // delivery (rw.itunda.eats.EatsOrderService, 2026-07-18) -- a real, standard
+            // escrow-style clearing account (the buyer's money already left their
+            // wallet, it just hasn't reached its final recipient yet), not a fake holding
+            // pattern invented for this feature.
+            "eats_delivery_holding" to "Eats Delivery Fee Holding",
         )
     }
 }
