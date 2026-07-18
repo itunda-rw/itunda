@@ -10,6 +10,7 @@ import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.Listing
 import rw.itunda.core.domain.ListingStatus
 import rw.itunda.core.geo.GeoUtils
+import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.repository.ListingRepository
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
@@ -39,7 +40,15 @@ class MarketplaceService(
     private val listingRepository: ListingRepository,
     private val rateLimiter: RateLimiter,
     private val messagingService: MessagingService,
+    private val osrmRoutingClient: OsrmRoutingClient,
 ) {
+    companion object {
+        // Bounds a single OSRM /table request's URL length and the private cloud's
+        // per-request load -- beyond this, nearby() quietly stays on the already-honest
+        // Haversine ranking rather than risking an oversized request.
+        private const val MAX_OSRM_TABLE_CANDIDATES = 100
+    }
+
     private fun requireOwner(sellerId: String, listingId: String): Listing {
         val listing = listingRepository.findById(listingId)
             .orElseThrow { ListingNotFoundException("Listing not found") }
@@ -96,9 +105,23 @@ class MarketplaceService(
 
     // Real proximity search (2026-07-18) -- the hyperlocal-discovery gap this class's own
     // doc comment originally named as impossible without real location data, now closed
-    // for listings that have set one. Distance computed via GeoUtils.haversineKm over the
-    // bounded set of ACTIVE listings that have coordinates (see ListingRepository's own
-    // note on why this is in-app, not a real geospatial DB index, at current scale).
+    // for listings that have set one. Ranked over the bounded set of ACTIVE listings that
+    // have coordinates (see ListingRepository's own note on why this is in-app, not a
+    // real geospatial DB index, at current scale).
+    //
+    // Real road-distance ranking (2026-07-19) -- upgrades this from straight-line-only to
+    // itunda's own self-hosted OSRM when available, via one batched `/table` call rather
+    // than N `/route` calls (see OsrmRoutingClient.routeDistancesKm). GeoUtils.haversineKm
+    // still does two real jobs first: (1) a cheap pre-filter/candidate bound before ever
+    // calling OSRM -- since real road distance is always >= straight-line distance, any
+    // listing within radiusKm by road is guaranteed to already be within radiusKm by
+    // Haversine, so this can only ever admit a safe superset, never wrongly exclude a
+    // true match; (2) the honest per-listing fallback whenever OSRM is unconfigured,
+    // unreachable, or returns no route for that one leg -- matching EatsOrderService's
+    // own "never fail, never fabricate" OSRM convention, including the same
+    // isWithinRwanda guard against OSRM silently snapping an out-of-Rwanda coordinate to
+    // its nearest network node (see GeoUtils.isWithinRwanda's doc comment for the real bug
+    // this once caused).
     fun nearby(latitude: Double, longitude: Double, radiusKm: Double, pageable: Pageable): Page<Listing> {
         if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
             throw InvalidCoordinatesException("Latitude must be between -90 and 90, longitude between -180 and 180")
@@ -107,8 +130,28 @@ class MarketplaceService(
             throw InvalidCoordinatesException("radiusKm must be greater than zero")
         }
         val candidates = listingRepository.findByStatusAndLatitudeIsNotNullAndLongitudeIsNotNull(ListingStatus.ACTIVE)
-        val sorted = candidates
+        val haversineRanked = candidates
             .map { it to GeoUtils.haversineKm(latitude, longitude, it.latitude!!, it.longitude!!) }
+            .filter { (_, distanceKm) -> distanceKm <= radiusKm }
+
+        val originInRwanda = GeoUtils.isWithinRwanda(latitude, longitude)
+        val (inRwanda, outsideRwanda) = haversineRanked.partition { (listing, _) ->
+            originInRwanda && GeoUtils.isWithinRwanda(listing.latitude!!, listing.longitude!!)
+        }
+        val roadRanked = if (osrmRoutingClient.isConfigured && inRwanda.isNotEmpty() && inRwanda.size <= MAX_OSRM_TABLE_CANDIDATES) {
+            val destinations = inRwanda.map { (listing, _) -> listing.latitude!! to listing.longitude!! }
+            val roadDistances = osrmRoutingClient.routeDistancesKm(latitude, longitude, destinations)
+            inRwanda.mapIndexed { index, (listing, haversineDistanceKm) ->
+                listing to (roadDistances.getOrNull(index) ?: haversineDistanceKm)
+            }
+        } else {
+            inRwanda
+        }
+
+        // Real road distance can exceed the Haversine straight line, so a listing that
+        // passed the Haversine pre-filter can still legitimately fall outside radiusKm
+        // once ranked by real road distance -- re-applied here, not assumed.
+        val sorted = (roadRanked + outsideRwanda)
             .filter { (_, distanceKm) -> distanceKm <= radiusKm }
             .sortedBy { (_, distanceKm) -> distanceKm }
             .map { (listing, _) -> listing }

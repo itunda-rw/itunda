@@ -61,4 +61,45 @@ class OsrmRoutingClient(
             null
         }
     }
+
+    /**
+     * Real road distance in km from one origin to many destinations via a single OSRM
+     * `/table` call -- the batched sibling of [routeDistanceKm], for ranking N candidates
+     * (e.g. Marketplace proximity search) without N separate `/route` round trips. Each
+     * entry in the returned list lines up positionally with `destinations`; an entry is
+     * null wherever that one leg has no route, same never-fail contract as
+     * [routeDistanceKm] -- callers fall back to GeoUtils.haversineKm per-candidate, not
+     * for the whole batch.
+     */
+    fun routeDistancesKm(fromLat: Double, fromLng: Double, destinations: List<Pair<Double, Double>>): List<Double?> {
+        val client = restClient ?: return destinations.map { null }
+        if (destinations.isEmpty()) return emptyList()
+        return try {
+            // Built as one literal path string, not a single templated variable, so the
+            // required-literal ',' and ';' separators in OSRM's coordinate syntax aren't
+            // percent-encoded -- unlike routeDistanceKm's per-number template variables,
+            // there's no fixed placeholder count for a variable-length destination list.
+            val coords = buildString {
+                append(fromLng).append(',').append(fromLat)
+                destinations.forEach { (lat, lng) -> append(';').append(lng).append(',').append(lat) }
+            }
+            val destinationIndices = (1..destinations.size).joinToString(";")
+            val path = "/table/v1/driving/$coords?sources=0&destinations=$destinationIndices&annotations=distance"
+            @Suppress("UNCHECKED_CAST")
+            val response = client.get().uri(path).retrieve().body(Map::class.java) as Map<String, Any?>?
+            val code = response?.get("code") as? String
+            @Suppress("UNCHECKED_CAST")
+            val distances = response?.get("distances") as? List<List<Any?>>
+            val row = distances?.firstOrNull()
+            if (code != "Ok" || row == null) {
+                logger.warn("OSRM table request returned no usable matrix (code={}) -- falling back to straight-line distances", code)
+                destinations.map { null }
+            } else {
+                row.map { (it as? Number)?.let { meters -> meters.toDouble() / 1000.0 } }
+            }
+        } catch (e: RestClientException) {
+            logger.warn("OSRM table request failed -- falling back to straight-line distances: {}", e.message)
+            destinations.map { null }
+        }
+    }
 }

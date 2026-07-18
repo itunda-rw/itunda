@@ -11,6 +11,7 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.Listing
 import rw.itunda.core.domain.ListingStatus
+import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.repository.ListingRepository
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
@@ -23,7 +24,8 @@ class MarketplaceServiceTest : BehaviorSpec({
         val listingRepository = mockk<ListingRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
-        val service = MarketplaceService(listingRepository, rateLimiter, messagingService)
+        val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient)
 
         When("creating a listing with valid fields") {
             val savedSlot = slot<Listing>()
@@ -66,7 +68,8 @@ class MarketplaceServiceTest : BehaviorSpec({
         val listingRepository = mockk<ListingRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
-        val service = MarketplaceService(listingRepository, rateLimiter, messagingService)
+        val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient)
         val listing = Listing(
             id = "listing_1", sellerId = "seller_1", title = "Bicycle", description = "desc",
             price = BigDecimal("15000"), category = "sports",
@@ -140,7 +143,8 @@ class MarketplaceServiceTest : BehaviorSpec({
         val listingRepository = mockk<ListingRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
-        val service = MarketplaceService(listingRepository, rateLimiter, messagingService)
+        val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient)
 
         When("no category filter is given") {
             every { listingRepository.findByStatusOrderByCreatedAtDesc(ListingStatus.ACTIVE, any()) } returns
@@ -158,7 +162,8 @@ class MarketplaceServiceTest : BehaviorSpec({
         val listingRepository = mockk<ListingRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
-        val service = MarketplaceService(listingRepository, rateLimiter, messagingService)
+        val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient)
 
         When("only one of latitude/longitude is given") {
             Then("it throws InvalidCoordinatesException") {
@@ -199,7 +204,8 @@ class MarketplaceServiceTest : BehaviorSpec({
         val listingRepository = mockk<ListingRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
-        val service = MarketplaceService(listingRepository, rateLimiter, messagingService)
+        val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient)
 
         // Searcher at (-1.9441, 30.0619). Same longitude as both listings, only latitude
         // differs, so a real Haversine distance along a meridian is exact:
@@ -251,6 +257,80 @@ class MarketplaceServiceTest : BehaviorSpec({
                 } catch (e: InvalidCoordinatesException) {
                     // expected
                 }
+            }
+        }
+    }
+
+    Given("real OSRM road-distance ranking for Marketplace proximity search") {
+        val listingRepository = mockk<ListingRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val messagingService = mockk<MessagingService>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient)
+
+        // Both within Rwanda's bounding envelope, both within a real 5km straight-line
+        // radius of the searcher -- Haversine says listingA is closer.
+        val listingA = Listing(
+            id = "listing_a", sellerId = "seller_1", title = "A", description = "d",
+            price = BigDecimal("100"), category = "sports", latitude = -1.9541, longitude = 30.0619, // ~1.11km Haversine
+        )
+        val listingB = Listing(
+            id = "listing_b", sellerId = "seller_1", title = "B", description = "d",
+            price = BigDecimal("100"), category = "sports", latitude = -1.9641, longitude = 30.0619, // ~2.22km Haversine
+        )
+        every { listingRepository.findByStatusAndLatitudeIsNotNullAndLongitudeIsNotNull(ListingStatus.ACTIVE) } returns
+            listOf(listingA, listingB)
+
+        When("OSRM is configured and returns a real road distance that reorders the Haversine ranking") {
+            every { osrmRoutingClient.isConfigured } returns true
+            // Road distance flips the order: B is closer by road than A, despite being
+            // farther by straight line.
+            every {
+                osrmRoutingClient.routeDistancesKm(-1.9441, 30.0619, listOf(-1.9541 to 30.0619, -1.9641 to 30.0619))
+            } returns listOf(4.0, 1.0)
+
+            val page = service.nearby(-1.9441, 30.0619, 5.0, PageRequest.of(0, 20))
+
+            Then("real road distance, not straight-line distance, decides the order") {
+                page.content.map { it.id } shouldBe listOf("listing_b", "listing_a")
+            }
+        }
+
+        When("OSRM's real road distance pushes a Haversine-in-range listing outside the search radius") {
+            every { osrmRoutingClient.isConfigured } returns true
+            every {
+                osrmRoutingClient.routeDistancesKm(-1.9441, 30.0619, listOf(-1.9541 to 30.0619, -1.9641 to 30.0619))
+            } returns listOf(1.0, 6.0)
+
+            val page = service.nearby(-1.9441, 30.0619, 5.0, PageRequest.of(0, 20))
+
+            Then("it's excluded even though it passed the Haversine pre-filter") {
+                page.content.map { it.id } shouldBe listOf("listing_a")
+            }
+        }
+
+        When("OSRM has no route for one candidate") {
+            every { osrmRoutingClient.isConfigured } returns true
+            every {
+                osrmRoutingClient.routeDistancesKm(-1.9441, 30.0619, listOf(-1.9541 to 30.0619, -1.9641 to 30.0619))
+            } returns listOf(null, 2.5)
+
+            val page = service.nearby(-1.9441, 30.0619, 5.0, PageRequest.of(0, 20))
+
+            Then("that one candidate honestly falls back to its own Haversine distance, not a fabricated value") {
+                // listingA's Haversine (~1.11km) still beats listingB's real road distance (2.5km).
+                page.content.map { it.id } shouldBe listOf("listing_a", "listing_b")
+            }
+        }
+
+        When("the searcher's own coordinate is outside Rwanda's bounding envelope") {
+            every { osrmRoutingClient.isConfigured } returns true
+
+            val page = service.nearby(0.0, 30.0, 500.0, PageRequest.of(0, 20))
+
+            Then("OSRM is never consulted -- ranking falls straight back to Haversine, matching EatsOrderService's own guard against OSRM silently snapping an out-of-Rwanda point") {
+                io.mockk.verify(exactly = 0) { osrmRoutingClient.routeDistancesKm(any(), any(), any()) }
+                page.content.map { it.id } shouldBe listOf("listing_a", "listing_b")
             }
         }
     }
