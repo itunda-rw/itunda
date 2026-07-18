@@ -18,7 +18,7 @@ export const fetchMerchantProducts = (merchantId: string) =>
     `/api/v1/shopping/merchants/${merchantId}/products`,
   );
 
-export type CommerceOrderStatus = 'PLACED' | 'PACKED' | 'SHIPPED' | 'DELIVERED';
+export type CommerceOrderStatus = 'PLACED' | 'PACKED' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
 
 export interface CommerceOrderItem {
   id: string;
@@ -59,4 +59,11 @@ export const advanceOrderStatus = (orderId: string, status: CommerceOrderStatus)
   apiFetch<{ success: boolean; order: CommerceOrder }>(`/api/v1/orders/${orderId}/status`, {
     method: 'POST',
     body: JSON.stringify({ status }),
+  }).then((r) => r.order);
+
+// Real cancellation + refund (2026-07-18) -- buyer or seller, PLACED orders only. See
+// OrderService.cancelOrder's own doc comment for the full backend account.
+export const cancelOrder = (orderId: string) =>
+  apiFetch<{ success: boolean; order: CommerceOrder }>(`/api/v1/orders/${orderId}/cancel`, {
+    method: 'POST',
   }).then((r) => r.order);

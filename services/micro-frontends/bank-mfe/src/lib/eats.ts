@@ -23,7 +23,7 @@ export const fetchMenu = (restaurantId: string) =>
     `/api/v1/shopping/merchants/${restaurantId}/products`,
   );
 
-export type EatsOrderStatus = 'PLACED' | 'ACCEPTED' | 'PREPARING' | 'READY_FOR_PICKUP' | 'RIDER_ASSIGNED' | 'PICKED_UP' | 'DELIVERED';
+export type EatsOrderStatus = 'PLACED' | 'ACCEPTED' | 'PREPARING' | 'READY_FOR_PICKUP' | 'RIDER_ASSIGNED' | 'PICKED_UP' | 'DELIVERED' | 'CANCELLED';
 
 export interface EatsOrderItem {
   id: string;
@@ -68,6 +68,14 @@ export const advanceRestaurantOrder = (orderId: string, status: EatsOrderStatus)
   apiFetch<{ success: boolean; order: EatsOrder }>(`/api/v1/eats/orders/${orderId}/status`, {
     method: 'POST',
     body: JSON.stringify({ status }),
+  }).then((r) => r.order);
+
+// Real cancellation + refund (2026-07-18) -- buyer or restaurant, PLACED orders only,
+// safely before any rider is ever involved. See EatsOrderService.cancelOrder's own doc
+// comment for the full backend account.
+export const cancelEatsOrder = (orderId: string) =>
+  apiFetch<{ success: boolean; order: EatsOrder }>(`/api/v1/eats/orders/${orderId}/cancel`, {
+    method: 'POST',
   }).then((r) => r.order);
 
 // Real rider role -- any itunda user can opt in.

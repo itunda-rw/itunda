@@ -8,12 +8,12 @@ import { collectPayment, fetchShoppingCatalog, type CollectPaymentResult, type S
 import { fetchConversations, fetchMessages, sendMessage, startConversation, type ConversationSummary, type Message } from './lib/messaging';
 import { contactSeller, createListing, fetchListings, fetchMyListings, markListingSold, removeListing, type Listing } from './lib/marketplace';
 import {
-  advanceRestaurantOrder, advanceRiderOrder, claimDelivery, fetchAvailableDeliveries, fetchMenu, fetchMyEatsOrders,
-  fetchMyRiderProfile, fetchRestaurantOrders, fetchRestaurants, fetchRiderDeliveries, placeEatsOrder, registerRider,
-  setRiderAvailability, type EatsOrder, type EatsOrderStatus, type MenuItem, type Rider,
+  advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, fetchAvailableDeliveries, fetchMenu,
+  fetchMyEatsOrders, fetchMyRiderProfile, fetchRestaurantOrders, fetchRestaurants, fetchRiderDeliveries, placeEatsOrder,
+  registerRider, setRiderAvailability, type EatsOrder, type EatsOrderStatus, type MenuItem, type Rider,
 } from './lib/eats';
 import {
-  advanceOrderStatus, fetchMerchantOrders, fetchMerchantProducts, fetchMyOrders, placeOrder,
+  advanceOrderStatus, cancelOrder, fetchMerchantOrders, fetchMerchantProducts, fetchMyOrders, placeOrder,
   type CommerceOrder, type CommerceOrderStatus, type CommerceProduct,
 } from './lib/commerce';
 
@@ -868,6 +868,7 @@ const EATS_STATUS_LABEL: Record<EatsOrderStatus, string> = {
   RIDER_ASSIGNED: 'Rider on the way to restaurant',
   PICKED_UP: 'Picked up — on the way',
   DELIVERED: 'Delivered',
+  CANCELLED: 'Cancelled — refunded',
 };
 
 const RESTAURANT_STATUS_CHAIN: EatsOrderStatus[] = ['PLACED', 'ACCEPTED', 'PREPARING', 'READY_FOR_PICKUP'];
@@ -1019,6 +1020,7 @@ function MenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: ShoppingM
 function MyEatsOrdersView() {
   const [orders, setOrders] = useState<EatsOrder[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const load = () => {
     setError(null);
@@ -1033,6 +1035,19 @@ function MyEatsOrdersView() {
     return () => clearInterval(interval);
   }, []);
 
+  const handleCancel = async (orderId: string) => {
+    setCancellingId(orderId);
+    setError(null);
+    try {
+      await cancelEatsOrder(orderId);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not cancel this order.');
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
   if (error) {
     return (
       <div className="toss-card">
@@ -1046,7 +1061,17 @@ function MyEatsOrdersView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      {orders.map((o) => <EatsOrderCard key={o.id} order={o} />)}
+      {orders.map((o) => (
+        <EatsOrderCard
+          key={o.id}
+          order={o}
+          action={o.status === 'PLACED' && (
+            <button className="toss-btn toss-btn-danger" disabled={cancellingId === o.id} onClick={() => handleCancel(o.id)}>
+              {cancellingId === o.id ? 'Cancelling…' : 'Cancel order'}
+            </button>
+          )}
+        />
+      ))}
     </div>
   );
 }
@@ -1431,6 +1456,7 @@ const COMMERCE_STATUS_LABEL: Record<CommerceOrderStatus, string> = {
   PACKED: 'Packed',
   SHIPPED: 'Shipped',
   DELIVERED: 'Delivered',
+  CANCELLED: 'Cancelled — refunded',
 };
 
 const COMMERCE_STATUS_CHAIN: CommerceOrderStatus[] = ['PLACED', 'PACKED', 'SHIPPED', 'DELIVERED'];
@@ -1576,6 +1602,7 @@ function ProductCatalogView({ merchant, onBack, onOrderPlaced }: { merchant: Sho
 function MyCommerceOrdersView() {
   const [orders, setOrders] = useState<CommerceOrder[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const load = () => {
     setError(null);
@@ -1587,6 +1614,19 @@ function MyCommerceOrdersView() {
     const interval = setInterval(load, 4000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleCancel = async (orderId: string) => {
+    setCancellingId(orderId);
+    setError(null);
+    try {
+      await cancelOrder(orderId);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not cancel this order.');
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   if (error) {
     return (
@@ -1601,7 +1641,17 @@ function MyCommerceOrdersView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      {orders.map((o) => <CommerceOrderCard key={o.id} order={o} />)}
+      {orders.map((o) => (
+        <CommerceOrderCard
+          key={o.id}
+          order={o}
+          action={o.status === 'PLACED' && (
+            <button className="toss-btn toss-btn-danger" disabled={cancellingId === o.id} onClick={() => handleCancel(o.id)}>
+              {cancellingId === o.id ? 'Cancelling…' : 'Cancel order'}
+            </button>
+          )}
+        />
+      ))}
     </div>
   );
 }
