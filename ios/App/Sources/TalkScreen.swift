@@ -7,6 +7,13 @@ import CoreDesignSystem
 /// account, including the honest "poll-based delivery, no live transport yet" scope
 /// this screen matches exactly (a 4s poll while a thread is open, same interval
 /// bank-mfe/Android already use).
+private enum TalkView { case direct, groups }
+
+// Real group chat (2026-07-18) -- itunda's own KakaoTalk-style group messaging, ported
+// to iOS from bank-mfe's own Direct/Groups toggle (the "single most defining KakaoTalk
+// capability" this session's own project memory names). TalkScreen is now a thin
+// Direct/Groups toggle wrapper; DirectMessagesList holds the exact same 1:1 logic this
+// screen used to own directly.
 struct TalkScreen: View {
     /// Real "message seller" hand-off from HoodScreen -- ContentView stashes the real
     /// conversation id returned by `contactSeller` here and switches to this tab; once
@@ -14,34 +21,138 @@ struct TalkScreen: View {
     /// mirroring Android's initialConversationId/onConsumedInitial pair exactly.
     @Binding var pendingConversationId: String?
 
+    @State private var view: TalkView = .direct
     @State private var conversations: [ConversationSummaryDto]?
-    @State private var error: String?
+    @State private var conversationsError: String?
     @State private var openConversation: ConversationSummaryDto?
-    @State private var newChatPhone = ""
-    @State private var startError: String?
-    @State private var starting = false
+    @State private var groups: [GroupSummaryDto]?
+    @State private var groupsError: String?
+    @State private var openGroup: GroupSummaryDto?
 
     var body: some View {
         Group {
             if let openConversation {
                 ChatThreadScreen(conversation: openConversation, onBack: {
                     self.openConversation = nil
-                    Task { await load() }
+                    Task { await loadConversations() }
+                })
+            } else if let openGroup {
+                GroupThreadScreen(group: openGroup, onBack: {
+                    self.openGroup = nil
+                    Task { await loadGroups() }
                 })
             } else {
                 listBody
             }
         }
-        .task { await load() }
+        .task { await loadConversations() }
+        .task { await loadGroups() }
         .onChange(of: pendingConversationId) { _ in tryOpenPending() }
         .onChange(of: conversations?.count) { _ in tryOpenPending() }
     }
 
     private var listBody: some View {
+        VStack(spacing: 0) {
+            TdsPlainTopBar(title: "Talk")
+                .padding(.horizontal, IDS.Layout.screenHorizontal)
+                .padding(.top, IDS.Layout.screenTop)
+
+            Picker("", selection: $view) {
+                Text("Direct").tag(TalkView.direct)
+                Text("Groups").tag(TalkView.groups)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, IDS.Layout.screenHorizontal)
+            .padding(.top, 8)
+
+            if view == .direct {
+                DirectMessagesList(
+                    conversations: conversations,
+                    error: conversationsError,
+                    onRetry: { Task { await loadConversations() } },
+                    onStarted: { conversationId in
+                        Task {
+                            await loadConversations()
+                            if let match = conversations?.first(where: { $0.conversationId == conversationId }) {
+                                openConversation = match
+                            }
+                        }
+                    },
+                    onOpen: { openConversation = $0 }
+                )
+            } else {
+                GroupsList(
+                    groups: groups,
+                    error: groupsError,
+                    onRetry: { Task { await loadGroups() } },
+                    onCreated: { groupId in
+                        Task {
+                            await loadGroups()
+                            if let match = groups?.first(where: { $0.groupId == groupId }) {
+                                openGroup = match
+                            }
+                        }
+                    },
+                    onOpen: { openGroup = $0 }
+                )
+            }
+        }
+        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+    }
+
+    private func tryOpenPending() {
+        guard let pending = pendingConversationId,
+              let match = conversations?.first(where: { $0.conversationId == pending }) else { return }
+        openConversation = match
+        pendingConversationId = nil
+    }
+
+    private func loadConversations() async {
+        do {
+            let res = try await NetworkClient.shared.getConversations()
+            conversations = res.conversations
+            conversationsError = nil
+        } catch {
+            conversationsError = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func loadGroups() async {
+        do {
+            let res = try await NetworkClient.shared.getMyGroups()
+            groups = res.groups
+            groupsError = nil
+        } catch {
+            groupsError = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    static func errorMessage(_ statusCode: Int) -> String {
+        switch statusCode {
+        case 401, 403: return "You don't have access to do that."
+        case 404: return "That couldn't be found."
+        case 409: return "That's already been done, or is being processed."
+        case 422: return "Insufficient funds for this order."
+        case 429: return "Too many attempts -- please wait a moment and try again."
+        default: return "Something went wrong. Please try again."
+        }
+    }
+}
+
+private struct DirectMessagesList: View {
+    let conversations: [ConversationSummaryDto]?
+    let error: String?
+    let onRetry: () -> Void
+    let onStarted: (String) -> Void
+    let onOpen: (ConversationSummaryDto) -> Void
+
+    @State private var newChatPhone = ""
+    @State private var startError: String?
+    @State private var starting = false
+
+    var body: some View {
         ScrollView {
             VStack(spacing: IDS.Layout.cardGap) {
-                TdsPlainTopBar(title: "Talk")
-
                 VStack(alignment: .leading, spacing: 12) {
                     Text("New chat").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
                     Text("Enter their phone number to start a conversation.")
@@ -75,7 +186,7 @@ struct TalkScreen: View {
                 if let error {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(error).foregroundColor(.red).font(.subheadline)
-                        Button("Retry") { Task { await load() } }
+                        Button("Retry", action: onRetry)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(20)
@@ -87,7 +198,7 @@ struct TalkScreen: View {
                     Text("No conversations yet.").foregroundColor(IDS.Colors.textSecondary)
                 } else {
                     ForEach(conversations!) { conversation in
-                        Button(action: { openConversation = conversation }) {
+                        Button(action: { onOpen(conversation) }) {
                             ConversationRow(conversation: conversation)
                         }
                         .buttonStyle(.plain)
@@ -95,26 +206,8 @@ struct TalkScreen: View {
                 }
             }
             .padding(.horizontal, IDS.Layout.screenHorizontal)
-            .padding(.top, IDS.Layout.screenTop)
+            .padding(.top, 12)
             .padding(.bottom, IDS.Layout.sectionSpacing)
-        }
-        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
-    }
-
-    private func tryOpenPending() {
-        guard let pending = pendingConversationId,
-              let match = conversations?.first(where: { $0.conversationId == pending }) else { return }
-        openConversation = match
-        pendingConversationId = nil
-    }
-
-    private func load() async {
-        do {
-            let res = try await NetworkClient.shared.getConversations()
-            conversations = res.conversations
-            error = nil
-        } catch {
-            self.error = "Couldn't reach itunda. Check your connection and try again."
         }
     }
 
@@ -125,25 +218,290 @@ struct TalkScreen: View {
         do {
             let res = try await NetworkClient.shared.startConversation(phoneNumber: newChatPhone.trimmingCharacters(in: .whitespaces))
             newChatPhone = ""
-            await load()
-            if let match = conversations?.first(where: { $0.conversationId == res.conversation.id }) {
-                openConversation = match
-            }
+            onStarted(res.conversation.id)
         } catch let NetworkError.httpError(statusCode) {
-            startError = Self.errorMessage(statusCode)
+            startError = TalkScreen.errorMessage(statusCode)
         } catch {
             startError = "Couldn't reach itunda. Check your connection and try again."
         }
     }
+}
 
-    static func errorMessage(_ statusCode: Int) -> String {
-        switch statusCode {
-        case 401, 403: return "You don't have access to do that."
-        case 404: return "That couldn't be found."
-        case 409: return "That's already been done, or is being processed."
-        case 422: return "Insufficient funds for this order."
-        case 429: return "Too many attempts -- please wait a moment and try again."
-        default: return "Something went wrong. Please try again."
+private struct GroupsList: View {
+    let groups: [GroupSummaryDto]?
+    let error: String?
+    let onRetry: () -> Void
+    let onCreated: (String) -> Void
+    let onOpen: (GroupSummaryDto) -> Void
+
+    @State private var name = ""
+    @State private var phoneNumbers = ""
+    @State private var createError: String?
+    @State private var creating = false
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: IDS.Layout.cardGap) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("New group").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                    Text("A group name and everyone's real phone number, comma-separated.")
+                        .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
+                        .foregroundColor(IDS.Colors.textSecondary)
+                    TextField("Group name", text: $name)
+                        .padding(12)
+                        .background(IDS.Colors.chipBackground)
+                        .cornerRadius(12)
+                    TextField("+250788123456, +250788987654", text: $phoneNumbers)
+                        .padding(12)
+                        .background(IDS.Colors.chipBackground)
+                        .cornerRadius(12)
+                    Button(action: { Task { await createGroup() } }) {
+                        Text(creating ? "Creating…" : "Create group")
+                            .font(IDS.Typography.bodyBold)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background((creating || name.isEmpty || phoneNumbers.isEmpty) ? IDS.Colors.textTertiary : IDS.Colors.brand)
+                            .cornerRadius(14)
+                    }
+                    .disabled(creating || name.isEmpty || phoneNumbers.isEmpty)
+                    if let createError {
+                        Text(createError).font(.caption).foregroundColor(.red)
+                    }
+                }
+                .padding(20)
+                .background(IDS.Colors.card)
+                .cornerRadius(IDS.Layout.cardCornerRadius)
+
+                if let error {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(error).foregroundColor(.red).font(.subheadline)
+                        Button("Retry", action: onRetry)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(20)
+                    .background(IDS.Colors.card)
+                    .cornerRadius(IDS.Layout.cardCornerRadius)
+                } else if groups == nil {
+                    ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                } else if groups!.isEmpty {
+                    Text("No groups yet.").foregroundColor(IDS.Colors.textSecondary)
+                } else {
+                    ForEach(groups!) { group in
+                        Button(action: { onOpen(group) }) {
+                            GroupRow(group: group)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(.horizontal, IDS.Layout.screenHorizontal)
+            .padding(.top, 12)
+            .padding(.bottom, IDS.Layout.sectionSpacing)
+        }
+    }
+
+    private func createGroup() async {
+        creating = true
+        createError = nil
+        defer { creating = false }
+        let numbers = phoneNumbers.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        do {
+            let res = try await NetworkClient.shared.createGroup(name: name.trimmingCharacters(in: .whitespaces), memberPhoneNumbers: numbers)
+            name = ""
+            phoneNumbers = ""
+            onCreated(res.group.groupId)
+        } catch let NetworkError.httpError(statusCode) {
+            createError = TalkScreen.errorMessage(statusCode)
+        } catch {
+            createError = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+}
+
+private struct GroupRow: View {
+    let group: GroupSummaryDto
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle().fill(IDS.Colors.chipBackground)
+                Image(systemName: "person.3.fill").foregroundColor(IDS.Colors.brand)
+            }
+            .frame(width: 44, height: 44)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(group.name).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                    Text("\(group.memberCount) members").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                }
+                Text(group.lastMessagePreview ?? "No messages yet")
+                    .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
+                    .foregroundColor(IDS.Colors.textSecondary)
+                    .lineLimit(1)
+            }
+            Spacer()
+            if group.unreadCount > 0 {
+                Text("\(group.unreadCount)")
+                    .font(.caption).bold()
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .background(IDS.Colors.brand)
+                    .clipShape(Capsule())
+            }
+        }
+        .padding(18)
+        .background(IDS.Colors.card)
+        .cornerRadius(IDS.Layout.cardCornerRadius)
+    }
+}
+
+private struct GroupThreadScreen: View {
+    let group: GroupSummaryDto
+    let onBack: () -> Void
+
+    @State private var messages: [GroupMessageDto]?
+    @State private var draft = ""
+    @State private var sending = false
+    @State private var error: String?
+    @State private var socketTask: URLSessionWebSocketTask?
+    private let currentUserId = KeychainTokenStore.shared.getUserId()
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Button(action: onBack) {
+                    Image(systemName: "chevron.left").font(.system(size: 18, weight: .medium)).frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Back")
+                Text(group.name).font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
+                Spacer()
+            }
+            .padding(.horizontal, 8)
+
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        if let messages {
+                            if messages.isEmpty {
+                                Text("Say hello — no messages yet.").foregroundColor(IDS.Colors.textSecondary).padding(.top, 20)
+                            }
+                            // Real, honest limitation: bubbles show a truncated sender
+                            // id, not a real display name -- no "list group members"
+                            // endpoint exists yet to resolve names client-side,
+                            // matching bank-mfe's own known gap.
+                            ForEach(messages) { message in
+                                GroupMessageBubble(message: message, isMine: message.senderId == currentUserId)
+                                    .id(message.id)
+                            }
+                        } else {
+                            ProgressView().padding(.top, 20)
+                        }
+                    }
+                    .padding(.horizontal, IDS.Layout.screenHorizontal)
+                    .padding(.top, 12)
+                }
+                .onChange(of: messages?.count) { _ in
+                    if let last = messages?.last?.id {
+                        withAnimation { proxy.scrollTo(last, anchor: .bottom) }
+                    }
+                }
+            }
+
+            if let error {
+                Text(error).font(.caption).foregroundColor(.red).padding(.horizontal, IDS.Layout.screenHorizontal)
+            }
+
+            HStack {
+                TextField("Message", text: $draft)
+                    .padding(12)
+                    .background(IDS.Colors.chipBackground)
+                    .cornerRadius(14)
+                Button(action: { Task { await send() } }) {
+                    Image(systemName: "paperplane.fill")
+                        .foregroundColor(.white)
+                        .frame(width: 44, height: 44)
+                        .background(draft.isEmpty || sending ? IDS.Colors.textTertiary : IDS.Colors.brand)
+                        .clipShape(Circle())
+                }
+                .disabled(draft.isEmpty || sending)
+            }
+            .padding(IDS.Layout.screenHorizontal)
+        }
+        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+        .task { await refresh() }
+        // Real poll, kept as an always-correct fallback delivery path alongside the
+        // real WebSocket push below -- matches 1:1 messaging's own scope exactly.
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                await refresh()
+            }
+        }
+        // Real WebSocket live-transport for group chat -- same socket 1:1 already
+        // uses, routing on push type via MessagingSocketPush.
+        .onAppear {
+            socketTask = NetworkClient.shared.connectMessagingSocket { push in
+                guard case .groupMessage(let groupId, let pushedMessage) = push, groupId == group.groupId else { return }
+                Task { @MainActor in
+                    if !(messages ?? []).contains(where: { $0.id == pushedMessage.id }) {
+                        messages = (messages ?? []) + [pushedMessage]
+                    }
+                }
+            }
+        }
+        .onDisappear {
+            socketTask?.cancel(with: .goingAway, reason: nil)
+        }
+    }
+
+    private func refresh() async {
+        do {
+            let res = try await NetworkClient.shared.getGroupMessages(groupId: group.groupId)
+            messages = res.messages.reversed()
+        } catch {
+            // Keep showing the last-known messages rather than blanking the thread on
+            // a transient poll failure.
+        }
+    }
+
+    private func send() async {
+        let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !body.isEmpty else { return }
+        sending = true
+        error = nil
+        defer { sending = false }
+        do {
+            let res = try await NetworkClient.shared.sendGroupMessage(groupId: group.groupId, body: body)
+            draft = ""
+            messages = (messages ?? []) + [res.message]
+        } catch let NetworkError.httpError(statusCode) {
+            error = TalkScreen.errorMessage(statusCode)
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+}
+
+private struct GroupMessageBubble: View {
+    let message: GroupMessageDto
+    let isMine: Bool
+
+    var body: some View {
+        HStack {
+            if isMine { Spacer() }
+            VStack(alignment: .leading, spacing: 2) {
+                if !isMine {
+                    Text(String(message.senderId.prefix(8))).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                }
+                Text(message.body)
+                    .font(.subheadline)
+                    .foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(isMine ? IDS.Colors.brand : IDS.Colors.chipBackground)
+            .cornerRadius(16)
+            if !isMine { Spacer() }
         }
     }
 }
@@ -265,8 +623,8 @@ private struct ChatThreadScreen: View {
         // Real WebSocket live-transport (2026-07-18) -- see
         // NetworkClient.connectMessagingSocket's own doc comment.
         .onAppear {
-            socketTask = NetworkClient.shared.connectMessagingSocket { pushedConversationId, pushedMessage in
-                guard pushedConversationId == conversation.conversationId else { return }
+            socketTask = NetworkClient.shared.connectMessagingSocket { push in
+                guard case .directMessage(let conversationId, let pushedMessage) = push, conversationId == conversation.conversationId else { return }
                 Task { @MainActor in
                     if !(messages ?? []).contains(where: { $0.id == pushedMessage.id }) {
                         messages = (messages ?? []) + [pushedMessage]

@@ -59,7 +59,12 @@ import rw.itunda.app.network.ConversationSummaryDto
 import rw.itunda.app.network.CreateListingRequest
 import rw.itunda.app.network.EatsOrderDto
 import rw.itunda.app.network.AddressSuggestionDto
+import rw.itunda.app.network.CreateGroupRequest
 import rw.itunda.app.network.EatsRatingResponse
+import rw.itunda.app.network.GroupMessageDto
+import rw.itunda.app.network.GroupSummaryDto
+import rw.itunda.app.network.MessagingSocketPush
+import rw.itunda.app.network.SendGroupMessageRequest
 import rw.itunda.app.network.SubmitEatsReviewRequest
 import rw.itunda.app.network.EatsOrderItemRequest
 import rw.itunda.app.network.ListingDto
@@ -130,30 +135,51 @@ private fun TabHeader(title: String) {
 
 // ============================== TALK (Messaging) ==============================
 
+private enum class TalkView { DIRECT, GROUPS }
+
+// Real group chat (2026-07-18) -- itunda's own KakaoTalk-style group messaging, ported
+// to Android from bank-mfe's own Direct/Groups toggle (the "single most defining
+// KakaoTalk capability" this session's own project memory names). TalkTab is now a
+// thin Direct/Groups toggle wrapper; DirectMessagesList holds the exact same 1:1 logic
+// this composable used to own directly.
 @Composable
 internal fun TalkTab(initialConversationId: String?, onConsumedInitial: () -> Unit) {
+    var view by remember { mutableStateOf(TalkView.DIRECT) }
     var conversations by remember { mutableStateOf<List<ConversationSummaryDto>?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var conversationsError by remember { mutableStateOf<String?>(null) }
     var openConversationId by remember { mutableStateOf<String?>(null) }
-    var startPhoneNumber by remember { mutableStateOf("") }
-    var startError by remember { mutableStateOf<String?>(null) }
-    var starting by remember { mutableStateOf(false) }
+    var groups by remember { mutableStateOf<List<GroupSummaryDto>?>(null) }
+    var groupsError by remember { mutableStateOf<String?>(null) }
+    var openGroupId by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    fun load() {
+    fun loadConversations() {
         coroutineScope.launch {
             try {
                 val res = NetworkClient.apiService.getConversations()
                 if (res.success) conversations = res.conversations
-                error = null
+                conversationsError = null
             } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
+                conversationsError = superAppErrorMessage(e)
             } catch (e: IOException) {
-                error = "Couldn't reach itunda. Check your connection and try again."
+                conversationsError = "Couldn't reach itunda. Check your connection and try again."
             }
         }
     }
-    LaunchedEffect(Unit) { load() }
+    fun loadGroups() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyGroups()
+                if (res.success) groups = res.groups
+                groupsError = null
+            } catch (e: HttpException) {
+                groupsError = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                groupsError = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+    LaunchedEffect(Unit) { loadConversations(); loadGroups() }
 
     // Real "message seller" hand-off from HoodTab -- opens straight into the real
     // chat thread once it shows up in this tab's own real conversation list, same
@@ -165,17 +191,70 @@ internal fun TalkTab(initialConversationId: String?, onConsumedInitial: () -> Un
         }
     }
 
-    val open = conversations?.find { it.conversationId == openConversationId }
-    if (open != null) {
-        ChatThreadView(conversation = open, onBack = { openConversationId = null; load() })
+    val openConversation = conversations?.find { it.conversationId == openConversationId }
+    if (openConversation != null) {
+        ChatThreadView(conversation = openConversation, onBack = { openConversationId = null; loadConversations() })
+        return
+    }
+    val openGroup = groups?.find { it.groupId == openGroupId }
+    if (openGroup != null) {
+        GroupThreadView(group = openGroup, onBack = { openGroupId = null; loadGroups() })
         return
     }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
-        verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap),
-    ) {
-        item { TabHeader("Talk") }
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical)) {
+        TabHeader("Talk")
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = Tds.layout.cardGap).clip(RoundedCornerShape(12.dp)).background(TossTertiary),
+        ) {
+            listOf(TalkView.DIRECT to "Direct", TalkView.GROUPS to "Groups").forEach { (v, label) ->
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (view == v) TossBlue else Color.Transparent)
+                        .clickable { view = v }
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(label, color = if (view == v) Color.White else TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+            }
+        }
+        if (view == TalkView.DIRECT) {
+            DirectMessagesList(
+                conversations = conversations,
+                error = conversationsError,
+                onRetry = ::loadConversations,
+                onStarted = { conversationId -> loadConversations(); openConversationId = conversationId },
+                onOpen = { openConversationId = it },
+            )
+        } else {
+            GroupsList(
+                groups = groups,
+                error = groupsError,
+                onRetry = ::loadGroups,
+                onCreated = { groupId -> loadGroups(); openGroupId = groupId },
+                onOpen = { openGroupId = it },
+            )
+        }
+    }
+}
+
+@Composable
+private fun DirectMessagesList(
+    conversations: List<ConversationSummaryDto>?,
+    error: String?,
+    onRetry: () -> Unit,
+    onStarted: (String) -> Unit,
+    onOpen: (String) -> Unit,
+) {
+    var startPhoneNumber by remember { mutableStateOf("") }
+    var startError by remember { mutableStateOf<String?>(null) }
+    var starting by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)) {
         item {
             Card(
                 shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
@@ -206,8 +285,7 @@ internal fun TalkTab(initialConversationId: String?, onConsumedInitial: () -> Un
                                             val res = NetworkClient.apiService.startConversation(StartConversationRequest(phoneNumber = startPhoneNumber.trim()))
                                             if (res.success) {
                                                 startPhoneNumber = ""
-                                                load()
-                                                openConversationId = res.conversation.id
+                                                onStarted(res.conversation.id)
                                             }
                                         } catch (e: HttpException) {
                                             startError = superAppErrorMessage(e)
@@ -228,13 +306,244 @@ internal fun TalkTab(initialConversationId: String?, onConsumedInitial: () -> Un
             }
         }
         if (error != null) {
-            item { ErrorCard(error!!, onRetry = ::load) }
+            item { ErrorCard(error, onRetry = onRetry) }
         } else if (conversations == null) {
             item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
-        } else if (conversations!!.isEmpty()) {
+        } else if (conversations.isEmpty()) {
             item { Text("No conversations yet.", color = TossSecondary, fontSize = 14.sp) }
         } else {
-            items(conversations!!, key = { it.conversationId }) { c -> ConversationRow(c, onClick = { openConversationId = c.conversationId }) }
+            items(conversations, key = { it.conversationId }) { c -> ConversationRow(c, onClick = { onOpen(c.conversationId) }) }
+        }
+    }
+}
+
+@Composable
+private fun GroupsList(
+    groups: List<GroupSummaryDto>?,
+    error: String?,
+    onRetry: () -> Unit,
+    onCreated: (String) -> Unit,
+    onOpen: (String) -> Unit,
+) {
+    var name by remember { mutableStateOf("") }
+    var phoneNumbers by remember { mutableStateOf("") }
+    var createError by remember { mutableStateOf<String?>(null) }
+    var creating by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)) {
+        item {
+            Card(
+                shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+                colors = CardDefaults.cardColors(containerColor = TossCard),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text("New group", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text("A group name and everyone's real phone number, comma-separated.", color = TossSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 12.dp))
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        placeholder = { Text("Group name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = phoneNumbers,
+                        onValueChange = { phoneNumbers = it },
+                        placeholder = { Text("+250788123456, +250788987654") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (creating || name.isBlank() || phoneNumbers.isBlank()) TossTertiary else TossBlue)
+                            .clickable(enabled = !creating && name.isNotBlank() && phoneNumbers.isNotBlank()) {
+                                creating = true
+                                createError = null
+                                val numbers = phoneNumbers.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                                coroutineScope.launch {
+                                    try {
+                                        val res = NetworkClient.apiService.createGroup(CreateGroupRequest(name = name.trim(), memberPhoneNumbers = numbers))
+                                        if (res.success) {
+                                            name = ""
+                                            phoneNumbers = ""
+                                            onCreated(res.group.groupId)
+                                        }
+                                    } catch (e: HttpException) {
+                                        createError = superAppErrorMessage(e)
+                                    } catch (e: IOException) {
+                                        createError = "Couldn't reach itunda. Check your connection and try again."
+                                    } finally {
+                                        creating = false
+                                    }
+                                }
+                            }
+                            .padding(vertical = 14.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(if (creating) "Creating…" else "Create group", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+                    createError?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
+                }
+            }
+        }
+        if (error != null) {
+            item { ErrorCard(error, onRetry = onRetry) }
+        } else if (groups == null) {
+            item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+        } else if (groups.isEmpty()) {
+            item { Text("No groups yet.", color = TossSecondary, fontSize = 14.sp) }
+        } else {
+            items(groups, key = { it.groupId }) { g -> GroupRow(g, onClick = { onOpen(g.groupId) }) }
+        }
+    }
+}
+
+@Composable
+private fun GroupRow(group: GroupSummaryDto, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Tds.layout.cardCornerRadius)).background(TossCard).clickable(onClick = onClick).padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(group.name, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("${group.memberCount} members", color = TossSecondary, fontSize = 11.sp)
+            }
+            Text(group.lastMessagePreview ?: "No messages yet.", color = TossSecondary, fontSize = 13.sp, maxLines = 1)
+        }
+        if (group.unreadCount > 0) {
+            Box(modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(TossBlue).padding(horizontal = 8.dp, vertical = 3.dp)) {
+                Text(group.unreadCount.toString(), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+    Spacer(modifier = Modifier.height(4.dp))
+}
+
+@Composable
+private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
+    BackHandler(onBack = onBack)
+    var messages by remember { mutableStateOf<List<GroupMessageDto>?>(null) }
+    var draft by remember { mutableStateOf("") }
+    var sending by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+    val listState: LazyListState = rememberLazyListState()
+    val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
+
+    suspend fun refresh() {
+        try {
+            val res = NetworkClient.apiService.getGroupMessages(group.groupId)
+            if (res.success) messages = res.messages.reversed()
+        } catch (_: Exception) {
+            // Keep showing the last-known messages rather than blanking the thread on
+            // a transient poll failure.
+        }
+    }
+
+    LaunchedEffect(group.groupId) {
+        while (true) {
+            refresh()
+            delay(4000)
+        }
+    }
+    // Real WebSocket live-transport for group chat -- same socket 1:1 already uses,
+    // routing on message type via MessagingSocketPush.
+    DisposableEffect(group.groupId) {
+        val socket = NetworkClient.connectMessagingSocket { push ->
+            if (push is MessagingSocketPush.GroupMessagePush && push.groupConversationId == group.groupId) {
+                coroutineScope.launch(Dispatchers.Main) {
+                    val current = messages ?: emptyList()
+                    if (current.none { it.id == push.message.id }) {
+                        messages = current + push.message
+                    }
+                }
+            }
+        }
+        onDispose { socket.close(1000, "leaving group thread") }
+    }
+    LaunchedEffect(messages?.size) {
+        val count = messages?.size ?: 0
+        if (count > 0) listState.animateScrollToItem(count - 1)
+    }
+
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical)) {
+        BackTopBar(group.name, onBack)
+        Spacer(modifier = Modifier.height(8.dp))
+        LazyColumn(state = listState, modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            val msgs = messages
+            if (msgs == null) {
+                item { Text("Loading…", color = TossSecondary, fontSize = 13.sp) }
+            } else if (msgs.isEmpty()) {
+                item { Text("Say hello — no messages yet.", color = TossSecondary, fontSize = 13.sp) }
+            } else {
+                // Real, honest limitation: bubbles show a truncated sender id, not a
+                // real display name -- no "list group members" endpoint exists yet to
+                // resolve names client-side, matching bank-mfe's own known gap.
+                items(msgs, key = { it.id }) { m -> GroupMessageBubble(m, isMine = m.senderId == currentUserId) }
+            }
+        }
+        error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(vertical = 6.dp)) }
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+            OutlinedTextField(
+                value = draft,
+                onValueChange = { draft = it },
+                placeholder = { Text("Message") },
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Box(
+                modifier = Modifier
+                    .size(Tds.layout.minTouchTarget)
+                    .clip(CircleShape)
+                    .background(if (draft.isBlank() || sending) TossTertiary else TossBlue)
+                    .clickable(enabled = draft.isNotBlank() && !sending) {
+                        val body = draft.trim()
+                        sending = true
+                        error = null
+                        coroutineScope.launch {
+                            try {
+                                val res = NetworkClient.apiService.sendGroupMessage(group.groupId, SendGroupMessageRequest(body))
+                                if (res.success) {
+                                    draft = ""
+                                    messages = (messages ?: emptyList()) + res.message
+                                }
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
+                            } finally {
+                                sending = false
+                            }
+                        }
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Outlined.Send, contentDescription = "Send", tint = Color.White, modifier = Modifier.size(18.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun GroupMessageBubble(message: GroupMessageDto, isMine: Boolean) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(if (isMine) TossBlue else TossCardSoft)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+        ) {
+            if (!isMine) {
+                Text(message.senderId.take(8), color = TossSecondary, fontSize = 10.sp, modifier = Modifier.padding(bottom = 2.dp))
+            }
+            Text(message.body, color = if (isMine) Color.White else TossText, fontSize = 14.sp)
         }
     }
 }
@@ -307,12 +616,12 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
     // already fetched, and appended on the main thread since OkHttp's listener callback
     // runs on its own background thread, not safe to mutate Compose state from directly.
     DisposableEffect(conversation.conversationId) {
-        val socket = NetworkClient.connectMessagingSocket { pushed ->
-            if (pushed.conversationId == conversation.conversationId) {
+        val socket = NetworkClient.connectMessagingSocket { push ->
+            if (push is MessagingSocketPush.DirectMessage && push.message.conversationId == conversation.conversationId) {
                 coroutineScope.launch(Dispatchers.Main) {
                     val current = messages ?: emptyList()
-                    if (current.none { it.id == pushed.id }) {
-                        messages = current + pushed
+                    if (current.none { it.id == push.message.id }) {
+                        messages = current + push.message
                     }
                 }
             }

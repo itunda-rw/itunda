@@ -263,6 +263,34 @@ data class ConversationsResponse(val success: Boolean, val conversations: List<C
 data class MessagesResponse(val success: Boolean, val messages: List<MessageDto>)
 data class MessageResponse(val success: Boolean, val message: MessageDto)
 
+// Real group chat (2026-07-18) -- see rw.itunda.messaging.web.GroupMessagingController.
+// memberPhoneNumbers is the real human-friendly entry point (same reasoning as
+// StartConversationRequest.phoneNumber).
+data class CreateGroupRequest(val name: String, val memberUserIds: List<String> = emptyList(), val memberPhoneNumbers: List<String> = emptyList())
+data class SendGroupMessageRequest(val body: String)
+data class AddGroupMemberRequest(val userId: String)
+
+data class GroupSummaryDto(
+    val groupId: String,
+    val name: String,
+    val memberCount: Int,
+    val lastMessageAt: String,
+    val lastMessagePreview: String?,
+    val unreadCount: Long,
+)
+data class GroupMessageDto(
+    val id: String,
+    val groupConversationId: String,
+    val senderId: String,
+    val body: String,
+    val sentAt: String,
+)
+data class GroupResponse(val success: Boolean, val group: GroupSummaryDto)
+data class GroupsResponse(val success: Boolean, val groups: List<GroupSummaryDto>)
+data class GroupMessagesResponse(val success: Boolean, val messages: List<GroupMessageDto>)
+data class GroupMessageResponse(val success: Boolean, val message: GroupMessageDto)
+data class LeaveGroupResponse(val success: Boolean)
+
 // Mirrors services/backend/marketplace's real DTOs exactly (2026-07-18) -- backs the
 // new "Hood" bottom-nav tab (당근마켓/Danggeun-style neighborhood marketplace). See
 // rw.itunda.marketplace.MarketplaceService's own doc comment for the honest "no real
@@ -452,6 +480,25 @@ interface ApiService {
     @POST("api/v1/messages/conversations/{id}/messages")
     suspend fun sendMessage(@Path("id") conversationId: String, @Body request: SendMessageRequest): MessageResponse
 
+    // Real group chat (2026-07-18) -- see rw.itunda.messaging.web.GroupMessagingController.
+    @POST("api/v1/messages/groups")
+    suspend fun createGroup(@Body request: CreateGroupRequest): GroupResponse
+
+    @GET("api/v1/messages/groups")
+    suspend fun getMyGroups(): GroupsResponse
+
+    @GET("api/v1/messages/groups/{id}/messages")
+    suspend fun getGroupMessages(@Path("id") groupId: String): GroupMessagesResponse
+
+    @POST("api/v1/messages/groups/{id}/messages")
+    suspend fun sendGroupMessage(@Path("id") groupId: String, @Body request: SendGroupMessageRequest): GroupMessageResponse
+
+    @POST("api/v1/messages/groups/{id}/members")
+    suspend fun addGroupMember(@Path("id") groupId: String, @Body request: AddGroupMemberRequest): GroupResponse
+
+    @DELETE("api/v1/messages/groups/{id}/members/me")
+    suspend fun leaveGroup(@Path("id") groupId: String): LeaveGroupResponse
+
     // Real 당근마켓-style marketplace (2026-07-18) -- see rw.itunda.marketplace.web.MarketplaceController.
     @POST("api/v1/marketplace/listings")
     suspend fun createListing(@Body request: CreateListingRequest): ListingResponse
@@ -615,12 +662,11 @@ object NetworkClient {
     // rw.itunda.app.websocket.MessagingWebSocketHandler's own doc comment for the real
     // backend push shape this mirrors exactly. Ported from bank-mfe's own
     // connectMessagingSocket, which established this session's push-payload contract.
-    // Group-message pushes ("group_message") are parsed but silently ignored here --
-    // group chat itself hasn't been ported to Android yet, a real, explicitly open next
-    // step (see docs/TOSS_PARITY_MATRIX.md's Messaging row).
+    // Now routes both "message" (1:1) and "group_message" pushes -- group chat gained a
+    // real mobile UI the same day this was extended.
     private val gson = Gson()
 
-    fun connectMessagingSocket(onMessage: (MessageDto) -> Unit): WebSocket {
+    fun connectMessagingSocket(onPush: (MessagingSocketPush) -> Unit): WebSocket {
         val token = tokenStore?.getAccessToken().orEmpty()
         val wsUrl = BASE_URL.replaceFirst("http://", "ws://").replaceFirst("https://", "wss://") + "ws/messaging?token=$token"
         val request = Request.Builder().url(wsUrl).build()
@@ -630,11 +676,13 @@ object NetworkClient {
                 override fun onMessage(webSocket: WebSocket, text: String) {
                     try {
                         val json = gson.fromJson(text, JsonObject::class.java)
-                        if (json.get("type")?.asString == "message") {
-                            onMessage(gson.fromJson(json.get("message"), MessageDto::class.java))
+                        when (json.get("type")?.asString) {
+                            "message" -> onPush(MessagingSocketPush.DirectMessage(gson.fromJson(json.get("message"), MessageDto::class.java)))
+                            "group_message" -> {
+                                val groupId = json.get("groupConversationId")?.asString ?: return
+                                onPush(MessagingSocketPush.GroupMessagePush(groupId, gson.fromJson(json.get("message"), GroupMessageDto::class.java)))
+                            }
                         }
-                        // "group_message" real payloads are received but not yet acted
-                        // on -- see this function's own doc comment.
                     } catch (e: Exception) {
                         // Real, non-critical -- a malformed/unexpected push shouldn't
                         // crash the socket listener; the 4s poll stays as the real
@@ -644,4 +692,9 @@ object NetworkClient {
             },
         )
     }
+}
+
+sealed class MessagingSocketPush {
+    data class DirectMessage(val message: MessageDto) : MessagingSocketPush()
+    data class GroupMessagePush(val groupConversationId: String, val message: GroupMessageDto) : MessagingSocketPush()
 }
