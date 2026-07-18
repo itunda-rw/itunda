@@ -1,5 +1,6 @@
 package rw.itunda.core.realtime
 
+import rw.itunda.core.domain.GroupMessage
 import rw.itunda.core.domain.Message
 
 /**
@@ -28,4 +29,9 @@ import rw.itunda.core.domain.Message
  */
 interface RealtimeMessagePublisher {
     fun publishNewMessage(conversationId: String, recipientUserId: String, message: Message)
+
+    /** Same real push, fanned out to every other real member of a group conversation
+     * (2026-07-18) -- see `GroupMessagingService`'s own doc comment for the full
+     * group-chat account. */
+    fun publishNewGroupMessage(groupId: String, recipientUserIds: List<String>, message: GroupMessage)
 }

@@ -7,6 +7,7 @@ import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.handler.TextWebSocketHandler
+import rw.itunda.core.domain.GroupMessage
 import rw.itunda.core.domain.Message
 import rw.itunda.core.realtime.RealtimeMessagePublisher
 import java.util.concurrent.ConcurrentHashMap
@@ -46,9 +47,6 @@ class MessagingWebSocketHandler(private val objectMapper: ObjectMapper) : TextWe
     }
 
     override fun publishNewMessage(conversationId: String, recipientUserId: String, message: Message) {
-        val sessions = sessionsByUserId[recipientUserId]
-        if (sessions.isNullOrEmpty()) return
-
         val payload = objectMapper.writeValueAsString(
             mapOf(
                 "type" to "message",
@@ -62,12 +60,35 @@ class MessagingWebSocketHandler(private val objectMapper: ObjectMapper) : TextWe
                 ),
             ),
         )
+        sendToUser(recipientUserId, payload)
+    }
+
+    override fun publishNewGroupMessage(groupId: String, recipientUserIds: List<String>, message: GroupMessage) {
+        val payload = objectMapper.writeValueAsString(
+            mapOf(
+                "type" to "group_message",
+                "groupConversationId" to groupId,
+                "message" to mapOf(
+                    "id" to message.id,
+                    "groupConversationId" to message.groupConversationId,
+                    "senderId" to message.senderId,
+                    "body" to message.body,
+                    "sentAt" to message.sentAt.toString(),
+                ),
+            ),
+        )
+        recipientUserIds.forEach { sendToUser(it, payload) }
+    }
+
+    private fun sendToUser(userId: String, payload: String) {
+        val sessions = sessionsByUserId[userId]
+        if (sessions.isNullOrEmpty()) return
         val text = TextMessage(payload)
         for (session in sessions.toList()) {
             try {
                 if (session.isOpen) session.sendMessage(text)
             } catch (e: Exception) {
-                log.warn("Failed to push to session {} for user {}: {}", session.id, recipientUserId, e.message)
+                log.warn("Failed to push to session {} for user {}: {}", session.id, userId, e.message)
                 sessions.remove(session)
             }
         }
