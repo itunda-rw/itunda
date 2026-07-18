@@ -9,13 +9,16 @@ import jakarta.persistence.Table
 import java.math.BigDecimal
 import java.time.Instant
 
-// Forward-only, same discipline as commerce's OrderStatus (see Order.kt) -- real order
-// cancellation/refund is a genuinely separate feature, not attempted here. The first four
+// Forward-only, same discipline as commerce's OrderStatus (see Order.kt). The first four
 // states are restaurant-driven (PLACED -> ACCEPTED -> PREPARING -> READY_FOR_PICKUP), the
-// last three are rider-driven (a rider claims a READY_FOR_PICKUP order, moving it to
+// next three are rider-driven (a rider claims a READY_FOR_PICKUP order, moving it to
 // RIDER_ASSIGNED, then PICKED_UP, then DELIVERED -- the transition that triggers the real
-// delivery-fee payout out of `eats_delivery_holding` into the rider's own wallet).
-enum class EatsOrderStatus { PLACED, ACCEPTED, PREPARING, READY_FOR_PICKUP, RIDER_ASSIGNED, PICKED_UP, DELIVERED }
+// delivery-fee payout out of `eats_delivery_holding` into the rider's own wallet). A real
+// CANCELLED terminal state (2026-07-18) is reachable only from PLACED -- before the
+// restaurant has started real fulfillment work and before any rider is involved, the
+// safest and simplest real scope. See EatsOrderService.cancelOrder's own doc comment for
+// the reversing-ledger-entry technique this reuses from SupportService.reverseTransaction.
+enum class EatsOrderStatus { PLACED, ACCEPTED, PREPARING, READY_FOR_PICKUP, RIDER_ASSIGNED, PICKED_UP, DELIVERED, CANCELLED }
 
 /**
  * A real Coupang Eats-style food order -- built on top of the same real `Merchant`/
@@ -82,6 +85,9 @@ class EatsOrder(
 
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
+
+    @Column(name = "refund_transaction_id", length = 64)
+    var refundTransactionId: String? = null,
 ) {
     protected constructor() : this(
         id = "", buyerId = "", restaurantId = "", deliveryAddress = "", itemsSubtotal = BigDecimal.ZERO,

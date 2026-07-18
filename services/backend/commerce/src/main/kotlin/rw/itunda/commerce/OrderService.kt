@@ -16,6 +16,7 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.OrderItemRepository
@@ -73,6 +74,7 @@ class OrderService(
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
     private val fraudRuleEngine: FraudRuleEngine,
+    private val ledgerEntryRepository: LedgerEntryRepository,
 ) {
     // Same real Toss Payments fee-schedule reasoning MerchantService.feeRate's own
     // comment gives -- one flat rate in the middle of Toss's published 0.8%-1.8% range,
@@ -194,8 +196,11 @@ class OrderService(
         return OrderDetail(order, orderItemRepository.findByOrderId(orderId))
     }
 
-    /** Seller-only, forward-only status progression -- see this class's own doc
-     * comment for why cancellation/refunds are deliberately not supported here. */
+    /** Seller-only, forward-only status progression through the real PLACED -> PACKED
+     * -> SHIPPED -> DELIVERED chain -- CANCELLED is a real but separate terminal state,
+     * only reachable via [cancelOrder] below, never via this method (the `currentIndex
+     * == -1` guard below is what stops a CANCELLED order from being "advanced" back
+     * into the forward chain). */
     @Transactional
     fun updateOrderStatus(ownerUserId: String, orderId: String, newStatus: OrderStatus): Order {
         val merchant = merchantRepository.findByOwnerUserId(ownerUserId)
@@ -206,12 +211,55 @@ class OrderService(
         }
         val currentIndex = statusOrder.indexOf(order.status)
         val newIndex = statusOrder.indexOf(newStatus)
-        if (newIndex != currentIndex + 1) {
+        if (currentIndex == -1 || newIndex != currentIndex + 1) {
             throw InvalidOrderStatusTransitionException(
                 "Cannot move from ${order.status} to $newStatus -- status can only advance one step at a time",
             )
         }
         order.status = newStatus
+        order.updatedAt = Instant.now()
+        return orderRepository.save(order)
+    }
+
+    /**
+     * Real order cancellation + refund (2026-07-18) -- the "genuinely separate feature"
+     * this class's own doc comment always named as deliberately deferred. Reuses the
+     * exact reversing-ledger-entry technique `SupportService.reverseTransaction` already
+     * established: read the original transaction's own ledger legs and post a new
+     * transaction with every leg's direction flipped (same accounts, same amounts,
+     * including the fee) -- a real reversing entry, never mutating or deleting the
+     * original record, matching real double-entry accounting practice.
+     *
+     * Deliberately, honestly scoped to only PLACED orders -- the same "before real
+     * fulfillment work has started" boundary this session already uses elsewhere. Once
+     * a seller has marked an order PACKED, cancelling would need a real return/dispute
+     * flow (goods may already be in motion), a genuinely different feature not attempted
+     * here. Either the real buyer or the real seller can cancel from PLACED (a buyer
+     * changing their mind, or a seller who can't fulfil it -- e.g. out of stock -- both
+     * real, common reasons at this stage).
+     */
+    @Transactional
+    fun cancelOrder(requesterId: String, orderId: String): Order {
+        val order = orderRepository.findById(orderId).orElseThrow { OrderNotFoundException("Order not found") }
+        val merchant = merchantRepository.findById(order.merchantId).orElse(null)
+        val isBuyer = order.buyerId == requesterId
+        val isSeller = merchant?.ownerUserId == requesterId
+        if (!isBuyer && !isSeller) {
+            throw OrderNotFoundException("Order not found")
+        }
+        if (order.status != OrderStatus.PLACED) {
+            throw InvalidOrderStatusTransitionException("Only a PLACED order can be cancelled -- this order is already ${order.status}")
+        }
+
+        val originalEntries = ledgerEntryRepository.findByTransactionId(order.transactionId)
+        val reversedLegs = originalEntries.map { entry ->
+            val flipped = if (entry.direction == LedgerDirection.DEBIT) LedgerDirection.CREDIT else LedgerDirection.DEBIT
+            LedgerLeg(entry.accountId, entry.accountType, flipped, entry.amount, "Refund for order ${order.id}")
+        }
+        val refund = ledgerService.postLedgerTransaction(originalEntries.first().currency, reversedLegs)
+
+        order.status = OrderStatus.CANCELLED
+        order.refundTransactionId = refund.transactionId
         order.updatedAt = Instant.now()
         return orderRepository.save(order)
     }

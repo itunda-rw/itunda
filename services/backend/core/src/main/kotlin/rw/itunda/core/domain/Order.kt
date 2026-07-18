@@ -9,11 +9,11 @@ import jakarta.persistence.Table
 import java.math.BigDecimal
 import java.time.Instant
 
-// Forward-only, no CANCELLED in this pass -- real order cancellation/refund is a
-// genuinely separate feature (a reversing ledger entry, same technique
-// SupportService.reverseTransaction already established for support-ticket refunds),
-// deliberately not attempted here. See OrderService's own doc comment.
-enum class OrderStatus { PLACED, PACKED, SHIPPED, DELIVERED }
+// Forward-only PLACED -> PACKED -> SHIPPED -> DELIVERED, plus a real CANCELLED
+// terminal state (2026-07-18) reachable only from PLACED -- before the seller has
+// started real fulfillment work. See OrderService.cancelOrder's own doc comment for
+// the reversing-ledger-entry technique this reuses from SupportService.reverseTransaction.
+enum class OrderStatus { PLACED, PACKED, SHIPPED, DELIVERED, CANCELLED }
 
 /**
  * A real Coupang-style multi-item order -- the third and last of the three new "super
@@ -63,6 +63,9 @@ class Order(
 
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
+
+    @Column(name = "refund_transaction_id", length = 64)
+    var refundTransactionId: String? = null,
 ) {
     protected constructor() : this(
         id = "", buyerId = "", merchantId = "", deliveryAddress = "", totalAmount = BigDecimal.ZERO,

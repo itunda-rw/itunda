@@ -10,6 +10,8 @@ import io.mockk.verify
 import rw.itunda.core.domain.EatsOrder
 import rw.itunda.core.domain.EatsOrderStatus
 import rw.itunda.core.domain.LedgerAccountType
+import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.LedgerEntry
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.domain.MerchantStatus
@@ -22,6 +24,7 @@ import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.EatsOrderItemRepository
 import rw.itunda.core.repository.EatsOrderRepository
+import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.RiderRepository
@@ -51,9 +54,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         every { transactionRepository.save(any()) } answers { firstArg() }
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            ledgerEntryRepository,
         )
 
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
@@ -157,9 +162,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            ledgerEntryRepository,
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
         val order = EatsOrder(
@@ -251,6 +258,68 @@ class EatsOrderServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        When("the real restaurant cancels a real PLACED order") {
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(order)
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            val originalEntries = listOf(
+                LedgerEntry(id = "le_1", transactionId = "ledgertxn_1", accountId = "wallet_buyer", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.DEBIT, amount = BigDecimal("7500"), currency = "RWF", balanceAfter = BigDecimal("92500"), memo = "Eats order - Kigali Grill"),
+                LedgerEntry(id = "le_2", transactionId = "ledgertxn_1", accountId = "wallet_restaurant", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.CREDIT, amount = BigDecimal("5910.00"), currency = "RWF", balanceAfter = BigDecimal("5910.00"), memo = "Eats order collection - Kigali Grill"),
+                LedgerEntry(id = "le_3", transactionId = "ledgertxn_1", accountId = "fee_revenue", accountType = LedgerAccountType.FEE_REVENUE, direction = LedgerDirection.CREDIT, amount = BigDecimal("90.00"), currency = "RWF", balanceAfter = BigDecimal("90.00"), memo = "Eats platform fee - Kigali Grill"),
+                LedgerEntry(id = "le_4", transactionId = "ledgertxn_1", accountId = "eats_delivery_holding", accountType = LedgerAccountType.EATS_DELIVERY_HOLDING, direction = LedgerDirection.CREDIT, amount = BigDecimal("1500"), currency = "RWF", balanceAfter = BigDecimal("1500"), memo = "Eats delivery fee held - Kigali Grill"),
+            )
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(order)
+            every { ledgerEntryRepository.findByTransactionId("ledgertxn_1") } returns originalEntries
+            val legsSlot = slot<List<LedgerLeg>>()
+            every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("refund_txn_1", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            val result = service.cancelOrder("owner_1", "eats_order_1")
+
+            Then("it flips every original leg -- including the delivery-fee holding leg -- and marks the order CANCELLED") {
+                result.status shouldBe EatsOrderStatus.CANCELLED
+                result.refundTransactionId shouldBe "refund_txn_1"
+
+                val legs = legsSlot.captured
+                legs.first { it.accountId == "wallet_buyer" }.direction shouldBe LedgerDirection.CREDIT
+                legs.first { it.accountId == "wallet_restaurant" }.direction shouldBe LedgerDirection.DEBIT
+                legs.first { it.accountId == "fee_revenue" }.direction shouldBe LedgerDirection.DEBIT
+                legs.first { it.accountId == "eats_delivery_holding" }.direction shouldBe LedgerDirection.DEBIT
+            }
+        }
+
+        When("someone tries to cancel an order that's already ACCEPTED") {
+            val acceptedOrder = EatsOrder(
+                id = "eats_order_1", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_1", status = EatsOrderStatus.ACCEPTED,
+            )
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(acceptedOrder)
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+
+            Then("it throws InvalidEatsOrderStatusTransitionException rather than cancelling mid-fulfillment") {
+                try {
+                    service.cancelOrder("buyer_1", "eats_order_1")
+                    error("expected InvalidEatsOrderStatusTransitionException")
+                } catch (e: InvalidEatsOrderStatusTransitionException) {
+                    // expected
+                }
+            }
+        }
+
+        When("a stranger tries to cancel someone else's order") {
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(order)
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+
+            Then("it throws EatsOrderNotFoundException, not a 403 that would confirm the order exists") {
+                try {
+                    service.cancelOrder("stranger", "eats_order_1")
+                    error("expected EatsOrderNotFoundException")
+                } catch (e: EatsOrderNotFoundException) {
+                    // expected
+                }
+            }
+        }
     }
 
     Given("a real available rider and a real order ready for pickup") {
@@ -263,9 +332,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            ledgerEntryRepository,
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
         val readyOrder = EatsOrder(
@@ -331,9 +402,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            ledgerEntryRepository,
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
         val riderWallet = wallet("wallet_rider", "rider_user_1")

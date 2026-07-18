@@ -146,6 +146,17 @@ class EatsController(
         return ResponseEntity.ok(mapOf("success" to true, "order" to order))
     }
 
+    // Real cancellation + refund (2026-07-18) -- buyer or restaurant, PLACED orders
+    // only. See EatsOrderService.cancelOrder's own doc comment for the full account.
+    @PostMapping("/orders/{orderId}/cancel")
+    fun cancelOrder(
+        @PathVariable orderId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val order = eatsOrderService.cancelOrder(currentUser.userId, orderId)
+        return ResponseEntity.ok(mapOf("success" to true, "order" to order))
+    }
+
     @PostMapping("/orders/{orderId}/claim")
     fun claimDelivery(
         @PathVariable orderId: String,

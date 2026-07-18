@@ -98,6 +98,17 @@ class OrderController(
         return ResponseEntity.ok(mapOf("success" to true, "order" to order))
     }
 
+    // Real cancellation + refund (2026-07-18) -- buyer or seller, PLACED orders only.
+    // See OrderService.cancelOrder's own doc comment for the full account.
+    @PostMapping("/{orderId}/cancel")
+    fun cancelOrder(
+        @PathVariable orderId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val order = orderService.cancelOrder(currentUser.userId, orderId)
+        return ResponseEntity.ok(mapOf("success" to true, "order" to order))
+    }
+
     @ExceptionHandler(MerchantNotFoundException::class)
     fun handleMerchantNotFound(ex: MerchantNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_NOT_FOUND", ex.message ?: "Not found"))

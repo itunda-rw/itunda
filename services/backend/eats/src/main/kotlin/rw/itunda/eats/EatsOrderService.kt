@@ -18,6 +18,7 @@ import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.EatsOrderItemRepository
 import rw.itunda.core.repository.EatsOrderRepository
+import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.RiderRepository
@@ -72,6 +73,7 @@ class EatsOrderService(
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
     private val fraudRuleEngine: FraudRuleEngine,
+    private val ledgerEntryRepository: LedgerEntryRepository,
 ) {
     // Same 1.5% Toss Payments fee-schedule reasoning OrderService.feeRate/
     // MerchantService.feeRate already give -- reused rather than inventing a third number
@@ -227,6 +229,47 @@ class EatsOrderService(
             )
         }
         order.status = newStatus
+        order.updatedAt = Instant.now()
+        return eatsOrderRepository.save(order)
+    }
+
+    /**
+     * Real order cancellation + refund (2026-07-18) -- the same reversing-ledger-entry
+     * technique commerce's `OrderService.cancelOrder` uses (itself reused from
+     * `SupportService.reverseTransaction`): read the original transaction's own ledger
+     * legs and post a new transaction with every leg's direction flipped, refunding the
+     * buyer's items subtotal, platform fee, AND the delivery fee that was held in
+     * `eats_delivery_holding` -- all in one atomic reversal, since no rider was ever
+     * assigned or paid at this stage.
+     *
+     * Deliberately, honestly scoped to only PLACED orders -- before the restaurant has
+     * started real fulfillment and, critically, before any rider is involved at all
+     * (rider assignment only happens at READY_FOR_PICKUP+), so this never has to reason
+     * about undoing a rider's already-in-progress or already-paid delivery. Either the
+     * real buyer or the real restaurant can cancel from PLACED.
+     */
+    @Transactional
+    fun cancelOrder(requesterId: String, orderId: String): EatsOrder {
+        val order = eatsOrderRepository.findById(orderId).orElseThrow { EatsOrderNotFoundException("Order not found") }
+        val restaurant = merchantRepository.findById(order.restaurantId).orElse(null)
+        val isBuyer = order.buyerId == requesterId
+        val isRestaurant = restaurant?.ownerUserId == requesterId
+        if (!isBuyer && !isRestaurant) {
+            throw EatsOrderNotFoundException("Order not found")
+        }
+        if (order.status != EatsOrderStatus.PLACED) {
+            throw InvalidEatsOrderStatusTransitionException("Only a PLACED order can be cancelled -- this order is already ${order.status}")
+        }
+
+        val originalEntries = ledgerEntryRepository.findByTransactionId(order.transactionId)
+        val reversedLegs = originalEntries.map { entry ->
+            val flipped = if (entry.direction == LedgerDirection.DEBIT) LedgerDirection.CREDIT else LedgerDirection.DEBIT
+            LedgerLeg(entry.accountId, entry.accountType, flipped, entry.amount, "Refund for order ${order.id}")
+        }
+        val refund = ledgerService.postLedgerTransaction(originalEntries.first().currency, reversedLegs)
+
+        order.status = EatsOrderStatus.CANCELLED
+        order.refundTransactionId = refund.transactionId
         order.updatedAt = Instant.now()
         return eatsOrderRepository.save(order)
     }

@@ -7,6 +7,8 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import rw.itunda.core.domain.LedgerAccountType
+import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.LedgerEntry
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.domain.MerchantStatus
@@ -18,6 +20,7 @@ import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.OrderItemRepository
@@ -48,9 +51,10 @@ class OrderServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         every { transactionRepository.save(any()) } answers { firstArg() }
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
-            walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            walletRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
         )
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
@@ -153,9 +157,10 @@ class OrderServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
-            walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            walletRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
         )
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val order = Order(
@@ -221,6 +226,64 @@ class OrderServiceTest : BehaviorSpec({
             Then("it throws OrderNotFoundException, not a 403 that would confirm the order exists") {
                 try {
                     service.getOrderDetail("stranger", "order_1")
+                    error("expected OrderNotFoundException")
+                } catch (e: OrderNotFoundException) {
+                    // expected
+                }
+            }
+        }
+
+        When("the real buyer cancels a real PLACED order") {
+            every { orderRepository.findById("order_1") } returns Optional.of(order)
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+            val originalEntries = listOf(
+                LedgerEntry(id = "le_1", transactionId = "ledgertxn_1", accountId = "wallet_buyer", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.DEBIT, amount = BigDecimal("6000"), currency = "RWF", balanceAfter = BigDecimal("94000"), memo = "Order - Kigali Store"),
+                LedgerEntry(id = "le_2", transactionId = "ledgertxn_1", accountId = "wallet_merchant", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.CREDIT, amount = BigDecimal("5910.00"), currency = "RWF", balanceAfter = BigDecimal("5910.00"), memo = "Order collection - Kigali Store"),
+                LedgerEntry(id = "le_3", transactionId = "ledgertxn_1", accountId = "fee_revenue", accountType = LedgerAccountType.FEE_REVENUE, direction = LedgerDirection.CREDIT, amount = BigDecimal("90.00"), currency = "RWF", balanceAfter = BigDecimal("90.00"), memo = "Order fee - Kigali Store"),
+            )
+            every { ledgerEntryRepository.findByTransactionId("ledgertxn_1") } returns originalEntries
+            val legsSlot = slot<List<LedgerLeg>>()
+            every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("refund_txn_1", emptyList())
+            every { orderRepository.save(any()) } answers { firstArg() }
+
+            val result = service.cancelOrder("buyer_1", "order_1")
+
+            Then("it flips every original leg's direction and marks the order CANCELLED with a real refund transaction id") {
+                result.status shouldBe OrderStatus.CANCELLED
+                result.refundTransactionId shouldBe "refund_txn_1"
+
+                val legs = legsSlot.captured
+                legs.first { it.accountId == "wallet_buyer" }.direction shouldBe LedgerDirection.CREDIT
+                legs.first { it.accountId == "wallet_merchant" }.direction shouldBe LedgerDirection.DEBIT
+                legs.first { it.accountId == "fee_revenue" }.direction shouldBe LedgerDirection.DEBIT
+            }
+        }
+
+        When("someone tries to cancel an order that's already PACKED") {
+            val packedOrder = Order(
+                id = "order_1", buyerId = "buyer_1", merchantId = "merchant_1", deliveryAddress = "addr",
+                totalAmount = BigDecimal("6000"), fee = BigDecimal("90"), transactionId = "ledgertxn_1", status = OrderStatus.PACKED,
+            )
+            every { orderRepository.findById("order_1") } returns Optional.of(packedOrder)
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+
+            Then("it throws InvalidOrderStatusTransitionException rather than cancelling mid-fulfillment") {
+                try {
+                    service.cancelOrder("buyer_1", "order_1")
+                    error("expected InvalidOrderStatusTransitionException")
+                } catch (e: InvalidOrderStatusTransitionException) {
+                    // expected
+                }
+            }
+        }
+
+        When("a stranger tries to cancel someone else's order") {
+            every { orderRepository.findById("order_1") } returns Optional.of(order)
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+
+            Then("it throws OrderNotFoundException, not a 403 that would confirm the order exists") {
+                try {
+                    service.cancelOrder("stranger", "order_1")
                     error("expected OrderNotFoundException")
                 } catch (e: OrderNotFoundException) {
                     // expected
