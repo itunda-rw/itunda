@@ -8,7 +8,7 @@ import { collectPayment, fetchShoppingCatalog, type CollectPaymentResult, type S
 import {
   connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages,
   fetchPresence, sendGroupMessage, sendMessage, startConversation, type ConversationSummary, type GroupMember, type GroupMessage,
-  type GroupSummary, type Message,
+  type GroupSummary, type Message, type MessagingSocketHandle,
 } from './lib/messaging';
 import { contactSeller, createListing, fetchListings, fetchMyListings, markListingSold, removeListing, type Listing } from './lib/marketplace';
 import {
@@ -508,8 +508,12 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [otherOnline, setOtherOnline] = useState<boolean | null>(null);
+  const [otherTyping, setOtherTyping] = useState(false);
   const currentUser = getStoredUser();
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const socketRef = useRef<MessagingSocketHandle | null>(null);
+  const typingClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTypingSentAt = useRef(0);
 
   useEffect(() => {
     fetchPresence([conversation.otherUserId]).then((p) => setOtherOnline(p[conversation.otherUserId] ?? null)).catch(() => {});
@@ -537,19 +541,35 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     // Real WebSocket live delivery (2026-07-18) -- appends a pushed message straight
     // into state the moment it arrives, rather than waiting for the next poll tick.
     // De-duped by id since the next 4s poll will also fetch the same message.
-    const disconnect = connectMessagingSocket((payload) => {
+    const socket = connectMessagingSocket((payload) => {
       if (payload.type === 'presence') {
         if (payload.userId === conversation.otherUserId) setOtherOnline(payload.online);
         return;
       }
+      if (payload.type === 'typing') {
+        if (payload.conversationId !== conversation.conversationId || payload.userId !== conversation.otherUserId) return;
+        setOtherTyping(true);
+        if (typingClearTimer.current) clearTimeout(typingClearTimer.current);
+        // Real, client-side "stopped typing" inference (2026-07-19) -- there's no
+        // explicit "stopped typing" event, same convention every real chat app uses:
+        // clear the indicator if no new typing ping arrives within a few seconds.
+        typingClearTimer.current = setTimeout(() => setOtherTyping(false), 3000);
+        return;
+      }
       if (payload.type !== 'message' || payload.conversationId !== conversation.conversationId) return;
+      setOtherTyping(false);
       setMessages((prev) => {
         if (!prev) return prev;
         if (prev.some((m) => m.id === payload.message.id)) return prev;
         return [...prev, payload.message];
       });
     });
-    return disconnect;
+    socketRef.current = socket;
+    return () => {
+      socket.close();
+      socketRef.current = null;
+      if (typingClearTimer.current) clearTimeout(typingClearTimer.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation.conversationId, conversation.otherUserId]);
 
@@ -619,6 +639,12 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         <div ref={bottomRef} />
       </div>
 
+      {otherTyping && (
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px', fontStyle: 'italic' }}>
+          {conversation.otherUserName} is typing…
+        </p>
+      )}
+
       {error && (
         <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>
       )}
@@ -627,7 +653,16 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         <input
           type="text"
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            // Real typing indicator send (2026-07-19), client-throttled to match the
+            // server's own 1-per-2s rate limit so every keystroke isn't a wasted send.
+            const now = Date.now();
+            if (now - lastTypingSentAt.current > 2000) {
+              lastTypingSentAt.current = now;
+              socketRef.current?.sendTyping({ conversationId: conversation.conversationId });
+            }
+          }}
           placeholder="Message"
           style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
         />
@@ -645,8 +680,12 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [typingUserIds, setTypingUserIds] = useState<Record<string, boolean>>({});
   const currentUser = getStoredUser();
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const socketRef = useRef<MessagingSocketHandle | null>(null);
+  const typingClearTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const lastTypingSentAt = useRef(0);
 
   const load = () =>
     fetchGroupMessages(group.groupId)
@@ -677,15 +716,40 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
   useEffect(() => {
     // Real WebSocket live delivery for group chat (2026-07-18) -- same real push
     // GroupMessagingService.sendMessage fans out to every other real member.
-    const disconnect = connectMessagingSocket((payload) => {
+    const socket = connectMessagingSocket((payload) => {
+      if (payload.type === 'typing') {
+        if (payload.groupConversationId !== group.groupId) return;
+        const userId = payload.userId;
+        setTypingUserIds((prev) => ({ ...prev, [userId]: true }));
+        if (typingClearTimers.current[userId]) clearTimeout(typingClearTimers.current[userId]);
+        typingClearTimers.current[userId] = setTimeout(() => {
+          setTypingUserIds((prev) => {
+            const next = { ...prev };
+            delete next[userId];
+            return next;
+          });
+        }, 3000);
+        return;
+      }
       if (payload.type !== 'group_message' || payload.groupConversationId !== group.groupId) return;
+      setTypingUserIds((prev) => {
+        if (!(payload.message.senderId in prev)) return prev;
+        const next = { ...prev };
+        delete next[payload.message.senderId];
+        return next;
+      });
       setMessages((prev) => {
         if (!prev) return prev;
         if (prev.some((m) => m.id === payload.message.id)) return prev;
         return [...prev, payload.message];
       });
     });
-    return disconnect;
+    socketRef.current = socket;
+    return () => {
+      socket.close();
+      socketRef.current = null;
+      Object.values(typingClearTimers.current).forEach(clearTimeout);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [group.groupId]);
 
@@ -756,6 +820,12 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
         <div ref={bottomRef} />
       </div>
 
+      {Object.keys(typingUserIds).length > 0 && (
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px', fontStyle: 'italic' }}>
+          {Object.keys(typingUserIds).map(nameForSender).join(', ')} {Object.keys(typingUserIds).length === 1 ? 'is' : 'are'} typing…
+        </p>
+      )}
+
       {error && (
         <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>
       )}
@@ -764,7 +834,14 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
         <input
           type="text"
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            const now = Date.now();
+            if (now - lastTypingSentAt.current > 2000) {
+              lastTypingSentAt.current = now;
+              socketRef.current?.sendTyping({ groupConversationId: group.groupId });
+            }
+          }}
           placeholder="Message"
           style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
         />

@@ -7,10 +7,13 @@ import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.handler.TextWebSocketHandler
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.GroupMessage
 import rw.itunda.core.domain.Message
 import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.ConversationRepository
+import rw.itunda.core.repository.GroupConversationMemberRepository
+import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 
 internal const val WS_USER_ID_ATTR = "userId"
@@ -32,6 +35,8 @@ internal const val WS_USER_ID_ATTR = "userId"
 class MessagingWebSocketHandler(
     private val objectMapper: ObjectMapper,
     private val conversationRepository: ConversationRepository,
+    private val groupConversationMemberRepository: GroupConversationMemberRepository,
+    private val rateLimiter: RateLimiter,
 ) : TextWebSocketHandler(), RealtimeMessagePublisher {
     private val log = LoggerFactory.getLogger(MessagingWebSocketHandler::class.java)
     private val sessionsByUserId = ConcurrentHashMap<String, MutableSet<WebSocketSession>>()
@@ -56,6 +61,42 @@ class MessagingWebSocketHandler(
         sessions.remove(session)
         // Real transition-only push: only the LAST session closing fires "offline".
         if (sessions.isEmpty()) publishPresenceChange(userId, online = false)
+    }
+
+    // Real typing indicators (2026-07-19) -- the first inbound (client-to-server) frame
+    // this socket ever needed to actually read; every other push so far has been purely
+    // server-to-client. A real, ephemeral (never persisted) ping relayed to the real
+    // other participant(s), with the same IDOR discipline as every real endpoint in this
+    // backend (a non-participant's typing frame is silently dropped, not relayed) and a
+    // real per-(user, conversation) rate limit so a malicious/buggy client can't spam
+    // relays -- typing indicators are best-effort, so a rate-limited or malformed frame
+    // is silently dropped rather than erroring the socket.
+    override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
+        val userId = session.attributes[WS_USER_ID_ATTR] as? String ?: return
+        try {
+            val json = objectMapper.readTree(message.payload)
+            if (json.get("type")?.asText() != "typing") return
+            json.get("conversationId")?.asText()?.let { conversationId ->
+                rateLimiter.checkLimit("typing:$userId:$conversationId", limit = 1, window = Duration.ofSeconds(2))
+                val conversation = conversationRepository.findById(conversationId).orElse(null) ?: return
+                val otherId = when (userId) {
+                    conversation.participantAId -> conversation.participantBId
+                    conversation.participantBId -> conversation.participantAId
+                    else -> return
+                }
+                sendToUser(otherId, objectMapper.writeValueAsString(mapOf("type" to "typing", "conversationId" to conversationId, "userId" to userId)))
+            }
+            json.get("groupConversationId")?.asText()?.let { groupId ->
+                rateLimiter.checkLimit("typing:$userId:$groupId", limit = 1, window = Duration.ofSeconds(2))
+                val members = groupConversationMemberRepository.findByGroupConversationId(groupId)
+                if (members.none { it.userId == userId }) return
+                val payload = objectMapper.writeValueAsString(mapOf("type" to "typing", "groupConversationId" to groupId, "userId" to userId))
+                members.filter { it.userId != userId }.forEach { sendToUser(it.userId, payload) }
+            }
+        } catch (e: Exception) {
+            // Real, non-critical -- a malformed/unexpected/rate-limited inbound frame
+            // shouldn't kill the socket; typing indicators are best-effort.
+        }
     }
 
     override fun isOnline(userId: String): Boolean = !sessionsByUserId[userId].isNullOrEmpty()

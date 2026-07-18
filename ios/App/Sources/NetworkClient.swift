@@ -416,6 +416,15 @@ struct MessagingSocketMessageEnvelope: Decodable { let type: String; let convers
 // comment for the real transition-only/1:1-only scoping.
 struct MessagingSocketPresenceEnvelope: Decodable { let type: String; let userId: String; let online: Bool }
 
+// Real typing indicator push envelope (2026-07-19) -- see MessagingSocketPush's own doc
+// comment.
+struct MessagingSocketTypingEnvelope: Decodable {
+    let type: String
+    let conversationId: String?
+    let groupConversationId: String?
+    let userId: String
+}
+
 struct StartConversationRequest: Encodable {
     let phoneNumber: String?
     let otherUserId: String?
@@ -473,6 +482,11 @@ enum MessagingSocketPush {
     case directMessage(conversationId: String, message: MessageDto)
     case groupMessage(groupConversationId: String, message: GroupMessageDto)
     case presenceChange(userId: String, online: Bool)
+    // Real typing indicator (2026-07-19) -- see
+    // MessagingWebSocketHandler.handleTextMessage's own doc comment on the backend.
+    // Ephemeral, never persisted; server-ratelimited to one relay per (user,
+    // conversation) per 2s. Exactly one of conversationId/groupConversationId is set.
+    case typingChange(conversationId: String?, groupConversationId: String?, userId: String)
 }
 
 struct ListingDto: Decodable, Identifiable {
@@ -691,6 +705,17 @@ extension NetworkClient {
         return task
     }
 
+    // Real typing indicator send (2026-07-19) -- best-effort, matching bank-mfe/Android's
+    // own sendTyping helpers; a failed send on a closed/never-connected task is silently
+    // swallowed, same as every other non-critical real-time signal in this layer.
+    func sendTyping(_ task: URLSessionWebSocketTask, conversationId: String? = nil, groupConversationId: String? = nil) {
+        var payload: [String: String] = ["type": "typing"]
+        if let conversationId { payload["conversationId"] = conversationId }
+        if let groupConversationId { payload["groupConversationId"] = groupConversationId }
+        guard let data = try? JSONEncoder().encode(payload), let text = String(data: data, encoding: .utf8) else { return }
+        task.send(.string(text)) { _ in }
+    }
+
     private func receiveMessagingSocketFrame(_ task: URLSessionWebSocketTask, onPush: @escaping (MessagingSocketPush) -> Void) {
         task.receive { [weak self] result in
             guard let self else { return }
@@ -709,6 +734,9 @@ extension NetworkClient {
                     } else if typeEnvelope.type == "presence",
                               let envelope = try? JSONDecoder().decode(MessagingSocketPresenceEnvelope.self, from: data) {
                         onPush(.presenceChange(userId: envelope.userId, online: envelope.online))
+                    } else if typeEnvelope.type == "typing",
+                              let envelope = try? JSONDecoder().decode(MessagingSocketTypingEnvelope.self, from: data) {
+                        onPush(.typingChange(conversationId: envelope.conversationId, groupConversationId: envelope.groupConversationId, userId: envelope.userId))
                     }
                 }
             }

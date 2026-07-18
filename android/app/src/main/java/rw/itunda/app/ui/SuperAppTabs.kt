@@ -56,8 +56,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import okhttp3.WebSocket
 import retrofit2.HttpException
 import rw.itunda.app.network.ConversationSummaryDto
 import rw.itunda.app.network.CreateListingRequest
@@ -457,6 +459,9 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
     var draft by remember { mutableStateOf("") }
     var sending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var typingUserIds by remember { mutableStateOf<Map<String, Job>>(emptyMap()) }
+    var socket by remember { mutableStateOf<WebSocket?>(null) }
+    var lastTypingSentAt by remember { mutableStateOf(0L) }
     val coroutineScope = rememberCoroutineScope()
     val listState: LazyListState = rememberLazyListState()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
@@ -492,17 +497,35 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
     // Real WebSocket live-transport for group chat -- same socket 1:1 already uses,
     // routing on message type via MessagingSocketPush.
     DisposableEffect(group.groupId) {
-        val socket = NetworkClient.connectMessagingSocket { push ->
-            if (push is MessagingSocketPush.GroupMessagePush && push.groupConversationId == group.groupId) {
-                coroutineScope.launch(Dispatchers.Main) {
-                    val current = messages ?: emptyList()
-                    if (current.none { it.id == push.message.id }) {
-                        messages = current + push.message
+        val ws = NetworkClient.connectMessagingSocket { push ->
+            when {
+                push is MessagingSocketPush.GroupMessagePush && push.groupConversationId == group.groupId -> {
+                    coroutineScope.launch(Dispatchers.Main) {
+                        typingUserIds = typingUserIds - push.message.senderId
+                        val current = messages ?: emptyList()
+                        if (current.none { it.id == push.message.id }) {
+                            messages = current + push.message
+                        }
+                    }
+                }
+                push is MessagingSocketPush.TypingChange && push.groupConversationId == group.groupId -> {
+                    coroutineScope.launch(Dispatchers.Main) {
+                        typingUserIds[push.userId]?.cancel()
+                        val clearJob = coroutineScope.launch {
+                            delay(3000)
+                            typingUserIds = typingUserIds - push.userId
+                        }
+                        typingUserIds = typingUserIds + (push.userId to clearJob)
                     }
                 }
             }
         }
-        onDispose { socket.close(1000, "leaving group thread") }
+        socket = ws
+        onDispose {
+            ws.close(1000, "leaving group thread")
+            socket = null
+            typingUserIds.values.forEach { it.cancel() }
+        }
     }
     LaunchedEffect(messages?.size) {
         val count = messages?.size ?: 0
@@ -528,11 +551,27 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                 }
             }
         }
+        if (typingUserIds.isNotEmpty()) {
+            val names = typingUserIds.keys.map { id -> members.find { it.userId == id }?.name ?: id.take(8) }
+            Text(
+                "${names.joinToString(", ")} ${if (names.size == 1) "is" else "are"} typing…",
+                color = TossSecondary,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+        }
         error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(vertical = 6.dp)) }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
             OutlinedTextField(
                 value = draft,
-                onValueChange = { draft = it },
+                onValueChange = { newValue ->
+                    draft = newValue
+                    val now = System.currentTimeMillis()
+                    if (now - lastTypingSentAt > 2000) {
+                        lastTypingSentAt = now
+                        socket?.let { NetworkClient.sendTyping(it, groupConversationId = group.groupId) }
+                    }
+                },
                 placeholder = { Text("Message") },
                 modifier = Modifier.weight(1f),
             )
@@ -641,6 +680,10 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
     var sending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var otherOnline by remember { mutableStateOf<Boolean?>(null) }
+    var otherTyping by remember { mutableStateOf(false) }
+    var typingClearJob by remember { mutableStateOf<Job?>(null) }
+    var socket by remember { mutableStateOf<WebSocket?>(null) }
+    var lastTypingSentAt by remember { mutableStateOf(0L) }
     val coroutineScope = rememberCoroutineScope()
     val listState: LazyListState = rememberLazyListState()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
@@ -676,10 +719,11 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
     // already fetched, and appended on the main thread since OkHttp's listener callback
     // runs on its own background thread, not safe to mutate Compose state from directly.
     DisposableEffect(conversation.conversationId) {
-        val socket = NetworkClient.connectMessagingSocket { push ->
+        val ws = NetworkClient.connectMessagingSocket { push ->
             when {
                 push is MessagingSocketPush.DirectMessage && push.message.conversationId == conversation.conversationId -> {
                     coroutineScope.launch(Dispatchers.Main) {
+                        otherTyping = false
                         val current = messages ?: emptyList()
                         if (current.none { it.id == push.message.id }) {
                             messages = current + push.message
@@ -689,9 +733,24 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
                 push is MessagingSocketPush.PresenceChange && push.userId == conversation.otherUserId -> {
                     coroutineScope.launch(Dispatchers.Main) { otherOnline = push.online }
                 }
+                push is MessagingSocketPush.TypingChange && push.conversationId == conversation.conversationId && push.userId == conversation.otherUserId -> {
+                    coroutineScope.launch(Dispatchers.Main) {
+                        otherTyping = true
+                        typingClearJob?.cancel()
+                        typingClearJob = coroutineScope.launch {
+                            delay(3000)
+                            otherTyping = false
+                        }
+                    }
+                }
             }
         }
-        onDispose { socket.close(1000, "leaving chat thread") }
+        socket = ws
+        onDispose {
+            ws.close(1000, "leaving chat thread")
+            socket = null
+            typingClearJob?.cancel()
+        }
     }
     LaunchedEffect(messages?.size) {
         val count = messages?.size ?: 0
@@ -719,11 +778,23 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
                 items(msgs, key = { it.id }) { m -> MessageBubble(m, isMine = m.senderId == currentUserId) }
             }
         }
+        if (otherTyping) {
+            Text("${conversation.otherUserName} is typing…", color = TossSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
+        }
         error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(vertical = 6.dp)) }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
             OutlinedTextField(
                 value = draft,
-                onValueChange = { draft = it },
+                onValueChange = { newValue ->
+                    draft = newValue
+                    // Real typing indicator send (2026-07-19), client-throttled to match
+                    // the server's own 1-per-2s rate limit.
+                    val now = System.currentTimeMillis()
+                    if (now - lastTypingSentAt > 2000) {
+                        lastTypingSentAt = now
+                        socket?.let { NetworkClient.sendTyping(it, conversationId = conversation.conversationId) }
+                    }
+                },
                 placeholder = { Text("Message") },
                 modifier = Modifier.weight(1f),
             )

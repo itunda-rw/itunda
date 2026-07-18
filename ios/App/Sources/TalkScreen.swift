@@ -384,6 +384,8 @@ private struct GroupThreadScreen: View {
     @State private var sending = false
     @State private var error: String?
     @State private var socketTask: URLSessionWebSocketTask?
+    @State private var typingUserIds: [String: Task<Void, Never>] = [:]
+    @State private var lastTypingSentAt: Date = .distantPast
     private let currentUserId = KeychainTokenStore.shared.getUserId()
 
     private func name(for senderId: String) -> String {
@@ -427,12 +429,31 @@ private struct GroupThreadScreen: View {
                 }
             }
 
+            if !typingUserIds.isEmpty {
+                let names = typingUserIds.keys.map { name(for: $0) }
+                Text("\(names.joined(separator: ", ")) \(names.count == 1 ? "is" : "are") typing…")
+                    .font(.caption)
+                    .foregroundColor(IDS.Colors.textSecondary)
+                    .padding(.horizontal, IDS.Layout.screenHorizontal)
+            }
+
             if let error {
                 Text(error).font(.caption).foregroundColor(.red).padding(.horizontal, IDS.Layout.screenHorizontal)
             }
 
             HStack {
-                TextField("Message", text: $draft)
+                TextField("Message", text: Binding(
+                    get: { draft },
+                    set: { newValue in
+                        draft = newValue
+                        if Date().timeIntervalSince(lastTypingSentAt) > 2 {
+                            lastTypingSentAt = Date()
+                            if let socketTask {
+                                NetworkClient.shared.sendTyping(socketTask, groupConversationId: group.groupId)
+                            }
+                        }
+                    }
+                ))
                     .padding(12)
                     .background(IDS.Colors.chipBackground)
                     .cornerRadius(14)
@@ -472,16 +493,31 @@ private struct GroupThreadScreen: View {
         // uses, routing on push type via MessagingSocketPush.
         .onAppear {
             socketTask = NetworkClient.shared.connectMessagingSocket { push in
-                guard case .groupMessage(let groupId, let pushedMessage) = push, groupId == group.groupId else { return }
-                Task { @MainActor in
-                    if !(messages ?? []).contains(where: { $0.id == pushedMessage.id }) {
-                        messages = (messages ?? []) + [pushedMessage]
+                switch push {
+                case .groupMessage(let groupId, let pushedMessage) where groupId == group.groupId:
+                    Task { @MainActor in
+                        typingUserIds[pushedMessage.senderId]?.cancel()
+                        typingUserIds[pushedMessage.senderId] = nil
+                        if !(messages ?? []).contains(where: { $0.id == pushedMessage.id }) {
+                            messages = (messages ?? []) + [pushedMessage]
+                        }
                     }
+                case .typingChange(_, let groupId, let userId) where groupId == group.groupId:
+                    Task { @MainActor in
+                        typingUserIds[userId]?.cancel()
+                        typingUserIds[userId] = Task {
+                            try? await Task.sleep(nanoseconds: 3_000_000_000)
+                            if !Task.isCancelled { typingUserIds[userId] = nil }
+                        }
+                    }
+                default:
+                    break
                 }
             }
         }
         .onDisappear {
             socketTask?.cancel(with: .goingAway, reason: nil)
+            typingUserIds.values.forEach { $0.cancel() }
         }
     }
 
@@ -589,6 +625,9 @@ private struct ChatThreadScreen: View {
     @State private var error: String?
     @State private var socketTask: URLSessionWebSocketTask?
     @State private var otherOnline: Bool?
+    @State private var otherTyping = false
+    @State private var typingClearTask: Task<Void, Never>?
+    @State private var lastTypingSentAt: Date = .distantPast
     private let currentUserId = KeychainTokenStore.shared.getUserId()
 
     var body: some View {
@@ -637,12 +676,32 @@ private struct ChatThreadScreen: View {
                 }
             }
 
+            if otherTyping {
+                Text("\(conversation.otherUserName) is typing…")
+                    .font(.caption)
+                    .foregroundColor(IDS.Colors.textSecondary)
+                    .padding(.horizontal, IDS.Layout.screenHorizontal)
+            }
+
             if let error {
                 Text(error).font(.caption).foregroundColor(.red).padding(.horizontal, IDS.Layout.screenHorizontal)
             }
 
             HStack {
-                TextField("Message", text: $draft)
+                TextField("Message", text: Binding(
+                    get: { draft },
+                    set: { newValue in
+                        draft = newValue
+                        // Real typing indicator send (2026-07-19), client-throttled to
+                        // match the server's own 1-per-2s rate limit.
+                        if Date().timeIntervalSince(lastTypingSentAt) > 2 {
+                            lastTypingSentAt = Date()
+                            if let socketTask {
+                                NetworkClient.shared.sendTyping(socketTask, conversationId: conversation.conversationId)
+                            }
+                        }
+                    }
+                ))
                     .padding(12)
                     .background(IDS.Colors.chipBackground)
                     .cornerRadius(14)
@@ -684,12 +743,22 @@ private struct ChatThreadScreen: View {
                 switch push {
                 case .directMessage(let conversationId, let pushedMessage) where conversationId == conversation.conversationId:
                     Task { @MainActor in
+                        otherTyping = false
                         if !(messages ?? []).contains(where: { $0.id == pushedMessage.id }) {
                             messages = (messages ?? []) + [pushedMessage]
                         }
                     }
                 case .presenceChange(let userId, let online) where userId == conversation.otherUserId:
                     Task { @MainActor in otherOnline = online }
+                case .typingChange(let conversationId, _, let userId) where conversationId == conversation.conversationId && userId == conversation.otherUserId:
+                    Task { @MainActor in
+                        otherTyping = true
+                        typingClearTask?.cancel()
+                        typingClearTask = Task {
+                            try? await Task.sleep(nanoseconds: 3_000_000_000)
+                            if !Task.isCancelled { otherTyping = false }
+                        }
+                    }
                 default:
                     break
                 }
@@ -697,6 +766,7 @@ private struct ChatThreadScreen: View {
         }
         .onDisappear {
             socketTask?.cancel(with: .goingAway, reason: nil)
+            typingClearTask?.cancel()
         }
     }
 

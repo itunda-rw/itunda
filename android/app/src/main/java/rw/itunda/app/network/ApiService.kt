@@ -738,6 +738,16 @@ object NetworkClient {
                                 val online = json.get("online")?.asBoolean ?: return
                                 onPush(MessagingSocketPush.PresenceChange(userId, online))
                             }
+                            "typing" -> {
+                                val userId = json.get("userId")?.asString ?: return
+                                onPush(
+                                    MessagingSocketPush.TypingChange(
+                                        conversationId = json.get("conversationId")?.asString,
+                                        groupConversationId = json.get("groupConversationId")?.asString,
+                                        userId = userId,
+                                    ),
+                                )
+                            }
                         }
                     } catch (e: Exception) {
                         // Real, non-critical -- a malformed/unexpected push shouldn't
@@ -748,6 +758,16 @@ object NetworkClient {
             },
         )
     }
+
+    // Real typing indicator send (2026-07-19) -- best-effort, matching bank-mfe's own
+    // sendTyping helper; OkHttp's WebSocket.send already silently no-ops on a
+    // closed/never-connected socket.
+    fun sendTyping(socket: WebSocket, conversationId: String? = null, groupConversationId: String? = null) {
+        val payload = mutableMapOf<String, Any>("type" to "typing")
+        conversationId?.let { payload["conversationId"] = it }
+        groupConversationId?.let { payload["groupConversationId"] = it }
+        socket.send(gson.toJson(payload))
+    }
 }
 
 sealed class MessagingSocketPush {
@@ -757,4 +777,9 @@ sealed class MessagingSocketPush {
     // rw.itunda.core.realtime.RealtimeMessagePublisher.publishPresenceChange's own doc
     // comment for the real transition-only/1:1-only scoping.
     data class PresenceChange(val userId: String, val online: Boolean) : MessagingSocketPush()
+    // Real typing indicator (2026-07-19) -- see
+    // MessagingWebSocketHandler.handleTextMessage's own doc comment on the backend.
+    // Ephemeral, never persisted; server-ratelimited to one relay per (user,
+    // conversation) per 2s. Exactly one of conversationId/groupConversationId is set.
+    data class TypingChange(val conversationId: String?, val groupConversationId: String?, val userId: String) : MessagingSocketPush()
 }

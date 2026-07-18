@@ -133,7 +133,17 @@ interface PresencePushPayload {
   online: boolean;
 }
 
-type SocketPushPayload = MessagePushPayload | GroupMessagePushPayload | PresencePushPayload;
+// Real typing indicator (2026-07-19) -- see MessagingWebSocketHandler.handleTextMessage's
+// own doc comment on the backend. Ephemeral, never persisted; ratelimited server-side to
+// one relay per (user, conversation) per 2s.
+interface TypingPushPayload {
+  type: 'typing';
+  conversationId?: string;
+  groupConversationId?: string;
+  userId: string;
+}
+
+type SocketPushPayload = MessagePushPayload | GroupMessagePushPayload | PresencePushPayload | TypingPushPayload;
 
 // Real on-demand presence check, for any set of user ids (a group thread's members,
 // or a 1:1 partner not covered by the real-time push above).
@@ -156,9 +166,17 @@ export const fetchPresence = (userIds: string[]) => {
 // silently does nothing further -- callers are expected to keep their existing 4s poll
 // running regardless, so a live push is a real latency improvement layered on top of an
 // always-correct fallback, never a single point of failure for message delivery.
-export function connectMessagingSocket(onMessage: (payload: SocketPushPayload) => void): () => void {
+export interface MessagingSocketHandle {
+  close: () => void;
+  // Real typing indicator send (2026-07-19) -- best-effort, silently a no-op if the
+  // socket never connected or has since closed (the same "never a single point of
+  // failure" discipline this whole live-transport layer already follows).
+  sendTyping: (target: { conversationId?: string; groupConversationId?: string }) => void;
+}
+
+export function connectMessagingSocket(onMessage: (payload: SocketPushPayload) => void): MessagingSocketHandle {
   const token = getToken();
-  if (!token) return () => {};
+  if (!token) return { close: () => {}, sendTyping: () => {} };
 
   const wsUrl = `${BASE_URL.replace(/^http/, 'ws')}/ws/messaging?token=${encodeURIComponent(token)}`;
   const socket = new WebSocket(wsUrl);
@@ -166,11 +184,18 @@ export function connectMessagingSocket(onMessage: (payload: SocketPushPayload) =
   socket.addEventListener('message', (event) => {
     try {
       const payload = JSON.parse(event.data) as SocketPushPayload;
-      if (payload.type === 'message' || payload.type === 'group_message' || payload.type === 'presence') onMessage(payload);
+      if (payload.type === 'message' || payload.type === 'group_message' || payload.type === 'presence' || payload.type === 'typing') {
+        onMessage(payload);
+      }
     } catch {
       // Malformed/unexpected frame -- ignore, the poll fallback still covers delivery.
     }
   });
 
-  return () => socket.close();
+  return {
+    close: () => socket.close(),
+    sendTyping: (target) => {
+      if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'typing', ...target }));
+    },
+  };
 }
