@@ -144,6 +144,14 @@ class MessagingService(
         return message
     }
 
+    // Real online/offline presence (2026-07-19) -- reads the real WebSocket session
+    // registry via RealtimeMessagePublisher.isOnline, never a fabricated status. No
+    // participant/membership check on the requested ids -- presence is a real,
+    // low-sensitivity signal (same as any messaging app showing a contact's online
+    // dot without requiring an existing conversation first).
+    fun getPresence(userIds: List<String>): Map<String, Boolean> =
+        userIds.distinct().associateWith { realtimeMessagePublisher.isOnline(it) }
+
     @Transactional
     fun getMessages(userId: String, conversationId: String, pageable: Pageable): Page<Message> {
         requireParticipant(userId, conversationId)

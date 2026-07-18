@@ -20,6 +20,17 @@ interface ConversationRepository : JpaRepository<Conversation, String> {
             "ORDER BY c.lastMessageAt DESC",
     )
     fun findByParticipant(@Param("userId") userId: String, pageable: Pageable): Page<Conversation>
+
+    // Real presence push (2026-07-19) -- who to notify when this user comes online/goes
+    // offline: every real 1:1 conversation partner. Deliberately unbounded (not
+    // paginated like the conversation list above): this only runs once per real
+    // connect/disconnect event, not on a hot request path, and a presence push is cheap
+    // per recipient (see MessagingWebSocketHandler.sendToUser).
+    @Query(
+        "SELECT CASE WHEN c.participantAId = :userId THEN c.participantBId ELSE c.participantAId END " +
+            "FROM Conversation c WHERE c.participantAId = :userId OR c.participantBId = :userId",
+    )
+    fun findPartnerUserIds(@Param("userId") userId: String): List<String>
 }
 
 interface MessageRepository : JpaRepository<Message, String> {

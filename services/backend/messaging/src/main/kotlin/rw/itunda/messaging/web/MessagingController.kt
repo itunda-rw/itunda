@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.security.CurrentUser
@@ -80,6 +81,13 @@ class MessagingController(private val messagingService: MessagingService) {
         val message = messagingService.sendMessage(currentUser.userId, conversationId, request.body)
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "message" to message))
     }
+
+    // Real online/offline presence (2026-07-19) -- see MessagingService.getPresence's
+    // own doc comment. Works for any set of user ids, not just 1:1 conversation
+    // partners -- e.g. a group thread can pass every member's id.
+    @GetMapping("/presence")
+    fun getPresence(@RequestParam userIds: List<String>): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "presence" to messagingService.getPresence(userIds)))
 
     @ExceptionHandler(RecipientNotFoundException::class)
     fun handleRecipientNotFound(ex: RecipientNotFoundException) =

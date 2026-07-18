@@ -124,7 +124,27 @@ interface GroupMessagePushPayload {
   message: GroupMessage;
 }
 
-type SocketPushPayload = MessagePushPayload | GroupMessagePushPayload;
+// Real online/offline presence push (2026-07-19) -- see
+// rw.itunda.core.realtime.RealtimeMessagePublisher.publishPresenceChange's own doc
+// comment for the real transition-only/1:1-only scoping.
+interface PresencePushPayload {
+  type: 'presence';
+  userId: string;
+  online: boolean;
+}
+
+type SocketPushPayload = MessagePushPayload | GroupMessagePushPayload | PresencePushPayload;
+
+// Real on-demand presence check, for any set of user ids (a group thread's members,
+// or a 1:1 partner not covered by the real-time push above).
+export const fetchPresence = (userIds: string[]) => {
+  if (userIds.length === 0) return Promise.resolve({} as Record<string, boolean>);
+  const params = new URLSearchParams();
+  userIds.forEach((id) => params.append('userIds', id));
+  return apiFetch<{ success: boolean; presence: Record<string, boolean> }>(`/api/v1/messages/presence?${params.toString()}`).then(
+    (r) => r.presence,
+  );
+};
 
 // Real WebSocket live-transport (2026-07-18) -- see
 // rw.itunda.core.realtime.RealtimeMessagePublisher's own doc comment for the full
@@ -146,7 +166,7 @@ export function connectMessagingSocket(onMessage: (payload: SocketPushPayload) =
   socket.addEventListener('message', (event) => {
     try {
       const payload = JSON.parse(event.data) as SocketPushPayload;
-      if (payload.type === 'message' || payload.type === 'group_message') onMessage(payload);
+      if (payload.type === 'message' || payload.type === 'group_message' || payload.type === 'presence') onMessage(payload);
     } catch {
       // Malformed/unexpected frame -- ignore, the poll fallback still covers delivery.
     }

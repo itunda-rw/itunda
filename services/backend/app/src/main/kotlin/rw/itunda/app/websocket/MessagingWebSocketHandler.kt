@@ -10,6 +10,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler
 import rw.itunda.core.domain.GroupMessage
 import rw.itunda.core.domain.Message
 import rw.itunda.core.realtime.RealtimeMessagePublisher
+import rw.itunda.core.repository.ConversationRepository
 import java.util.concurrent.ConcurrentHashMap
 
 internal const val WS_USER_ID_ATTR = "userId"
@@ -28,7 +29,10 @@ internal const val WS_USER_ID_ATTR = "userId"
  * receives the push, not just the first one that connected.
  */
 @Component
-class MessagingWebSocketHandler(private val objectMapper: ObjectMapper) : TextWebSocketHandler(), RealtimeMessagePublisher {
+class MessagingWebSocketHandler(
+    private val objectMapper: ObjectMapper,
+    private val conversationRepository: ConversationRepository,
+) : TextWebSocketHandler(), RealtimeMessagePublisher {
     private val log = LoggerFactory.getLogger(MessagingWebSocketHandler::class.java)
     private val sessionsByUserId = ConcurrentHashMap<String, MutableSet<WebSocketSession>>()
 
@@ -38,12 +42,27 @@ class MessagingWebSocketHandler(private val objectMapper: ObjectMapper) : TextWe
             session.close(CloseStatus.NOT_ACCEPTABLE)
             return
         }
-        sessionsByUserId.computeIfAbsent(userId) { ConcurrentHashMap.newKeySet() }.add(session)
+        val sessions = sessionsByUserId.computeIfAbsent(userId) { ConcurrentHashMap.newKeySet() }
+        val wasOffline = sessions.isEmpty()
+        sessions.add(session)
+        // Real transition-only push (2026-07-19): only the FIRST session for this user
+        // fires "online" -- a second open tab/device shouldn't re-announce.
+        if (wasOffline) publishPresenceChange(userId, online = true)
     }
 
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
         val userId = session.attributes[WS_USER_ID_ATTR] as? String ?: return
-        sessionsByUserId[userId]?.remove(session)
+        val sessions = sessionsByUserId[userId] ?: return
+        sessions.remove(session)
+        // Real transition-only push: only the LAST session closing fires "offline".
+        if (sessions.isEmpty()) publishPresenceChange(userId, online = false)
+    }
+
+    override fun isOnline(userId: String): Boolean = !sessionsByUserId[userId].isNullOrEmpty()
+
+    override fun publishPresenceChange(userId: String, online: Boolean) {
+        val payload = objectMapper.writeValueAsString(mapOf("type" to "presence", "userId" to userId, "online" to online))
+        conversationRepository.findPartnerUserIds(userId).forEach { partnerId -> sendToUser(partnerId, payload) }
     }
 
     override fun publishNewMessage(conversationId: String, recipientUserId: String, message: Message) {

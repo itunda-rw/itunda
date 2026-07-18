@@ -28,6 +28,10 @@ struct TalkScreen: View {
     @State private var groups: [GroupSummaryDto]?
     @State private var groupsError: String?
     @State private var openGroup: GroupSummaryDto?
+    // Real online/offline presence for the list view (2026-07-19) -- a bulk on-demand
+    // check for every listed contact, refreshed on a 10s cadence, a real coarser signal
+    // than the 4s message poll. Per-thread real-time push happens in ChatThreadScreen.
+    @State private var presence: [String: Bool] = [:]
 
     var body: some View {
         Group {
@@ -47,8 +51,21 @@ struct TalkScreen: View {
         }
         .task { await loadConversations() }
         .task { await loadGroups() }
+        .task(id: conversations?.map { $0.otherUserId }) { await pollPresence() }
         .onChange(of: pendingConversationId) { _ in tryOpenPending() }
         .onChange(of: conversations?.count) { _ in tryOpenPending() }
+    }
+
+    private func pollPresence() async {
+        guard let otherIds = conversations?.map({ $0.otherUserId }), !otherIds.isEmpty else { return }
+        while !Task.isCancelled {
+            do {
+                presence = try await NetworkClient.shared.getPresence(userIds: otherIds).presence
+            } catch {
+                // Real, non-critical -- only backs the presence dot.
+            }
+            try? await Task.sleep(nanoseconds: 10_000_000_000)
+        }
     }
 
     private var listBody: some View {
@@ -69,6 +86,7 @@ struct TalkScreen: View {
                 DirectMessagesList(
                     conversations: conversations,
                     error: conversationsError,
+                    presence: presence,
                     onRetry: { Task { await loadConversations() } },
                     onStarted: { conversationId in
                         Task {
@@ -142,6 +160,7 @@ struct TalkScreen: View {
 private struct DirectMessagesList: View {
     let conversations: [ConversationSummaryDto]?
     let error: String?
+    let presence: [String: Bool]
     let onRetry: () -> Void
     let onStarted: (String) -> Void
     let onOpen: (ConversationSummaryDto) -> Void
@@ -199,7 +218,7 @@ private struct DirectMessagesList: View {
                 } else {
                     ForEach(conversations!) { conversation in
                         Button(action: { onOpen(conversation) }) {
-                            ConversationRow(conversation: conversation)
+                            ConversationRow(conversation: conversation, online: presence[conversation.otherUserId] == true)
                         }
                         .buttonStyle(.plain)
                     }
@@ -521,14 +540,22 @@ private struct GroupMessageBubble: View {
 
 private struct ConversationRow: View {
     let conversation: ConversationSummaryDto
+    let online: Bool
 
     var body: some View {
         HStack(spacing: 14) {
-            ZStack {
-                Circle().fill(IDS.Colors.chipBackground)
-                Image(systemName: "paperplane.fill").foregroundColor(IDS.Colors.brand)
+            ZStack(alignment: .bottomTrailing) {
+                ZStack {
+                    Circle().fill(IDS.Colors.chipBackground)
+                    Image(systemName: "paperplane.fill").foregroundColor(IDS.Colors.brand)
+                }
+                .frame(width: 44, height: 44)
+                if online {
+                    Circle().fill(Color.green)
+                        .frame(width: 12, height: 12)
+                        .overlay(Circle().stroke(IDS.Colors.card, lineWidth: 2))
+                }
             }
-            .frame(width: 44, height: 44)
             VStack(alignment: .leading, spacing: 2) {
                 Text(conversation.otherUserName).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
                 Text(conversation.lastMessagePreview ?? "No messages yet")
@@ -561,6 +588,7 @@ private struct ChatThreadScreen: View {
     @State private var sending = false
     @State private var error: String?
     @State private var socketTask: URLSessionWebSocketTask?
+    @State private var otherOnline: Bool?
     private let currentUserId = KeychainTokenStore.shared.getUserId()
 
     var body: some View {
@@ -572,7 +600,14 @@ private struct ChatThreadScreen: View {
                         .frame(width: 44, height: 44)
                 }
                 .accessibilityLabel("Back")
-                Text(conversation.otherUserName).font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(conversation.otherUserName).font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
+                    if let otherOnline {
+                        Text(otherOnline ? "Online" : "Offline")
+                            .font(.caption)
+                            .foregroundColor(otherOnline ? .green : IDS.Colors.textSecondary)
+                    }
+                }
                 Spacer()
             }
             .padding(.horizontal, 8)
@@ -633,15 +668,30 @@ private struct ChatThreadScreen: View {
                 await refresh()
             }
         }
+        // Real online/offline presence (2026-07-19) -- initial fetch, then kept live via
+        // the same WebSocket connection's presence push below.
+        .task {
+            do {
+                otherOnline = try await NetworkClient.shared.getPresence(userIds: [conversation.otherUserId]).presence[conversation.otherUserId]
+            } catch {
+                // Real, non-critical -- only backs the header subtitle.
+            }
+        }
         // Real WebSocket live-transport (2026-07-18) -- see
         // NetworkClient.connectMessagingSocket's own doc comment.
         .onAppear {
             socketTask = NetworkClient.shared.connectMessagingSocket { push in
-                guard case .directMessage(let conversationId, let pushedMessage) = push, conversationId == conversation.conversationId else { return }
-                Task { @MainActor in
-                    if !(messages ?? []).contains(where: { $0.id == pushedMessage.id }) {
-                        messages = (messages ?? []) + [pushedMessage]
+                switch push {
+                case .directMessage(let conversationId, let pushedMessage) where conversationId == conversation.conversationId:
+                    Task { @MainActor in
+                        if !(messages ?? []).contains(where: { $0.id == pushedMessage.id }) {
+                            messages = (messages ?? []) + [pushedMessage]
+                        }
                     }
+                case .presenceChange(let userId, let online) where userId == conversation.otherUserId:
+                    Task { @MainActor in otherOnline = online }
+                default:
+                    break
                 }
             }
         }

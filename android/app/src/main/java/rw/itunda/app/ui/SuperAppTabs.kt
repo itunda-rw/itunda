@@ -157,6 +157,10 @@ internal fun TalkTab(initialConversationId: String?, onConsumedInitial: () -> Un
     var groups by remember { mutableStateOf<List<GroupSummaryDto>?>(null) }
     var groupsError by remember { mutableStateOf<String?>(null) }
     var openGroupId by remember { mutableStateOf<String?>(null) }
+    // Real online/offline presence for the list view (2026-07-19) -- a bulk on-demand
+    // check for every listed contact, refreshed on a 10s cadence, a real coarser signal
+    // than the 4s message poll. Per-thread real-time push happens in ChatThreadView.
+    var presence by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
     val coroutineScope = rememberCoroutineScope()
 
     fun loadConversations() {
@@ -186,6 +190,17 @@ internal fun TalkTab(initialConversationId: String?, onConsumedInitial: () -> Un
         }
     }
     LaunchedEffect(Unit) { loadConversations(); loadGroups() }
+
+    LaunchedEffect(conversations?.map { it.otherUserId }) {
+        val otherIds = conversations?.map { it.otherUserId }?.takeIf { it.isNotEmpty() } ?: return@LaunchedEffect
+        while (true) {
+            try {
+                val res = NetworkClient.apiService.getPresence(otherIds)
+                if (res.success) presence = res.presence
+            } catch (e: Exception) { /* real, non-critical -- only backs the presence dot */ }
+            delay(10000)
+        }
+    }
 
     // Real "message seller" hand-off from HoodTab -- opens straight into the real
     // chat thread once it shows up in this tab's own real conversation list, same
@@ -231,6 +246,7 @@ internal fun TalkTab(initialConversationId: String?, onConsumedInitial: () -> Un
             DirectMessagesList(
                 conversations = conversations,
                 error = conversationsError,
+                presence = presence,
                 onRetry = ::loadConversations,
                 onStarted = { conversationId -> loadConversations(); openConversationId = conversationId },
                 onOpen = { openConversationId = it },
@@ -251,6 +267,7 @@ internal fun TalkTab(initialConversationId: String?, onConsumedInitial: () -> Un
 private fun DirectMessagesList(
     conversations: List<ConversationSummaryDto>?,
     error: String?,
+    presence: Map<String, Boolean>,
     onRetry: () -> Unit,
     onStarted: (String) -> Unit,
     onOpen: (String) -> Unit,
@@ -318,7 +335,7 @@ private fun DirectMessagesList(
         } else if (conversations.isEmpty()) {
             item { Text("No conversations yet.", color = TossSecondary, fontSize = 14.sp) }
         } else {
-            items(conversations, key = { it.conversationId }) { c -> ConversationRow(c, onClick = { onOpen(c.conversationId) }) }
+            items(conversations, key = { it.conversationId }) { c -> ConversationRow(c, online = presence[c.otherUserId] == true, onClick = { onOpen(c.conversationId) }) }
         }
     }
 }
@@ -571,7 +588,7 @@ private fun GroupMessageBubble(message: GroupMessageDto, isMine: Boolean, sender
 }
 
 @Composable
-private fun ConversationRow(conversation: ConversationSummaryDto, onClick: () -> Unit) {
+private fun ConversationRow(conversation: ConversationSummaryDto, online: Boolean, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -581,8 +598,21 @@ private fun ConversationRow(conversation: ConversationSummaryDto, onClick: () ->
             .padding(18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(TossCardSoft), contentAlignment = Alignment.Center) {
-            Icon(Icons.Outlined.Send, contentDescription = null, modifier = Modifier.size(18.dp), tint = TossBlue)
+        Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.BottomEnd) {
+            Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(TossCardSoft), contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.Send, contentDescription = null, modifier = Modifier.size(18.dp), tint = TossBlue)
+            }
+            if (online) {
+                Box(
+                    modifier = Modifier
+                        .size(12.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                        .padding(2.dp)
+                        .clip(CircleShape)
+                        .background(Tds.colors.success),
+                )
+            }
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -610,9 +640,17 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
     var draft by remember { mutableStateOf("") }
     var sending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var otherOnline by remember { mutableStateOf<Boolean?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val listState: LazyListState = rememberLazyListState()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
+
+    LaunchedEffect(conversation.otherUserId) {
+        try {
+            val res = NetworkClient.apiService.getPresence(listOf(conversation.otherUserId))
+            if (res.success) otherOnline = res.presence[conversation.otherUserId]
+        } catch (e: Exception) { /* real, non-critical -- only backs the header subtitle */ }
+    }
 
     suspend fun refresh() {
         try {
@@ -639,12 +677,17 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
     // runs on its own background thread, not safe to mutate Compose state from directly.
     DisposableEffect(conversation.conversationId) {
         val socket = NetworkClient.connectMessagingSocket { push ->
-            if (push is MessagingSocketPush.DirectMessage && push.message.conversationId == conversation.conversationId) {
-                coroutineScope.launch(Dispatchers.Main) {
-                    val current = messages ?: emptyList()
-                    if (current.none { it.id == push.message.id }) {
-                        messages = current + push.message
+            when {
+                push is MessagingSocketPush.DirectMessage && push.message.conversationId == conversation.conversationId -> {
+                    coroutineScope.launch(Dispatchers.Main) {
+                        val current = messages ?: emptyList()
+                        if (current.none { it.id == push.message.id }) {
+                            messages = current + push.message
+                        }
                     }
+                }
+                push is MessagingSocketPush.PresenceChange && push.userId == conversation.otherUserId -> {
+                    coroutineScope.launch(Dispatchers.Main) { otherOnline = push.online }
                 }
             }
         }
@@ -657,6 +700,14 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical)) {
         BackTopBar(conversation.otherUserName, onBack)
+        otherOnline?.let { online ->
+            Text(
+                if (online) "Online" else "Offline",
+                color = if (online) Tds.colors.success else TossSecondary,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
         Spacer(modifier = Modifier.height(8.dp))
         LazyColumn(state = listState, modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             val msgs = messages

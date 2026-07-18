@@ -7,7 +7,7 @@ import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate
 import { collectPayment, fetchShoppingCatalog, type CollectPaymentResult, type ShoppingMerchant } from './lib/shopping';
 import {
   connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages,
-  sendGroupMessage, sendMessage, startConversation, type ConversationSummary, type GroupMember, type GroupMessage,
+  fetchPresence, sendGroupMessage, sendMessage, startConversation, type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message,
 } from './lib/messaging';
 import { contactSeller, createListing, fetchListings, fetchMyListings, markListingSold, removeListing, type Listing } from './lib/marketplace';
@@ -507,8 +507,14 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [otherOnline, setOtherOnline] = useState<boolean | null>(null);
   const currentUser = getStoredUser();
   const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    fetchPresence([conversation.otherUserId]).then((p) => setOtherOnline(p[conversation.otherUserId] ?? null)).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversation.otherUserId]);
 
   const load = () =>
     fetchMessages(conversation.conversationId)
@@ -532,6 +538,10 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     // into state the moment it arrives, rather than waiting for the next poll tick.
     // De-duped by id since the next 4s poll will also fetch the same message.
     const disconnect = connectMessagingSocket((payload) => {
+      if (payload.type === 'presence') {
+        if (payload.userId === conversation.otherUserId) setOtherOnline(payload.online);
+        return;
+      }
       if (payload.type !== 'message' || payload.conversationId !== conversation.conversationId) return;
       setMessages((prev) => {
         if (!prev) return prev;
@@ -541,7 +551,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     });
     return disconnect;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversation.conversationId]);
+  }, [conversation.conversationId, conversation.otherUserId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -570,7 +580,14 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to conversations">
           <ArrowLeft size={20} />
         </button>
-        <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{conversation.otherUserName}</h3>
+        <div>
+          <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{conversation.otherUserName}</h3>
+          {otherOnline !== null && (
+            <p style={{ fontSize: '12px', color: otherOnline ? 'var(--toss-green)' : 'var(--toss-grey-500)' }}>
+              {otherOnline ? 'Online' : 'Offline'}
+            </p>
+          )}
+        </div>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px' }}>
@@ -763,6 +780,7 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
   const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openConversationId, setOpenConversationId] = useState<string | null>(null);
+  const [presence, setPresence] = useState<Record<string, boolean>>({});
 
   const load = () => {
     setError(null);
@@ -772,6 +790,21 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
   };
 
   useEffect(load, []);
+
+  // Real online/offline presence for the list view (2026-07-19) -- a bulk on-demand
+  // check for every listed contact, refreshed on a 10s cadence (a real, coarser-grained
+  // signal than the 4s message poll -- presence doesn't need to be as fresh as message
+  // delivery). No live WebSocket connection is opened just for this list view; the
+  // per-thread real-time push happens in ConversationThread once a thread is open.
+  useEffect(() => {
+    if (!conversations || conversations.length === 0) return;
+    const otherIds = conversations.map((c) => c.otherUserId);
+    const refresh = () => fetchPresence(otherIds).then(setPresence).catch(() => {});
+    refresh();
+    const interval = setInterval(refresh, 10000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversations?.map((c) => c.otherUserId).join(',')]);
 
   // Real "jump straight into the chat" hand-off from MarketplaceView's "Message
   // seller" button -- contactSeller() returns a real conversation id (either freshly
@@ -827,8 +860,18 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
               className="toss-card"
               style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%' }}
             >
-              <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <MessageCircle size={20} color="var(--toss-blue)" />
+              <div style={{ position: 'relative', width: '44px', height: '44px', flexShrink: 0 }}>
+                <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <MessageCircle size={20} color="var(--toss-blue)" />
+                </div>
+                {presence[c.otherUserId] && (
+                  <span
+                    style={{
+                      position: 'absolute', bottom: 0, right: 0, width: '12px', height: '12px', borderRadius: '6px',
+                      backgroundColor: 'var(--toss-green)', border: '2px solid var(--toss-white)',
+                    }}
+                  />
+                )}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{c.otherUserName}</p>

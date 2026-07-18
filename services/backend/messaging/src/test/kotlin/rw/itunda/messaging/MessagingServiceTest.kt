@@ -179,6 +179,17 @@ class MessagingServiceTest : BehaviorSpec({
                 page.content[0].unreadCount shouldBe 3L
             }
         }
+
+        When("checking real online/offline presence for a set of user ids") {
+            every { realtimeMessagePublisher.isOnline("user_a") } returns true
+            every { realtimeMessagePublisher.isOnline("user_b") } returns false
+
+            val presence = service.getPresence(listOf("user_a", "user_b", "user_a"))
+
+            Then("it reads the real session registry via RealtimeMessagePublisher, de-duping the requested ids") {
+                presence shouldBe mapOf("user_a" to true, "user_b" to false)
+            }
+        }
     }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf

@@ -34,4 +34,20 @@ interface RealtimeMessagePublisher {
      * (2026-07-18) -- see `GroupMessagingService`'s own doc comment for the full
      * group-chat account. */
     fun publishNewGroupMessage(groupId: String, recipientUserIds: List<String>, message: GroupMessage)
+
+    /** Real online/offline presence (2026-07-19) -- reads the real WebSocket session
+     * registry directly (a user is "online" iff they hold at least one open socket),
+     * never a fabricated/cached status. Backs a real `GET /api/v1/messages/presence`
+     * poll endpoint for on-demand checks (e.g. any set of group member ids), and see
+     * `publishPresenceChange` below for the real-time push half. */
+    fun isOnline(userId: String): Boolean
+
+    /** Real-time presence push (2026-07-19) -- fired exactly once per real transition
+     * (first session opened -> online, last session closed -> offline), not once per
+     * duplicate tab/device connect. Honestly scoped: only 1:1 conversation partners are
+     * notified in real time (see `ConversationRepository.findPartnerUserIds`'s own doc
+     * comment) -- group members are NOT proactively pushed a presence change, only ever
+     * resolved via the poll endpoint above, since a group's fan-out size is unbounded
+     * and this is a low-value push for a large/inactive group. */
+    fun publishPresenceChange(userId: String, online: Boolean)
 }

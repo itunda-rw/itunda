@@ -411,6 +411,11 @@ struct MessageDto: Decodable, Identifiable {
 struct MessagingSocketTypeEnvelope: Decodable { let type: String }
 struct MessagingSocketMessageEnvelope: Decodable { let type: String; let conversationId: String; let message: MessageDto }
 
+// Real online/offline presence push (2026-07-19) -- see
+// rw.itunda.core.realtime.RealtimeMessagePublisher.publishPresenceChange's own doc
+// comment for the real transition-only/1:1-only scoping.
+struct MessagingSocketPresenceEnvelope: Decodable { let type: String; let userId: String; let online: Bool }
+
 struct StartConversationRequest: Encodable {
     let phoneNumber: String?
     let otherUserId: String?
@@ -457,12 +462,17 @@ struct LeaveGroupResponse: Decodable { let success: Bool }
 struct GroupMemberDto: Decodable, Identifiable { let userId: String; let name: String; var id: String { userId } }
 struct GroupMembersResponse: Decodable { let success: Bool; let members: [GroupMemberDto] }
 
+// Real online/offline presence (2026-07-19) -- see MessagingService.getPresence's own
+// doc comment on the backend.
+struct PresenceResponse: Decodable { let success: Bool; let presence: [String: Bool] }
+
 // Real WebSocket push envelopes for group chat (2026-07-18).
 struct MessagingSocketGroupEnvelope: Decodable { let type: String; let groupConversationId: String; let message: GroupMessageDto }
 
 enum MessagingSocketPush {
     case directMessage(conversationId: String, message: MessageDto)
     case groupMessage(groupConversationId: String, message: GroupMessageDto)
+    case presenceChange(userId: String, online: Bool)
 }
 
 struct ListingDto: Decodable, Identifiable {
@@ -656,6 +666,13 @@ extension NetworkClient {
         try await get("api/v1/messages/groups/\(groupId)/members")
     }
 
+    // Real online/offline presence (2026-07-19) -- see MessagingService.getPresence's
+    // own doc comment on the backend. Works for any set of user ids, not just 1:1
+    // conversation partners -- e.g. a group thread can pass every member's id.
+    func getPresence(userIds: [String]) async throws -> PresenceResponse {
+        try await get("api/v1/messages/presence", query: userIds.map { URLQueryItem(name: "userIds", value: $0) })
+    }
+
     /// Real WebSocket live-transport (2026-07-18) -- see
     /// rw.itunda.app.websocket.MessagingWebSocketHandler's own doc comment for the real
     /// backend push shape this mirrors exactly (also ported to Android the same day).
@@ -689,6 +706,9 @@ extension NetworkClient {
                     } else if typeEnvelope.type == "group_message",
                               let envelope = try? JSONDecoder().decode(MessagingSocketGroupEnvelope.self, from: data) {
                         onPush(.groupMessage(groupConversationId: envelope.groupConversationId, message: envelope.message))
+                    } else if typeEnvelope.type == "presence",
+                              let envelope = try? JSONDecoder().decode(MessagingSocketPresenceEnvelope.self, from: data) {
+                        onPush(.presenceChange(userId: envelope.userId, online: envelope.online))
                     }
                 }
             }

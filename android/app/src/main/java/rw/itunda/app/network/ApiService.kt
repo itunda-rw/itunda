@@ -297,6 +297,10 @@ data class LeaveGroupResponse(val success: Boolean)
 data class GroupMemberDto(val userId: String, val name: String)
 data class GroupMembersResponse(val success: Boolean, val members: List<GroupMemberDto>)
 
+// Real online/offline presence (2026-07-19) -- see MessagingService.getPresence's own
+// doc comment on the backend.
+data class PresenceResponse(val success: Boolean, val presence: Map<String, Boolean>)
+
 // Mirrors services/backend/marketplace's real DTOs exactly (2026-07-18) -- backs the
 // new "Hood" bottom-nav tab (당근마켓/Danggeun-style neighborhood marketplace). See
 // rw.itunda.marketplace.MarketplaceService's own doc comment for the honest "no real
@@ -518,6 +522,12 @@ interface ApiService {
     @GET("api/v1/messages/groups/{id}/members")
     suspend fun getGroupMembers(@Path("id") groupId: String): GroupMembersResponse
 
+    // Real online/offline presence (2026-07-19) -- see MessagingService.getPresence's
+    // own doc comment on the backend. Works for any set of user ids, not just 1:1
+    // conversation partners -- e.g. a group thread can pass every member's id.
+    @GET("api/v1/messages/presence")
+    suspend fun getPresence(@Query("userIds") userIds: List<String>): PresenceResponse
+
     // Real 당근마켓-style marketplace (2026-07-18) -- see rw.itunda.marketplace.web.MarketplaceController.
     @POST("api/v1/marketplace/listings")
     suspend fun createListing(@Body request: CreateListingRequest): ListingResponse
@@ -723,6 +733,11 @@ object NetworkClient {
                                 val groupId = json.get("groupConversationId")?.asString ?: return
                                 onPush(MessagingSocketPush.GroupMessagePush(groupId, gson.fromJson(json.get("message"), GroupMessageDto::class.java)))
                             }
+                            "presence" -> {
+                                val userId = json.get("userId")?.asString ?: return
+                                val online = json.get("online")?.asBoolean ?: return
+                                onPush(MessagingSocketPush.PresenceChange(userId, online))
+                            }
                         }
                     } catch (e: Exception) {
                         // Real, non-critical -- a malformed/unexpected push shouldn't
@@ -738,4 +753,8 @@ object NetworkClient {
 sealed class MessagingSocketPush {
     data class DirectMessage(val message: MessageDto) : MessagingSocketPush()
     data class GroupMessagePush(val groupConversationId: String, val message: GroupMessageDto) : MessagingSocketPush()
+    // Real online/offline presence (2026-07-19) -- see
+    // rw.itunda.core.realtime.RealtimeMessagePublisher.publishPresenceChange's own doc
+    // comment for the real transition-only/1:1-only scoping.
+    data class PresenceChange(val userId: String, val online: Boolean) : MessagingSocketPush()
 }
