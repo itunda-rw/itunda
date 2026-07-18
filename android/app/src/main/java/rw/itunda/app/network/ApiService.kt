@@ -317,9 +317,21 @@ data class OrdersResponse(val success: Boolean, val orders: List<OrderDto>)
 // MerchantProductDto above (a restaurant IS a Merchant, a menu item IS a
 // MerchantProduct -- see rw.itunda.eats.EatsOrderService's own doc comment).
 data class EatsOrderItemRequest(val menuItemId: String, val quantity: Int)
-data class PlaceEatsOrderRequest(val restaurantId: String, val items: List<EatsOrderItemRequest>, val deliveryAddress: String)
+data class PlaceEatsOrderRequest(
+    val restaurantId: String,
+    val items: List<EatsOrderItemRequest>,
+    val deliveryAddress: String,
+    val deliveryLatitude: Double? = null,
+    val deliveryLongitude: Double? = null,
+)
 data class UpdateEatsOrderStatusRequest(val status: String)
 data class SetRiderAvailabilityRequest(val available: Boolean)
+
+// Real self-hosted address-search autocomplete (2026-07-18) -- backed by itunda's own
+// Nominatim geocoder, not a third-party Maps API. See EatsOrderService.searchDeliveryAddress's
+// own doc comment.
+data class AddressSuggestionDto(val displayName: String, val latitude: Double, val longitude: Double)
+data class AddressSearchResponse(val success: Boolean, val suggestions: List<AddressSuggestionDto>)
 
 data class EatsOrderDto(
     val id: String,
@@ -337,6 +349,9 @@ data class EatsOrderDto(
     val createdAt: String,
     val updatedAt: String,
     val refundTransactionId: String? = null,
+    val deliveryLatitude: Double? = null,
+    val deliveryLongitude: Double? = null,
+    val distanceKm: Double? = null,
 )
 
 data class EatsOrderItemDto(val id: String, val orderId: String, val productId: String, val productName: String, val unitPrice: Double, val quantity: Int)
@@ -457,6 +472,10 @@ interface ApiService {
 
     @GET("api/v1/eats/orders/my-orders")
     suspend fun getMyEatsOrders(): EatsOrdersResponse
+
+    // Real address-search autocomplete (2026-07-18) -- see EatsController.searchDeliveryAddress.
+    @GET("api/v1/eats/geocode/search")
+    suspend fun searchDeliveryAddress(@Query("q") query: String): AddressSearchResponse
 
     // Real cancellation + refund (2026-07-18) -- buyer or restaurant, PLACED orders
     // only. See rw.itunda.eats.EatsOrderService.cancelOrder's own doc comment.

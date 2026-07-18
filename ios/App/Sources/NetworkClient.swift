@@ -472,9 +472,22 @@ struct PlaceEatsOrderRequest: Encodable {
     let restaurantId: String
     let items: [EatsOrderItemRequest]
     let deliveryAddress: String
+    let deliveryLatitude: Double?
+    let deliveryLongitude: Double?
 }
 struct UpdateEatsOrderStatusRequest: Encodable { let status: String }
 struct SetRiderAvailabilityRequest: Encodable { let available: Bool }
+
+// Real self-hosted address-search autocomplete (2026-07-18) -- backed by itunda's own
+// Nominatim geocoder, not a third-party Maps API. See
+// EatsOrderService.searchDeliveryAddress's own doc comment.
+struct AddressSuggestionDto: Decodable, Identifiable {
+    var id: String { displayName }
+    let displayName: String
+    let latitude: Double
+    let longitude: Double
+}
+struct AddressSearchResponse: Decodable { let success: Bool; let suggestions: [AddressSuggestionDto] }
 
 struct EatsOrderDto: Decodable, Identifiable {
     let id: String
@@ -492,6 +505,9 @@ struct EatsOrderDto: Decodable, Identifiable {
     let createdAt: String
     let updatedAt: String
     let refundTransactionId: String?
+    let deliveryLatitude: Double?
+    let deliveryLongitude: Double?
+    let distanceKm: Double?
 }
 struct EatsOrderItemDto: Decodable, Identifiable { let id: String; let orderId: String; let productId: String; let productName: String; let unitPrice: Double; let quantity: Int }
 struct EatsOrderDetailResponse: Decodable { let success: Bool; let order: EatsOrderDto; let items: [EatsOrderItemDto] }
@@ -565,6 +581,26 @@ extension NetworkClient {
     }
 
     func getMyEatsOrders() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/my-orders") }
+
+    /// Real address-search autocomplete (2026-07-18) -- backed by itunda's own
+    /// self-hosted Nominatim geocoder. See EatsController.searchDeliveryAddress's own
+    /// doc comment. Uses URLComponents (not appendingPathComponent) so the query string
+    /// is encoded correctly -- the first query-param GET in this client.
+    func searchDeliveryAddress(_ query: String) async throws -> AddressSearchResponse {
+        var components = URLComponents(url: baseURL.appendingPathComponent("api/v1/eats/geocode/search"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [URLQueryItem(name: "q", value: query)]
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "GET"
+        if let token = KeychainTokenStore.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
+        }
+        return try decoder.decode(AddressSearchResponse.self, from: data)
+    }
 
     /// Real cancellation + refund (2026-07-18) -- buyer or restaurant, PLACED orders
     /// only. See rw.itunda.eats.EatsOrderService.cancelOrder's own doc comment.

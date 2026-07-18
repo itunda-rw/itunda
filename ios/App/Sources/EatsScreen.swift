@@ -256,6 +256,73 @@ private struct RestaurantMenuView: View {
     }
 }
 
+/// Real self-hosted address-search autocomplete (2026-07-18) -- itunda's own Nominatim
+/// geocoder, not a third-party Maps API. Mirrors bank-mfe's AddressAutocomplete/Android's
+/// AddressAutocompleteField: debounced real search-as-you-type, a real suggestion list,
+/// and on selection the real resolved coordinates are handed back to the caller so they
+/// can be submitted explicitly (taking priority over EatsOrderService's own automatic
+/// single-best-match fallback). Typing without selecting still places a real order via
+/// that fallback.
+private struct AddressAutocompleteField: View {
+    let address: String
+    let onAddressChange: (String) -> Void
+    let onSuggestionSelected: (AddressSuggestionDto) -> Void
+
+    @State private var suggestions: [AddressSuggestionDto] = []
+    @State private var searchTask: Task<Void, Never>?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            TextField("Delivery address", text: Binding(get: { address }, set: handleChange))
+                .padding(12)
+                .background(IDS.Colors.chipBackground)
+                .cornerRadius(12)
+
+            if !suggestions.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(suggestions) { suggestion in
+                        Button(action: { selectSuggestion(suggestion) }) {
+                            Text(suggestion.displayName)
+                                .font(.caption)
+                                .foregroundColor(IDS.Colors.textPrimary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(12)
+                        }
+                    }
+                }
+                .background(IDS.Colors.chipBackground)
+                .cornerRadius(12)
+            }
+        }
+    }
+
+    private func handleChange(_ text: String) {
+        onAddressChange(text)
+        suggestions = []
+        searchTask?.cancel()
+        let query = text.trimmingCharacters(in: .whitespaces)
+        guard query.count >= 3 else { return }
+        searchTask = Task {
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            guard !Task.isCancelled else { return }
+            do {
+                let res = try await NetworkClient.shared.searchDeliveryAddress(query)
+                if !Task.isCancelled { suggestions = res.suggestions }
+            } catch {
+                // Real, non-critical -- a failed suggestion fetch shouldn't block typing
+                // a plain address; the order still places, just without a confirmed pin.
+                if !Task.isCancelled { suggestions = [] }
+            }
+        }
+    }
+
+    private func selectSuggestion(_ suggestion: AddressSuggestionDto) {
+        searchTask?.cancel()
+        suggestions = []
+        onSuggestionSelected(suggestion)
+    }
+}
+
 private struct EatsCheckoutView: View {
     let restaurant: ShoppingMerchantDto
     let cart: [String: Int]
@@ -264,6 +331,8 @@ private struct EatsCheckoutView: View {
     let onOrderPlaced: (EatsOrderDto) -> Void
 
     @State private var address = ""
+    @State private var addressLatitude: Double?
+    @State private var addressLongitude: Double?
     @State private var submitting = false
     @State private var error: String?
 
@@ -303,10 +372,18 @@ private struct EatsCheckoutView: View {
                         Text("\(Int(subtotal)) RWF").foregroundColor(IDS.Colors.textPrimary)
                     }
                     Text("Plus a real delivery fee, added at checkout").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                    TextField("Delivery address", text: $address)
-                        .padding(12)
-                        .background(IDS.Colors.chipBackground)
-                        .cornerRadius(12)
+                    AddressAutocompleteField(
+                        address: address,
+                        onAddressChange: { address = $0; addressLatitude = nil; addressLongitude = nil },
+                        onSuggestionSelected: { suggestion in
+                            address = suggestion.displayName
+                            addressLatitude = suggestion.latitude
+                            addressLongitude = suggestion.longitude
+                        }
+                    )
+                    if addressLatitude != nil {
+                        Text("Pinned -- real distance-based delivery fee applies").font(.caption).foregroundColor(.green)
+                    }
                     if let error {
                         Text(error).font(.caption).foregroundColor(.red)
                     }
@@ -338,7 +415,9 @@ private struct EatsCheckoutView: View {
             let res = try await NetworkClient.shared.placeEatsOrder(PlaceEatsOrderRequest(
                 restaurantId: restaurant.merchantId,
                 items: lines.map { EatsOrderItemRequest(menuItemId: $0.0.id, quantity: $0.1) },
-                deliveryAddress: address.trimmingCharacters(in: .whitespaces)
+                deliveryAddress: address.trimmingCharacters(in: .whitespaces),
+                deliveryLatitude: addressLatitude,
+                deliveryLongitude: addressLongitude
             ))
             onOrderPlaced(res.order)
         } catch let NetworkError.httpError(statusCode) {

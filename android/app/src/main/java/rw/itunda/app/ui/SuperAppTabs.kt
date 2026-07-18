@@ -55,6 +55,7 @@ import retrofit2.HttpException
 import rw.itunda.app.network.ConversationSummaryDto
 import rw.itunda.app.network.CreateListingRequest
 import rw.itunda.app.network.EatsOrderDto
+import rw.itunda.app.network.AddressSuggestionDto
 import rw.itunda.app.network.EatsOrderItemRequest
 import rw.itunda.app.network.ListingDto
 import rw.itunda.app.network.MerchantProductDto
@@ -1288,6 +1289,76 @@ private fun RestaurantMenuView(
     }
 }
 
+// Real self-hosted address-search autocomplete (2026-07-18) -- itunda's own Nominatim
+// geocoder, not a third-party Maps API. Mirrors bank-mfe's AddressAutocomplete component:
+// debounced real search-as-you-type, a real suggestion dropdown, and on selection the
+// real resolved coordinates are handed back so the caller can submit them explicitly
+// (taking priority over EatsOrderService's own automatic single-best-match fallback).
+// Typing without selecting still places a real order via that fallback.
+@Composable
+private fun AddressAutocompleteField(
+    address: String,
+    onAddressChange: (String) -> Unit,
+    onSuggestionSelected: (AddressSuggestionDto) -> Unit,
+) {
+    var suggestions by remember { mutableStateOf<List<AddressSuggestionDto>>(emptyList()) }
+    var justSelected by remember { mutableStateOf(false) }
+
+    LaunchedEffect(address) {
+        if (justSelected) {
+            justSelected = false
+            return@LaunchedEffect
+        }
+        if (address.trim().length < 3) {
+            suggestions = emptyList()
+            return@LaunchedEffect
+        }
+        delay(400)
+        suggestions = try {
+            val res = NetworkClient.apiService.searchDeliveryAddress(address.trim())
+            if (res.success) res.suggestions else emptyList()
+        } catch (e: Exception) {
+            // Real, non-critical -- a failed suggestion fetch shouldn't block typing a
+            // plain address; the order still places, just without a confirmed pin.
+            emptyList()
+        }
+    }
+
+    Column {
+        OutlinedTextField(
+            value = address,
+            onValueChange = onAddressChange,
+            placeholder = { Text("Delivery address") },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (suggestions.isNotEmpty()) {
+            Card(
+                shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+                colors = CardDefaults.cardColors(containerColor = TossCard),
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            ) {
+                Column {
+                    suggestions.forEach { s ->
+                        Text(
+                            s.displayName,
+                            color = TossText,
+                            fontSize = 13.sp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    justSelected = true
+                                    suggestions = emptyList()
+                                    onSuggestionSelected(s)
+                                }
+                                .padding(12.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun EatsCheckoutView(
     restaurant: ShoppingMerchantDto,
@@ -1298,6 +1369,8 @@ private fun EatsCheckoutView(
 ) {
     BackHandler(onBack = onBack)
     var address by remember { mutableStateOf("") }
+    var addressLatitude by remember { mutableStateOf<Double?>(null) }
+    var addressLongitude by remember { mutableStateOf<Double?>(null) }
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
@@ -1325,12 +1398,18 @@ private fun EatsCheckoutView(
             item { Text("Plus a real delivery fee, added at checkout", color = TossSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp)) }
             item { Spacer(modifier = Modifier.height(14.dp)) }
             item {
-                OutlinedTextField(
-                    value = address,
-                    onValueChange = { address = it },
-                    placeholder = { Text("Delivery address") },
-                    modifier = Modifier.fillMaxWidth(),
+                AddressAutocompleteField(
+                    address = address,
+                    onAddressChange = { address = it; addressLatitude = null; addressLongitude = null },
+                    onSuggestionSelected = { s ->
+                        address = s.displayName
+                        addressLatitude = s.latitude
+                        addressLongitude = s.longitude
+                    },
                 )
+            }
+            if (addressLatitude != null) {
+                item { Text("Pinned -- real distance-based delivery fee applies", color = Tds.colors.success, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)) }
             }
             error?.let { item { Text(it, color = Tds.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) } }
         }
@@ -1350,6 +1429,8 @@ private fun EatsCheckoutView(
                                     restaurantId = restaurant.merchantId,
                                     items = lines.map { (p, qty) -> EatsOrderItemRequest(p.id, qty) },
                                     deliveryAddress = address.trim(),
+                                    deliveryLatitude = addressLatitude,
+                                    deliveryLongitude = addressLongitude,
                                 ),
                             )
                             if (res.success) onOrderPlaced(res.order)
