@@ -63,6 +63,7 @@ export interface EatsOrder {
   status: EatsOrderStatus;
   createdAt: string;
   updatedAt: string;
+  deliveryNotes: string | null;
 }
 
 export const placeEatsOrder = (
@@ -71,11 +72,12 @@ export const placeEatsOrder = (
   deliveryAddress: string,
   deliveryLatitude?: number,
   deliveryLongitude?: number,
+  deliveryNotes?: string,
 ) =>
   apiFetch<{ success: boolean; order: EatsOrder; items: EatsOrderItem[] }>('/api/v1/eats/orders', {
     method: 'POST',
     headers: { 'Idempotency-Key': crypto.randomUUID() },
-    body: JSON.stringify({ restaurantId, items, deliveryAddress, deliveryLatitude, deliveryLongitude }),
+    body: JSON.stringify({ restaurantId, items, deliveryAddress, deliveryLatitude, deliveryLongitude, deliveryNotes }),
   });
 
 export const fetchMyEatsOrders = () =>

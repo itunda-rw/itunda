@@ -611,6 +611,7 @@ private struct EatsCheckoutView: View {
     @State private var address = ""
     @State private var addressLatitude: Double?
     @State private var addressLongitude: Double?
+    @State private var deliveryNotes = ""
     @State private var submitting = false
     @State private var error: String?
 
@@ -662,6 +663,13 @@ private struct EatsCheckoutView: View {
                     if addressLatitude != nil {
                         Text("Pinned -- real distance-based delivery fee applies").font(.caption).foregroundColor(.green)
                     }
+                    TextField("Delivery notes (optional) -- e.g. Leave at the gate", text: Binding(
+                        get: { deliveryNotes },
+                        set: { deliveryNotes = String($0.prefix(500)) }
+                    ))
+                    .padding(12)
+                    .background(IDS.Colors.chipBackground)
+                    .cornerRadius(12)
                     if let error {
                         Text(error).font(.caption).foregroundColor(.red)
                     }
@@ -695,7 +703,8 @@ private struct EatsCheckoutView: View {
                 items: lines.map { EatsOrderItemRequest(menuItemId: $0.0.id, quantity: $0.1) },
                 deliveryAddress: address.trimmingCharacters(in: .whitespaces),
                 deliveryLatitude: addressLatitude,
-                deliveryLongitude: addressLongitude
+                deliveryLongitude: addressLongitude,
+                deliveryNotes: deliveryNotes.trimmingCharacters(in: .whitespaces).isEmpty ? nil : deliveryNotes.trimmingCharacters(in: .whitespaces)
             ))
             onOrderPlaced(res.order)
         } catch let NetworkError.httpError(statusCode) {
@@ -742,6 +751,15 @@ private struct EatsOrderRow<Action: View>: View {
                 }
                 Spacer()
                 Text("\(Int(order.totalAmount)) RWF").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+            }
+            if let notes = order.deliveryNotes, !notes.isEmpty {
+                Text("Note: \(notes)")
+                    .font(.caption)
+                    .foregroundColor(IDS.Colors.textPrimary)
+                    .padding(.horizontal, 10).padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(IDS.Colors.chipBackground)
+                    .cornerRadius(8)
             }
             action()
         }

@@ -1226,6 +1226,11 @@ function EatsOrderCard({ order, action }: { order: EatsOrder; action?: React.Rea
         </div>
         <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{order.totalAmount.toLocaleString()} RWF</span>
       </div>
+      {order.deliveryNotes && (
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)', backgroundColor: 'var(--toss-grey-100)', borderRadius: '8px', padding: '8px 10px' }}>
+          Note: {order.deliveryNotes}
+        </p>
+      )}
       {action}
     </div>
   );
@@ -1423,6 +1428,7 @@ function MenuView({
   const [cart, setCart] = useState<Record<string, number>>(initialCart ?? {});
   const [address, setAddress] = useState('');
   const [addressCoords, setAddressCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [deliveryNotes, setDeliveryNotes] = useState('');
   const [placing, setPlacing] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
 
@@ -1448,6 +1454,7 @@ function MenuView({
       const items = cartItems.map(([menuItemId, quantity]) => ({ menuItemId, quantity }));
       const result = await placeEatsOrder(
         restaurant.merchantId, items, address.trim(), addressCoords?.latitude, addressCoords?.longitude,
+        deliveryNotes.trim() || undefined,
       );
       onOrderPlaced(result.order);
     } catch (err) {
@@ -1498,6 +1505,13 @@ function MenuView({
           {addressCoords && (
             <p style={{ fontSize: '12px', color: 'var(--toss-green)' }}>Pinned -- real distance-based delivery fee applies</p>
           )}
+          <textarea
+            value={deliveryNotes}
+            onChange={(e) => setDeliveryNotes(e.target.value.slice(0, 500))}
+            placeholder="Delivery notes (optional) -- e.g. Leave at the gate, call on arrival"
+            rows={2}
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'none', fontFamily: 'inherit' }}
+          />
           <button type="submit" className="toss-btn toss-btn-primary" disabled={placing || !address.trim()}>
             {placing ? 'Placing order…' : 'Place order'}
           </button>

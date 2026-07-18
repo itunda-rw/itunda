@@ -363,6 +363,7 @@ data class PlaceEatsOrderRequest(
     val deliveryAddress: String,
     val deliveryLatitude: Double? = null,
     val deliveryLongitude: Double? = null,
+    val deliveryNotes: String? = null,
 )
 data class UpdateEatsOrderStatusRequest(val status: String)
 data class SetRiderAvailabilityRequest(val available: Boolean)
@@ -415,6 +416,7 @@ data class EatsOrderDto(
     val deliveryLatitude: Double? = null,
     val deliveryLongitude: Double? = null,
     val distanceKm: Double? = null,
+    val deliveryNotes: String? = null,
 )
 
 data class EatsOrderItemDto(val id: String, val orderId: String, val productId: String, val productName: String, val unitPrice: Double, val quantity: Int)

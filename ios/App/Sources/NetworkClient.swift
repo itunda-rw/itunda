@@ -543,6 +543,7 @@ struct PlaceEatsOrderRequest: Encodable {
     let deliveryAddress: String
     let deliveryLatitude: Double?
     let deliveryLongitude: Double?
+    let deliveryNotes: String?
 }
 struct UpdateEatsOrderStatusRequest: Encodable { let status: String }
 struct SetRiderAvailabilityRequest: Encodable { let available: Bool }
@@ -600,6 +601,7 @@ struct EatsOrderDto: Decodable, Identifiable {
     let deliveryLatitude: Double?
     let deliveryLongitude: Double?
     let distanceKm: Double?
+    let deliveryNotes: String?
 }
 struct EatsOrderItemDto: Decodable, Identifiable { let id: String; let orderId: String; let productId: String; let productName: String; let unitPrice: Double; let quantity: Int }
 struct EatsOrderDetailResponse: Decodable { let success: Bool; let order: EatsOrderDto; let items: [EatsOrderItemDto] }

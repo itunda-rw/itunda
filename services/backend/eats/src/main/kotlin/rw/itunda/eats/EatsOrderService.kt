@@ -49,6 +49,7 @@ class RiderNotAvailableException(message: String) : RuntimeException(message)
 class DeliveryAlreadyClaimedException(message: String) : RuntimeException(message)
 class NotAssignedRiderException(message: String) : RuntimeException(message)
 class InvalidEatsCoordinatesException(message: String) : RuntimeException(message)
+class InvalidEatsDeliveryNotesException(message: String) : RuntimeException(message)
 
 data class EatsOrderItemRequest(val menuItemId: String, val quantity: Int)
 data class EatsOrderDetail(val order: EatsOrder, val items: List<EatsOrderItem>)
@@ -133,6 +134,7 @@ class EatsOrderService(
         deliveryAddress: String,
         deliveryLatitude: Double? = null,
         deliveryLongitude: Double? = null,
+        deliveryNotes: String? = null,
     ): EatsOrderDetail {
         if (items.isEmpty()) {
             throw EmptyEatsOrderException("An order needs at least one item")
@@ -140,6 +142,10 @@ class EatsOrderService(
         val trimmedAddress = deliveryAddress.trim()
         if (trimmedAddress.isEmpty()) {
             throw InvalidEatsDeliveryAddressException("A delivery address is required")
+        }
+        val trimmedNotes = deliveryNotes?.trim()?.ifBlank { null }
+        if (trimmedNotes != null && trimmedNotes.length > 500) {
+            throw InvalidEatsDeliveryNotesException("Delivery notes must be 500 characters or fewer")
         }
         if ((deliveryLatitude == null) != (deliveryLongitude == null)) {
             throw InvalidEatsCoordinatesException("Both deliveryLatitude and deliveryLongitude are required together")
@@ -249,6 +255,7 @@ class EatsOrderService(
                 deliveryAddress = trimmedAddress, itemsSubtotal = itemsSubtotal, deliveryFee = deliveryFee,
                 platformFee = platformFee, totalAmount = totalAmount, transactionId = result.transactionId,
                 deliveryLatitude = resolvedDeliveryLat, deliveryLongitude = resolvedDeliveryLng, distanceKm = distanceKmRounded,
+                deliveryNotes = trimmedNotes,
             ),
         )
         val orderItems = resolved.map {

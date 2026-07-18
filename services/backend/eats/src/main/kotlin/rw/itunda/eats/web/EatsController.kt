@@ -38,6 +38,7 @@ import rw.itunda.eats.EatsReviewService
 import rw.itunda.eats.EmptyEatsOrderException
 import rw.itunda.eats.InvalidEatsCoordinatesException
 import rw.itunda.eats.InvalidEatsDeliveryAddressException
+import rw.itunda.eats.InvalidEatsDeliveryNotesException
 import rw.itunda.eats.InvalidEatsOrderStatusTransitionException
 import rw.itunda.eats.InvalidEatsQuantityException
 import rw.itunda.eats.InvalidEatsRatingException
@@ -58,6 +59,7 @@ data class PlaceEatsOrderRequest(
     val deliveryAddress: String,
     val deliveryLatitude: Double? = null,
     val deliveryLongitude: Double? = null,
+    val deliveryNotes: String? = null,
 )
 data class UpdateEatsOrderStatusRequest(val status: EatsOrderStatus)
 data class SetRiderAvailabilityRequest(val available: Boolean)
@@ -114,7 +116,7 @@ class EatsController(
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/eats/orders", idempotencyKey, request) {
             val detail = eatsOrderService.placeOrder(
                 currentUser.userId, request.restaurantId, request.items, request.deliveryAddress,
-                request.deliveryLatitude, request.deliveryLongitude,
+                request.deliveryLatitude, request.deliveryLongitude, request.deliveryNotes,
             )
             201 to mapOf("success" to true, "order" to detail.order, "items" to detail.items)
         }
@@ -303,6 +305,10 @@ class EatsController(
     @ExceptionHandler(InvalidEatsCoordinatesException::class)
     fun handleInvalidCoordinates(ex: InvalidEatsCoordinatesException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_COORDINATES", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidEatsDeliveryNotesException::class)
+    fun handleInvalidDeliveryNotes(ex: InvalidEatsDeliveryNotesException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_DELIVERY_NOTES", ex.message ?: "Bad request"))
 
     @ExceptionHandler(InvalidEatsQuantityException::class)
     fun handleInvalidQuantity(ex: InvalidEatsQuantityException) =

@@ -102,6 +102,13 @@ class EatsOrder(
 
     @Column(name = "distance_km", precision = 8, scale = 3)
     val distanceKm: BigDecimal? = null,
+
+    // Real free-text delivery instructions (2026-07-19) -- e.g. "Leave at the gate",
+    // "Call on arrival". Set once at placement time only (matches deliveryAddress's own
+    // immutability -- Coupang Eats itself doesn't let a buyer edit notes after
+    // checkout), surfaced to the restaurant and the assigned rider.
+    @Column(name = "delivery_notes", length = 500)
+    val deliveryNotes: String? = null,
 ) {
     protected constructor() : this(
         id = "", buyerId = "", restaurantId = "", deliveryAddress = "", itemsSubtotal = BigDecimal.ZERO,

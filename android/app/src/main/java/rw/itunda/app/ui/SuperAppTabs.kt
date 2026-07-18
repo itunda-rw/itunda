@@ -2109,6 +2109,7 @@ private fun EatsCheckoutView(
     var address by remember { mutableStateOf("") }
     var addressLatitude by remember { mutableStateOf<Double?>(null) }
     var addressLongitude by remember { mutableStateOf<Double?>(null) }
+    var deliveryNotes by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
@@ -2149,6 +2150,14 @@ private fun EatsCheckoutView(
             if (addressLatitude != null) {
                 item { Text("Pinned -- real distance-based delivery fee applies", color = Tds.colors.success, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)) }
             }
+            item {
+                OutlinedTextField(
+                    value = deliveryNotes,
+                    onValueChange = { if (it.length <= 500) deliveryNotes = it },
+                    placeholder = { Text("Delivery notes (optional) -- e.g. Leave at the gate") },
+                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                )
+            }
             error?.let { item { Text(it, color = Tds.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) } }
         }
         Box(
@@ -2169,6 +2178,7 @@ private fun EatsCheckoutView(
                                     deliveryAddress = address.trim(),
                                     deliveryLatitude = addressLatitude,
                                     deliveryLongitude = addressLongitude,
+                                    deliveryNotes = deliveryNotes.trim().ifBlank { null },
                                 ),
                             )
                             if (res.success) onOrderPlaced(res.order)
@@ -2213,6 +2223,18 @@ private fun EatsOrderRow(order: EatsOrderDto, action: (@Composable () -> Unit)? 
                     Text(order.deliveryAddress, color = TossSecondary, fontSize = 12.sp)
                 }
                 Text("%,.0f RWF".format(order.totalAmount), color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+            if (!order.deliveryNotes.isNullOrBlank()) {
+                Text(
+                    "Note: ${order.deliveryNotes}",
+                    color = TossText,
+                    fontSize = 12.sp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(TossCardSoft)
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                )
             }
             action?.invoke()
         }

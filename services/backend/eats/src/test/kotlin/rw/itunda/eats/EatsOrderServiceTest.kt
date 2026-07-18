@@ -109,6 +109,40 @@ class EatsOrderServiceTest : BehaviorSpec({
             }
         }
 
+        When("a real buyer places an order with real delivery notes") {
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_2", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            val detail = service.placeOrder(
+                "buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 1)), "addr",
+                deliveryNotes = "  Leave at the gate, dog is friendly  ",
+            )
+
+            Then("it trims and stores the real notes") {
+                detail.order.deliveryNotes shouldBe "Leave at the gate, dog is friendly"
+            }
+        }
+
+        When("delivery notes exceed 500 characters") {
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+
+            Then("it throws InvalidEatsDeliveryNotesException before even resolving the restaurant's wallet") {
+                try {
+                    service.placeOrder(
+                        "buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 1)), "addr",
+                        deliveryNotes = "x".repeat(501),
+                    )
+                    error("expected InvalidEatsDeliveryNotesException")
+                } catch (e: InvalidEatsDeliveryNotesException) {
+                    // expected
+                }
+            }
+        }
+
         When("ordering from your own restaurant") {
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
 
