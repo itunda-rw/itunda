@@ -194,6 +194,26 @@ extension NetworkClient {
         return try decoder.decode(Response.self, from: data)
     }
 
+    /// Real query-param GET (2026-07-19) -- `get(_:)` above uses
+    /// `appendingPathComponent`, which percent-encodes `?`/`=`/`&` and breaks a query
+    /// string (same gotcha `searchDeliveryAddress` already worked around inline); this
+    /// is the reusable version of that same fix for any future query-param endpoint.
+    private func get<Response: Decodable>(_ path: String, query: [URLQueryItem]) async throws -> Response {
+        var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
+        components.queryItems = query.filter { $0.value != nil && !($0.value!.isEmpty) }
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "GET"
+        if let token = KeychainTokenStore.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
+        }
+        return try decoder.decode(Response.self, from: data)
+    }
+
     /// Authenticated POST, with an optional Idempotency-Key -- every money-moving
     /// call below needs one so a retried tap after a timeout replays the original
     /// result instead of double-spending, same contract as Android's equivalent.
@@ -470,10 +490,12 @@ struct ContactSellerResponse: Decodable { let success: Bool; let conversation: C
 struct ShoppingMerchantDto: Decodable, Identifiable {
     let merchantId: String
     let businessName: String
+    let category: String?
     let cashbackRate: String
     var id: String { merchantId }
 }
 struct ShoppingMerchantsResponse: Decodable { let success: Bool; let merchants: [ShoppingMerchantDto] }
+struct MerchantCategoriesResponse: Decodable { let success: Bool; let categories: [String] }
 
 struct MerchantProductDto: Decodable, Identifiable {
     let id: String
@@ -693,7 +715,15 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/marketplace/listings/\(listingId)/contact-seller", body: EmptyBody())
     }
 
-    func getShoppingMerchants() async throws -> ShoppingMerchantsResponse { try await get("api/v1/shopping/merchants") }
+    // Real category/search filter (2026-07-19) -- both optional and combinable. See
+    // ShoppingController.getEligibleMerchants's own doc comment on the backend.
+    func getShoppingMerchants(category: String? = nil, q: String? = nil) async throws -> ShoppingMerchantsResponse {
+        try await get("api/v1/shopping/merchants", query: [URLQueryItem(name: "category", value: category), URLQueryItem(name: "q", value: q)])
+    }
+
+    // Real distinct category list -- see MerchantRepository.findDistinctCategories's own
+    // doc comment on the backend.
+    func getMerchantCategories() async throws -> MerchantCategoriesResponse { try await get("api/v1/shopping/merchants/categories") }
 
     func getMerchantProducts(merchantId: String) async throws -> MerchantProductsResponse {
         try await get("api/v1/shopping/merchants/\(merchantId)/products")

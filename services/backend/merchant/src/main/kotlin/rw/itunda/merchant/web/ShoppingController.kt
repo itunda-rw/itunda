@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.repository.MerchantProductRepository
@@ -30,18 +31,35 @@ class ShoppingController(
     private val merchantProductRepository: MerchantProductRepository,
 ) {
 
+    // Real category/search filter (2026-07-19) -- both params optional and
+    // independently combinable, backing restaurant categories + search/filter for Eats
+    // (this same endpoint is also Shopping's own merchant browse, so both surfaces get
+    // it for free). Blank query params are treated as absent rather than an empty-string
+    // match, since `?category=` from an unset UI filter shouldn't behave differently
+    // from omitting it entirely.
     @GetMapping("/merchants")
-    fun getEligibleMerchants(@PageableDefault(size = 20) pageable: Pageable): ResponseEntity<Map<String, Any?>> {
-        val page = merchantRepository.findByStatus(MerchantStatus.ACTIVE, pageable)
+    fun getEligibleMerchants(
+        @RequestParam(required = false) category: String?,
+        @RequestParam(required = false) q: String?,
+        @PageableDefault(size = 20) pageable: Pageable,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = merchantRepository.search(MerchantStatus.ACTIVE, category?.trim()?.ifBlank { null }, q?.trim()?.ifBlank { null }, pageable)
         val merchants = page.content.map { merchant ->
             mapOf(
                 "merchantId" to merchant.id,
                 "businessName" to merchant.businessName,
+                "category" to merchant.category,
                 "cashbackRate" to "1%",
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "merchants" to merchants) + pageMeta(page))
     }
+
+    // Real distinct category list -- see MerchantRepository.findDistinctCategories's own
+    // doc comment for why this is derived from real merchant data, not a hardcoded list.
+    @GetMapping("/merchants/categories")
+    fun getCategories(): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "categories" to merchantRepository.findDistinctCategories(MerchantStatus.ACTIVE)))
 
     // Real public per-merchant product browse -- the missing piece a buyer needs to see
     // a specific seller's real catalog before checking out via the new Coupang-style

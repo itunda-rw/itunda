@@ -10,6 +10,7 @@ export interface Merchant {
   webhookUrl: string | null;
   kybVerified: boolean;
   createdAt: string;
+  category: string | null;
 }
 
 // Real demo KYB structural pre-check (see DemoKybVerificationService.kt's own doc
@@ -137,6 +138,15 @@ export const setWebhookUrl = (webhookUrl: string) =>
   apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/webhook-url', {
     method: 'POST',
     body: JSON.stringify({ webhookUrl }),
+  }).then((r) => r.merchant);
+
+// Real category/cuisine (2026-07-19) -- powers restaurant categories + search/filter on
+// the buyer side (bank-mfe's Eats tab). See MerchantController.setCategory's own doc
+// comment on the backend.
+export const setCategory = (category: string) =>
+  apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/category', {
+    method: 'POST',
+    body: JSON.stringify({ category }),
   }).then((r) => r.merchant);
 
 // Real demo card-processing flow -- see MerchantService.chargeCard's own doc comment

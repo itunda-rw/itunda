@@ -33,6 +33,7 @@ class MerchantAlreadyRegisteredException(message: String) : RuntimeException(mes
 class MerchantNotFoundException(message: String) : RuntimeException(message)
 class MerchantNoWalletException(message: String) : RuntimeException(message)
 class InvalidCoordinatesException(message: String) : RuntimeException(message)
+class InvalidCategoryException(message: String) : RuntimeException(message)
 class PaymentIntentNotFoundException(message: String) : RuntimeException(message)
 class PaymentIntentNotPayableException(message: String) : RuntimeException(message)
 class SelfPaymentException(message: String) : RuntimeException(message)
@@ -119,6 +120,20 @@ class MerchantService(
         val merchant = getMyMerchant(ownerUserId)
         merchant.latitude = latitude
         merchant.longitude = longitude
+        return merchantRepository.save(merchant)
+    }
+
+    // Real category/cuisine (2026-07-19) -- powers restaurant categories + search/filter
+    // for Eats (and Shopping, since both browse the same Merchant directory). Same
+    // separate-settable-field pattern as setWebhookUrl/setLocation.
+    @Transactional
+    fun setCategory(ownerUserId: String, category: String): Merchant {
+        val trimmed = category.trim()
+        if (trimmed.isEmpty() || trimmed.length > 64) {
+            throw InvalidCategoryException("Category must be between 1 and 64 characters")
+        }
+        val merchant = getMyMerchant(ownerUserId)
+        merchant.category = trimmed
         return merchantRepository.save(merchant)
     }
 

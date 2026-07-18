@@ -3,6 +3,8 @@ package rw.itunda.app.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -1456,6 +1458,12 @@ private enum class OrderFoodView { BROWSE, ORDERS }
 private fun OrderFoodContent() {
     var view by remember { mutableStateOf(OrderFoodView.BROWSE) }
     var restaurants by remember { mutableStateOf<List<ShoppingMerchantDto>?>(null) }
+    // Unfiltered, fetched once -- used to resolve a past order's restaurant for Reorder
+    // even when that restaurant has been filtered out of the currently-browsed list.
+    var allRestaurants by remember { mutableStateOf<List<ShoppingMerchantDto>?>(null) }
+    var categories by remember { mutableStateOf<List<String>>(emptyList()) }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var searchInput by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var selectedRestaurant by remember { mutableStateOf<ShoppingMerchantDto?>(null) }
     var menu by remember { mutableStateOf<List<MerchantProductDto>?>(null) }
@@ -1469,7 +1477,7 @@ private fun OrderFoodContent() {
     fun loadRestaurants() {
         coroutineScope.launch {
             try {
-                val res = NetworkClient.apiService.getShoppingMerchants()
+                val res = NetworkClient.apiService.getShoppingMerchants(selectedCategory, searchInput.trim().ifBlank { null })
                 if (res.success) restaurants = res.merchants
                 error = null
             } catch (e: HttpException) {
@@ -1479,7 +1487,24 @@ private fun OrderFoodContent() {
             }
         }
     }
-    LaunchedEffect(Unit) { loadRestaurants() }
+    LaunchedEffect(Unit) {
+        loadRestaurants()
+        try {
+            val allRes = NetworkClient.apiService.getShoppingMerchants()
+            if (allRes.success) allRestaurants = allRes.merchants
+        } catch (e: Exception) { /* non-critical, only backs the Reorder lookup */ }
+        try {
+            val catRes = NetworkClient.apiService.getMerchantCategories()
+            if (catRes.success) categories = catRes.categories
+        } catch (e: Exception) { /* non-critical, only backs the category chip row */ }
+    }
+    // Real category/search filter (2026-07-19), debounced so typing doesn't re-fetch on
+    // every keystroke -- LaunchedEffect's own cancel-and-restart-on-key-change is the
+    // debounce mechanism here.
+    LaunchedEffect(selectedCategory, searchInput) {
+        delay(300)
+        loadRestaurants()
+    }
 
     fun openRestaurant(m: ShoppingMerchantDto) {
         selectedRestaurant = m
@@ -1501,7 +1526,7 @@ private fun OrderFoodContent() {
     // items, cross-referenced against the restaurant's current menu -- discontinued items
     // are silently dropped rather than added as phantom cart lines.
     fun handleReorder(order: EatsOrderDto) {
-        val restaurant = restaurants?.find { it.merchantId == order.restaurantId }
+        val restaurant = allRestaurants?.find { it.merchantId == order.restaurantId }
         if (restaurant == null) {
             reorderError = "This restaurant is no longer available."
             return
@@ -1607,33 +1632,77 @@ private fun OrderFoodContent() {
                     Text(reorderErr, color = Tds.colors.danger, fontSize = 13.sp)
                 }
             }
-        } else if (error != null) {
-            item { ErrorCard(error!!, onRetry = ::loadRestaurants) }
-        } else if (restaurants == null) {
-            item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
-        } else if (restaurants!!.isEmpty()) {
-            item { Text("No restaurants registered yet.", color = TossSecondary, fontSize = 14.sp) }
         } else {
-            items(restaurants!!, key = { it.merchantId }) { m ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(Tds.layout.cardCornerRadius))
-                        .background(TossCard)
-                        .clickable { openRestaurant(m) }
-                        .padding(18.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(TossCardSoft), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.Storefront, contentDescription = null, modifier = Modifier.size(20.dp), tint = TossBlue)
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(m.businessName, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text("Real menu, real delivery", color = TossSecondary, fontSize = 12.sp)
+            item {
+                OutlinedTextField(
+                    value = searchInput,
+                    onValueChange = { searchInput = it },
+                    placeholder = { Text("Search restaurants") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            if (categories.isNotEmpty()) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        listOf<String?>(null).plus(categories).forEach { c ->
+                            val selected = c == selectedCategory
+                            Text(
+                                c ?: "All",
+                                color = if (selected) Color.White else TossSecondary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(if (selected) TossBlue else TossCardSoft)
+                                    .clickable { selectedCategory = if (c == selectedCategory) null else c }
+                                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                            )
+                        }
                     }
                 }
-                Spacer(modifier = Modifier.height(4.dp))
+            }
+            if (error != null) {
+                item { ErrorCard(error!!, onRetry = ::loadRestaurants) }
+            } else if (restaurants == null) {
+                item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+            } else if (restaurants!!.isEmpty()) {
+                item {
+                    Text(
+                        if (selectedCategory != null || searchInput.isNotBlank()) "No restaurants match your search." else "No restaurants registered yet.",
+                        color = TossSecondary,
+                        fontSize = 14.sp,
+                    )
+                }
+            } else {
+                items(restaurants!!, key = { it.merchantId }) { m ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(Tds.layout.cardCornerRadius))
+                            .background(TossCard)
+                            .clickable { openRestaurant(m) }
+                            .padding(18.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(TossCardSoft), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Outlined.Storefront, contentDescription = null, modifier = Modifier.size(20.dp), tint = TossBlue)
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(m.businessName, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text(
+                                if (m.category != null) "${m.category} · Real menu, real delivery" else "Real menu, real delivery",
+                                color = TossSecondary,
+                                fontSize = 12.sp,
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
             }
         }
     }

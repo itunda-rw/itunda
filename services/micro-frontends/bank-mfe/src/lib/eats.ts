@@ -6,8 +6,22 @@ import type { ShoppingMerchant } from './shopping';
 // IS a Merchant, a menu item IS a MerchantProduct -- see EatsOrderService.kt's own doc
 // comment), only order placement/tracking and the rider workflow are genuinely new.
 
-export const fetchRestaurants = () =>
-  apiFetch<{ success: boolean; merchants: ShoppingMerchant[] }>('/api/v1/shopping/merchants').then((r) => r.merchants);
+// Real category/search filter (2026-07-19) -- both optional and combinable. See
+// ShoppingController.getEligibleMerchants's own doc comment on the backend.
+export const fetchRestaurants = (category?: string, q?: string) => {
+  const params = new URLSearchParams();
+  if (category) params.set('category', category);
+  if (q) params.set('q', q);
+  const qs = params.toString();
+  return apiFetch<{ success: boolean; merchants: ShoppingMerchant[] }>(`/api/v1/shopping/merchants${qs ? `?${qs}` : ''}`).then(
+    (r) => r.merchants,
+  );
+};
+
+// Real distinct category list, derived from real merchant data -- see
+// MerchantRepository.findDistinctCategories's own doc comment.
+export const fetchRestaurantCategories = () =>
+  apiFetch<{ success: boolean; categories: string[] }>('/api/v1/shopping/merchants/categories').then((r) => r.categories);
 
 export interface MenuItem {
   id: string;

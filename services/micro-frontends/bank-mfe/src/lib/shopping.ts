@@ -7,6 +7,7 @@ import { apiFetch } from './api';
 export interface ShoppingMerchant {
   merchantId: string;
   businessName: string;
+  category: string | null;
   cashbackRate: string;
 }
 

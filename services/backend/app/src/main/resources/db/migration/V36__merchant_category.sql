@@ -1,0 +1,1 @@
+ALTER TABLE merchants ADD COLUMN category VARCHAR(64) NULL;

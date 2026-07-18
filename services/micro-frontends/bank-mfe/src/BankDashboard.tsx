@@ -13,7 +13,7 @@ import {
 import { contactSeller, createListing, fetchListings, fetchMyListings, markListingSold, removeListing, type Listing } from './lib/marketplace';
 import {
   advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, fetchAvailableDeliveries, fetchEatsOrder, fetchMenu,
-  fetchMyEatsOrders, fetchMyRiderProfile, fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating,
+  fetchMyEatsOrders, fetchMyRiderProfile, fetchRestaurantCategories, fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating,
   fetchRiderDeliveries, placeEatsOrder, registerRider, searchDeliveryAddress, setRiderAvailability, submitEatsReview,
   type AddressSuggestion, type EatsOrder, type EatsOrderStatus, type MenuItem, type RatingSummary, type Rider,
 } from './lib/eats';
@@ -1624,6 +1624,13 @@ function MyEatsOrdersView({ onReorder, reorderingId }: { onReorder: (order: Eats
 function OrderFoodView() {
   const [view, setView] = useState<'BROWSE' | 'ORDERS'>('BROWSE');
   const [restaurants, setRestaurants] = useState<ShoppingMerchant[] | null>(null);
+  // Unfiltered, fetched once -- used to resolve a past order's restaurant for Reorder
+  // even when that restaurant has been filtered out of the currently-browsed list.
+  const [allRestaurants, setAllRestaurants] = useState<ShoppingMerchant[] | null>(null);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<ShoppingMerchant | null>(null);
   const [confirmed, setConfirmed] = useState<EatsOrder | null>(null);
@@ -1631,12 +1638,26 @@ function OrderFoodView() {
   const [reorderingId, setReorderingId] = useState<string | null>(null);
   const [reorderError, setReorderError] = useState<string | null>(null);
 
+  useEffect(() => {
+    fetchRestaurants().then(setAllRestaurants).catch(() => {});
+    fetchRestaurantCategories().then(setCategories).catch(() => {});
+  }, []);
+
+  // Real category/search filter (2026-07-19), debounced so a search box doesn't
+  // re-fetch on every keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchInput.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
   const load = () => {
     setError(null);
-    fetchRestaurants().then(setRestaurants).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load restaurants.'));
+    fetchRestaurants(selectedCategory ?? undefined, debouncedSearch || undefined)
+      .then(setRestaurants)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load restaurants.'));
   };
 
-  useEffect(load, []);
+  useEffect(load, [selectedCategory, debouncedSearch]);
 
   // Real "Reorder" (2026-07-19): re-populates a fresh cart from a real past order's
   // real items, filtered to whatever's still real and active on the restaurant's
@@ -1646,7 +1667,7 @@ function OrderFoodView() {
     setReorderingId(order.id);
     setReorderError(null);
     try {
-      const restaurant = restaurants?.find((r) => r.merchantId === order.restaurantId);
+      const restaurant = allRestaurants?.find((r) => r.merchantId === order.restaurantId);
       if (!restaurant) {
         setReorderError('This restaurant is no longer available.');
         return;
@@ -1724,16 +1745,57 @@ function OrderFoodView() {
           {reorderError && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '10px' }} role="alert">{reorderError}</p>}
           <MyEatsOrdersView onReorder={handleReorder} reorderingId={reorderingId} />
         </>
-      ) : error ? (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-          <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-        </div>
-      ) : restaurants === null ? (
-        <div className="toss-card skeleton" style={{ height: '220px' }} />
-      ) : restaurants.length === 0 ? (
-        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No restaurants registered yet.</p></div>
       ) : (
+        <>
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search restaurants"
+            className="toss-card"
+            style={{ width: '100%', padding: '12px 16px', fontSize: '14px', marginBottom: '10px', border: 'none' }}
+          />
+          {categories.length > 0 && (
+            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '14px' }}>
+              <button
+                onClick={() => setSelectedCategory(null)}
+                style={{
+                  flexShrink: 0, padding: '6px 14px', borderRadius: '16px', fontSize: '12px', fontWeight: 700,
+                  color: selectedCategory === null ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+                  backgroundColor: selectedCategory === null ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+                }}
+              >
+                All
+              </button>
+              {categories.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setSelectedCategory(c === selectedCategory ? null : c)}
+                  style={{
+                    flexShrink: 0, padding: '6px 14px', borderRadius: '16px', fontSize: '12px', fontWeight: 700,
+                    color: selectedCategory === c ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+                    backgroundColor: selectedCategory === c ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+                  }}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+          {error ? (
+            <div className="toss-card">
+              <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+              <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+            </div>
+          ) : restaurants === null ? (
+            <div className="toss-card skeleton" style={{ height: '220px' }} />
+          ) : restaurants.length === 0 ? (
+            <div className="toss-card">
+              <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+                {selectedCategory || debouncedSearch ? 'No restaurants match your search.' : 'No restaurants registered yet.'}
+              </p>
+            </div>
+          ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {restaurants.map((r) => (
             <button
@@ -1747,11 +1809,13 @@ function OrderFoodView() {
               </div>
               <div style={{ flex: 1 }}>
                 <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{r.businessName}</p>
-                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Real menu, real delivery</p>
+                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{r.category ? `${r.category} · Real menu, real delivery` : 'Real menu, real delivery'}</p>
               </div>
             </button>
           ))}
         </div>
+          )}
+        </>
       )}
     </div>
   );

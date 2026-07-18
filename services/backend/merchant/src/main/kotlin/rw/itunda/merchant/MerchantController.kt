@@ -29,6 +29,7 @@ data class RegisterMerchantRequest(val businessName: String)
 data class GenerateQrRequest(val amount: BigDecimal, val description: String)
 data class SetWebhookUrlRequest(val webhookUrl: String)
 data class SetLocationRequest(val latitude: Double, val longitude: Double)
+data class SetCategoryRequest(val category: String)
 data class ChargeCardRequest(
     val amount: BigDecimal,
     val description: String,
@@ -84,6 +85,17 @@ class MerchantController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val merchant = merchantService.setLocation(currentUser.userId, request.latitude, request.longitude)
+        return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
+    }
+
+    // Real category/cuisine (2026-07-19) -- see MerchantService.setCategory's own doc
+    // comment.
+    @PostMapping("/category")
+    fun setCategory(
+        @RequestBody request: SetCategoryRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val merchant = merchantService.setCategory(currentUser.userId, request.category)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
@@ -200,4 +212,8 @@ class MerchantController(
     @ExceptionHandler(InvalidCoordinatesException::class)
     fun handleInvalidCoordinates(ex: InvalidCoordinatesException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_COORDINATES", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidCategoryException::class)
+    fun handleInvalidCategory(ex: InvalidCategoryException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_CATEGORY", ex.message ?: "Bad request"))
 }

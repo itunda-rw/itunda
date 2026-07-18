@@ -321,8 +321,9 @@ data class ContactSellerResponse(val success: Boolean, val conversation: Convers
 // "Shop" bottom-nav tab (Coupang-style multi-item checkout), replacing the old Shop
 // tab's Toss-Shopping-cashback content. See rw.itunda.commerce.OrderService's own doc
 // comment for the honest "self-declared fulfillment, no real courier network" scope.
-data class ShoppingMerchantDto(val merchantId: String, val businessName: String, val cashbackRate: String)
+data class ShoppingMerchantDto(val merchantId: String, val businessName: String, val category: String?, val cashbackRate: String)
 data class ShoppingMerchantsResponse(val success: Boolean, val merchants: List<ShoppingMerchantDto>)
+data class MerchantCategoriesResponse(val success: Boolean, val categories: List<String>)
 
 // Mirrors services/backend/core's real MerchantProduct entity exactly.
 data class MerchantProductDto(val id: String, val merchantId: String, val name: String, val price: Double, val active: Boolean, val createdAt: String)
@@ -530,7 +531,12 @@ interface ApiService {
     // Real per-merchant public product browse (2026-07-18) -- see
     // rw.itunda.merchant.web.ShoppingController.getMerchantProducts.
     @GET("api/v1/shopping/merchants")
-    suspend fun getShoppingMerchants(): ShoppingMerchantsResponse
+    suspend fun getShoppingMerchants(@Query("category") category: String? = null, @Query("q") q: String? = null): ShoppingMerchantsResponse
+
+    // Real distinct category list -- see MerchantRepository.findDistinctCategories's own
+    // doc comment on the backend.
+    @GET("api/v1/shopping/merchants/categories")
+    suspend fun getMerchantCategories(): MerchantCategoriesResponse
 
     @GET("api/v1/shopping/merchants/{id}/products")
     suspend fun getMerchantProducts(@Path("id") merchantId: String): MerchantProductsResponse

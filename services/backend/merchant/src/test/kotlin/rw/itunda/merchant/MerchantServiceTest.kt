@@ -137,6 +137,43 @@ class MerchantServiceTest : BehaviorSpec({
             }
         }
 
+        When("setting a real valid category") {
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
+            every { merchantRepository.save(any()) } answers { firstArg() }
+
+            val result = service.setCategory("owner_1", "  Rwandan  ")
+
+            Then("it saves the trimmed category") {
+                result.category shouldBe "Rwandan"
+            }
+        }
+
+        When("setting a blank category") {
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
+
+            Then("it throws InvalidCategoryException") {
+                try {
+                    service.setCategory("owner_1", "   ")
+                    error("expected InvalidCategoryException")
+                } catch (e: InvalidCategoryException) {
+                    // expected
+                }
+            }
+        }
+
+        When("setting a category longer than 64 characters") {
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
+
+            Then("it throws InvalidCategoryException") {
+                try {
+                    service.setCategory("owner_1", "x".repeat(65))
+                    error("expected InvalidCategoryException")
+                } catch (e: InvalidCategoryException) {
+                    // expected
+                }
+            }
+        }
+
         When("generating a QR payment intent") {
             every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
             every { paymentIntentRepository.save(any()) } answers { firstArg() }

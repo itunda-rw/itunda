@@ -66,6 +66,16 @@ class Merchant(
 
     @Column(nullable = true)
     var longitude: Double? = null,
+
+    // Real, merchant-set category/cuisine (2026-07-19) -- the foundation of restaurant
+    // categories + search/filter for Eats (and Shopping, since both browse the same
+    // Merchant directory). Free-form string, not an enum: a real merchant knows their
+    // own category ("Rwandan", "Chinese", "Bakery", ...) better than a fixed list could
+    // anticipate, same reasoning as businessName itself being free-form. Nullable: an
+    // unset category falls back to "uncategorized" browse behavior, never a fabricated
+    // default.
+    @Column(length = 64, nullable = true)
+    var category: String? = null,
 ) {
     protected constructor() : this(id = "", ownerUserId = "", walletId = "", businessName = "")
 }

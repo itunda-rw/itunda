@@ -54,6 +54,13 @@ private enum OrderFoodView { case browse, orders }
 private struct OrderFoodContent: View {
     @State private var view: OrderFoodView = .browse
     @State private var restaurants: [ShoppingMerchantDto]?
+    // Unfiltered, fetched once -- used to resolve a past order's restaurant for Reorder
+    // even when that restaurant has been filtered out of the currently-browsed list.
+    @State private var allRestaurants: [ShoppingMerchantDto]?
+    @State private var categories: [String] = []
+    @State private var selectedCategory: String?
+    @State private var searchInput: String = ""
+    @State private var filterTask: Task<Void, Never>?
     @State private var error: String?
     @State private var selectedRestaurant: ShoppingMerchantDto?
     @State private var menu: [MerchantProductDto]?
@@ -96,7 +103,31 @@ private struct OrderFoodContent: View {
                 browseBody
             }
         }
-        .task { if restaurants == nil { await loadRestaurants() } }
+        .task {
+            if restaurants == nil { await loadRestaurants() }
+            if allRestaurants == nil {
+                do { allRestaurants = try await NetworkClient.shared.getShoppingMerchants().merchants } catch {}
+            }
+            if categories.isEmpty {
+                do { categories = try await NetworkClient.shared.getMerchantCategories().categories } catch {}
+            }
+        }
+    }
+
+    // Real category/search filter (2026-07-19), debounced the same way
+    // AddressAutocompleteField's own search-as-you-type already is.
+    private func scheduleFilterReload() {
+        filterTask?.cancel()
+        filterTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
+            await loadRestaurants()
+        }
+    }
+
+    private func selectCategory(_ category: String?) {
+        selectedCategory = (category == selectedCategory) ? nil : category
+        scheduleFilterReload()
     }
 
     private var browseBody: some View {
@@ -113,39 +144,67 @@ private struct OrderFoodContent: View {
                     if let reorderError {
                         Text(reorderError).foregroundColor(.red).font(.caption)
                     }
-                } else if let error {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(error).foregroundColor(.red).font(.subheadline)
-                        Button("Retry") { Task { await loadRestaurants() } }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20)
-                    .background(IDS.Colors.card)
-                    .cornerRadius(IDS.Layout.cardCornerRadius)
-                } else if restaurants == nil {
-                    ProgressView().frame(maxWidth: .infinity, minHeight: 120)
-                } else if restaurants!.isEmpty {
-                    Text("No restaurants registered yet.").foregroundColor(IDS.Colors.textSecondary)
                 } else {
-                    ForEach(restaurants!) { restaurant in
-                        Button(action: { Task { await openRestaurant(restaurant) } }) {
-                            HStack(spacing: 14) {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 14).fill(IDS.Colors.chipBackground)
-                                    Image(systemName: "fork.knife").foregroundColor(IDS.Colors.brand)
+                    TextField("Search restaurants", text: Binding(
+                        get: { searchInput },
+                        set: { searchInput = $0; scheduleFilterReload() }
+                    ))
+                    .padding(12)
+                    .background(IDS.Colors.chipBackground)
+                    .cornerRadius(12)
+
+                    if !categories.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(([nil] as [String?]) + categories.map { Optional($0) }, id: \.self) { c in
+                                    Button(action: { selectCategory(c) }) {
+                                        Text(c ?? "All")
+                                            .font(.caption).bold()
+                                            .foregroundColor(selectedCategory == c ? .white : IDS.Colors.textSecondary)
+                                            .padding(.horizontal, 14).padding(.vertical, 6)
+                                            .background(selectedCategory == c ? IDS.Colors.brand : IDS.Colors.chipBackground)
+                                            .cornerRadius(16)
+                                    }
                                 }
-                                .frame(width: 44, height: 44)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(restaurant.businessName).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                                    Text("Real menu, real delivery").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                                }
-                                Spacer()
                             }
-                            .padding(18)
-                            .background(IDS.Colors.card)
-                            .cornerRadius(IDS.Layout.cardCornerRadius)
                         }
-                        .buttonStyle(.plain)
+                    }
+
+                    if let error {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(error).foregroundColor(.red).font(.subheadline)
+                            Button("Retry") { Task { await loadRestaurants() } }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(20)
+                        .background(IDS.Colors.card)
+                        .cornerRadius(IDS.Layout.cardCornerRadius)
+                    } else if restaurants == nil {
+                        ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                    } else if restaurants!.isEmpty {
+                        Text(selectedCategory != nil || !searchInput.trimmingCharacters(in: .whitespaces).isEmpty ? "No restaurants match your search." : "No restaurants registered yet.")
+                            .foregroundColor(IDS.Colors.textSecondary)
+                    } else {
+                        ForEach(restaurants!) { restaurant in
+                            Button(action: { Task { await openRestaurant(restaurant) } }) {
+                                HStack(spacing: 14) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 14).fill(IDS.Colors.chipBackground)
+                                        Image(systemName: "fork.knife").foregroundColor(IDS.Colors.brand)
+                                    }
+                                    .frame(width: 44, height: 44)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(restaurant.businessName).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                                        Text(restaurant.category.map { "\($0) · Real menu, real delivery" } ?? "Real menu, real delivery").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                    }
+                                    Spacer()
+                                }
+                                .padding(18)
+                                .background(IDS.Colors.card)
+                                .cornerRadius(IDS.Layout.cardCornerRadius)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                 }
             }
@@ -158,7 +217,8 @@ private struct OrderFoodContent: View {
 
     private func loadRestaurants() async {
         do {
-            let res = try await NetworkClient.shared.getShoppingMerchants()
+            let q = searchInput.trimmingCharacters(in: .whitespaces)
+            let res = try await NetworkClient.shared.getShoppingMerchants(category: selectedCategory, q: q.isEmpty ? nil : q)
             restaurants = res.merchants
             error = nil
         } catch {
@@ -182,7 +242,7 @@ private struct OrderFoodContent: View {
     // items, cross-referenced against the restaurant's current menu -- discontinued items
     // are silently dropped rather than added as phantom cart lines.
     private func handleReorder(_ order: EatsOrderDto) async {
-        guard let restaurant = restaurants?.first(where: { $0.merchantId == order.restaurantId }) else {
+        guard let restaurant = allRestaurants?.first(where: { $0.merchantId == order.restaurantId }) else {
             reorderError = "This restaurant is no longer available."
             return
         }

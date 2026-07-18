@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { ApiError } from '../lib/api';
-import { getMyIdentitySubmissions, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant } from '../lib/merchant';
+import { getMyIdentitySubmissions, setCategory, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant } from '../lib/merchant';
 
 export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merchant; onUpdated: (merchant: Merchant) => void }) {
   const [webhookUrl, setWebhookUrlInput] = useState(merchant.webhookUrl ?? '');
@@ -63,7 +63,65 @@ export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merc
         </form>
       </div>
 
+      <CategoryCard merchant={merchant} onUpdated={onUpdated} />
       <KybCard merchant={merchant} />
+    </div>
+  );
+}
+
+// Real category/cuisine (2026-07-19) -- lets a restaurant/shop set its own real
+// category, which powers the buyer-side category chips + search/filter on bank-mfe's
+// Eats tab (GET /api/v1/shopping/merchants?category=...&q=...).
+function CategoryCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated: (merchant: Merchant) => void }) {
+  const [category, setCategoryInput] = useState(merchant.category ?? '');
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSaved(false);
+    setSubmitting(true);
+    try {
+      const updated = await setCategory(category);
+      onUpdated(updated);
+      setSaved(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not save.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="toss-card">
+      <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px' }}>Category</h2>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>e.g. Rwandan, Chinese, Bakery, Cafe</span>
+          <input
+            type="text"
+            value={category}
+            onChange={(e) => setCategoryInput(e.target.value)}
+            placeholder="Category"
+            required
+            maxLength={64}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+          />
+        </label>
+        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting} style={{ height: '46px' }}>
+          {submitting ? 'Saving…' : 'Save'}
+        </button>
+      </form>
+      {error && (
+        <p style={{ fontSize: '13px', color: '#E53935', margin: '8px 0 0' }} role="alert">
+          {error}
+        </p>
+      )}
+      {saved && !error && (
+        <p style={{ fontSize: '13px', color: 'var(--toss-blue)', margin: '8px 0 0' }}>Saved.</p>
+      )}
     </div>
   );
 }
