@@ -7,6 +7,7 @@ import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientException
 
 data class GeocodeResult(val latitude: Double, val longitude: Double)
+data class GeocodeSuggestion(val displayName: String, val latitude: Double, val longitude: Double)
 
 /**
  * A real client for itunda's own self-hosted Nominatim geocoder (see
@@ -30,15 +31,16 @@ class NominatimGeocodingClient(
     val isConfigured: Boolean get() = restClient != null
 
     /**
-     * Real forward geocoding: a free-text address in, a real coordinate out (or null if
-     * unconfigured/unreachable/no match). Restricted to Rwanda (`countrycodes=rw`) --
-     * itunda's own Nominatim instance only has Rwanda data indexed anyway, but this makes
-     * the intent explicit and avoids Nominatim's fallback global search behavior.
+     * Real multi-result address search: a free-text (possibly partial) query in, up to
+     * `limit` real ranked candidates out (each a real display name + coordinate),
+     * restricted to Rwanda (`countrycodes=rw`). Empty list if unconfigured/unreachable/
+     * no match -- never a fabricated suggestion. Backs both the automatic single-best-
+     * match `geocode` below and a real user-facing address-search endpoint.
      */
-    fun geocode(address: String): GeocodeResult? {
-        val client = restClient ?: return null
-        val trimmed = address.trim()
-        if (trimmed.isEmpty()) return null
+    fun search(query: String, limit: Int = 5): List<GeocodeSuggestion> {
+        val client = restClient ?: return emptyList()
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) return emptyList()
         return try {
             @Suppress("UNCHECKED_CAST")
             val response = client.get()
@@ -46,24 +48,28 @@ class NominatimGeocodingClient(
                     builder.path("/search")
                         .queryParam("q", trimmed)
                         .queryParam("format", "json")
-                        .queryParam("limit", "1")
+                        .queryParam("limit", limit.toString())
                         .queryParam("countrycodes", "rw")
                         .build()
                 }
                 .retrieve()
                 .body(List::class.java) as List<Map<String, Any?>>?
-            val first = response?.firstOrNull()
-            val lat = (first?.get("lat") as? String)?.toDoubleOrNull()
-            val lon = (first?.get("lon") as? String)?.toDoubleOrNull()
-            if (lat == null || lon == null) {
-                logger.info("Nominatim found no match for a real delivery address -- falling back to no coordinates")
-                null
-            } else {
-                GeocodeResult(lat, lon)
+            response.orEmpty().mapNotNull { row ->
+                val lat = (row["lat"] as? String)?.toDoubleOrNull()
+                val lon = (row["lon"] as? String)?.toDoubleOrNull()
+                val displayName = row["display_name"] as? String
+                if (lat == null || lon == null || displayName == null) null else GeocodeSuggestion(displayName, lat, lon)
             }
         } catch (e: RestClientException) {
-            logger.warn("Nominatim geocode request failed -- falling back to no coordinates: {}", e.message)
-            null
+            logger.warn("Nominatim search request failed: {}", e.message)
+            emptyList()
         }
     }
+
+    /**
+     * Real forward geocoding: a free-text address in, the single best real coordinate
+     * out (or null if unconfigured/unreachable/no match). A thin wrapper over `search`.
+     */
+    fun geocode(address: String): GeocodeResult? =
+        search(address, limit = 1).firstOrNull()?.let { GeocodeResult(it.latitude, it.longitude) }
 }

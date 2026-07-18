@@ -51,11 +51,17 @@ export interface EatsOrder {
   updatedAt: string;
 }
 
-export const placeEatsOrder = (restaurantId: string, items: { menuItemId: string; quantity: number }[], deliveryAddress: string) =>
+export const placeEatsOrder = (
+  restaurantId: string,
+  items: { menuItemId: string; quantity: number }[],
+  deliveryAddress: string,
+  deliveryLatitude?: number,
+  deliveryLongitude?: number,
+) =>
   apiFetch<{ success: boolean; order: EatsOrder; items: EatsOrderItem[] }>('/api/v1/eats/orders', {
     method: 'POST',
     headers: { 'Idempotency-Key': crypto.randomUUID() },
-    body: JSON.stringify({ restaurantId, items, deliveryAddress }),
+    body: JSON.stringify({ restaurantId, items, deliveryAddress, deliveryLatitude, deliveryLongitude }),
   });
 
 export const fetchMyEatsOrders = () =>
@@ -161,3 +167,17 @@ export const fetchRestaurantRating = (restaurantId: string) =>
 
 export const fetchRestaurantReviews = (restaurantId: string) =>
   apiFetch<{ success: boolean; reviews: EatsReview[] }>(`/api/v1/eats/restaurants/${restaurantId}/reviews`).then((r) => r.reviews);
+
+// Real address-search autocomplete (2026-07-18) -- itunda's own self-hosted Nominatim
+// geocoder, not a third-party Maps API. See EatsController.searchDeliveryAddress's own
+// doc comment.
+export interface AddressSuggestion {
+  displayName: string;
+  latitude: number;
+  longitude: number;
+}
+
+export const searchDeliveryAddress = (query: string) =>
+  apiFetch<{ success: boolean; suggestions: AddressSuggestion[] }>(
+    `/api/v1/eats/geocode/search?q=${encodeURIComponent(query)}`,
+  ).then((r) => r.suggestions);

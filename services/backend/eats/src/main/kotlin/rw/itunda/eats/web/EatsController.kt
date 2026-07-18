@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.domain.EatsOrderStatus
 import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
@@ -114,6 +116,18 @@ class EatsController(
             201 to mapOf("success" to true, "order" to detail.order, "items" to detail.items)
         }
         return ResponseEntity.status(status).body(body)
+    }
+
+    // Real address-search autocomplete (2026-07-18) -- see EatsOrderService's own doc
+    // comment. Backs a real client-side address picker so a buyer can see and confirm
+    // real coordinates before checkout, on top of itunda's own self-hosted Nominatim.
+    @GetMapping("/geocode/search")
+    fun searchDeliveryAddress(
+        @RequestParam q: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val suggestions = eatsOrderService.searchDeliveryAddress(currentUser.userId, q)
+        return ResponseEntity.ok(mapOf("success" to true, "suggestions" to suggestions))
     }
 
     @GetMapping("/orders/my-orders")
@@ -333,4 +347,8 @@ class EatsController(
     @ExceptionHandler(WalletFrozenException::class)
     fun handleWalletFrozen(ex: WalletFrozenException) =
         ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+
+    @ExceptionHandler(RateLimitExceededException::class)
+    fun handleRateLimit(ex: RateLimitExceededException) =
+        ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
 }

@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.EatsOrder
 import rw.itunda.core.domain.EatsOrderItem
 import rw.itunda.core.domain.EatsOrderStatus
@@ -15,6 +16,7 @@ import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.geo.GeoUtils
+import rw.itunda.core.geo.GeocodeSuggestion
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.ledger.LedgerLeg
@@ -29,6 +31,7 @@ import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -79,6 +82,7 @@ class EatsOrderService(
     private val ledgerEntryRepository: LedgerEntryRepository,
     private val osrmRoutingClient: OsrmRoutingClient,
     private val nominatimGeocodingClient: NominatimGeocodingClient,
+    private val rateLimiter: RateLimiter,
 ) {
     // Same 1.5% Toss Payments fee-schedule reasoning OrderService.feeRate/
     // MerchantService.feeRate already give -- reused rather than inventing a third number
@@ -103,6 +107,17 @@ class EatsOrderService(
         val distance = BigDecimal(distanceKm).setScale(3, RoundingMode.HALF_UP)
         val raw = baseDeliveryFee.add(perKmDeliveryRate.multiply(distance)).setScale(2, RoundingMode.HALF_UP)
         return raw.max(minDeliveryFee).min(maxDeliveryFee) to distance
+    }
+
+    // Real user-facing address search (2026-07-18), backing a real autocomplete UI so a
+    // buyer can see and confirm the real coordinates their typed address resolves to
+    // before checkout, rather than the automatic single-best-match geocoding placeOrder
+    // already does silently. Rate-limited the same way every other real endpoint in this
+    // codebase is -- a debounced client-side autocomplete can still fire several requests
+    // per keystroke burst; 60/min comfortably covers real typing while bounding abuse.
+    fun searchDeliveryAddress(buyerId: String, query: String): List<GeocodeSuggestion> {
+        rateLimiter.checkLimit("eats:geocode-search:$buyerId", limit = 60, window = Duration.ofMinutes(1))
+        return nominatimGeocodingClient.search(query)
     }
 
     private val restaurantStatusOrder = listOf(

@@ -3,10 +3,14 @@ package rw.itunda.eats
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.mockk.Runs
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.EatsOrder
 import rw.itunda.core.domain.EatsOrderStatus
 import rw.itunda.core.domain.LedgerAccountType
@@ -20,6 +24,7 @@ import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.geo.GeocodeResult
+import rw.itunda.core.geo.GeocodeSuggestion
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.ledger.LedgerLeg
@@ -34,6 +39,7 @@ import rw.itunda.core.repository.RiderRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
+import java.time.Duration
 import java.util.Optional
 
 class EatsOrderServiceTest : BehaviorSpec({
@@ -62,10 +68,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { osrmRoutingClient.routeDistanceKm(any(), any(), any(), any()) } returns null
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         every { nominatimGeocodingClient.geocode(any()) } returns null
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
-            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient,
+            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter,
         )
 
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
@@ -322,10 +329,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { osrmRoutingClient.routeDistanceKm(any(), any(), any(), any()) } returns null
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         every { nominatimGeocodingClient.geocode(any()) } returns null
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
-            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient,
+            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter,
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
         val order = EatsOrder(
@@ -496,10 +504,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { osrmRoutingClient.routeDistanceKm(any(), any(), any(), any()) } returns null
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         every { nominatimGeocodingClient.geocode(any()) } returns null
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
-            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient,
+            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter,
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
         val readyOrder = EatsOrder(
@@ -570,10 +579,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { osrmRoutingClient.routeDistanceKm(any(), any(), any(), any()) } returns null
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         every { nominatimGeocodingClient.geocode(any()) } returns null
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
-            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient,
+            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter,
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
         val riderWallet = wallet("wallet_rider", "rider_user_1")
@@ -634,6 +644,56 @@ class EatsOrderServiceTest : BehaviorSpec({
                 } catch (e: NotAssignedRiderException) {
                     // expected
                 }
+            }
+        }
+    }
+
+    Given("a real buyer searching for a real delivery address") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val merchantProductRepository = mockk<MerchantProductRepository>()
+        val riderRepository = mockk<RiderRepository>()
+        val eatsOrderRepository = mockk<EatsOrderRepository>()
+        val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = EatsOrderService(
+            merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
+            eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter,
+        )
+
+        When("a real query matches real Nominatim suggestions") {
+            every { rateLimiter.checkLimit("eats:geocode-search:buyer_1", limit = 60, window = Duration.ofMinutes(1)) } just Runs
+            every { nominatimGeocodingClient.search("Kigali Air") } returns listOf(
+                GeocodeSuggestion("Kigali International Airport, Rwanda", -1.9686, 30.1394),
+            )
+
+            val results = service.searchDeliveryAddress("buyer_1", "Kigali Air")
+
+            Then("it real-rate-limits per buyer and returns the real suggestions") {
+                results shouldBe listOf(GeocodeSuggestion("Kigali International Airport, Rwanda", -1.9686, 30.1394))
+                verify(exactly = 1) { rateLimiter.checkLimit("eats:geocode-search:buyer_1", limit = 60, window = Duration.ofMinutes(1)) }
+            }
+        }
+
+        When("the real per-buyer rate limit is exceeded") {
+            every { rateLimiter.checkLimit("eats:geocode-search:buyer_1", limit = 60, window = Duration.ofMinutes(1)) } throws
+                RateLimitExceededException("Too many requests")
+
+            Then("it throws RateLimitExceededException before ever calling Nominatim") {
+                try {
+                    service.searchDeliveryAddress("buyer_1", "Kigali Air")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    // expected
+                }
+                verify(exactly = 0) { nominatimGeocodingClient.search(any()) }
             }
         }
     }

@@ -14,8 +14,8 @@ import { contactSeller, createListing, fetchListings, fetchMyListings, markListi
 import {
   advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, fetchAvailableDeliveries, fetchMenu,
   fetchMyEatsOrders, fetchMyRiderProfile, fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating,
-  fetchRiderDeliveries, placeEatsOrder, registerRider, setRiderAvailability, submitEatsReview,
-  type EatsOrder, type EatsOrderStatus, type MenuItem, type RatingSummary, type Rider,
+  fetchRiderDeliveries, placeEatsOrder, registerRider, searchDeliveryAddress, setRiderAvailability, submitEatsReview,
+  type AddressSuggestion, type EatsOrder, type EatsOrderStatus, type MenuItem, type RatingSummary, type Rider,
 } from './lib/eats';
 import {
   advanceOrderStatus, cancelOrder, fetchMerchantOrders, fetchMerchantProducts, fetchMyOrders, placeOrder,
@@ -1327,11 +1327,84 @@ function ReviewOrderCard({ order, onSubmitted }: { order: EatsOrder; onSubmitted
   );
 }
 
+function AddressAutocomplete({
+  value, onChangeText, onSelectSuggestion,
+}: {
+  value: string;
+  onChangeText: (text: string) => void;
+  onSelectSuggestion: (suggestion: AddressSuggestion) => void;
+}) {
+  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
+  const [open, setOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleChange = (text: string) => {
+    onChangeText(text);
+    setOpen(false);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const trimmed = text.trim();
+    if (trimmed.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    // Real self-hosted Nominatim search, debounced so a full sentence of typing
+    // doesn't fire a request per keystroke -- see EatsController's own doc comment.
+    debounceRef.current = setTimeout(() => {
+      setSearching(true);
+      searchDeliveryAddress(trimmed)
+        .then((results) => {
+          setSuggestions(results);
+          setOpen(results.length > 0);
+        })
+        .catch(() => {
+          // Real, non-critical -- a failed suggestion fetch shouldn't block typing a
+          // plain address; the order still places, just without a confirmed pin.
+          setSuggestions([]);
+        })
+        .finally(() => setSearching(false));
+    }, 400);
+  };
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        type="text" value={value} onChange={(e) => handleChange(e.target.value)}
+        onFocus={() => setOpen(suggestions.length > 0)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="Delivery address" required autoComplete="off"
+        style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      />
+      {searching && (
+        <span style={{ position: 'absolute', right: '12px', top: '12px', fontSize: '12px', color: 'var(--toss-grey-500)' }}>…</span>
+      )}
+      {open && (
+        <div
+          className="toss-card"
+          style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', padding: '6px', zIndex: 10, maxHeight: '220px', overflowY: 'auto' }}
+        >
+          {suggestions.map((s, i) => (
+            <button
+              key={i}
+              type="button"
+              onMouseDown={() => { onSelectSuggestion(s); setOpen(false); }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 6px', fontSize: '13px', borderRadius: '6px' }}
+            >
+              {s.displayName}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: ShoppingMerchant; onBack: () => void; onOrderPlaced: (order: EatsOrder) => void }) {
   const [menu, setMenu] = useState<{ businessName: string; products: MenuItem[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [address, setAddress] = useState('');
+  const [addressCoords, setAddressCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [placing, setPlacing] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
 
@@ -1355,7 +1428,9 @@ function MenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: ShoppingM
     setError(null);
     try {
       const items = cartItems.map(([menuItemId, quantity]) => ({ menuItemId, quantity }));
-      const result = await placeEatsOrder(restaurant.merchantId, items, address.trim());
+      const result = await placeEatsOrder(
+        restaurant.merchantId, items, address.trim(), addressCoords?.latitude, addressCoords?.longitude,
+      );
       onOrderPlaced(result.order);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not place this order.');
@@ -1397,10 +1472,14 @@ function MenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: ShoppingM
               </div>
             );
           })}
-          <input
-            type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Delivery address" required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          <AddressAutocomplete
+            value={address}
+            onChangeText={(text) => { setAddress(text); setAddressCoords(null); }}
+            onSelectSuggestion={(s) => { setAddress(s.displayName); setAddressCoords({ latitude: s.latitude, longitude: s.longitude }); }}
           />
+          {addressCoords && (
+            <p style={{ fontSize: '12px', color: 'var(--toss-green)' }}>Pinned -- real distance-based delivery fee applies</p>
+          )}
           <button type="submit" className="toss-btn toss-btn-primary" disabled={placing || !address.trim()}>
             {placing ? 'Placing order…' : 'Place order'}
           </button>
