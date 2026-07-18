@@ -114,3 +114,50 @@ export const advanceRiderOrder = (orderId: string, status: EatsOrderStatus) =>
     method: 'POST',
     body: JSON.stringify({ status }),
   }).then((r) => r.order);
+
+// Real post-delivery ratings & reviews (2026-07-18) -- the single biggest remaining
+// Coupang Eats-defining gap, added at the user's direct request. See
+// EatsReviewService.kt's own doc comment for the full backend account.
+
+export interface EatsReview {
+  id: string;
+  orderId: string;
+  buyerId: string;
+  restaurantId: string;
+  riderId: string;
+  restaurantRating: number;
+  restaurantComment: string | null;
+  riderRating: number;
+  riderComment: string | null;
+  createdAt: string;
+}
+
+export interface RatingSummary {
+  average: number | null;
+  count: number;
+}
+
+export const submitEatsReview = (
+  orderId: string,
+  restaurantRating: number,
+  restaurantComment: string,
+  riderRating: number,
+  riderComment: string,
+) =>
+  apiFetch<{ success: boolean; review: EatsReview }>(`/api/v1/eats/orders/${orderId}/review`, {
+    method: 'POST',
+    body: JSON.stringify({
+      restaurantRating,
+      restaurantComment: restaurantComment.trim() || null,
+      riderRating,
+      riderComment: riderComment.trim() || null,
+    }),
+  }).then((r) => r.review);
+
+export const fetchRestaurantRating = (restaurantId: string) =>
+  apiFetch<{ success: boolean; average: number | null; count: number }>(`/api/v1/eats/restaurants/${restaurantId}/rating`).then(
+    (r) => ({ average: r.average, count: r.count }) as RatingSummary,
+  );
+
+export const fetchRestaurantReviews = (restaurantId: string) =>
+  apiFetch<{ success: boolean; reviews: EatsReview[] }>(`/api/v1/eats/restaurants/${restaurantId}/reviews`).then((r) => r.reviews);

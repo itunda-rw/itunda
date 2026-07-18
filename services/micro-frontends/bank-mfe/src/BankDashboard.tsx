@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowUpRight, Bike, LogOut, MessageCircle, Plus, ScanFace, Send, ShieldCheck, ShoppingBag, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Bike, LogOut, MessageCircle, Plus, ScanFace, Send, ShieldCheck, ShoppingBag, Star, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { fetchTransactions, fetchWallets, type Transaction, type Wallet } from './lib/wallet';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
@@ -13,8 +13,9 @@ import {
 import { contactSeller, createListing, fetchListings, fetchMyListings, markListingSold, removeListing, type Listing } from './lib/marketplace';
 import {
   advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, fetchAvailableDeliveries, fetchMenu,
-  fetchMyEatsOrders, fetchMyRiderProfile, fetchRestaurantOrders, fetchRestaurants, fetchRiderDeliveries, placeEatsOrder,
-  registerRider, setRiderAvailability, type EatsOrder, type EatsOrderStatus, type MenuItem, type Rider,
+  fetchMyEatsOrders, fetchMyRiderProfile, fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating,
+  fetchRiderDeliveries, placeEatsOrder, registerRider, setRiderAvailability, submitEatsReview,
+  type EatsOrder, type EatsOrderStatus, type MenuItem, type RatingSummary, type Rider,
 } from './lib/eats';
 import {
   advanceOrderStatus, cancelOrder, fetchMerchantOrders, fetchMerchantProducts, fetchMyOrders, placeOrder,
@@ -1216,6 +1217,116 @@ function EatsOrderCard({ order, action }: { order: EatsOrder; action?: React.Rea
   );
 }
 
+function StarRatingInput({ value, onChange }: { value: number; onChange: (rating: number) => void }) {
+  return (
+    <div style={{ display: 'flex', gap: '4px' }}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button key={n} type="button" onClick={() => onChange(n)} style={{ display: 'flex', padding: 0 }} aria-label={`${n} star${n === 1 ? '' : 's'}`}>
+          <Star size={22} color={n <= value ? '#F5A623' : 'var(--toss-grey-200)'} fill={n <= value ? '#F5A623' : 'none'} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function RestaurantRatingBadge({ restaurantId }: { restaurantId: string }) {
+  const [rating, setRating] = useState<RatingSummary | null>(null);
+
+  useEffect(() => {
+    fetchRestaurantRating(restaurantId).then(setRating).catch(() => {
+      // Real, non-critical -- a rating fetch failure shouldn't block browsing the menu.
+    });
+  }, [restaurantId]);
+
+  if (!rating || rating.count === 0) return null;
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', color: 'var(--toss-grey-700)' }}>
+      <Star size={14} color="#F5A623" fill="#F5A623" />
+      {rating.average?.toFixed(1)} ({rating.count})
+    </span>
+  );
+}
+
+function ReviewOrderCard({ order, onSubmitted }: { order: EatsOrder; onSubmitted: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [restaurantRating, setRestaurantRating] = useState(0);
+  const [restaurantComment, setRestaurantComment] = useState('');
+  const [riderRating, setRiderRating] = useState(0);
+  const [riderComment, setRiderComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (restaurantRating === 0 || riderRating === 0) {
+      setError('Rate both the restaurant and the rider.');
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      await submitEatsReview(order.id, restaurantRating, restaurantComment, riderRating, riderComment);
+      setDone(true);
+      onSubmitted();
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'ORDER_ALREADY_REVIEWED') {
+        setDone(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Could not submit this review.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (done) {
+    return <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Thanks for your review!</p>;
+  }
+
+  if (!open) {
+    return (
+      <button className="toss-btn toss-btn-secondary" onClick={() => setOpen(true)}>
+        Rate this order
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
+      <div>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px' }}>Restaurant</p>
+        <StarRatingInput value={restaurantRating} onChange={setRestaurantRating} />
+        <input
+          type="text"
+          value={restaurantComment}
+          onChange={(e) => setRestaurantComment(e.target.value)}
+          placeholder="How was the food? (optional)"
+          style={{ marginTop: '6px', width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+        />
+      </div>
+      <div>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px' }}>Rider</p>
+        <StarRatingInput value={riderRating} onChange={setRiderRating} />
+        <input
+          type="text"
+          value={riderComment}
+          onChange={(e) => setRiderComment(e.target.value)}
+          placeholder="How was the delivery? (optional)"
+          style={{ marginTop: '6px', width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+        />
+      </div>
+      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
+          {submitting ? 'Submitting…' : 'Submit review'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function MenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: ShoppingMerchant; onBack: () => void; onOrderPlaced: (order: EatsOrder) => void }) {
   const [menu, setMenu] = useState<{ businessName: string; products: MenuItem[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -1307,6 +1418,9 @@ function MenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: ShoppingM
         </button>
         <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{menu.businessName}</h3>
       </div>
+      <div style={{ marginBottom: '12px' }}>
+        <RestaurantRatingBadge restaurantId={restaurant.merchantId} />
+      </div>
       {menu.products.length === 0 ? (
         <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No menu items yet.</p></div>
       ) : (
@@ -1387,11 +1501,15 @@ function MyEatsOrdersView() {
         <EatsOrderCard
           key={o.id}
           order={o}
-          action={o.status === 'PLACED' && (
-            <button className="toss-btn toss-btn-danger" disabled={cancellingId === o.id} onClick={() => handleCancel(o.id)}>
-              {cancellingId === o.id ? 'Cancelling…' : 'Cancel order'}
-            </button>
-          )}
+          action={
+            o.status === 'PLACED' ? (
+              <button className="toss-btn toss-btn-danger" disabled={cancellingId === o.id} onClick={() => handleCancel(o.id)}>
+                {cancellingId === o.id ? 'Cancelling…' : 'Cancel order'}
+              </button>
+            ) : o.status === 'DELIVERED' ? (
+              <ReviewOrderCard order={o} onSubmitted={load} />
+            ) : undefined
+          }
         />
       ))}
     </div>
