@@ -20,10 +20,12 @@ import rw.itunda.core.web.pageMeta
 import rw.itunda.messaging.AlreadyGroupMemberException
 import rw.itunda.messaging.EmptyGroupMessageException
 import rw.itunda.messaging.GroupMemberNotFoundException
+import rw.itunda.messaging.GroupMessageNotFoundException
 import rw.itunda.messaging.GroupMessagingService
 import rw.itunda.messaging.GroupNameRequiredException
 import rw.itunda.messaging.GroupNeedsMoreMembersException
 import rw.itunda.messaging.GroupNotFoundException
+import rw.itunda.messaging.InvalidGroupReactionException
 
 // memberPhoneNumbers is the real human-friendly entry point (same reasoning as
 // StartConversationRequest.phoneNumber); memberUserIds stays available for a call site
@@ -31,6 +33,7 @@ import rw.itunda.messaging.GroupNotFoundException
 data class CreateGroupRequest(val name: String, val memberUserIds: List<String> = emptyList(), val memberPhoneNumbers: List<String> = emptyList())
 data class SendGroupMessageRequest(val body: String)
 data class AddGroupMemberRequest(val userId: String)
+data class ToggleGroupReactionRequest(val emoji: String)
 
 // Real group chat -- see GroupMessagingService's own doc comment for the full account.
 // Normal itunda-user JWT gate, same as every other user-facing feature in this backend.
@@ -67,7 +70,28 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val page = groupMessagingService.getMessages(currentUser.userId, groupId, pageable)
-        return ResponseEntity.ok(mapOf("success" to true, "messages" to page.content) + pageMeta(page))
+        // Real reaction summaries attached in one batch query (2026-07-19) -- see
+        // GroupMessagingService.getReactionSummaries's own doc comment.
+        val reactionsByMessageId = groupMessagingService.getReactionSummaries(page.content.map { it.id })
+        val messages = page.content.map { m ->
+            mapOf(
+                "id" to m.id, "groupConversationId" to m.groupConversationId, "senderId" to m.senderId, "body" to m.body,
+                "sentAt" to m.sentAt, "reactions" to (reactionsByMessageId[m.id] ?: emptyList()),
+            )
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "messages" to messages) + pageMeta(page))
+    }
+
+    // Real emoji reactions (2026-07-19) -- see GroupMessagingService.toggleReaction's
+    // own doc comment.
+    @PostMapping("/messages/{groupMessageId}/reactions")
+    fun toggleReaction(
+        @PathVariable groupMessageId: String,
+        @RequestBody request: ToggleGroupReactionRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val reactions = groupMessagingService.toggleReaction(currentUser.userId, groupMessageId, request.emoji)
+        return ResponseEntity.ok(mapOf("success" to true, "reactions" to reactions))
     }
 
     @PostMapping("/{groupId}/messages")
@@ -137,4 +161,12 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =
         ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
+
+    @ExceptionHandler(GroupMessageNotFoundException::class)
+    fun handleGroupMessageNotFound(ex: GroupMessageNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MESSAGE_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(InvalidGroupReactionException::class)
+    fun handleInvalidReaction(ex: InvalidGroupReactionException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_REACTION", ex.message ?: "Bad request"))
 }

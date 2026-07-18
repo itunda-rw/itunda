@@ -9,10 +9,13 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.GroupConversation
 import rw.itunda.core.domain.GroupConversationMember
 import rw.itunda.core.domain.GroupMessage
+import rw.itunda.core.domain.GroupMessageReaction
 import rw.itunda.core.domain.Notification
+import rw.itunda.core.realtime.ReactionGroup
 import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.GroupConversationMemberRepository
 import rw.itunda.core.repository.GroupConversationRepository
+import rw.itunda.core.repository.GroupMessageReactionRepository
 import rw.itunda.core.repository.GroupMessageRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
@@ -26,6 +29,8 @@ class GroupNeedsMoreMembersException(message: String) : RuntimeException(message
 class GroupMemberNotFoundException(message: String) : RuntimeException(message)
 class AlreadyGroupMemberException(message: String) : RuntimeException(message)
 class EmptyGroupMessageException(message: String) : RuntimeException(message)
+class GroupMessageNotFoundException(message: String) : RuntimeException(message)
+class InvalidGroupReactionException(message: String) : RuntimeException(message)
 
 data class GroupSummary(
     val groupId: String,
@@ -65,6 +70,7 @@ class GroupMessagingService(
     private val groupMessageRepository: GroupMessageRepository,
     private val userRepository: UserRepository,
     private val notificationRepository: NotificationRepository,
+    private val groupMessageReactionRepository: GroupMessageReactionRepository,
     private val rateLimiter: RateLimiter,
     private val realtimeMessagePublisher: RealtimeMessagePublisher,
 ) {
@@ -203,6 +209,44 @@ class GroupMessagingService(
             GroupMemberInfo(userId = m.userId, name = name)
         }
     }
+
+    // Real emoji reactions (2026-07-19) -- same real toggle shape as 1:1
+    // MessagingService.toggleReaction, fanned out to every other real member.
+    @Transactional
+    fun toggleReaction(userId: String, groupMessageId: String, emoji: String): List<ReactionGroup> {
+        val trimmedEmoji = emoji.trim()
+        if (trimmedEmoji.isEmpty() || trimmedEmoji.length > 16) {
+            throw InvalidGroupReactionException("Reaction must be between 1 and 16 characters")
+        }
+        val message = groupMessageRepository.findById(groupMessageId).orElseThrow { GroupMessageNotFoundException("Message not found") }
+        requireMember(userId, message.groupConversationId)
+
+        val existing = groupMessageReactionRepository.findByGroupMessageIdAndUserIdAndEmoji(groupMessageId, userId, trimmedEmoji)
+        if (existing != null) {
+            groupMessageReactionRepository.delete(existing)
+        } else {
+            groupMessageReactionRepository.save(
+                GroupMessageReaction(id = "group_message_reaction_${UUID.randomUUID()}", groupMessageId = groupMessageId, userId = userId, emoji = trimmedEmoji),
+            )
+        }
+
+        val reactions = groupReactions(groupMessageReactionRepository.findByGroupMessageId(groupMessageId).map { it.emoji to it.userId })
+        val recipientIds = groupConversationMemberRepository.findByGroupConversationId(message.groupConversationId)
+            .map { it.userId }
+            .filter { it != userId }
+        realtimeMessagePublisher.publishGroupReactionChange(message.groupConversationId, recipientIds, groupMessageId, reactions)
+        return reactions
+    }
+
+    fun getReactionSummaries(groupMessageIds: List<String>): Map<String, List<ReactionGroup>> {
+        if (groupMessageIds.isEmpty()) return emptyMap()
+        return groupMessageReactionRepository.findByGroupMessageIdIn(groupMessageIds)
+            .groupBy { it.groupMessageId }
+            .mapValues { (_, reactions) -> groupReactions(reactions.map { it.emoji to it.userId }) }
+    }
+
+    private fun groupReactions(emojiAndUserIds: List<Pair<String, String>>): List<ReactionGroup> =
+        emojiAndUserIds.groupBy({ it.first }, { it.second }).map { (emoji, userIds) -> ReactionGroup(emoji, userIds) }
 
     @Transactional
     fun addMember(requesterId: String, groupId: String, newUserId: String): GroupConversation {

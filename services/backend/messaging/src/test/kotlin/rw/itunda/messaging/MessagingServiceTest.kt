@@ -12,10 +12,13 @@ import org.springframework.data.domain.PageRequest
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.Message
+import rw.itunda.core.domain.MessageReaction
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.User
+import rw.itunda.core.realtime.ReactionGroup
 import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.ConversationRepository
+import rw.itunda.core.repository.MessageReactionRepository
 import rw.itunda.core.repository.MessageRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
@@ -31,9 +34,10 @@ class MessagingServiceTest : BehaviorSpec({
         val messageRepository = mockk<MessageRepository>(relaxed = true)
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val messageReactionRepository = mockk<MessageReactionRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
-        val service = MessagingService(conversationRepository, messageRepository, userRepository, notificationRepository, rateLimiter, realtimeMessagePublisher)
+        val service = MessagingService(conversationRepository, messageRepository, userRepository, notificationRepository, messageReactionRepository, rateLimiter, realtimeMessagePublisher)
 
         When("starting a conversation between user_a and user_b for the first time") {
             every { userRepository.findById("user_b") } returns Optional.of(user("user_b", "Beata"))
@@ -188,6 +192,71 @@ class MessagingServiceTest : BehaviorSpec({
 
             Then("it reads the real session registry via RealtimeMessagePublisher, de-duping the requested ids") {
                 presence shouldBe mapOf("user_a" to true, "user_b" to false)
+            }
+        }
+
+        When("a real participant reacts to a real message for the first time") {
+            val conversation = Conversation(id = "conversation_1", participantAId = "user_a", participantBId = "user_b")
+            val message = Message(id = "message_1", conversationId = "conversation_1", senderId = "user_b", body = "hi")
+            every { messageRepository.findById("message_1") } returns Optional.of(message)
+            every { conversationRepository.findById("conversation_1") } returns Optional.of(conversation)
+            every { messageReactionRepository.findByMessageIdAndUserIdAndEmoji("message_1", "user_a", "👍") } returns null
+            every { messageReactionRepository.save(any()) } answers { firstArg() }
+            every { messageReactionRepository.findByMessageId("message_1") } returns listOf(
+                MessageReaction(id = "message_reaction_1", messageId = "message_1", userId = "user_a", emoji = "👍"),
+            )
+
+            val reactions = service.toggleReaction("user_a", "message_1", "👍")
+
+            Then("it adds the real reaction, pushes it to the real other participant, and returns the real grouped summary") {
+                reactions shouldBe listOf(ReactionGroup("👍", listOf("user_a")))
+                verify { messageReactionRepository.save(any()) }
+                verify { realtimeMessagePublisher.publishReactionChange("conversation_1", "user_b", "message_1", reactions) }
+            }
+        }
+
+        When("a real participant taps their own already-active reaction again") {
+            val conversation = Conversation(id = "conversation_1", participantAId = "user_a", participantBId = "user_b")
+            val message = Message(id = "message_1", conversationId = "conversation_1", senderId = "user_b", body = "hi")
+            val existingReaction = MessageReaction(id = "message_reaction_1", messageId = "message_1", userId = "user_a", emoji = "👍")
+            every { messageRepository.findById("message_1") } returns Optional.of(message)
+            every { conversationRepository.findById("conversation_1") } returns Optional.of(conversation)
+            every { messageReactionRepository.findByMessageIdAndUserIdAndEmoji("message_1", "user_a", "👍") } returns existingReaction
+            every { messageReactionRepository.delete(existingReaction) } returns Unit
+            every { messageReactionRepository.findByMessageId("message_1") } returns emptyList()
+
+            val reactions = service.toggleReaction("user_a", "message_1", "👍")
+
+            Then("it real toggles the reaction OFF (deletes it) rather than erroring") {
+                reactions shouldBe emptyList()
+                verify { messageReactionRepository.delete(existingReaction) }
+            }
+        }
+
+        When("a stranger (not a real participant) tries to react") {
+            val conversation = Conversation(id = "conversation_1", participantAId = "user_a", participantBId = "user_b")
+            val message = Message(id = "message_1", conversationId = "conversation_1", senderId = "user_b", body = "hi")
+            every { messageRepository.findById("message_1") } returns Optional.of(message)
+            every { conversationRepository.findById("conversation_1") } returns Optional.of(conversation)
+
+            Then("it throws ConversationNotFoundException, not a 403 that would confirm the conversation exists") {
+                try {
+                    service.toggleReaction("stranger", "message_1", "👍")
+                    error("expected ConversationNotFoundException")
+                } catch (e: ConversationNotFoundException) {
+                    // expected
+                }
+            }
+        }
+
+        When("reacting with an empty emoji") {
+            Then("it throws InvalidReactionException before even looking up the message") {
+                try {
+                    service.toggleReaction("user_a", "message_1", "   ")
+                    error("expected InvalidReactionException")
+                } catch (e: InvalidReactionException) {
+                    // expected
+                }
             }
         }
     }

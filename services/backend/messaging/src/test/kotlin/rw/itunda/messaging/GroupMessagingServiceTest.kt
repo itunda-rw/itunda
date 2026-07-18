@@ -11,10 +11,13 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.GroupConversation
 import rw.itunda.core.domain.GroupConversationMember
 import rw.itunda.core.domain.GroupMessage
+import rw.itunda.core.domain.GroupMessageReaction
 import rw.itunda.core.domain.User
+import rw.itunda.core.realtime.ReactionGroup
 import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.GroupConversationMemberRepository
 import rw.itunda.core.repository.GroupConversationRepository
+import rw.itunda.core.repository.GroupMessageReactionRepository
 import rw.itunda.core.repository.GroupMessageRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
@@ -31,11 +34,12 @@ class GroupMessagingServiceTest : BehaviorSpec({
         val groupMessageRepository = mockk<GroupMessageRepository>(relaxed = true)
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val groupMessageReactionRepository = mockk<GroupMessageReactionRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
         val service = GroupMessagingService(
             groupConversationRepository, groupConversationMemberRepository, groupMessageRepository,
-            userRepository, notificationRepository, rateLimiter, realtimeMessagePublisher,
+            userRepository, notificationRepository, groupMessageReactionRepository, rateLimiter, realtimeMessagePublisher,
         )
 
         When("creating a group with two real other members") {
@@ -121,11 +125,12 @@ class GroupMessagingServiceTest : BehaviorSpec({
         val groupMessageRepository = mockk<GroupMessageRepository>(relaxed = true)
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val groupMessageReactionRepository = mockk<GroupMessageReactionRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
         val service = GroupMessagingService(
             groupConversationRepository, groupConversationMemberRepository, groupMessageRepository,
-            userRepository, notificationRepository, rateLimiter, realtimeMessagePublisher,
+            userRepository, notificationRepository, groupMessageReactionRepository, rateLimiter, realtimeMessagePublisher,
         )
 
         val group = GroupConversation(id = "group_1", name = "Kigali Friends", createdBy = "user_a")
@@ -244,6 +249,42 @@ class GroupMessagingServiceTest : BehaviorSpec({
 
             Then("it real-removes their membership row") {
                 verify { groupConversationMemberRepository.delete(members[1]) }
+            }
+        }
+
+        When("a real member reacts to a real group message for the first time") {
+            val groupMessage = GroupMessage(id = "group_message_1", groupConversationId = "group_1", senderId = "user_b", body = "hi all")
+            every { groupMessageRepository.findById("group_message_1") } returns Optional.of(groupMessage)
+            every { groupConversationRepository.findById("group_1") } returns Optional.of(group)
+            every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "user_a") } returns members[0]
+            every { groupConversationMemberRepository.findByGroupConversationId("group_1") } returns members
+            every { groupMessageReactionRepository.findByGroupMessageIdAndUserIdAndEmoji("group_message_1", "user_a", "👍") } returns null
+            every { groupMessageReactionRepository.save(any()) } answers { firstArg() }
+            every { groupMessageReactionRepository.findByGroupMessageId("group_message_1") } returns listOf(
+                GroupMessageReaction(id = "group_message_reaction_1", groupMessageId = "group_message_1", userId = "user_a", emoji = "👍"),
+            )
+
+            val reactions = service.toggleReaction("user_a", "group_message_1", "👍")
+
+            Then("it adds the real reaction and fans the push out to every other real member") {
+                reactions shouldBe listOf(ReactionGroup("👍", listOf("user_a")))
+                verify { realtimeMessagePublisher.publishGroupReactionChange("group_1", listOf("user_b", "user_c"), "group_message_1", reactions) }
+            }
+        }
+
+        When("a non-member tries to react to a group message") {
+            val groupMessage = GroupMessage(id = "group_message_1", groupConversationId = "group_1", senderId = "user_b", body = "hi all")
+            every { groupMessageRepository.findById("group_message_1") } returns Optional.of(groupMessage)
+            every { groupConversationRepository.findById("group_1") } returns Optional.of(group)
+            every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "stranger") } returns null
+
+            Then("it throws GroupNotFoundException, not a 403 that would confirm the group exists") {
+                try {
+                    service.toggleReaction("stranger", "group_message_1", "👍")
+                    error("expected GroupNotFoundException")
+                } catch (e: GroupNotFoundException) {
+                    // expected
+                }
             }
         }
     }

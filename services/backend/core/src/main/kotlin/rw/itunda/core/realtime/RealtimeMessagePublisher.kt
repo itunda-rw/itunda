@@ -3,6 +3,14 @@ package rw.itunda.core.realtime
 import rw.itunda.core.domain.GroupMessage
 import rw.itunda.core.domain.Message
 
+/** Real per-emoji reaction breakdown (2026-07-19) -- a raw list of who reacted with
+ * each emoji, never a pre-computed "reactedByMe"/count on the wire: every recipient of
+ * a reaction push (or REST response) gets the exact same payload and computes their
+ * own "did I react"/count locally by checking their own id against `userIds`, the same
+ * "one real payload, no per-recipient server-side computation" shape this session's
+ * other broadcast pushes (group messages, presence) already use. */
+data class ReactionGroup(val emoji: String, val userIds: List<String>)
+
 /**
  * Real live-transport hook for messaging (2026-07-18) -- the "separate, genuinely
  * larger infrastructure concern" `MessagingService`'s own doc comment named as the
@@ -50,4 +58,11 @@ interface RealtimeMessagePublisher {
      * resolved via the poll endpoint above, since a group's fan-out size is unbounded
      * and this is a low-value push for a large/inactive group. */
     fun publishPresenceChange(userId: String, online: Boolean)
+
+    /** Real-time reaction push (2026-07-19) -- fired after a real toggle (add or
+     * remove) is durably persisted, to the real other 1:1 conversation partner. */
+    fun publishReactionChange(conversationId: String, recipientUserId: String, messageId: String, reactions: List<ReactionGroup>)
+
+    /** Same real push, fanned out to every other real member of a group conversation. */
+    fun publishGroupReactionChange(groupId: String, recipientUserIds: List<String>, groupMessageId: String, reactions: List<ReactionGroup>)
 }

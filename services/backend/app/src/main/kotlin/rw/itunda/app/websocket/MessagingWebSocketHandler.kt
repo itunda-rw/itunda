@@ -10,6 +10,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.GroupMessage
 import rw.itunda.core.domain.Message
+import rw.itunda.core.realtime.ReactionGroup
 import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.ConversationRepository
 import rw.itunda.core.repository.GroupConversationMemberRepository
@@ -136,6 +137,22 @@ class MessagingWebSocketHandler(
                     "sentAt" to message.sentAt.toString(),
                 ),
             ),
+        )
+        recipientUserIds.forEach { sendToUser(it, payload) }
+    }
+
+    // Real reaction push (2026-07-19) -- fired after a real toggle is durably
+    // persisted, to the real other 1:1 participant.
+    override fun publishReactionChange(conversationId: String, recipientUserId: String, messageId: String, reactions: List<ReactionGroup>) {
+        val payload = objectMapper.writeValueAsString(
+            mapOf("type" to "reaction", "conversationId" to conversationId, "messageId" to messageId, "reactions" to reactions),
+        )
+        sendToUser(recipientUserId, payload)
+    }
+
+    override fun publishGroupReactionChange(groupId: String, recipientUserIds: List<String>, groupMessageId: String, reactions: List<ReactionGroup>) {
+        val payload = objectMapper.writeValueAsString(
+            mapOf("type" to "reaction", "groupConversationId" to groupId, "messageId" to groupMessageId, "reactions" to reactions),
         )
         recipientUserIds.forEach { sendToUser(it, payload) }
     }

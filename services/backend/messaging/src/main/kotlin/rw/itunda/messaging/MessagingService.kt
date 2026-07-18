@@ -8,9 +8,12 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.Message
+import rw.itunda.core.domain.MessageReaction
 import rw.itunda.core.domain.Notification
+import rw.itunda.core.realtime.ReactionGroup
 import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.ConversationRepository
+import rw.itunda.core.repository.MessageReactionRepository
 import rw.itunda.core.repository.MessageRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
@@ -23,6 +26,8 @@ class RecipientRequiredException(message: String) : RuntimeException(message)
 class SelfConversationException(message: String) : RuntimeException(message)
 class ConversationNotFoundException(message: String) : RuntimeException(message)
 class EmptyMessageException(message: String) : RuntimeException(message)
+class MessageNotFoundException(message: String) : RuntimeException(message)
+class InvalidReactionException(message: String) : RuntimeException(message)
 
 data class ConversationSummary(
     val conversationId: String,
@@ -61,6 +66,7 @@ class MessagingService(
     private val messageRepository: MessageRepository,
     private val userRepository: UserRepository,
     private val notificationRepository: NotificationRepository,
+    private val messageReactionRepository: MessageReactionRepository,
     private val rateLimiter: RateLimiter,
     private val realtimeMessagePublisher: RealtimeMessagePublisher,
 ) {
@@ -151,6 +157,46 @@ class MessagingService(
     // dot without requiring an existing conversation first).
     fun getPresence(userIds: List<String>): Map<String, Boolean> =
         userIds.distinct().associateWith { realtimeMessagePublisher.isOnline(it) }
+
+    // Real emoji reactions (2026-07-19) -- closes the "message reactions" item on the
+    // Talk polish roadmap. Deliberately a toggle: tapping an already-active reaction
+    // removes it rather than erroring, the same "add is idempotent-by-toggling, not by
+    // 409ing" UX [[project_itunda_toss_parity]] already established for Eats favorites.
+    @Transactional
+    fun toggleReaction(userId: String, messageId: String, emoji: String): List<ReactionGroup> {
+        val trimmedEmoji = emoji.trim()
+        if (trimmedEmoji.isEmpty() || trimmedEmoji.length > 16) {
+            throw InvalidReactionException("Reaction must be between 1 and 16 characters")
+        }
+        val message = messageRepository.findById(messageId).orElseThrow { MessageNotFoundException("Message not found") }
+        val conversation = requireParticipant(userId, message.conversationId)
+
+        val existing = messageReactionRepository.findByMessageIdAndUserIdAndEmoji(messageId, userId, trimmedEmoji)
+        if (existing != null) {
+            messageReactionRepository.delete(existing)
+        } else {
+            messageReactionRepository.save(
+                MessageReaction(id = "message_reaction_${UUID.randomUUID()}", messageId = messageId, userId = userId, emoji = trimmedEmoji),
+            )
+        }
+
+        val reactions = groupReactions(messageReactionRepository.findByMessageId(messageId).map { it.emoji to it.userId })
+        val recipientId = if (conversation.participantAId == userId) conversation.participantBId else conversation.participantAId
+        realtimeMessagePublisher.publishReactionChange(message.conversationId, recipientId, messageId, reactions)
+        return reactions
+    }
+
+    // Real batch fetch (2026-07-19) -- backs attaching a reaction summary to every
+    // message in a fetched page with a single query, not one query per message.
+    fun getReactionSummaries(messageIds: List<String>): Map<String, List<ReactionGroup>> {
+        if (messageIds.isEmpty()) return emptyMap()
+        return messageReactionRepository.findByMessageIdIn(messageIds)
+            .groupBy { it.messageId }
+            .mapValues { (_, reactions) -> groupReactions(reactions.map { it.emoji to it.userId }) }
+    }
+
+    private fun groupReactions(emojiAndUserIds: List<Pair<String, String>>): List<ReactionGroup> =
+        emojiAndUserIds.groupBy({ it.first }, { it.second }).map { (emoji, userIds) -> ReactionGroup(emoji, userIds) }
 
     @Transactional
     fun getMessages(userId: String, conversationId: String, pageable: Pageable): Page<Message> {

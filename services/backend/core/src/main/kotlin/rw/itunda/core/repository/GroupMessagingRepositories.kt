@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.GroupConversation
 import rw.itunda.core.domain.GroupConversationMember
 import rw.itunda.core.domain.GroupMessage
+import rw.itunda.core.domain.GroupMessageReaction
 
 interface GroupConversationRepository : JpaRepository<GroupConversation, String> {
     // Real pagination from day one, same discipline the 1:1 ConversationRepository
@@ -40,4 +41,14 @@ interface GroupMessageRepository : JpaRepository<GroupMessage, String> {
         @Param("userId") userId: String,
         @Param("lastReadAt") lastReadAt: java.time.Instant?,
     ): Long
+}
+
+interface GroupMessageReactionRepository : JpaRepository<GroupMessageReaction, String> {
+    fun findByGroupMessageIdAndUserIdAndEmoji(groupMessageId: String, userId: String, emoji: String): GroupMessageReaction?
+
+    fun findByGroupMessageId(groupMessageId: String): List<GroupMessageReaction>
+
+    // Real batch fetch (2026-07-19) -- backs attaching reaction summaries to a whole
+    // page of group messages in one query rather than one query per message.
+    fun findByGroupMessageIdIn(groupMessageIds: List<String>): List<GroupMessageReaction>
 }

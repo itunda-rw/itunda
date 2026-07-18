@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.Message
+import rw.itunda.core.domain.MessageReaction
 
 interface ConversationRepository : JpaRepository<Conversation, String> {
     fun findByParticipantAIdAndParticipantBId(participantAId: String, participantBId: String): Conversation?
@@ -41,4 +42,14 @@ interface MessageRepository : JpaRepository<Message, String> {
     fun countByConversationIdAndSenderIdNotAndReadAtIsNull(conversationId: String, senderId: String): Long
 
     fun findByConversationIdAndSenderIdNotAndReadAtIsNull(conversationId: String, senderId: String): List<Message>
+}
+
+interface MessageReactionRepository : JpaRepository<MessageReaction, String> {
+    fun findByMessageIdAndUserIdAndEmoji(messageId: String, userId: String, emoji: String): MessageReaction?
+
+    fun findByMessageId(messageId: String): List<MessageReaction>
+
+    // Real batch fetch (2026-07-19) -- backs attaching reaction summaries to a whole
+    // page of messages in one query rather than one query per message.
+    fun findByMessageIdIn(messageIds: List<String>): List<MessageReaction>
 }

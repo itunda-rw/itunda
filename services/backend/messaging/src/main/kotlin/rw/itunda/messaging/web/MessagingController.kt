@@ -19,6 +19,8 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.messaging.ConversationNotFoundException
 import rw.itunda.messaging.EmptyMessageException
+import rw.itunda.messaging.InvalidReactionException
+import rw.itunda.messaging.MessageNotFoundException
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.RecipientNotFoundException
 import rw.itunda.messaging.RecipientRequiredException
@@ -30,6 +32,7 @@ import rw.itunda.messaging.SelfConversationException
 // "message this merchant" action from a merchant's own profile screen).
 data class StartConversationRequest(val phoneNumber: String? = null, val otherUserId: String? = null)
 data class SendMessageRequest(val body: String)
+data class ToggleReactionRequest(val emoji: String)
 
 // Real 1:1 messaging -- see MessagingService's own doc comment for the full account.
 // Normal itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()),
@@ -69,7 +72,30 @@ class MessagingController(private val messagingService: MessagingService) {
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val page = messagingService.getMessages(currentUser.userId, conversationId, pageable)
-        return ResponseEntity.ok(mapOf("success" to true, "messages" to page.content) + pageMeta(page))
+        // Real reaction summaries attached in one batch query (2026-07-19), not one
+        // query per message -- see MessagingService.getReactionSummaries's own doc
+        // comment.
+        val reactionsByMessageId = messagingService.getReactionSummaries(page.content.map { it.id })
+        val messages = page.content.map { m ->
+            mapOf(
+                "id" to m.id, "conversationId" to m.conversationId, "senderId" to m.senderId, "body" to m.body,
+                "sentAt" to m.sentAt, "readAt" to m.readAt, "reactions" to (reactionsByMessageId[m.id] ?: emptyList()),
+            )
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "messages" to messages) + pageMeta(page))
+    }
+
+    // Real emoji reactions (2026-07-19) -- see MessagingService.toggleReaction's own
+    // doc comment for why this is a real toggle (tapping an active reaction removes
+    // it), not add/remove as two endpoints.
+    @PostMapping("/messages/{messageId}/reactions")
+    fun toggleReaction(
+        @PathVariable messageId: String,
+        @RequestBody request: ToggleReactionRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val reactions = messagingService.toggleReaction(currentUser.userId, messageId, request.emoji)
+        return ResponseEntity.ok(mapOf("success" to true, "reactions" to reactions))
     }
 
     @PostMapping("/conversations/{conversationId}/messages")
@@ -112,4 +138,12 @@ class MessagingController(private val messagingService: MessagingService) {
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =
         ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
+
+    @ExceptionHandler(MessageNotFoundException::class)
+    fun handleMessageNotFound(ex: MessageNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MESSAGE_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(InvalidReactionException::class)
+    fun handleInvalidReaction(ex: InvalidReactionException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_REACTION", ex.message ?: "Bad request"))
 }
