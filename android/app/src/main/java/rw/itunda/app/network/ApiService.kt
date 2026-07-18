@@ -557,6 +557,12 @@ interface ApiService {
     @GET("api/v1/eats/orders/my-orders")
     suspend fun getMyEatsOrders(): EatsOrdersResponse
 
+    // Real order detail, including items -- backs the real "Reorder" button
+    // (2026-07-19): a buyer can re-populate a cart from a past order's real items
+    // rather than retyping their whole order from scratch.
+    @GET("api/v1/eats/orders/{id}")
+    suspend fun getEatsOrder(@Path("id") orderId: String): EatsOrderDetailResponse
+
     // Real address-search autocomplete (2026-07-18) -- see EatsController.searchDeliveryAddress.
     @GET("api/v1/eats/geocode/search")
     suspend fun searchDeliveryAddress(@Query("q") query: String): AddressSearchResponse

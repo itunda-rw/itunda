@@ -12,7 +12,7 @@ import {
 } from './lib/messaging';
 import { contactSeller, createListing, fetchListings, fetchMyListings, markListingSold, removeListing, type Listing } from './lib/marketplace';
 import {
-  advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, fetchAvailableDeliveries, fetchMenu,
+  advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, fetchAvailableDeliveries, fetchEatsOrder, fetchMenu,
   fetchMyEatsOrders, fetchMyRiderProfile, fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating,
   fetchRiderDeliveries, placeEatsOrder, registerRider, searchDeliveryAddress, setRiderAvailability, submitEatsReview,
   type AddressSuggestion, type EatsOrder, type EatsOrderStatus, type MenuItem, type RatingSummary, type Rider,
@@ -1412,10 +1412,14 @@ function AddressAutocomplete({
   );
 }
 
-function MenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: ShoppingMerchant; onBack: () => void; onOrderPlaced: (order: EatsOrder) => void }) {
+function MenuView({
+  restaurant, onBack, onOrderPlaced, initialCart,
+}: {
+  restaurant: ShoppingMerchant; onBack: () => void; onOrderPlaced: (order: EatsOrder) => void; initialCart?: Record<string, number>;
+}) {
   const [menu, setMenu] = useState<{ businessName: string; products: MenuItem[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [cart, setCart] = useState<Record<string, number>>({});
+  const [cart, setCart] = useState<Record<string, number>>(initialCart ?? {});
   const [address, setAddress] = useState('');
   const [addressCoords, setAddressCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [placing, setPlacing] = useState(false);
@@ -1545,7 +1549,7 @@ function MenuView({ restaurant, onBack, onOrderPlaced }: { restaurant: ShoppingM
   );
 }
 
-function MyEatsOrdersView() {
+function MyEatsOrdersView({ onReorder, reorderingId }: { onReorder: (order: EatsOrder) => void; reorderingId: string | null }) {
   const [orders, setOrders] = useState<EatsOrder[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -1599,7 +1603,16 @@ function MyEatsOrdersView() {
                 {cancellingId === o.id ? 'Cancelling…' : 'Cancel order'}
               </button>
             ) : o.status === 'DELIVERED' ? (
-              <ReviewOrderCard order={o} onSubmitted={load} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <ReviewOrderCard order={o} onSubmitted={load} />
+                <button className="toss-btn toss-btn-secondary" disabled={reorderingId === o.id} onClick={() => onReorder(o)}>
+                  {reorderingId === o.id ? 'Reordering…' : 'Reorder'}
+                </button>
+              </div>
+            ) : o.status === 'CANCELLED' ? (
+              <button className="toss-btn toss-btn-secondary" disabled={reorderingId === o.id} onClick={() => onReorder(o)}>
+                {reorderingId === o.id ? 'Reordering…' : 'Reorder'}
+              </button>
             ) : undefined
           }
         />
@@ -1614,6 +1627,9 @@ function OrderFoodView() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<ShoppingMerchant | null>(null);
   const [confirmed, setConfirmed] = useState<EatsOrder | null>(null);
+  const [reorderCart, setReorderCart] = useState<Record<string, number> | null>(null);
+  const [reorderingId, setReorderingId] = useState<string | null>(null);
+  const [reorderError, setReorderError] = useState<string | null>(null);
 
   const load = () => {
     setError(null);
@@ -1621,6 +1637,41 @@ function OrderFoodView() {
   };
 
   useEffect(load, []);
+
+  // Real "Reorder" (2026-07-19): re-populates a fresh cart from a real past order's
+  // real items, filtered to whatever's still real and active on the restaurant's
+  // current menu -- a discontinued item is silently dropped rather than added as a
+  // phantom line the buyer can't actually check out with.
+  const handleReorder = async (order: EatsOrder) => {
+    setReorderingId(order.id);
+    setReorderError(null);
+    try {
+      const restaurant = restaurants?.find((r) => r.merchantId === order.restaurantId);
+      if (!restaurant) {
+        setReorderError('This restaurant is no longer available.');
+        return;
+      }
+      const [{ items }, menu] = await Promise.all([fetchEatsOrder(order.id), fetchMenu(order.restaurantId)]);
+      const activeProductIds = new Set(menu.products.filter((p) => p.active).map((p) => p.id));
+      const cart: Record<string, number> = {};
+      items.forEach((item) => {
+        if (activeProductIds.has(item.productId)) {
+          cart[item.productId] = (cart[item.productId] ?? 0) + item.quantity;
+        }
+      });
+      if (Object.keys(cart).length === 0) {
+        setReorderError('None of the items from that order are on the menu anymore.');
+        return;
+      }
+      setReorderCart(cart);
+      setSelected(restaurant);
+      setView('BROWSE');
+    } catch (err) {
+      setReorderError(err instanceof ApiError ? err.message : 'Could not reorder.');
+    } finally {
+      setReorderingId(null);
+    }
+  };
 
   if (confirmed) {
     return (
@@ -1640,7 +1691,14 @@ function OrderFoodView() {
   }
 
   if (selected) {
-    return <MenuView restaurant={selected} onBack={() => setSelected(null)} onOrderPlaced={setConfirmed} />;
+    return (
+      <MenuView
+        restaurant={selected}
+        onBack={() => { setSelected(null); setReorderCart(null); }}
+        onOrderPlaced={setConfirmed}
+        initialCart={reorderCart ?? undefined}
+      />
+    );
   }
 
   return (
@@ -1662,7 +1720,10 @@ function OrderFoodView() {
       </div>
 
       {view === 'ORDERS' ? (
-        <MyEatsOrdersView />
+        <>
+          {reorderError && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '10px' }} role="alert">{reorderError}</p>}
+          <MyEatsOrdersView onReorder={handleReorder} reorderingId={reorderingId} />
+        </>
       ) : error ? (
         <div className="toss-card">
           <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>

@@ -1462,6 +1462,8 @@ private fun OrderFoodContent() {
     val cart = remember { mutableStateMapOf<String, Int>() }
     var showCheckout by remember { mutableStateOf(false) }
     var confirmedOrder by remember { mutableStateOf<EatsOrderDto?>(null) }
+    var reorderingId by remember { mutableStateOf<String?>(null) }
+    var reorderError by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     fun loadRestaurants() {
@@ -1491,6 +1493,51 @@ private fun OrderFoodContent() {
                 error = superAppErrorMessage(e)
             } catch (e: IOException) {
                 error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+
+    // Real "Reorder" button (2026-07-19): re-populate the cart from a past order's real
+    // items, cross-referenced against the restaurant's current menu -- discontinued items
+    // are silently dropped rather than added as phantom cart lines.
+    fun handleReorder(order: EatsOrderDto) {
+        val restaurant = restaurants?.find { it.merchantId == order.restaurantId }
+        if (restaurant == null) {
+            reorderError = "This restaurant is no longer available."
+            return
+        }
+        reorderingId = order.id
+        reorderError = null
+        coroutineScope.launch {
+            try {
+                val orderDetail = NetworkClient.apiService.getEatsOrder(order.id)
+                val menuRes = NetworkClient.apiService.getMerchantProducts(order.restaurantId)
+                if (!orderDetail.success || !menuRes.success) {
+                    reorderError = "Could not reorder."
+                    return@launch
+                }
+                val activeProductIds = menuRes.products.filter { it.active }.map { it.id }.toSet()
+                val newCart = mutableMapOf<String, Int>()
+                orderDetail.items.forEach { item ->
+                    if (item.productId in activeProductIds) {
+                        newCart[item.productId] = (newCart[item.productId] ?: 0) + item.quantity
+                    }
+                }
+                if (newCart.isEmpty()) {
+                    reorderError = "None of the items from that order are on the menu anymore."
+                    return@launch
+                }
+                selectedRestaurant = restaurant
+                menu = menuRes.products
+                cart.clear()
+                cart.putAll(newCart)
+                view = OrderFoodView.BROWSE
+            } catch (e: HttpException) {
+                reorderError = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                reorderError = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                reorderingId = null
             }
         }
     }
@@ -1552,7 +1599,14 @@ private fun OrderFoodContent() {
             }
         }
         if (view == OrderFoodView.ORDERS) {
-            item { MyEatsOrdersView() }
+            item {
+                MyEatsOrdersView(onReorder = ::handleReorder, reorderingId = reorderingId)
+                val reorderErr = reorderError
+                if (reorderErr != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(reorderErr, color = Tds.colors.danger, fontSize = 13.sp)
+                }
+            }
         } else if (error != null) {
             item { ErrorCard(error!!, onRetry = ::loadRestaurants) }
         } else if (restaurants == null) {
@@ -1963,7 +2017,7 @@ private fun EatsOrderRow(order: EatsOrderDto, action: (@Composable () -> Unit)? 
 }
 
 @Composable
-private fun MyEatsOrdersView() {
+private fun MyEatsOrdersView(onReorder: (EatsOrderDto) -> Unit, reorderingId: String?) {
     var orders by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var cancellingId by remember { mutableStateOf<String?>(null) }
@@ -2034,12 +2088,35 @@ private fun MyEatsOrdersView() {
                                 )
                             }
                         } else if (o.status == "DELIVERED") {
-                            ReviewOrderCard(o)
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                ReviewOrderCard(o)
+                                ReorderButton(reordering = reorderingId == o.id, onClick = { onReorder(o) })
+                            }
+                        } else if (o.status == "CANCELLED") {
+                            ReorderButton(reordering = reorderingId == o.id, onClick = { onReorder(o) })
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ReorderButton(reordering: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(TossBlue)
+            .clickable(enabled = !reordering, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+    ) {
+        Text(
+            if (reordering) "Reordering…" else "Reorder",
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = 13.sp,
+        )
     }
 }
 

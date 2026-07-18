@@ -718,6 +718,13 @@ extension NetworkClient {
 
     func getMyEatsOrders() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/my-orders") }
 
+    /// Real order detail, including items -- backs the real "Reorder" button (2026-07-19):
+    /// a buyer can re-populate a cart from a past order's real items rather than retyping
+    /// their whole order from scratch.
+    func getEatsOrder(_ orderId: String) async throws -> EatsOrderDetailResponse {
+        try await get("api/v1/eats/orders/\(orderId)")
+    }
+
     /// Real address-search autocomplete (2026-07-18) -- backed by itunda's own
     /// self-hosted Nominatim geocoder. See EatsController.searchDeliveryAddress's own
     /// doc comment. Uses URLComponents (not appendingPathComponent) so the query string

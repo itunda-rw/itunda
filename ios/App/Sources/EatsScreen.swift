@@ -60,6 +60,8 @@ private struct OrderFoodContent: View {
     @State private var cart: [String: Int] = [:]
     @State private var showCheckout = false
     @State private var confirmedOrder: EatsOrderDto?
+    @State private var reorderingId: String?
+    @State private var reorderError: String?
 
     var body: some View {
         Group {
@@ -107,7 +109,10 @@ private struct OrderFoodContent: View {
                 .pickerStyle(.segmented)
 
                 if view == .orders {
-                    MyEatsOrdersView()
+                    MyEatsOrdersView(onReorder: { order in Task { await handleReorder(order) } }, reorderingId: reorderingId)
+                    if let reorderError {
+                        Text(reorderError).foregroundColor(.red).font(.caption)
+                    }
                 } else if let error {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(error).foregroundColor(.red).font(.subheadline)
@@ -170,6 +175,39 @@ private struct OrderFoodContent: View {
             menu = res.products
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    // Real "Reorder" button (2026-07-19): re-populate the cart from a past order's real
+    // items, cross-referenced against the restaurant's current menu -- discontinued items
+    // are silently dropped rather than added as phantom cart lines.
+    private func handleReorder(_ order: EatsOrderDto) async {
+        guard let restaurant = restaurants?.first(where: { $0.merchantId == order.restaurantId }) else {
+            reorderError = "This restaurant is no longer available."
+            return
+        }
+        reorderingId = order.id
+        reorderError = nil
+        defer { reorderingId = nil }
+        do {
+            async let orderDetailReq = NetworkClient.shared.getEatsOrder(order.id)
+            async let menuReq = NetworkClient.shared.getMerchantProducts(merchantId: order.restaurantId)
+            let (orderDetail, menuRes) = try await (orderDetailReq, menuReq)
+            let activeProductIds = Set(menuRes.products.filter { $0.active }.map { $0.id })
+            var newCart: [String: Int] = [:]
+            for item in orderDetail.items where activeProductIds.contains(item.productId) {
+                newCart[item.productId, default: 0] += item.quantity
+            }
+            if newCart.isEmpty {
+                reorderError = "None of the items from that order are on the menu anymore."
+                return
+            }
+            selectedRestaurant = restaurant
+            menu = menuRes.products
+            cart = newCart
+            view = .browse
+        } catch {
+            reorderError = "Couldn't reach itunda. Check your connection and try again."
         }
     }
 }
@@ -614,6 +652,9 @@ extension EatsOrderRow where Action == EmptyView {
 }
 
 private struct MyEatsOrdersView: View {
+    let onReorder: (EatsOrderDto) -> Void
+    let reorderingId: String?
+
     @State private var orders: [EatsOrderDto]?
     @State private var error: String?
     @State private var cancellingId: String?
@@ -646,7 +687,12 @@ private struct MyEatsOrdersView: View {
                                 }
                                 .disabled(cancellingId == order.id)
                             } else if order.status == "DELIVERED" {
-                                ReviewOrderCard(order: order)
+                                VStack(alignment: .leading, spacing: 8) {
+                                    ReviewOrderCard(order: order)
+                                    ReorderButton(reordering: reorderingId == order.id, onClick: { onReorder(order) })
+                                }
+                            } else if order.status == "CANCELLED" {
+                                ReorderButton(reordering: reorderingId == order.id, onClick: { onReorder(order) })
                             }
                         }
                     }
@@ -684,6 +730,21 @@ private struct MyEatsOrdersView: View {
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
+    }
+}
+
+private struct ReorderButton: View {
+    let reordering: Bool
+    let onClick: () -> Void
+
+    var body: some View {
+        Button(action: onClick) {
+            Text(reordering ? "Reordering…" : "Reorder")
+                .font(.subheadline).bold().foregroundColor(.white)
+                .padding(.horizontal, 16).padding(.vertical, 10)
+                .background(IDS.Colors.brand).cornerRadius(12)
+        }
+        .disabled(reordering)
     }
 }
 

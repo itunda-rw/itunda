@@ -67,6 +67,12 @@ export const placeEatsOrder = (
 export const fetchMyEatsOrders = () =>
   apiFetch<{ success: boolean; orders: EatsOrder[] }>('/api/v1/eats/orders/my-orders').then((r) => r.orders);
 
+// Real order detail, including items -- backs the real "Reorder" button (2026-07-19):
+// a buyer can re-populate a cart from a past order's real items rather than retyping
+// their whole order from scratch.
+export const fetchEatsOrder = (orderId: string) =>
+  apiFetch<{ success: boolean; order: EatsOrder; items: EatsOrderItem[] }>(`/api/v1/eats/orders/${orderId}`);
+
 export const fetchRestaurantOrders = () =>
   apiFetch<{ success: boolean; orders: EatsOrder[] }>('/api/v1/eats/orders/restaurant-orders').then((r) => r.orders);
 
