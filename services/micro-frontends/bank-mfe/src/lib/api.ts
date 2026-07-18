@@ -4,7 +4,7 @@
 // confirmed by direct inspection), unlike every other micro-frontend in this repo.
 // Same lib/api.ts convention as ops-mfe/merchant-mfe.
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4001';
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4001';
 
 const TOKEN_KEY = 'itunda_bank_access_token';
 const REFRESH_KEY = 'itunda_bank_refresh_token';

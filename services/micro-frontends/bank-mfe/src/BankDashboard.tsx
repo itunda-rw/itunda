@@ -5,7 +5,7 @@ import { getStoredUser, logout, ApiError } from './lib/api';
 import { fetchTransactions, fetchWallets, type Transaction, type Wallet } from './lib/wallet';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
 import { collectPayment, fetchShoppingCatalog, type CollectPaymentResult, type ShoppingMerchant } from './lib/shopping';
-import { fetchConversations, fetchMessages, sendMessage, startConversation, type ConversationSummary, type Message } from './lib/messaging';
+import { connectMessagingSocket, fetchConversations, fetchMessages, sendMessage, startConversation, type ConversationSummary, type Message } from './lib/messaging';
 import { contactSeller, createListing, fetchListings, fetchMyListings, markListingSold, removeListing, type Listing } from './lib/marketplace';
 import {
   advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, fetchAvailableDeliveries, fetchMenu,
@@ -450,11 +450,29 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
 
   useEffect(() => {
     load();
-    // Real poll-based "live" delivery -- MessagingService's own doc comment names this
-    // as the honest current scope (no WebSocket/push transport yet). 4s comfortably
-    // reads as responsive in a real conversation without hammering the backend.
+    // Real 4s poll as an always-correct fallback (kept even now that a live socket
+    // exists below -- if the socket never connects, silently errors, or the server
+    // restarts mid-conversation, this alone still delivers messages correctly, just
+    // slower). See connectMessagingSocket's own doc comment for why it's designed as
+    // a latency improvement layered on top of this, not a replacement for it.
     const interval = setInterval(load, 4000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversation.conversationId]);
+
+  useEffect(() => {
+    // Real WebSocket live delivery (2026-07-18) -- appends a pushed message straight
+    // into state the moment it arrives, rather than waiting for the next poll tick.
+    // De-duped by id since the next 4s poll will also fetch the same message.
+    const disconnect = connectMessagingSocket((payload) => {
+      if (payload.conversationId !== conversation.conversationId) return;
+      setMessages((prev) => {
+        if (!prev) return prev;
+        if (prev.some((m) => m.id === payload.message.id)) return prev;
+        return [...prev, payload.message];
+      });
+    });
+    return disconnect;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation.conversationId]);
 
