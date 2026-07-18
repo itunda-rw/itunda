@@ -13,15 +13,10 @@ private func scaledFont(size: CGFloat, weight: UIFont.Weight, relativeTo style: 
     Font(UIFontMetrics(forTextStyle: style).scaledFont(for: UIFont.systemFont(ofSize: size, weight: weight)))
 }
 
-// Tab labels renamed (2026-07-11) to match android/app/.../ItundaAppScreen.kt's
-// established taxonomy exactly: Home/Benefits/Shop/Pay/All -- this file previously
-// said "Discover"/"Entire" instead of "Shop"/"All", the "screen/navigation taxonomy
-// parity is still open" gap docs/TOSS_RWANDA_ALIGNMENT.md's Current Repository Gap
-// List names. Not a cosmetic rename: Android's Shop tab contains its own internal
-// "Discover" section (ShopTab -> ShellSection(title = "Discover", ...) backed by the
-// same discover-items data this screen's card content already resembles), and "All"
-// is the deliberate translation of Toss's 전체 tab Android's own ShopTab/AllTopBar
-// comments already establish -- "Entire" was simply the wrong word.
+// Tab taxonomy history: Home/Benefits/Shop/Pay/All (2026-07-11, matching Android's
+// ItundaAppScreen.kt at the time) -> Home/Shop/Hood/Talk/My (2026-07-18, matching
+// Android's own super-app nav redesign the same day -- see ContentView.body's own
+// comment on the TabView for the current rationale).
 /// Real savings deposit/claim flow (2026-07-12) -- see SavingsFlowContainer.swift.
 enum SavingsFlowStep: Identifiable {
     case deposit(goalId: String, goalName: String)
@@ -37,6 +32,11 @@ enum SavingsFlowStep: Identifiable {
 
 struct ContentView: View {
     @State private var selectedTab = 0
+    // Real "message seller" hand-off from Hood to Talk (2026-07-18) -- see
+    // TalkScreen.swift's own doc comment on `pendingConversationId` for the full
+    // mechanism (mirrors bank-mfe's BankDashboard.tsx pendingConversationId/
+    // onConsumedInitial pattern and Android's identical ItundaAppScreen.kt state).
+    @State private var pendingConversationId: String?
     // Real wallet/savings data (2026-07-11) -- see BankViewModel.swift for why this
     // lives here rather than inside BankView's own module.
     @StateObject private var bankViewModel = BankViewModel()
@@ -130,24 +130,32 @@ struct ContentView: View {
                 }
                 .tag(0)
 
-            BenefitsScreen()
-                .tabItem {
-                    Image(systemName: "diamond.fill")
-                    Text("Benefits")
-                }
-                .tag(1)
-
-            DiscoverScreen()
+            // Real super-app bottom nav (2026-07-18): Home/Shop/Hood/Talk/My,
+            // replacing the previous Home/Benefits/Shop/Pay/All layout now that
+            // itunda has real Coupang-style commerce (Shop), 당근마켓-style
+            // marketplace (Hood), and Kakao-style messaging (Talk) backends to put
+            // behind top-level tabs -- exact same restructure Android's
+            // ItundaAppScreen.kt just went through, see that file's own header
+            // comment for the full reasoning (Benefits/Pay folded into My below,
+            // not dropped).
+            ShopScreen()
                 .tabItem {
                     Image(systemName: "bag.fill")
                     Text("Shop")
                 }
+                .tag(1)
+
+            HoodScreen(pendingConversationId: $pendingConversationId, onSwitchToTalk: { selectedTab = 3 })
+                .tabItem {
+                    Image(systemName: "location.fill")
+                    Text("Hood")
+                }
                 .tag(2)
 
-            PayScreen()
+            TalkScreen(pendingConversationId: $pendingConversationId)
                 .tabItem {
-                    Image(systemName: "creditcard.fill")
-                    Text("Pay")
+                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                    Text("Talk")
                 }
                 .tag(3)
 
@@ -156,8 +164,8 @@ struct ContentView: View {
                     SettingsScreen(onDone: { showSettings = false })
                 }
                 .tabItem {
-                    Image(systemName: "line.3.horizontal")
-                    Text("All")
+                    Image(systemName: "person.fill")
+                    Text("My")
                 }
                 .tag(4)
         }
@@ -165,11 +173,16 @@ struct ContentView: View {
     }
 }
 
-// BenefitsScreen and DiscoverScreen (the "Shop" tab) moved to
-// BenefitsShopAllScreens.swift (2026-07-11) -- rebuilt against Android's real,
-// Toss-screenshot-verified ItundaAppScreen.kt content instead of this file's old
-// crude hardcoded-mock-data placeholders. See that file's own header for why.
-
+// BenefitsScreen moved to BenefitsShopAllScreens.swift (2026-07-11) -- rebuilt
+// against Android's real, Toss-screenshot-verified ItundaAppScreen.kt content
+// instead of this file's old crude hardcoded-mock-data placeholders. See that
+// file's own header for why. (DiscoverScreen, the old "Shop" tab, was removed
+// 2026-07-18 -- see BenefitsShopAllScreens.swift's own note on why.)
+//
+// PayScreen stays defined here and is now reached from My (EntireMenuScreen's real
+// "Quick links" row), not its own top-level tab -- same fold-in Android's AllTab
+// went through. Still real-UI-only (no real backend quote/confirm wired -- see this
+// struct's own header comment below), that scope gap is unrelated to the nav move.
 struct PayScreen: View {
     // Wires the real, ported TransferQuoteScreen (ios/Features/Payments/
     // Sources/TransferScreen.swift) in for the first time -- it had zero call

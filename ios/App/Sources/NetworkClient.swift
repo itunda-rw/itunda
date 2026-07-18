@@ -350,3 +350,186 @@ extension NetworkClient {
 }
 
 private struct EmptyBody: Encodable {}
+
+// MARK: - Messaging / Marketplace / Commerce (2026-07-18)
+//
+// Mirrors android/app/.../network/ApiService.kt's real DTOs exactly, field-for-field --
+// the same three new backend modules (rw.itunda.messaging/marketplace/commerce) that
+// Android's Home/Shop/Hood/Talk/My nav redesign wired up. See that file's own header
+// comment for the full backend account (real pagination, real IDOR protection, honest
+// "poll-based delivery"/"self-declared fulfillment" scope).
+
+struct ConversationDto: Decodable {
+    let id: String
+    let participantAId: String
+    let participantBId: String
+    let lastMessageAt: String
+    let createdAt: String
+}
+
+struct ConversationSummaryDto: Decodable, Identifiable {
+    let conversationId: String
+    let otherUserId: String
+    let otherUserName: String
+    let lastMessageAt: String
+    let lastMessagePreview: String?
+    let unreadCount: Int
+    var id: String { conversationId }
+}
+
+struct MessageDto: Decodable, Identifiable {
+    let id: String
+    let conversationId: String
+    let senderId: String
+    let body: String
+    let sentAt: String
+    let readAt: String?
+}
+
+struct StartConversationRequest: Encodable {
+    let phoneNumber: String?
+    let otherUserId: String?
+}
+
+struct SendMessageRequest: Encodable { let body: String }
+
+struct ConversationResponse: Decodable { let success: Bool; let conversation: ConversationDto }
+struct ConversationsResponse: Decodable { let success: Bool; let conversations: [ConversationSummaryDto] }
+struct MessagesResponse: Decodable { let success: Bool; let messages: [MessageDto] }
+struct MessageResponse: Decodable { let success: Bool; let message: MessageDto }
+
+struct ListingDto: Decodable, Identifiable {
+    let id: String
+    let sellerId: String
+    let title: String
+    let description: String
+    let price: Double
+    let category: String
+    let status: String
+    let createdAt: String
+}
+
+struct CreateListingRequest: Encodable {
+    let title: String
+    let description: String
+    let price: Double
+    let category: String
+}
+
+struct ListingResponse: Decodable { let success: Bool; let listing: ListingDto }
+struct ListingsResponse: Decodable { let success: Bool; let listings: [ListingDto] }
+struct ContactSellerResponse: Decodable { let success: Bool; let conversation: ConversationDto }
+
+struct ShoppingMerchantDto: Decodable, Identifiable {
+    let merchantId: String
+    let businessName: String
+    let cashbackRate: String
+    var id: String { merchantId }
+}
+struct ShoppingMerchantsResponse: Decodable { let success: Bool; let merchants: [ShoppingMerchantDto] }
+
+struct MerchantProductDto: Decodable, Identifiable {
+    let id: String
+    let merchantId: String
+    let name: String
+    let price: Double
+    let active: Bool
+    let createdAt: String
+}
+struct MerchantSummaryDto: Decodable { let id: String; let businessName: String }
+struct MerchantProductsResponse: Decodable { let success: Bool; let merchant: MerchantSummaryDto; let products: [MerchantProductDto] }
+
+struct OrderItemRequest: Encodable { let productId: String; let quantity: Int }
+struct PlaceOrderRequest: Encodable {
+    let merchantId: String
+    let items: [OrderItemRequest]
+    let deliveryAddress: String
+}
+
+struct OrderDto: Decodable, Identifiable {
+    let id: String
+    let buyerId: String
+    let merchantId: String
+    let deliveryAddress: String
+    let totalAmount: Double
+    let fee: Double
+    let transactionId: String
+    let status: String
+    let createdAt: String
+    let updatedAt: String
+}
+struct OrderItemDto: Decodable, Identifiable { let id: String; let orderId: String; let productId: String; let productName: String; let unitPrice: Double; let quantity: Int }
+struct OrderDetailResponse: Decodable { let success: Bool; let order: OrderDto; let items: [OrderItemDto] }
+struct OrdersResponse: Decodable { let success: Bool; let orders: [OrderDto] }
+
+extension NetworkClient {
+    func startConversation(phoneNumber: String) async throws -> ConversationResponse {
+        try await authenticatedPost("api/v1/messages/conversations", body: StartConversationRequest(phoneNumber: phoneNumber, otherUserId: nil))
+    }
+
+    func getConversations() async throws -> ConversationsResponse { try await get("api/v1/messages/conversations") }
+
+    func getMessages(conversationId: String) async throws -> MessagesResponse {
+        try await get("api/v1/messages/conversations/\(conversationId)/messages")
+    }
+
+    func sendMessage(conversationId: String, body: String) async throws -> MessageResponse {
+        try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/messages", body: SendMessageRequest(body: body))
+    }
+
+    func createListing(title: String, description: String, price: Double, category: String) async throws -> ListingResponse {
+        try await authenticatedPost("api/v1/marketplace/listings", body: CreateListingRequest(title: title, description: description, price: price, category: category))
+    }
+
+    func browseListings(category: String? = nil) async throws -> ListingsResponse {
+        var path = "api/v1/marketplace/listings"
+        if let category, !category.isEmpty {
+            path += "?category=\(category.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? category)"
+        }
+        return try await get(path)
+    }
+
+    func getMyListings() async throws -> ListingsResponse { try await get("api/v1/marketplace/my-listings") }
+
+    func markListingSold(_ listingId: String) async throws -> ListingResponse {
+        try await authenticatedPost("api/v1/marketplace/listings/\(listingId)/mark-sold", body: EmptyBody())
+    }
+
+    func removeListing(_ listingId: String) async throws -> ListingResponse {
+        try await authenticatedDelete("api/v1/marketplace/listings/\(listingId)")
+    }
+
+    func contactSeller(listingId: String) async throws -> ContactSellerResponse {
+        try await authenticatedPost("api/v1/marketplace/listings/\(listingId)/contact-seller", body: EmptyBody())
+    }
+
+    func getShoppingMerchants() async throws -> ShoppingMerchantsResponse { try await get("api/v1/shopping/merchants") }
+
+    func getMerchantProducts(merchantId: String) async throws -> MerchantProductsResponse {
+        try await get("api/v1/shopping/merchants/\(merchantId)/products")
+    }
+
+    func placeOrder(_ request: PlaceOrderRequest) async throws -> OrderDetailResponse {
+        try await authenticatedPost("api/v1/orders", body: request, idempotencyKey: UUID().uuidString)
+    }
+
+    func getMyOrders() async throws -> OrdersResponse { try await get("api/v1/orders/my-orders") }
+
+    /// Real DELETE support -- every other authenticated call so far was GET/POST only,
+    /// see `authenticatedPost`'s own doc comment for why the Idempotency-Key handling
+    /// lives there; DELETE never needs one (removing an already-removed listing is
+    /// naturally idempotent at the database level, unlike a real money-moving POST).
+    fileprivate func authenticatedDelete<Response: Decodable>(_ path: String) async throws -> Response {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "DELETE"
+        if let token = KeychainTokenStore.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
+        }
+        return try decoder.decode(Response.self, from: data)
+    }
+}

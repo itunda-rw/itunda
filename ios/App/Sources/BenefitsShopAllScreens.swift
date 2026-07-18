@@ -145,121 +145,11 @@ private struct CashbackChanceCard: View {
     }
 }
 
-// MARK: - Shop tab ("Discover" struct name kept for source stability, see
-// ContentView.swift's own taxonomy-rename comment: the visible label is "Shop",
-// matching Android exactly, but the Swift type name wasn't part of that gap)
-
-struct DiscoverScreen: View {
-    var body: some View {
-        ScrollView {
-            VStack(spacing: IDS.Layout.cardGap) {
-                ShopTopBar()
-                CategoryTabsRow(tabs: ["Home", "Categories", "Cycling", "Deals", "Summer food"])
-                ShopPromoCard()
-                PointActionsCard()
-            }
-            .padding(.horizontal, IDS.Layout.screenHorizontal)
-            .padding(.top, IDS.Layout.screenTop)
-            .padding(.bottom, IDS.Layout.sectionSpacing)
-        }
-        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
-    }
-}
-
-private struct ShopTopBar: View {
-    var body: some View {
-        HStack(spacing: 12) {
-            Text("Search products")
-                .font(IDS.scaledFont(size: 16, weight: .regular, relativeTo: .body))
-                .foregroundColor(IDS.Colors.textSecondary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(IDS.Colors.chipBackground)
-                .cornerRadius(14)
-            // Fixed (2026-07-11): standalone icon-only buttons need a real
-            // accessibility label -- same fix already applied to Android's
-            // ShopTopBar (ItundaAppScreen.kt) and BankView.swift's TopBarActionButton.
-            Image(systemName: "person")
-                .font(IDS.scaledFont(size: 20, weight: .regular, relativeTo: .body))
-                .foregroundColor(IDS.Colors.textPrimary)
-                .accessibilityLabel("Profile")
-            Image(systemName: "cart")
-                .font(IDS.scaledFont(size: 20, weight: .regular, relativeTo: .body))
-                .foregroundColor(IDS.Colors.textPrimary)
-                .accessibilityLabel("Cart")
-        }
-    }
-}
-
-private struct CategoryTabsRow: View {
-    let tabs: [String]
-    var body: some View {
-        HStack(spacing: 18) {
-            ForEach(Array(tabs.enumerated()), id: \.offset) { index, tab in
-                Text(tab)
-                    .font(IDS.scaledFont(size: 17, weight: index == 0 ? .bold : .medium, relativeTo: .body))
-                    .foregroundColor(index == 0 ? IDS.Colors.textPrimary : IDS.Colors.textSecondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-private struct ShopPromoCard: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("10,000 RWF early-bird")
-                .font(IDS.scaledFont(size: 16, weight: .bold, relativeTo: .body))
-                .foregroundColor(Color(hex: 0xE25A61))
-            Text("Calcium + Magnesium\n90 tablets 3,900 RWF")
-                .font(IDS.scaledFont(size: 30, weight: .heavy, relativeTo: .largeTitle))
-                .foregroundColor(Color(hex: 0x151515))
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(hex: 0xDDEFFC))
-        .cornerRadius(IDS.Layout.cardCornerRadius)
-    }
-}
-
-private struct PointActionsCard: View {
-    private let items: [(String, String)] = [
-        ("Check-in", "calendar.badge.checkmark"),
-        ("Scroll", "hand.draw"),
-        ("Feed", "square.stack.fill"),
-        ("Cat", "pawprint.fill"),
-        ("Pick", "star.fill"),
-    ]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Points and coupon tasks")
-                .font(IDS.scaledFont(size: 28, weight: .bold, relativeTo: .title1))
-                .foregroundColor(IDS.Colors.textPrimary)
-            HStack {
-                ForEach(items, id: \.0) { label, symbol in
-                    VStack(spacing: 6) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 16).fill(IDS.Colors.chipBackground)
-                            Image(systemName: symbol)
-                                .font(IDS.scaledFont(size: 20, weight: .regular, relativeTo: .body))
-                                .foregroundColor(IDS.Colors.textPrimary)
-                        }
-                        .frame(width: 48, height: 48)
-                        Text(label)
-                            .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
-                            .foregroundColor(IDS.Colors.textSecondary)
-                    }
-                    if label != items.last?.0 { Spacer() }
-                }
-            }
-        }
-        .padding(24)
-        .background(IDS.Colors.backgroundPrimary)
-        .cornerRadius(IDS.Layout.cardCornerRadius)
-    }
-}
+// DiscoverScreen (the old "Shop" tab -- Toss-Shopping-cashback-style browsing) removed
+// 2026-07-18: the new Shop tab is real Coupang-style commerce (see ShopScreen.swift),
+// replacing this entirely, same cleanup Android's ItundaAppScreen.kt went through when
+// its own old ShopTab (and ShopTopBar/CategoryTabsRow/ShopPromoCard/PointActionsCard)
+// were deleted for the same reason.
 
 // MARK: - All tab
 
@@ -277,6 +167,12 @@ struct EntireMenuScreen: View {
     @State private var showWalletBalanceMiniApp = false
     @State private var showRewardTasksMiniApp = false
     @State private var showInsuranceMiniApp = false
+    // Benefits/Pay folded in here (2026-07-18) -- both lost their own top-level tab
+    // when the bottom nav became Home/Shop/Hood/Talk/My, but stay just as reachable
+    // as a real row instead of being dropped, same fix Android's own AllTab went
+    // through (see ItundaAppScreen.kt's "Quick links" FlatSection).
+    @State private var showBenefits = false
+    @State private var showPay = false
 
     var body: some View {
         ScrollView {
@@ -292,6 +188,10 @@ struct EntireMenuScreen: View {
                 // to the VStack's layout.
                 Group {
                     TdsAllTopBar(onOpenSettings: onOpenSettings)
+                    FlatSection(title: "Quick links", rows: [
+                        FlatRow(title: "Pay", subtitle: "Scan or pay by code", symbol: "qrcode", tint: .accentBlue, action: { showPay = true }),
+                        FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", symbol: "gift.fill", tint: .accentOrange, action: { showBenefits = true }),
+                    ])
                     TdsSearchBar(placeholder: "Search")
                     IconGridSection(title: "Quick access", items: [
                         ("Mini", "square.grid.2x2.fill"),
@@ -399,6 +299,12 @@ struct EntireMenuScreen: View {
         .sheet(isPresented: $showInsuranceMiniApp) {
             SaroniteInsuranceView()
         }
+        .sheet(isPresented: $showBenefits) {
+            BenefitsScreen()
+        }
+        .sheet(isPresented: $showPay) {
+            PayScreen()
+        }
     }
 }
 
@@ -432,7 +338,7 @@ private struct TdsAllTopBar: View {
 // MARK: - Shared components (mirror Android's TdsPlainTopBar/SearchBar/FlatSection/
 // FlatRow/IconGridSection/SmallBlueButton in ItundaAppScreen.kt)
 
-private struct TdsPlainTopBar: View {
+struct TdsPlainTopBar: View {
     let title: String
     var body: some View {
         HStack {
@@ -447,7 +353,7 @@ private struct TdsPlainTopBar: View {
     }
 }
 
-private struct TdsSearchBar: View {
+struct TdsSearchBar: View {
     let placeholder: String
     var body: some View {
         Text(placeholder)
@@ -461,7 +367,7 @@ private struct TdsSearchBar: View {
     }
 }
 
-private struct SmallBlueButton: View {
+struct SmallBlueButton: View {
     let label: String
     var body: some View {
         Text(label)
@@ -474,7 +380,7 @@ private struct SmallBlueButton: View {
     }
 }
 
-private struct FlatRow {
+struct FlatRow {
     let title: String
     var subtitle: String? = nil
     var trailing: String? = nil
@@ -489,7 +395,7 @@ private struct FlatRow {
     var action: (() -> Void)? = nil
 }
 
-private struct FlatSection: View {
+struct FlatSection: View {
     let title: String
     let rows: [FlatRow]
 
@@ -538,7 +444,7 @@ private struct FlatSection: View {
     }
 }
 
-private struct IconGridSection: View {
+struct IconGridSection: View {
     let title: String
     let items: [(String, String)]
 
@@ -574,7 +480,7 @@ private struct IconGridSection: View {
     }
 }
 
-private extension Color {
+extension Color {
     static let accentBlue = TdsColors.accentBlue
     static let accentTeal = TdsColors.accentTeal
     static let accentPurple = TdsColors.accentPurple
