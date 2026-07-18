@@ -54,17 +54,23 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.app.network.ConversationSummaryDto
 import rw.itunda.app.network.CreateListingRequest
+import rw.itunda.app.network.EatsOrderDto
+import rw.itunda.app.network.EatsOrderItemRequest
 import rw.itunda.app.network.ListingDto
 import rw.itunda.app.network.MerchantProductDto
 import rw.itunda.app.network.MessageDto
 import rw.itunda.app.network.NetworkClient
 import rw.itunda.app.network.OrderDto
 import rw.itunda.app.network.OrderItemRequest
+import rw.itunda.app.network.PlaceEatsOrderRequest
 import rw.itunda.app.network.PlaceOrderRequest
+import rw.itunda.app.network.RiderDto
 import rw.itunda.app.network.SendMessageRequest
+import rw.itunda.app.network.SetRiderAvailabilityRequest
 import rw.itunda.app.network.ShoppingMerchantDto
 import rw.itunda.app.network.StartConversationRequest
 import rw.itunda.app.network.TokenStore
+import rw.itunda.app.network.UpdateEatsOrderStatusRequest
 import rw.itunda.core.designsystem.theme.Tds
 import java.io.IOException
 import java.util.UUID
@@ -601,10 +607,48 @@ private fun ListingActionButton(label: String, disabled: Boolean, filled: Boolea
     }
 }
 
-// ============================== SHOP (Commerce) ==============================
+// ============================== SHOP (Commerce + Eats) ==============================
+
+private enum class ShopMode { SHOP, EATS }
 
 @Composable
 internal fun ShopTab() {
+    var mode by remember { mutableStateOf(ShopMode.SHOP) }
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Tds.layout.screenHorizontal, vertical = 8.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(TossCardSoft)
+                .padding(4.dp),
+        ) {
+            listOf(ShopMode.SHOP to "Shop", ShopMode.EATS to "Eats").forEach { (m, label) ->
+                val selected = m == mode
+                Text(
+                    label,
+                    color = if (selected) Color.White else TossSecondary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (selected) TossBlue else Color.Transparent)
+                        .clickable { mode = m }
+                        .padding(vertical = 8.dp),
+                )
+            }
+        }
+        when (mode) {
+            ShopMode.SHOP -> CommerceShopContent()
+            ShopMode.EATS -> EatsContent()
+        }
+    }
+}
+
+@Composable
+private fun CommerceShopContent() {
     var merchants by remember { mutableStateOf<List<ShoppingMerchantDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var selectedMerchant by remember { mutableStateOf<ShoppingMerchantDto?>(null) }
@@ -869,4 +913,605 @@ private fun OrderConfirmationView(order: OrderDto, onDone: () -> Unit) {
         },
         confirmButton = { TextButton(onClick = onDone) { Text("Done") } },
     )
+}
+
+// ============================== EATS (Coupang Eats-style) ==============================
+// Real food ordering + a real rider role, folded into the Shop tab (2026-07-18) since the
+// bottom nav has no free tab slot -- see rw.itunda.eats.EatsOrderService's own doc comment
+// for the full backend account, including the honest "flat delivery fee, no geo data"
+// scope. Restaurant/menu browsing reuses ShoppingMerchantDto/MerchantProductDto and the
+// existing getShoppingMerchants()/getMerchantProducts() calls above -- zero new browse
+// endpoint, matching CommerceShopContent's own reuse. Mirrors bank-mfe's EatsView 1:1.
+
+private val EATS_STATUS_LABEL = mapOf(
+    "PLACED" to "Placed",
+    "ACCEPTED" to "Accepted by restaurant",
+    "PREPARING" to "Preparing",
+    "READY_FOR_PICKUP" to "Ready for pickup",
+    "RIDER_ASSIGNED" to "Rider on the way to restaurant",
+    "PICKED_UP" to "Picked up — on the way",
+    "DELIVERED" to "Delivered",
+)
+
+private val RIDER_STATUS_CHAIN = listOf("RIDER_ASSIGNED", "PICKED_UP", "DELIVERED")
+
+private fun nextRiderStatus(current: String): String? {
+    val idx = RIDER_STATUS_CHAIN.indexOf(current)
+    return if (idx >= 0 && idx + 1 < RIDER_STATUS_CHAIN.size) RIDER_STATUS_CHAIN[idx + 1] else null
+}
+
+private enum class EatsMode { ORDER, DELIVER }
+
+@Composable
+private fun EatsContent() {
+    var mode by remember { mutableStateOf(EatsMode.ORDER) }
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal)) {
+        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
+            listOf(EatsMode.ORDER to "Order food", EatsMode.DELIVER to "Deliver").forEach { (m, label) ->
+                val selected = m == mode
+                Text(
+                    label,
+                    color = if (selected) Color.White else TossSecondary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (selected) TossBlue else Color.Transparent)
+                        .clickable { mode = m }
+                        .padding(vertical = 8.dp),
+                )
+            }
+        }
+        when (mode) {
+            EatsMode.ORDER -> OrderFoodContent()
+            EatsMode.DELIVER -> DeliverContent()
+        }
+    }
+}
+
+private enum class OrderFoodView { BROWSE, ORDERS }
+
+@Composable
+private fun OrderFoodContent() {
+    var view by remember { mutableStateOf(OrderFoodView.BROWSE) }
+    var restaurants by remember { mutableStateOf<List<ShoppingMerchantDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var selectedRestaurant by remember { mutableStateOf<ShoppingMerchantDto?>(null) }
+    var menu by remember { mutableStateOf<List<MerchantProductDto>?>(null) }
+    val cart = remember { mutableStateMapOf<String, Int>() }
+    var showCheckout by remember { mutableStateOf(false) }
+    var confirmedOrder by remember { mutableStateOf<EatsOrderDto?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun loadRestaurants() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getShoppingMerchants()
+                if (res.success) restaurants = res.merchants
+                error = null
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+    LaunchedEffect(Unit) { loadRestaurants() }
+
+    fun openRestaurant(m: ShoppingMerchantDto) {
+        selectedRestaurant = m
+        cart.clear()
+        menu = null
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMerchantProducts(m.merchantId)
+                if (res.success) menu = res.products
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+
+    val confirmed = confirmedOrder
+    if (confirmed != null) {
+        EatsOrderConfirmationView(confirmed, onDone = {
+            confirmedOrder = null
+            selectedRestaurant = null
+            menu = null
+            cart.clear()
+            showCheckout = false
+            view = OrderFoodView.ORDERS
+        })
+        return
+    }
+
+    val restaurant = selectedRestaurant
+    if (restaurant != null) {
+        if (showCheckout) {
+            EatsCheckoutView(
+                restaurant = restaurant,
+                cart = cart,
+                menu = menu.orEmpty(),
+                onBack = { showCheckout = false },
+                onOrderPlaced = { order -> confirmedOrder = order },
+            )
+        } else {
+            RestaurantMenuView(
+                restaurant = restaurant,
+                menu = menu,
+                cart = cart,
+                onBack = { selectedRestaurant = null },
+                onCheckout = { showCheckout = true },
+            )
+        }
+        return
+    }
+
+    LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)) {
+        item {
+            Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
+                listOf(OrderFoodView.BROWSE to "Restaurants", OrderFoodView.ORDERS to "My orders").forEach { (v, label) ->
+                    val selected = v == view
+                    Text(
+                        label,
+                        color = if (selected) Color.White else TossSecondary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (selected) TossBlue else Color.Transparent)
+                            .clickable { view = v }
+                            .padding(vertical = 8.dp),
+                    )
+                }
+            }
+        }
+        if (view == OrderFoodView.ORDERS) {
+            item { MyEatsOrdersView() }
+        } else if (error != null) {
+            item { ErrorCard(error!!, onRetry = ::loadRestaurants) }
+        } else if (restaurants == null) {
+            item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+        } else if (restaurants!!.isEmpty()) {
+            item { Text("No restaurants registered yet.", color = TossSecondary, fontSize = 14.sp) }
+        } else {
+            items(restaurants!!, key = { it.merchantId }) { m ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(Tds.layout.cardCornerRadius))
+                        .background(TossCard)
+                        .clickable { openRestaurant(m) }
+                        .padding(18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(TossCardSoft), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.Storefront, contentDescription = null, modifier = Modifier.size(20.dp), tint = TossBlue)
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(m.businessName, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text("Real menu, real delivery", color = TossSecondary, fontSize = 12.sp)
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun RestaurantMenuView(
+    restaurant: ShoppingMerchantDto,
+    menu: List<MerchantProductDto>?,
+    cart: androidx.compose.runtime.snapshots.SnapshotStateMap<String, Int>,
+    onBack: () -> Unit,
+    onCheckout: () -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    val cartCount = cart.values.sum()
+    Column(modifier = Modifier.fillMaxSize().padding(vertical = Tds.layout.screenVertical)) {
+        BackTopBar(restaurant.businessName, onBack)
+        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
+            if (menu == null) {
+                item { Text("Loading…", color = TossSecondary, fontSize = 13.sp) }
+            } else if (menu.isEmpty()) {
+                item { Text("No menu items yet.", color = TossSecondary, fontSize = 13.sp) }
+            } else {
+                items(menu, key = { it.id }) { p ->
+                    val qty = cart[p.id] ?: 0
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Tds.layout.cardCornerRadius)).background(TossCard).padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(p.name, color = TossText, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            Text("%,.0f RWF".format(p.price), color = TossSecondary, fontSize = 13.sp)
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            QtyButton("-") { if (qty > 0) cart[p.id] = qty - 1 }
+                            Text(qty.toString(), modifier = Modifier.width(28.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center, color = TossText, fontWeight = FontWeight.Bold)
+                            QtyButton("+") { cart[p.id] = qty + 1 }
+                        }
+                    }
+                }
+            }
+        }
+        if (cartCount > 0) {
+            Box(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(TossBlue).clickable(onClick = onCheckout).padding(vertical = 16.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.ShoppingCart, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Checkout ($cartCount item${if (cartCount == 1) "" else "s"})", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EatsCheckoutView(
+    restaurant: ShoppingMerchantDto,
+    cart: Map<String, Int>,
+    menu: List<MerchantProductDto>,
+    onBack: () -> Unit,
+    onOrderPlaced: (EatsOrderDto) -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    var address by remember { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+    val idempotencyKey = remember { UUID.randomUUID().toString() }
+
+    val lines = cart.filter { it.value > 0 }.mapNotNull { (productId, qty) -> menu.find { it.id == productId }?.let { it to qty } }
+    val total = lines.sumOf { (p, qty) -> p.price * qty }
+
+    Column(modifier = Modifier.fillMaxSize().padding(vertical = Tds.layout.screenVertical)) {
+        BackTopBar("Checkout", onBack)
+        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
+            items(lines) { (p, qty) ->
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("${p.name} x$qty", color = TossText, fontSize = 14.sp)
+                    Text("%,.0f RWF".format(p.price * qty), color = TossText, fontSize = 14.sp)
+                }
+            }
+            item { Divider(color = TossLine, modifier = Modifier.padding(vertical = 10.dp)) }
+            item {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Subtotal", color = TossText, fontSize = 14.sp)
+                    Text("%,.0f RWF".format(total), color = TossText, fontSize = 14.sp)
+                }
+            }
+            item { Text("Plus a real delivery fee, added at checkout", color = TossSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp)) }
+            item { Spacer(modifier = Modifier.height(14.dp)) }
+            item {
+                OutlinedTextField(
+                    value = address,
+                    onValueChange = { address = it },
+                    placeholder = { Text("Delivery address") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            error?.let { item { Text(it, color = Tds.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) } }
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(if (submitting || address.isBlank()) TossTertiary else TossBlue)
+                .clickable(enabled = !submitting && address.isNotBlank()) {
+                    submitting = true
+                    error = null
+                    coroutineScope.launch {
+                        try {
+                            val res = NetworkClient.apiService.placeEatsOrder(
+                                idempotencyKey = idempotencyKey,
+                                request = PlaceEatsOrderRequest(
+                                    restaurantId = restaurant.merchantId,
+                                    items = lines.map { (p, qty) -> EatsOrderItemRequest(p.id, qty) },
+                                    deliveryAddress = address.trim(),
+                                ),
+                            )
+                            if (res.success) onOrderPlaced(res.order)
+                        } catch (e: HttpException) {
+                            error = superAppErrorMessage(e)
+                        } catch (e: IOException) {
+                            error = "Couldn't reach itunda. Check your connection and try again."
+                        } finally {
+                            submitting = false
+                        }
+                    }
+                }
+                .padding(vertical = 16.dp),
+            contentAlignment = Alignment.Center,
+        ) { Text(if (submitting) "Placing order…" else "Place order", color = Color.White, fontWeight = FontWeight.Bold) }
+    }
+}
+
+@Composable
+private fun EatsOrderConfirmationView(order: EatsOrderDto, onDone: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDone,
+        title = { Text("Order placed") },
+        text = {
+            Column {
+                Text("%,.0f RWF".format(order.totalAmount), color = TossText, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Spacer(modifier = Modifier.height(6.dp))
+                Text("Delivering to ${order.deliveryAddress}", color = TossSecondary, fontSize = 13.sp)
+            }
+        },
+        confirmButton = { TextButton(onClick = onDone) { Text("Track order") } },
+    )
+}
+
+@Composable
+private fun EatsOrderRow(order: EatsOrderDto, action: (@Composable () -> Unit)? = null) {
+    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(EATS_STATUS_LABEL[order.status] ?: order.status, color = TossBlue, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text(order.deliveryAddress, color = TossSecondary, fontSize = 12.sp)
+                }
+                Text("%,.0f RWF".format(order.totalAmount), color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+            action?.invoke()
+        }
+    }
+}
+
+@Composable
+private fun MyEatsOrdersView() {
+    var orders by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyEatsOrders()
+                if (res.success) orders = res.orders
+                error = null
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+    // Real poll for order-tracking status, same 4s cadence as Talk's own poll.
+    LaunchedEffect(Unit) {
+        while (true) {
+            load()
+            delay(4000)
+        }
+    }
+
+    Column {
+        if (error != null) {
+            ErrorCard(error!!, onRetry = ::load)
+        } else if (orders == null) {
+            Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {}
+        } else if (orders!!.isEmpty()) {
+            Text("No orders yet.", color = TossSecondary, fontSize = 14.sp)
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                orders!!.forEach { o -> EatsOrderRow(o) }
+            }
+        }
+    }
+}
+
+// ============================== DELIVER (Rider) ==============================
+
+@Composable
+private fun DeliverContent() {
+    var rider by remember { mutableStateOf<RiderDto?>(null) }
+    var loadedRider by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var registering by remember { mutableStateOf(false) }
+    var available by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
+    var mine by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
+    var busyOrderId by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun loadRider() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyRiderProfile()
+                if (res.success) rider = res.rider
+                error = null
+            } catch (e: HttpException) {
+                if (e.code() == 404) {
+                    rider = null
+                } else {
+                    error = superAppErrorMessage(e)
+                }
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                loadedRider = true
+            }
+        }
+    }
+    LaunchedEffect(Unit) { loadRider() }
+
+    suspend fun loadDeliveries() {
+        try {
+            val a = NetworkClient.apiService.getAvailableDeliveries()
+            val m = NetworkClient.apiService.getRiderDeliveries()
+            if (a.success) available = a.orders
+            if (m.success) mine = m.orders
+        } catch (_: Exception) {
+            // Keep showing the last-known lists on a transient poll failure.
+        }
+    }
+    LaunchedEffect(rider?.id) {
+        if (rider == null) return@LaunchedEffect
+        while (true) {
+            loadDeliveries()
+            delay(4000)
+        }
+    }
+
+    if (!loadedRider) {
+        Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {}
+        return
+    }
+
+    val currentRider = rider
+    if (currentRider == null) {
+        Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Deliver with Itunda", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    "Earn a real delivery fee for every order you deliver, paid straight to your wallet.",
+                    color = TossSecondary,
+                    fontSize = 13.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(TossBlue)
+                        .clickable(enabled = !registering) {
+                            registering = true
+                            error = null
+                            coroutineScope.launch {
+                                try {
+                                    val res = NetworkClient.apiService.registerRider()
+                                    if (res.success) rider = res.rider
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } finally {
+                                    registering = false
+                                }
+                            }
+                        }
+                        .padding(horizontal = 24.dp, vertical = 14.dp),
+                ) { Text(if (registering) "Registering…" else "Become a rider", color = Color.White, fontWeight = FontWeight.Bold) }
+                error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp)) }
+            }
+        }
+        return
+    }
+
+    val activeDeliveries = mine.orEmpty().filter { it.status != "DELIVERED" }
+    val pastDeliveries = mine.orEmpty().filter { it.status == "DELIVERED" }
+
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap), contentPadding = PaddingValues(bottom = 20.dp)) {
+        item {
+            Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Row(modifier = Modifier.padding(18.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column {
+                        Text(if (currentRider.available) "You're online" else "You're offline", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text(if (currentRider.available) "Visible for new deliveries" else "Go online to see deliveries", color = TossSecondary, fontSize = 12.sp)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (currentRider.available) Tds.colors.danger else TossBlue)
+                            .clickable {
+                                coroutineScope.launch {
+                                    try {
+                                        val res = NetworkClient.apiService.setRiderAvailability(SetRiderAvailabilityRequest(!currentRider.available))
+                                        if (res.success) rider = res.rider
+                                    } catch (e: HttpException) {
+                                        error = superAppErrorMessage(e)
+                                    }
+                                }
+                            }
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                    ) { Text(if (currentRider.available) "Go offline" else "Go online", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                }
+            }
+        }
+        error?.let { item { Text(it, color = Tds.colors.danger, fontSize = 12.sp) } }
+        if (activeDeliveries.isNotEmpty()) {
+            item { Text("Your active deliveries", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            items(activeDeliveries, key = { it.id }) { o ->
+                val next = nextRiderStatus(o.status)
+                EatsOrderRow(o) {
+                    if (next != null) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(TossBlue)
+                                .clickable(enabled = busyOrderId != o.id) {
+                                    busyOrderId = o.id
+                                    error = null
+                                    coroutineScope.launch {
+                                        try {
+                                            NetworkClient.apiService.updateRiderOrderStatus(o.id, UpdateEatsOrderStatusRequest(next))
+                                            loadDeliveries()
+                                        } catch (e: HttpException) {
+                                            error = superAppErrorMessage(e)
+                                        } finally {
+                                            busyOrderId = null
+                                        }
+                                    }
+                                }
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                        ) {
+                            Text(
+                                if (busyOrderId == o.id) "Updating…" else "Mark ${(EATS_STATUS_LABEL[next] ?: next).lowercase()}",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        if (currentRider.available) {
+            item { Text("Available deliveries", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            if (available == null) {
+                item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(100.dp)) {} }
+            } else if (available!!.isEmpty()) {
+                item { Text("No deliveries waiting right now.", color = TossSecondary, fontSize = 13.sp) }
+            } else {
+                items(available!!, key = { it.id }) { o ->
+                    EatsOrderRow(o) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(TossBlue)
+                                .clickable(enabled = busyOrderId != o.id) {
+                                    busyOrderId = o.id
+                                    error = null
+                                    coroutineScope.launch {
+                                        try {
+                                            NetworkClient.apiService.claimDelivery(o.id)
+                                            loadDeliveries()
+                                        } catch (e: HttpException) {
+                                            error = superAppErrorMessage(e)
+                                        } finally {
+                                            busyOrderId = null
+                                        }
+                                    }
+                                }
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                        ) { Text(if (busyOrderId == o.id) "Claiming…" else "Claim delivery", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                    }
+                }
+            }
+        }
+        if (pastDeliveries.isNotEmpty()) {
+            item { Text("Completed", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+            items(pastDeliveries, key = { it.id }) { o -> EatsOrderRow(o) }
+        }
+    }
 }

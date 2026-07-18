@@ -311,6 +311,39 @@ data class OrderItemDto(val id: String, val orderId: String, val productId: Stri
 data class OrderDetailResponse(val success: Boolean, val order: OrderDto, val items: List<OrderItemDto>)
 data class OrdersResponse(val success: Boolean, val orders: List<OrderDto>)
 
+// Mirrors services/backend/eats's real DTOs exactly (2026-07-18) -- backs the Eats mode
+// folded into the Shop tab. Restaurant/menu browsing reuses ShoppingMerchantDto/
+// MerchantProductDto above (a restaurant IS a Merchant, a menu item IS a
+// MerchantProduct -- see rw.itunda.eats.EatsOrderService's own doc comment).
+data class EatsOrderItemRequest(val menuItemId: String, val quantity: Int)
+data class PlaceEatsOrderRequest(val restaurantId: String, val items: List<EatsOrderItemRequest>, val deliveryAddress: String)
+data class UpdateEatsOrderStatusRequest(val status: String)
+data class SetRiderAvailabilityRequest(val available: Boolean)
+
+data class EatsOrderDto(
+    val id: String,
+    val buyerId: String,
+    val restaurantId: String,
+    val riderId: String?,
+    val deliveryAddress: String,
+    val itemsSubtotal: Double,
+    val deliveryFee: Double,
+    val platformFee: Double,
+    val totalAmount: Double,
+    val transactionId: String,
+    val deliveryPayoutTransactionId: String?,
+    val status: String,
+    val createdAt: String,
+    val updatedAt: String,
+)
+
+data class EatsOrderItemDto(val id: String, val orderId: String, val productId: String, val productName: String, val unitPrice: Double, val quantity: Int)
+data class EatsOrderDetailResponse(val success: Boolean, val order: EatsOrderDto, val items: List<EatsOrderItemDto>)
+data class EatsOrdersResponse(val success: Boolean, val orders: List<EatsOrderDto>)
+
+data class RiderDto(val id: String, val userId: String, val walletId: String, val status: String, val available: Boolean, val createdAt: String)
+data class RiderResponse(val success: Boolean, val rider: RiderDto)
+
 // Retrofit Interface to map to your Spring endpoints -- all require the real
 // Bearer token NetworkClient's authInterceptor now injects (2026-07-11).
 interface ApiService {
@@ -410,6 +443,34 @@ interface ApiService {
 
     @GET("api/v1/orders/{id}")
     suspend fun getOrder(@Path("id") orderId: String): OrderDetailResponse
+
+    // Real Coupang Eats-style food delivery (2026-07-18) -- see rw.itunda.eats.web.EatsController.
+    @POST("api/v1/eats/orders")
+    suspend fun placeEatsOrder(@Header("Idempotency-Key") idempotencyKey: String, @Body request: PlaceEatsOrderRequest): EatsOrderDetailResponse
+
+    @GET("api/v1/eats/orders/my-orders")
+    suspend fun getMyEatsOrders(): EatsOrdersResponse
+
+    @GET("api/v1/eats/orders/rider-deliveries")
+    suspend fun getRiderDeliveries(): EatsOrdersResponse
+
+    @GET("api/v1/eats/orders/available")
+    suspend fun getAvailableDeliveries(): EatsOrdersResponse
+
+    @POST("api/v1/eats/orders/{id}/claim")
+    suspend fun claimDelivery(@Path("id") orderId: String): EatsOrderDetailResponse
+
+    @POST("api/v1/eats/orders/{id}/rider-status")
+    suspend fun updateRiderOrderStatus(@Path("id") orderId: String, @Body request: UpdateEatsOrderStatusRequest): EatsOrderDetailResponse
+
+    @POST("api/v1/eats/riders/register")
+    suspend fun registerRider(): RiderResponse
+
+    @GET("api/v1/eats/riders/me")
+    suspend fun getMyRiderProfile(): RiderResponse
+
+    @POST("api/v1/eats/riders/availability")
+    suspend fun setRiderAvailability(@Body request: SetRiderAvailabilityRequest): RiderResponse
 }
 
 data class TransactionHistoryResponse(val success: Boolean, val transactions: List<TransactionDto>)
