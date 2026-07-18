@@ -80,6 +80,17 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "message" to message))
     }
 
+    // Real member list with real resolved display names (2026-07-18) -- see
+    // GroupMessagingService.getMembers's own doc comment.
+    @GetMapping("/{groupId}/members")
+    fun getMembers(
+        @PathVariable groupId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val members = groupMessagingService.getMembers(currentUser.userId, groupId)
+        return ResponseEntity.ok(mapOf("success" to true, "members" to members))
+    }
+
     @PostMapping("/{groupId}/members")
     fun addMember(
         @PathVariable groupId: String,

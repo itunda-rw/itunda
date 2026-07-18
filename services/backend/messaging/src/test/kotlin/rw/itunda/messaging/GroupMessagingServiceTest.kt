@@ -187,6 +187,39 @@ class GroupMessagingServiceTest : BehaviorSpec({
             }
         }
 
+        When("a real member fetches the real group member list") {
+            every { groupConversationRepository.findById("group_1") } returns Optional.of(group)
+            every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "user_a") } returns members[0]
+            every { groupConversationMemberRepository.findByGroupConversationId("group_1") } returns members
+            every { userRepository.findAllById(listOf("user_a", "user_b", "user_c")) } returns listOf(
+                user("user_a", "Alice"), user("user_b", "Beata"), user("user_c", "Chris"),
+            )
+
+            val result = service.getMembers("user_a", "group_1")
+
+            Then("it returns every real member with their real resolved display name") {
+                result shouldBe listOf(
+                    GroupMemberInfo("user_a", "Alice Test"),
+                    GroupMemberInfo("user_b", "Beata Test"),
+                    GroupMemberInfo("user_c", "Chris Test"),
+                )
+            }
+        }
+
+        When("a non-member tries to fetch someone else's real group member list") {
+            every { groupConversationRepository.findById("group_1") } returns Optional.of(group)
+            every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "stranger") } returns null
+
+            Then("it throws GroupNotFoundException, not a 403 that would confirm the group exists") {
+                try {
+                    service.getMembers("stranger", "group_1")
+                    error("expected GroupNotFoundException")
+                } catch (e: GroupNotFoundException) {
+                    // expected
+                }
+            }
+        }
+
         When("a real member tries to add someone who's already a member") {
             every { groupConversationRepository.findById("group_1") } returns Optional.of(group)
             every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "user_a") } returns members[0]

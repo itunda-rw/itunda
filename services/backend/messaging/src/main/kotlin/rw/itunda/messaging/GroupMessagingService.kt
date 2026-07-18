@@ -36,6 +36,8 @@ data class GroupSummary(
     val unreadCount: Long,
 )
 
+data class GroupMemberInfo(val userId: String, val name: String)
+
 /**
  * Real group chat -- the single most defining KakaoTalk capability the original
  * 1:1-only messaging pair didn't cover, built at the user's direct request ("Talk
@@ -183,6 +185,23 @@ class GroupMessagingService(
             )
         }
         return PageImpl(summaries, pageable, page.totalElements)
+    }
+
+    /**
+     * Real member list with real resolved display names (2026-07-18) -- closes the
+     * honest, repeatedly-named limitation every group chat UI (bank-mfe, Android, iOS)
+     * has carried since group chat first shipped: message bubbles showing a truncated
+     * sender id instead of a real name. Batch-resolves every member's real name in one
+     * `findAllById` call rather than one query per member.
+     */
+    fun getMembers(userId: String, groupId: String): List<GroupMemberInfo> {
+        requireMember(userId, groupId)
+        val members = groupConversationMemberRepository.findByGroupConversationId(groupId)
+        val usersById = userRepository.findAllById(members.map { it.userId }).associateBy { it.id }
+        return members.map { m ->
+            val name = usersById[m.userId]?.let { "${it.firstName} ${it.lastName}" } ?: "Unknown user"
+            GroupMemberInfo(userId = m.userId, name = name)
+        }
     }
 
     @Transactional
