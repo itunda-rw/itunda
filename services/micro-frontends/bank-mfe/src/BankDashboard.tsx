@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowUpRight, Bike, LogOut, MessageCircle, Plus, ScanFace, Send, ShieldCheck, ShoppingBag, Utensils, Wallet as WalletIcon } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Bike, LogOut, MessageCircle, Plus, ScanFace, Send, ShieldCheck, ShoppingBag, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { fetchTransactions, fetchWallets, type Transaction, type Wallet } from './lib/wallet';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
 import { collectPayment, fetchShoppingCatalog, type CollectPaymentResult, type ShoppingMerchant } from './lib/shopping';
-import { connectMessagingSocket, fetchConversations, fetchMessages, sendMessage, startConversation, type ConversationSummary, type Message } from './lib/messaging';
+import {
+  connectMessagingSocket, createGroup, fetchConversations, fetchGroupMessages, fetchGroups, fetchMessages,
+  sendGroupMessage, sendMessage, startConversation, type ConversationSummary, type GroupMessage,
+  type GroupSummary, type Message,
+} from './lib/messaging';
 import { contactSeller, createListing, fetchListings, fetchMyListings, markListingSold, removeListing, type Listing } from './lib/marketplace';
 import {
   advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, fetchAvailableDeliveries, fetchMenu,
@@ -435,6 +439,67 @@ function NewChatCard({ onStarted }: { onStarted: (conversationId: string) => voi
   );
 }
 
+function NewGroupCard({ onCreated }: { onCreated: (groupId: string) => void }) {
+  const [name, setName] = useState('');
+  const [phoneNumbers, setPhoneNumbers] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    const numbers = phoneNumbers.split(',').map((n) => n.trim()).filter(Boolean);
+    if (numbers.length === 0) {
+      setError('Enter at least one phone number, separated by commas.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const group = await createGroup(name.trim(), numbers);
+      setName('');
+      setPhoneNumbers('');
+      onCreated(group.id);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not create this group.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="toss-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <h3 style={{ fontSize: '15px', fontWeight: 700 }}>New group</h3>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+        Name your group and add real members by phone number, separated by commas.
+      </p>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Group name"
+          required
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        />
+        <input
+          type="text"
+          value={phoneNumbers}
+          onChange={(e) => setPhoneNumbers(e.target.value)}
+          placeholder="+250788123456, +250788654321"
+          required
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        />
+        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+          {submitting ? 'Creating…' : 'Create group'}
+        </button>
+      </form>
+      {error && (
+        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+      )}
+    </div>
+  );
+}
+
 function ConversationThread({ conversation, onBack }: { conversation: ConversationSummary; onBack: () => void }) {
   const [messages, setMessages] = useState<Message[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -465,7 +530,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     // into state the moment it arrives, rather than waiting for the next poll tick.
     // De-duped by id since the next 4s poll will also fetch the same message.
     const disconnect = connectMessagingSocket((payload) => {
-      if (payload.conversationId !== conversation.conversationId) return;
+      if (payload.type !== 'message' || payload.conversationId !== conversation.conversationId) return;
       setMessages((prev) => {
         if (!prev) return prev;
         if (prev.some((m) => m.id === payload.message.id)) return prev;
@@ -555,7 +620,131 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   );
 }
 
-function MessagesView({ initialConversationId, onConsumedInitial }: { initialConversationId?: string | null; onConsumedInitial?: () => void }) {
+function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => void }) {
+  const [messages, setMessages] = useState<GroupMessage[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+  const [sending, setSending] = useState(false);
+  const currentUser = getStoredUser();
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  const load = () =>
+    fetchGroupMessages(group.groupId)
+      .then(setMessages)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this group.'));
+
+  useEffect(() => {
+    load();
+    // Real 4s poll as an always-correct fallback, same reasoning as ConversationThread's
+    // own identical poll -- kept even with the live socket below.
+    const interval = setInterval(load, 4000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [group.groupId]);
+
+  useEffect(() => {
+    // Real WebSocket live delivery for group chat (2026-07-18) -- same real push
+    // GroupMessagingService.sendMessage fans out to every other real member.
+    const disconnect = connectMessagingSocket((payload) => {
+      if (payload.type !== 'group_message' || payload.groupConversationId !== group.groupId) return;
+      setMessages((prev) => {
+        if (!prev) return prev;
+        if (prev.some((m) => m.id === payload.message.id)) return prev;
+        return [...prev, payload.message];
+      });
+    });
+    return disconnect;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [group.groupId]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const body = draft.trim();
+    if (!body) return;
+    setSending(true);
+    setError(null);
+    try {
+      const sent = await sendGroupMessage(group.groupId, body);
+      setMessages((prev) => [...(prev ?? []), sent]);
+      setDraft('');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send this message.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100svh - 180px)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to conversations">
+          <ArrowLeft size={20} />
+        </button>
+        <div>
+          <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{group.name}</h3>
+          <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{group.memberCount} members</p>
+        </div>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px' }}>
+        {messages === null && <div className="toss-card skeleton" style={{ height: '120px' }} />}
+        {messages !== null && messages.length === 0 && (
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', textAlign: 'center', marginTop: '20px' }}>
+            Say hello — no messages yet.
+          </p>
+        )}
+        {messages?.map((m) => {
+          const isMine = m.senderId === currentUser?.id;
+          return (
+            <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
+              {!isMine && (
+                <span style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginBottom: '2px', marginLeft: '4px' }}>
+                  {m.senderId.slice(0, 12)}
+                </span>
+              )}
+              <div
+                style={{
+                  maxWidth: '75%',
+                  padding: '10px 14px',
+                  borderRadius: '16px',
+                  fontSize: '14px',
+                  backgroundColor: isMine ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+                  color: isMine ? 'var(--toss-white)' : 'var(--toss-grey-900)',
+                }}
+              >
+                {m.body}
+              </div>
+            </div>
+          );
+        })}
+        <div ref={bottomRef} />
+      </div>
+
+      {error && (
+        <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>
+      )}
+
+      <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px' }}>
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Message"
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        />
+        <button type="submit" className="toss-btn toss-btn-primary" disabled={sending || !draft.trim()} style={{ padding: '10px 16px' }}>
+          <Send size={16} />
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function DirectMessagesList({ initialConversationId, onConsumedInitial }: { initialConversationId?: string | null; onConsumedInitial?: () => void }) {
   const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openConversationId, setOpenConversationId] = useState<string | null>(null);
@@ -645,6 +834,121 @@ function MessagesView({ initialConversationId, onConsumedInitial }: { initialCon
             </button>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+function GroupsList() {
+  const [groups, setGroups] = useState<GroupSummary[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [openGroupId, setOpenGroupId] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchGroups()
+      .then(setGroups)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your groups.'));
+  };
+
+  useEffect(load, []);
+
+  const openGroup = groups?.find((g) => g.groupId === openGroupId);
+  if (openGroup) {
+    return (
+      <GroupThread
+        group={openGroup}
+        onBack={() => {
+          setOpenGroupId(null);
+          load();
+        }}
+      />
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="toss-card">
+        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+      </div>
+    );
+  }
+
+  if (groups === null) {
+    return <div className="toss-card skeleton" style={{ height: '220px' }} />;
+  }
+
+  return (
+    <div>
+      <NewGroupCard onCreated={(id) => { load(); setOpenGroupId(id); }} />
+      {groups.length === 0 ? (
+        <div className="toss-card">
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No groups yet.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {groups.map((g) => (
+            <button
+              key={g.groupId}
+              onClick={() => setOpenGroupId(g.groupId)}
+              className="toss-card"
+              style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%' }}
+            >
+              <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Users size={20} color="var(--toss-blue)" />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{g.name} · {g.memberCount}</p>
+                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {g.lastMessagePreview ?? 'No messages yet'}
+                </p>
+              </div>
+              {g.unreadCount > 0 && (
+                <span
+                  style={{
+                    fontSize: '11px', fontWeight: 700, color: 'var(--toss-white)', backgroundColor: 'var(--toss-blue)',
+                    borderRadius: '10px', padding: '2px 8px', flexShrink: 0,
+                  }}
+                >
+                  {g.unreadCount}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Real group chat (2026-07-18) folded in via a Direct/Groups toggle -- the single most
+// defining KakaoTalk capability the original 1:1-only Messages tab didn't cover, added
+// at the user's direct request. See GroupMessagingService.kt's own doc comment.
+function MessagesView({ initialConversationId, onConsumedInitial }: { initialConversationId?: string | null; onConsumedInitial?: () => void }) {
+  const [mode, setMode] = useState<'DIRECT' | 'GROUPS'>('DIRECT');
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+        {(['DIRECT', 'GROUPS'] as const).map((v) => (
+          <button
+            key={v}
+            onClick={() => setMode(v)}
+            style={{
+              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
+              color: mode === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+              backgroundColor: mode === v ? 'var(--toss-blue)' : 'transparent',
+            }}
+          >
+            {v === 'DIRECT' ? 'Direct' : 'Groups'}
+          </button>
+        ))}
+      </div>
+      {mode === 'DIRECT' ? (
+        <DirectMessagesList initialConversationId={initialConversationId} onConsumedInitial={onConsumedInitial} />
+      ) : (
+        <GroupsList />
       )}
     </div>
   );

@@ -54,11 +54,64 @@ export const sendMessage = (conversationId: string, body: string) =>
     body: JSON.stringify({ body }),
   }).then((r) => r.message);
 
+// Real group chat (2026-07-18) -- the single most defining KakaoTalk capability the
+// original 1:1-only pair above didn't cover, added at the user's direct request
+// ("Talk should be 100% like KakaoTalk + 당근 채팅 for Rwanda"). See
+// GroupMessagingService.kt's own doc comment for the full backend account.
+
+export interface GroupSummary {
+  groupId: string;
+  name: string;
+  memberCount: number;
+  lastMessageAt: string;
+  lastMessagePreview: string | null;
+  unreadCount: number;
+}
+
+export interface GroupMessage {
+  id: string;
+  groupConversationId: string;
+  senderId: string;
+  body: string;
+  sentAt: string;
+}
+
+// memberPhoneNumbers is the real human-friendly entry point (same reasoning as
+// startConversation's phoneNumber) -- a real UI user only ever knows someone else's
+// phone number, never their internal id.
+export const createGroup = (name: string, memberPhoneNumbers: string[]) =>
+  apiFetch<{ success: boolean; group: { id: string; name: string } }>('/api/v1/messages/groups', {
+    method: 'POST',
+    body: JSON.stringify({ name, memberPhoneNumbers }),
+  }).then((r) => r.group);
+
+export const fetchGroups = () =>
+  apiFetch<{ success: boolean; groups: GroupSummary[] }>('/api/v1/messages/groups').then((r) => r.groups);
+
+export const fetchGroupMessages = (groupId: string) =>
+  apiFetch<{ success: boolean; messages: GroupMessage[] }>(`/api/v1/messages/groups/${groupId}/messages`).then(
+    (r) => [...r.messages].reverse(),
+  );
+
+export const sendGroupMessage = (groupId: string, body: string) =>
+  apiFetch<{ success: boolean; message: GroupMessage }>(`/api/v1/messages/groups/${groupId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ body }),
+  }).then((r) => r.message);
+
 interface MessagePushPayload {
   type: 'message';
   conversationId: string;
   message: Message;
 }
+
+interface GroupMessagePushPayload {
+  type: 'group_message';
+  groupConversationId: string;
+  message: GroupMessage;
+}
+
+type SocketPushPayload = MessagePushPayload | GroupMessagePushPayload;
 
 // Real WebSocket live-transport (2026-07-18) -- see
 // rw.itunda.core.realtime.RealtimeMessagePublisher's own doc comment for the full
@@ -70,7 +123,7 @@ interface MessagePushPayload {
 // silently does nothing further -- callers are expected to keep their existing 4s poll
 // running regardless, so a live push is a real latency improvement layered on top of an
 // always-correct fallback, never a single point of failure for message delivery.
-export function connectMessagingSocket(onMessage: (payload: MessagePushPayload) => void): () => void {
+export function connectMessagingSocket(onMessage: (payload: SocketPushPayload) => void): () => void {
   const token = getToken();
   if (!token) return () => {};
 
@@ -79,8 +132,8 @@ export function connectMessagingSocket(onMessage: (payload: MessagePushPayload) 
 
   socket.addEventListener('message', (event) => {
     try {
-      const payload = JSON.parse(event.data) as MessagePushPayload;
-      if (payload.type === 'message') onMessage(payload);
+      const payload = JSON.parse(event.data) as SocketPushPayload;
+      if (payload.type === 'message' || payload.type === 'group_message') onMessage(payload);
     } catch {
       // Malformed/unexpected frame -- ignore, the poll fallback still covers delivery.
     }
