@@ -931,6 +931,7 @@ private val EATS_STATUS_LABEL = mapOf(
     "RIDER_ASSIGNED" to "Rider on the way to restaurant",
     "PICKED_UP" to "Picked up — on the way",
     "DELIVERED" to "Delivered",
+    "CANCELLED" to "Cancelled — refunded",
 )
 
 private val RIDER_STATUS_CHAIN = listOf("RIDER_ASSIGNED", "PICKED_UP", "DELIVERED")
@@ -1274,6 +1275,7 @@ private fun EatsOrderRow(order: EatsOrderDto, action: (@Composable () -> Unit)? 
 private fun MyEatsOrdersView() {
     var orders by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
+    var cancellingId by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
@@ -1297,6 +1299,23 @@ private fun MyEatsOrdersView() {
         }
     }
 
+    fun cancel(orderId: String) {
+        cancellingId = orderId
+        error = null
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.cancelEatsOrder(orderId)
+                load()
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                cancellingId = null
+            }
+        }
+    }
+
     Column {
         if (error != null) {
             ErrorCard(error!!, onRetry = ::load)
@@ -1306,7 +1325,26 @@ private fun MyEatsOrdersView() {
             Text("No orders yet.", color = TossSecondary, fontSize = 14.sp)
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                orders!!.forEach { o -> EatsOrderRow(o) }
+                orders!!.forEach { o ->
+                    EatsOrderRow(o) {
+                        if (o.status == "PLACED") {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Tds.colors.danger)
+                                    .clickable(enabled = cancellingId != o.id) { cancel(o.id) }
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                            ) {
+                                Text(
+                                    if (cancellingId == o.id) "Cancelling…" else "Cancel order",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }

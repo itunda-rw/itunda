@@ -16,6 +16,7 @@ private let eatsStatusLabel: [String: String] = [
     "RIDER_ASSIGNED": "Rider on the way to restaurant",
     "PICKED_UP": "Picked up — on the way",
     "DELIVERED": "Delivered",
+    "CANCELLED": "Cancelled — refunded",
 ]
 
 private let riderStatusChain = ["RIDER_ASSIGNED", "PICKED_UP", "DELIVERED"]
@@ -403,6 +404,7 @@ extension EatsOrderRow where Action == EmptyView {
 private struct MyEatsOrdersView: View {
     @State private var orders: [EatsOrderDto]?
     @State private var error: String?
+    @State private var cancellingId: String?
 
     var body: some View {
         Group {
@@ -421,7 +423,19 @@ private struct MyEatsOrdersView: View {
                 Text("No orders yet.").foregroundColor(IDS.Colors.textSecondary)
             } else {
                 VStack(spacing: 10) {
-                    ForEach(orders!) { EatsOrderRow(order: $0) }
+                    ForEach(orders!) { order in
+                        EatsOrderRow(order: order) {
+                            if order.status == "PLACED" {
+                                Button(action: { Task { await cancel(order.id) } }) {
+                                    Text(cancellingId == order.id ? "Cancelling…" : "Cancel order")
+                                        .font(.subheadline).bold().foregroundColor(.white)
+                                        .frame(maxWidth: .infinity).padding(.vertical, 10)
+                                        .background(Color.red).cornerRadius(12)
+                                }
+                                .disabled(cancellingId == order.id)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -439,6 +453,20 @@ private struct MyEatsOrdersView: View {
             let res = try await NetworkClient.shared.getMyEatsOrders()
             orders = res.orders
             error = nil
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func cancel(_ orderId: String) async {
+        cancellingId = orderId
+        error = nil
+        defer { cancellingId = nil }
+        do {
+            _ = try await NetworkClient.shared.cancelEatsOrder(orderId)
+            await load()
+        } catch let NetworkError.httpError(statusCode) {
+            error = TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }

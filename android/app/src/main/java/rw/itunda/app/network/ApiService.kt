@@ -451,6 +451,11 @@ interface ApiService {
     @GET("api/v1/eats/orders/my-orders")
     suspend fun getMyEatsOrders(): EatsOrdersResponse
 
+    // Real cancellation + refund (2026-07-18) -- buyer or restaurant, PLACED orders
+    // only. See rw.itunda.eats.EatsOrderService.cancelOrder's own doc comment.
+    @POST("api/v1/eats/orders/{id}/cancel")
+    suspend fun cancelEatsOrder(@Path("id") orderId: String): EatsOrderDetailResponse
+
     @GET("api/v1/eats/orders/rider-deliveries")
     suspend fun getRiderDeliveries(): EatsOrdersResponse
 

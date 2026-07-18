@@ -557,6 +557,12 @@ extension NetworkClient {
     }
 
     func getMyEatsOrders() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/my-orders") }
+
+    /// Real cancellation + refund (2026-07-18) -- buyer or restaurant, PLACED orders
+    /// only. See rw.itunda.eats.EatsOrderService.cancelOrder's own doc comment.
+    func cancelEatsOrder(_ orderId: String) async throws -> EatsOrderDetailResponse {
+        try await authenticatedPost("api/v1/eats/orders/\(orderId)/cancel", body: EmptyBody())
+    }
     func getRiderDeliveries() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/rider-deliveries") }
     func getAvailableDeliveries() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/available") }
 
