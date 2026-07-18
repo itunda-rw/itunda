@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.icons.outlined.ShoppingCart
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -58,6 +59,8 @@ import rw.itunda.app.network.ConversationSummaryDto
 import rw.itunda.app.network.CreateListingRequest
 import rw.itunda.app.network.EatsOrderDto
 import rw.itunda.app.network.AddressSuggestionDto
+import rw.itunda.app.network.EatsRatingResponse
+import rw.itunda.app.network.SubmitEatsReviewRequest
 import rw.itunda.app.network.EatsOrderItemRequest
 import rw.itunda.app.network.ListingDto
 import rw.itunda.app.network.MerchantProductDto
@@ -1256,6 +1259,138 @@ private fun OrderFoodContent() {
     }
 }
 
+// Real post-delivery ratings & reviews (2026-07-18) -- itunda's own self-hosted rating
+// system, ported from bank-mfe's own review UI (the template for this Android version).
+private val StarGold = Color(0xFFF5A623)
+
+@Composable
+private fun StarRatingRow(value: Int, onChange: (Int) -> Unit) {
+    Row {
+        for (n in 1..5) {
+            Icon(
+                Icons.Outlined.Star,
+                contentDescription = "$n star${if (n == 1) "" else "s"}",
+                tint = if (n <= value) StarGold else TossTertiary,
+                modifier = Modifier.size(26.dp).clickable { onChange(n) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun RestaurantRatingBadge(restaurantId: String) {
+    var rating by remember { mutableStateOf<EatsRatingResponse?>(null) }
+    LaunchedEffect(restaurantId) {
+        try {
+            rating = NetworkClient.apiService.getRestaurantRating(restaurantId)
+        } catch (e: Exception) {
+            // Real, non-critical -- a rating fetch failure shouldn't block browsing the menu.
+        }
+    }
+    val r = rating
+    if (r != null && r.count > 0) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Outlined.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(14.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("%.1f (%d)".format(r.average ?: 0.0, r.count), color = TossSecondary, fontSize = 13.sp)
+        }
+    }
+}
+
+@Composable
+private fun ReviewOrderCard(order: EatsOrderDto) {
+    var open by remember { mutableStateOf(false) }
+    var done by remember { mutableStateOf(false) }
+    var restaurantRating by remember { mutableStateOf(0) }
+    var restaurantComment by remember { mutableStateOf("") }
+    var riderRating by remember { mutableStateOf(0) }
+    var riderComment by remember { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    if (done) {
+        Text("Thanks for your review!", color = TossSecondary, fontSize = 13.sp)
+        return
+    }
+    if (!open) {
+        Box(
+            modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(TossTertiary).clickable { open = true }.padding(horizontal = 16.dp, vertical = 10.dp),
+        ) {
+            Text("Rate this order", color = TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        }
+        return
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
+        Column {
+            Text("Restaurant", color = TossSecondary, fontSize = 12.sp)
+            StarRatingRow(restaurantRating) { restaurantRating = it }
+            OutlinedTextField(
+                value = restaurantComment,
+                onValueChange = { restaurantComment = it },
+                placeholder = { Text("How was the food? (optional)") },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        Column {
+            Text("Rider", color = TossSecondary, fontSize = 12.sp)
+            StarRatingRow(riderRating) { riderRating = it }
+            OutlinedTextField(
+                value = riderComment,
+                onValueChange = { riderComment = it },
+                placeholder = { Text("How was the delivery? (optional)") },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(
+                modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(TossTertiary).clickable { open = false }.padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) { Text("Cancel", color = TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (submitting) TossTertiary else TossBlue)
+                    .clickable(enabled = !submitting) {
+                        if (restaurantRating == 0 || riderRating == 0) {
+                            error = "Rate both the restaurant and the rider."
+                            return@clickable
+                        }
+                        submitting = true
+                        error = null
+                        coroutineScope.launch {
+                            try {
+                                NetworkClient.apiService.submitEatsReview(
+                                    order.id,
+                                    SubmitEatsReviewRequest(restaurantRating, restaurantComment.trim().ifBlank { null }, riderRating, riderComment.trim().ifBlank { null }),
+                                )
+                                done = true
+                            } catch (e: HttpException) {
+                                // A 409 here is the real ORDER_ALREADY_REVIEWED case in
+                                // practice -- this form only ever renders for a real
+                                // DELIVERED order, so the sibling "not yet delivered"
+                                // 409 can't actually occur through this UI path.
+                                if (e.code() == 409) {
+                                    done = true
+                                } else {
+                                    error = superAppErrorMessage(e)
+                                }
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
+                            } finally {
+                                submitting = false
+                            }
+                        }
+                    }
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) { Text(if (submitting) "Submitting…" else "Submit review", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+        }
+    }
+}
+
 @Composable
 private fun RestaurantMenuView(
     restaurant: ShoppingMerchantDto,
@@ -1268,6 +1403,7 @@ private fun RestaurantMenuView(
     val cartCount = cart.values.sum()
     Column(modifier = Modifier.fillMaxSize().padding(vertical = Tds.layout.screenVertical)) {
         BackTopBar(restaurant.businessName, onBack)
+        RestaurantRatingBadge(restaurant.merchantId)
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
             if (menu == null) {
                 item { Text("Loading…", color = TossSecondary, fontSize = 13.sp) }
@@ -1571,6 +1707,8 @@ private fun MyEatsOrdersView() {
                                     fontSize = 13.sp,
                                 )
                             }
+                        } else if (o.status == "DELIVERED") {
+                            ReviewOrderCard(o)
                         }
                     }
                 }

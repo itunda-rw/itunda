@@ -338,6 +338,29 @@ data class SetRiderAvailabilityRequest(val available: Boolean)
 data class AddressSuggestionDto(val displayName: String, val latitude: Double, val longitude: Double)
 data class AddressSearchResponse(val success: Boolean, val suggestions: List<AddressSuggestionDto>)
 
+// Real post-delivery ratings & reviews (2026-07-18) -- see EatsReviewService's own doc
+// comment. Ported from bank-mfe's own review UI, the template for this Android version.
+data class SubmitEatsReviewRequest(
+    val restaurantRating: Int,
+    val restaurantComment: String? = null,
+    val riderRating: Int,
+    val riderComment: String? = null,
+)
+data class EatsReviewDto(
+    val id: String,
+    val orderId: String,
+    val buyerId: String,
+    val restaurantId: String,
+    val riderId: String,
+    val restaurantRating: Int,
+    val restaurantComment: String?,
+    val riderRating: Int,
+    val riderComment: String?,
+    val createdAt: String,
+)
+data class EatsReviewResponse(val success: Boolean, val review: EatsReviewDto)
+data class EatsRatingResponse(val success: Boolean, val average: Double?, val count: Long)
+
 data class EatsOrderDto(
     val id: String,
     val buyerId: String,
@@ -481,6 +504,13 @@ interface ApiService {
     // Real address-search autocomplete (2026-07-18) -- see EatsController.searchDeliveryAddress.
     @GET("api/v1/eats/geocode/search")
     suspend fun searchDeliveryAddress(@Query("q") query: String): AddressSearchResponse
+
+    // Real post-delivery ratings & reviews (2026-07-18) -- see EatsController.submitReview.
+    @POST("api/v1/eats/orders/{id}/review")
+    suspend fun submitEatsReview(@Path("id") orderId: String, @Body request: SubmitEatsReviewRequest): EatsReviewResponse
+
+    @GET("api/v1/eats/restaurants/{id}/rating")
+    suspend fun getRestaurantRating(@Path("id") restaurantId: String): EatsRatingResponse
 
     // Real cancellation + refund (2026-07-18) -- buyer or restaurant, PLACED orders
     // only. See rw.itunda.eats.EatsOrderService.cancelOrder's own doc comment.

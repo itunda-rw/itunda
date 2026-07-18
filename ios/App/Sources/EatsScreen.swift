@@ -174,6 +174,136 @@ private struct OrderFoodContent: View {
     }
 }
 
+// Real post-delivery ratings & reviews (2026-07-18) -- itunda's own self-hosted rating
+// system, ported from bank-mfe's own review UI (the template for this iOS version).
+private struct StarRatingRow: View {
+    let value: Int
+    let onChange: (Int) -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(1...5, id: \.self) { n in
+                Button(action: { onChange(n) }) {
+                    Image(systemName: n <= value ? "star.fill" : "star")
+                        .foregroundColor(n <= value ? .yellow : IDS.Colors.textTertiary)
+                }
+            }
+        }
+    }
+}
+
+private struct RestaurantRatingBadge: View {
+    let restaurantId: String
+    @State private var rating: EatsRatingResponse?
+
+    var body: some View {
+        Group {
+            if let rating, rating.count > 0 {
+                HStack(spacing: 4) {
+                    Image(systemName: "star.fill").font(.caption).foregroundColor(.yellow)
+                    Text(String(format: "%.1f (%d)", rating.average ?? 0.0, rating.count))
+                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                }
+            }
+        }
+        .task {
+            do {
+                rating = try await NetworkClient.shared.getRestaurantRating(restaurantId)
+            } catch {
+                // Real, non-critical -- a rating fetch failure shouldn't block browsing
+                // the menu.
+            }
+        }
+    }
+}
+
+private struct ReviewOrderCard: View {
+    let order: EatsOrderDto
+
+    @State private var open = false
+    @State private var done = false
+    @State private var restaurantRating = 0
+    @State private var restaurantComment = ""
+    @State private var riderRating = 0
+    @State private var riderComment = ""
+    @State private var submitting = false
+    @State private var error: String?
+
+    var body: some View {
+        if done {
+            Text("Thanks for your review!").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+        } else if !open {
+            Button(action: { open = true }) {
+                Text("Rate this order").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    .padding(.horizontal, 16).padding(.vertical, 10)
+                    .background(IDS.Colors.chipBackground).cornerRadius(12)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Restaurant").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    StarRatingRow(value: restaurantRating) { restaurantRating = $0 }
+                    TextField("How was the food? (optional)", text: $restaurantComment)
+                        .padding(10).background(IDS.Colors.chipBackground).cornerRadius(10)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Rider").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    StarRatingRow(value: riderRating) { riderRating = $0 }
+                    TextField("How was the delivery? (optional)", text: $riderComment)
+                        .padding(10).background(IDS.Colors.chipBackground).cornerRadius(10)
+                }
+                if let error {
+                    Text(error).font(.caption).foregroundColor(.red)
+                }
+                HStack(spacing: 10) {
+                    Button(action: { open = false }) {
+                        Text("Cancel").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(IDS.Colors.chipBackground).cornerRadius(12)
+                    }
+                    Button(action: { Task { await submit() } }) {
+                        Text(submitting ? "Submitting…" : "Submit review").font(.subheadline).bold().foregroundColor(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(submitting ? IDS.Colors.textTertiary : IDS.Colors.brand).cornerRadius(12)
+                    }
+                    .disabled(submitting)
+                }
+            }
+        }
+    }
+
+    private func submit() async {
+        guard restaurantRating > 0, riderRating > 0 else {
+            error = "Rate both the restaurant and the rider."
+            return
+        }
+        submitting = true
+        error = nil
+        defer { submitting = false }
+        do {
+            _ = try await NetworkClient.shared.submitEatsReview(
+                orderId: order.id,
+                restaurantRating: restaurantRating,
+                restaurantComment: restaurantComment.trimmingCharacters(in: .whitespaces).isEmpty ? nil : restaurantComment,
+                riderRating: riderRating,
+                riderComment: riderComment.trimmingCharacters(in: .whitespaces).isEmpty ? nil : riderComment
+            )
+            done = true
+        } catch let NetworkError.httpError(statusCode) {
+            // A 409 here is the real ORDER_ALREADY_REVIEWED case in practice -- this
+            // card only ever renders for a real DELIVERED order, so the sibling "not
+            // yet delivered" 409 can't actually occur through this UI path.
+            if statusCode == 409 {
+                done = true
+            } else {
+                error = TalkScreen.errorMessage(statusCode)
+            }
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+}
+
 private struct RestaurantMenuView: View {
     let restaurant: ShoppingMerchantDto
     let menu: [MerchantProductDto]?
@@ -194,6 +324,9 @@ private struct RestaurantMenuView: View {
                 Spacer()
             }
             .padding(.horizontal, 8)
+            RestaurantRatingBadge(restaurantId: restaurant.merchantId)
+                .padding(.horizontal, IDS.Layout.screenHorizontal)
+                .padding(.top, 4)
 
             ScrollView {
                 VStack(spacing: 10) {
@@ -512,6 +645,8 @@ private struct MyEatsOrdersView: View {
                                         .background(Color.red).cornerRadius(12)
                                 }
                                 .disabled(cancellingId == order.id)
+                            } else if order.status == "DELIVERED" {
+                                ReviewOrderCard(order: order)
                             }
                         }
                     }

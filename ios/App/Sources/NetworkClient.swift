@@ -494,6 +494,29 @@ struct AddressSuggestionDto: Decodable, Identifiable {
 }
 struct AddressSearchResponse: Decodable { let success: Bool; let suggestions: [AddressSuggestionDto] }
 
+// Real post-delivery ratings & reviews (2026-07-18) -- see EatsReviewService's own doc
+// comment. Ported from bank-mfe's own review UI, the template for this iOS version.
+struct SubmitEatsReviewRequest: Encodable {
+    let restaurantRating: Int
+    let restaurantComment: String?
+    let riderRating: Int
+    let riderComment: String?
+}
+struct EatsReviewDto: Decodable {
+    let id: String
+    let orderId: String
+    let buyerId: String
+    let restaurantId: String
+    let riderId: String
+    let restaurantRating: Int
+    let restaurantComment: String?
+    let riderRating: Int
+    let riderComment: String?
+    let createdAt: String
+}
+struct EatsReviewResponse: Decodable { let success: Bool; let review: EatsReviewDto }
+struct EatsRatingResponse: Decodable { let success: Bool; let average: Double?; let count: Int }
+
 struct EatsOrderDto: Decodable, Identifiable {
     let id: String
     let buyerId: String
@@ -635,6 +658,18 @@ extension NetworkClient {
     /// self-hosted Nominatim geocoder. See EatsController.searchDeliveryAddress's own
     /// doc comment. Uses URLComponents (not appendingPathComponent) so the query string
     /// is encoded correctly -- the first query-param GET in this client.
+    // Real post-delivery ratings & reviews (2026-07-18) -- see EatsController.submitReview.
+    func submitEatsReview(orderId: String, restaurantRating: Int, restaurantComment: String?, riderRating: Int, riderComment: String?) async throws -> EatsReviewResponse {
+        try await authenticatedPost(
+            "api/v1/eats/orders/\(orderId)/review",
+            body: SubmitEatsReviewRequest(restaurantRating: restaurantRating, restaurantComment: restaurantComment, riderRating: riderRating, riderComment: riderComment)
+        )
+    }
+
+    func getRestaurantRating(_ restaurantId: String) async throws -> EatsRatingResponse {
+        try await get("api/v1/eats/restaurants/\(restaurantId)/rating")
+    }
+
     func searchDeliveryAddress(_ query: String) async throws -> AddressSearchResponse {
         var components = URLComponents(url: baseURL.appendingPathComponent("api/v1/eats/geocode/search"), resolvingAgainstBaseURL: false)!
         components.queryItems = [URLQueryItem(name: "q", value: query)]
