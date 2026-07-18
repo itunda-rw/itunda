@@ -24,7 +24,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.outlined.Star
@@ -60,6 +62,7 @@ import retrofit2.HttpException
 import rw.itunda.app.network.ConversationSummaryDto
 import rw.itunda.app.network.CreateListingRequest
 import rw.itunda.app.network.EatsOrderDto
+import rw.itunda.app.network.FavoriteRestaurantDto
 import rw.itunda.app.network.AddressSuggestionDto
 import rw.itunda.app.network.CreateGroupRequest
 import rw.itunda.app.network.EatsRatingResponse
@@ -1452,7 +1455,7 @@ private fun EatsContent() {
     }
 }
 
-private enum class OrderFoodView { BROWSE, ORDERS }
+private enum class OrderFoodView { BROWSE, FAVORITES, ORDERS }
 
 @Composable
 private fun OrderFoodContent() {
@@ -1472,7 +1475,37 @@ private fun OrderFoodContent() {
     var confirmedOrder by remember { mutableStateOf<EatsOrderDto?>(null) }
     var reorderingId by remember { mutableStateOf<String?>(null) }
     var reorderError by remember { mutableStateOf<String?>(null) }
+    // Real bookmarked/favorited restaurants (2026-07-19) -- a set of restaurant ids for
+    // a fast star-toggle lookup on each browse card.
+    var favoriteIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var favoritingId by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
+
+    fun loadFavorites() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyFavoriteRestaurants()
+                if (res.success) favoriteIds = res.favorites.map { it.restaurantId }.toSet()
+            } catch (e: Exception) { /* non-critical, only backs the star toggle */ }
+        }
+    }
+
+    fun toggleFavorite(restaurantId: String) {
+        favoritingId = restaurantId
+        coroutineScope.launch {
+            try {
+                if (restaurantId in favoriteIds) {
+                    NetworkClient.apiService.removeFavoriteRestaurant(restaurantId)
+                    favoriteIds = favoriteIds - restaurantId
+                } else {
+                    NetworkClient.apiService.addFavoriteRestaurant(restaurantId)
+                    favoriteIds = favoriteIds + restaurantId
+                }
+            } catch (e: Exception) { /* real, non-critical -- a failed toggle just leaves the star as-is */ } finally {
+                favoritingId = null
+            }
+        }
+    }
 
     fun loadRestaurants() {
         coroutineScope.launch {
@@ -1489,6 +1522,7 @@ private fun OrderFoodContent() {
     }
     LaunchedEffect(Unit) {
         loadRestaurants()
+        loadFavorites()
         try {
             val allRes = NetworkClient.apiService.getShoppingMerchants()
             if (allRes.success) allRestaurants = allRes.merchants
@@ -1605,7 +1639,7 @@ private fun OrderFoodContent() {
     LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)) {
         item {
             Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
-                listOf(OrderFoodView.BROWSE to "Restaurants", OrderFoodView.ORDERS to "My orders").forEach { (v, label) ->
+                listOf(OrderFoodView.BROWSE to "Restaurants", OrderFoodView.FAVORITES to "Favorites", OrderFoodView.ORDERS to "My orders").forEach { (v, label) ->
                     val selected = v == view
                     Text(
                         label,
@@ -1631,6 +1665,17 @@ private fun OrderFoodContent() {
                     Spacer(Modifier.height(8.dp))
                     Text(reorderErr, color = Tds.colors.danger, fontSize = 13.sp)
                 }
+            }
+        } else if (view == OrderFoodView.FAVORITES) {
+            item {
+                FavoriteRestaurantsView(
+                    onOpen = { fav ->
+                        val restaurant = allRestaurants?.find { it.merchantId == fav.restaurantId }
+                            ?: ShoppingMerchantDto(merchantId = fav.restaurantId, businessName = fav.businessName, category = fav.category, cashbackRate = "1%")
+                        openRestaurant(restaurant)
+                    },
+                    onChanged = ::loadFavorites,
+                )
             }
         } else {
             item {
@@ -1700,8 +1745,97 @@ private fun OrderFoodContent() {
                                 fontSize = 12.sp,
                             )
                         }
+                        val isFavorite = m.merchantId in favoriteIds
+                        Icon(
+                            if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                            contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                            tint = if (isFavorite) Tds.colors.danger else TossSecondary,
+                            modifier = Modifier
+                                .size(22.dp)
+                                .clickable(enabled = favoritingId != m.merchantId) { toggleFavorite(m.merchantId) },
+                        )
                     }
                     Spacer(modifier = Modifier.height(4.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FavoriteRestaurantsView(onOpen: (FavoriteRestaurantDto) -> Unit, onChanged: () -> Unit) {
+    var favorites by remember { mutableStateOf<List<FavoriteRestaurantDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var removingId by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyFavoriteRestaurants()
+                if (res.success) favorites = res.favorites
+                error = null
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+    LaunchedEffect(Unit) { load() }
+
+    fun remove(restaurantId: String) {
+        removingId = restaurantId
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.removeFavoriteRestaurant(restaurantId)
+                favorites = favorites?.filterNot { it.restaurantId == restaurantId }
+                onChanged()
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                removingId = null
+            }
+        }
+    }
+
+    when {
+        error != null -> ErrorCard(error!!, onRetry = ::load)
+        favorites == null -> Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {}
+        favorites!!.isEmpty() -> Text("No favorite restaurants yet. Tap the heart on a restaurant to save it here.", color = TossSecondary, fontSize = 14.sp)
+        else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            favorites!!.forEach { f ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(Tds.layout.cardCornerRadius))
+                        .background(TossCard)
+                        .clickable { onOpen(f) }
+                        .padding(18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(TossCardSoft), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.Storefront, contentDescription = null, modifier = Modifier.size(20.dp), tint = TossBlue)
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(f.businessName, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text(
+                            if (f.category != null) "${f.category} · Real menu, real delivery" else "Real menu, real delivery",
+                            color = TossSecondary,
+                            fontSize = 12.sp,
+                        )
+                    }
+                    Icon(
+                        Icons.Filled.Favorite,
+                        contentDescription = "Remove from favorites",
+                        tint = Tds.colors.danger,
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clickable(enabled = removingId != f.restaurantId) { remove(f.restaurantId) },
+                    )
                 }
             }
         }

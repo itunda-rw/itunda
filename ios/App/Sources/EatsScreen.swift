@@ -49,7 +49,7 @@ struct EatsContent: View {
     }
 }
 
-private enum OrderFoodView { case browse, orders }
+private enum OrderFoodView { case browse, favorites, orders }
 
 private struct OrderFoodContent: View {
     @State private var view: OrderFoodView = .browse
@@ -69,6 +69,10 @@ private struct OrderFoodContent: View {
     @State private var confirmedOrder: EatsOrderDto?
     @State private var reorderingId: String?
     @State private var reorderError: String?
+    // Real bookmarked/favorited restaurants (2026-07-19) -- a set of restaurant ids for
+    // a fast star-toggle lookup on each browse card.
+    @State private var favoriteIds: Set<String> = []
+    @State private var favoritingId: String?
 
     var body: some View {
         Group {
@@ -111,6 +115,34 @@ private struct OrderFoodContent: View {
             if categories.isEmpty {
                 do { categories = try await NetworkClient.shared.getMerchantCategories().categories } catch {}
             }
+            await loadFavoriteIds()
+        }
+    }
+
+    private func loadFavoriteIds() async {
+        do {
+            let favs = try await NetworkClient.shared.getMyFavoriteRestaurants().favorites
+            favoriteIds = Set(favs.map { $0.restaurantId })
+        } catch {
+            // Real, non-critical -- only backs the star toggle.
+        }
+    }
+
+    private func toggleFavorite(_ restaurantId: String) {
+        favoritingId = restaurantId
+        Task {
+            do {
+                if favoriteIds.contains(restaurantId) {
+                    _ = try await NetworkClient.shared.removeFavoriteRestaurant(restaurantId)
+                    favoriteIds.remove(restaurantId)
+                } else {
+                    _ = try await NetworkClient.shared.addFavoriteRestaurant(restaurantId)
+                    favoriteIds.insert(restaurantId)
+                }
+            } catch {
+                // Real, non-critical -- a failed toggle just leaves the star as-is.
+            }
+            favoritingId = nil
         }
     }
 
@@ -135,6 +167,7 @@ private struct OrderFoodContent: View {
             VStack(spacing: IDS.Layout.cardGap) {
                 Picker("", selection: $view) {
                     Text("Restaurants").tag(OrderFoodView.browse)
+                    Text("Favorites").tag(OrderFoodView.favorites)
                     Text("My orders").tag(OrderFoodView.orders)
                 }
                 .pickerStyle(.segmented)
@@ -144,6 +177,15 @@ private struct OrderFoodContent: View {
                     if let reorderError {
                         Text(reorderError).foregroundColor(.red).font(.caption)
                     }
+                } else if view == .favorites {
+                    FavoriteRestaurantsView(
+                        onOpen: { favorite in
+                            let restaurant = allRestaurants?.first(where: { $0.merchantId == favorite.restaurantId })
+                                ?? ShoppingMerchantDto(merchantId: favorite.restaurantId, businessName: favorite.businessName, category: favorite.category, cashbackRate: "1%")
+                            Task { await openRestaurant(restaurant) }
+                        },
+                        onChanged: { Task { await loadFavoriteIds() } }
+                    )
                 } else {
                     TextField("Search restaurants", text: Binding(
                         get: { searchInput },
@@ -186,24 +228,29 @@ private struct OrderFoodContent: View {
                             .foregroundColor(IDS.Colors.textSecondary)
                     } else {
                         ForEach(restaurants!) { restaurant in
-                            Button(action: { Task { await openRestaurant(restaurant) } }) {
-                                HStack(spacing: 14) {
-                                    ZStack {
-                                        RoundedRectangle(cornerRadius: 14).fill(IDS.Colors.chipBackground)
-                                        Image(systemName: "fork.knife").foregroundColor(IDS.Colors.brand)
-                                    }
-                                    .frame(width: 44, height: 44)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(restaurant.businessName).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                                        Text(restaurant.category.map { "\($0) · Real menu, real delivery" } ?? "Real menu, real delivery").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                                    }
-                                    Spacer()
+                            HStack(spacing: 14) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 14).fill(IDS.Colors.chipBackground)
+                                    Image(systemName: "fork.knife").foregroundColor(IDS.Colors.brand)
                                 }
-                                .padding(18)
-                                .background(IDS.Colors.card)
-                                .cornerRadius(IDS.Layout.cardCornerRadius)
+                                .frame(width: 44, height: 44)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(restaurant.businessName).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                                    Text(restaurant.category.map { "\($0) · Real menu, real delivery" } ?? "Real menu, real delivery").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                }
+                                Spacer()
+                                Button(action: { toggleFavorite(restaurant.merchantId) }) {
+                                    Image(systemName: favoriteIds.contains(restaurant.merchantId) ? "heart.fill" : "heart")
+                                        .foregroundColor(favoriteIds.contains(restaurant.merchantId) ? .red : IDS.Colors.textSecondary)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(favoritingId == restaurant.merchantId)
                             }
-                            .buttonStyle(.plain)
+                            .padding(18)
+                            .background(IDS.Colors.card)
+                            .cornerRadius(IDS.Layout.cardCornerRadius)
+                            .contentShape(Rectangle())
+                            .onTapGesture { Task { await openRestaurant(restaurant) } }
                         }
                     }
                 }
@@ -805,6 +852,84 @@ private struct ReorderButton: View {
                 .background(IDS.Colors.brand).cornerRadius(12)
         }
         .disabled(reordering)
+    }
+}
+
+// Real bookmarked/favorited restaurants (2026-07-19) -- self-contained, mirroring
+// MyEatsOrdersView's own load/local-state pattern; onChanged resyncs OrderFoodContent's
+// favoriteIds set so the Browse tab's hearts stay correct after an unfavorite here.
+private struct FavoriteRestaurantsView: View {
+    let onOpen: (FavoriteRestaurantDto) -> Void
+    let onChanged: () -> Void
+
+    @State private var favorites: [FavoriteRestaurantDto]?
+    @State private var error: String?
+    @State private var removingId: String?
+
+    var body: some View {
+        Group {
+            if let error {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(error).foregroundColor(.red).font(.subheadline)
+                    Button("Retry") { Task { await load() } }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(20)
+                .background(IDS.Colors.card)
+                .cornerRadius(IDS.Layout.cardCornerRadius)
+            } else if favorites == nil {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+            } else if favorites!.isEmpty {
+                Text("No favorite restaurants yet. Tap the heart on a restaurant to save it here.").foregroundColor(IDS.Colors.textSecondary)
+            } else {
+                ForEach(favorites!) { favorite in
+                    HStack(spacing: 14) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 14).fill(IDS.Colors.chipBackground)
+                            Image(systemName: "fork.knife").foregroundColor(IDS.Colors.brand)
+                        }
+                        .frame(width: 44, height: 44)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(favorite.businessName).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                            Text(favorite.category.map { "\($0) · Real menu, real delivery" } ?? "Real menu, real delivery").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                        Spacer()
+                        Button(action: { Task { await remove(favorite.restaurantId) } }) {
+                            Image(systemName: "heart.fill").foregroundColor(.red)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(removingId == favorite.restaurantId)
+                    }
+                    .padding(18)
+                    .background(IDS.Colors.card)
+                    .cornerRadius(IDS.Layout.cardCornerRadius)
+                    .contentShape(Rectangle())
+                    .onTapGesture { onOpen(favorite) }
+                }
+            }
+        }
+        .task { if favorites == nil { await load() } }
+    }
+
+    private func load() async {
+        do {
+            favorites = try await NetworkClient.shared.getMyFavoriteRestaurants().favorites
+            error = nil
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func remove(_ restaurantId: String) async {
+        removingId = restaurantId
+        do {
+            _ = try await NetworkClient.shared.removeFavoriteRestaurant(restaurantId)
+            favorites?.removeAll { $0.restaurantId == restaurantId }
+            onChanged()
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+        removingId = nil
     }
 }
 

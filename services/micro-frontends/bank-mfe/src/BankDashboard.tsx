@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowUpRight, Bike, LogOut, MessageCircle, Plus, ScanFace, Send, ShieldCheck, ShoppingBag, Star, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Bike, Heart, LogOut, MessageCircle, Plus, ScanFace, Send, ShieldCheck, ShoppingBag, Star, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { fetchTransactions, fetchWallets, type Transaction, type Wallet } from './lib/wallet';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
@@ -12,10 +12,11 @@ import {
 } from './lib/messaging';
 import { contactSeller, createListing, fetchListings, fetchMyListings, markListingSold, removeListing, type Listing } from './lib/marketplace';
 import {
-  advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, fetchAvailableDeliveries, fetchEatsOrder, fetchMenu,
-  fetchMyEatsOrders, fetchMyRiderProfile, fetchRestaurantCategories, fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating,
-  fetchRiderDeliveries, placeEatsOrder, registerRider, searchDeliveryAddress, setRiderAvailability, submitEatsReview,
-  type AddressSuggestion, type EatsOrder, type EatsOrderStatus, type MenuItem, type RatingSummary, type Rider,
+  addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, fetchAvailableDeliveries,
+  fetchEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyRiderProfile, fetchRestaurantCategories,
+  fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRiderDeliveries, placeEatsOrder, registerRider,
+  removeFavoriteRestaurant, searchDeliveryAddress, setRiderAvailability, submitEatsReview,
+  type AddressSuggestion, type EatsOrder, type EatsOrderStatus, type FavoriteRestaurant, type MenuItem, type RatingSummary, type Rider,
 } from './lib/eats';
 import {
   advanceOrderStatus, cancelOrder, fetchMerchantOrders, fetchMerchantProducts, fetchMyOrders, placeOrder,
@@ -1622,7 +1623,7 @@ function MyEatsOrdersView({ onReorder, reorderingId }: { onReorder: (order: Eats
 }
 
 function OrderFoodView() {
-  const [view, setView] = useState<'BROWSE' | 'ORDERS'>('BROWSE');
+  const [view, setView] = useState<'BROWSE' | 'FAVORITES' | 'ORDERS'>('BROWSE');
   const [restaurants, setRestaurants] = useState<ShoppingMerchant[] | null>(null);
   // Unfiltered, fetched once -- used to resolve a past order's restaurant for Reorder
   // even when that restaurant has been filtered out of the currently-browsed list.
@@ -1637,11 +1638,37 @@ function OrderFoodView() {
   const [reorderCart, setReorderCart] = useState<Record<string, number> | null>(null);
   const [reorderingId, setReorderingId] = useState<string | null>(null);
   const [reorderError, setReorderError] = useState<string | null>(null);
+  // Real bookmarked/favorited restaurants (2026-07-19) -- a set of restaurant ids for a
+  // fast star-toggle lookup on each browse card.
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [favoritingId, setFavoritingId] = useState<string | null>(null);
+
+  const loadFavorites = () => {
+    fetchMyFavoriteRestaurants().then((favs) => setFavoriteIds(new Set(favs.map((f) => f.restaurantId)))).catch(() => {});
+  };
 
   useEffect(() => {
     fetchRestaurants().then(setAllRestaurants).catch(() => {});
     fetchRestaurantCategories().then(setCategories).catch(() => {});
+    loadFavorites();
   }, []);
+
+  const toggleFavorite = async (restaurantId: string) => {
+    setFavoritingId(restaurantId);
+    try {
+      if (favoriteIds.has(restaurantId)) {
+        await removeFavoriteRestaurant(restaurantId);
+        setFavoriteIds((prev) => { const next = new Set(prev); next.delete(restaurantId); return next; });
+      } else {
+        await addFavoriteRestaurant(restaurantId);
+        setFavoriteIds((prev) => new Set(prev).add(restaurantId));
+      }
+    } catch {
+      // Real, non-critical -- a failed toggle just leaves the star as-is; the user can retry.
+    } finally {
+      setFavoritingId(null);
+    }
+  };
 
   // Real category/search filter (2026-07-19), debounced so a search box doesn't
   // re-fetch on every keystroke.
@@ -1725,7 +1752,7 @@ function OrderFoodView() {
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'ORDERS'] as const).map((v) => (
+        {(['BROWSE', 'FAVORITES', 'ORDERS'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -1735,7 +1762,7 @@ function OrderFoodView() {
               backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Restaurants' : 'My orders'}
+            {v === 'BROWSE' ? 'Restaurants' : v === 'FAVORITES' ? 'Favorites' : 'My orders'}
           </button>
         ))}
       </div>
@@ -1745,6 +1772,11 @@ function OrderFoodView() {
           {reorderError && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '10px' }} role="alert">{reorderError}</p>}
           <MyEatsOrdersView onReorder={handleReorder} reorderingId={reorderingId} />
         </>
+      ) : view === 'FAVORITES' ? (
+        <FavoriteRestaurantsView
+          onOpen={(r) => setSelected({ merchantId: r.restaurantId, businessName: r.businessName, category: r.category, cashbackRate: '1%' })}
+          onChanged={loadFavorites}
+        />
       ) : (
         <>
           <input
@@ -1798,11 +1830,14 @@ function OrderFoodView() {
           ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {restaurants.map((r) => (
-            <button
+            <div
               key={r.merchantId}
+              role="button"
+              tabIndex={0}
               onClick={() => setSelected(r)}
+              onKeyDown={(e) => { if (e.key === 'Enter') setSelected(r); }}
               className="toss-card"
-              style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%', cursor: 'pointer' }}
             >
               <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Utensils size={20} color="var(--toss-blue)" />
@@ -1811,12 +1846,95 @@ function OrderFoodView() {
                 <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{r.businessName}</p>
                 <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{r.category ? `${r.category} · Real menu, real delivery` : 'Real menu, real delivery'}</p>
               </div>
-            </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); toggleFavorite(r.merchantId); }}
+                disabled={favoritingId === r.merchantId}
+                aria-label={favoriteIds.has(r.merchantId) ? 'Remove from favorites' : 'Add to favorites'}
+                style={{ padding: '6px', flexShrink: 0 }}
+              >
+                <Heart size={20} color={favoriteIds.has(r.merchantId) ? '#E53935' : 'var(--toss-grey-400)'} fill={favoriteIds.has(r.merchantId) ? '#E53935' : 'none'} />
+              </button>
+            </div>
           ))}
         </div>
           )}
         </>
       )}
+    </div>
+  );
+}
+
+// Real bookmarked/favorited restaurants (2026-07-19) -- self-contained, mirroring
+// MyEatsOrdersView's own load/local-state pattern; onChanged resyncs OrderFoodView's
+// favoriteIds set so the Browse tab's stars stay correct after an unfavorite here.
+function FavoriteRestaurantsView({ onOpen, onChanged }: { onOpen: (favorite: FavoriteRestaurant) => void; onChanged: () => void }) {
+  const [favorites, setFavorites] = useState<FavoriteRestaurant[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchMyFavoriteRestaurants().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load favorites.'));
+  };
+
+  useEffect(load, []);
+
+  const handleRemove = async (restaurantId: string) => {
+    setRemovingId(restaurantId);
+    try {
+      await removeFavoriteRestaurant(restaurantId);
+      setFavorites((prev) => prev?.filter((f) => f.restaurantId !== restaurantId) ?? prev);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not remove favorite.');
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="toss-card">
+        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+      </div>
+    );
+  }
+  if (favorites === null) {
+    return <div className="toss-card skeleton" style={{ height: '220px' }} />;
+  }
+  if (favorites.length === 0) {
+    return <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No favorite restaurants yet. Tap the heart on a restaurant to save it here.</p></div>;
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {favorites.map((f) => (
+        <div
+          key={f.restaurantId}
+          role="button"
+          tabIndex={0}
+          onClick={() => onOpen(f)}
+          onKeyDown={(e) => { if (e.key === 'Enter') onOpen(f); }}
+          className="toss-card"
+          style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%', cursor: 'pointer' }}
+        >
+          <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Utensils size={20} color="var(--toss-blue)" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{f.businessName}</p>
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{f.category ? `${f.category} · Real menu, real delivery` : 'Real menu, real delivery'}</p>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleRemove(f.restaurantId); }}
+            disabled={removingId === f.restaurantId}
+            aria-label="Remove from favorites"
+            style={{ padding: '6px', flexShrink: 0 }}
+          >
+            <Heart size={20} color="#E53935" fill="#E53935" />
+          </button>
+        </div>
+      ))}
     </div>
   );
 }

@@ -424,6 +424,13 @@ data class EatsOrdersResponse(val success: Boolean, val orders: List<EatsOrderDt
 data class RiderDto(val id: String, val userId: String, val walletId: String, val status: String, val available: Boolean, val createdAt: String)
 data class RiderResponse(val success: Boolean, val rider: RiderDto)
 
+// Real bookmarked/favorited restaurants (2026-07-19) -- add/remove are both idempotent
+// on the backend, see EatsFavoriteService.kt's own doc comment.
+data class FavoriteRestaurantDto(val restaurantId: String, val businessName: String, val category: String?, val favoritedAt: String)
+data class FavoriteRestaurantsResponse(val success: Boolean, val favorites: List<FavoriteRestaurantDto>)
+data class AddFavoriteResponse(val success: Boolean)
+data class RemoveFavoriteResponse(val success: Boolean)
+
 // Retrofit Interface to map to your Spring endpoints -- all require the real
 // Bearer token NetworkClient's authInterceptor now injects (2026-07-11).
 interface ApiService {
@@ -605,6 +612,17 @@ interface ApiService {
 
     @POST("api/v1/eats/riders/availability")
     suspend fun setRiderAvailability(@Body request: SetRiderAvailabilityRequest): RiderResponse
+
+    // Real bookmarked/favorited restaurants (2026-07-19) -- see
+    // EatsFavoriteService.kt's own doc comment for why add/remove are both idempotent.
+    @POST("api/v1/eats/restaurants/{id}/favorite")
+    suspend fun addFavoriteRestaurant(@Path("id") restaurantId: String): AddFavoriteResponse
+
+    @DELETE("api/v1/eats/restaurants/{id}/favorite")
+    suspend fun removeFavoriteRestaurant(@Path("id") restaurantId: String): RemoveFavoriteResponse
+
+    @GET("api/v1/eats/favorites")
+    suspend fun getMyFavoriteRestaurants(): FavoriteRestaurantsResponse
 }
 
 data class TransactionHistoryResponse(val success: Boolean, val transactions: List<TransactionDto>)

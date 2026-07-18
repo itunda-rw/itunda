@@ -201,3 +201,21 @@ export const searchDeliveryAddress = (query: string) =>
   apiFetch<{ success: boolean; suggestions: AddressSuggestion[] }>(
     `/api/v1/eats/geocode/search?q=${encodeURIComponent(query)}`,
   ).then((r) => r.suggestions);
+
+// Real bookmarked/favorited restaurants (2026-07-19) -- add/remove are both idempotent
+// on the backend, see EatsFavoriteService.kt's own doc comment.
+export interface FavoriteRestaurant {
+  restaurantId: string;
+  businessName: string;
+  category: string | null;
+  favoritedAt: string;
+}
+
+export const addFavoriteRestaurant = (restaurantId: string) =>
+  apiFetch<{ success: boolean; favorite: unknown }>(`/api/v1/eats/restaurants/${restaurantId}/favorite`, { method: 'POST' });
+
+export const removeFavoriteRestaurant = (restaurantId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/eats/restaurants/${restaurantId}/favorite`, { method: 'DELETE' });
+
+export const fetchMyFavoriteRestaurants = () =>
+  apiFetch<{ success: boolean; favorites: FavoriteRestaurant[] }>('/api/v1/eats/favorites').then((r) => r.favorites);

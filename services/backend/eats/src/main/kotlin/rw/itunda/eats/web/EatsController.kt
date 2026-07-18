@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.MissingRequestHeaderException
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -27,6 +28,7 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.eats.DeliveryAlreadyClaimedException
 import rw.itunda.eats.EatsBuyerNoWalletException
+import rw.itunda.eats.EatsFavoriteService
 import rw.itunda.eats.EatsOrderAlreadyReviewedException
 import rw.itunda.eats.EatsOrderItemRequest
 import rw.itunda.eats.EatsOrderNotFoundException
@@ -79,6 +81,7 @@ class EatsController(
     private val riderService: RiderService,
     private val eatsOrderService: EatsOrderService,
     private val eatsReviewService: EatsReviewService,
+    private val eatsFavoriteService: EatsFavoriteService,
     private val idempotencyService: IdempotencyService,
 ) {
     @PostMapping("/riders/register")
@@ -246,6 +249,35 @@ class EatsController(
     fun getRiderRating(@PathVariable riderId: String): ResponseEntity<Map<String, Any?>> {
         val rating = eatsReviewService.getRiderRating(riderId)
         return ResponseEntity.ok(mapOf("success" to true, "average" to rating.average, "count" to rating.count))
+    }
+
+    // Real bookmarked/favorited restaurants (2026-07-19) -- see EatsFavoriteService's
+    // own doc comment for why add/remove are both deliberately idempotent.
+    @PostMapping("/restaurants/{restaurantId}/favorite")
+    fun addFavorite(
+        @PathVariable restaurantId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val favorite = eatsFavoriteService.addFavorite(currentUser.userId, restaurantId)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "favorite" to favorite))
+    }
+
+    @DeleteMapping("/restaurants/{restaurantId}/favorite")
+    fun removeFavorite(
+        @PathVariable restaurantId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        eatsFavoriteService.removeFavorite(currentUser.userId, restaurantId)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    @GetMapping("/favorites")
+    fun getMyFavorites(
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = eatsFavoriteService.getMyFavorites(currentUser.userId, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "favorites" to page.content) + pageMeta(page))
     }
 
     @ExceptionHandler(RestaurantNotFoundException::class)

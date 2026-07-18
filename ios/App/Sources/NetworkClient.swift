@@ -608,6 +608,18 @@ struct EatsOrdersResponse: Decodable { let success: Bool; let orders: [EatsOrder
 struct RiderDto: Decodable, Identifiable { let id: String; let userId: String; let walletId: String; let status: String; let available: Bool; let createdAt: String }
 struct RiderResponse: Decodable { let success: Bool; let rider: RiderDto }
 
+// Real bookmarked/favorited restaurants (2026-07-19) -- add/remove are both idempotent
+// on the backend, see EatsFavoriteService.kt's own doc comment.
+struct FavoriteRestaurantDto: Decodable, Identifiable {
+    let restaurantId: String
+    let businessName: String
+    let category: String?
+    let favoritedAt: String
+    var id: String { restaurantId }
+}
+struct FavoriteRestaurantsResponse: Decodable { let success: Bool; let favorites: [FavoriteRestaurantDto] }
+struct SuccessResponse: Decodable { let success: Bool }
+
 extension NetworkClient {
     func startConversation(phoneNumber: String) async throws -> ConversationResponse {
         try await authenticatedPost("api/v1/messages/conversations", body: StartConversationRequest(phoneNumber: phoneNumber, otherUserId: nil))
@@ -812,6 +824,18 @@ extension NetworkClient {
     func setRiderAvailability(_ available: Bool) async throws -> RiderResponse {
         try await authenticatedPost("api/v1/eats/riders/availability", body: SetRiderAvailabilityRequest(available: available))
     }
+
+    // Real bookmarked/favorited restaurants (2026-07-19) -- see
+    // EatsFavoriteService.kt's own doc comment for why add/remove are both idempotent.
+    func addFavoriteRestaurant(_ restaurantId: String) async throws -> SuccessResponse {
+        try await authenticatedPost("api/v1/eats/restaurants/\(restaurantId)/favorite", body: EmptyBody())
+    }
+
+    func removeFavoriteRestaurant(_ restaurantId: String) async throws -> SuccessResponse {
+        try await authenticatedDelete("api/v1/eats/restaurants/\(restaurantId)/favorite")
+    }
+
+    func getMyFavoriteRestaurants() async throws -> FavoriteRestaurantsResponse { try await get("api/v1/eats/favorites") }
 
     /// Real DELETE support -- every other authenticated call so far was GET/POST only,
     /// see `authenticatedPost`'s own doc comment for why the Idempotency-Key handling
