@@ -305,6 +305,7 @@ data class OrderDto(
     val status: String,
     val createdAt: String,
     val updatedAt: String,
+    val refundTransactionId: String? = null,
 )
 
 data class OrderItemDto(val id: String, val orderId: String, val productId: String, val productName: String, val unitPrice: Double, val quantity: Int)
@@ -335,6 +336,7 @@ data class EatsOrderDto(
     val status: String,
     val createdAt: String,
     val updatedAt: String,
+    val refundTransactionId: String? = null,
 )
 
 data class EatsOrderItemDto(val id: String, val orderId: String, val productId: String, val productName: String, val unitPrice: Double, val quantity: Int)
@@ -443,6 +445,11 @@ interface ApiService {
 
     @GET("api/v1/orders/{id}")
     suspend fun getOrder(@Path("id") orderId: String): OrderDetailResponse
+
+    // Real cancellation + refund (2026-07-18) -- buyer or seller, PLACED orders only.
+    // See rw.itunda.commerce.OrderService.cancelOrder's own doc comment.
+    @POST("api/v1/orders/{id}/cancel")
+    suspend fun cancelOrder(@Path("id") orderId: String): OrderDetailResponse
 
     // Real Coupang Eats-style food delivery (2026-07-18) -- see rw.itunda.eats.web.EatsController.
     @POST("api/v1/eats/orders")

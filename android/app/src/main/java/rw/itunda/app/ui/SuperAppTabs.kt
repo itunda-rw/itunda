@@ -647,8 +647,11 @@ internal fun ShopTab() {
     }
 }
 
+private enum class CommerceView { BROWSE, ORDERS }
+
 @Composable
 private fun CommerceShopContent() {
+    var view by remember { mutableStateOf(CommerceView.BROWSE) }
     var merchants by remember { mutableStateOf<List<ShoppingMerchantDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var selectedMerchant by remember { mutableStateOf<ShoppingMerchantDto?>(null) }
@@ -697,6 +700,7 @@ private fun CommerceShopContent() {
             products = null
             cart.clear()
             showCheckout = false
+            view = CommerceView.ORDERS
         })
         return
     }
@@ -728,7 +732,29 @@ private fun CommerceShopContent() {
         verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap),
     ) {
         item { TabHeader("Shop") }
-        if (error != null) {
+        item {
+            Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
+                listOf(CommerceView.BROWSE to "Merchants", CommerceView.ORDERS to "My orders").forEach { (v, label) ->
+                    val selected = v == view
+                    Text(
+                        label,
+                        color = if (selected) Color.White else TossSecondary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (selected) TossBlue else Color.Transparent)
+                            .clickable { view = v }
+                            .padding(vertical = 8.dp),
+                    )
+                }
+            }
+        }
+        if (view == CommerceView.ORDERS) {
+            item { MyCommerceOrdersView() }
+        } else if (error != null) {
             item { ErrorCard(error!!, onRetry = ::loadMerchants) }
         } else if (merchants == null) {
             item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
@@ -913,6 +939,109 @@ private fun OrderConfirmationView(order: OrderDto, onDone: () -> Unit) {
         },
         confirmButton = { TextButton(onClick = onDone) { Text("Done") } },
     )
+}
+
+private val COMMERCE_STATUS_LABEL = mapOf(
+    "PLACED" to "Placed",
+    "PACKED" to "Packed",
+    "SHIPPED" to "Shipped",
+    "DELIVERED" to "Delivered",
+    "CANCELLED" to "Cancelled — refunded",
+)
+
+@Composable
+private fun CommerceOrderRow(order: OrderDto, action: (@Composable () -> Unit)? = null) {
+    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(COMMERCE_STATUS_LABEL[order.status] ?: order.status, color = TossBlue, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text(order.deliveryAddress, color = TossSecondary, fontSize = 12.sp)
+                }
+                Text("%,.0f RWF".format(order.totalAmount), color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+            action?.invoke()
+        }
+    }
+}
+
+@Composable
+private fun MyCommerceOrdersView() {
+    var orders by remember { mutableStateOf<List<OrderDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var cancellingId by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyOrders()
+                if (res.success) orders = res.orders
+                error = null
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+    // Real poll for order-tracking status, same 4s cadence as Eats' own poll.
+    LaunchedEffect(Unit) {
+        while (true) {
+            load()
+            delay(4000)
+        }
+    }
+
+    fun cancel(orderId: String) {
+        cancellingId = orderId
+        error = null
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.cancelOrder(orderId)
+                load()
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                cancellingId = null
+            }
+        }
+    }
+
+    Column {
+        if (error != null) {
+            ErrorCard(error!!, onRetry = ::load)
+        } else if (orders == null) {
+            Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {}
+        } else if (orders!!.isEmpty()) {
+            Text("No orders yet.", color = TossSecondary, fontSize = 14.sp)
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                orders!!.forEach { o ->
+                    CommerceOrderRow(o) {
+                        if (o.status == "PLACED") {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Tds.colors.danger)
+                                    .clickable(enabled = cancellingId != o.id) { cancel(o.id) }
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                            ) {
+                                Text(
+                                    if (cancellingId == o.id) "Cancelling…" else "Cancel order",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 // ============================== EATS (Coupang Eats-style) ==============================

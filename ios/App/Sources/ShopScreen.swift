@@ -34,7 +34,10 @@ struct ShopScreen: View {
     }
 }
 
+private enum CommerceView { case browse, orders }
+
 private struct CommerceShopContent: View {
+    @State private var view: CommerceView = .browse
     @State private var merchants: [ShoppingMerchantDto]?
     @State private var error: String?
     @State private var selectedMerchant: ShoppingMerchantDto?
@@ -52,6 +55,7 @@ private struct CommerceShopContent: View {
                     self.products = nil
                     self.cart = [:]
                     self.showCheckout = false
+                    self.view = .orders
                 })
             } else if let merchant = selectedMerchant {
                 if showCheckout {
@@ -82,7 +86,16 @@ private struct CommerceShopContent: View {
         ScrollView {
             VStack(spacing: IDS.Layout.cardGap) {
                 TdsPlainTopBar(title: "Shop")
-                if let error {
+
+                Picker("", selection: $view) {
+                    Text("Merchants").tag(CommerceView.browse)
+                    Text("My orders").tag(CommerceView.orders)
+                }
+                .pickerStyle(.segmented)
+
+                if view == .orders {
+                    MyCommerceOrdersView()
+                } else if let error {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(error).foregroundColor(.red).font(.subheadline)
                         Button("Retry") { Task { await loadMerchants() } }
@@ -345,5 +358,114 @@ private struct OrderConfirmationView: View {
             .padding(.bottom, 40)
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+    }
+}
+
+private let commerceStatusLabel: [String: String] = [
+    "PLACED": "Placed",
+    "PACKED": "Packed",
+    "SHIPPED": "Shipped",
+    "DELIVERED": "Delivered",
+    "CANCELLED": "Cancelled — refunded",
+]
+
+private struct CommerceOrderRow<Action: View>: View {
+    let order: OrderDto
+    @ViewBuilder let action: () -> Action
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(commerceStatusLabel[order.status] ?? order.status).font(.subheadline).bold().foregroundColor(IDS.Colors.brand)
+                    Text(order.deliveryAddress).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                }
+                Spacer()
+                Text("\(Int(order.totalAmount)) RWF").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+            }
+            action()
+        }
+        .padding(18)
+        .background(IDS.Colors.card)
+        .cornerRadius(IDS.Layout.cardCornerRadius)
+    }
+}
+
+extension CommerceOrderRow where Action == EmptyView {
+    init(order: OrderDto) {
+        self.order = order
+        self.action = { EmptyView() }
+    }
+}
+
+private struct MyCommerceOrdersView: View {
+    @State private var orders: [OrderDto]?
+    @State private var error: String?
+    @State private var cancellingId: String?
+
+    var body: some View {
+        Group {
+            if let error {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(error).foregroundColor(.red).font(.subheadline)
+                    Button("Retry") { Task { await load() } }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(20)
+                .background(IDS.Colors.card)
+                .cornerRadius(IDS.Layout.cardCornerRadius)
+            } else if orders == nil {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+            } else if orders!.isEmpty {
+                Text("No orders yet.").foregroundColor(IDS.Colors.textSecondary)
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(orders!) { order in
+                        CommerceOrderRow(order: order) {
+                            if order.status == "PLACED" {
+                                Button(action: { Task { await cancel(order.id) } }) {
+                                    Text(cancellingId == order.id ? "Cancelling…" : "Cancel order")
+                                        .font(.subheadline).bold().foregroundColor(.white)
+                                        .frame(maxWidth: .infinity).padding(.vertical, 10)
+                                        .background(Color.red).cornerRadius(12)
+                                }
+                                .disabled(cancellingId == order.id)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .task {
+            // Real poll for order-tracking status, same 4s cadence as Eats' own poll.
+            while !Task.isCancelled {
+                await load()
+                try? await Task.sleep(nanoseconds: 4_000_000_000)
+            }
+        }
+    }
+
+    private func load() async {
+        do {
+            let res = try await NetworkClient.shared.getMyOrders()
+            orders = res.orders
+            error = nil
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func cancel(_ orderId: String) async {
+        cancellingId = orderId
+        error = nil
+        defer { cancellingId = nil }
+        do {
+            _ = try await NetworkClient.shared.cancelOrder(orderId)
+            await load()
+        } catch let NetworkError.httpError(statusCode) {
+            error = TalkScreen.errorMessage(statusCode)
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
     }
 }

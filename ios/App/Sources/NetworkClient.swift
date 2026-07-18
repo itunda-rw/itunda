@@ -457,6 +457,7 @@ struct OrderDto: Decodable, Identifiable {
     let status: String
     let createdAt: String
     let updatedAt: String
+    let refundTransactionId: String?
 }
 struct OrderItemDto: Decodable, Identifiable { let id: String; let orderId: String; let productId: String; let productName: String; let unitPrice: Double; let quantity: Int }
 struct OrderDetailResponse: Decodable { let success: Bool; let order: OrderDto; let items: [OrderItemDto] }
@@ -490,6 +491,7 @@ struct EatsOrderDto: Decodable, Identifiable {
     let status: String
     let createdAt: String
     let updatedAt: String
+    let refundTransactionId: String?
 }
 struct EatsOrderItemDto: Decodable, Identifiable { let id: String; let orderId: String; let productId: String; let productName: String; let unitPrice: Double; let quantity: Int }
 struct EatsOrderDetailResponse: Decodable { let success: Bool; let order: EatsOrderDto; let items: [EatsOrderItemDto] }
@@ -550,6 +552,12 @@ extension NetworkClient {
     }
 
     func getMyOrders() async throws -> OrdersResponse { try await get("api/v1/orders/my-orders") }
+
+    /// Real cancellation + refund (2026-07-18) -- buyer or seller, PLACED orders only.
+    /// See rw.itunda.commerce.OrderService.cancelOrder's own doc comment.
+    func cancelOrder(_ orderId: String) async throws -> OrderDetailResponse {
+        try await authenticatedPost("api/v1/orders/\(orderId)/cancel", body: EmptyBody())
+    }
 
     // Real Coupang Eats-style food delivery (2026-07-18) -- see rw.itunda.eats.web.EatsController.
     func placeEatsOrder(_ request: PlaceEatsOrderRequest) async throws -> EatsOrderDetailResponse {
