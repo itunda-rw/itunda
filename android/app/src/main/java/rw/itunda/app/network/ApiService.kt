@@ -291,6 +291,12 @@ data class GroupMessagesResponse(val success: Boolean, val messages: List<GroupM
 data class GroupMessageResponse(val success: Boolean, val message: GroupMessageDto)
 data class LeaveGroupResponse(val success: Boolean)
 
+// Real member list with real resolved display names (2026-07-18) -- closes the honest,
+// named limitation this UI carried since group chat first shipped: message bubbles
+// showing a truncated sender id instead of a real name.
+data class GroupMemberDto(val userId: String, val name: String)
+data class GroupMembersResponse(val success: Boolean, val members: List<GroupMemberDto>)
+
 // Mirrors services/backend/marketplace's real DTOs exactly (2026-07-18) -- backs the
 // new "Hood" bottom-nav tab (당근마켓/Danggeun-style neighborhood marketplace). See
 // rw.itunda.marketplace.MarketplaceService's own doc comment for the honest "no real
@@ -498,6 +504,9 @@ interface ApiService {
 
     @DELETE("api/v1/messages/groups/{id}/members/me")
     suspend fun leaveGroup(@Path("id") groupId: String): LeaveGroupResponse
+
+    @GET("api/v1/messages/groups/{id}/members")
+    suspend fun getGroupMembers(@Path("id") groupId: String): GroupMembersResponse
 
     // Real 당근마켓-style marketplace (2026-07-18) -- see rw.itunda.marketplace.web.MarketplaceController.
     @POST("api/v1/marketplace/listings")

@@ -360,11 +360,16 @@ private struct GroupThreadScreen: View {
     let onBack: () -> Void
 
     @State private var messages: [GroupMessageDto]?
+    @State private var members: [GroupMemberDto] = []
     @State private var draft = ""
     @State private var sending = false
     @State private var error: String?
     @State private var socketTask: URLSessionWebSocketTask?
     private let currentUserId = KeychainTokenStore.shared.getUserId()
+
+    private func name(for senderId: String) -> String {
+        members.first(where: { $0.userId == senderId })?.name ?? String(senderId.prefix(8))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -385,12 +390,8 @@ private struct GroupThreadScreen: View {
                             if messages.isEmpty {
                                 Text("Say hello — no messages yet.").foregroundColor(IDS.Colors.textSecondary).padding(.top, 20)
                             }
-                            // Real, honest limitation: bubbles show a truncated sender
-                            // id, not a real display name -- no "list group members"
-                            // endpoint exists yet to resolve names client-side,
-                            // matching bank-mfe's own known gap.
                             ForEach(messages) { message in
-                                GroupMessageBubble(message: message, isMine: message.senderId == currentUserId)
+                                GroupMessageBubble(message: message, isMine: message.senderId == currentUserId, senderName: name(for: message.senderId))
                                     .id(message.id)
                             }
                         } else {
@@ -429,6 +430,17 @@ private struct GroupThreadScreen: View {
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .task { await refresh() }
+        // Real member list with real resolved display names (2026-07-18), fetched once
+        // per thread open -- closes the honest, named limitation this UI carried since
+        // group chat first shipped (a truncated sender id instead of a real name).
+        .task {
+            do {
+                members = try await NetworkClient.shared.getGroupMembers(groupId: group.groupId).members
+            } catch {
+                // Real, non-critical -- a failed member-list fetch shouldn't block the
+                // thread; bubbles just fall back to a truncated sender id.
+            }
+        }
         // Real poll, kept as an always-correct fallback delivery path alongside the
         // real WebSocket push below -- matches 1:1 messaging's own scope exactly.
         .task {
@@ -485,13 +497,14 @@ private struct GroupThreadScreen: View {
 private struct GroupMessageBubble: View {
     let message: GroupMessageDto
     let isMine: Bool
+    let senderName: String
 
     var body: some View {
         HStack {
             if isMine { Spacer() }
             VStack(alignment: .leading, spacing: 2) {
                 if !isMine {
-                    Text(String(message.senderId.prefix(8))).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                    Text(senderName).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                 }
                 Text(message.body)
                     .font(.subheadline)

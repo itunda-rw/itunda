@@ -61,6 +61,7 @@ import rw.itunda.app.network.EatsOrderDto
 import rw.itunda.app.network.AddressSuggestionDto
 import rw.itunda.app.network.CreateGroupRequest
 import rw.itunda.app.network.EatsRatingResponse
+import rw.itunda.app.network.GroupMemberDto
 import rw.itunda.app.network.GroupMessageDto
 import rw.itunda.app.network.GroupSummaryDto
 import rw.itunda.app.network.MessagingSocketPush
@@ -430,6 +431,7 @@ private fun GroupRow(group: GroupSummaryDto, onClick: () -> Unit) {
 private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     var messages by remember { mutableStateOf<List<GroupMessageDto>?>(null) }
+    var members by remember { mutableStateOf<List<GroupMemberDto>>(emptyList()) }
     var draft by remember { mutableStateOf("") }
     var sending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -451,6 +453,18 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
         while (true) {
             refresh()
             delay(4000)
+        }
+    }
+    // Real member list with real resolved display names (2026-07-18), fetched once per
+    // thread open -- closes the honest, named limitation this UI carried since group
+    // chat first shipped (a truncated sender id instead of a real name).
+    LaunchedEffect(group.groupId) {
+        try {
+            val res = NetworkClient.apiService.getGroupMembers(group.groupId)
+            if (res.success) members = res.members
+        } catch (_: Exception) {
+            // Real, non-critical -- a failed member-list fetch shouldn't block the
+            // thread; bubbles just fall back to a truncated sender id below.
         }
     }
     // Real WebSocket live-transport for group chat -- same socket 1:1 already uses,
@@ -486,7 +500,10 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                 // Real, honest limitation: bubbles show a truncated sender id, not a
                 // real display name -- no "list group members" endpoint exists yet to
                 // resolve names client-side, matching bank-mfe's own known gap.
-                items(msgs, key = { it.id }) { m -> GroupMessageBubble(m, isMine = m.senderId == currentUserId) }
+                items(msgs, key = { it.id }) { m ->
+                    val senderName = members.find { it.userId == m.senderId }?.name ?: m.senderId.take(8)
+                    GroupMessageBubble(m, isMine = m.senderId == currentUserId, senderName = senderName)
+                }
             }
         }
         error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(vertical = 6.dp)) }
@@ -532,7 +549,7 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
 }
 
 @Composable
-private fun GroupMessageBubble(message: GroupMessageDto, isMine: Boolean) {
+private fun GroupMessageBubble(message: GroupMessageDto, isMine: Boolean, senderName: String) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
         Column(
             modifier = Modifier
@@ -541,7 +558,7 @@ private fun GroupMessageBubble(message: GroupMessageDto, isMine: Boolean) {
                 .padding(horizontal = 14.dp, vertical = 10.dp),
         ) {
             if (!isMine) {
-                Text(message.senderId.take(8), color = TossSecondary, fontSize = 10.sp, modifier = Modifier.padding(bottom = 2.dp))
+                Text(senderName, color = TossSecondary, fontSize = 10.sp, modifier = Modifier.padding(bottom = 2.dp))
             }
             Text(message.body, color = if (isMine) Color.White else TossText, fontSize = 14.sp)
         }

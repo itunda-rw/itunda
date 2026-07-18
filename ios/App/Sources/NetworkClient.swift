@@ -431,6 +431,12 @@ struct GroupMessagesResponse: Decodable { let success: Bool; let messages: [Grou
 struct GroupMessageResponse: Decodable { let success: Bool; let message: GroupMessageDto }
 struct LeaveGroupResponse: Decodable { let success: Bool }
 
+// Real member list with real resolved display names (2026-07-18) -- closes the honest,
+// named limitation this UI carried since group chat first shipped: message bubbles
+// showing a truncated sender id instead of a real name.
+struct GroupMemberDto: Decodable, Identifiable { let userId: String; let name: String; var id: String { userId } }
+struct GroupMembersResponse: Decodable { let success: Bool; let members: [GroupMemberDto] }
+
 // Real WebSocket push envelopes for group chat (2026-07-18).
 struct MessagingSocketGroupEnvelope: Decodable { let type: String; let groupConversationId: String; let message: GroupMessageDto }
 
@@ -608,6 +614,10 @@ extension NetworkClient {
 
     func sendGroupMessage(groupId: String, body: String) async throws -> GroupMessageResponse {
         try await authenticatedPost("api/v1/messages/groups/\(groupId)/messages", body: SendGroupMessageRequest(body: body))
+    }
+
+    func getGroupMembers(groupId: String) async throws -> GroupMembersResponse {
+        try await get("api/v1/messages/groups/\(groupId)/members")
     }
 
     /// Real WebSocket live-transport (2026-07-18) -- see

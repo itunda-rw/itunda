@@ -99,6 +99,19 @@ export const sendGroupMessage = (groupId: string, body: string) =>
     body: JSON.stringify({ body }),
   }).then((r) => r.message);
 
+export interface GroupMember {
+  userId: string;
+  name: string;
+}
+
+// Real member list with real resolved display names (2026-07-18) -- closes the honest,
+// named limitation this UI carried since group chat first shipped: message bubbles
+// showing a truncated sender id instead of a real name.
+export const fetchGroupMembers = (groupId: string) =>
+  apiFetch<{ success: boolean; members: GroupMember[] }>(`/api/v1/messages/groups/${groupId}/members`).then(
+    (r) => r.members,
+  );
+
 interface MessagePushPayload {
   type: 'message';
   conversationId: string;

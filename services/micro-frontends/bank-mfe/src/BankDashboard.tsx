@@ -6,8 +6,8 @@ import { fetchTransactions, fetchWallets, type Transaction, type Wallet } from '
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
 import { collectPayment, fetchShoppingCatalog, type CollectPaymentResult, type ShoppingMerchant } from './lib/shopping';
 import {
-  connectMessagingSocket, createGroup, fetchConversations, fetchGroupMessages, fetchGroups, fetchMessages,
-  sendGroupMessage, sendMessage, startConversation, type ConversationSummary, type GroupMessage,
+  connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages,
+  sendGroupMessage, sendMessage, startConversation, type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message,
 } from './lib/messaging';
 import { contactSeller, createListing, fetchListings, fetchMyListings, markListingSold, removeListing, type Listing } from './lib/marketplace';
@@ -623,6 +623,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
 
 function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => void }) {
   const [messages, setMessages] = useState<GroupMessage[] | null>(null);
+  const [members, setMembers] = useState<GroupMember[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -642,6 +643,18 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [group.groupId]);
+
+  useEffect(() => {
+    // Real member list with real resolved display names (2026-07-18), fetched once per
+    // thread open -- closes the honest, named limitation this UI carried since group
+    // chat first shipped (a truncated sender id instead of a real name).
+    fetchGroupMembers(group.groupId).then(setMembers).catch(() => {
+      // Real, non-critical -- a failed member-list fetch shouldn't block the thread;
+      // bubbles just fall back to a truncated sender id below.
+    });
+  }, [group.groupId]);
+
+  const nameForSender = (senderId: string) => members.find((m) => m.userId === senderId)?.name ?? senderId.slice(0, 12);
 
   useEffect(() => {
     // Real WebSocket live delivery for group chat (2026-07-18) -- same real push
@@ -704,7 +717,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
             <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
               {!isMine && (
                 <span style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginBottom: '2px', marginLeft: '4px' }}>
-                  {m.senderId.slice(0, 12)}
+                  {nameForSender(m.senderId)}
                 </span>
               )}
               <div
