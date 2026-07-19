@@ -88,6 +88,12 @@ interface WalletRepository : JpaRepository<Wallet, String> {
 interface LedgerEntryRepository : JpaRepository<LedgerEntry, String> {
     fun findByTransactionId(transactionId: String): List<LedgerEntry>
     fun findByAccountIdOrderByCreatedAtDesc(accountId: String): List<LedgerEntry>
+
+    // Batch form of findByTransactionId -- WalletService.getSpendingInsight uses this to
+    // fetch every debit's sibling legs in one round trip instead of one findByTransactionId
+    // call per debit (a real N+1 found in a 2026-07-19 performance sweep, same shape as
+    // PayrollService.runPayroll's/GroupMessagingService's own already-fixed N+1s).
+    fun findByTransactionIdIn(transactionIds: List<String>): List<LedgerEntry>
 }
 
 interface TransactionRepository : JpaRepository<Transaction, String> {

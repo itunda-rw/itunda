@@ -217,11 +217,12 @@ class WalletServiceTest : BehaviorSpec({
 
         every { ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc("wallet_9") } returns
             listOf(transferDebit, insuranceDebit, billDebit, airtimeDebit, internalDebit)
-        every { ledgerEntryRepository.findByTransactionId("txn_bill") } returns listOf(billDebit, billCounterpart)
-        every { ledgerEntryRepository.findByTransactionId("txn_airtime") } returns listOf(airtimeDebit, airtimeCounterpart)
-        every { ledgerEntryRepository.findByTransactionId("txn_ins") } returns listOf(insuranceDebit, insuranceCounterpart)
-        every { ledgerEntryRepository.findByTransactionId("txn_transfer") } returns listOf(transferDebit, transferCounterpart)
-        every { ledgerEntryRepository.findByTransactionId("txn_internal") } returns listOf(internalDebit, internalCounterpart)
+        // Real N+1 fix (2026-07-19 sweep): one batched findByTransactionIdIn stub instead
+        // of one findByTransactionId stub per transaction id, matching the real service's
+        // own fix -- order of the input list doesn't matter here since the service groups
+        // the result by transactionId itself.
+        every { ledgerEntryRepository.findByTransactionIdIn(match { it.toSet() == setOf("txn_transfer", "txn_ins", "txn_bill", "txn_airtime", "txn_internal") }) } returns
+            listOf(billDebit, billCounterpart, airtimeDebit, airtimeCounterpart, insuranceDebit, insuranceCounterpart, transferDebit, transferCounterpart, internalDebit, internalCounterpart)
 
         When("computing the spending insight") {
             val result = service.getSpendingInsight("user_9")
@@ -272,6 +273,47 @@ class WalletServiceTest : BehaviorSpec({
             }
             Then("it writes one real over-budget notification, not a duplicate") {
                 verify(exactly = 1) { notificationRepository.save(any()) }
+            }
+        }
+    }
+
+    Given("a real fee-charging transfer, which posts THREE legs, not two") {
+        val walletRepository = mockk<WalletRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val eventPublisher = mockk<EventPublisher>(relaxed = true)
+        val providerConnector = mockk<ProviderConnector>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val spendingBudgetRepository = mockk<SpendingBudgetRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, spendingBudgetRepository, notificationRepository)
+
+        fun entry(id: String, txnId: String, accountId: String, accountType: LedgerAccountType, direction: LedgerDirection, amount: String, memo: String = "test") = LedgerEntry(
+            id = id, transactionId = txnId, accountId = accountId, accountType = accountType, direction = direction,
+            amount = BigDecimal(amount), currency = "RWF", balanceAfter = BigDecimal.ZERO, memo = memo,
+        )
+
+        // Real bug found live during this session's own N+1-fix verification: a real
+        // fee-charging transfer posts a WALLET debit, a RAIL_SUSPENSE credit, AND a
+        // FEE_REVENUE credit in the same transaction -- deliberately using ids where the
+        // fee leg sorts first, reproducing the exact real-world ordering that surfaced
+        // this bug (MySQL returns rows in no guaranteed order absent an ORDER BY).
+        val feeLeg = entry("entry_1_fee", "txn_fee_transfer", "fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, "50", "Transfer fee")
+        val walletDebit = entry("entry_2_wallet", "txn_fee_transfer", "wallet_9", LedgerAccountType.WALLET, LedgerDirection.DEBIT, "5050", "Transfer to +250788555999")
+        val railLeg = entry("entry_3_rail", "txn_fee_transfer", "rail_suspense", LedgerAccountType.RAIL_SUSPENSE, LedgerDirection.CREDIT, "5000", "Rail settlement for +250788555999")
+
+        every { walletRepository.findByUserId("user_fee") } returns listOf(wallet("wallet_9", "user_fee", "0"))
+        every { ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc("wallet_9") } returns listOf(walletDebit)
+        every { ledgerEntryRepository.findByTransactionIdIn(listOf("txn_fee_transfer")) } returns listOf(feeLeg, walletDebit, railLeg)
+
+        When("computing the spending insight") {
+            val result = service.getSpendingInsight("user_fee")
+
+            Then("it's categorized as Transfers, not Fees -- FEE_REVENUE is deprioritized when a more meaningful sibling exists") {
+                val byName = result.categories.associate { it.name to it.amount }
+                byName["Transfers"] shouldBe BigDecimal("5050")
+                byName["Fees"] shouldBe null
             }
         }
     }

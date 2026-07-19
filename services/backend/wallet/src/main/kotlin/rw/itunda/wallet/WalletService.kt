@@ -82,10 +82,26 @@ class WalletService(
             .flatMap { ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc(it) }
             .filter { it.direction == LedgerDirection.DEBIT }
 
+        // Real N+1 fix (2026-07-19 sweep): one batch findByTransactionIdIn instead of one
+        // findByTransactionId call per debit -- a real user's spending insight otherwise
+        // cost one query per real debit ever made, growing unboundedly with usage.
+        val siblingsByTransactionId = ledgerEntryRepository
+            .findByTransactionIdIn(debits.map { it.transactionId }.distinct())
+            .groupBy { it.transactionId }
+
         val totals = linkedMapOf<String, BigDecimal>()
         for (debit in debits) {
-            val siblings = ledgerEntryRepository.findByTransactionId(debit.transactionId)
-            val counterpart = siblings.firstOrNull { it.accountType != LedgerAccountType.WALLET }
+            val siblings = siblingsByTransactionId[debit.transactionId] ?: emptyList()
+            // Real bug found live during this pass's own verification, unrelated to the
+            // N+1 fix above but surfaced by it: a fee-charging transfer posts THREE legs
+            // (WALLET debit, RAIL_SUSPENSE credit, FEE_REVENUE credit), and neither
+            // findByTransactionId nor findByTransactionIdIn has an ORDER BY, so plain
+            // firstOrNull{} non-deterministically picked FEE_REVENUE over RAIL_SUSPENSE
+            // depending on row order -- a real transfer could show up as "Fees" instead
+            // of "Transfers". Prefer any non-wallet, non-fee sibling first; only fall
+            // back to FEE_REVENUE if that's genuinely the sole counterpart.
+            val counterpart = siblings.firstOrNull { it.accountType != LedgerAccountType.WALLET && it.accountType != LedgerAccountType.FEE_REVENUE }
+                ?: siblings.firstOrNull { it.accountType != LedgerAccountType.WALLET }
             val category = when (counterpart?.accountType) {
                 // RAIL_SUSPENSE is shared by three real modules (WalletService.confirmTransfer,
                 // BillsService.payBill, BillsService.buyAirtime -- confirmed live, all three post
