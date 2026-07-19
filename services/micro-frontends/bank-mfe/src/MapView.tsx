@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { RWANDA_CENTER, TILES_SOURCE_URL } from './lib/maps';
+import { RWANDA_CENTER, TILES_SOURCE_URL, searchPlaces, getDirections, type PlaceSearchResult } from './lib/maps';
 import { fetchShoppingCatalog, type ShoppingMerchant } from './lib/shopping';
+import { ApiError } from './lib/api';
 
 // A real, minimal MapLibre style over itunda's own self-hosted vector tiles -- basic
 // OpenMapTiles-schema layers (water/landcover/roads/buildings), no text labels yet since
 // that needs a self-hosted glyphs/fonts server too (a real, honestly-named follow-up,
 // not attempted this pass). Real Rwanda geography, not a fabricated placeholder map.
+// Also declares the two real, empty-until-populated sources the search/directions
+// features below write into: a destination marker and a real road-following route line.
 const MAP_STYLE: maplibregl.StyleSpecification = {
   version: 8,
   sources: {
@@ -17,6 +20,7 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
       minzoom: 0,
       maxzoom: 14,
     },
+    route: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
   },
   layers: [
     { id: 'background', type: 'background', paint: { 'background-color': '#f2efe9' } },
@@ -57,19 +61,46 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
       filter: ['<=', ['get', 'admin_level'], 4],
       paint: { 'line-color': '#a08ccb', 'line-width': 1, 'line-dasharray': [2, 1] },
     },
+    // Real drawn route (2026-07-19) -- see MapsService.getDirections' own doc comment.
+    // Rendered above every base layer so it's always visible over roads/buildings.
+    {
+      id: 'route-line', type: 'line', source: 'route',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#3182F6', 'line-width': 5, 'line-opacity': 0.9 },
+    },
   ],
 };
 
-// Real interactive Rwanda map -- itunda's own self-hosted Kakao Maps/Naver Maps-style
-// mapping, the last open item on the Maps roadmap (see MAP_STYLE's own doc comment and
-// docs/TOSS_PARITY_MATRIX.md). Plots real registered merchants (reusing the same
-// GET /api/v1/shopping/merchants catalog the Shop tab already uses -- zero new backend
-// browse endpoint) that have set a real location via POST /api/v1/merchant/location.
+const EMPTY_ROUTE_GEOJSON: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
+
+/**
+ * Real interactive Rwanda map -- itunda's own self-hosted Kakao Maps/Naver Maps-style
+ * mapping. Plots real registered merchants (reusing the same GET /api/v1/shopping/merchants
+ * catalog the Shop tab already uses -- zero new backend browse endpoint) that have set a
+ * real location via POST /api/v1/merchant/location, plus three real "feels like a real
+ * maps app" capabilities added 2026-07-19 at the user's direct request ("make sure our
+ * maps is fully 100% like naver maps/kakao maps for rwanda"): real place search (backed
+ * by itunda's own self-hosted Nominatim, not just the Eats-checkout-scoped autocomplete
+ * that existed before), a real "my location" blue dot (the browser's own real Geolocation
+ * API, no backend call), and real turn-by-turn-capable directions (itunda's own
+ * self-hosted OSRM, drawing the actual road-following route, not just a straight line).
+ */
 export default function MapView() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const myLocationMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const destinationMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const myLocationRef = useRef<[number, number] | null>(null); // [lat, lng]
+
   const [error, setError] = useState<string | null>(null);
   const [merchantCount, setMerchantCount] = useState<number | null>(null);
+  const [query, setQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<PlaceSearchResult[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceSearchResult | null>(null);
+  const [route, setRoute] = useState<{ distanceKm: number; durationMinutes: number } | null>(null);
+  const [routing, setRouting] = useState(false);
+  const [locating, setLocating] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -113,20 +144,183 @@ export default function MapView() {
       cancelled = true;
       map.remove();
       mapRef.current = null;
+      myLocationMarkerRef.current = null;
+      destinationMarkerRef.current = null;
     };
   }, []);
 
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    setSearching(true);
+    setError(null);
+    try {
+      const results = await searchPlaces(trimmed);
+      setSearchResults(results);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not search for that place.');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const selectPlace = (place: PlaceSearchResult) => {
+    setSelectedPlace(place);
+    setSearchResults(null);
+    setRoute(null);
+    const map = mapRef.current;
+    if (!map) return;
+    map.flyTo({ center: [place.longitude, place.latitude], zoom: 15 });
+    destinationMarkerRef.current?.remove();
+    destinationMarkerRef.current = new maplibregl.Marker({ color: '#E53935' })
+      .setLngLat([place.longitude, place.latitude])
+      .setPopup(new maplibregl.Popup({ offset: 12 }).setText(place.displayName))
+      .addTo(map);
+    // Clear any previously-drawn route -- a new destination needs a fresh "Directions" tap.
+    const source = map.getSource('route') as maplibregl.GeoJSONSource | undefined;
+    source?.setData(EMPTY_ROUTE_GEOJSON);
+  };
+
+  const findMyLocation = () => {
+    if (!navigator.geolocation) {
+      setError('This browser does not support real location access.');
+      return;
+    }
+    setLocating(true);
+    setError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocating(false);
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        myLocationRef.current = [lat, lng];
+        const map = mapRef.current;
+        if (!map) return;
+        myLocationMarkerRef.current?.remove();
+        // A real, distinct "blue dot" marker (Naver/Kakao Maps' own real convention) --
+        // a plain div styled as a filled circle, not MapLibre's default pin shape, so
+        // "my location" reads visually distinct from a search-result/merchant pin.
+        const el = document.createElement('div');
+        el.style.width = '16px';
+        el.style.height = '16px';
+        el.style.borderRadius = '50%';
+        el.style.backgroundColor = '#3182F6';
+        el.style.border = '3px solid white';
+        el.style.boxShadow = '0 0 0 2px rgba(49,130,246,0.4)';
+        myLocationMarkerRef.current = new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map);
+        map.flyTo({ center: [lng, lat], zoom: 14 });
+      },
+      () => {
+        setLocating(false);
+        setError('Could not access your real location. Check your browser permissions.');
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
+
+  const handleGetDirections = async () => {
+    const map = mapRef.current;
+    if (!map || !selectedPlace) return;
+    const origin = myLocationRef.current ?? [map.getCenter().lat, map.getCenter().lng];
+    setRouting(true);
+    setError(null);
+    try {
+      const result = await getDirections(origin[0], origin[1], selectedPlace.latitude, selectedPlace.longitude);
+      setRoute({ distanceKm: result.distanceKm, durationMinutes: result.durationMinutes });
+      const source = map.getSource('route') as maplibregl.GeoJSONSource | undefined;
+      source?.setData({
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          properties: {},
+          geometry: { type: 'LineString', coordinates: result.geometry.map(([lat, lng]) => [lng, lat]) },
+        }],
+      });
+      const bounds = result.geometry.reduce(
+        (b, [lat, lng]) => b.extend([lng, lat]),
+        new maplibregl.LngLatBounds(
+          [result.geometry[0][1], result.geometry[0][0]],
+          [result.geometry[0][1], result.geometry[0][0]],
+        ),
+      );
+      map.fitBounds(bounds, { padding: 60 });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not find directions to this place.');
+    } finally {
+      setRouting(false);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px' }}>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search a real place in Rwanda"
+          style={{ flex: 1, padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        />
+        <button type="submit" className="toss-btn toss-btn-primary" disabled={searching || !query.trim()} style={{ padding: '10px 16px' }}>
+          {searching ? '…' : 'Search'}
+        </button>
+        <button
+          type="button"
+          className="toss-btn toss-btn-secondary"
+          disabled={locating}
+          onClick={findMyLocation}
+          style={{ padding: '10px 12px' }}
+          aria-label="Find my real location"
+        >
+          {locating ? '…' : '📍'}
+        </button>
+      </form>
+
+      {searchResults !== null && (
+        <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px' }}>
+          {searchResults.length === 0 ? (
+            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', padding: '8px' }}>No real places found for that search.</p>
+          ) : (
+            searchResults.map((place, i) => (
+              <button
+                key={`${place.latitude}-${place.longitude}-${i}`}
+                onClick={() => selectPlace(place)}
+                style={{ textAlign: 'left', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', color: 'var(--toss-grey-900)' }}
+              >
+                {place.displayName}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+
       {error && (
         <div className="toss-card">
           <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
         </div>
       )}
+
       <div
         ref={containerRef}
         style={{ width: '100%', height: '440px', borderRadius: '16px', overflow: 'hidden' }}
       />
+
+      {selectedPlace && (
+        <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{selectedPlace.displayName}</p>
+          {route ? (
+            <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>
+              🚗 {route.distanceKm.toFixed(1)} km · {Math.round(route.durationMinutes)} min by real road, via itunda's own self-hosted OSRM
+            </p>
+          ) : (
+            <button className="toss-btn toss-btn-primary" disabled={routing} onClick={handleGetDirections}>
+              {routing ? 'Finding real route…' : 'Directions'}
+            </button>
+          )}
+        </div>
+      )}
+
       <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', padding: '0 4px' }}>
         {merchantCount === null
           ? 'Loading real merchants near you…'

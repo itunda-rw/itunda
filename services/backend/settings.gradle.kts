@@ -27,5 +27,6 @@ include(
     ":marketplace",
     ":commerce",
     ":eats",
+    ":maps",
     ":app"
 )

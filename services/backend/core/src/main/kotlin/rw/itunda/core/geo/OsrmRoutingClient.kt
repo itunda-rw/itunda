@@ -102,4 +102,55 @@ class OsrmRoutingClient(
             destinations.map { null }
         }
     }
+
+    /**
+     * Real turn-by-turn-capable route between two real coordinates -- the real polyline
+     * geometry (a list of real [lat, lng] points along actual roads), distance, and
+     * duration, backing itunda's own self-hosted "Directions" feature (see
+     * docs/TOSS_PARITY_MATRIX.md's Maps row). Unlike [routeDistanceKm] (distance only,
+     * `overview=false`), this asks OSRM for the full route shape (`overview=full`,
+     * `geometries=geojson`) so a real map UI can draw the actual path, not just report a
+     * number. Null on the same never-fail terms as every other method here --
+     * unconfigured, unreachable, or no route.
+     */
+    fun route(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double): RouteResult? {
+        val client = restClient ?: return null
+        return try {
+            @Suppress("UNCHECKED_CAST")
+            val response = client.get()
+                .uri(
+                    "/route/v1/driving/{fromLng},{fromLat};{toLng},{toLat}?overview=full&geometries=geojson",
+                    fromLng, fromLat, toLng, toLat,
+                )
+                .retrieve()
+                .body(Map::class.java) as Map<String, Any?>?
+            val code = response?.get("code") as? String
+            @Suppress("UNCHECKED_CAST")
+            val bestRoute = (response?.get("routes") as? List<Map<String, Any?>>)?.firstOrNull()
+            val distanceMeters = (bestRoute?.get("distance") as? Number)?.toDouble()
+            val durationSeconds = (bestRoute?.get("duration") as? Number)?.toDouble()
+            @Suppress("UNCHECKED_CAST")
+            val geometry = bestRoute?.get("geometry") as? Map<String, Any?>
+            @Suppress("UNCHECKED_CAST")
+            val coordinates = geometry?.get("coordinates") as? List<List<Number>>
+            if (code != "Ok" || distanceMeters == null || durationSeconds == null || coordinates == null) {
+                logger.warn("OSRM route request returned no usable route (code={})", code)
+                null
+            } else {
+                // Flip OSRM's [lng, lat] GeoJSON order back to this codebase's own
+                // [lat, lng] convention for the response, same reasoning as
+                // routeDistanceKm's own doc comment on why this is kept explicit.
+                RouteResult(
+                    distanceKm = distanceMeters / 1000.0,
+                    durationMinutes = durationSeconds / 60.0,
+                    geometry = coordinates.map { listOf(it[1].toDouble(), it[0].toDouble()) },
+                )
+            }
+        } catch (e: RestClientException) {
+            logger.warn("OSRM route request failed: {}", e.message)
+            null
+        }
+    }
 }
+
+data class RouteResult(val distanceKm: Double, val durationMinutes: Double, val geometry: List<List<Double>>)
