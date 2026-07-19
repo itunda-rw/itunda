@@ -12,6 +12,11 @@ dependencyManagement {
 
 dependencies {
     implementation(project(":core"))
+    // For RateLimiter -- real anti-spam limit on claim filing, found missing in a
+    // 2026-07-19 security sweep (submitClaim is deliberately not Idempotency-Key
+    // protected since it isn't money-moving, but that left it with zero protection
+    // of any kind against spam).
+    implementation(project(":auth"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

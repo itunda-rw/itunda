@@ -12,6 +12,10 @@ dependencyManagement {
 
 dependencies {
     implementation(project(":core"))
+    // For RateLimiter -- real anti-spam limit on savings-goal creation, found missing
+    // in a 2026-07-19 security sweep (same bug shape as the P2P/chargeCard/reactions
+    // findings before it: real, free, unbounded row creation with zero protection).
+    implementation(project(":auth"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

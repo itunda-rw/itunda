@@ -6,6 +6,8 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.SavingsGoal
 import rw.itunda.core.domain.SavingsGoalStatus
@@ -17,6 +19,7 @@ import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.Instant
 import java.util.Optional
 
@@ -33,7 +36,8 @@ class SavingsServiceTest : BehaviorSpec({
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
         val interestJarRepository = mockk<InterestJarRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter)
 
         When("depositing to an owned goal from the default MAIN wallet") {
             val goal = SavingsGoal(
@@ -173,7 +177,8 @@ class SavingsServiceTest : BehaviorSpec({
         val savingsGoalRepository = mockk<SavingsGoalRepository>()
         val interestJarRepository = mockk<InterestJarRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter)
 
         fun goal(id: String, monthlyContribution: String, lastAutoContributionAt: Instant?, status: SavingsGoalStatus = SavingsGoalStatus.active) = SavingsGoal(
             id = id, userId = "user_1", walletId = "wallet_savings", name = "Goal $id",
@@ -224,6 +229,27 @@ class SavingsServiceTest : BehaviorSpec({
                 succeeded shouldBe false
                 verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 g.lastAutoContributionAt shouldBe null
+            }
+        }
+    }
+
+    Given("a real user exceeds the real goal-creation rate limit") {
+        val walletRepository = mockk<WalletRepository>()
+        val savingsGoalRepository = mockk<SavingsGoalRepository>()
+        val interestJarRepository = mockk<InterestJarRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter)
+        every { rateLimiter.checkLimit("savings:goal:user_9", limit = 10, window = Duration.ofHours(1)) } throws RateLimitExceededException("Too many requests")
+
+        When("they try to create another real goal") {
+            Then("it real-propagates RateLimitExceededException, found missing in a 2026-07-19 security sweep") {
+                try {
+                    service.createGoal("user_9", "Goal", BigDecimal("100000"), null, null, null)
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { savingsGoalRepository.save(any()) }
+                }
             }
         }
     }

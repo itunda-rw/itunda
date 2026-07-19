@@ -7,6 +7,8 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.InsuranceClaim
 import rw.itunda.core.domain.InsuranceClaimStatus
 import rw.itunda.core.domain.InsurancePolicy
@@ -21,6 +23,7 @@ import rw.itunda.core.repository.InsuranceClaimRepository
 import rw.itunda.core.repository.InsurancePolicyRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.LocalDate
 import java.util.Optional
 
@@ -45,7 +48,8 @@ class InsuranceServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter)
 
         every { walletRepository.findByUserId("user_1") } returns listOf(
             wallet("wallet_main", "user_1", WalletType.MAIN),
@@ -96,7 +100,8 @@ class InsuranceServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter)
 
         every { walletRepository.findByUserId("user_2") } returns emptyList()
 
@@ -123,7 +128,8 @@ class InsuranceServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter)
 
         every { insurancePolicyRepository.findById("pol_1") } returns Optional.of(policy("pol_1", "user_1"))
         every { insuranceClaimRepository.save(any()) } answers { firstArg() }
@@ -144,7 +150,8 @@ class InsuranceServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter)
 
         every { insurancePolicyRepository.findById("pol_2") } returns Optional.of(policy("pol_2", "owner_1"))
 
@@ -165,7 +172,8 @@ class InsuranceServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter)
 
         every { insurancePolicyRepository.findById("pol_3") } returns Optional.of(policy("pol_3", "user_1", status = "lapsed"))
 
@@ -186,7 +194,8 @@ class InsuranceServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter)
 
         val claim = InsuranceClaim(id = "claim_1", policyId = "pol_1", userId = "user_1", description = "Hospital stay", amount = BigDecimal("50000"))
         every { insuranceClaimRepository.findById("claim_1") } returns Optional.of(claim)
@@ -219,7 +228,8 @@ class InsuranceServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
-        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter)
 
         val claim = InsuranceClaim(id = "claim_2", policyId = "pol_1", userId = "user_1", description = "test", amount = BigDecimal("10000"))
         every { insuranceClaimRepository.findById("claim_2") } returns Optional.of(claim)
@@ -233,6 +243,27 @@ class InsuranceServiceTest : BehaviorSpec({
                 decided.decisionReason shouldBe "Not covered by policy"
                 verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 verify(exactly = 0) { walletRepository.findByUserIdAndType(any(), any()) }
+            }
+        }
+    }
+
+    Given("a real user exceeds the real claim-filing rate limit") {
+        val insurancePolicyRepository = mockk<InsurancePolicyRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val insuranceClaimRepository = mockk<InsuranceClaimRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = InsuranceService(insurancePolicyRepository, walletRepository, ledgerService, insuranceClaimRepository, rateLimiter)
+        every { rateLimiter.checkLimit("insurance:claim:user_9", limit = 10, window = Duration.ofHours(1)) } throws RateLimitExceededException("Too many requests")
+
+        When("they try to file another real claim") {
+            Then("it real-propagates RateLimitExceededException, found missing in a 2026-07-19 security sweep") {
+                try {
+                    service.submitClaim("user_9", "pol_1", "test", BigDecimal("1000"))
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { insuranceClaimRepository.save(any()) }
+                }
             }
         }
     }

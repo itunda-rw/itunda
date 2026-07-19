@@ -2,6 +2,7 @@ package rw.itunda.insurance
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.InsuranceClaim
 import rw.itunda.core.domain.InsuranceClaimStatus
 import rw.itunda.core.domain.InsurancePolicy
@@ -14,6 +15,7 @@ import rw.itunda.core.repository.InsuranceClaimRepository
 import rw.itunda.core.repository.InsurancePolicyRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -31,6 +33,7 @@ class InsuranceService(
     private val walletRepository: WalletRepository,
     private val ledgerService: LedgerService,
     private val insuranceClaimRepository: InsuranceClaimRepository,
+    private val rateLimiter: RateLimiter,
 ) {
 
     val insurancePlans = listOf(
@@ -80,6 +83,10 @@ class InsuranceService(
 
     fun submitClaim(userId: String, policyId: String, description: String, amount: BigDecimal): InsuranceClaim {
         require(amount > BigDecimal.ZERO) { "Claim amount must be greater than zero" }
+        // Real anti-spam limit -- found missing in a 2026-07-19 security sweep. Filing
+        // is deliberately not Idempotency-Key protected (not money-moving), but that left
+        // it with zero protection of any kind against a flood of bogus claims.
+        rateLimiter.checkLimit("insurance:claim:$userId", limit = 10, window = Duration.ofHours(1))
         val policy = insurancePolicyRepository.findById(policyId)
             .filter { it.userId == userId }
             .orElseThrow { PolicyNotFoundException("Policy not found") }

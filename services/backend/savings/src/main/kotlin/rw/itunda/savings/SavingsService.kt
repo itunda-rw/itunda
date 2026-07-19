@@ -3,6 +3,7 @@ package rw.itunda.savings
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.SavingsGoal
@@ -14,6 +15,7 @@ import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
@@ -40,6 +42,7 @@ class SavingsService(
     private val savingsGoalRepository: SavingsGoalRepository,
     private val interestJarRepository: InterestJarRepository,
     private val ledgerService: LedgerService,
+    private val rateLimiter: RateLimiter,
 ) {
     private val log = LoggerFactory.getLogger(SavingsService::class.java)
 
@@ -47,6 +50,10 @@ class SavingsService(
 
     @Transactional
     fun createGoal(userId: String, name: String, targetAmount: BigDecimal, monthlyContribution: BigDecimal?, targetDate: String?, category: String?): SavingsGoal {
+        // Real anti-spam limit -- found missing in a 2026-07-19 security sweep. Unlike
+        // deposit/claim (both money-moving, both already Idempotency-Key protected),
+        // goal creation is free row creation with zero protection of any kind.
+        rateLimiter.checkLimit("savings:goal:$userId", limit = 10, window = Duration.ofHours(1))
         val savingsWallet = walletRepository.findByUserIdAndType(userId, WalletType.SAVINGS) ?: throw NoWalletException("No savings wallet found for this account")
         return savingsGoalRepository.save(
             SavingsGoal(
