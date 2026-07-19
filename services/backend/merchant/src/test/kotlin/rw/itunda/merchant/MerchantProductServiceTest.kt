@@ -5,12 +5,16 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import java.math.BigDecimal
+import java.time.Duration
 import java.util.Optional
 
 class MerchantProductServiceTest : BehaviorSpec({
@@ -20,7 +24,8 @@ class MerchantProductServiceTest : BehaviorSpec({
     Given("a registered merchant managing their product catalog") {
         val merchantRepository = mockk<MerchantRepository>()
         val merchantProductRepository = mockk<MerchantProductRepository>()
-        val service = MerchantProductService(merchantRepository, merchantProductRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = MerchantProductService(merchantRepository, merchantProductRepository, rateLimiter)
 
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
         every { merchantProductRepository.save(any()) } answers { firstArg() }
@@ -51,7 +56,8 @@ class MerchantProductServiceTest : BehaviorSpec({
     Given("a merchant's real active catalog") {
         val merchantRepository = mockk<MerchantRepository>()
         val merchantProductRepository = mockk<MerchantProductRepository>()
-        val service = MerchantProductService(merchantRepository, merchantProductRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = MerchantProductService(merchantRepository, merchantProductRepository, rateLimiter)
 
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
         val products = listOf(
@@ -72,7 +78,8 @@ class MerchantProductServiceTest : BehaviorSpec({
     Given("a merchant updating one of their own products") {
         val merchantRepository = mockk<MerchantRepository>()
         val merchantProductRepository = mockk<MerchantProductRepository>()
-        val service = MerchantProductService(merchantRepository, merchantProductRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = MerchantProductService(merchantRepository, merchantProductRepository, rateLimiter)
 
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
         val product = MerchantProduct(id = "p1", merchantId = "merchant_1", name = "Latte", price = BigDecimal("2500"))
@@ -92,7 +99,8 @@ class MerchantProductServiceTest : BehaviorSpec({
     Given("a merchant trying to modify a product belonging to a different merchant") {
         val merchantRepository = mockk<MerchantRepository>()
         val merchantProductRepository = mockk<MerchantProductRepository>()
-        val service = MerchantProductService(merchantRepository, merchantProductRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = MerchantProductService(merchantRepository, merchantProductRepository, rateLimiter)
 
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
         val othersProduct = MerchantProduct(id = "p9", merchantId = "merchant_other", name = "Someone Else's Item", price = BigDecimal("1000"))
@@ -124,7 +132,8 @@ class MerchantProductServiceTest : BehaviorSpec({
     Given("a merchant removing their own product") {
         val merchantRepository = mockk<MerchantRepository>()
         val merchantProductRepository = mockk<MerchantProductRepository>()
-        val service = MerchantProductService(merchantRepository, merchantProductRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = MerchantProductService(merchantRepository, merchantProductRepository, rateLimiter)
 
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
         val product = MerchantProduct(id = "p1", merchantId = "merchant_1", name = "Latte", price = BigDecimal("2500"))
@@ -136,6 +145,25 @@ class MerchantProductServiceTest : BehaviorSpec({
 
             Then("it's deactivated, not deleted -- preserves past reports/receipts referencing it") {
                 removed.active shouldBe false
+            }
+        }
+    }
+
+    Given("a real merchant exceeds the real product-creation rate limit") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val merchantProductRepository = mockk<MerchantProductRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = MerchantProductService(merchantRepository, merchantProductRepository, rateLimiter)
+        every { rateLimiter.checkLimit("merchant:product:owner_9", limit = 30, window = Duration.ofHours(1)) } throws RateLimitExceededException("Too many requests")
+
+        When("they try to add another real product") {
+            Then("it real-propagates RateLimitExceededException, found missing in a 2026-07-19 security sweep") {
+                try {
+                    service.addProduct("owner_9", "Latte", BigDecimal("2500"))
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { merchantProductRepository.save(any()) }
+                }
             }
         }
     }

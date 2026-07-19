@@ -12,6 +12,11 @@ dependencyManagement {
 
 dependencies {
     implementation(project(":core"))
+    // For RateLimiter -- real anti-spam limit on external-account linking, found missing
+    // in a 2026-07-19 security sweep: `link` had no dedup of any kind (a repeat call with
+    // the same provider/account just creates another row and burns another real simulated
+    // provider call each time).
+    implementation(project(":auth"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

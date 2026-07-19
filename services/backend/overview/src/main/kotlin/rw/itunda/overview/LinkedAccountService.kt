@@ -2,12 +2,14 @@ package rw.itunda.overview
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LinkedAccount
 import rw.itunda.core.domain.LinkedAccountStatus
 import rw.itunda.core.provider.ProviderConnector
 import rw.itunda.core.provider.ProviderDeclinedException
 import rw.itunda.core.provider.RailCatalog
 import rw.itunda.core.repository.LinkedAccountRepository
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -27,9 +29,16 @@ class LinkedAccountService(
     private val linkedAccountRepository: LinkedAccountRepository,
     private val providerConnector: ProviderConnector,
     private val demoExternalBalanceService: DemoExternalBalanceService,
+    private val rateLimiter: RateLimiter,
 ) {
     @Transactional
     fun link(userId: String, provider: String, externalAccountNumber: String): LinkedAccount {
+        // Real anti-spam limit -- found missing in a 2026-07-19 security sweep. Unlike
+        // every other create-a-row endpoint in this backend, `link` had no dedup logic
+        // at all: a repeat call with the same provider/account number just creates
+        // another real row and burns another real simulated ProviderConnector call
+        // every single time, unlike a real bank consent flow.
+        rateLimiter.checkLimit("accounts:link:$userId", limit = 10, window = Duration.ofHours(1))
         require(externalAccountNumber.length >= 4) { "Account number is too short to link" }
         val masked = "•••• " + externalAccountNumber.takeLast(4)
         val rail = RailCatalog.resolve(provider)

@@ -6,11 +6,15 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LinkedAccountStatus
 import rw.itunda.core.provider.ProviderConnector
 import rw.itunda.core.provider.ProviderDeclinedException
 import rw.itunda.core.provider.RailCatalog
 import rw.itunda.core.repository.LinkedAccountRepository
+import java.time.Duration
 
 class LinkedAccountServiceTest : BehaviorSpec({
 
@@ -21,7 +25,8 @@ class LinkedAccountServiceTest : BehaviorSpec({
         // other real-not-mocked demo services (DemoNidaVerificationService,
         // DemoCardAuthorizationService).
         val demoExternalBalanceService = DemoExternalBalanceService()
-        val service = LinkedAccountService(linkedAccountRepository, providerConnector, demoExternalBalanceService)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = LinkedAccountService(linkedAccountRepository, providerConnector, demoExternalBalanceService, rateLimiter)
 
         every { providerConnector.attempt(any(), any()) } returns Unit
         every { linkedAccountRepository.save(any()) } answers { firstArg() }
@@ -41,7 +46,8 @@ class LinkedAccountServiceTest : BehaviorSpec({
         val linkedAccountRepository = mockk<LinkedAccountRepository>()
         val providerConnector = mockk<ProviderConnector>()
         val demoExternalBalanceService = DemoExternalBalanceService()
-        val service = LinkedAccountService(linkedAccountRepository, providerConnector, demoExternalBalanceService)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = LinkedAccountService(linkedAccountRepository, providerConnector, demoExternalBalanceService, rateLimiter)
 
         every { providerConnector.attempt(any(), any()) } throws ProviderDeclinedException("MTN Mobile Money declined: Account verification for MTN MoMo")
         every { linkedAccountRepository.save(any()) } answers { firstArg() }
@@ -62,7 +68,8 @@ class LinkedAccountServiceTest : BehaviorSpec({
         val linkedAccountRepository = mockk<LinkedAccountRepository>()
         val providerConnector = mockk<ProviderConnector>()
         val demoExternalBalanceService = DemoExternalBalanceService()
-        val service = LinkedAccountService(linkedAccountRepository, providerConnector, demoExternalBalanceService)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = LinkedAccountService(linkedAccountRepository, providerConnector, demoExternalBalanceService, rateLimiter)
 
         every { providerConnector.attempt(any(), any()) } returns Unit
         every { linkedAccountRepository.save(any()) } answers { firstArg() }
@@ -73,6 +80,27 @@ class LinkedAccountServiceTest : BehaviorSpec({
 
             Then("the real demo balance is deterministic -- the same account always gets the same value, not randomly flaky") {
                 first.demoBalance shouldBe second.demoBalance
+            }
+        }
+    }
+
+    Given("a real user exceeds the real account-linking rate limit") {
+        val linkedAccountRepository = mockk<LinkedAccountRepository>()
+        val providerConnector = mockk<ProviderConnector>()
+        val demoExternalBalanceService = DemoExternalBalanceService()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = LinkedAccountService(linkedAccountRepository, providerConnector, demoExternalBalanceService, rateLimiter)
+        every { rateLimiter.checkLimit("accounts:link:user_9", limit = 10, window = Duration.ofHours(1)) } throws RateLimitExceededException("Too many requests")
+
+        When("they try to link another real account") {
+            Then("it real-propagates RateLimitExceededException, found missing in a 2026-07-19 security sweep, before ever calling the real provider") {
+                try {
+                    service.link("user_9", "MTN MoMo", "0788123456")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { providerConnector.attempt(any(), any()) }
+                    verify(exactly = 0) { linkedAccountRepository.save(any()) }
+                }
             }
         }
     }

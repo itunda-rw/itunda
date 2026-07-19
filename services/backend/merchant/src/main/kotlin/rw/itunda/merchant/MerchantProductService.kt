@@ -2,10 +2,12 @@ package rw.itunda.merchant
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import java.math.BigDecimal
+import java.time.Duration
 import java.util.UUID
 
 class InvalidProductPriceException(message: String) : RuntimeException(message)
@@ -22,6 +24,7 @@ class MerchantProductNotFoundException(message: String) : RuntimeException(messa
 class MerchantProductService(
     private val merchantRepository: MerchantRepository,
     private val merchantProductRepository: MerchantProductRepository,
+    private val rateLimiter: RateLimiter,
 ) {
     private fun getMyMerchant(ownerUserId: String) =
         merchantRepository.findByOwnerUserId(ownerUserId)
@@ -29,6 +32,11 @@ class MerchantProductService(
 
     @Transactional
     fun addProduct(ownerUserId: String, name: String, price: BigDecimal): MerchantProduct {
+        // Real anti-spam limit -- found missing in a 2026-07-19 security sweep. Not
+        // money-moving (deliberately no Idempotency-Key, per the controller's own doc
+        // comment), but that decision left free, unbounded product-row creation once a
+        // caller is merchant-registered with zero protection of any kind.
+        rateLimiter.checkLimit("merchant:product:$ownerUserId", limit = 30, window = Duration.ofHours(1))
         val merchant = getMyMerchant(ownerUserId)
         if (price <= BigDecimal.ZERO) {
             throw InvalidProductPriceException("Price must be greater than zero")
