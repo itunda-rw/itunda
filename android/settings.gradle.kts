@@ -100,6 +100,12 @@ include(":app")
 // backend, scoped to exactly what a rider needs (see riderapp/build.gradle.kts).
 include(":riderapp")
 
+// Real standalone merchant/POS app (2026-07-20) -- a shop owner's own app, separate
+// installable APK (applicationId rw.itunda.merchant), the second slice of the
+// "dedicated app per role" effort (rider app already done). Own minimal client,
+// same independence rationale as :riderapp.
+include(":merchantapp")
+
 // Core Bounded Contexts
 include(":core:designsystem")
 include(":core:network")

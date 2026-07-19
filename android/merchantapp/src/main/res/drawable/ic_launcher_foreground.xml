@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- A plain storefront glyph, simple enough to hand-author as a vector path
+         without a binary asset: awning, roofline, and a doorway. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M32,44 L76,44 L76,76 L32,76 Z" />
+    <path
+        android:fillColor="#1B64DA"
+        android:pathData="M46,76 L46,58 L62,58 L62,76 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,32 L80,32 L84,46 L24,46 Z" />
+</vector>

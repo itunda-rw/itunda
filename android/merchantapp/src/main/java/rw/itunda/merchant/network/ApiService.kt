@@ -1,0 +1,179 @@
+package rw.itunda.merchant.network
+
+import android.content.Context
+import okhttp3.Interceptor
+import okhttp3.OkHttpClient
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.Body
+import retrofit2.http.DELETE
+import retrofit2.http.GET
+import retrofit2.http.Header
+import retrofit2.http.PUT
+import retrofit2.http.POST
+import retrofit2.http.Path
+import retrofit2.http.Query
+import rw.itunda.merchant.BuildConfig
+import java.util.UUID
+
+// Mirrors services/backend/auth/src/main/kotlin/rw/itunda/auth/AuthDtos.kt exactly.
+// A merchant owner logs into their existing itunda account first, then registers as
+// a merchant via this app -- no separate registration screen for a brand-new itunda
+// account, same "existing account only" design as :riderapp's own login screen.
+data class LoginRequest(val phoneNumber: String, val password: String)
+data class PublicUser(val id: String, val phoneNumber: String, val firstName: String, val lastName: String)
+data class AuthResponse(val message: String, val user: PublicUser, val accessToken: String, val refreshToken: String)
+
+interface AuthApi {
+    @POST("api/v1/auth/login")
+    suspend fun login(@Body request: LoginRequest): AuthResponse
+}
+
+// Mirrors rw.itunda.merchant's real Merchant/MerchantProduct/PaymentIntent entities
+// exactly (same field names merchant-mfe's own lib/merchant.ts already uses).
+data class MerchantDto(
+    val id: String,
+    val ownerUserId: String,
+    val businessName: String,
+    val webhookUrl: String?,
+    val kybVerified: Boolean,
+    val createdAt: String,
+    val category: String?,
+)
+data class MerchantResponse(val success: Boolean, val merchant: MerchantDto)
+
+data class RegisterMerchantRequest(val businessName: String)
+
+data class MerchantProductDto(val id: String, val merchantId: String, val name: String, val price: Double, val active: Boolean, val createdAt: String)
+data class MerchantProductResponse(val success: Boolean, val product: MerchantProductDto)
+data class MerchantProductsResponse(val success: Boolean, val products: List<MerchantProductDto>)
+data class AddProductRequest(val name: String, val price: Double)
+
+data class GenerateQrRequest(val amount: Double, val description: String)
+data class PaymentIntentDto(val id: String, val merchantId: String, val amount: Double, val description: String, val status: String, val expiresAt: String, val createdAt: String)
+data class PaymentIntentResponse(val success: Boolean, val paymentIntent: PaymentIntentDto)
+
+data class ChargeCardRequest(
+    val amount: Double,
+    val description: String,
+    val cardNumber: String,
+    val expiryMonth: Int,
+    val expiryYear: Int,
+    val cvc: String,
+)
+data class CardChargeResponse(
+    val success: Boolean,
+    val transactionId: String,
+    val merchantName: String,
+    val amount: Double,
+    val fee: Double,
+    val status: String,
+    val channel: String,
+    val cardLast4: String,
+    val completedAt: String,
+)
+
+data class ReportDayDto(val date: String, val collectionCount: Int, val grossAmount: Double, val fees: Double, val netAmount: Double, val byChannel: Map<String, Double>)
+data class ReportResponse(val success: Boolean, val from: String, val to: String, val days: List<ReportDayDto>)
+
+// Real incoming Eats orders (restaurant side) -- previously only ever exposed in the
+// consumer app's own bank-mfe (a structural gap for anyone using a dedicated merchant
+// app), reused unmodified here. Trimmed to the fields this app's UI actually reads.
+data class EatsOrderDto(
+    val id: String,
+    val buyerId: String,
+    val restaurantId: String,
+    val riderId: String?,
+    val deliveryAddress: String,
+    val itemsSubtotal: Double,
+    val deliveryFee: Double,
+    val totalAmount: Double,
+    val status: String,
+    val createdAt: String,
+    val deliveryNotes: String? = null,
+)
+data class EatsOrderDetailResponse(val success: Boolean, val order: EatsOrderDto)
+data class EatsOrdersResponse(val success: Boolean, val orders: List<EatsOrderDto>)
+data class UpdateEatsOrderStatusRequest(val status: String)
+
+interface ApiService {
+    @POST("api/v1/merchant/register")
+    suspend fun registerMerchant(@Body request: RegisterMerchantRequest): MerchantResponse
+
+    @GET("api/v1/merchant/me")
+    suspend fun getMyMerchant(): MerchantResponse
+
+    @POST("api/v1/merchant/qr/generate")
+    suspend fun generateQr(@Body request: GenerateQrRequest): PaymentIntentResponse
+
+    @POST("api/v1/merchant/card/charge")
+    suspend fun chargeCard(@Header("Idempotency-Key") idempotencyKey: String = UUID.randomUUID().toString(), @Body request: ChargeCardRequest): CardChargeResponse
+
+    @GET("api/v1/merchant/products")
+    suspend fun getProductCatalog(): MerchantProductsResponse
+
+    @POST("api/v1/merchant/products")
+    suspend fun addProduct(@Body request: AddProductRequest): MerchantProductResponse
+
+    @PUT("api/v1/merchant/products/{id}")
+    suspend fun updateProduct(@Path("id") productId: String, @Body request: AddProductRequest): MerchantProductResponse
+
+    @DELETE("api/v1/merchant/products/{id}")
+    suspend fun removeProduct(@Path("id") productId: String): MerchantProductResponse
+
+    @GET("api/v1/merchant/reports")
+    suspend fun getReport(@Query("from") from: String? = null, @Query("to") to: String? = null): ReportResponse
+
+    @GET("api/v1/eats/orders/restaurant-orders")
+    suspend fun getRestaurantOrders(): EatsOrdersResponse
+
+    @POST("api/v1/eats/orders/{id}/status")
+    suspend fun advanceRestaurantOrderStatus(@Path("id") orderId: String, @Body request: UpdateEatsOrderStatusRequest): EatsOrderDetailResponse
+}
+
+/**
+ * Real, minimal Retrofit/OkHttp client, mirroring :riderapp's own NetworkClient
+ * exactly -- this app's own copy, scoped to a small deliberately chosen subset of
+ * the real backend's API surface (Merchant + the Eats restaurant-order endpoints).
+ */
+object NetworkClient {
+    private const val BASE_URL = BuildConfig.API_BASE_URL
+
+    private var tokenStore: TokenStore? = null
+
+    fun init(context: Context) {
+        tokenStore = TokenStore(context.applicationContext)
+    }
+
+    fun currentTokenStore(): TokenStore =
+        tokenStore ?: throw IllegalStateException("NetworkClient.init() was never called")
+
+    private val authInterceptor = Interceptor { chain ->
+        val token = tokenStore?.getAccessToken()
+        val newRequest = chain.request().newBuilder().apply {
+            if (token != null) addHeader("Authorization", "Bearer $token")
+        }.build()
+        chain.proceed(newRequest)
+    }
+
+    private val okHttpClient = OkHttpClient.Builder()
+        .addInterceptor(authInterceptor)
+        .build()
+
+    private val retrofit: Retrofit by lazy {
+        Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
+    val apiService: ApiService by lazy { retrofit.create(ApiService::class.java) }
+    val authApi: AuthApi by lazy { retrofit.create(AuthApi::class.java) }
+}
+
+/** itunda's real custom URL scheme for a customer's own app to resolve into a real
+ * POST /api/v1/merchant/collect/{intentId} call -- the same client-side encoding
+ * convention merchant-mfe's web POS screen already established
+ * (paymentIntentQrPayload). */
+fun paymentIntentQrPayload(intentId: String) = "itunda://pay?intentId=$intentId"
