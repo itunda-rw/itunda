@@ -46,6 +46,63 @@ private final class HoodLocationFetcher: NSObject, ObservableObject, CLLocationM
     }
 }
 
+/// Real hyperlocal neighborhood setup (2026-07-20) -- shared across every Hood-mode
+/// content view (Marketplace/Community/Jobs/Property), mirroring bank-mfe's
+/// NeighborhoodSetupPrompt and Android's own composable of the same name exactly.
+/// Reuses HoodLocationFetcher, the same real CLLocationManager wrapper
+/// NewListingForm's own "share my location" already established -- one location
+/// permission flow, not a second one invented for this.
+private struct NeighborhoodSetupPrompt: View {
+    let onDone: (String) -> Void
+
+    @State private var busy = false
+    @State private var error: String?
+    @StateObject private var locationFetcher = HoodLocationFetcher()
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Text("Set your neighborhood").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+            Text("Share your real location once to see what's happening near you.")
+                .font(.caption).foregroundColor(IDS.Colors.textSecondary).multilineTextAlignment(.center)
+            Button(action: { if !busy { locationFetcher.requestLocation() } }) {
+                Text(busy ? "Finding your neighborhood…" : "📍 Share my location")
+                    .font(.subheadline).bold().foregroundColor(.white)
+                    .padding(.horizontal, 20).padding(.vertical, 12)
+                    .background(IDS.Colors.brand).cornerRadius(12)
+            }
+            .disabled(busy)
+            if let error {
+                Text(error).font(.caption).foregroundColor(.red)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(28)
+        .background(IDS.Colors.card)
+        .cornerRadius(IDS.Layout.cardCornerRadius)
+        .onAppear {
+            locationFetcher.onLocation = { coordinate in
+                busy = true
+                Task {
+                    do {
+                        let res = try await NetworkClient.shared.setNeighborhood(latitude: coordinate.latitude, longitude: coordinate.longitude)
+                        busy = false
+                        if let neighborhood = res.user.neighborhood { onDone(neighborhood) }
+                    } catch let NetworkError.httpError(statusCode) {
+                        busy = false
+                        error = TalkScreen.errorMessage(statusCode)
+                    } catch {
+                        busy = false
+                        self.error = "Couldn't reach itunda. Check your connection and try again."
+                    }
+                }
+            }
+        }
+        .onChange(of: locationFetcher.errorMessage) { newValue in
+            if let newValue { error = newValue }
+        }
+    }
+}
+
 /// Real 당근마켓 (Danggeun/Karrot Market)-style neighborhood marketplace (2026-07-18) --
 /// iOS mirror of Android's HoodTab (SuperAppTabs.kt). See NetworkClient.swift's
 /// Marketplace extension and rw.itunda.marketplace.MarketplaceService's own doc
@@ -95,12 +152,14 @@ private struct MarketplaceContent: View {
     @Binding var pendingConversationId: String?
     let onSwitchToTalk: () -> Void
 
-    private enum HoodView { case browse, mine }
+    private enum HoodView { case browse, neighborhood, mine }
 
     @State private var view: HoodView = .browse
     @State private var listings: [ListingDto]?
     @State private var error: String?
     @State private var showNewListing = false
+    @State private var neighborhoodName: String?
+    @State private var neighborhoodChecked = false
     private let currentUserId = KeychainTokenStore.shared.getUserId()
 
     var body: some View {
@@ -110,6 +169,7 @@ private struct MarketplaceContent: View {
 
                 Picker("", selection: $view) {
                     Text("Browse").tag(HoodView.browse)
+                    Text("Neighborhood").tag(HoodView.neighborhood)
                     Text("My listings").tag(HoodView.mine)
                 }
                 .pickerStyle(.segmented)
@@ -133,6 +193,12 @@ private struct MarketplaceContent: View {
                     }
                 }
 
+                if view == .neighborhood && neighborhoodChecked && neighborhoodName == nil {
+                    NeighborhoodSetupPrompt(onDone: { _ in Task { await load() } })
+                }
+                if view == .neighborhood, let neighborhoodName {
+                    Text("Your neighborhood: \(neighborhoodName)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                }
                 if let error {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(error).foregroundColor(.red).font(.subheadline)
@@ -144,10 +210,14 @@ private struct MarketplaceContent: View {
                     .cornerRadius(IDS.Layout.cardCornerRadius)
                 } else if listings == nil {
                     ProgressView().frame(maxWidth: .infinity, minHeight: 120)
-                } else if listings!.isEmpty {
-                    Text(view == .browse ? "No listings yet." : "You haven't listed anything yet.")
-                        .foregroundColor(IDS.Colors.textSecondary)
-                } else {
+                } else if listings!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
+                    Text(
+                        view == .browse ? "No listings yet."
+                            : view == .neighborhood ? "No listings in your neighborhood yet."
+                            : "You haven't listed anything yet."
+                    )
+                    .foregroundColor(IDS.Colors.textSecondary)
+                } else if !listings!.isEmpty {
                     ForEach(listings!) { listing in
                         ListingCard(
                             listing: listing,
@@ -170,6 +240,24 @@ private struct MarketplaceContent: View {
 
     private func load() async {
         listings = nil
+        if view == .neighborhood {
+            neighborhoodChecked = false
+            do {
+                let profile = try await NetworkClient.shared.getProfile()
+                let res = try await NetworkClient.shared.getListingsMyNeighborhood()
+                neighborhoodName = profile.user.neighborhood
+                listings = res.listings
+                error = nil
+            } catch let NetworkError.httpError(statusCode) where statusCode == 400 {
+                neighborhoodName = nil
+                listings = []
+                error = nil
+            } catch {
+                self.error = "Couldn't reach itunda. Check your connection and try again."
+            }
+            neighborhoodChecked = true
+            return
+        }
         do {
             let res = view == .browse ? try await NetworkClient.shared.browseListings() : try await NetworkClient.shared.getMyListings()
             listings = res.listings
@@ -443,7 +531,7 @@ private struct ListingCard: View {
 // ============================== COMMUNITY (동네생활) ==============================
 
 private struct CommunityContent: View {
-    private enum CommunityView { case browse, mine }
+    private enum CommunityView { case browse, neighborhood, mine }
 
     @State private var view: CommunityView = .browse
     @State private var categories: [CommunityCategoryDto] = []
@@ -452,6 +540,8 @@ private struct CommunityContent: View {
     @State private var error: String?
     @State private var showNewPost = false
     @State private var openPostId: String?
+    @State private var neighborhoodName: String?
+    @State private var neighborhoodChecked = false
     private let currentUserId = KeychainTokenStore.shared.getUserId()
 
     var body: some View {
@@ -461,12 +551,13 @@ private struct CommunityContent: View {
             ScrollView {
                 VStack(spacing: IDS.Layout.cardGap) {
                     Picker("", selection: $view) {
-                        Text("Neighborhood feed").tag(CommunityView.browse)
+                        Text("Feed").tag(CommunityView.browse)
+                        Text("Neighborhood").tag(CommunityView.neighborhood)
                         Text("My posts").tag(CommunityView.mine)
                     }
                     .pickerStyle(.segmented)
 
-                    if view == .browse && !categories.isEmpty {
+                    if (view == .browse || view == .neighborhood) && !categories.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 6) {
                                 ForEach(categories) { c in
@@ -497,6 +588,12 @@ private struct CommunityContent: View {
                         }
                     }
 
+                    if view == .neighborhood && neighborhoodChecked && neighborhoodName == nil {
+                        NeighborhoodSetupPrompt(onDone: { _ in Task { await load() } })
+                    }
+                    if view == .neighborhood, let neighborhoodName {
+                        Text("Your neighborhood: \(neighborhoodName)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    }
                     if let error {
                         VStack(alignment: .leading, spacing: 10) {
                             Text(error).foregroundColor(.red).font(.subheadline)
@@ -506,9 +603,13 @@ private struct CommunityContent: View {
                         .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
                     } else if posts == nil {
                         ProgressView().frame(maxWidth: .infinity, minHeight: 120)
-                    } else if posts!.isEmpty {
-                        Text(view == .browse ? "No posts yet." : "You haven't posted anything yet.").foregroundColor(IDS.Colors.textSecondary)
-                    } else {
+                    } else if posts!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
+                        Text(
+                            view == .browse ? "No posts yet."
+                                : view == .neighborhood ? "No posts in your neighborhood yet."
+                                : "You haven't posted anything yet."
+                        ).foregroundColor(IDS.Colors.textSecondary)
+                    } else if !posts!.isEmpty {
                         ForEach(posts!) { post in
                             CommunityPostCard(
                                 post: post,
@@ -538,6 +639,24 @@ private struct CommunityContent: View {
 
     private func load() async {
         posts = nil
+        if view == .neighborhood {
+            neighborhoodChecked = false
+            do {
+                let profile = try await NetworkClient.shared.getProfile()
+                let res = try await NetworkClient.shared.getCommunityPostsMyNeighborhood(category: activeCategory)
+                neighborhoodName = profile.user.neighborhood
+                posts = res.posts
+                error = nil
+            } catch let NetworkError.httpError(statusCode) where statusCode == 400 {
+                neighborhoodName = nil
+                posts = []
+                error = nil
+            } catch {
+                self.error = "Couldn't reach itunda. Check your connection and try again."
+            }
+            neighborhoodChecked = true
+            return
+        }
         do {
             let res = view == .browse ? try await NetworkClient.shared.browseCommunityPosts(category: activeCategory) : try await NetworkClient.shared.getMyCommunityPosts()
             posts = res.posts
@@ -799,7 +918,7 @@ private struct JobsContent: View {
     @Binding var pendingConversationId: String?
     let onSwitchToTalk: () -> Void
 
-    private enum JobsView { case browse, mine }
+    private enum JobsView { case browse, neighborhood, mine }
 
     @State private var view: JobsView = .browse
     @State private var categories: [JobCategoryDto] = []
@@ -807,6 +926,8 @@ private struct JobsContent: View {
     @State private var posts: [JobPostDto]?
     @State private var error: String?
     @State private var showNewPost = false
+    @State private var neighborhoodName: String?
+    @State private var neighborhoodChecked = false
     private let currentUserId = KeychainTokenStore.shared.getUserId()
 
     var body: some View {
@@ -814,11 +935,12 @@ private struct JobsContent: View {
             VStack(spacing: IDS.Layout.cardGap) {
                 Picker("", selection: $view) {
                     Text("Find work").tag(JobsView.browse)
+                    Text("Neighborhood").tag(JobsView.neighborhood)
                     Text("My posts").tag(JobsView.mine)
                 }
                 .pickerStyle(.segmented)
 
-                if view == .browse && !categories.isEmpty {
+                if (view == .browse || view == .neighborhood) && !categories.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
                             ForEach(categories) { c in
@@ -849,6 +971,12 @@ private struct JobsContent: View {
                     }
                 }
 
+                if view == .neighborhood && neighborhoodChecked && neighborhoodName == nil {
+                    NeighborhoodSetupPrompt(onDone: { _ in Task { await load() } })
+                }
+                if view == .neighborhood, let neighborhoodName {
+                    Text("Your neighborhood: \(neighborhoodName)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                }
                 if let error {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(error).foregroundColor(.red).font(.subheadline)
@@ -858,9 +986,13 @@ private struct JobsContent: View {
                     .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
                 } else if posts == nil {
                     ProgressView().frame(maxWidth: .infinity, minHeight: 120)
-                } else if posts!.isEmpty {
-                    Text(view == .browse ? "No jobs posted yet." : "You haven't posted any jobs yet.").foregroundColor(IDS.Colors.textSecondary)
-                } else {
+                } else if posts!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
+                    Text(
+                        view == .browse ? "No jobs posted yet."
+                            : view == .neighborhood ? "No jobs in your neighborhood yet."
+                            : "You haven't posted any jobs yet."
+                    ).foregroundColor(IDS.Colors.textSecondary)
+                } else if !posts!.isEmpty {
                     ForEach(posts!) { post in
                         JobPostCard(
                             post: post,
@@ -889,6 +1021,24 @@ private struct JobsContent: View {
 
     private func load() async {
         posts = nil
+        if view == .neighborhood {
+            neighborhoodChecked = false
+            do {
+                let profile = try await NetworkClient.shared.getProfile()
+                let res = try await NetworkClient.shared.getJobPostsMyNeighborhood(category: activeCategory)
+                neighborhoodName = profile.user.neighborhood
+                posts = res.posts
+                error = nil
+            } catch let NetworkError.httpError(statusCode) where statusCode == 400 {
+                neighborhoodName = nil
+                posts = []
+                error = nil
+            } catch {
+                self.error = "Couldn't reach itunda. Check your connection and try again."
+            }
+            neighborhoodChecked = true
+            return
+        }
         do {
             let res = view == .browse ? try await NetworkClient.shared.browseJobPosts(category: activeCategory) : try await NetworkClient.shared.getMyJobPosts()
             posts = res.posts
@@ -1086,7 +1236,7 @@ private struct PropertyContent: View {
     @Binding var pendingConversationId: String?
     let onSwitchToTalk: () -> Void
 
-    private enum PropertyView { case browse, mine }
+    private enum PropertyView { case browse, neighborhood, mine }
 
     @State private var view: PropertyView = .browse
     @State private var propertyTypes: [PropertyTypeDto] = []
@@ -1095,6 +1245,8 @@ private struct PropertyContent: View {
     @State private var listings: [PropertyListingDto]?
     @State private var error: String?
     @State private var showNewListing = false
+    @State private var neighborhoodName: String?
+    @State private var neighborhoodChecked = false
     private let currentUserId = KeychainTokenStore.shared.getUserId()
 
     var body: some View {
@@ -1102,6 +1254,7 @@ private struct PropertyContent: View {
             VStack(spacing: IDS.Layout.cardGap) {
                 Picker("", selection: $view) {
                     Text("Browse").tag(PropertyView.browse)
+                    Text("Neighborhood").tag(PropertyView.neighborhood)
                     Text("My listings").tag(PropertyView.mine)
                 }
                 .pickerStyle(.segmented)
@@ -1153,6 +1306,12 @@ private struct PropertyContent: View {
                     }
                 }
 
+                if view == .neighborhood && neighborhoodChecked && neighborhoodName == nil {
+                    NeighborhoodSetupPrompt(onDone: { _ in Task { await load() } })
+                }
+                if view == .neighborhood, let neighborhoodName {
+                    Text("Your neighborhood: \(neighborhoodName)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                }
                 if let error {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(error).foregroundColor(.red).font(.subheadline)
@@ -1162,9 +1321,13 @@ private struct PropertyContent: View {
                     .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
                 } else if listings == nil {
                     ProgressView().frame(maxWidth: .infinity, minHeight: 120)
-                } else if listings!.isEmpty {
-                    Text(view == .browse ? "No properties listed yet." : "You haven't listed any properties yet.").foregroundColor(IDS.Colors.textSecondary)
-                } else {
+                } else if listings!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
+                    Text(
+                        view == .browse ? "No properties listed yet."
+                            : view == .neighborhood ? "No properties in your neighborhood yet."
+                            : "You haven't listed any properties yet."
+                    ).foregroundColor(IDS.Colors.textSecondary)
+                } else if !listings!.isEmpty {
                     ForEach(listings!) { listing in
                         PropertyListingCard(
                             listing: listing,
@@ -1195,6 +1358,24 @@ private struct PropertyContent: View {
 
     private func load() async {
         listings = nil
+        if view == .neighborhood {
+            neighborhoodChecked = false
+            do {
+                let profile = try await NetworkClient.shared.getProfile()
+                let res = try await NetworkClient.shared.getPropertyListingsMyNeighborhood()
+                neighborhoodName = profile.user.neighborhood
+                listings = res.listings
+                error = nil
+            } catch let NetworkError.httpError(statusCode) where statusCode == 400 {
+                neighborhoodName = nil
+                listings = []
+                error = nil
+            } catch {
+                self.error = "Couldn't reach itunda. Check your connection and try again."
+            }
+            neighborhoodChecked = true
+            return
+        }
         do {
             let res = view == .browse
                 ? try await NetworkClient.shared.browsePropertyListings(listingType: listingTypeFilter, propertyType: propertyTypeFilter)

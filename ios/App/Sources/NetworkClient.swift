@@ -33,6 +33,15 @@ struct PublicUser: Decodable {
     let kycVerified: Bool
     let creditScore: Int
     let createdAt: String
+    // Real hyperlocal neighborhood (2026-07-20) -- see AuthService.setNeighborhood's own
+    // doc comment. Set via a real coordinate, reverse-geocoded server-side; never
+    // self-declared free text.
+    let neighborhood: String?
+}
+
+struct SetNeighborhoodRequest: Encodable {
+    let latitude: Double
+    let longitude: Double
 }
 
 struct AuthResponse: Decodable {
@@ -174,6 +183,13 @@ extension NetworkClient {
     func getTransactionHistory() async throws -> TransactionHistoryResponse { try await get("api/v1/wallet/transactions") }
     // Real account settings screen (2026-07-12).
     func getProfile() async throws -> ProfileResponse { try await get("api/v1/auth/profile") }
+
+    // Real hyperlocal neighborhood (2026-07-20) -- a real coordinate in, reverse-geocoded
+    // server-side into a real neighborhood/sector name. See AuthService.setNeighborhood
+    // and bank-mfe's lib/neighborhood.ts, which this mirrors exactly.
+    func setNeighborhood(latitude: Double, longitude: Double) async throws -> ProfileResponse {
+        try await authenticatedPost("api/v1/auth/profile/neighborhood", body: SetNeighborhoodRequest(latitude: latitude, longitude: longitude))
+    }
     func getNotifications() async throws -> NotificationsResponse { try await get("api/v1/notifications") }
 
     func markNotificationRead(_ id: String) async throws {
@@ -1101,6 +1117,12 @@ extension NetworkClient {
 
     func getMyListings() async throws -> ListingsResponse { try await get("api/v1/marketplace/my-listings") }
 
+    // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see setNeighborhood.
+    // Real 400 on the caller's own neighborhood-not-set case, matching Android/web.
+    func getListingsMyNeighborhood(category: String? = nil) async throws -> ListingsResponse {
+        try await get("api/v1/marketplace/listings/my-neighborhood", query: [URLQueryItem(name: "category", value: category)])
+    }
+
     func markListingSold(_ listingId: String) async throws -> ListingResponse {
         try await authenticatedPost("api/v1/marketplace/listings/\(listingId)/mark-sold", body: EmptyBody())
     }
@@ -1139,6 +1161,11 @@ extension NetworkClient {
 
     func getMyCommunityPosts() async throws -> CommunityPostsResponse { try await get("api/v1/community/my-posts") }
 
+    // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see setNeighborhood.
+    func getCommunityPostsMyNeighborhood(category: String? = nil) async throws -> CommunityPostsResponse {
+        try await get("api/v1/community/posts/my-neighborhood", query: [URLQueryItem(name: "category", value: category)])
+    }
+
     func getCommunityPost(_ postId: String) async throws -> CommunityPostDetailResponse { try await get("api/v1/community/posts/\(postId)") }
 
     func removeCommunityPost(_ postId: String) async throws -> CommunityPostResponse {
@@ -1169,6 +1196,11 @@ extension NetworkClient {
     }
 
     func getMyJobPosts() async throws -> JobPostsResponse { try await get("api/v1/jobs/my-posts") }
+
+    // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see setNeighborhood.
+    func getJobPostsMyNeighborhood(category: String? = nil) async throws -> JobPostsResponse {
+        try await get("api/v1/jobs/posts/my-neighborhood", query: [URLQueryItem(name: "category", value: category)])
+    }
 
     func markJobPostFilled(_ jobPostId: String) async throws -> JobPostResponse {
         try await authenticatedPost("api/v1/jobs/posts/\(jobPostId)/mark-filled", body: EmptyBody())
@@ -1206,6 +1238,13 @@ extension NetworkClient {
     }
 
     func getMyPropertyListings() async throws -> PropertyListingsResponse { try await get("api/v1/realestate/my-listings") }
+
+    // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see setNeighborhood.
+    // Deliberately not combined with listingType/propertyType filters -- an honest v1
+    // scoping choice, same as the real backend endpoint this calls.
+    func getPropertyListingsMyNeighborhood() async throws -> PropertyListingsResponse {
+        try await get("api/v1/realestate/listings/my-neighborhood")
+    }
 
     func markPropertyListingTaken(_ propertyListingId: String) async throws -> PropertyListingResponse {
         try await authenticatedPost("api/v1/realestate/listings/\(propertyListingId)/mark-taken", body: EmptyBody())
