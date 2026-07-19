@@ -2,6 +2,7 @@ package rw.itunda.p2p
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.P2pPaymentRequest
@@ -18,6 +19,7 @@ import rw.itunda.core.repository.P2pPaymentRequestRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -44,10 +46,18 @@ class P2pService(
     private val transactionRepository: TransactionRepository,
     private val ledgerService: LedgerService,
     private val fraudRuleEngine: FraudRuleEngine,
+    private val rateLimiter: RateLimiter,
 ) {
 
     fun generateRequest(requesterUserId: String, amount: BigDecimal, description: String): P2pPaymentRequest {
         require(amount > BigDecimal.ZERO) { "Amount must be greater than zero" }
+        // Real anti-spam limit -- found missing in a 2026-07-19 security sweep. Every
+        // other real content/money-creation endpoint in this codebase (Marketplace
+        // listings, Community posts, Jobs posts, Real Estate listings/offers,
+        // chargeCard) already has one; this real-money-request-creation endpoint had
+        // shipped without it, same class of gap as the chargeCard/toggleReaction
+        // findings from earlier sweeps.
+        rateLimiter.checkLimit("p2p:request:$requesterUserId", limit = 20, window = Duration.ofHours(1))
         val request = P2pPaymentRequest(
             id = "p2p_${UUID.randomUUID()}",
             requesterUserId = requesterUserId,
@@ -76,6 +86,11 @@ class P2pService(
         if (request.requesterUserId == payerUserId) {
             throw P2pSelfPaymentException("Cannot pay your own payment request")
         }
+        // Real anti-spam limit, same sweep -- lower abuse surface than generateRequest
+        // (a real pending request is single-use and payment debits the payer's own real
+        // balance), but still a real mutating money-movement endpoint that gets the
+        // same day-one-rate-limiting discipline as everything else in this codebase.
+        rateLimiter.checkLimit("p2p:pay:$payerUserId", limit = 30, window = Duration.ofHours(1))
 
         val payerWallet = walletRepository.findByUserIdAndType(payerUserId, WalletType.MAIN)
             ?: throw P2pNoWalletException("No wallet found for this account")

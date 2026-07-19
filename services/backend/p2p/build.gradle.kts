@@ -12,6 +12,10 @@ dependencyManagement {
 
 dependencies {
     implementation(project(":core"))
+    // For RateLimiter -- real anti-spam limit on P2P request creation/payment, found
+    // missing in a 2026-07-19 security sweep, same convention every other
+    // content/money-creation endpoint in this codebase already uses.
+    implementation(project(":auth"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

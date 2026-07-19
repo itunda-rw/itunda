@@ -7,6 +7,8 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.P2pPaymentRequest
@@ -22,6 +24,7 @@ import rw.itunda.core.repository.P2pPaymentRequestRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.Instant
 import java.util.Optional
 
@@ -38,7 +41,8 @@ class P2pServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = P2pService(p2pPaymentRequestRepository, walletRepository, transactionRepository, ledgerService, fraudRuleEngine)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = P2pService(p2pPaymentRequestRepository, walletRepository, transactionRepository, ledgerService, fraudRuleEngine, rateLimiter)
 
         val request = P2pPaymentRequest(id = "p2p_1", requesterUserId = "requester_1", amount = BigDecimal("2000"), description = "Lunch", expiresAt = Instant.now().plusSeconds(900))
         every { p2pPaymentRequestRepository.findById("p2p_1") } returns Optional.of(request)
@@ -83,7 +87,8 @@ class P2pServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = P2pService(p2pPaymentRequestRepository, walletRepository, transactionRepository, ledgerService, fraudRuleEngine)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = P2pService(p2pPaymentRequestRepository, walletRepository, transactionRepository, ledgerService, fraudRuleEngine, rateLimiter)
 
         val request = P2pPaymentRequest(id = "p2p_2", requesterUserId = "user_5", amount = BigDecimal("1000"), description = "test", expiresAt = Instant.now().plusSeconds(900))
         every { p2pPaymentRequestRepository.findById("p2p_2") } returns Optional.of(request)
@@ -106,7 +111,8 @@ class P2pServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = P2pService(p2pPaymentRequestRepository, walletRepository, transactionRepository, ledgerService, fraudRuleEngine)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = P2pService(p2pPaymentRequestRepository, walletRepository, transactionRepository, ledgerService, fraudRuleEngine, rateLimiter)
 
         val request = P2pPaymentRequest(id = "p2p_3", requesterUserId = "requester_2", amount = BigDecimal("1000"), description = "test", expiresAt = Instant.now().minusSeconds(1))
         every { p2pPaymentRequestRepository.findById("p2p_3") } returns Optional.of(request)
@@ -131,7 +137,8 @@ class P2pServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val ledgerService = mockk<LedgerService>()
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
-        val service = P2pService(p2pPaymentRequestRepository, walletRepository, transactionRepository, ledgerService, fraudRuleEngine)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = P2pService(p2pPaymentRequestRepository, walletRepository, transactionRepository, ledgerService, fraudRuleEngine, rateLimiter)
 
         val request = P2pPaymentRequest(id = "p2p_4", requesterUserId = "requester_3", amount = BigDecimal("5000"), description = "test", expiresAt = Instant.now().plusSeconds(900))
         every { p2pPaymentRequestRepository.findById("p2p_4") } returns Optional.of(request)
@@ -145,6 +152,53 @@ class P2pServiceTest : BehaviorSpec({
                     error("expected InsufficientFundsException")
                 } catch (e: InsufficientFundsException) {
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+    }
+
+    Given("a real requester exceeds the real request-creation rate limit") {
+        val p2pPaymentRequestRepository = mockk<P2pPaymentRequestRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>()
+        val service = P2pService(p2pPaymentRequestRepository, walletRepository, transactionRepository, ledgerService, fraudRuleEngine, rateLimiter)
+        every { rateLimiter.checkLimit("p2p:request:requester_9", limit = 20, window = Duration.ofHours(1)) } throws RateLimitExceededException("Too many requests")
+
+        When("they try to generate another real request") {
+            Then("it real-propagates RateLimitExceededException, found missing in a 2026-07-19 security sweep") {
+                try {
+                    service.generateRequest("requester_9", BigDecimal("1000"), "test")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { p2pPaymentRequestRepository.save(any()) }
+                }
+            }
+        }
+    }
+
+    Given("a real payer exceeds the real payment rate limit") {
+        val p2pPaymentRequestRepository = mockk<P2pPaymentRequestRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>()
+        val service = P2pService(p2pPaymentRequestRepository, walletRepository, transactionRepository, ledgerService, fraudRuleEngine, rateLimiter)
+
+        val request = P2pPaymentRequest(id = "p2p_5", requesterUserId = "requester_4", amount = BigDecimal("1000"), description = "test", expiresAt = Instant.now().plusSeconds(900))
+        every { p2pPaymentRequestRepository.findById("p2p_5") } returns Optional.of(request)
+        every { rateLimiter.checkLimit("p2p:pay:payer_9", limit = 30, window = Duration.ofHours(1)) } throws RateLimitExceededException("Too many requests")
+
+        When("they try to pay") {
+            Then("it real-propagates RateLimitExceededException before ever touching a real wallet") {
+                try {
+                    service.payRequest("payer_9", "p2p_5")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { walletRepository.findByUserIdAndType(any(), any()) }
                 }
             }
         }
