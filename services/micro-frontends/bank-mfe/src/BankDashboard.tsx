@@ -11,7 +11,10 @@ import {
   type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup,
 } from './lib/messaging';
-import { contactSeller, createListing, fetchListings, fetchMyListings, markListingSold, removeListing, type Listing } from './lib/marketplace';
+import {
+  contactSeller, createListing, fetchListings, fetchMyListings, fetchOffersForConversation, makeOffer, markListingSold,
+  removeListing, respondToOffer, type Listing, type PriceOffer,
+} from './lib/marketplace';
 import {
   addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, fetchAvailableDeliveries,
   fetchEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyRiderProfile, fetchRestaurantCategories,
@@ -570,8 +573,76 @@ function MessageReactions({
   );
 }
 
+// Real 당근-style price-offer bubble -- see PriceOfferService's own doc comment.
+// Renders inline wherever a message carries a real offer, replacing the plain-text
+// bubble with amount + status + real Accept/Reject/Counter actions (only shown to
+// whichever participant did NOT propose the current pending amount).
+function OfferBubble({
+  offer, isMine, currentUserId, onRespond,
+}: {
+  offer: PriceOffer; isMine: boolean; currentUserId: string | undefined; onRespond: (offerId: string, action: 'ACCEPT' | 'REJECT' | 'COUNTER', counterAmount?: number) => void;
+}) {
+  const [countering, setCountering] = useState(false);
+  const [counterAmount, setCounterAmount] = useState('');
+  const canRespond = offer.status === 'PENDING' && currentUserId && currentUserId !== offer.proposedByUserId;
+  const statusLabel: Record<PriceOffer['status'], string> = {
+    PENDING: 'Pending', ACCEPTED: 'Accepted', REJECTED: 'Declined', COUNTERED: 'Countered',
+  };
+
+  return (
+    <div
+      style={{
+        maxWidth: '75%', padding: '12px 14px', borderRadius: '16px', fontSize: '14px',
+        backgroundColor: isMine ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+        color: isMine ? 'var(--toss-white)' : 'var(--toss-grey-900)',
+        display: 'flex', flexDirection: 'column', gap: '6px',
+      }}
+    >
+      <p style={{ fontWeight: 700 }}>💰 {offer.amount.toLocaleString()} RWF</p>
+      <p style={{ fontSize: '12px', opacity: 0.8 }}>{statusLabel[offer.status]}</p>
+      {canRespond && !countering && (
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button className="toss-btn toss-btn-secondary" style={{ fontSize: '12px', padding: '6px 10px' }} onClick={() => onRespond(offer.id, 'ACCEPT')}>
+            Accept
+          </button>
+          <button className="toss-btn toss-btn-secondary" style={{ fontSize: '12px', padding: '6px 10px' }} onClick={() => onRespond(offer.id, 'REJECT')}>
+            Decline
+          </button>
+          <button className="toss-btn toss-btn-secondary" style={{ fontSize: '12px', padding: '6px 10px' }} onClick={() => setCountering(true)}>
+            Counter
+          </button>
+        </div>
+      )}
+      {canRespond && countering && (
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <input
+            type="number"
+            value={counterAmount}
+            onChange={(e) => setCounterAmount(e.target.value)}
+            placeholder="Counter (RWF)"
+            style={{ flex: 1, padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)', fontSize: '12px' }}
+          />
+          <button
+            className="toss-btn toss-btn-secondary"
+            style={{ fontSize: '12px', padding: '6px 10px' }}
+            disabled={!counterAmount || Number(counterAmount) <= 0}
+            onClick={() => {
+              onRespond(offer.id, 'COUNTER', Number(counterAmount));
+              setCountering(false);
+              setCounterAmount('');
+            }}
+          >
+            Send
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ConversationThread({ conversation, onBack }: { conversation: ConversationSummary; onBack: () => void }) {
   const [messages, setMessages] = useState<Message[] | null>(null);
+  const [offersByMessageId, setOffersByMessageId] = useState<Record<string, PriceOffer>>({});
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -588,10 +659,30 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation.otherUserId]);
 
-  const load = () =>
+  const loadOffers = () =>
+    fetchOffersForConversation(conversation.conversationId)
+      .then((offers) => setOffersByMessageId(Object.fromEntries(offers.map((o) => [o.messageId, o]))))
+      .catch(() => {
+        // Real, non-critical -- a failed offer-history fetch just means offer messages
+        // render as plain text this pass; never blocks the thread.
+      });
+
+  const load = () => {
     fetchMessages(conversation.conversationId)
       .then(setMessages)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this conversation.'));
+    loadOffers();
+  };
+
+  const handleRespondToOffer = async (offerId: string, action: 'ACCEPT' | 'REJECT' | 'COUNTER', counterAmount?: number) => {
+    try {
+      await respondToOffer(offerId, action, counterAmount);
+      loadOffers();
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not respond to this offer.');
+    }
+  };
 
   useEffect(() => {
     load();
@@ -636,6 +727,10 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         if (prev.some((m) => m.id === payload.message.id)) return prev;
         return [...prev, payload.message];
       });
+      // A pushed message might be a real offer/counter/accept/reject -- refresh the
+      // offer history so it renders as an offer bubble immediately rather than waiting
+      // for the next 4s poll.
+      loadOffers();
     });
     socketRef.current = socket;
     return () => {
@@ -702,20 +797,25 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         )}
         {messages?.map((m) => {
           const isMine = m.senderId === currentUser?.id;
+          const offer = offersByMessageId[m.id];
           return (
             <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
-              <div
-                style={{
-                  maxWidth: '75%',
-                  padding: '10px 14px',
-                  borderRadius: '16px',
-                  fontSize: '14px',
-                  backgroundColor: isMine ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
-                  color: isMine ? 'var(--toss-white)' : 'var(--toss-grey-900)',
-                }}
-              >
-                {m.body}
-              </div>
+              {offer ? (
+                <OfferBubble offer={offer} isMine={isMine} currentUserId={currentUser?.id} onRespond={handleRespondToOffer} />
+              ) : (
+                <div
+                  style={{
+                    maxWidth: '75%',
+                    padding: '10px 14px',
+                    borderRadius: '16px',
+                    fontSize: '14px',
+                    backgroundColor: isMine ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+                    color: isMine ? 'var(--toss-white)' : 'var(--toss-grey-900)',
+                  }}
+                >
+                  {m.body}
+                </div>
+              )}
               <MessageReactions
                 reactions={m.reactions}
                 currentUserId={currentUser?.id}
@@ -1275,6 +1375,8 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller }: {
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [offering, setOffering] = useState(false);
+  const [offerAmount, setOfferAmount] = useState('');
 
   const handleMarkSold = async () => {
     setBusy(true);
@@ -1315,6 +1417,23 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller }: {
     }
   };
 
+  const handleMakeOffer = async () => {
+    const amount = Number(offerAmount);
+    if (!amount || amount <= 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const offer = await makeOffer(listing.id, amount);
+      setOffering(false);
+      setOfferAmount('');
+      onMessageSeller(offer.conversationId);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send this offer.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -1332,6 +1451,20 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller }: {
         <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{listing.price.toLocaleString()} RWF</span>
       </div>
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>{listing.description}</p>
+      {offering && (
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input
+            type="number"
+            value={offerAmount}
+            onChange={(e) => setOfferAmount(e.target.value)}
+            placeholder="Your offer (RWF)"
+            style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <button className="toss-btn toss-btn-primary" disabled={busy || !offerAmount} onClick={handleMakeOffer}>
+            Send
+          </button>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: '8px' }}>
         {isMine ? (
           <>
@@ -1347,10 +1480,15 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller }: {
             )}
           </>
         ) : (
-          listing.status === 'ACTIVE' && (
-            <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={handleMessage}>
-              {busy ? 'Starting…' : 'Message seller'}
-            </button>
+          listing.status === 'ACTIVE' && !offering && (
+            <>
+              <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={handleMessage}>
+                {busy ? 'Starting…' : 'Message seller'}
+              </button>
+              <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={() => setOffering(true)}>
+                Make an offer
+              </button>
+            </>
           )
         )}
       </div>

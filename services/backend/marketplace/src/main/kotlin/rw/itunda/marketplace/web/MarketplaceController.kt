@@ -20,10 +20,16 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.marketplace.InvalidCoordinatesException
 import rw.itunda.marketplace.InvalidListingException
+import rw.itunda.marketplace.InvalidOfferAmountException
 import rw.itunda.marketplace.ListingNotActiveException
 import rw.itunda.marketplace.ListingNotFoundException
 import rw.itunda.marketplace.MarketplaceService
+import rw.itunda.marketplace.OfferAlreadyResolvedException
+import rw.itunda.marketplace.OfferResponseAction
 import rw.itunda.marketplace.OwnListingException
+import rw.itunda.marketplace.OwnOfferException
+import rw.itunda.marketplace.PriceOfferNotFoundException
+import rw.itunda.marketplace.PriceOfferService
 import java.math.BigDecimal
 
 data class CreateListingRequest(
@@ -35,11 +41,14 @@ data class CreateListingRequest(
     val longitude: Double? = null,
 )
 
+data class MakeOfferRequest(val amount: BigDecimal)
+data class RespondToOfferRequest(val action: OfferResponseAction, val counterAmount: BigDecimal? = null)
+
 // Real 당근마켓-style marketplace -- see MarketplaceService's own doc comment. Normal
 // itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
 @RestController
 @RequestMapping("/api/v1/marketplace")
-class MarketplaceController(private val marketplaceService: MarketplaceService) {
+class MarketplaceController(private val marketplaceService: MarketplaceService, private val priceOfferService: PriceOfferService) {
 
     @PostMapping("/listings")
     fun createListing(
@@ -111,6 +120,54 @@ class MarketplaceController(private val marketplaceService: MarketplaceService) 
         val conversation = marketplaceService.contactSeller(currentUser.userId, listingId)
         return ResponseEntity.ok(mapOf("success" to true, "conversation" to conversation))
     }
+
+    // Real 당근-style price-offer negotiation (2026-07-19) -- see PriceOfferService's
+    // own doc comment. Posts each offer/counter/accept/reject as a real message in the
+    // buyer-seller conversation `contactSeller` already established.
+    @PostMapping("/listings/{listingId}/offers")
+    fun makeOffer(
+        @PathVariable listingId: String,
+        @RequestBody request: MakeOfferRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val offer = priceOfferService.makeOffer(currentUser.userId, listingId, request.amount)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "offer" to offer))
+    }
+
+    @PostMapping("/offers/{offerId}/respond")
+    fun respondToOffer(
+        @PathVariable offerId: String,
+        @RequestBody request: RespondToOfferRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val offer = priceOfferService.respondToOffer(currentUser.userId, offerId, request.action, request.counterAmount)
+        return ResponseEntity.ok(mapOf("success" to true, "offer" to offer))
+    }
+
+    // Real per-thread offer history, so a client can render offer bubbles inline in the
+    // existing real conversation thread it's already fetching from :messaging.
+    @GetMapping("/conversations/{conversationId}/offers")
+    fun getOffersForConversation(
+        @PathVariable conversationId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "offers" to priceOfferService.getOffersForConversation(currentUser.userId, conversationId)))
+
+    @ExceptionHandler(PriceOfferNotFoundException::class)
+    fun handleOfferNotFound(ex: PriceOfferNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("OFFER_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(InvalidOfferAmountException::class)
+    fun handleInvalidOfferAmount(ex: InvalidOfferAmountException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_OFFER_AMOUNT", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(OfferAlreadyResolvedException::class)
+    fun handleOfferAlreadyResolved(ex: OfferAlreadyResolvedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("OFFER_ALREADY_RESOLVED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(OwnOfferException::class)
+    fun handleOwnOffer(ex: OwnOfferException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("OWN_OFFER", ex.message ?: "Bad request"))
 
     @ExceptionHandler(ListingNotFoundException::class)
     fun handleNotFound(ex: ListingNotFoundException) =
