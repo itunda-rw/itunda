@@ -1,6 +1,7 @@
 package rw.itunda.eats
 
 import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -286,9 +287,53 @@ class EatsOrderService(
 
     /** Real query backing a rider's "available deliveries" list -- READY_FOR_PICKUP
      * orders with no rider claimed yet. Visible to any registered rider, not just
-     * available ones (a rider deciding whether to go online can see the real demand). */
-    fun getAvailableDeliveries(pageable: Pageable): Page<EatsOrder> =
-        eatsOrderRepository.findByStatusAndRiderIdIsNullOrderByCreatedAtAsc(EatsOrderStatus.READY_FOR_PICKUP, pageable)
+     * available ones (a rider deciding whether to go online can see the real demand).
+     *
+     * Real nearest-first ranking (2026-07-19): when the calling rider has a real current
+     * location (`RiderService.updateLocation`), candidates are sorted by real
+     * `GeoUtils.haversineKm` distance from the rider to each order's restaurant, closest
+     * first -- real Coupang Eats-style proximity dispatch, using coordinates
+     * `Merchant`/`EatsOrder` already carry. Falls back to the original createdAt-ascending
+     * (oldest-first) order when the rider hasn't shared a location yet, or when a
+     * candidate's restaurant has no real coordinates -- never a fabricated distance,
+     * same honest-fallback discipline `computeDeliveryFee` already established.
+     *
+     * Sorted in-app over a single bounded fetch, not a DB-level query, matching this
+     * codebase's own established "honest choice at this system's real data scale"
+     * convention (see `SavingsService.getGoalsDueForAutoContribution`'s own doc comment)
+     * -- the real candidate set is every currently-unclaimed READY_FOR_PICKUP order
+     * nationwide at this exact moment, not the full order history, so an in-memory sort
+     * is proportionate today; a real production system at much larger scale would want a
+     * DB-level geospatial query instead. */
+    fun getAvailableDeliveries(riderUserId: String, pageable: Pageable): Page<EatsOrder> {
+        val rider = riderRepository.findByUserId(riderUserId)
+            ?: throw RiderNotRegisteredException("This account is not registered as a rider")
+        val riderLat = rider.currentLatitude
+        val riderLng = rider.currentLongitude
+        if (riderLat == null || riderLng == null) {
+            return eatsOrderRepository.findByStatusAndRiderIdIsNullOrderByCreatedAtAsc(EatsOrderStatus.READY_FOR_PICKUP, pageable)
+        }
+
+        val candidates = eatsOrderRepository.findByStatusAndRiderIdIsNullOrderByCreatedAtAsc(
+            EatsOrderStatus.READY_FOR_PICKUP, Pageable.unpaged(),
+        ).content
+        if (candidates.isEmpty()) return PageImpl(emptyList(), pageable, 0)
+
+        val restaurantsById = merchantRepository.findAllById(candidates.map { it.restaurantId }.distinct()).associateBy { it.id }
+        val sorted = candidates.sortedBy { order ->
+            val restaurant = restaurantsById[order.restaurantId]
+            val restaurantLat = restaurant?.latitude
+            val restaurantLng = restaurant?.longitude
+            if (restaurantLat != null && restaurantLng != null) {
+                GeoUtils.haversineKm(riderLat, riderLng, restaurantLat, restaurantLng)
+            } else {
+                Double.MAX_VALUE
+            }
+        }
+        val start = (pageable.offset).coerceAtMost(sorted.size.toLong()).toInt()
+        val end = (start + pageable.pageSize).coerceAtMost(sorted.size)
+        return PageImpl(sorted.subList(start, end), pageable, sorted.size.toLong())
+    }
 
     /** Buyer, restaurant owner, or the assigned rider can view an order's items --
      * anyone else gets a real 404, not a 403 that would confirm the order exists. */

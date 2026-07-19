@@ -42,6 +42,7 @@ import rw.itunda.eats.InvalidEatsDeliveryNotesException
 import rw.itunda.eats.InvalidEatsOrderStatusTransitionException
 import rw.itunda.eats.InvalidEatsQuantityException
 import rw.itunda.eats.InvalidEatsRatingException
+import rw.itunda.eats.InvalidRiderLocationException
 import rw.itunda.eats.MenuItemNotFoundException
 import rw.itunda.eats.NotAssignedRiderException
 import rw.itunda.eats.RestaurantNoWalletException
@@ -63,6 +64,7 @@ data class PlaceEatsOrderRequest(
 )
 data class UpdateEatsOrderStatusRequest(val status: EatsOrderStatus)
 data class SetRiderAvailabilityRequest(val available: Boolean)
+data class UpdateRiderLocationRequest(val latitude: Double, val longitude: Double)
 data class SubmitEatsReviewRequest(
     val restaurantRating: Int,
     val restaurantComment: String? = null,
@@ -104,6 +106,17 @@ class EatsController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val rider = riderService.setAvailability(currentUser.userId, request.available)
+        return ResponseEntity.ok(mapOf("success" to true, "rider" to rider))
+    }
+
+    // Real GPS location update (2026-07-19) -- see RiderService.updateLocation's own
+    // doc comment. Backs real nearest-first ranking on /orders/available below.
+    @PostMapping("/riders/location")
+    fun updateRiderLocation(
+        @RequestBody request: UpdateRiderLocationRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val rider = riderService.updateLocation(currentUser.userId, request.latitude, request.longitude)
         return ResponseEntity.ok(mapOf("success" to true, "rider" to rider))
     }
 
@@ -163,8 +176,11 @@ class EatsController(
     }
 
     @GetMapping("/orders/available")
-    fun getAvailableDeliveries(@PageableDefault(size = 20) pageable: Pageable): ResponseEntity<Map<String, Any?>> {
-        val page = eatsOrderService.getAvailableDeliveries(pageable)
+    fun getAvailableDeliveries(
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = eatsOrderService.getAvailableDeliveries(currentUser.userId, pageable)
         return ResponseEntity.ok(mapOf("success" to true, "orders" to page.content) + pageMeta(page))
     }
 
@@ -353,6 +369,10 @@ class EatsController(
     @ExceptionHandler(RiderNoWalletException::class)
     fun handleRiderNoWallet(ex: RiderNoWalletException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RIDER_WALLET_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(InvalidRiderLocationException::class)
+    fun handleInvalidRiderLocation(ex: InvalidRiderLocationException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_RIDER_LOCATION", ex.message ?: "Bad request"))
 
     @ExceptionHandler(RiderNotAvailableException::class)
     fun handleRiderNotAvailable(ex: RiderNotAvailableException) =

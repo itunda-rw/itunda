@@ -9,6 +9,8 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Pageable
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.EatsOrder
@@ -728,6 +730,82 @@ class EatsOrderServiceTest : BehaviorSpec({
                     // expected
                 }
                 verify(exactly = 0) { nominatimGeocodingClient.search(any()) }
+            }
+        }
+    }
+
+    Given("a real rider browsing available deliveries") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val merchantProductRepository = mockk<MerchantProductRepository>()
+        val riderRepository = mockk<RiderRepository>()
+        val eatsOrderRepository = mockk<EatsOrderRepository>()
+        val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = EatsOrderService(
+            merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
+            eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter,
+        )
+
+        // Kigali city center vs. Huye (real Rwandan towns, ~135km apart) -- a rider
+        // standing in Kigali should see the Kigali restaurant's order first.
+        val nearRestaurant = Merchant(id = "restaurant_near", ownerUserId = "owner_near", walletId = "wallet_near", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE, latitude = -1.9536, longitude = 30.0605)
+        val farRestaurant = Merchant(id = "restaurant_far", ownerUserId = "owner_far", walletId = "wallet_far", businessName = "Huye Diner", status = MerchantStatus.ACTIVE, latitude = -2.5967, longitude = 29.7392)
+        val orderFromFarRestaurant = EatsOrder(
+            id = "order_far", buyerId = "buyer_1", restaurantId = "restaurant_far", deliveryAddress = "addr",
+            itemsSubtotal = BigDecimal("5000"), deliveryFee = BigDecimal("1000"), platformFee = BigDecimal("75"),
+            totalAmount = BigDecimal("6075"), transactionId = "ledgertxn_far", status = EatsOrderStatus.READY_FOR_PICKUP,
+        )
+        val orderFromNearRestaurant = EatsOrder(
+            id = "order_near", buyerId = "buyer_2", restaurantId = "restaurant_near", deliveryAddress = "addr",
+            itemsSubtotal = BigDecimal("5000"), deliveryFee = BigDecimal("1000"), platformFee = BigDecimal("75"),
+            totalAmount = BigDecimal("6075"), transactionId = "ledgertxn_near", status = EatsOrderStatus.READY_FOR_PICKUP,
+        )
+
+        When("the rider has shared a real current location") {
+            val riderAtKigaliCenter = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", currentLatitude = -1.9441, currentLongitude = 30.0619)
+            every { riderRepository.findByUserId("rider_user_1") } returns riderAtKigaliCenter
+            every { eatsOrderRepository.findByStatusAndRiderIdIsNullOrderByCreatedAtAsc(EatsOrderStatus.READY_FOR_PICKUP, Pageable.unpaged()) } returns
+                org.springframework.data.domain.PageImpl(listOf(orderFromFarRestaurant, orderFromNearRestaurant))
+            every { merchantRepository.findAllById(listOf("restaurant_far", "restaurant_near")) } returns listOf(farRestaurant, nearRestaurant)
+
+            val page = service.getAvailableDeliveries("rider_user_1", PageRequest.of(0, 20))
+
+            Then("it real-ranks the nearer restaurant's order first, not createdAt order") {
+                page.content.map { it.id } shouldBe listOf("order_near", "order_far")
+            }
+        }
+
+        When("the rider has NOT shared a real current location yet") {
+            val riderWithNoLocation = Rider(id = "rider_2", userId = "rider_user_2", walletId = "wallet_rider_2")
+            every { riderRepository.findByUserId("rider_user_2") } returns riderWithNoLocation
+            val fallbackPage = org.springframework.data.domain.PageImpl(listOf(orderFromFarRestaurant, orderFromNearRestaurant))
+            every { eatsOrderRepository.findByStatusAndRiderIdIsNullOrderByCreatedAtAsc(EatsOrderStatus.READY_FOR_PICKUP, any()) } returns fallbackPage
+
+            val page = service.getAvailableDeliveries("rider_user_2", PageRequest.of(0, 20))
+
+            Then("it honestly falls back to createdAt order -- never a fabricated distance") {
+                page.content.map { it.id } shouldBe listOf("order_far", "order_near")
+            }
+        }
+
+        When("someone who never registered as a rider tries to browse") {
+            every { riderRepository.findByUserId("stranger") } returns null
+
+            Then("it throws RiderNotRegisteredException") {
+                try {
+                    service.getAvailableDeliveries("stranger", PageRequest.of(0, 20))
+                    error("expected RiderNotRegisteredException")
+                } catch (e: RiderNotRegisteredException) {
+                    // expected
+                }
             }
         }
     }

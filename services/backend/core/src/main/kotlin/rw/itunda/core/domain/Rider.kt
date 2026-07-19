@@ -14,10 +14,12 @@ enum class RiderStatus { ACTIVE, SUSPENDED }
  * A real itunda user who has opted into delivering Eats orders -- reuses the user's own
  * existing MAIN wallet as the payout destination (same real WALLET-to-WALLET disbursement
  * precedent `PayrollService` already established for employee pay), no new wallet type or
- * external payout rail needed. `available` is a real self-reported online/offline toggle
- * (no real GPS/location tracking exists anywhere in this backend -- the same honest
- * "no real location data" limitation already named for the neighborhood marketplace row).
- * See `rw.itunda.eats.RiderService`/`EatsOrderService` for the full account.
+ * external payout rail needed. `available` is a real self-reported online/offline toggle.
+ * `currentLatitude`/`currentLongitude` (2026-07-19) close the "no real GPS/location
+ * tracking" limitation this doc comment used to name -- `Merchant`/`EatsOrder` already
+ * carried real coordinates (see `GeoUtils`'s own doc comment, which named "proximity
+ * ranking" as a real intended use from the start), the rider's own position was the one
+ * missing piece. See `rw.itunda.eats.RiderService`/`EatsOrderService` for the full account.
  */
 @Entity
 @Table(name = "riders")
@@ -38,6 +40,15 @@ class Rider(
 
     @Column(nullable = false)
     var available: Boolean = false,
+
+    @Column(name = "current_latitude")
+    var currentLatitude: Double? = null,
+
+    @Column(name = "current_longitude")
+    var currentLongitude: Double? = null,
+
+    @Column(name = "location_updated_at")
+    var locationUpdatedAt: Instant? = null,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),

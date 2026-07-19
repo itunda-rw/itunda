@@ -76,6 +76,44 @@ class RiderServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        When("a real registered rider shares their real current location") {
+            val rider = Rider(id = "rider_1", userId = "user_1", walletId = "wallet_1")
+            every { riderRepository.findByUserId("user_1") } returns rider
+            every { riderRepository.save(any()) } answers { firstArg() }
+
+            val result = service.updateLocation("user_1", -1.9536, 30.0605)
+
+            Then("it persists the real coordinates and stamps a real locationUpdatedAt") {
+                result.currentLatitude shouldBe -1.9536
+                result.currentLongitude shouldBe 30.0605
+                (result.locationUpdatedAt != null) shouldBe true
+            }
+        }
+
+        When("a real rider submits an out-of-range coordinate") {
+            Then("it throws InvalidRiderLocationException before touching the repository") {
+                try {
+                    service.updateLocation("user_1", 200.0, 30.0605)
+                    error("expected InvalidRiderLocationException")
+                } catch (e: InvalidRiderLocationException) {
+                    // expected
+                }
+            }
+        }
+
+        When("someone who never registered tries to share a location") {
+            every { riderRepository.findByUserId("stranger") } returns null
+
+            Then("it throws RiderNotRegisteredException") {
+                try {
+                    service.updateLocation("stranger", -1.9536, 30.0605)
+                    error("expected RiderNotRegisteredException")
+                } catch (e: RiderNotRegisteredException) {
+                    // expected
+                }
+            }
+        }
     }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
