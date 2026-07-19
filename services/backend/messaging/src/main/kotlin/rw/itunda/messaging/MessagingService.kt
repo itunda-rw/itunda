@@ -168,6 +168,12 @@ class MessagingService(
         if (trimmedEmoji.isEmpty() || trimmedEmoji.length > 16) {
             throw InvalidReactionException("Reaction must be between 1 and 16 characters")
         }
+        // Real anti-spam limit (found missing in a 2026-07-19 security review, the same
+        // category of gap this codebase's own security reviews have caught before on
+        // other endpoints -- toggleReaction shipped without the rate limit sendMessage
+        // right above it already has). A toggle is cheap per-call, but unbounded it's
+        // still a real DB-write + WebSocket-push amplification vector.
+        rateLimiter.checkLimit("messaging:reaction:$userId", limit = 60, window = Duration.ofMinutes(1))
         val message = messageRepository.findById(messageId).orElseThrow { MessageNotFoundException("Message not found") }
         val conversation = requireParticipant(userId, message.conversationId)
 

@@ -9,6 +9,7 @@ import io.mockk.slot
 import io.mockk.verify
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.Message
@@ -22,6 +23,7 @@ import rw.itunda.core.repository.MessageReactionRepository
 import rw.itunda.core.repository.MessageRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
+import java.time.Duration
 import java.util.Optional
 
 class MessagingServiceTest : BehaviorSpec({
@@ -255,6 +257,21 @@ class MessagingServiceTest : BehaviorSpec({
                     service.toggleReaction("user_a", "message_1", "   ")
                     error("expected InvalidReactionException")
                 } catch (e: InvalidReactionException) {
+                    // expected
+                }
+            }
+        }
+
+        When("a real participant exceeds the real reaction rate limit") {
+            every {
+                rateLimiter.checkLimit("messaging:reaction:user_a", limit = 60, window = Duration.ofMinutes(1))
+            } throws RateLimitExceededException("Too many requests")
+
+            Then("it real-propagates RateLimitExceededException, found missing in a 2026-07-19 security review") {
+                try {
+                    service.toggleReaction("user_a", "message_1", "👍")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
                     // expected
                 }
             }

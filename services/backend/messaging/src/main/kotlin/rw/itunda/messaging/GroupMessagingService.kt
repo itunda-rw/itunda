@@ -218,6 +218,10 @@ class GroupMessagingService(
         if (trimmedEmoji.isEmpty() || trimmedEmoji.length > 16) {
             throw InvalidGroupReactionException("Reaction must be between 1 and 16 characters")
         }
+        // Real anti-spam limit -- see MessagingService.toggleReaction's own identical
+        // note; a group toggle fans out to every other real member, so an unbounded
+        // caller here amplifies further than the 1:1 case does.
+        rateLimiter.checkLimit("messaging:group-reaction:$userId", limit = 60, window = Duration.ofMinutes(1))
         val message = groupMessageRepository.findById(groupMessageId).orElseThrow { GroupMessageNotFoundException("Message not found") }
         requireMember(userId, message.groupConversationId)
 

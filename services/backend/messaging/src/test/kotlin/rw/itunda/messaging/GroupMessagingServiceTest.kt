@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.GroupConversation
 import rw.itunda.core.domain.GroupConversationMember
@@ -21,6 +22,7 @@ import rw.itunda.core.repository.GroupMessageReactionRepository
 import rw.itunda.core.repository.GroupMessageRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
+import java.time.Duration
 import java.util.Optional
 
 class GroupMessagingServiceTest : BehaviorSpec({
@@ -283,6 +285,21 @@ class GroupMessagingServiceTest : BehaviorSpec({
                     service.toggleReaction("stranger", "group_message_1", "👍")
                     error("expected GroupNotFoundException")
                 } catch (e: GroupNotFoundException) {
+                    // expected
+                }
+            }
+        }
+
+        When("a real member exceeds the real group-reaction rate limit") {
+            every {
+                rateLimiter.checkLimit("messaging:group-reaction:user_a", limit = 60, window = Duration.ofMinutes(1))
+            } throws RateLimitExceededException("Too many requests")
+
+            Then("it real-propagates RateLimitExceededException, found missing in a 2026-07-19 security review") {
+                try {
+                    service.toggleReaction("user_a", "group_message_1", "👍")
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
                     // expected
                 }
             }
