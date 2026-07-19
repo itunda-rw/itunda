@@ -2721,6 +2721,15 @@ internal fun ShopTab() {
 
 private enum class CommerceView { BROWSE, ORDERS }
 
+// Real cross-merchant cart (2026-07-20) -- closes the "real Coupang splits a
+// multi-seller cart into per-seller orders, not attempted here" simplification the
+// matrix named. Flattened (not nested maps) so a plain SnapshotStateMap keyed by
+// "merchantId:productId" works cleanly with Compose recomposition -- each entry
+// carries its own merchant/product context, so grouping-by-merchant at checkout
+// time is a plain in-memory groupBy, no separate lookup needed.
+private data class CommerceCartLine(val merchantId: String, val businessName: String, val product: MerchantProductDto, val quantity: Int)
+private data class CommerceCheckoutResult(val merchantId: String, val businessName: String, val order: OrderDto?, val error: String?)
+
 @Composable
 private fun CommerceShopContent() {
     var view by remember { mutableStateOf(CommerceView.BROWSE) }
@@ -2728,9 +2737,9 @@ private fun CommerceShopContent() {
     var error by remember { mutableStateOf<String?>(null) }
     var selectedMerchant by remember { mutableStateOf<ShoppingMerchantDto?>(null) }
     var products by remember { mutableStateOf<List<MerchantProductDto>?>(null) }
-    val cart = remember { mutableStateMapOf<String, Int>() }
-    var showCheckout by remember { mutableStateOf(false) }
-    var confirmedOrder by remember { mutableStateOf<OrderDto?>(null) }
+    val cart = remember { mutableStateMapOf<String, CommerceCartLine>() }
+    var showCart by remember { mutableStateOf(false) }
+    var results by remember { mutableStateOf<List<CommerceCheckoutResult>?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     fun loadMerchants() {
@@ -2750,7 +2759,6 @@ private fun CommerceShopContent() {
 
     fun openMerchant(m: ShoppingMerchantDto) {
         selectedMerchant = m
-        cart.clear()
         products = null
         coroutineScope.launch {
             try {
@@ -2764,41 +2772,45 @@ private fun CommerceShopContent() {
         }
     }
 
-    val confirmed = confirmedOrder
-    if (confirmed != null) {
-        OrderConfirmationView(confirmed, onDone = {
-            confirmedOrder = null
+    val currentResults = results
+    if (currentResults != null) {
+        MultiCartResultsView(currentResults, onDone = {
+            results = null
             selectedMerchant = null
             products = null
-            cart.clear()
-            showCheckout = false
+            showCart = false
             view = CommerceView.ORDERS
         })
         return
     }
 
-    val merchant = selectedMerchant
-    if (merchant != null) {
-        if (showCheckout) {
-            CheckoutView(
-                merchant = merchant,
-                cart = cart,
-                products = products.orEmpty(),
-                onBack = { showCheckout = false },
-                onOrderPlaced = { order -> confirmedOrder = order },
-            )
-        } else {
-            MerchantDetailView(
-                merchant = merchant,
-                products = products,
-                cart = cart,
-                onBack = { selectedMerchant = null },
-                onCheckout = { showCheckout = true },
-            )
-        }
+    if (showCart) {
+        MultiCartView(
+            cart = cart,
+            onBack = { showCart = false },
+            onOrderPlaced = { checkoutResults ->
+                checkoutResults.filter { it.order != null }.forEach { r ->
+                    cart.keys.filter { it.startsWith("${r.merchantId}:") }.forEach(cart::remove)
+                }
+                results = checkoutResults
+            },
+        )
         return
     }
 
+    val merchant = selectedMerchant
+    if (merchant != null) {
+        MerchantDetailView(
+            merchant = merchant,
+            products = products,
+            cart = cart,
+            onBack = { selectedMerchant = null },
+            onViewCart = { showCart = true },
+        )
+        return
+    }
+
+    val totalItems = cart.values.sumOf { it.quantity }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap),
@@ -2855,6 +2867,28 @@ private fun CommerceShopContent() {
                 Spacer(modifier = Modifier.height(4.dp))
             }
         }
+        if (view == CommerceView.BROWSE && totalItems > 0) {
+            item { Spacer(modifier = Modifier.height(64.dp)) }
+        }
+    }
+    if (view == CommerceView.BROWSE && totalItems > 0) {
+        Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.BottomCenter) {
+            CartFab(totalItems, onClick = { showCart = true })
+        }
+    }
+}
+
+@Composable
+private fun CartFab(totalItems: Int, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(TossBlue).clickable(onClick = onClick).padding(vertical = 16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Outlined.ShoppingCart, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("View cart ($totalItems item${if (totalItems == 1) "" else "s"})", color = Color.White, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
@@ -2862,12 +2896,17 @@ private fun CommerceShopContent() {
 private fun MerchantDetailView(
     merchant: ShoppingMerchantDto,
     products: List<MerchantProductDto>?,
-    cart: androidx.compose.runtime.snapshots.SnapshotStateMap<String, Int>,
+    cart: androidx.compose.runtime.snapshots.SnapshotStateMap<String, CommerceCartLine>,
     onBack: () -> Unit,
-    onCheckout: () -> Unit,
+    onViewCart: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
-    val cartCount = cart.values.sum()
+    val totalItems = cart.values.sumOf { it.quantity }
+    fun qtyFor(productId: String) = cart["${merchant.merchantId}:$productId"]?.quantity ?: 0
+    fun setQty(product: MerchantProductDto, qty: Int) {
+        val key = "${merchant.merchantId}:${product.id}"
+        if (qty <= 0) cart.remove(key) else cart[key] = CommerceCartLine(merchant.merchantId, merchant.businessName, product, qty)
+    }
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical)) {
         BackTopBar(merchant.businessName, onBack)
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
@@ -2877,7 +2916,7 @@ private fun MerchantDetailView(
                 item { Text("No products yet.", color = TossSecondary, fontSize = 13.sp) }
             } else {
                 items(products, key = { it.id }) { p ->
-                    val qty = cart[p.id] ?: 0
+                    val qty = qtyFor(p.id)
                     Row(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Tds.layout.cardCornerRadius)).background(TossCard).padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -2887,25 +2926,16 @@ private fun MerchantDetailView(
                             Text("%,.0f RWF".format(p.price), color = TossSecondary, fontSize = 13.sp)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            QtyButton("-") { if (qty > 0) cart[p.id] = qty - 1 }
+                            QtyButton("-") { setQty(p, qty - 1) }
                             Text(qty.toString(), modifier = Modifier.width(28.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center, color = TossText, fontWeight = FontWeight.Bold)
-                            QtyButton("+") { cart[p.id] = qty + 1 }
+                            QtyButton("+") { setQty(p, qty + 1) }
                         }
                     }
                 }
             }
         }
-        if (cartCount > 0) {
-            Box(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(TossBlue).clickable(onClick = onCheckout).padding(vertical = 16.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.ShoppingCart, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Checkout ($cartCount item${if (cartCount == 1) "" else "s"})", color = Color.White, fontWeight = FontWeight.Bold)
-                }
-            }
+        if (totalItems > 0) {
+            CartFab(totalItems, onClick = onViewCart)
         }
     }
 }
@@ -2918,50 +2948,68 @@ private fun QtyButton(label: String, onClick: () -> Unit) {
     ) { Text(label, color = TossText, fontWeight = FontWeight.Bold) }
 }
 
+/**
+ * Real per-seller order splitting -- the merchant-grouped cart's checkout screen.
+ * Each merchant group becomes its own real, independent placeOrder() call (its own
+ * Idempotency-Key, its own wallet-to-wallet ledger transaction) -- sequential, not
+ * parallel: these are real money-moving calls against the same buyer wallet, and a
+ * clear one-at-a-time result list is more honest than a swallowed batch result. A
+ * failure on one merchant's order does not block or roll back any other, matching
+ * how a real multi-seller checkout behaves (each seller is charged/fulfilled
+ * independently in real life).
+ */
 @Composable
-private fun CheckoutView(
-    merchant: ShoppingMerchantDto,
-    cart: Map<String, Int>,
-    products: List<MerchantProductDto>,
+private fun MultiCartView(
+    cart: androidx.compose.runtime.snapshots.SnapshotStateMap<String, CommerceCartLine>,
     onBack: () -> Unit,
-    onOrderPlaced: (OrderDto) -> Unit,
+    onOrderPlaced: (List<CommerceCheckoutResult>) -> Unit,
 ) {
     BackHandler(onBack = onBack)
     var address by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
-    val idempotencyKey = remember { UUID.randomUUID().toString() }
 
-    val lines = cart.filter { it.value > 0 }.mapNotNull { (productId, qty) -> products.find { it.id == productId }?.let { it to qty } }
-    val total = lines.sumOf { (p, qty) -> p.price * qty }
+    val groups = cart.values.groupBy { it.merchantId }
+    val grandTotal = cart.values.sumOf { it.product.price * it.quantity }
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical)) {
-        BackTopBar("Checkout", onBack)
-        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
-            items(lines) { (p, qty) ->
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("${p.name} x$qty", color = TossText, fontSize = 14.sp)
-                    Text("%,.0f RWF".format(p.price * qty), color = TossText, fontSize = 14.sp)
+        BackTopBar("Your cart", onBack)
+        if (groups.isEmpty()) {
+            Text("Your cart is empty.", color = TossSecondary, fontSize = 14.sp, modifier = Modifier.padding(top = 12.dp))
+            return@Column
+        }
+        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
+            groups.forEach { (merchantId, lines) ->
+                item(key = merchantId) {
+                    Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Tds.layout.cardCornerRadius)).background(TossCard).padding(16.dp)) {
+                        Text(lines.first().businessName, color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        lines.forEach { line ->
+                            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("${line.product.name} x${line.quantity}", color = TossText, fontSize = 13.sp)
+                                Text("%,.0f RWF".format(line.product.price * line.quantity), color = TossText, fontSize = 13.sp)
+                            }
+                        }
+                    }
                 }
             }
-            item { Divider(color = TossLine, modifier = Modifier.padding(vertical = 10.dp)) }
             item {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Total", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text("%,.0f RWF".format(total), color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Tds.layout.cardCornerRadius)).background(TossCard).padding(16.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Total (${groups.size} order${if (groups.size == 1) "" else "s"})", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("%,.0f RWF".format(grandTotal), color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+                    OutlinedTextField(
+                        value = address,
+                        onValueChange = { address = it },
+                        placeholder = { Text("Delivery address") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
                 }
             }
-            item { Spacer(modifier = Modifier.height(14.dp)) }
-            item {
-                OutlinedTextField(
-                    value = address,
-                    onValueChange = { address = it },
-                    placeholder = { Text("Delivery address") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            error?.let { item { Text(it, color = Tds.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) } }
         }
         Box(
             modifier = Modifier
@@ -2972,44 +3020,55 @@ private fun CheckoutView(
                     submitting = true
                     error = null
                     coroutineScope.launch {
-                        try {
-                            val res = NetworkClient.apiService.placeOrder(
-                                idempotencyKey = idempotencyKey,
-                                request = PlaceOrderRequest(
-                                    merchantId = merchant.merchantId,
-                                    items = lines.map { (p, qty) -> OrderItemRequest(p.id, qty) },
-                                    deliveryAddress = address.trim(),
-                                ),
-                            )
-                            if (res.success) onOrderPlaced(res.order)
-                        } catch (e: HttpException) {
-                            error = superAppErrorMessage(e)
-                        } catch (e: IOException) {
-                            error = "Couldn't reach itunda. Check your connection and try again."
-                        } finally {
-                            submitting = false
+                        val results = mutableListOf<CommerceCheckoutResult>()
+                        for ((merchantId, lines) in groups) {
+                            try {
+                                val res = NetworkClient.apiService.placeOrder(
+                                    idempotencyKey = UUID.randomUUID().toString(),
+                                    request = PlaceOrderRequest(
+                                        merchantId = merchantId,
+                                        items = lines.map { OrderItemRequest(it.product.id, it.quantity) },
+                                        deliveryAddress = address.trim(),
+                                    ),
+                                )
+                                results.add(CommerceCheckoutResult(merchantId, lines.first().businessName, res.order, null))
+                            } catch (e: HttpException) {
+                                results.add(CommerceCheckoutResult(merchantId, lines.first().businessName, null, superAppErrorMessage(e)))
+                            } catch (e: IOException) {
+                                results.add(CommerceCheckoutResult(merchantId, lines.first().businessName, null, "Couldn't reach itunda. Check your connection and try again."))
+                            }
                         }
+                        submitting = false
+                        onOrderPlaced(results)
                     }
                 }
                 .padding(vertical = 16.dp),
             contentAlignment = Alignment.Center,
-        ) { Text(if (submitting) "Placing order…" else "Place order", color = Color.White, fontWeight = FontWeight.Bold) }
+        ) { Text(if (submitting) "Placing orders…" else "Place ${groups.size} order${if (groups.size == 1) "" else "s"}", color = Color.White, fontWeight = FontWeight.Bold) }
     }
 }
 
 @Composable
-private fun OrderConfirmationView(order: OrderDto, onDone: () -> Unit) {
+private fun MultiCartResultsView(results: List<CommerceCheckoutResult>, onDone: () -> Unit) {
+    val successCount = results.count { it.order != null }
     AlertDialog(
         onDismissRequest = onDone,
-        title = { Text("Order placed") },
+        title = { Text("$successCount of ${results.size} order${if (results.size == 1) "" else "s"} placed") },
         text = {
-            Column {
-                Text("%,.0f RWF".format(order.totalAmount), color = TossText, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                Spacer(modifier = Modifier.height(6.dp))
-                Text("Delivering to ${order.deliveryAddress}", color = TossSecondary, fontSize = 13.sp)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                results.forEach { r ->
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(r.businessName, color = TossText, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        if (r.order != null) {
+                            Text("%,.0f RWF — placed".format(r.order.totalAmount), color = Tds.colors.success, fontSize = 13.sp)
+                        } else {
+                            Text(r.error ?: "Failed", color = Tds.colors.danger, fontSize = 13.sp)
+                        }
+                    }
+                }
             }
         },
-        confirmButton = { TextButton(onClick = onDone) { Text("Done") } },
+        confirmButton = { TextButton(onClick = onDone) { Text(if (results.any { it.order == null }) "Back to cart" else "Done") } },
     )
 }
 

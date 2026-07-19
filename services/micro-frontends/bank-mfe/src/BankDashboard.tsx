@@ -4299,13 +4299,34 @@ function CommerceOrderCard({ order, action }: { order: CommerceOrder; action?: R
   );
 }
 
-function ProductCatalogView({ merchant, onBack, onOrderPlaced }: { merchant: ShoppingMerchant; onBack: () => void; onOrderPlaced: (order: CommerceOrder) => void }) {
+// Real cross-merchant cart (2026-07-20) -- closes the "real Coupang splits a
+// multi-seller cart into per-seller orders, not attempted here" simplification this
+// row's own text named. Keyed by merchantId so a buyer can browse merchant A, add
+// items, go back, browse merchant B, add items there too, and check out everything
+// in one pass -- each merchant's line items get a real, separate placeOrder() call
+// (the backend already only ever accepted one merchantId per order; no backend
+// change needed at all, this is purely a client-side cart-architecture change).
+interface CommerceCartGroup {
+  businessName: string;
+  lines: Record<string, { product: CommerceProduct; quantity: number }>;
+}
+type CommerceCart = Record<string, CommerceCartGroup>;
+
+function cartTotalItems(cart: CommerceCart): number {
+  return Object.values(cart).reduce((sum, group) => sum + Object.values(group.lines).reduce((s, l) => s + l.quantity, 0), 0);
+}
+
+function ProductCatalogView({
+  merchant, cart, onSetQty, onBack, onViewCart,
+}: {
+  merchant: ShoppingMerchant;
+  cart: CommerceCart;
+  onSetQty: (merchant: ShoppingMerchant, product: CommerceProduct, quantity: number) => void;
+  onBack: () => void;
+  onViewCart: () => void;
+}) {
   const [catalog, setCatalog] = useState<{ businessName: string; products: CommerceProduct[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [cart, setCart] = useState<Record<string, number>>({});
-  const [address, setAddress] = useState('');
-  const [placing, setPlacing] = useState(false);
-  const [showCheckout, setShowCheckout] = useState(false);
 
   const load = () => {
     setError(null);
@@ -4316,25 +4337,9 @@ function ProductCatalogView({ merchant, onBack, onOrderPlaced }: { merchant: Sho
 
   useEffect(load, [merchant.merchantId]);
 
-  const cartItems = Object.entries(cart).filter(([, qty]) => qty > 0);
-  const cartCount = cartItems.reduce((sum, [, qty]) => sum + qty, 0);
-  const setQty = (id: string, qty: number) => setCart((c) => ({ ...c, [id]: Math.max(0, qty) }));
-
-  const handlePlaceOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!catalog) return;
-    setPlacing(true);
-    setError(null);
-    try {
-      const items = cartItems.map(([productId, quantity]) => ({ productId, quantity }));
-      const result = await placeOrder(merchant.merchantId, items, address.trim());
-      onOrderPlaced(result.order);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not place this order.');
-    } finally {
-      setPlacing(false);
-    }
-  };
+  const myLines = cart[merchant.merchantId]?.lines ?? {};
+  const qtyFor = (productId: string) => myLines[productId]?.quantity ?? 0;
+  const totalCartItems = cartTotalItems(cart);
 
   if (error) {
     return (
@@ -4349,39 +4354,6 @@ function ProductCatalogView({ merchant, onBack, onOrderPlaced }: { merchant: Sho
     return <div className="toss-card skeleton" style={{ height: '220px' }} />;
   }
 
-  if (showCheckout) {
-    return (
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-          <button onClick={() => setShowCheckout(false)} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to catalog">
-            <ArrowLeft size={20} />
-          </button>
-          <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Checkout</h3>
-        </div>
-        <form onSubmit={handlePlaceOrder} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {cartItems.map(([id, qty]) => {
-            const item = catalog.products.find((p) => p.id === id);
-            if (!item) return null;
-            return (
-              <div key={id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                <span>{item.name} x{qty}</span>
-                <span>{(item.price * qty).toLocaleString()} RWF</span>
-              </div>
-            );
-          })}
-          <input
-            type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Delivery address" required
-            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-          />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={placing || !address.trim()}>
-            {placing ? 'Placing order…' : 'Place order'}
-          </button>
-          {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
-        </form>
-      </div>
-    );
-  }
-
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
@@ -4393,7 +4365,7 @@ function ProductCatalogView({ merchant, onBack, onOrderPlaced }: { merchant: Sho
       {catalog.products.length === 0 ? (
         <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No products yet.</p></div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: cartCount > 0 ? '80px' : 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: totalCartItems > 0 ? '80px' : 0 }}>
           {catalog.products.map((item) => (
             <div key={item.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
@@ -4401,23 +4373,149 @@ function ProductCatalogView({ merchant, onBack, onOrderPlaced }: { merchant: Sho
                 <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{item.price.toLocaleString()} RWF</p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <button onClick={() => setQty(item.id, (cart[item.id] ?? 0) - 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>−</button>
-                <span style={{ minWidth: '16px', textAlign: 'center', fontWeight: 700 }}>{cart[item.id] ?? 0}</span>
-                <button onClick={() => setQty(item.id, (cart[item.id] ?? 0) + 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>+</button>
+                <button onClick={() => onSetQty(merchant, item, qtyFor(item.id) - 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>−</button>
+                <span style={{ minWidth: '16px', textAlign: 'center', fontWeight: 700 }}>{qtyFor(item.id)}</span>
+                <button onClick={() => onSetQty(merchant, item, qtyFor(item.id) + 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>+</button>
               </div>
             </div>
           ))}
         </div>
       )}
-      {cartCount > 0 && (
+      {totalCartItems > 0 && (
         <button
           className="toss-btn toss-btn-primary"
           style={{ position: 'fixed', bottom: '24px', left: '20px', right: '20px', maxWidth: '440px', margin: '0 auto' }}
-          onClick={() => setShowCheckout(true)}
+          onClick={onViewCart}
         >
-          Checkout ({cartCount} item{cartCount === 1 ? '' : 's'})
+          View cart ({totalCartItems} item{totalCartItems === 1 ? '' : 's'})
         </button>
       )}
+    </div>
+  );
+}
+
+interface CommerceCheckoutResult {
+  merchantId: string;
+  businessName: string;
+  success: boolean;
+  order?: CommerceOrder;
+  error?: string;
+}
+
+function MultiCartView({
+  cart, onBack, onSetQty, onCheckedOut,
+}: {
+  cart: CommerceCart;
+  onBack: () => void;
+  onSetQty: (merchantId: string, productId: string, quantity: number) => void;
+  onCheckedOut: (results: CommerceCheckoutResult[]) => void;
+}) {
+  const [address, setAddress] = useState('');
+  const [placing, setPlacing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const groups = Object.entries(cart).filter(([, g]) => Object.values(g.lines).some((l) => l.quantity > 0));
+  const grandTotal = groups.reduce(
+    (sum, [, g]) => sum + Object.values(g.lines).reduce((s, l) => s + l.product.price * l.quantity, 0),
+    0,
+  );
+
+  // Real per-seller order splitting -- each merchant group becomes its own real,
+  // independent placeOrder() call (its own Idempotency-Key, its own wallet-to-wallet
+  // ledger transaction). Sequential, not Promise.all: these are real money-moving
+  // calls against the same buyer wallet, and a clear one-at-a-time result list is
+  // more honest than a swallowed Promise.allSettled. A failure on one merchant's
+  // order does not block or roll back any other -- exactly how a real multi-seller
+  // checkout behaves (each seller is charged/fulfilled independently in real life).
+  const handlePlaceOrders = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPlacing(true);
+    setError(null);
+    const results: CommerceCheckoutResult[] = [];
+    for (const [merchantId, group] of groups) {
+      const items = Object.entries(group.lines).filter(([, l]) => l.quantity > 0).map(([productId, l]) => ({ productId, quantity: l.quantity }));
+      try {
+        const result = await placeOrder(merchantId, items, address.trim());
+        results.push({ merchantId, businessName: group.businessName, success: true, order: result.order });
+      } catch (err) {
+        results.push({ merchantId, businessName: group.businessName, success: false, error: err instanceof ApiError ? err.message : 'Could not place this order.' });
+      }
+    }
+    setPlacing(false);
+    onCheckedOut(results);
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to shop">
+          <ArrowLeft size={20} />
+        </button>
+        <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Your cart</h3>
+      </div>
+      {groups.length === 0 ? (
+        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Your cart is empty.</p></div>
+      ) : (
+        <form onSubmit={handlePlaceOrders} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {groups.map(([merchantId, group]) => (
+            <div key={merchantId} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <p style={{ fontSize: '14px', fontWeight: 700 }}>{group.businessName}</p>
+              {Object.entries(group.lines).filter(([, l]) => l.quantity > 0).map(([productId, l]) => (
+                <div key={productId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
+                  <span>{l.product.name} x{l.quantity}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span>{(l.product.price * l.quantity).toLocaleString()} RWF</span>
+                    <button type="button" onClick={() => onSetQty(merchantId, productId, 0)} style={{ color: 'var(--toss-grey-500)', fontSize: '12px' }}>Remove</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+          <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px', fontWeight: 700 }}>
+              <span>Total ({groups.length} order{groups.length === 1 ? '' : 's'})</span>
+              <span>{grandTotal.toLocaleString()} RWF</span>
+            </div>
+            <input
+              type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Delivery address" required
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            />
+            {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+            <button type="submit" className="toss-btn toss-btn-primary" disabled={placing || !address.trim()}>
+              {placing ? 'Placing orders…' : `Place ${groups.length} order${groups.length === 1 ? '' : 's'}`}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function MultiCartResultsView({ results, onDone }: { results: CommerceCheckoutResult[]; onDone: () => void }) {
+  const successCount = results.filter((r) => r.success).length;
+  return (
+    <div className="toss-card" style={{ padding: '28px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+        <ShieldCheck size={36} color="var(--toss-green)" style={{ marginBottom: '10px' }} />
+        <h3 style={{ fontSize: '17px', fontWeight: 700 }}>
+          {successCount} of {results.length} order{results.length === 1 ? '' : 's'} placed
+        </h3>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+        {results.map((r) => (
+          <div key={r.merchantId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
+            <span style={{ fontWeight: 600 }}>{r.businessName}</span>
+            {r.success ? (
+              <span style={{ color: 'var(--toss-green)' }}>{r.order!.totalAmount.toLocaleString()} RWF — placed</span>
+            ) : (
+              <span style={{ color: '#E53935' }}>{r.error}</span>
+            )}
+          </div>
+        ))}
+      </div>
+      <button className="toss-btn toss-btn-secondary" style={{ width: '100%' }} onClick={onDone}>
+        {results.some((r) => !r.success) ? 'Back to cart' : 'Done'}
+      </button>
     </div>
   );
 }
@@ -4558,7 +4656,9 @@ function ShopView() {
   const [merchants, setMerchants] = useState<ShoppingMerchant[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<ShoppingMerchant | null>(null);
-  const [confirmed, setConfirmed] = useState<CommerceOrder | null>(null);
+  const [cart, setCart] = useState<CommerceCart>({});
+  const [showCart, setShowCart] = useState(false);
+  const [results, setResults] = useState<CommerceCheckoutResult[] | null>(null);
 
   // Real Coupang-style commerce (rw.itunda.commerce) -- deliberately reuses the same
   // GET /api/v1/shopping/merchants catalog the Shopping tab (Toss Shopping cashback
@@ -4571,26 +4671,72 @@ function ShopView() {
 
   useEffect(load, []);
 
-  if (confirmed) {
+  const setQtyByMerchant = (merchant: ShoppingMerchant, product: CommerceProduct, quantity: number) => {
+    setCart((prev) => {
+      const next = { ...prev };
+      const existing = next[merchant.merchantId] ?? { businessName: merchant.businessName, lines: {} };
+      const lines = { ...existing.lines };
+      if (quantity <= 0) delete lines[product.id];
+      else lines[product.id] = { product, quantity };
+      if (Object.keys(lines).length === 0) delete next[merchant.merchantId];
+      else next[merchant.merchantId] = { ...existing, lines };
+      return next;
+    });
+  };
+
+  const setQtyByIds = (merchantId: string, productId: string, quantity: number) => {
+    setCart((prev) => {
+      const existing = prev[merchantId];
+      if (!existing) return prev;
+      const next = { ...prev };
+      const lines = { ...existing.lines };
+      if (quantity <= 0) delete lines[productId];
+      else if (lines[productId]) lines[productId] = { ...lines[productId], quantity };
+      if (Object.keys(lines).length === 0) delete next[merchantId];
+      else next[merchantId] = { ...existing, lines };
+      return next;
+    });
+  };
+
+  const handleCheckedOut = (checkoutResults: CommerceCheckoutResult[]) => {
+    // Only clear the merchants that actually succeeded -- a failed group's items
+    // stay in the cart so the buyer doesn't lose their selection and can retry
+    // (e.g. after fixing the delivery address or topping up their wallet).
+    setCart((prev) => {
+      const next = { ...prev };
+      checkoutResults.filter((r) => r.success).forEach((r) => delete next[r.merchantId]);
+      return next;
+    });
+    setResults(checkoutResults);
+    setShowCart(false);
+  };
+
+  if (results) {
     return (
-      <div className="toss-card" style={{ textAlign: 'center', padding: '28px' }}>
-        <ShieldCheck size={36} color="var(--toss-green)" style={{ marginBottom: '10px' }} />
-        <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '4px' }}>Order placed</h3>
-        <p style={{ fontSize: '22px', fontWeight: 700, marginBottom: '4px' }}>{confirmed.totalAmount.toLocaleString()} RWF</p>
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>Delivering to {confirmed.deliveryAddress}</p>
-        <button
-          className="toss-btn toss-btn-secondary"
-          onClick={() => { setConfirmed(null); setSelected(null); setView('ORDERS'); }}
-        >
-          Track order
-        </button>
-      </div>
+      <MultiCartResultsView
+        results={results}
+        onDone={() => { setResults(null); setSelected(null); setView('ORDERS'); }}
+      />
     );
   }
 
-  if (selected) {
-    return <ProductCatalogView merchant={selected} onBack={() => setSelected(null)} onOrderPlaced={setConfirmed} />;
+  if (showCart) {
+    return <MultiCartView cart={cart} onBack={() => setShowCart(false)} onSetQty={setQtyByIds} onCheckedOut={handleCheckedOut} />;
   }
+
+  if (selected) {
+    return (
+      <ProductCatalogView
+        merchant={selected}
+        cart={cart}
+        onSetQty={setQtyByMerchant}
+        onBack={() => setSelected(null)}
+        onViewCart={() => setShowCart(true)}
+      />
+    );
+  }
+
+  const totalItems = cartTotalItems(cart);
 
   return (
     <div>
@@ -4624,7 +4770,7 @@ function ShopView() {
       ) : merchants.length === 0 ? (
         <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No merchants registered yet.</p></div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: totalItems > 0 ? '80px' : 0 }}>
           {merchants.map((m) => (
             <button
               key={m.merchantId}
@@ -4642,6 +4788,15 @@ function ShopView() {
             </button>
           ))}
         </div>
+      )}
+      {view === 'BROWSE' && totalItems > 0 && (
+        <button
+          className="toss-btn toss-btn-primary"
+          style={{ position: 'fixed', bottom: '24px', left: '20px', right: '20px', maxWidth: '440px', margin: '0 auto' }}
+          onClick={() => setShowCart(true)}
+        >
+          View cart ({totalItems} item{totalItems === 1 ? '' : 's'})
+        </button>
       )}
     </div>
   );
