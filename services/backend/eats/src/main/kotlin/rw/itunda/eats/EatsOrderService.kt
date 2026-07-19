@@ -54,6 +54,7 @@ class InvalidEatsDeliveryNotesException(message: String) : RuntimeException(mess
 
 data class EatsOrderItemRequest(val menuItemId: String, val quantity: Int)
 data class EatsOrderDetail(val order: EatsOrder, val items: List<EatsOrderItem>)
+data class RiderLocationView(val latitude: Double, val longitude: Double, val updatedAt: Instant)
 
 /**
  * Real Coupang Eats-style food ordering + delivery, the direct sibling of
@@ -381,6 +382,38 @@ class EatsOrderService(
             throw EatsOrderNotFoundException("Order not found")
         }
         return EatsOrderDetail(order, eatsOrderItemRepository.findByOrderId(orderId))
+    }
+
+    /** Real live rider-location tracking during an active delivery (2026-07-19), the
+     * natural next step once `RiderService.updateLocation` existed for proximity
+     * dispatch -- a buyer can now see their real rider's real live position, the
+     * defining "watch your order arrive" moment every real Coupang Eats/Uber Eats-style
+     * app has. Same real IDOR discipline as `getOrderDetail` (buyer/restaurant/rider
+     * only, real 404 for anyone else). Deliberately returns null -- not an exception --
+     * whenever there's honestly nothing to show: before a rider is ever assigned, after
+     * delivery completes or is cancelled (an old, stale position is misleading, not
+     * useful), or when the assigned rider hasn't shared a location yet. Poll-based by
+     * design for this first pass, the same "backend first, live-transport as a distinct
+     * follow-up" precedent 1:1 messaging itself established before its own WebSocket
+     * push existed. */
+    fun getRiderLocation(requesterId: String, orderId: String): RiderLocationView? {
+        val order = eatsOrderRepository.findById(orderId).orElseThrow { EatsOrderNotFoundException("Order not found") }
+        val restaurant = merchantRepository.findById(order.restaurantId).orElse(null)
+        val rider = order.riderId?.let { riderRepository.findById(it).orElse(null) }
+        val isBuyer = order.buyerId == requesterId
+        val isRestaurant = restaurant?.ownerUserId == requesterId
+        val isRider = rider?.userId == requesterId
+        if (!isBuyer && !isRestaurant && !isRider) {
+            throw EatsOrderNotFoundException("Order not found")
+        }
+        if (order.status != EatsOrderStatus.RIDER_ASSIGNED && order.status != EatsOrderStatus.PICKED_UP) {
+            return null
+        }
+        val lat = rider?.currentLatitude
+        val lng = rider?.currentLongitude
+        val updatedAt = rider?.locationUpdatedAt
+        if (lat == null || lng == null || updatedAt == null) return null
+        return RiderLocationView(lat, lng, updatedAt)
     }
 
     /** Restaurant-only, forward-only status progression through PLACED -> ACCEPTED ->

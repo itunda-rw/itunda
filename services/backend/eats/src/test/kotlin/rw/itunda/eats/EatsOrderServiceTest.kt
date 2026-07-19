@@ -684,6 +684,118 @@ class EatsOrderServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a real buyer checking their rider's real live location") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val merchantProductRepository = mockk<MerchantProductRepository>()
+        val riderRepository = mockk<RiderRepository>()
+        val eatsOrderRepository = mockk<EatsOrderRepository>()
+        val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = EatsOrderService(
+            merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
+            eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter,
+        )
+        val riderWithLocation = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", currentLatitude = -1.95, currentLongitude = 30.06, locationUpdatedAt = java.time.Instant.parse("2026-07-19T12:00:00Z"))
+        val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Test Spot", status = MerchantStatus.ACTIVE)
+
+        When("the order is RIDER_ASSIGNED and the rider has shared a real location") {
+            val order = EatsOrder(
+                id = "eats_order_1", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_1", riderId = "rider_1", status = EatsOrderStatus.RIDER_ASSIGNED,
+            )
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(order)
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { riderRepository.findById("rider_1") } returns Optional.of(riderWithLocation)
+
+            val location = service.getRiderLocation("buyer_1", "eats_order_1")
+
+            Then("it returns the real live coordinates") {
+                location?.latitude shouldBe -1.95
+                location?.longitude shouldBe 30.06
+            }
+        }
+
+        When("the order hasn't been claimed by a rider yet") {
+            val order = EatsOrder(
+                id = "eats_order_2", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_2", status = EatsOrderStatus.READY_FOR_PICKUP,
+            )
+            every { eatsOrderRepository.findById("eats_order_2") } returns Optional.of(order)
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+
+            val location = service.getRiderLocation("buyer_1", "eats_order_2")
+
+            Then("it honestly returns null -- there's no rider to show yet") {
+                location shouldBe null
+            }
+        }
+
+        When("the order has already been DELIVERED") {
+            val order = EatsOrder(
+                id = "eats_order_3", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_3", riderId = "rider_1", status = EatsOrderStatus.DELIVERED,
+            )
+            every { eatsOrderRepository.findById("eats_order_3") } returns Optional.of(order)
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { riderRepository.findById("rider_1") } returns Optional.of(riderWithLocation)
+
+            val location = service.getRiderLocation("buyer_1", "eats_order_3")
+
+            Then("it honestly returns null -- a stale post-delivery position isn't shown") {
+                location shouldBe null
+            }
+        }
+
+        When("the assigned rider hasn't shared a real location yet") {
+            val riderWithNoLocation = Rider(id = "rider_2", userId = "rider_user_2", walletId = "wallet_rider_2")
+            val order = EatsOrder(
+                id = "eats_order_4", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_4", riderId = "rider_2", status = EatsOrderStatus.PICKED_UP,
+            )
+            every { eatsOrderRepository.findById("eats_order_4") } returns Optional.of(order)
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { riderRepository.findById("rider_2") } returns Optional.of(riderWithNoLocation)
+
+            val location = service.getRiderLocation("buyer_1", "eats_order_4")
+
+            Then("it honestly returns null rather than a fabricated position") {
+                location shouldBe null
+            }
+        }
+
+        When("a real stranger tries to check someone else's delivery") {
+            val order = EatsOrder(
+                id = "eats_order_1", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_1", riderId = "rider_1", status = EatsOrderStatus.RIDER_ASSIGNED,
+            )
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(order)
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { riderRepository.findById("rider_1") } returns Optional.of(riderWithLocation)
+
+            Then("it throws EatsOrderNotFoundException, not a 403 that would confirm the order exists") {
+                try {
+                    service.getRiderLocation("stranger", "eats_order_1")
+                    error("expected EatsOrderNotFoundException")
+                } catch (e: EatsOrderNotFoundException) {
+                    // expected
+                }
+            }
+        }
+    }
+
     Given("a real buyer searching for a real delivery address") {
         val merchantRepository = mockk<MerchantRepository>()
         val merchantProductRepository = mockk<MerchantProductRepository>()

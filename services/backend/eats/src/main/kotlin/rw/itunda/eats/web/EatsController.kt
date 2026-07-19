@@ -193,6 +193,18 @@ class EatsController(
         return ResponseEntity.ok(mapOf("success" to true, "order" to detail.order, "items" to detail.items))
     }
 
+    // Real live rider-location tracking (2026-07-19) -- see EatsOrderService's own doc
+    // comment. `available: false` (not an error) is the honest, expected response
+    // whenever there's genuinely nothing to show yet.
+    @GetMapping("/orders/{orderId}/rider-location")
+    fun getRiderLocation(
+        @PathVariable orderId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val location = eatsOrderService.getRiderLocation(currentUser.userId, orderId)
+        return ResponseEntity.ok(mapOf("success" to true, "available" to (location != null), "location" to location))
+    }
+
     @PostMapping("/orders/{orderId}/status")
     fun updateRestaurantStatus(
         @PathVariable orderId: String,
