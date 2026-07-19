@@ -87,6 +87,11 @@ interface WalletRepository : JpaRepository<Wallet, String> {
     // run).
     fun findByUserIdInAndType(userIds: List<String>, type: WalletType): List<Wallet>
 
+    // Real direct P2P push-transfer recipient resolution (2026-07-20) -- see
+    // P2pService.sendDirect's own doc comment. accountNumber is globally unique (see
+    // AuthService.generateAccountNumber), not scoped per wallet type.
+    fun findByAccountNumber(accountNumber: String): Wallet?
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select w from Wallet w where w.id = :id")
     fun findByIdForUpdate(@Param("id") id: String): Optional<Wallet>

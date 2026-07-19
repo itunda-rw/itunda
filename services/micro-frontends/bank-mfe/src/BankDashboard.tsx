@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowUpRight, Bike, Heart, LogOut, MessageCircle, Plus, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
-import { confirmTransfer, fetchTransactions, fetchWallets, quoteTransfer, type Transaction, type TransferQuote, type Wallet } from './lib/wallet';
+import { fetchTransactions, fetchWallets, type Transaction, type Wallet } from './lib/wallet';
+import { sendDirect } from './lib/p2p';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
 import { collectPayment, fetchShoppingCatalog, type CollectPaymentResult, type ShoppingMerchant } from './lib/shopping';
 import {
@@ -80,45 +81,42 @@ function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; on
   );
 }
 
-// Real P2P wallet-to-wallet transfer (2026-07-20) -- closes a real gap found live: this
-// exact "Transfer" button had zero onClick handler despite WalletController's
-// quote/confirm transfer being fully real (already used by Android/iOS). Same
-// inline-card-replaces-trigger convention every other flow in this file already uses
-// (PayByCodeCard/CreateListingForm etc.), not a modal overlay -- there is no modal
-// pattern anywhere else in this codebase to match.
+// Real direct itunda-to-itunda push-transfer (2026-07-20) -- closes a real gap found
+// live while first wiring this exact button: WalletController's quote/confirm transfer
+// (used by Android/iOS's sendTransfer) always routes through a simulated external rail
+// and never actually credits another itunda user's wallet, even when the recipient is a
+// real itunda account (confirmed via direct MySQL query: recipientId stayed "external").
+// This now calls the new real rw.itunda.p2p.sendDirect instead -- a real recipient
+// resolved by phone number or account number, credited immediately, no fee (nothing
+// external to settle). No network "quote" step needed (unlike the external-rail flow,
+// there's no rail decision to quote) -- the review screen below is a client-side
+// confirmation only, same inline-card-replaces-trigger convention every other flow in
+// this file already uses, not a modal overlay.
 function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
-  const [quote, setQuote] = useState<TransferQuote | null>(null);
+  const [reviewing, setReviewing] = useState(false);
   const [result, setResult] = useState<{ message: string; newBalance: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const handleQuote = async (e: React.FormEvent) => {
+  const handleReview = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setBusy(true);
-    try {
-      setQuote(await quoteTransfer(recipient.trim(), Number(amount)));
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not quote this transfer.');
-    } finally {
-      setBusy(false);
-    }
+    setReviewing(true);
   };
 
   const handleConfirm = async () => {
-    if (!quote) return;
     setError(null);
     setBusy(true);
     try {
-      const res = await confirmTransfer(quote.id);
+      const res = await sendDirect(recipient.trim(), Number(amount), '');
       setResult({ message: res.message, newBalance: res.newBalance });
     } catch (err) {
-      // A quote is real and short-lived (60s) -- an expired/already-used quote surfaces
-      // its own real backend error here rather than silently retrying, matching this
-      // codebase's own "let the real error surface" discipline.
+      // A real, honest error surfaces here as-is -- e.g. a recipient that doesn't match
+      // any real itunda account real-404s rather than silently doing nothing.
       setError(err instanceof ApiError ? err.message : 'Could not complete this transfer.');
+      setReviewing(false);
     } finally {
       setBusy(false);
     }
@@ -137,15 +135,13 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
     );
   }
 
-  if (quote) {
+  if (reviewing) {
     return (
       <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
         <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Confirm transfer</h3>
         <div style={{ fontSize: '13px', color: 'var(--toss-grey-700)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <span>To {quote.recipient}</span>
-          <span>Amount: {quote.amount.toLocaleString()} {quote.currency}</span>
-          <span>Fee: {quote.fee.toLocaleString()} {quote.currency}</span>
-          <span style={{ fontWeight: 700 }}>Total: {quote.totalDebit.toLocaleString()} {quote.currency}</span>
+          <span>To {recipient}</span>
+          <span style={{ fontWeight: 700 }}>Amount: {Number(amount).toLocaleString()} RWF</span>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onClose} disabled={busy}>Cancel</button>
@@ -159,7 +155,7 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
   }
 
   return (
-    <form onSubmit={handleQuote} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+    <form onSubmit={handleReview} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Transfer</h3>
       <input
         type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="Recipient phone or account number" required
@@ -170,10 +166,8 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
       />
       <div style={{ display: 'flex', gap: '10px' }}>
-        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onClose} disabled={busy}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>
-          {busy ? 'Getting quote…' : 'Continue'}
-        </button>
+        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
+        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }}>Continue</button>
       </div>
       {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
     </form>

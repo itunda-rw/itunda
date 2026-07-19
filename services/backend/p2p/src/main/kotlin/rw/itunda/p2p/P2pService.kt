@@ -17,6 +17,7 @@ import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.P2pPaymentRequestRepository
 import rw.itunda.core.repository.TransactionRepository
+import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Duration
@@ -27,6 +28,8 @@ class P2pRequestNotFoundException(message: String) : RuntimeException(message)
 class P2pRequestNotPayableException(message: String) : RuntimeException(message)
 class P2pSelfPaymentException(message: String) : RuntimeException(message)
 class P2pNoWalletException(message: String) : RuntimeException(message)
+class P2pRecipientNotFoundException(message: String) : RuntimeException(message)
+class P2pInvalidAmountException(message: String) : RuntimeException(message)
 
 /**
  * Real person-to-person QR -- see docs/TOSS_PARITY_MATRIX.md's QR Pay row. Deliberately
@@ -43,6 +46,7 @@ class P2pNoWalletException(message: String) : RuntimeException(message)
 class P2pService(
     private val p2pPaymentRequestRepository: P2pPaymentRequestRepository,
     private val walletRepository: WalletRepository,
+    private val userRepository: UserRepository,
     private val transactionRepository: TransactionRepository,
     private val ledgerService: LedgerService,
     private val fraudRuleEngine: FraudRuleEngine,
@@ -139,5 +143,83 @@ class P2pService(
         // mutate the Wallet instance already held in memory, only the underlying row.
         val updatedPayerWallet = walletRepository.findById(payerWallet.id).orElseThrow { P2pNoWalletException("No wallet found for this account") }
         return transaction to updatedPayerWallet.balance
+    }
+
+    /**
+     * Real direct itunda-to-itunda push-transfer (2026-07-20) -- a genuine gap surfaced
+     * while wiring bank-mfe's own home-screen "Transfer" button: that button, matching
+     * Android/iOS's own `sendTransfer`, calls `WalletService.confirmTransfer`, which by
+     * pre-existing design (see this class's own doc comment above) always routes through
+     * the simulated external rail and never actually credits another itunda user's
+     * wallet, even when the typed-in recipient is a real itunda account. Until now the
+     * only real internal wallet-to-wallet movement was `payRequest` above, which requires
+     * the *recipient* to first generate a request -- there was no way to just type in
+     * someone's phone number or account number and send them money immediately, the
+     * single most basic real Toss "Transfer" action. This closes that gap by reusing
+     * `payRequest`'s exact real ledger-movement shape (direct WALLET-to-WALLET pair, no
+     * fee -- nothing external to settle) with a real recipient resolved by phone number
+     * (`UserRepository.findByPhoneNumber`, matching how a user actually thinks of a
+     * contact) or, if that misses, by account number (`WalletRepository.
+     * findByAccountNumber`, globally unique) -- never a fabricated match; an identifier
+     * that resolves to neither is a real, honest 404, not a silent no-op.
+     */
+    @Transactional
+    fun sendDirect(senderUserId: String, recipientIdentifier: String, amount: BigDecimal, description: String): Pair<Transaction, BigDecimal> {
+        if (amount <= BigDecimal.ZERO) throw P2pInvalidAmountException("Amount must be greater than zero")
+        val trimmedIdentifier = recipientIdentifier.trim()
+        if (trimmedIdentifier.isEmpty()) throw P2pRecipientNotFoundException("Recipient is required")
+
+        // Real anti-spam limit, same 30/hour convention payRequest already established
+        // for a real mutating money-movement endpoint.
+        rateLimiter.checkLimit("p2p:send:$senderUserId", limit = 30, window = Duration.ofHours(1))
+
+        val senderWallet = walletRepository.findByUserIdAndType(senderUserId, WalletType.MAIN)
+            ?: throw P2pNoWalletException("No wallet found for this account")
+
+        val recipientUser = userRepository.findByPhoneNumber(trimmedIdentifier)
+        val recipientWallet = (
+            if (recipientUser != null) walletRepository.findByUserIdAndType(recipientUser.id, WalletType.MAIN) else null
+            ) ?: walletRepository.findByAccountNumber(trimmedIdentifier)
+            ?: throw P2pRecipientNotFoundException("No itunda account found for this phone number or account number")
+
+        if (recipientWallet.userId == senderUserId) {
+            throw P2pSelfPaymentException("Cannot send money to your own account")
+        }
+        if (senderWallet.availableBalance < amount) {
+            throw InsufficientFundsException("Insufficient available balance for this transfer")
+        }
+
+        val trimmedDescription = description.trim().ifEmpty { "Transfer" }
+        val result = ledgerService.postLedgerTransaction(
+            senderWallet.currency,
+            listOf(
+                LedgerLeg(senderWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Transfer - $trimmedDescription"),
+                LedgerLeg(recipientWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Transfer received - $trimmedDescription"),
+            ),
+        )
+
+        val transaction = Transaction(
+            id = result.transactionId,
+            referenceNumber = "P2PTXN${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
+            senderId = senderUserId,
+            recipientId = recipientWallet.userId,
+            fromWalletId = senderWallet.id,
+            toWalletId = recipientWallet.id,
+            amount = amount,
+            fee = BigDecimal.ZERO,
+            currency = senderWallet.currency,
+            type = TransactionType.TRANSFER,
+            status = TransactionStatus.COMPLETED,
+            description = "Transfer - $trimmedDescription",
+            completedAt = Instant.now(),
+        )
+        // Evaluated before save, same ordering reasoning as payRequest's own inline
+        // comment: evaluating after would let this transaction match itself as prior
+        // history and permanently mask NEW_RECIPIENT.
+        fraudRuleEngine.evaluate(senderUserId, recipientWallet.userId, amount, transaction.id)
+        transactionRepository.save(transaction)
+
+        val updatedSenderWallet = walletRepository.findById(senderWallet.id).orElseThrow { P2pNoWalletException("No wallet found for this account") }
+        return transaction to updatedSenderWallet.balance
     }
 }
