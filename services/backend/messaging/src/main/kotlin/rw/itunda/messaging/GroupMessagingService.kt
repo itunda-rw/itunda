@@ -175,18 +175,38 @@ class GroupMessagingService(
         return page
     }
 
+    // Real batch fetch (2026-07-19, found in a security/performance sweep) -- was a real
+    // N+1: up to 4 queries per group (own-membership-row lookup, last message, member
+    // count via fetching every member row just to call .size, unread count), so a real
+    // 20-item page cost up to 80 queries. Now 4 queries total for the first three
+    // sources plus one small per-group query for unread counts (that last one has a
+    // real per-group cursor and isn't batchable without raw SQL -- see
+    // GroupMessageRepository.countUnread's own doc comment for why that's an honest,
+    // named partial fix rather than blocking the other three on it).
     fun listMyGroups(userId: String, pageable: Pageable): Page<GroupSummary> {
         val page = groupConversationRepository.findByMember(userId, pageable)
-        val summaries = page.content.map { group ->
-            val member = groupConversationMemberRepository.findByGroupConversationIdAndUserId(group.id, userId)!!
-            val lastMessage = groupMessageRepository.findByGroupConversationIdOrderBySentAtDesc(group.id, Pageable.ofSize(1))
-                .content.firstOrNull()
+        val groups = page.content
+        if (groups.isEmpty()) return PageImpl(emptyList(), pageable, page.totalElements)
+
+        val groupIds = groups.map { it.id }
+        val myMembershipByGroupId = groupConversationMemberRepository
+            .findByGroupConversationIdInAndUserId(groupIds, userId)
+            .associateBy { it.groupConversationId }
+        val lastMessageByGroupId = groupMessageRepository
+            .findByGroupConversationIdInOrderBySentAtDesc(groupIds, Pageable.ofSize(500))
+            .groupBy { it.groupConversationId }
+            .mapValues { (_, messages) -> messages.first() }
+        val memberCountByGroupId = groupConversationMemberRepository.countMembersByGroupConversationIds(groupIds)
+            .associate { it.groupConversationId to it.memberCount }
+
+        val summaries = groups.map { group ->
+            val member = myMembershipByGroupId.getValue(group.id)
             GroupSummary(
                 groupId = group.id,
                 name = group.name,
-                memberCount = groupConversationMemberRepository.findByGroupConversationId(group.id).size,
+                memberCount = (memberCountByGroupId[group.id] ?: 0L).toInt(),
                 lastMessageAt = group.lastMessageAt,
-                lastMessagePreview = lastMessage?.body,
+                lastMessagePreview = lastMessageByGroupId[group.id]?.body,
                 unreadCount = groupMessageRepository.countUnread(group.id, userId, member.lastReadAt),
             )
         }

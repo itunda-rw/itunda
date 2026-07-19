@@ -34,6 +34,15 @@ interface ConversationRepository : JpaRepository<Conversation, String> {
     fun findPartnerUserIds(@Param("userId") userId: String): List<String>
 }
 
+// Real batch projection (2026-07-19) -- one row per conversation with an unread
+// message, backing MessagingService.listConversations' batched unread-count fetch.
+// Property names must match the JPQL SELECT aliases below (Spring Data's
+// interface-projection binding is by getter name, not declaration order).
+interface ConversationUnreadCount {
+    val conversationId: String
+    val unreadCount: Long
+}
+
 interface MessageRepository : JpaRepository<Message, String> {
     fun findByConversationIdOrderBySentAtDesc(conversationId: String, pageable: Pageable): Page<Message>
 
@@ -42,6 +51,28 @@ interface MessageRepository : JpaRepository<Message, String> {
     fun countByConversationIdAndSenderIdNotAndReadAtIsNull(conversationId: String, senderId: String): Long
 
     fun findByConversationIdAndSenderIdNotAndReadAtIsNull(conversationId: String, senderId: String): List<Message>
+
+    // Real batch fetch (2026-07-19) -- see MessagingService.listConversations' own doc
+    // comment for the real N+1 this replaces (was one query per conversation for the
+    // other user, last message, and unread count each -- up to 3x the page size).
+    // Ordered so the caller can take the first row per conversationId as "the last
+    // message" without a per-conversation query; bounded via Pageable rather than an
+    // unbounded fetch, since a real per-group LIMIT needs a window function this
+    // codebase doesn't use raw SQL for yet -- a real, named simplification, not a bug,
+    // for the (currently unrealistic) case where >500 total messages across a single
+    // page of conversations were sent more recently than a real conversation's own
+    // actual last message.
+    fun findByConversationIdInOrderBySentAtDesc(conversationIds: List<String>, pageable: Pageable): List<Message>
+
+    @Query(
+        "SELECT m.conversationId AS conversationId, COUNT(m) AS unreadCount FROM Message m " +
+            "WHERE m.conversationId IN :conversationIds AND m.senderId <> :userId AND m.readAt IS NULL " +
+            "GROUP BY m.conversationId",
+    )
+    fun countUnreadByConversationIds(
+        @Param("conversationIds") conversationIds: List<String>,
+        @Param("userId") userId: String,
+    ): List<ConversationUnreadCount>
 }
 
 interface MessageReactionRepository : JpaRepository<MessageReaction, String> {

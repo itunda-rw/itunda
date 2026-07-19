@@ -169,11 +169,14 @@ class MessagingServiceTest : BehaviorSpec({
             val conversation = Conversation(id = "conversation_1", participantAId = "user_a", participantBId = "user_b")
             every { conversationRepository.findByParticipant("user_a", PageRequest.of(0, 20)) } returns
                 PageImpl(listOf(conversation), PageRequest.of(0, 20), 1)
-            every { userRepository.findById("user_b") } returns Optional.of(user("user_b", "Beata"))
+            every { userRepository.findAllById(listOf("user_b")) } returns listOf(user("user_b", "Beata"))
             val lastMessage = Message(id = "message_1", conversationId = "conversation_1", senderId = "user_b", body = "hi!")
-            every { messageRepository.findByConversationIdOrderBySentAtDesc("conversation_1", any()) } returns
-                PageImpl(listOf(lastMessage))
-            every { messageRepository.countByConversationIdAndSenderIdNotAndReadAtIsNull("conversation_1", "user_a") } returns 3L
+            every { messageRepository.findByConversationIdInOrderBySentAtDesc(listOf("conversation_1"), any()) } returns listOf(lastMessage)
+            every { messageRepository.countUnreadByConversationIds(listOf("conversation_1"), "user_a") } returns
+                listOf(object : rw.itunda.core.repository.ConversationUnreadCount {
+                    override val conversationId = "conversation_1"
+                    override val unreadCount = 3L
+                })
 
             val page = service.listConversations("user_a", PageRequest.of(0, 20))
 

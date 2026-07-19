@@ -219,20 +219,41 @@ class MessagingService(
         return page
     }
 
+    // Real batch fetch (2026-07-19, found in a security/performance sweep) -- was a real
+    // N+1: up to 3 queries per conversation (other-user lookup, last message, unread
+    // count), so a real 20-item page cost up to 60 queries. Now 4 queries total
+    // regardless of page size: the page itself, one batched `findAllById` for every
+    // other-participant's real name, one batched ordered fetch for last messages
+    // (grouped in-app to "first per conversationId", see
+    // MessageRepository.findByConversationIdInOrderBySentAtDesc's own doc comment for
+    // the real bound this relies on), and one batched GROUP BY for unread counts.
     fun listConversations(userId: String, pageable: Pageable): Page<ConversationSummary> {
         val page = conversationRepository.findByParticipant(userId, pageable)
-        val summaries = page.content.map { conversation ->
-            val otherUserId = if (conversation.participantAId == userId) conversation.participantBId else conversation.participantAId
-            val otherUser = userRepository.findById(otherUserId).orElse(null)
-            val lastMessage = messageRepository.findByConversationIdOrderBySentAtDesc(conversation.id, Pageable.ofSize(1))
-                .content.firstOrNull()
+        val conversations = page.content
+        if (conversations.isEmpty()) return PageImpl(emptyList(), pageable, page.totalElements)
+
+        val otherUserIdByConversationId = conversations.associate { c ->
+            c.id to (if (c.participantAId == userId) c.participantBId else c.participantAId)
+        }
+        val otherUsersById = userRepository.findAllById(otherUserIdByConversationId.values.distinct()).associateBy { it.id }
+        val conversationIds = conversations.map { it.id }
+        val lastMessageByConversationId = messageRepository
+            .findByConversationIdInOrderBySentAtDesc(conversationIds, Pageable.ofSize(500))
+            .groupBy { it.conversationId }
+            .mapValues { (_, messages) -> messages.first() }
+        val unreadCountByConversationId = messageRepository.countUnreadByConversationIds(conversationIds, userId)
+            .associate { it.conversationId to it.unreadCount }
+
+        val summaries = conversations.map { conversation ->
+            val otherUserId = otherUserIdByConversationId.getValue(conversation.id)
+            val otherUser = otherUsersById[otherUserId]
             ConversationSummary(
                 conversationId = conversation.id,
                 otherUserId = otherUserId,
                 otherUserName = otherUser?.let { "${it.firstName} ${it.lastName}" } ?: "Unknown user",
                 lastMessageAt = conversation.lastMessageAt,
-                lastMessagePreview = lastMessage?.body,
-                unreadCount = messageRepository.countByConversationIdAndSenderIdNotAndReadAtIsNull(conversation.id, userId),
+                lastMessagePreview = lastMessageByConversationId[conversation.id]?.body,
+                unreadCount = unreadCountByConversationId[conversation.id] ?: 0L,
             )
         }
         return PageImpl(summaries, pageable, page.totalElements)

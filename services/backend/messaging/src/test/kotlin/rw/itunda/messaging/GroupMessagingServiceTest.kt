@@ -254,6 +254,32 @@ class GroupMessagingServiceTest : BehaviorSpec({
             }
         }
 
+        When("listing groups with a real last message, member count, and unread count -- batched (2026-07-19)") {
+            every { groupConversationRepository.findByMember("user_a", org.springframework.data.domain.PageRequest.of(0, 20)) } returns
+                org.springframework.data.domain.PageImpl(listOf(group), org.springframework.data.domain.PageRequest.of(0, 20), 1)
+            every { groupConversationMemberRepository.findByGroupConversationIdInAndUserId(listOf("group_1"), "user_a") } returns
+                listOf(members[0])
+            val lastMessage = GroupMessage(id = "group_message_9", groupConversationId = "group_1", senderId = "user_b", body = "see you all soon")
+            every { groupMessageRepository.findByGroupConversationIdInOrderBySentAtDesc(listOf("group_1"), any()) } returns listOf(lastMessage)
+            every { groupConversationMemberRepository.countMembersByGroupConversationIds(listOf("group_1")) } returns
+                listOf(object : rw.itunda.core.repository.GroupMemberCount {
+                    override val groupConversationId = "group_1"
+                    override val memberCount = 3L
+                })
+            every { groupMessageRepository.countUnread("group_1", "user_a", null) } returns 2L
+
+            val page = service.listMyGroups("user_a", org.springframework.data.domain.PageRequest.of(0, 20))
+
+            Then("the real batched lookups populate the summary without a per-group query for the first three") {
+                page.content.size shouldBe 1
+                page.content[0].memberCount shouldBe 3
+                page.content[0].lastMessagePreview shouldBe "see you all soon"
+                page.content[0].unreadCount shouldBe 2L
+                verify(exactly = 0) { groupConversationMemberRepository.findByGroupConversationIdAndUserId(any(), any()) }
+                verify(exactly = 0) { groupConversationMemberRepository.findByGroupConversationId(any()) }
+            }
+        }
+
         When("a real member reacts to a real group message for the first time") {
             val groupMessage = GroupMessage(id = "group_message_1", groupConversationId = "group_1", senderId = "user_b", body = "hi all")
             every { groupMessageRepository.findById("group_message_1") } returns Optional.of(groupMessage)
