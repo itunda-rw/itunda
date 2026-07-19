@@ -44,6 +44,7 @@ import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Duration
+import java.time.Instant
 import java.util.Optional
 
 class EatsOrderServiceTest : BehaviorSpec({
@@ -436,20 +437,43 @@ class EatsOrderServiceTest : BehaviorSpec({
             )
             val closeRider = Rider(id = "rider_close", userId = "rider_user_close", walletId = "wallet_close", available = true, currentLatitude = -1.9536, currentLongitude = 30.0620)
             val farRider = Rider(id = "rider_far", userId = "rider_user_far", walletId = "wallet_far", available = true, currentLatitude = -2.5967, currentLongitude = 29.7392)
+            val savedSlot = slot<EatsOrder>()
             every { merchantRepository.findByOwnerUserId("owner_1") } returns locatedRestaurant
             every { eatsOrderRepository.findById("eats_order_2") } returns Optional.of(preparingOrder)
-            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+            every { eatsOrderRepository.save(capture(savedSlot)) } answers { firstArg() }
             every { riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns listOf(farRider, closeRider)
 
             service.updateRestaurantStatus("owner_1", "eats_order_2", EatsOrderStatus.READY_FOR_PICKUP)
 
-            Then("it real-notifies every online rider with a known location, nearest first in no particular verified order but all included") {
+            Then("real automatic dispatch offers it exclusively to the real closest rider only, not every nearby rider") {
+                savedSlot.captured.offeredRiderId shouldBe "rider_close"
+                (savedSlot.captured.offerExpiresAt != null) shouldBe true
                 verify {
-                    notificationRepository.saveAll(match<List<Notification>> { notifications ->
-                        notifications.size == 2 && notifications.all { it.type == "NEW_DELIVERY_NEARBY" } &&
-                            notifications.map { it.userId }.toSet() == setOf("rider_user_close", "rider_user_far")
-                    })
+                    notificationRepository.save(match<Notification> { it.type == "DELIVERY_OFFER" && it.userId == "rider_user_close" })
                 }
+                verify(exactly = 0) { notificationRepository.saveAll(any<List<Notification>>()) }
+            }
+        }
+
+        When("the real restaurant marks an order READY_FOR_PICKUP but has no real online riders at all") {
+            val locatedRestaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE, latitude = -1.9536, longitude = 30.0605)
+            val preparingOrder = EatsOrder(
+                id = "eats_order_5", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_5", status = EatsOrderStatus.PREPARING,
+            )
+            val savedSlot = slot<EatsOrder>()
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns locatedRestaurant
+            every { eatsOrderRepository.findById("eats_order_5") } returns Optional.of(preparingOrder)
+            every { eatsOrderRepository.save(capture(savedSlot)) } answers { firstArg() }
+            every { riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns emptyList()
+
+            service.updateRestaurantStatus("owner_1", "eats_order_5", EatsOrderStatus.READY_FOR_PICKUP)
+
+            Then("automatic dispatch real-degrades to the open-browse fallback, not a stuck order") {
+                savedSlot.captured.offeredRiderId shouldBe null
+                verify(exactly = 0) { notificationRepository.save(any<Notification>()) }
+                verify(exactly = 0) { notificationRepository.saveAll(any<List<Notification>>()) }
             }
         }
 
@@ -467,6 +491,7 @@ class EatsOrderServiceTest : BehaviorSpec({
 
             Then("the real status transition still succeeds -- notification is best-effort, never blocking") {
                 result.status shouldBe EatsOrderStatus.READY_FOR_PICKUP
+                verify(exactly = 0) { notificationRepository.save(any<Notification>()) }
                 verify(exactly = 0) { notificationRepository.saveAll(any<List<Notification>>()) }
             }
         }
@@ -645,6 +670,181 @@ class EatsOrderServiceTest : BehaviorSpec({
                 } catch (e: DeliveryAlreadyClaimedException) {
                     // expected
                 }
+            }
+        }
+
+        When("a real rider WITHOUT the real active dispatch offer tries to claim it") {
+            val offeredOrder = EatsOrder(
+                id = "eats_order_6", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_6", status = EatsOrderStatus.READY_FOR_PICKUP,
+                offeredRiderId = "rider_other", offerExpiresAt = Instant.now().plusSeconds(60),
+            )
+            every { riderRepository.findByUserId("rider_user_1") } returns rider
+            every { eatsOrderRepository.findById("eats_order_6") } returns Optional.of(offeredOrder)
+
+            Then("it real-409s the same way an already-claimed delivery does -- never leaking that an active offer exists") {
+                try {
+                    service.claimDelivery("rider_user_1", "eats_order_6")
+                    error("expected DeliveryAlreadyClaimedException")
+                } catch (e: DeliveryAlreadyClaimedException) {
+                    // expected
+                }
+            }
+        }
+
+        When("the real rider WITH the real active dispatch offer claims it") {
+            val offeredOrder = EatsOrder(
+                id = "eats_order_7", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_7", status = EatsOrderStatus.READY_FOR_PICKUP,
+                offeredRiderId = "rider_1", offerExpiresAt = Instant.now().plusSeconds(60),
+            )
+            every { riderRepository.findByUserId("rider_user_1") } returns rider
+            every { eatsOrderRepository.findById("eats_order_7") } returns Optional.of(offeredOrder)
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            val result = service.claimDelivery("rider_user_1", "eats_order_7")
+
+            Then("it real-succeeds and real-clears the offer fields") {
+                result.status shouldBe EatsOrderStatus.RIDER_ASSIGNED
+                result.offeredRiderId shouldBe null
+                result.offerExpiresAt shouldBe null
+            }
+        }
+
+        When("a real rider claims it after their own real dispatch offer already expired") {
+            val expiredOfferOrder = EatsOrder(
+                id = "eats_order_8", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_8", status = EatsOrderStatus.READY_FOR_PICKUP,
+                offeredRiderId = "rider_other", offerExpiresAt = Instant.now().minusSeconds(5),
+            )
+            every { riderRepository.findByUserId("rider_user_1") } returns rider
+            every { eatsOrderRepository.findById("eats_order_8") } returns Optional.of(expiredOfferOrder)
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            val result = service.claimDelivery("rider_user_1", "eats_order_8")
+
+            Then("a real expired offer no longer blocks anyone -- it's genuinely open again, matching the honest open-browse fallback") {
+                result.status shouldBe EatsOrderStatus.RIDER_ASSIGNED
+                result.riderId shouldBe "rider_1"
+            }
+        }
+    }
+
+    Given("a real rider with an active dispatch offer, deciding whether to accept it") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val merchantProductRepository = mockk<MerchantProductRepository>()
+        val riderRepository = mockk<RiderRepository>()
+        val eatsOrderRepository = mockk<EatsOrderRepository>()
+        val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val service = EatsOrderService(
+            merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
+            eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
+        )
+        val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE, latitude = -1.9536, longitude = 30.0605)
+        val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
+
+        When("they real-decline their real active offer") {
+            val offeredOrder = EatsOrder(
+                id = "eats_order_9", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_9", status = EatsOrderStatus.READY_FOR_PICKUP,
+                offeredRiderId = "rider_1", offerExpiresAt = Instant.now().plusSeconds(60),
+            )
+            val nextRider = Rider(id = "rider_next", userId = "rider_user_next", walletId = "wallet_next", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605)
+            every { riderRepository.findByUserId("rider_user_1") } returns rider
+            every { eatsOrderRepository.findById("eats_order_9") } returns Optional.of(offeredOrder)
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns listOf(nextRider)
+
+            val result = service.declineDelivery("rider_user_1", "eats_order_9")
+
+            Then("it real-excludes them and real-reassigns to the next real candidate immediately, not waiting for the timeout") {
+                result.offeredRiderId shouldBe "rider_next"
+                result.excludedRiderUserIds shouldBe "rider_user_1"
+                verify { notificationRepository.save(match<Notification> { it.type == "DELIVERY_OFFER" && it.userId == "rider_user_next" }) }
+            }
+        }
+
+        When("a real rider tries to decline a delivery they were never offered") {
+            val order = EatsOrder(
+                id = "eats_order_10", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_10", status = EatsOrderStatus.READY_FOR_PICKUP,
+                offeredRiderId = "rider_someone_else", offerExpiresAt = Instant.now().plusSeconds(60),
+            )
+            every { riderRepository.findByUserId("rider_user_1") } returns rider
+            every { eatsOrderRepository.findById("eats_order_10") } returns Optional.of(order)
+
+            Then("it throws NoActiveOfferException") {
+                try {
+                    service.declineDelivery("rider_user_1", "eats_order_10")
+                    error("expected NoActiveOfferException")
+                } catch (e: NoActiveOfferException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("real dispatch offers that expired without a response") {
+        val merchantRepository = mockk<MerchantRepository>()
+        val merchantProductRepository = mockk<MerchantProductRepository>()
+        val riderRepository = mockk<RiderRepository>()
+        val eatsOrderRepository = mockk<EatsOrderRepository>()
+        val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val service = EatsOrderService(
+            merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
+            eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
+        )
+        val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE, latitude = -1.9536, longitude = 30.0605)
+
+        When("the real scheduler finds and reassigns one") {
+            val expiredOrder = EatsOrder(
+                id = "eats_order_11", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_11", status = EatsOrderStatus.READY_FOR_PICKUP,
+                offeredRiderId = "rider_timed_out", offerExpiresAt = Instant.now().minusSeconds(5),
+            )
+            val timedOutRider = Rider(id = "rider_timed_out", userId = "rider_user_timed_out", walletId = "wallet_timedout")
+            val nextRider = Rider(id = "rider_next", userId = "rider_user_next", walletId = "wallet_next", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605)
+            every { eatsOrderRepository.findByOfferExpiresAtBeforeAndRiderIdIsNull(any()) } returns listOf(expiredOrder)
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { riderRepository.findById("rider_timed_out") } returns Optional.of(timedOutRider)
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+            every { riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns listOf(nextRider)
+
+            val expired = service.getExpiredOffers()
+            service.reassignExpiredOffer(expired.first())
+
+            Then("it real-excludes the timed-out rider and real-offers to the next real candidate") {
+                expired shouldBe listOf(expiredOrder)
+                expiredOrder.excludedRiderUserIds shouldBe "rider_user_timed_out"
+                expiredOrder.offeredRiderId shouldBe "rider_next"
+                verify { notificationRepository.save(match<Notification> { it.type == "DELIVERY_OFFER" && it.userId == "rider_user_next" }) }
             }
         }
     }

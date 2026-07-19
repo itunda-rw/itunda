@@ -55,6 +55,7 @@ class DeliveryAlreadyClaimedException(message: String) : RuntimeException(messag
 class NotAssignedRiderException(message: String) : RuntimeException(message)
 class InvalidEatsCoordinatesException(message: String) : RuntimeException(message)
 class InvalidEatsDeliveryNotesException(message: String) : RuntimeException(message)
+class NoActiveOfferException(message: String) : RuntimeException(message)
 
 data class EatsOrderItemRequest(val menuItemId: String, val quantity: Int)
 data class EatsOrderDetail(val order: EatsOrder, val items: List<EatsOrderItem>)
@@ -105,6 +106,12 @@ class EatsOrderService(
         // notification when an order reaches READY_FOR_PICKUP -- see
         // notifyNearestRiders's own doc comment for the full account.
         private const val NEAREST_RIDERS_TO_NOTIFY = 5
+
+        // Real exclusive accept window for automatic dispatch -- see
+        // dispatchToNextCandidate's own doc comment for the full account. Long enough
+        // for a real rider to actually notice a push notification and respond, short
+        // enough that a real buyer isn't kept waiting on one unresponsive candidate.
+        val OFFER_WINDOW: Duration = Duration.ofSeconds(90)
     }
 
     // Same 1.5% Toss Payments fee-schedule reasoning OrderService.feeRate/
@@ -341,13 +348,24 @@ class EatsOrderService(
             ?: throw RiderNotRegisteredException("This account is not registered as a rider")
         val riderLat = rider.currentLatitude
         val riderLng = rider.currentLongitude
+        // Real automatic-dispatch exclusivity (2026-07-20): an order with a real
+        // still-active exclusive offer is hidden from open browse entirely -- showing
+        // it here would just invite a claim attempt that real-409s, and the
+        // specifically-offered rider already gets a dedicated Notification with the
+        // order id, so they don't need to find it via browse either.
+        val now = Instant.now()
+        fun hasNoActiveOffer(order: EatsOrder) = order.offerExpiresAt == null || !order.offerExpiresAt!!.isAfter(now)
         if (riderLat == null || riderLng == null) {
-            return eatsOrderRepository.findByStatusAndRiderIdIsNullOrderByCreatedAtAsc(EatsOrderStatus.READY_FOR_PICKUP, pageable)
+            val page = eatsOrderRepository.findByStatusAndRiderIdIsNullOrderByCreatedAtAsc(EatsOrderStatus.READY_FOR_PICKUP, Pageable.unpaged())
+            val filtered = page.content.filter(::hasNoActiveOffer)
+            val start = (pageable.offset).coerceAtMost(filtered.size.toLong()).toInt()
+            val end = (start + pageable.pageSize).coerceAtMost(filtered.size)
+            return PageImpl(filtered.subList(start, end), pageable, filtered.size.toLong())
         }
 
         val candidates = eatsOrderRepository.findByStatusAndRiderIdIsNullOrderByCreatedAtAsc(
             EatsOrderStatus.READY_FOR_PICKUP, Pageable.unpaged(),
-        ).content
+        ).content.filter(::hasNoActiveOffer)
         if (candidates.isEmpty()) return PageImpl(emptyList(), pageable, 0)
 
         val restaurantsById = merchantRepository.findAllById(candidates.map { it.restaurantId }.distinct()).associateBy { it.id }
@@ -449,23 +467,34 @@ class EatsOrderService(
         order.updatedAt = Instant.now()
         val saved = eatsOrderRepository.save(order)
         if (newStatus == EatsOrderStatus.READY_FOR_PICKUP) {
-            notifyNearestRiders(saved, restaurant)
+            dispatchToNextCandidate(saved, restaurant)
         }
         return saved
     }
 
-    // Real proactive nearest-rider push (2026-07-19) -- the "push" half of "push-based
-    // rider assignment": rather than every online rider having to poll/browse to
-    // discover a new READY_FOR_PICKUP order, the closest few get a real Notification the
-    // moment one appears. Deliberately NOT full automatic assignment -- no rider is
-    // auto-committed to anything, this only surfaces the real opportunity faster; the
-    // existing race-safe claimDelivery (first successful claim wins, already real-409s a
-    // second attempt) is completely unchanged and still decides who actually gets it.
-    // Ranked by real GeoUtils.haversineKm only, not the OSRM road-distance
-    // getAvailableDeliveries itself uses -- a notification trigger only needs a rough
-    // "who's actually close," the definitive ranking a rider sees once they open the app
-    // is still the fully real one. Best-effort by design, same "an auxiliary side-effect
-    // can't block the real operation it's attached to" discipline
+    // Shared real proximity ranking (2026-07-20) -- extracted so both the open-browse
+    // fallback push (notifyNearestRiders) and exclusive automatic dispatch
+    // (dispatchToNextCandidate) rank candidates the exact same real way, rather than two
+    // copies that could silently drift. Ranked by real GeoUtils.haversineKm only, not
+    // the OSRM road-distance getAvailableDeliveries itself uses -- a dispatch/
+    // notification trigger only needs a rough "who's actually close," the definitive
+    // ranking a rider sees once they open the app is still the fully real one.
+    private fun rankNearbyRiders(restaurantLat: Double, restaurantLng: Double, excludedUserIds: Set<String> = emptySet()) =
+        riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull()
+            .filterNot { it.userId in excludedUserIds }
+            .map { rider -> rider to GeoUtils.haversineKm(restaurantLat, restaurantLng, rider.currentLatitude!!, rider.currentLongitude!!) }
+            .sortedBy { (_, distanceKm) -> distanceKm }
+
+    // Real proactive nearest-rider push (2026-07-19) -- the open-browse fallback: rather
+    // than every online rider having to poll/browse to discover a new READY_FOR_PICKUP
+    // order, the closest few get a real Notification. This is the model every real
+    // delivery this backend used until automatic dispatch (dispatchToNextCandidate)
+    // shipped the next day -- now used as the graceful fallback once automatic dispatch
+    // has run out of real candidates to exclusively offer to, so a delivery is never
+    // left silently stuck. The existing race-safe claimDelivery (first successful claim
+    // wins once there's no active exclusive offer, already real-409s a second attempt)
+    // decides who actually gets it from here. Best-effort by design, same "an auxiliary
+    // side-effect can't block the real operation it's attached to" discipline
     // ShoppingCashbackService's own doc comment already established -- a notification
     // failure must never fail the real status transition it's reacting to.
     private fun notifyNearestRiders(order: EatsOrder, restaurant: Merchant) {
@@ -473,13 +502,8 @@ class EatsOrderService(
             val restaurantLat = restaurant.latitude
             val restaurantLng = restaurant.longitude
             if (restaurantLat == null || restaurantLng == null) return
-            val candidates = riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull()
-            if (candidates.isEmpty()) return
-
-            val nearest = candidates
-                .map { rider -> rider to GeoUtils.haversineKm(restaurantLat, restaurantLng, rider.currentLatitude!!, rider.currentLongitude!!) }
-                .sortedBy { (_, distanceKm) -> distanceKm }
-                .take(NEAREST_RIDERS_TO_NOTIFY)
+            val nearest = rankNearbyRiders(restaurantLat, restaurantLng).take(NEAREST_RIDERS_TO_NOTIFY)
+            if (nearest.isEmpty()) return
 
             notificationRepository.saveAll(
                 nearest.map { (rider, distanceKm) ->
@@ -494,6 +518,97 @@ class EatsOrderService(
         } catch (e: Exception) {
             logger.warn("Failed to notify nearest riders for order {} -- the order is still real and claimable via browse, this is best-effort only: {}", order.id, e.message)
         }
+    }
+
+    // Real automatic dispatch (2026-07-20) -- offers a READY_FOR_PICKUP delivery
+    // exclusively to the single nearest real available rider who hasn't already been
+    // offered (and declined/timed out on) this exact delivery, for a real
+    // OFFER_WINDOW-second accept window. During that window, only the offered rider can
+    // claimDelivery -- a claim attempt from anyone else real-409s the same way an
+    // already-claimed delivery does, same exclusivity discipline every other real
+    // resource-ownership check in this backend uses (never leak that an active offer
+    // exists to someone it wasn't made to). If no real candidate remains (every nearby
+    // rider already tried, or none are online with a known location), gracefully
+    // degrades to the pre-existing open browse/first-claim-wins model via
+    // notifyNearestRiders -- a real delivery is never left silently stuck just because
+    // automatic dispatch ran out of real candidates.
+    private fun dispatchToNextCandidate(order: EatsOrder, restaurant: Merchant) {
+        try {
+            val restaurantLat = restaurant.latitude
+            val restaurantLng = restaurant.longitude
+            if (restaurantLat == null || restaurantLng == null) {
+                notifyNearestRiders(order, restaurant)
+                return
+            }
+            val excluded = order.excludedRiderUserIds?.split(",")?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
+            val next = rankNearbyRiders(restaurantLat, restaurantLng, excluded).firstOrNull()?.first
+
+            if (next == null) {
+                order.offeredRiderId = null
+                order.offerExpiresAt = null
+                eatsOrderRepository.save(order)
+                notifyNearestRiders(order, restaurant)
+                return
+            }
+
+            order.offeredRiderId = next.id
+            order.offerExpiresAt = Instant.now().plus(OFFER_WINDOW)
+            eatsOrderRepository.save(order)
+
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = next.userId, type = "DELIVERY_OFFER",
+                    title = "New delivery -- you're closest",
+                    body = "${restaurant.businessName} -- accept within ${OFFER_WINDOW.seconds} seconds or it goes to the next rider",
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"orderId\":\"${order.id}\"}",
+                ),
+            )
+        } catch (e: Exception) {
+            logger.warn("Failed to dispatch order {} to a real candidate rider -- falling back to open browse: {}", order.id, e.message)
+        }
+    }
+
+    // Real scheduled reassignment (2026-07-20) -- backs DispatchOfferScheduler. Every
+    // real unassigned order whose exclusive offer window expired without an explicit
+    // accept or decline, same real "silent timeout == implicit decline" semantics every
+    // real gig-dispatch system uses.
+    fun getExpiredOffers(): List<EatsOrder> = eatsOrderRepository.findByOfferExpiresAtBeforeAndRiderIdIsNull(Instant.now())
+
+    @Transactional
+    fun reassignExpiredOffer(order: EatsOrder) {
+        val restaurant = merchantRepository.findById(order.restaurantId).orElse(null) ?: return
+        val expiredRiderUserId = order.offeredRiderId?.let { riderId -> riderRepository.findById(riderId).orElse(null)?.userId }
+        order.excludedRiderUserIds = (
+            (order.excludedRiderUserIds?.split(",")?.filter { it.isNotBlank() } ?: emptyList()) + listOfNotNull(expiredRiderUserId)
+            ).distinct().joinToString(",")
+        order.offeredRiderId = null
+        order.offerExpiresAt = null
+        eatsOrderRepository.save(order)
+        dispatchToNextCandidate(order, restaurant)
+    }
+
+    /** Real explicit decline (2026-07-20) -- the offered rider proactively passes rather
+     * than silently letting the real accept window expire, immediately triggering real
+     * reassignment to the next candidate instead of waiting out the timeout. */
+    @Transactional
+    fun declineDelivery(riderUserId: String, orderId: String): EatsOrder {
+        val rider = riderRepository.findByUserId(riderUserId)
+            ?: throw RiderNotRegisteredException("This account is not registered as a rider")
+        val order = eatsOrderRepository.findById(orderId).orElseThrow { EatsOrderNotFoundException("Order not found") }
+        if (order.offeredRiderId != rider.id) {
+            throw NoActiveOfferException("You don't have an active offer for this delivery")
+        }
+        order.excludedRiderUserIds = (
+            (order.excludedRiderUserIds?.split(",")?.filter { it.isNotBlank() } ?: emptyList()) + rider.userId
+            ).distinct().joinToString(",")
+        order.offeredRiderId = null
+        order.offerExpiresAt = null
+        val saved = eatsOrderRepository.save(order)
+        val restaurant = merchantRepository.findById(saved.restaurantId).orElse(null)
+        if (restaurant != null && saved.status == EatsOrderStatus.READY_FOR_PICKUP && saved.riderId == null) {
+            dispatchToNextCandidate(saved, restaurant)
+        }
+        return saved
     }
 
     /**
@@ -550,8 +665,19 @@ class EatsOrderService(
         if (order.status != EatsOrderStatus.READY_FOR_PICKUP || order.riderId != null) {
             throw DeliveryAlreadyClaimedException("This delivery is no longer available")
         }
+        // Real exclusive dispatch window (2026-07-20): while a real offer to a specific
+        // rider hasn't expired yet, only that rider may claim it -- everyone else gets
+        // the same real "no longer available" error an already-claimed delivery gives,
+        // never a different message that would leak the existence of an active offer to
+        // someone it wasn't made to.
+        val offerStillActive = order.offerExpiresAt?.isAfter(Instant.now()) == true
+        if (offerStillActive && order.offeredRiderId != rider.id) {
+            throw DeliveryAlreadyClaimedException("This delivery is no longer available")
+        }
         order.riderId = rider.id
         order.status = EatsOrderStatus.RIDER_ASSIGNED
+        order.offeredRiderId = null
+        order.offerExpiresAt = null
         order.updatedAt = Instant.now()
         return eatsOrderRepository.save(order)
     }

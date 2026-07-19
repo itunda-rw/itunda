@@ -109,6 +109,26 @@ class EatsOrder(
     // checkout), surfaced to the restaurant and the assigned rider.
     @Column(name = "delivery_notes", length = 500)
     val deliveryNotes: String? = null,
+
+    // Real automatic dispatch (2026-07-20) -- exclusive right-of-refusal for one
+    // specific rider at a time, closing the "full automatic assignment" gap on top of
+    // the existing open-browse/first-claim-wins model (which stays as the real,
+    // unchanged fallback once every real candidate has been tried or declined). See
+    // EatsOrderService.dispatchToNextCandidate's own doc comment for the full account.
+    @Column(name = "offered_rider_id", length = 64)
+    var offeredRiderId: String? = null,
+
+    @Column(name = "offer_expires_at")
+    var offerExpiresAt: Instant? = null,
+
+    // Real, small, bounded comma-separated list of rider user ids already offered this
+    // delivery and declined/timed out -- never re-offered the same delivery twice. A
+    // real join table would be over-engineering for a list this size (bounded by
+    // NEAREST_RIDERS_TO_NOTIFY, currently 5), same "honest choice at this system's real
+    // data scale" discipline SavingsService.getGoalsDueForAutoContribution's own doc
+    // comment already established for a different small-scale simplification.
+    @Column(name = "excluded_rider_user_ids", length = 500)
+    var excludedRiderUserIds: String? = null,
 ) {
     protected constructor() : this(
         id = "", buyerId = "", restaurantId = "", deliveryAddress = "", itemsSubtotal = BigDecimal.ZERO,

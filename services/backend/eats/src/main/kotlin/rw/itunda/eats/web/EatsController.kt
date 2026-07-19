@@ -44,6 +44,7 @@ import rw.itunda.eats.InvalidEatsQuantityException
 import rw.itunda.eats.InvalidEatsRatingException
 import rw.itunda.eats.InvalidRiderLocationException
 import rw.itunda.eats.MenuItemNotFoundException
+import rw.itunda.eats.NoActiveOfferException
 import rw.itunda.eats.NotAssignedRiderException
 import rw.itunda.eats.RestaurantNoWalletException
 import rw.itunda.eats.RestaurantNotFoundException
@@ -235,6 +236,17 @@ class EatsController(
         return ResponseEntity.ok(mapOf("success" to true, "order" to order))
     }
 
+    // Real automatic dispatch (2026-07-20) -- see EatsOrderService.declineDelivery's own
+    // doc comment. Only the rider currently holding the real exclusive offer can decline it.
+    @PostMapping("/orders/{orderId}/decline")
+    fun declineDelivery(
+        @PathVariable orderId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val order = eatsOrderService.declineDelivery(currentUser.userId, orderId)
+        return ResponseEntity.ok(mapOf("success" to true, "order" to order))
+    }
+
     @PostMapping("/orders/{orderId}/rider-status")
     fun updateRiderStatus(
         @PathVariable orderId: String,
@@ -393,6 +405,10 @@ class EatsController(
     @ExceptionHandler(DeliveryAlreadyClaimedException::class)
     fun handleDeliveryAlreadyClaimed(ex: DeliveryAlreadyClaimedException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("DELIVERY_ALREADY_CLAIMED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(NoActiveOfferException::class)
+    fun handleNoActiveOffer(ex: NoActiveOfferException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("NO_ACTIVE_OFFER", ex.message ?: "Conflict"))
 
     @ExceptionHandler(NotAssignedRiderException::class)
     fun handleNotAssignedRider(ex: NotAssignedRiderException) =
