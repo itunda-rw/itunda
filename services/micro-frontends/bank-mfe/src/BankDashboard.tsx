@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowUpRight, Bike, Heart, LogOut, MessageCircle, Plus, ScanFace, Send, ShieldCheck, ShoppingBag, Star, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Bike, Heart, LogOut, MessageCircle, Plus, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { fetchTransactions, fetchWallets, type Transaction, type Wallet } from './lib/wallet';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
 import { collectPayment, fetchShoppingCatalog, type CollectPaymentResult, type ShoppingMerchant } from './lib/shopping';
 import {
   connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages,
-  fetchPresence, sendGroupMessage, sendMessage, startConversation, type ConversationSummary, type GroupMember, type GroupMessage,
-  type GroupSummary, type Message, type MessagingSocketHandle,
+  fetchPresence, sendGroupMessage, sendMessage, startConversation, toggleGroupReaction, toggleReaction,
+  type ConversationSummary, type GroupMember, type GroupMessage,
+  type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup,
 } from './lib/messaging';
 import { contactSeller, createListing, fetchListings, fetchMyListings, markListingSold, removeListing, type Listing } from './lib/marketplace';
 import {
@@ -503,6 +504,72 @@ function NewGroupCard({ onCreated }: { onCreated: (groupId: string) => void }) {
   );
 }
 
+// Real quick-react palette -- a small fixed set (matching most real chat apps' own
+// "long-press to react" quick palette) rather than a full emoji picker, kept simple
+// since this web client has no native emoji-keyboard integration to lean on.
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢'];
+
+// Real emoji reactions (2026-07-19) -- shared between 1:1 and group threads, which
+// differ only in which toggle call they make. Tapping an existing reaction badge
+// toggles the current user's own reaction for that emoji (the fast, one-tap path real
+// chat apps use); the smile button opens the quick palette for a first reaction.
+function MessageReactions({
+  reactions, currentUserId, onToggle, isMine,
+}: {
+  reactions: ReactionGroup[]; currentUserId: string | undefined; onToggle: (emoji: string) => void; isMine: boolean;
+}) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
+      {reactions.filter((r) => r.userIds.length > 0).map((r) => {
+        const mine = !!currentUserId && r.userIds.includes(currentUserId);
+        return (
+          <button
+            key={r.emoji}
+            onClick={() => onToggle(r.emoji)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '12px', fontSize: '12px',
+              border: mine ? '1px solid var(--toss-blue)' : '1px solid var(--toss-grey-200)',
+              backgroundColor: mine ? 'var(--toss-blue-light)' : 'var(--toss-white)',
+            }}
+          >
+            <span>{r.emoji}</span>
+            <span style={{ color: 'var(--toss-grey-700)' }}>{r.userIds.length}</span>
+          </button>
+        );
+      })}
+      <div style={{ position: 'relative' }}>
+        <button
+          onClick={() => setPickerOpen((v) => !v)}
+          aria-label="Add reaction"
+          style={{ display: 'flex', padding: '2px 6px', borderRadius: '12px', border: '1px solid var(--toss-grey-200)', color: 'var(--toss-grey-500)' }}
+        >
+          <SmilePlus size={14} />
+        </button>
+        {pickerOpen && (
+          <div
+            style={{
+              position: 'absolute', bottom: '28px', display: 'flex', gap: '4px', padding: '6px 8px',
+              borderRadius: '12px', backgroundColor: 'var(--toss-white)', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', zIndex: 10,
+              left: isMine ? undefined : 0, right: isMine ? 0 : undefined,
+            }}
+          >
+            {QUICK_REACTIONS.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={() => { onToggle(emoji); setPickerOpen(false); }}
+                style={{ fontSize: '18px', padding: '2px' }}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ConversationThread({ conversation, onBack }: { conversation: ConversationSummary; onBack: () => void }) {
   const [messages, setMessages] = useState<Message[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -557,6 +624,11 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         typingClearTimer.current = setTimeout(() => setOtherTyping(false), 3000);
         return;
       }
+      if (payload.type === 'reaction') {
+        if (payload.conversationId !== conversation.conversationId) return;
+        setMessages((prev) => prev?.map((m) => (m.id === payload.messageId ? { ...m, reactions: payload.reactions } : m)) ?? prev);
+        return;
+      }
       if (payload.type !== 'message' || payload.conversationId !== conversation.conversationId) return;
       setOtherTyping(false);
       setMessages((prev) => {
@@ -595,6 +667,16 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     }
   };
 
+  const handleToggleReaction = async (messageId: string, emoji: string) => {
+    try {
+      const reactions = await toggleReaction(messageId, emoji);
+      setMessages((prev) => prev?.map((m) => (m.id === messageId ? { ...m, reactions } : m)) ?? prev);
+    } catch {
+      // Best-effort -- a failed reaction toggle just leaves the badge as it was, never
+      // blocks the thread.
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100svh - 180px)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
@@ -621,7 +703,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         {messages?.map((m) => {
           const isMine = m.senderId === currentUser?.id;
           return (
-            <div key={m.id} style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
+            <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
               <div
                 style={{
                   maxWidth: '75%',
@@ -634,6 +716,12 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
               >
                 {m.body}
               </div>
+              <MessageReactions
+                reactions={m.reactions}
+                currentUserId={currentUser?.id}
+                isMine={isMine}
+                onToggle={(emoji) => handleToggleReaction(m.id, emoji)}
+              />
             </div>
           );
         })}
@@ -732,6 +820,11 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
         }, 3000);
         return;
       }
+      if (payload.type === 'reaction') {
+        if (payload.groupConversationId !== group.groupId) return;
+        setMessages((prev) => prev?.map((m) => (m.id === payload.messageId ? { ...m, reactions: payload.reactions } : m)) ?? prev);
+        return;
+      }
       if (payload.type !== 'group_message' || payload.groupConversationId !== group.groupId) return;
       setTypingUserIds((prev) => {
         if (!(payload.message.senderId in prev)) return prev;
@@ -775,6 +868,16 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
     }
   };
 
+  const handleToggleReaction = async (groupMessageId: string, emoji: string) => {
+    try {
+      const reactions = await toggleGroupReaction(groupMessageId, emoji);
+      setMessages((prev) => prev?.map((m) => (m.id === groupMessageId ? { ...m, reactions } : m)) ?? prev);
+    } catch {
+      // Best-effort -- a failed reaction toggle just leaves the badge as it was, never
+      // blocks the thread.
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100svh - 180px)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
@@ -815,6 +918,12 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
               >
                 {m.body}
               </div>
+              <MessageReactions
+                reactions={m.reactions}
+                currentUserId={currentUser?.id}
+                isMine={isMine}
+                onToggle={(emoji) => handleToggleReaction(m.id, emoji)}
+              />
             </div>
           );
         })}

@@ -412,8 +412,12 @@ private struct GroupThreadScreen: View {
                                 Text("Say hello — no messages yet.").foregroundColor(IDS.Colors.textSecondary).padding(.top, 20)
                             }
                             ForEach(messages) { message in
-                                GroupMessageBubble(message: message, isMine: message.senderId == currentUserId, senderName: name(for: message.senderId))
-                                    .id(message.id)
+                                GroupMessageBubble(
+                                    message: message, isMine: message.senderId == currentUserId, senderName: name(for: message.senderId),
+                                    currentUserId: currentUserId,
+                                    onToggleReaction: { emoji in Task { await toggleReaction(message.id, emoji) } },
+                                )
+                                .id(message.id)
                             }
                         } else {
                             ProgressView().padding(.top, 20)
@@ -510,6 +514,10 @@ private struct GroupThreadScreen: View {
                             if !Task.isCancelled { typingUserIds[userId] = nil }
                         }
                     }
+                case .reactionChange(_, let groupId, let messageId, let reactions) where groupId == group.groupId:
+                    Task { @MainActor in
+                        messages = messages?.map { $0.id == messageId ? GroupMessageDto(id: $0.id, groupConversationId: $0.groupConversationId, senderId: $0.senderId, body: $0.body, sentAt: $0.sentAt, reactions: reactions) : $0 }
+                    }
                 default:
                     break
                 }
@@ -531,6 +539,15 @@ private struct GroupThreadScreen: View {
         }
     }
 
+    private func toggleReaction(_ groupMessageId: String, _ emoji: String) async {
+        do {
+            let res = try await NetworkClient.shared.toggleGroupReaction(groupMessageId: groupMessageId, emoji: emoji)
+            messages = messages?.map { $0.id == groupMessageId ? GroupMessageDto(id: $0.id, groupConversationId: $0.groupConversationId, senderId: $0.senderId, body: $0.body, sentAt: $0.sentAt, reactions: res.reactions) : $0 }
+        } catch {
+            // Best-effort -- a failed reaction toggle just leaves the badge as it was.
+        }
+    }
+
     private func send() async {
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !body.isEmpty else { return }
@@ -549,27 +566,75 @@ private struct GroupThreadScreen: View {
     }
 }
 
+// Real quick-react palette (2026-07-19) -- a small fixed set matching bank-mfe's own
+// MessageReactions component exactly, kept simple rather than a full emoji picker.
+private let quickReactions = ["👍", "❤️", "😂", "😮", "😢"]
+
+// Real emoji reactions -- shared between 1:1 and group threads. Tapping an existing
+// reaction badge toggles the current user's own reaction for that emoji (the fast,
+// one-tap path real chat apps use); the smile button opens the quick palette for a
+// first reaction.
+private struct MessageReactionsRow: View {
+    let reactions: [ReactionGroupDto]
+    let currentUserId: String?
+    let isMine: Bool
+    let onToggle: (String) -> Void
+
+    @State private var pickerOpen = false
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if isMine { Spacer() }
+            ForEach(reactions.filter { !$0.userIds.isEmpty }, id: \.emoji) { r in
+                let mine = currentUserId.map { r.userIds.contains($0) } ?? false
+                Button(action: { onToggle(r.emoji) }) {
+                    Text("\(r.emoji) \(r.userIds.count)")
+                        .font(.caption2)
+                        .foregroundColor(IDS.Colors.textSecondary)
+                        .padding(.horizontal, 8).padding(.vertical, 2)
+                        .background(mine ? IDS.Colors.brand.opacity(0.15) : IDS.Colors.chipBackground)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+            Menu {
+                ForEach(quickReactions, id: \.self) { emoji in
+                    Button(emoji) { onToggle(emoji) }
+                }
+            } label: {
+                Image(systemName: "face.smiling").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            }
+            if !isMine { Spacer() }
+        }
+    }
+}
+
 private struct GroupMessageBubble: View {
     let message: GroupMessageDto
     let isMine: Bool
     let senderName: String
+    let currentUserId: String?
+    let onToggleReaction: (String) -> Void
 
     var body: some View {
-        HStack {
-            if isMine { Spacer() }
-            VStack(alignment: .leading, spacing: 2) {
-                if !isMine {
-                    Text(senderName).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+        VStack(alignment: isMine ? .trailing : .leading, spacing: 2) {
+            HStack {
+                if isMine { Spacer() }
+                VStack(alignment: .leading, spacing: 2) {
+                    if !isMine {
+                        Text(senderName).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                    }
+                    Text(message.body)
+                        .font(.subheadline)
+                        .foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
                 }
-                Text(message.body)
-                    .font(.subheadline)
-                    .foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(isMine ? IDS.Colors.brand : IDS.Colors.chipBackground)
+                .cornerRadius(16)
+                if !isMine { Spacer() }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(isMine ? IDS.Colors.brand : IDS.Colors.chipBackground)
-            .cornerRadius(16)
-            if !isMine { Spacer() }
+            MessageReactionsRow(reactions: message.reactions, currentUserId: currentUserId, isMine: isMine, onToggle: onToggleReaction)
         }
     }
 }
@@ -659,8 +724,11 @@ private struct ChatThreadScreen: View {
                                 Text("Say hello — no messages yet.").foregroundColor(IDS.Colors.textSecondary).padding(.top, 20)
                             }
                             ForEach(messages) { message in
-                                MessageBubble(message: message, isMine: message.senderId == currentUserId)
-                                    .id(message.id)
+                                MessageBubble(
+                                    message: message, isMine: message.senderId == currentUserId, currentUserId: currentUserId,
+                                    onToggleReaction: { emoji in Task { await toggleReaction(message.id, emoji) } },
+                                )
+                                .id(message.id)
                             }
                         } else {
                             ProgressView().padding(.top, 20)
@@ -759,6 +827,10 @@ private struct ChatThreadScreen: View {
                             if !Task.isCancelled { otherTyping = false }
                         }
                     }
+                case .reactionChange(let conversationId, _, let messageId, let reactions) where conversationId == conversation.conversationId:
+                    Task { @MainActor in
+                        messages = messages?.map { $0.id == messageId ? MessageDto(id: $0.id, conversationId: $0.conversationId, senderId: $0.senderId, body: $0.body, sentAt: $0.sentAt, readAt: $0.readAt, reactions: reactions) : $0 }
+                    }
                 default:
                     break
                 }
@@ -777,6 +849,15 @@ private struct ChatThreadScreen: View {
         } catch {
             // Keep showing the last-known messages rather than blanking the thread on
             // a transient poll failure.
+        }
+    }
+
+    private func toggleReaction(_ messageId: String, _ emoji: String) async {
+        do {
+            let res = try await NetworkClient.shared.toggleReaction(messageId: messageId, emoji: emoji)
+            messages = messages?.map { $0.id == messageId ? MessageDto(id: $0.id, conversationId: $0.conversationId, senderId: $0.senderId, body: $0.body, sentAt: $0.sentAt, readAt: $0.readAt, reactions: res.reactions) : $0 }
+        } catch {
+            // Best-effort -- a failed reaction toggle just leaves the badge as it was.
         }
     }
 
@@ -801,18 +882,23 @@ private struct ChatThreadScreen: View {
 private struct MessageBubble: View {
     let message: MessageDto
     let isMine: Bool
+    let currentUserId: String?
+    let onToggleReaction: (String) -> Void
 
     var body: some View {
-        HStack {
-            if isMine { Spacer() }
-            Text(message.body)
-                .font(.subheadline)
-                .foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(isMine ? IDS.Colors.brand : IDS.Colors.chipBackground)
-                .cornerRadius(16)
-            if !isMine { Spacer() }
+        VStack(alignment: isMine ? .trailing : .leading, spacing: 2) {
+            HStack {
+                if isMine { Spacer() }
+                Text(message.body)
+                    .font(.subheadline)
+                    .foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(isMine ? IDS.Colors.brand : IDS.Colors.chipBackground)
+                    .cornerRadius(16)
+                if !isMine { Spacer() }
+            }
+            MessageReactionsRow(reactions: message.reactions, currentUserId: currentUserId, isMine: isMine, onToggle: onToggleReaction)
         }
     }
 }

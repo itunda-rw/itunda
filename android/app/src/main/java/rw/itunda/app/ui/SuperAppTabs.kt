@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.AddReaction
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Send
@@ -83,12 +84,14 @@ import rw.itunda.app.network.OrderDto
 import rw.itunda.app.network.OrderItemRequest
 import rw.itunda.app.network.PlaceEatsOrderRequest
 import rw.itunda.app.network.PlaceOrderRequest
+import rw.itunda.app.network.ReactionGroupDto
 import rw.itunda.app.network.RiderDto
 import rw.itunda.app.network.SendMessageRequest
 import rw.itunda.app.network.SetRiderAvailabilityRequest
 import rw.itunda.app.network.ShoppingMerchantDto
 import rw.itunda.app.network.StartConversationRequest
 import rw.itunda.app.network.TokenStore
+import rw.itunda.app.network.ToggleReactionRequest
 import rw.itunda.app.network.UpdateEatsOrderStatusRequest
 import rw.itunda.core.designsystem.theme.Tds
 import java.io.IOException
@@ -508,6 +511,11 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                         }
                     }
                 }
+                push is MessagingSocketPush.ReactionChange && push.groupConversationId == group.groupId -> {
+                    coroutineScope.launch(Dispatchers.Main) {
+                        messages = messages?.map { if (it.id == push.messageId) it.copy(reactions = push.reactions) else it }
+                    }
+                }
                 push is MessagingSocketPush.TypingChange && push.groupConversationId == group.groupId -> {
                     coroutineScope.launch(Dispatchers.Main) {
                         typingUserIds[push.userId]?.cancel()
@@ -547,7 +555,22 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                 // resolve names client-side, matching bank-mfe's own known gap.
                 items(msgs, key = { it.id }) { m ->
                     val senderName = members.find { it.userId == m.senderId }?.name ?: m.senderId.take(8)
-                    GroupMessageBubble(m, isMine = m.senderId == currentUserId, senderName = senderName)
+                    GroupMessageBubble(
+                        m,
+                        isMine = m.senderId == currentUserId,
+                        senderName = senderName,
+                        currentUserId = currentUserId,
+                        onToggleReaction = { emoji ->
+                            coroutineScope.launch {
+                                try {
+                                    val res = NetworkClient.apiService.toggleGroupReaction(m.id, ToggleReactionRequest(emoji))
+                                    if (res.success) messages = messages?.map { if (it.id == m.id) it.copy(reactions = res.reactions) else it }
+                                } catch (_: Exception) {
+                                    // Best-effort -- a failed toggle just leaves the badge as it was.
+                                }
+                            }
+                        },
+                    )
                 }
             }
         }
@@ -610,19 +633,24 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
 }
 
 @Composable
-private fun GroupMessageBubble(message: GroupMessageDto, isMine: Boolean, senderName: String) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
-        Column(
-            modifier = Modifier
-                .clip(RoundedCornerShape(16.dp))
-                .background(if (isMine) TossBlue else TossCardSoft)
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-        ) {
-            if (!isMine) {
-                Text(senderName, color = TossSecondary, fontSize = 10.sp, modifier = Modifier.padding(bottom = 2.dp))
+private fun GroupMessageBubble(
+    message: GroupMessageDto, isMine: Boolean, senderName: String, currentUserId: String?, onToggleReaction: (String) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
+            Column(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (isMine) TossBlue else TossCardSoft)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+            ) {
+                if (!isMine) {
+                    Text(senderName, color = TossSecondary, fontSize = 10.sp, modifier = Modifier.padding(bottom = 2.dp))
+                }
+                Text(message.body, color = if (isMine) Color.White else TossText, fontSize = 14.sp)
             }
-            Text(message.body, color = if (isMine) Color.White else TossText, fontSize = 14.sp)
         }
+        MessageReactionsRow(message.reactions, currentUserId, isMine, onToggleReaction)
     }
 }
 
@@ -733,6 +761,11 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
                 push is MessagingSocketPush.PresenceChange && push.userId == conversation.otherUserId -> {
                     coroutineScope.launch(Dispatchers.Main) { otherOnline = push.online }
                 }
+                push is MessagingSocketPush.ReactionChange && push.conversationId == conversation.conversationId -> {
+                    coroutineScope.launch(Dispatchers.Main) {
+                        messages = messages?.map { if (it.id == push.messageId) it.copy(reactions = push.reactions) else it }
+                    }
+                }
                 push is MessagingSocketPush.TypingChange && push.conversationId == conversation.conversationId && push.userId == conversation.otherUserId -> {
                     coroutineScope.launch(Dispatchers.Main) {
                         otherTyping = true
@@ -775,7 +808,23 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
             } else if (msgs.isEmpty()) {
                 item { Text("Say hello — no messages yet.", color = TossSecondary, fontSize = 13.sp) }
             } else {
-                items(msgs, key = { it.id }) { m -> MessageBubble(m, isMine = m.senderId == currentUserId) }
+                items(msgs, key = { it.id }) { m ->
+                    MessageBubble(
+                        m,
+                        isMine = m.senderId == currentUserId,
+                        currentUserId = currentUserId,
+                        onToggleReaction = { emoji ->
+                            coroutineScope.launch {
+                                try {
+                                    val res = NetworkClient.apiService.toggleReaction(m.id, ToggleReactionRequest(emoji))
+                                    if (res.success) messages = messages?.map { if (it.id == m.id) it.copy(reactions = res.reactions) else it }
+                                } catch (_: Exception) {
+                                    // Best-effort -- a failed toggle just leaves the badge as it was.
+                                }
+                            }
+                        },
+                    )
+                }
             }
         }
         if (otherTyping) {
@@ -832,17 +881,74 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
     }
 }
 
+// Real quick-react palette (2026-07-19) -- a small fixed set matching bank-mfe's own
+// MessageReactions component exactly, kept simple rather than a full emoji picker.
+private val QUICK_REACTIONS = listOf("👍", "❤️", "😂", "😮", "😢")
+
 @Composable
-private fun MessageBubble(message: MessageDto, isMine: Boolean) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(16.dp))
-                .background(if (isMine) TossBlue else TossCardSoft)
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-        ) {
-            Text(message.body, color = if (isMine) Color.White else TossText, fontSize = 14.sp)
+private fun MessageReactionsRow(reactions: List<ReactionGroupDto>, currentUserId: String?, isMine: Boolean, onToggle: (String) -> Unit) {
+    var pickerOpen by remember { mutableStateOf(false) }
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+        horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
+    ) {
+        reactions.filter { it.userIds.isNotEmpty() }.forEach { r ->
+            val mine = currentUserId != null && r.userIds.contains(currentUserId)
+            Box(
+                modifier = Modifier
+                    .padding(end = 4.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (mine) TossBlue.copy(alpha = 0.15f) else TossCardSoft)
+                    .clickable { onToggle(r.emoji) }
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+            ) {
+                Text("${r.emoji} ${r.userIds.size}", fontSize = 11.sp, color = TossSecondary)
+            }
         }
+        Box {
+            Icon(
+                Icons.Outlined.AddReaction,
+                contentDescription = "Add reaction",
+                tint = TossSecondary,
+                modifier = Modifier.size(16.dp).clip(CircleShape).clickable { pickerOpen = !pickerOpen },
+            )
+            if (pickerOpen) {
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(TossCard)
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    QUICK_REACTIONS.forEach { emoji ->
+                        Text(
+                            emoji,
+                            fontSize = 18.sp,
+                            modifier = Modifier.padding(2.dp).clickable {
+                                onToggle(emoji)
+                                pickerOpen = false
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MessageBubble(message: MessageDto, isMine: Boolean, currentUserId: String?, onToggleReaction: (String) -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (isMine) TossBlue else TossCardSoft)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+            ) {
+                Text(message.body, color = if (isMine) Color.White else TossText, fontSize = 14.sp)
+            }
+        }
+        MessageReactionsRow(message.reactions, currentUserId, isMine, onToggleReaction)
     }
 }
 

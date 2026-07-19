@@ -397,6 +397,10 @@ struct ConversationSummaryDto: Decodable, Identifiable {
     var id: String { conversationId }
 }
 
+// Real emoji reactions (2026-07-19) -- see MessagingService.toggleReaction's own doc
+// comment for the real toggle semantics (tapping an active reaction removes it).
+struct ReactionGroupDto: Decodable { let emoji: String; let userIds: [String] }
+
 struct MessageDto: Decodable, Identifiable {
     let id: String
     let conversationId: String
@@ -404,6 +408,36 @@ struct MessageDto: Decodable, Identifiable {
     let body: String
     let sentAt: String
     let readAt: String?
+    let reactions: [ReactionGroupDto]
+
+    // A custom init(from:) below suppresses Swift's automatic memberwise initializer,
+    // so this is needed explicitly for real call sites that construct a MessageDto
+    // directly (e.g. applying a real-time reaction push to already-loaded state).
+    init(id: String, conversationId: String, senderId: String, body: String, sentAt: String, readAt: String?, reactions: [ReactionGroupDto]) {
+        self.id = id
+        self.conversationId = conversationId
+        self.senderId = senderId
+        self.body = body
+        self.sentAt = sentAt
+        self.readAt = readAt
+        self.reactions = reactions
+    }
+
+    // Custom decode: the real-time WebSocket push for a brand-new message omits
+    // `reactions` entirely (a message can't have a reaction the instant it's sent) --
+    // defaults to empty rather than failing to decode the whole push.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        conversationId = try container.decode(String.self, forKey: .conversationId)
+        senderId = try container.decode(String.self, forKey: .senderId)
+        body = try container.decode(String.self, forKey: .body)
+        sentAt = try container.decode(String.self, forKey: .sentAt)
+        readAt = try container.decodeIfPresent(String.self, forKey: .readAt)
+        reactions = try container.decodeIfPresent([ReactionGroupDto].self, forKey: .reactions) ?? []
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, conversationId, senderId, body, sentAt, readAt, reactions }
 }
 
 // Real WebSocket push envelopes (2026-07-18) -- see
@@ -425,12 +459,25 @@ struct MessagingSocketTypingEnvelope: Decodable {
     let userId: String
 }
 
+// Real live reaction push (2026-07-19) -- see
+// MessagingWebSocketHandler.publishReactionChange/publishGroupReactionChange's own
+// doc comments. Exactly one of conversationId/groupConversationId is set.
+struct MessagingSocketReactionEnvelope: Decodable {
+    let type: String
+    let conversationId: String?
+    let groupConversationId: String?
+    let messageId: String
+    let reactions: [ReactionGroupDto]
+}
+
 struct StartConversationRequest: Encodable {
     let phoneNumber: String?
     let otherUserId: String?
 }
 
 struct SendMessageRequest: Encodable { let body: String }
+struct ToggleReactionRequest: Encodable { let emoji: String }
+struct ReactionsResponse: Decodable { let success: Bool; let reactions: [ReactionGroupDto] }
 
 struct ConversationResponse: Decodable { let success: Bool; let conversation: ConversationDto }
 struct ConversationsResponse: Decodable { let success: Bool; let conversations: [ConversationSummaryDto] }
@@ -458,6 +505,31 @@ struct GroupMessageDto: Decodable, Identifiable {
     let senderId: String
     let body: String
     let sentAt: String
+    let reactions: [ReactionGroupDto]
+
+    // Explicit memberwise init -- see MessageDto's own identical note on why this is
+    // needed once a custom init(from:) is present.
+    init(id: String, groupConversationId: String, senderId: String, body: String, sentAt: String, reactions: [ReactionGroupDto]) {
+        self.id = id
+        self.groupConversationId = groupConversationId
+        self.senderId = senderId
+        self.body = body
+        self.sentAt = sentAt
+        self.reactions = reactions
+    }
+
+    // Same real-time-push-omits-reactions handling as MessageDto's own custom decode.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        groupConversationId = try container.decode(String.self, forKey: .groupConversationId)
+        senderId = try container.decode(String.self, forKey: .senderId)
+        body = try container.decode(String.self, forKey: .body)
+        sentAt = try container.decode(String.self, forKey: .sentAt)
+        reactions = try container.decodeIfPresent([ReactionGroupDto].self, forKey: .reactions) ?? []
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, groupConversationId, senderId, body, sentAt, reactions }
 }
 struct GroupResponse: Decodable { let success: Bool; let group: GroupSummaryDto }
 struct GroupsResponse: Decodable { let success: Bool; let groups: [GroupSummaryDto] }
@@ -487,6 +559,7 @@ enum MessagingSocketPush {
     // Ephemeral, never persisted; server-ratelimited to one relay per (user,
     // conversation) per 2s. Exactly one of conversationId/groupConversationId is set.
     case typingChange(conversationId: String?, groupConversationId: String?, userId: String)
+    case reactionChange(conversationId: String?, groupConversationId: String?, messageId: String, reactions: [ReactionGroupDto])
 }
 
 struct ListingDto: Decodable, Identifiable {
@@ -673,6 +746,12 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/messages", body: SendMessageRequest(body: body))
     }
 
+    // Real toggle -- tapping an already-active reaction removes it, same semantics as
+    // MessagingService.toggleReaction on the backend.
+    func toggleReaction(messageId: String, emoji: String) async throws -> ReactionsResponse {
+        try await authenticatedPost("api/v1/messages/messages/\(messageId)/reactions", body: ToggleReactionRequest(emoji: emoji))
+    }
+
     // Real group chat (2026-07-18) -- see rw.itunda.messaging.web.GroupMessagingController.
     func createGroup(name: String, memberPhoneNumbers: [String]) async throws -> GroupResponse {
         try await authenticatedPost("api/v1/messages/groups", body: CreateGroupRequest(name: name, memberPhoneNumbers: memberPhoneNumbers))
@@ -686,6 +765,10 @@ extension NetworkClient {
 
     func sendGroupMessage(groupId: String, body: String) async throws -> GroupMessageResponse {
         try await authenticatedPost("api/v1/messages/groups/\(groupId)/messages", body: SendGroupMessageRequest(body: body))
+    }
+
+    func toggleGroupReaction(groupMessageId: String, emoji: String) async throws -> ReactionsResponse {
+        try await authenticatedPost("api/v1/messages/groups/messages/\(groupMessageId)/reactions", body: ToggleReactionRequest(emoji: emoji))
     }
 
     func getGroupMembers(groupId: String) async throws -> GroupMembersResponse {
@@ -749,6 +832,12 @@ extension NetworkClient {
                     } else if typeEnvelope.type == "typing",
                               let envelope = try? JSONDecoder().decode(MessagingSocketTypingEnvelope.self, from: data) {
                         onPush(.typingChange(conversationId: envelope.conversationId, groupConversationId: envelope.groupConversationId, userId: envelope.userId))
+                    } else if typeEnvelope.type == "reaction",
+                              let envelope = try? JSONDecoder().decode(MessagingSocketReactionEnvelope.self, from: data) {
+                        onPush(.reactionChange(
+                            conversationId: envelope.conversationId, groupConversationId: envelope.groupConversationId,
+                            messageId: envelope.messageId, reactions: envelope.reactions,
+                        ))
                     }
                 }
             }

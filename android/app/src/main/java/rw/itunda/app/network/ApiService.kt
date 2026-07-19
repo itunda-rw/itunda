@@ -246,6 +246,10 @@ data class ConversationSummaryDto(
     val unreadCount: Int,
 )
 
+// Real emoji reactions (2026-07-19) -- see MessagingService.toggleReaction's own doc
+// comment for the real toggle semantics (tapping an active reaction removes it).
+data class ReactionGroupDto(val emoji: String, val userIds: List<String>)
+
 data class MessageDto(
     val id: String,
     val conversationId: String,
@@ -253,15 +257,18 @@ data class MessageDto(
     val body: String,
     val sentAt: String,
     val readAt: String?,
+    val reactions: List<ReactionGroupDto> = emptyList(),
 )
 
 data class StartConversationRequest(val phoneNumber: String? = null, val otherUserId: String? = null)
 data class SendMessageRequest(val body: String)
+data class ToggleReactionRequest(val emoji: String)
 
 data class ConversationResponse(val success: Boolean, val conversation: ConversationDto)
 data class ConversationsResponse(val success: Boolean, val conversations: List<ConversationSummaryDto>)
 data class MessagesResponse(val success: Boolean, val messages: List<MessageDto>)
 data class MessageResponse(val success: Boolean, val message: MessageDto)
+data class ReactionsResponse(val success: Boolean, val reactions: List<ReactionGroupDto>)
 
 // Real group chat (2026-07-18) -- see rw.itunda.messaging.web.GroupMessagingController.
 // memberPhoneNumbers is the real human-friendly entry point (same reasoning as
@@ -284,6 +291,7 @@ data class GroupMessageDto(
     val senderId: String,
     val body: String,
     val sentAt: String,
+    val reactions: List<ReactionGroupDto> = emptyList(),
 )
 data class GroupResponse(val success: Boolean, val group: GroupSummaryDto)
 data class GroupsResponse(val success: Boolean, val groups: List<GroupSummaryDto>)
@@ -504,6 +512,11 @@ interface ApiService {
     @POST("api/v1/messages/conversations/{id}/messages")
     suspend fun sendMessage(@Path("id") conversationId: String, @Body request: SendMessageRequest): MessageResponse
 
+    // Real toggle -- tapping an already-active reaction removes it, same semantics as
+    // MessagingService.toggleReaction on the backend.
+    @POST("api/v1/messages/messages/{id}/reactions")
+    suspend fun toggleReaction(@Path("id") messageId: String, @Body request: ToggleReactionRequest): ReactionsResponse
+
     // Real group chat (2026-07-18) -- see rw.itunda.messaging.web.GroupMessagingController.
     @POST("api/v1/messages/groups")
     suspend fun createGroup(@Body request: CreateGroupRequest): GroupResponse
@@ -516,6 +529,9 @@ interface ApiService {
 
     @POST("api/v1/messages/groups/{id}/messages")
     suspend fun sendGroupMessage(@Path("id") groupId: String, @Body request: SendGroupMessageRequest): GroupMessageResponse
+
+    @POST("api/v1/messages/groups/messages/{id}/reactions")
+    suspend fun toggleGroupReaction(@Path("id") groupMessageId: String, @Body request: ToggleReactionRequest): ReactionsResponse
 
     @POST("api/v1/messages/groups/{id}/members")
     suspend fun addGroupMember(@Path("id") groupId: String, @Body request: AddGroupMemberRequest): GroupResponse
@@ -752,6 +768,19 @@ object NetworkClient {
                                     ),
                                 )
                             }
+                            "reaction" -> {
+                                val messageId = json.get("messageId")?.asString ?: return
+                                val reactionsType = object : com.google.gson.reflect.TypeToken<List<ReactionGroupDto>>() {}.type
+                                val reactions: List<ReactionGroupDto> = gson.fromJson(json.get("reactions"), reactionsType)
+                                onPush(
+                                    MessagingSocketPush.ReactionChange(
+                                        conversationId = json.get("conversationId")?.asString,
+                                        groupConversationId = json.get("groupConversationId")?.asString,
+                                        messageId = messageId,
+                                        reactions = reactions,
+                                    ),
+                                )
+                            }
                         }
                     } catch (e: Exception) {
                         // Real, non-critical -- a malformed/unexpected push shouldn't
@@ -786,4 +815,10 @@ sealed class MessagingSocketPush {
     // Ephemeral, never persisted; server-ratelimited to one relay per (user,
     // conversation) per 2s. Exactly one of conversationId/groupConversationId is set.
     data class TypingChange(val conversationId: String?, val groupConversationId: String?, val userId: String) : MessagingSocketPush()
+    // Real live reaction push (2026-07-19) -- see
+    // MessagingWebSocketHandler.publishReactionChange/publishGroupReactionChange's own
+    // doc comments. Exactly one of conversationId/groupConversationId is set.
+    data class ReactionChange(
+        val conversationId: String?, val groupConversationId: String?, val messageId: String, val reactions: List<ReactionGroupDto>,
+    ) : MessagingSocketPush()
 }

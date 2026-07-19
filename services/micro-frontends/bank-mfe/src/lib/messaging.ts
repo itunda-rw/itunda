@@ -16,6 +16,13 @@ export interface ConversationSummary {
   unreadCount: number;
 }
 
+// Real emoji reactions (2026-07-19) -- see MessagingService.toggleReaction's own doc
+// comment for the real toggle semantics (tapping an active reaction removes it).
+export interface ReactionGroup {
+  emoji: string;
+  userIds: string[];
+}
+
 export interface Message {
   id: string;
   conversationId: string;
@@ -23,6 +30,7 @@ export interface Message {
   body: string;
   sentAt: string;
   readAt: string | null;
+  reactions: ReactionGroup[];
 }
 
 export const fetchConversations = () =>
@@ -54,6 +62,15 @@ export const sendMessage = (conversationId: string, body: string) =>
     body: JSON.stringify({ body }),
   }).then((r) => r.message);
 
+// Real toggle -- tapping an already-active reaction removes it (matches
+// MessagingService.toggleReaction's own toggle-off semantics), not add/remove as two
+// separate calls.
+export const toggleReaction = (messageId: string, emoji: string) =>
+  apiFetch<{ success: boolean; reactions: ReactionGroup[] }>(`/api/v1/messages/messages/${messageId}/reactions`, {
+    method: 'POST',
+    body: JSON.stringify({ emoji }),
+  }).then((r) => r.reactions);
+
 // Real group chat (2026-07-18) -- the single most defining KakaoTalk capability the
 // original 1:1-only pair above didn't cover, added at the user's direct request
 // ("Talk should be 100% like KakaoTalk + 당근 채팅 for Rwanda"). See
@@ -74,6 +91,7 @@ export interface GroupMessage {
   senderId: string;
   body: string;
   sentAt: string;
+  reactions: ReactionGroup[];
 }
 
 // memberPhoneNumbers is the real human-friendly entry point (same reasoning as
@@ -98,6 +116,12 @@ export const sendGroupMessage = (groupId: string, body: string) =>
     method: 'POST',
     body: JSON.stringify({ body }),
   }).then((r) => r.message);
+
+export const toggleGroupReaction = (groupMessageId: string, emoji: string) =>
+  apiFetch<{ success: boolean; reactions: ReactionGroup[] }>(`/api/v1/messages/groups/messages/${groupMessageId}/reactions`, {
+    method: 'POST',
+    body: JSON.stringify({ emoji }),
+  }).then((r) => r.reactions);
 
 export interface GroupMember {
   userId: string;
@@ -143,7 +167,24 @@ interface TypingPushPayload {
   userId: string;
 }
 
-type SocketPushPayload = MessagePushPayload | GroupMessagePushPayload | PresencePushPayload | TypingPushPayload;
+// Real live reaction push (2026-07-19) -- see
+// MessagingWebSocketHandler.publishReactionChange/publishGroupReactionChange's own
+// doc comments. Exactly one of conversationId/groupConversationId is set, matching
+// MessagePushPayload/GroupMessagePushPayload's own shape.
+interface ReactionPushPayload {
+  type: 'reaction';
+  conversationId?: string;
+  groupConversationId?: string;
+  messageId: string;
+  reactions: ReactionGroup[];
+}
+
+type SocketPushPayload =
+  | MessagePushPayload
+  | GroupMessagePushPayload
+  | PresencePushPayload
+  | TypingPushPayload
+  | ReactionPushPayload;
 
 // Real on-demand presence check, for any set of user ids (a group thread's members,
 // or a 1:1 partner not covered by the real-time push above).
@@ -184,7 +225,7 @@ export function connectMessagingSocket(onMessage: (payload: SocketPushPayload) =
   socket.addEventListener('message', (event) => {
     try {
       const payload = JSON.parse(event.data) as SocketPushPayload;
-      if (payload.type === 'message' || payload.type === 'group_message' || payload.type === 'presence' || payload.type === 'typing') {
+      if (payload.type === 'message' || payload.type === 'group_message' || payload.type === 'presence' || payload.type === 'typing' || payload.type === 'reaction') {
         onMessage(payload);
       }
     } catch {
