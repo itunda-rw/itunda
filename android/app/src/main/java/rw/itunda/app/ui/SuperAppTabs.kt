@@ -105,7 +105,10 @@ import rw.itunda.app.network.OrderDto
 import rw.itunda.app.network.OrderItemRequest
 import rw.itunda.app.network.PlaceEatsOrderRequest
 import rw.itunda.app.network.PlaceOrderRequest
+import rw.itunda.app.network.MakePropertyOfferRequest
 import rw.itunda.app.network.PriceOfferDto
+import rw.itunda.app.network.PropertyPriceOfferDto
+import rw.itunda.app.network.RespondToPropertyOfferRequest
 import rw.itunda.app.network.ReactionGroupDto
 import rw.itunda.app.network.RespondToOfferRequest
 import rw.itunda.app.network.RiderDto
@@ -735,7 +738,7 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
     // (TransferStep/SavingsFlowStep/showSettings/etc).
     BackHandler(onBack = onBack)
     var messages by remember { mutableStateOf<List<MessageDto>?>(null) }
-    var offersByMessageId by remember { mutableStateOf<Map<String, PriceOfferDto>>(emptyMap()) }
+    var offersByMessageId by remember { mutableStateOf<Map<String, OfferBubbleData>>(emptyMap()) }
     var draft by remember { mutableStateOf("") }
     var sending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -755,14 +758,23 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
         } catch (e: Exception) { /* real, non-critical -- only backs the header subtitle */ }
     }
 
+    // Real-fetches both Marketplace and Real Estate offer history for this conversation
+    // -- a given real conversation only ever carries one type in practice, but fetching
+    // both is cheap and correct rather than guessing which one applies (mirrors
+    // bank-mfe's own ConversationThread.loadOffers).
     suspend fun loadOffers() {
-        try {
-            val res = NetworkClient.apiService.getOffersForConversation(conversation.conversationId)
-            if (res.success) offersByMessageId = res.offers.associateBy { it.messageId }
+        val marketplaceOffers: List<PriceOfferDto> = try {
+            NetworkClient.apiService.getOffersForConversation(conversation.conversationId).offers
         } catch (_: Exception) {
-            // Real, non-critical -- a failed offer-history fetch just means offer
-            // messages render as plain text this pass; never blocks the thread.
+            emptyList()
         }
+        val propertyOffers: List<PropertyPriceOfferDto> = try {
+            NetworkClient.apiService.getPropertyOffersForConversation(conversation.conversationId).offers
+        } catch (_: Exception) {
+            emptyList()
+        }
+        offersByMessageId = (marketplaceOffers.map { it.toBubbleData() to it.messageId } + propertyOffers.map { it.toBubbleData() to it.messageId })
+            .associate { (data, messageId) -> messageId to data }
     }
 
     suspend fun refresh() {
@@ -873,7 +885,14 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
                         onRespondToOffer = { offerId, action, counterAmount ->
                             coroutineScope.launch {
                                 try {
-                                    NetworkClient.apiService.respondToOffer(offerId, RespondToOfferRequest(action, counterAmount))
+                                    // Real offer ids are stably prefixed by their real owning
+                                    // service ("price_offer_"/"property_offer_") -- a reliable
+                                    // dispatch key, matching bank-mfe's own ConversationThread.
+                                    if (offerId.startsWith("property_offer_")) {
+                                        NetworkClient.apiService.respondToPropertyOffer(offerId, RespondToPropertyOfferRequest(action, counterAmount))
+                                    } else {
+                                        NetworkClient.apiService.respondToOffer(offerId, RespondToOfferRequest(action, counterAmount))
+                                    }
                                     loadOffers()
                                     refresh()
                                 } catch (e: HttpException) {
@@ -999,8 +1018,17 @@ private fun MessageReactionsRow(reactions: List<ReactionGroupDto>, currentUserId
 // Renders inline wherever a message carries a real offer, replacing the plain-text
 // bubble with amount + status + real Accept/Decline/Counter actions (only shown to
 // whichever participant did NOT propose the current pending amount).
+// Real minimal shape both PriceOfferDto (Marketplace) and PropertyPriceOfferDto (Real
+// Estate) get mapped into for display -- narrowed to just the fields OfferBubble
+// actually reads (id/amount/status/proposedByUserId), so this one component renders
+// both offer types without duplication. Mirrors bank-mfe's own OfferBubbleData
+// narrowing (2026-07-19).
+private data class OfferBubbleData(val id: String, val amount: Double, val status: String, val proposedByUserId: String)
+private fun PriceOfferDto.toBubbleData() = OfferBubbleData(id, amount, status, proposedByUserId)
+private fun PropertyPriceOfferDto.toBubbleData() = OfferBubbleData(id, amount, status, proposedByUserId)
+
 @Composable
-private fun OfferBubble(offer: PriceOfferDto, isMine: Boolean, currentUserId: String?, onRespond: (String, String, Double?) -> Unit) {
+private fun OfferBubble(offer: OfferBubbleData, isMine: Boolean, currentUserId: String?, onRespond: (String, String, Double?) -> Unit) {
     var countering by remember { mutableStateOf(false) }
     var counterAmount by remember { mutableStateOf("") }
     val canRespond = offer.status == "PENDING" && currentUserId != null && currentUserId != offer.proposedByUserId
@@ -1061,7 +1089,7 @@ private fun OfferActionButton(label: String, onClick: () -> Unit) {
 
 @Composable
 private fun MessageBubble(
-    message: MessageDto, isMine: Boolean, currentUserId: String?, offer: PriceOfferDto?,
+    message: MessageDto, isMine: Boolean, currentUserId: String?, offer: OfferBubbleData?,
     onToggleReaction: (String) -> Unit, onRespondToOffer: (String, String, Double?) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -2220,6 +2248,18 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
                             }
                         }
                     },
+                    onMakeOffer = { id, amount ->
+                        coroutineScope.launch {
+                            try {
+                                val res = NetworkClient.apiService.makePropertyOffer(id, MakePropertyOfferRequest(amount))
+                                if (res.success) onMessageLister(res.offer.conversationId)
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
+                            }
+                        }
+                    },
                 )
             }
         }
@@ -2323,9 +2363,14 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
 }
 
 @Composable
-private fun PropertyListingCard(listing: PropertyListingDto, propertyTypeLabel: String, isMine: Boolean, onChanged: () -> Unit, onContact: () -> Unit) {
+private fun PropertyListingCard(
+    listing: PropertyListingDto, propertyTypeLabel: String, isMine: Boolean, onChanged: () -> Unit, onContact: () -> Unit,
+    onMakeOffer: (String, Double) -> Unit,
+) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var offering by remember { mutableStateOf(false) }
+    var offerAmount by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
     val priceLabel = "%,.0f RWF".format(listing.price) + if (listing.listingType == "RENT") "/mo" else ""
     val details = listOfNotNull(
@@ -2353,6 +2398,26 @@ private fun PropertyListingCard(listing: PropertyListingDto, propertyTypeLabel: 
             Text(listing.title, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             if (details.isNotBlank()) Text(details, color = TossSecondary, fontSize = 12.sp)
             Text(listing.description, color = TossSecondary, fontSize = 13.sp)
+            // Real 당근-style price-offer negotiation (2026-07-19) -- see
+            // PropertyPriceOfferService's own doc comment; mirrors ListingCard's own
+            // offering UI exactly.
+            if (offering) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = offerAmount,
+                        onValueChange = { offerAmount = it },
+                        placeholder = { Text("Your offer (RWF)") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    ListingActionButton("Send", busy || offerAmount.toDoubleOrNull() == null, filled = true) {
+                        val amount = offerAmount.toDoubleOrNull() ?: return@ListingActionButton
+                        offering = false
+                        offerAmount = ""
+                        onMakeOffer(listing.id, amount)
+                    }
+                }
+            }
             error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (isMine) {
@@ -2376,8 +2441,9 @@ private fun PropertyListingCard(listing: PropertyListingDto, propertyTypeLabel: 
                             }
                         }
                     }
-                } else if (listing.status == "AVAILABLE") {
-                    ListingActionButton("Message lister", busy, filled = true, onClick = onContact)
+                } else if (listing.status == "AVAILABLE" && !offering) {
+                    ListingActionButton("Message lister", busy, onClick = onContact)
+                    ListingActionButton("Make an offer", busy, filled = true) { offering = true }
                 }
             }
         }

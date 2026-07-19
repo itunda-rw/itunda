@@ -695,6 +695,26 @@ struct RespondToOfferRequest: Encodable { let action: String; let counterAmount:
 struct PriceOfferResponse: Decodable { let success: Bool; let offer: PriceOfferDto }
 struct PriceOffersResponse: Decodable { let success: Bool; let offers: [PriceOfferDto] }
 
+// Real 당근-style price-offer negotiation on a real property listing (2026-07-19) -- see
+// PropertyPriceOfferService's own doc comment. Mirrors PriceOfferDto field-for-field.
+struct PropertyPriceOfferDto: Decodable, Identifiable {
+    let id: String
+    let propertyListingId: String
+    let messageId: String
+    let conversationId: String
+    let inquirerId: String
+    let listerId: String
+    let proposedByUserId: String
+    let amount: Double
+    let status: String
+    let createdAt: String
+    let respondedAt: String?
+}
+struct MakePropertyOfferRequest: Encodable { let amount: Double }
+struct RespondToPropertyOfferRequest: Encodable { let action: String; let counterAmount: Double? }
+struct PropertyPriceOfferResponse: Decodable { let success: Bool; let offer: PropertyPriceOfferDto }
+struct PropertyPriceOffersResponse: Decodable { let success: Bool; let offers: [PropertyPriceOfferDto] }
+
 struct ShoppingMerchantDto: Decodable, Identifiable {
     let merchantId: String
     let businessName: String
@@ -1125,6 +1145,19 @@ extension NetworkClient {
 
     func contactLister(_ propertyListingId: String) async throws -> ContactListerResponse {
         try await authenticatedPost("api/v1/realestate/listings/\(propertyListingId)/contact-lister", body: EmptyBody())
+    }
+
+    // Real 당근-style price-offer negotiation (2026-07-19) -- see PropertyPriceOfferService.
+    func makePropertyOffer(listingId: String, amount: Double) async throws -> PropertyPriceOfferResponse {
+        try await authenticatedPost("api/v1/realestate/listings/\(listingId)/offers", body: MakePropertyOfferRequest(amount: amount))
+    }
+
+    func respondToPropertyOffer(offerId: String, action: String, counterAmount: Double? = nil) async throws -> PropertyPriceOfferResponse {
+        try await authenticatedPost("api/v1/realestate/offers/\(offerId)/respond", body: RespondToPropertyOfferRequest(action: action, counterAmount: counterAmount))
+    }
+
+    func getPropertyOffersForConversation(conversationId: String) async throws -> PropertyPriceOffersResponse {
+        try await get("api/v1/realestate/conversations/\(conversationId)/offers")
     }
 
     // Real category/search filter (2026-07-19) -- both optional and combinable. See

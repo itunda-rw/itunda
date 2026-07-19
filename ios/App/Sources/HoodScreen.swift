@@ -1171,7 +1171,8 @@ private struct PropertyContent: View {
                             propertyTypeLabel: propertyTypes.first(where: { $0.id == listing.propertyType })?.label ?? listing.propertyType,
                             isMine: view == .mine || listing.listerId == currentUserId,
                             onChanged: { Task { await load() } },
-                            onContact: { Task { await contact(listing.id) } }
+                            onContact: { Task { await contact(listing.id) } },
+                            onMakeOffer: { id, amount in Task { await makeOffer(id, amount) } }
                         )
                     }
                 }
@@ -1212,6 +1213,16 @@ private struct PropertyContent: View {
             onSwitchToTalk()
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func makeOffer(_ propertyListingId: String, _ amount: Double) async {
+        do {
+            let res = try await NetworkClient.shared.makePropertyOffer(listingId: propertyListingId, amount: amount)
+            pendingConversationId = res.offer.conversationId
+            onSwitchToTalk()
+        } catch {
+            self.error = "Couldn't send this offer. Check your connection and try again."
         }
     }
 }
@@ -1314,9 +1325,15 @@ private struct PropertyListingCard: View {
     let isMine: Bool
     let onChanged: () -> Void
     let onContact: () -> Void
+    let onMakeOffer: (String, Double) -> Void
 
     @State private var busy = false
     @State private var error: String?
+    // Real 당근-style price-offer negotiation (2026-07-19) -- see
+    // PropertyPriceOfferService's own doc comment; mirrors ListingCard's own offering
+    // state exactly.
+    @State private var offering = false
+    @State private var offerAmount = ""
 
     private var priceLabel: String {
         let base = "\(Int(listing.price)) RWF"
@@ -1350,6 +1367,26 @@ private struct PropertyListingCard: View {
                 Text(detailsLabel).font(.caption).foregroundColor(IDS.Colors.textSecondary)
             }
             Text(listing.description).font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
+            if offering {
+                HStack(spacing: 8) {
+                    TextField("Your offer (RWF)", text: $offerAmount)
+                        .keyboardType(.numberPad)
+                        .padding(10)
+                        .background(IDS.Colors.chipBackground)
+                        .cornerRadius(10)
+                    Button(action: {
+                        guard let amount = Double(offerAmount) else { return }
+                        offering = false
+                        offerAmount = ""
+                        onMakeOffer(listing.id, amount)
+                    }) {
+                        Text("Send").font(.subheadline).bold().foregroundColor(.white)
+                            .padding(.horizontal, 16).padding(.vertical, 10)
+                            .background(IDS.Colors.brand).cornerRadius(12)
+                    }
+                    .disabled(Double(offerAmount) == nil)
+                }
+            }
             if let error {
                 Text(error).font(.caption).foregroundColor(.red)
             }
@@ -1361,8 +1398,9 @@ private struct PropertyListingCard: View {
                     if listing.status != "REMOVED" {
                         actionButton("Remove", filled: false) { await remove() }
                     }
-                } else if listing.status == "AVAILABLE" {
-                    actionButton("Message lister", filled: true) { onContact() }
+                } else if listing.status == "AVAILABLE" && !offering {
+                    actionButton("Message lister", filled: false) { onContact() }
+                    actionButton("Make an offer", filled: true) { offering = true }
                 }
             }
         }

@@ -695,7 +695,7 @@ private struct ChatThreadScreen: View {
     let onBack: () -> Void
 
     @State private var messages: [MessageDto]?
-    @State private var offersByMessageId: [String: PriceOfferDto] = [:]
+    @State private var offersByMessageId: [String: OfferBubbleData] = [:]
     @State private var draft = ""
     @State private var sending = false
     @State private var error: String?
@@ -869,19 +869,29 @@ private struct ChatThreadScreen: View {
         await loadOffers()
     }
 
+    // Real-fetches both Marketplace and Real Estate offer history for this conversation
+    // -- a given real conversation only ever carries one type in practice, but fetching
+    // both is cheap and correct rather than guessing which one applies (mirrors
+    // bank-mfe's own ConversationThread.loadOffers).
     private func loadOffers() async {
-        do {
-            let res = try await NetworkClient.shared.getOffersForConversation(conversationId: conversation.conversationId)
-            offersByMessageId = Dictionary(uniqueKeysWithValues: res.offers.map { ($0.messageId, $0) })
-        } catch {
-            // Real, non-critical -- a failed offer-history fetch just means offer
-            // messages render as plain text this pass; never blocks the thread.
-        }
+        let marketplaceOffers = (try? await NetworkClient.shared.getOffersForConversation(conversationId: conversation.conversationId).offers) ?? []
+        let propertyOffers = (try? await NetworkClient.shared.getPropertyOffersForConversation(conversationId: conversation.conversationId).offers) ?? []
+        var merged: [String: OfferBubbleData] = [:]
+        for o in marketplaceOffers { merged[o.messageId] = o.toBubbleData() }
+        for o in propertyOffers { merged[o.messageId] = o.toBubbleData() }
+        offersByMessageId = merged
     }
 
     private func respondToOffer(_ offerId: String, _ action: String, _ counterAmount: Double?) async {
         do {
-            _ = try await NetworkClient.shared.respondToOffer(offerId: offerId, action: action, counterAmount: counterAmount)
+            // Real offer ids are stably prefixed by their real owning service
+            // ("price_offer_"/"property_offer_") -- a reliable dispatch key, matching
+            // bank-mfe's own ConversationThread.
+            if offerId.hasPrefix("property_offer_") {
+                _ = try await NetworkClient.shared.respondToPropertyOffer(offerId: offerId, action: action, counterAmount: counterAmount)
+            } else {
+                _ = try await NetworkClient.shared.respondToOffer(offerId: offerId, action: action, counterAmount: counterAmount)
+            }
             await refresh()
         } catch {
             self.error = "Couldn't respond to this offer. Check your connection and try again."
@@ -915,12 +925,31 @@ private struct ChatThreadScreen: View {
     }
 }
 
+// Real minimal shape both PriceOfferDto (Marketplace) and PropertyPriceOfferDto (Real
+// Estate) get mapped into for display -- narrowed to just the fields OfferBubble
+// actually reads (id/amount/status/proposedByUserId), so this one view renders both
+// offer types without duplication. Mirrors bank-mfe's own OfferBubbleData narrowing
+// (2026-07-19).
+struct OfferBubbleData {
+    let id: String
+    let amount: Double
+    let status: String
+    let proposedByUserId: String
+}
+
+extension PriceOfferDto {
+    func toBubbleData() -> OfferBubbleData { OfferBubbleData(id: id, amount: amount, status: status, proposedByUserId: proposedByUserId) }
+}
+extension PropertyPriceOfferDto {
+    func toBubbleData() -> OfferBubbleData { OfferBubbleData(id: id, amount: amount, status: status, proposedByUserId: proposedByUserId) }
+}
+
 // Real 당근-style offer bubble (2026-07-19) -- see PriceOfferService's own doc comment.
 // Renders inline wherever a message carries a real offer, replacing the plain-text
 // bubble with amount + status + real Accept/Decline/Counter actions (only shown to
 // whichever participant did NOT propose the current pending amount).
 private struct OfferBubble: View {
-    let offer: PriceOfferDto
+    let offer: OfferBubbleData
     let isMine: Bool
     let currentUserId: String?
     let onRespond: (String, String, Double?) -> Void
@@ -989,7 +1018,7 @@ private struct MessageBubble: View {
     let message: MessageDto
     let isMine: Bool
     let currentUserId: String?
-    let offer: PriceOfferDto?
+    let offer: OfferBubbleData?
     let onToggleReaction: (String) -> Void
     let onRespondToOffer: (String, String, Double?) -> Void
 

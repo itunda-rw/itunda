@@ -415,6 +415,26 @@ data class PropertyListingsResponse(val success: Boolean, val listings: List<Pro
 data class PropertyTypesResponse(val success: Boolean, val propertyTypes: List<PropertyTypeDto>)
 data class ContactListerResponse(val success: Boolean, val conversation: ConversationDto)
 
+// Real 당근-style price-offer negotiation on a real property listing (2026-07-19) -- see
+// PropertyPriceOfferService's own doc comment. Mirrors PriceOfferDto field-for-field.
+data class PropertyPriceOfferDto(
+    val id: String,
+    val propertyListingId: String,
+    val messageId: String,
+    val conversationId: String,
+    val inquirerId: String,
+    val listerId: String,
+    val proposedByUserId: String,
+    val amount: Double,
+    val status: String,
+    val createdAt: String,
+    val respondedAt: String?,
+)
+data class MakePropertyOfferRequest(val amount: Double)
+data class RespondToPropertyOfferRequest(val action: String, val counterAmount: Double? = null)
+data class PropertyPriceOfferResponse(val success: Boolean, val offer: PropertyPriceOfferDto)
+data class PropertyPriceOffersResponse(val success: Boolean, val offers: List<PropertyPriceOfferDto>)
+
 // Mirrors services/backend/commerce's real DTOs exactly (2026-07-18) -- backs the new
 // "Shop" bottom-nav tab (Coupang-style multi-item checkout), replacing the old Shop
 // tab's Toss-Shopping-cashback content. See rw.itunda.commerce.OrderService's own doc
@@ -770,6 +790,16 @@ interface ApiService {
 
     @POST("api/v1/realestate/listings/{id}/contact-lister")
     suspend fun contactLister(@Path("id") propertyListingId: String): ContactListerResponse
+
+    // Real 당근-style price-offer negotiation (2026-07-19) -- see PropertyPriceOfferService.
+    @POST("api/v1/realestate/listings/{id}/offers")
+    suspend fun makePropertyOffer(@Path("id") propertyListingId: String, @Body request: MakePropertyOfferRequest): PropertyPriceOfferResponse
+
+    @POST("api/v1/realestate/offers/{id}/respond")
+    suspend fun respondToPropertyOffer(@Path("id") offerId: String, @Body request: RespondToPropertyOfferRequest): PropertyPriceOfferResponse
+
+    @GET("api/v1/realestate/conversations/{id}/offers")
+    suspend fun getPropertyOffersForConversation(@Path("id") conversationId: String): PropertyPriceOffersResponse
 
     // Real per-merchant public product browse (2026-07-18) -- see
     // rw.itunda.merchant.web.ShoppingController.getMerchantProducts.
