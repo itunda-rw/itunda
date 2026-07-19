@@ -118,7 +118,7 @@ import java.util.UUID
  * static balance), not merely a shortcut.
  */
 
-private fun superAppErrorMessage(e: HttpException): String = when (e.code()) {
+internal fun superAppErrorMessage(e: HttpException): String = when (e.code()) {
     // Real 400 case (found in a 2026-07-19 UX-copy sweep, prompted by the new price-offer
     // flow's own-offer/invalid-amount validation errors): a real, user-actionable input
     // problem was falling into the generic "Something went wrong" bucket below, unlike

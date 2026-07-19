@@ -155,6 +155,10 @@ allTargets.append(
             "NSAppTransportSecurity": [
                 "NSAllowsArbitraryLoads": true,
             ],
+            // Real "my location" blue dot on the Map screen (2026-07-19), runtime-
+            // requested via CLLocationManager, never assumed granted -- see
+            // MapScreenView.swift's own doc comment.
+            "NSLocationWhenInUseUsageDescription": "itunda uses your real location to show it on the map and give you directions.",
         ]),
         sources: ["App/Sources/**"],
         dependencies: appDependencies,

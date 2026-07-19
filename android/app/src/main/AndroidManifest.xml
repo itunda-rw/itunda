@@ -5,6 +5,10 @@
     <!-- Real connectivity-triggered offline-queue replay (2026-07-13):
          ConnectivityManager.registerNetworkCallback requires this. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Real "my location" blue dot on the Map screen (2026-07-19): runtime-requested,
+         never assumed granted. See MapScreen.kt's own doc comment. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <application
         android:name=".miniapps.ItundaApplication"

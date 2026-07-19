@@ -360,6 +360,14 @@ data class ShoppingMerchantDto(
     val latitude: Double? = null, val longitude: Double? = null,
 )
 data class ShoppingMerchantsResponse(val success: Boolean, val merchants: List<ShoppingMerchantDto>)
+
+// Real "search this map" + "directions" (2026-07-19) -- see rw.itunda.maps.MapsService's
+// own doc comment on the backend for why these are a new, general-purpose front door
+// onto itunda's already-deployed self-hosted Nominatim/OSRM.
+data class PlaceSearchResultDto(val displayName: String, val latitude: Double, val longitude: Double)
+data class MapsSearchResponse(val success: Boolean, val results: List<PlaceSearchResultDto>)
+data class RouteResultDto(val distanceKm: Double, val durationMinutes: Double, val geometry: List<List<Double>>)
+data class MapsDirectionsResponse(val success: Boolean, val route: RouteResultDto)
 data class MerchantCategoriesResponse(val success: Boolean, val categories: List<String>)
 
 // Mirrors services/backend/core's real MerchantProduct entity exactly.
@@ -602,6 +610,18 @@ interface ApiService {
     // rw.itunda.merchant.web.ShoppingController.getMerchantProducts.
     @GET("api/v1/shopping/merchants")
     suspend fun getShoppingMerchants(@Query("category") category: String? = null, @Query("q") q: String? = null): ShoppingMerchantsResponse
+
+    // Real "search this map" + "directions" (2026-07-19) -- see MapsService.
+    @GET("api/v1/maps/search")
+    suspend fun searchPlaces(@Query("q") q: String): MapsSearchResponse
+
+    @GET("api/v1/maps/directions")
+    suspend fun getDirections(
+        @Query("fromLat") fromLat: Double,
+        @Query("fromLng") fromLng: Double,
+        @Query("toLat") toLat: Double,
+        @Query("toLng") toLng: Double,
+    ): MapsDirectionsResponse
 
     // Real distinct category list -- see MerchantRepository.findDistinctCategories's own
     // doc comment on the backend.

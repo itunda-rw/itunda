@@ -165,6 +165,10 @@ dependencies {
     // (see docs/TOSS_PARITY_MATRIX.md's Maps row), not Google Maps. Plain Maven Central
     // coordinate, no new repository needed (already declared in settings.gradle.kts).
     implementation("org.maplibre.gl:android-sdk:13.3.1")
+    // Real "my location" blue dot (2026-07-19) -- FusedLocationProviderClient, the
+    // standard modern Android location API (battery-efficient, real GPS/network fusion).
+    // `google()` is already a declared repository for this project.
+    implementation("com.google.android.gms:play-services-location:21.3.0")
 
     // Project Modules
     implementation(project(":core:designsystem"))

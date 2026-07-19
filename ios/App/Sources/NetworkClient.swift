@@ -625,6 +625,14 @@ struct ShoppingMerchantDto: Decodable, Identifiable {
     }
 }
 struct ShoppingMerchantsResponse: Decodable { let success: Bool; let merchants: [ShoppingMerchantDto] }
+
+// Real "search this map" + "directions" (2026-07-19) -- see rw.itunda.maps.MapsService's
+// own doc comment on the backend for why these are a new, general-purpose front door
+// onto itunda's already-deployed self-hosted Nominatim/OSRM.
+struct PlaceSearchResultDto: Decodable { let displayName: String; let latitude: Double; let longitude: Double }
+struct MapsSearchResponse: Decodable { let success: Bool; let results: [PlaceSearchResultDto] }
+struct RouteResultDto: Decodable { let distanceKm: Double; let durationMinutes: Double; let geometry: [[Double]] }
+struct MapsDirectionsResponse: Decodable { let success: Bool; let route: RouteResultDto }
 struct MerchantCategoriesResponse: Decodable { let success: Bool; let categories: [String] }
 
 struct MerchantProductDto: Decodable, Identifiable {
@@ -921,6 +929,20 @@ extension NetworkClient {
     // Real distinct category list -- see MerchantRepository.findDistinctCategories's own
     // doc comment on the backend.
     func getMerchantCategories() async throws -> MerchantCategoriesResponse { try await get("api/v1/shopping/merchants/categories") }
+
+    // Real "search this map" + "directions" (2026-07-19) -- see MapsService.
+    func searchPlaces(query: String) async throws -> MapsSearchResponse {
+        try await get("api/v1/maps/search", query: [URLQueryItem(name: "q", value: query)])
+    }
+
+    func getDirections(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double) async throws -> MapsDirectionsResponse {
+        try await get("api/v1/maps/directions", query: [
+            URLQueryItem(name: "fromLat", value: String(fromLat)),
+            URLQueryItem(name: "fromLng", value: String(fromLng)),
+            URLQueryItem(name: "toLat", value: String(toLat)),
+            URLQueryItem(name: "toLng", value: String(toLng)),
+        ])
+    }
 
     func getMerchantProducts(merchantId: String) async throws -> MerchantProductsResponse {
         try await get("api/v1/shopping/merchants/\(merchantId)/products")
