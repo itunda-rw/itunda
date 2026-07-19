@@ -696,6 +696,7 @@ private struct ChatThreadScreen: View {
 
     @State private var messages: [MessageDto]?
     @State private var offersByMessageId: [String: OfferBubbleData] = [:]
+    @State private var giftsByMessageId: [String: GiftDto] = [:]
     @State private var draft = ""
     @State private var sending = false
     @State private var error: String?
@@ -704,6 +705,10 @@ private struct ChatThreadScreen: View {
     @State private var otherTyping = false
     @State private var typingClearTask: Task<Void, Never>?
     @State private var lastTypingSentAt: Date = .distantPast
+    @State private var giftComposerOpen = false
+    @State private var giftAmount = ""
+    @State private var giftNote = ""
+    @State private var sendingGift = false
     private let currentUserId = KeychainTokenStore.shared.getUserId()
 
     var body: some View {
@@ -738,8 +743,10 @@ private struct ChatThreadScreen: View {
                                 MessageBubble(
                                     message: message, isMine: message.senderId == currentUserId, currentUserId: currentUserId,
                                     offer: offersByMessageId[message.id],
+                                    gift: giftsByMessageId[message.id],
                                     onToggleReaction: { emoji in Task { await toggleReaction(message.id, emoji) } },
                                     onRespondToOffer: { offerId, action, counterAmount in Task { await respondToOffer(offerId, action, counterAmount) } },
+                                    onClaimGift: { giftId in Task { await claimGift(giftId) } },
                                 )
                                 .id(message.id)
                             }
@@ -768,7 +775,50 @@ private struct ChatThreadScreen: View {
                 Text(error).font(.caption).foregroundColor(.red).padding(.horizontal, IDS.Layout.screenHorizontal)
             }
 
+            if giftComposerOpen {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("🎁 Send a gift").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    TextField("Amount (RWF)", text: $giftAmount)
+                        .keyboardType(.numberPad)
+                        .padding(10)
+                        .background(IDS.Colors.card)
+                        .cornerRadius(8)
+                    TextField("Add a note (optional)", text: $giftNote)
+                        .padding(10)
+                        .background(IDS.Colors.card)
+                        .cornerRadius(8)
+                    HStack(spacing: 8) {
+                        Button(action: { Task { await sendGift() } }) {
+                            Text(sendingGift ? "Sending…" : "Send gift").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                .padding(.horizontal, 10).padding(.vertical, 6)
+                                .background(IDS.Colors.card)
+                                .cornerRadius(10)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(sendingGift || Double(giftAmount) == nil || (Double(giftAmount) ?? 0) <= 0)
+                        Button(action: { giftComposerOpen = false }) {
+                            Text("Cancel").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                .padding(.horizontal, 10).padding(.vertical, 6)
+                                .background(IDS.Colors.card)
+                                .cornerRadius(10)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(12)
+                .background(IDS.Colors.chipBackground)
+                .cornerRadius(12)
+                .padding(.horizontal, IDS.Layout.screenHorizontal)
+            }
+
             HStack {
+                Button(action: { giftComposerOpen.toggle() }) {
+                    Text("🎁")
+                        .frame(width: 44, height: 44)
+                        .background(IDS.Colors.chipBackground)
+                        .clipShape(Circle())
+                }
+                .accessibilityLabel("Send a gift")
                 TextField("Message", text: Binding(
                     get: { draft },
                     set: { newValue in
@@ -831,6 +881,7 @@ private struct ChatThreadScreen: View {
                         // A pushed message might be a real offer/counter/accept/reject --
                         // refresh so it renders as an offer bubble immediately.
                         await loadOffers()
+                        await loadGifts()
                     }
                 case .presenceChange(let userId, let online) where userId == conversation.otherUserId:
                     Task { @MainActor in otherOnline = online }
@@ -867,6 +918,43 @@ private struct ChatThreadScreen: View {
             // a transient poll failure.
         }
         await loadOffers()
+        await loadGifts()
+    }
+
+    // Real per-thread gift history -- fetched alongside a conversation's messages so
+    // the thread can render gift bubbles for whichever messages carry one.
+    private func loadGifts() async {
+        let gifts = (try? await NetworkClient.shared.getGiftsForConversation(conversationId: conversation.conversationId).gifts) ?? []
+        giftsByMessageId = Dictionary(uniqueKeysWithValues: gifts.map { ($0.messageId, $0) })
+    }
+
+    private func sendGift() async {
+        guard let amount = Double(giftAmount), amount > 0 else { return }
+        sendingGift = true
+        error = nil
+        defer { sendingGift = false }
+        do {
+            _ = try await NetworkClient.shared.sendGiftInConversation(
+                conversationId: conversation.conversationId,
+                amount: amount,
+                note: giftNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : giftNote
+            )
+            giftAmount = ""
+            giftNote = ""
+            giftComposerOpen = false
+            await refresh()
+        } catch {
+            self.error = "Couldn't send this gift. Check your connection and try again."
+        }
+    }
+
+    private func claimGift(_ giftId: String) async {
+        do {
+            _ = try await NetworkClient.shared.claimGift(giftId: giftId)
+            await loadGifts()
+        } catch {
+            self.error = "Couldn't open this gift. Check your connection and try again."
+        }
     }
 
     // Real-fetches both Marketplace and Real Estate offer history for this conversation
@@ -1014,19 +1102,79 @@ private struct OfferBubble: View {
     }
 }
 
+// Real KakaoTalk-style gift bubble (2026-07-20) -- see GiftService's own doc comment.
+// Renders inline wherever a message carries a real gift, with a real Open/Claim button
+// shown only to the recipient of a still-PENDING, not-yet-expired gift.
+private struct GiftBubble: View {
+    let gift: GiftDto
+    let isMine: Bool
+    let currentUserId: String?
+    let onClaim: (String) -> Void
+
+    private static let isoFormatter = ISO8601DateFormatter(withFractionalSeconds: true)
+
+    private var canClaim: Bool {
+        guard gift.status == "PENDING", currentUserId == gift.recipientId else { return false }
+        guard let expiresAt = Self.isoFormatter.date(from: gift.expiresAt) else { return true }
+        return expiresAt > Date()
+    }
+    private var statusLabel: String {
+        switch gift.status {
+        case "PENDING": return isMine ? "Waiting to be opened" : "Tap to open"
+        case "CLAIMED": return "Opened"
+        case "EXPIRED": return "Expired — refunded"
+        default: return gift.status
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("🎁 \(Int(gift.amount)) RWF").font(.headline).foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
+            if let note = gift.note {
+                Text("\"\(note)\"").font(.caption).foregroundColor(isMine ? .white.opacity(0.9) : IDS.Colors.textSecondary)
+            }
+            Text(statusLabel).font(.caption).foregroundColor(isMine ? .white.opacity(0.85) : IDS.Colors.textSecondary)
+            if canClaim {
+                Button(action: { onClaim(gift.id) }) {
+                    Text("Open gift").font(.caption2).bold().foregroundColor(IDS.Colors.textPrimary)
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(IDS.Colors.card)
+                        .cornerRadius(10)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(isMine ? IDS.Colors.brand : IDS.Colors.chipBackground)
+        .cornerRadius(16)
+    }
+}
+
+extension ISO8601DateFormatter {
+    convenience init(withFractionalSeconds: Bool) {
+        self.init()
+        if withFractionalSeconds { formatOptions.insert(.withFractionalSeconds) }
+    }
+}
+
 private struct MessageBubble: View {
     let message: MessageDto
     let isMine: Bool
     let currentUserId: String?
     let offer: OfferBubbleData?
+    let gift: GiftDto?
     let onToggleReaction: (String) -> Void
     let onRespondToOffer: (String, String, Double?) -> Void
+    let onClaimGift: (String) -> Void
 
     var body: some View {
         VStack(alignment: isMine ? .trailing : .leading, spacing: 2) {
             HStack {
                 if isMine { Spacer() }
-                if let offer {
+                if let gift {
+                    GiftBubble(gift: gift, isMine: isMine, currentUserId: currentUserId, onClaim: onClaimGift)
+                } else if let offer {
                     OfferBubble(offer: offer, isMine: isMine, currentUserId: currentUserId, onRespond: onRespondToOffer)
                 } else {
                     Text(message.body)

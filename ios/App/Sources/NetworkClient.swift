@@ -632,6 +632,30 @@ struct CreateListingRequest: Encodable {
 struct ListingResponse: Decodable { let success: Bool; let listing: ListingDto }
 struct ListingsResponse: Decodable { let success: Bool; let listings: [ListingDto] }
 
+// Real KakaoTalk-style "선물하기" money gift (2026-07-20) -- see GiftService's own doc
+// comment. Money leaves the sender's wallet into a real escrow account the moment a
+// gift is sent, and only reaches the recipient's wallet once they explicitly claim it
+// (or is auto-refunded after 7 days). Rendered inline as a gift bubble, same "special
+// message body" convention PriceOfferDto already established.
+struct GiftDto: Decodable, Identifiable {
+    let id: String
+    let senderId: String
+    let recipientId: String
+    let conversationId: String
+    let messageId: String
+    let amount: Double
+    let note: String?
+    let status: String
+    let holdTransactionId: String
+    let claimTransactionId: String?
+    let expiresAt: String
+    let claimedAt: String?
+    let createdAt: String
+}
+struct SendGiftInConversationRequest: Encodable { let amount: Double; let note: String? }
+struct GiftResponse: Decodable { let success: Bool; let gift: GiftDto }
+struct GiftsResponse: Decodable { let success: Bool; let gifts: [GiftDto] }
+
 // Real 동네생활-style community board (2026-07-19) -- see rw.itunda.community.web.CommunityController.
 struct CommunityCategoryDto: Decodable, Identifiable { let id: String; let label: String }
 struct CommunityPostDto: Decodable, Identifiable {
@@ -1146,6 +1170,23 @@ extension NetworkClient {
 
     func getOffersForConversation(conversationId: String) async throws -> PriceOffersResponse {
         try await get("api/v1/marketplace/conversations/\(conversationId)/offers")
+    }
+
+    // Real KakaoTalk-style gift send/claim (2026-07-20) -- see GiftService.
+    func sendGiftInConversation(conversationId: String, amount: Double, note: String?) async throws -> GiftResponse {
+        try await authenticatedPost(
+            "api/v1/gifts/conversations/\(conversationId)",
+            body: SendGiftInConversationRequest(amount: amount, note: note),
+            idempotencyKey: UUID().uuidString
+        )
+    }
+
+    func claimGift(giftId: String) async throws -> GiftResponse {
+        try await authenticatedPost("api/v1/gifts/\(giftId)/claim", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+    }
+
+    func getGiftsForConversation(conversationId: String) async throws -> GiftsResponse {
+        try await get("api/v1/gifts/conversations/\(conversationId)")
     }
 
     // Real 동네생활-style community board (2026-07-19) -- see rw.itunda.community.web.CommunityController.
