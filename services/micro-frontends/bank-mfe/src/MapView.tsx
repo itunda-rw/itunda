@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { RWANDA_CENTER, TILES_SOURCE_URL, searchPlaces, getDirections, type PlaceSearchResult } from './lib/maps';
+import {
+  RWANDA_CENTER,
+  TILES_SOURCE_URL,
+  searchPlaces,
+  getDirections,
+  searchNearbyPlaces,
+  NEARBY_CATEGORIES,
+  type PlaceSearchResult,
+  type NearbyPlace,
+} from './lib/maps';
 import { fetchShoppingCatalog, type ShoppingMerchant } from './lib/shopping';
 import { ApiError } from './lib/api';
 
@@ -91,6 +100,7 @@ export default function MapView() {
   const myLocationMarkerRef = useRef<maplibregl.Marker | null>(null);
   const destinationMarkerRef = useRef<maplibregl.Marker | null>(null);
   const myLocationRef = useRef<[number, number] | null>(null); // [lat, lng]
+  const categoryMarkersRef = useRef<maplibregl.Marker[]>([]);
 
   const [error, setError] = useState<string | null>(null);
   const [merchantCount, setMerchantCount] = useState<number | null>(null);
@@ -101,6 +111,9 @@ export default function MapView() {
   const [route, setRoute] = useState<{ distanceKm: number; durationMinutes: number } | null>(null);
   const [routing, setRouting] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [categoryLoading, setCategoryLoading] = useState(false);
+  const [categoryResults, setCategoryResults] = useState<NearbyPlace[] | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -146,6 +159,8 @@ export default function MapView() {
       mapRef.current = null;
       myLocationMarkerRef.current = null;
       destinationMarkerRef.current = null;
+      categoryMarkersRef.current.forEach((m) => m.remove());
+      categoryMarkersRef.current = [];
     };
   }, []);
 
@@ -219,6 +234,43 @@ export default function MapView() {
     );
   };
 
+  // Real category-chip "nearby places" search (Naver/Kakao's own convention) -- searches
+  // a real radius around the user's real location if known, otherwise the map's current
+  // center (the same "browse this area" behavior a real maps app falls back to without
+  // location permission). Tapping an already-active chip clears it, matching a real
+  // toggle-filter UX rather than only ever adding more markers.
+  const handleCategorySearch = async (categoryId: string) => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (activeCategory === categoryId) {
+      categoryMarkersRef.current.forEach((m) => m.remove());
+      categoryMarkersRef.current = [];
+      setActiveCategory(null);
+      setCategoryResults(null);
+      return;
+    }
+    const center = myLocationRef.current ?? [map.getCenter().lat, map.getCenter().lng];
+    setActiveCategory(categoryId);
+    setCategoryLoading(true);
+    setError(null);
+    try {
+      const places = await searchNearbyPlaces(categoryId, center[0], center[1]);
+      categoryMarkersRef.current.forEach((m) => m.remove());
+      categoryMarkersRef.current = places.map((place) =>
+        new maplibregl.Marker({ color: '#8B5CF6' })
+          .setLngLat([place.longitude, place.latitude])
+          .setPopup(new maplibregl.Popup({ offset: 12 }).setText(`${place.displayName} · ${place.distanceKm.toFixed(1)}km`))
+          .addTo(map),
+      );
+      setCategoryResults(places);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not search nearby places.');
+      setActiveCategory(null);
+    } finally {
+      setCategoryLoading(false);
+    }
+  };
+
   const handleGetDirections = async () => {
     const map = mapRef.current;
     if (!map || !selectedPlace) return;
@@ -276,6 +328,42 @@ export default function MapView() {
           {locating ? '…' : '📍'}
         </button>
       </form>
+
+      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
+        {NEARBY_CATEGORIES.map((category) => {
+          const active = activeCategory === category.id;
+          return (
+            <button
+              key={category.id}
+              type="button"
+              onClick={() => handleCategorySearch(category.id)}
+              disabled={categoryLoading && !active}
+              style={{
+                flexShrink: 0,
+                padding: '6px 12px',
+                borderRadius: '999px',
+                fontSize: '12px',
+                fontWeight: 600,
+                border: active ? '1px solid #8B5CF6' : '1px solid var(--toss-grey-200)',
+                backgroundColor: active ? '#8B5CF6' : '#fff',
+                color: active ? '#fff' : 'var(--toss-grey-700)',
+              }}
+            >
+              {active && categoryLoading ? '…' : category.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {activeCategory && categoryResults !== null && (
+        <div className="toss-card" style={{ padding: '8px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+            {categoryResults.length === 0
+              ? 'No real matches found nearby for that category.'
+              : `${categoryResults.length} real ${NEARBY_CATEGORIES.find((c) => c.id === activeCategory)?.label.toLowerCase()} found nearby, closest first.`}
+          </p>
+        </div>
+      )}
 
       {searchResults !== null && (
         <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px' }}>

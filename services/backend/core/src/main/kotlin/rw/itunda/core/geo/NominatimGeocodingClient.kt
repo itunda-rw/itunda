@@ -1,5 +1,6 @@
 package rw.itunda.core.geo
 
+import kotlin.math.cos
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
@@ -8,6 +9,7 @@ import org.springframework.web.client.RestClientException
 
 data class GeocodeResult(val latitude: Double, val longitude: Double)
 data class GeocodeSuggestion(val displayName: String, val latitude: Double, val longitude: Double)
+data class NearbyPlace(val displayName: String, val latitude: Double, val longitude: Double, val distanceKm: Double)
 
 /**
  * A real client for itunda's own self-hosted Nominatim geocoder (see
@@ -72,4 +74,65 @@ class NominatimGeocodingClient(
      */
     fun geocode(address: String): GeocodeResult? =
         search(address, limit = 1).firstOrNull()?.let { GeocodeResult(it.latitude, it.longitude) }
+
+    /**
+     * Real category/nearby-places search (restaurants, hospitals, pharmacies, etc.),
+     * matching Naver/Kakao Maps' own category-chip search -- e.g. "restaurants near me".
+     * `searchTerm` is a plain free-text category word (see `MapPlaceCategory`) bounded to
+     * a real degree-box around the given point (`viewbox` + `bounded=1`), then filtered/
+     * sorted by real `GeoUtils.haversineKm` distance since Nominatim's own bounded search
+     * ranks by relevance/importance, not proximity -- a corner of the request box can be
+     * farther than `radiusKm`, so the box is a coarse pre-filter and the real circular
+     * radius is enforced here. Free text, not Nominatim's structured `[key=value]` tag
+     * syntax -- that was tried first and confirmed live to return zero results against
+     * this deployment (see `MapPlaceCategory`'s own doc comment for why).
+     */
+    fun searchNearby(
+        searchTerm: String,
+        latitude: Double,
+        longitude: Double,
+        radiusKm: Double,
+        limit: Int = 20,
+    ): List<NearbyPlace> {
+        val client = restClient ?: return emptyList()
+        val latDelta = radiusKm / 111.0
+        val lngDelta = radiusKm / (111.0 * cos(Math.toRadians(latitude)).coerceAtLeast(0.01))
+        val minLat = latitude - latDelta
+        val maxLat = latitude + latDelta
+        val minLng = longitude - lngDelta
+        val maxLng = longitude + lngDelta
+        return try {
+            @Suppress("UNCHECKED_CAST")
+            val response = client.get()
+                .uri { builder ->
+                    builder.path("/search")
+                        .queryParam("q", searchTerm)
+                        .queryParam("format", "json")
+                        .queryParam("limit", (limit * 3).toString())
+                        .queryParam("countrycodes", "rw")
+                        .queryParam("viewbox", "$minLng,$maxLat,$maxLng,$minLat")
+                        .queryParam("bounded", "1")
+                        .build()
+                }
+                .retrieve()
+                .body(List::class.java) as List<Map<String, Any?>>?
+            response.orEmpty()
+                .mapNotNull { row ->
+                    val lat = (row["lat"] as? String)?.toDoubleOrNull()
+                    val lon = (row["lon"] as? String)?.toDoubleOrNull()
+                    val displayName = row["display_name"] as? String
+                    if (lat == null || lon == null || displayName == null) {
+                        null
+                    } else {
+                        NearbyPlace(displayName, lat, lon, GeoUtils.haversineKm(latitude, longitude, lat, lon))
+                    }
+                }
+                .filter { it.distanceKm <= radiusKm }
+                .sortedBy { it.distanceKm }
+                .take(limit)
+        } catch (e: RestClientException) {
+            logger.warn("Nominatim nearby-category search failed: {}", e.message)
+            emptyList()
+        }
+    }
 }

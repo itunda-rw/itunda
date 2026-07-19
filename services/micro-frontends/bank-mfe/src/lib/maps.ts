@@ -40,3 +40,37 @@ export const getDirections = (fromLat: number, fromLng: number, toLat: number, t
   apiFetch<{ success: boolean; route: RouteResult }>(
     `/api/v1/maps/directions?fromLat=${fromLat}&fromLng=${fromLng}&toLat=${toLat}&toLng=${toLng}`,
   ).then((r) => r.route);
+
+// Real "nearby places" category search (2026-07-19) -- Naver/Kakao's own category-chip
+// search (restaurants, cafes, hospitals, ...), backed by real OSM tag search over
+// itunda's self-hosted Nominatim, bounded to a real radius and sorted by real distance
+// (see MapsService.getNearbyPlaces's own doc comment on the backend).
+export interface NearbyPlace {
+  displayName: string;
+  latitude: number;
+  longitude: number;
+  distanceKm: number;
+}
+
+export interface MapPlaceCategory {
+  id: string;
+  label: string;
+}
+
+export const NEARBY_CATEGORIES: MapPlaceCategory[] = [
+  { id: 'RESTAURANT', label: 'Restaurants' },
+  { id: 'CAFE', label: 'Cafes' },
+  { id: 'HOSPITAL', label: 'Hospitals' },
+  { id: 'PHARMACY', label: 'Pharmacies' },
+  { id: 'BANK', label: 'Banks' },
+  { id: 'ATM', label: 'ATMs' },
+  { id: 'HOTEL', label: 'Hotels' },
+  { id: 'SUPERMARKET', label: 'Supermarkets' },
+  { id: 'GAS_STATION', label: 'Gas stations' },
+  { id: 'SCHOOL', label: 'Schools' },
+];
+
+export const searchNearbyPlaces = (category: string, lat: number, lng: number, radiusKm = 2.0) =>
+  apiFetch<{ success: boolean; places: NearbyPlace[] }>(
+    `/api/v1/maps/nearby?category=${encodeURIComponent(category)}&lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`,
+  ).then((r) => r.places);

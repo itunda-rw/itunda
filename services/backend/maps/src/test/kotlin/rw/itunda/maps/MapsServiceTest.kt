@@ -8,6 +8,7 @@ import io.mockk.mockk
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.geo.GeocodeSuggestion
+import rw.itunda.core.geo.NearbyPlace
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.geo.RouteResult
@@ -103,6 +104,45 @@ class MapsServiceTest : BehaviorSpec({
                 } catch (e: RouteNotFoundException) {
                     // expected
                 }
+            }
+        }
+    }
+
+    Given("a real user browsing nearby places by category") {
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter)
+
+        val lat = -1.9441
+        val lng = 30.0619
+
+        When("a real category matches real nearby places") {
+            val places = listOf(NearbyPlace("Real Restaurant, Kigali", -1.9445, 30.0622, 0.05))
+            every { nominatimGeocodingClient.searchNearby("restaurant", lat, lng, 2.0, limit = 20) } returns places
+
+            val results = service.getNearbyPlaces("user_1", "RESTAURANT", lat, lng, 2.0)
+
+            Then("it returns the real Nominatim category results") {
+                results shouldBe places
+            }
+        }
+
+        When("an unknown category is given") {
+            Then("it throws InvalidMapsCategoryException before ever calling Nominatim") {
+                try {
+                    service.getNearbyPlaces("user_1", "not-a-real-category", lat, lng, 2.0)
+                    error("expected InvalidMapsCategoryException")
+                } catch (e: InvalidMapsCategoryException) {
+                    // expected
+                }
+            }
+        }
+
+        When("the search center is outside Rwanda's bounding envelope") {
+            Then("it returns an empty list without ever calling Nominatim") {
+                val results = service.getNearbyPlaces("user_1", "RESTAURANT", 0.0, 0.0, 2.0)
+                results shouldBe emptyList()
             }
         }
     }

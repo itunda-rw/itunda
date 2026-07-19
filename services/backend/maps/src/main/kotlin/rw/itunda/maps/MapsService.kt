@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.GeocodeSuggestion
+import rw.itunda.core.geo.NearbyPlace
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.geo.RouteResult
@@ -11,6 +12,7 @@ import java.time.Duration
 
 class InvalidMapsCoordinateException(message: String) : RuntimeException(message)
 class RouteNotFoundException(message: String) : RuntimeException(message)
+class InvalidMapsCategoryException(message: String) : RuntimeException(message)
 
 /**
  * A real, general-purpose "search this map" + "get directions" surface -- the
@@ -49,5 +51,30 @@ class MapsService(
         }
         return osrmRoutingClient.route(fromLat, fromLng, toLat, toLng)
             ?: throw RouteNotFoundException("No route could be found between these two points")
+    }
+
+    // Real "nearby places" category search (restaurants, hospitals, pharmacies, ...) --
+    // Naver/Kakao's own category-chip search, bounded to a real radius around the user
+    // (or a map center they're browsing), sorted by real proximity, not relevance/ads.
+    fun getNearbyPlaces(
+        userId: String,
+        categoryParam: String,
+        latitude: Double,
+        longitude: Double,
+        radiusKm: Double,
+    ): List<NearbyPlace> {
+        if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
+            throw InvalidMapsCoordinateException("Latitude must be between -90 and 90, longitude between -180 and 180")
+        }
+        val category = MapPlaceCategory.fromParam(categoryParam)
+            ?: throw InvalidMapsCategoryException(
+                "Unknown category '$categoryParam' -- must be one of ${MapPlaceCategory.entries.joinToString { it.name }}",
+            )
+        val boundedRadiusKm = radiusKm.coerceIn(0.1, 20.0)
+        rateLimiter.checkLimit("maps:nearby:$userId", limit = 60, window = Duration.ofMinutes(1))
+        if (!GeoUtils.isWithinRwanda(latitude, longitude)) {
+            return emptyList()
+        }
+        return nominatimGeocodingClient.searchNearby(category.searchTerm, latitude, longitude, boundedRadiusKm, limit = 20)
     }
 }

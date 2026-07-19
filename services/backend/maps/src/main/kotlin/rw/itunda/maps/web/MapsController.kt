@@ -11,7 +11,9 @@ import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
+import rw.itunda.maps.InvalidMapsCategoryException
 import rw.itunda.maps.InvalidMapsCoordinateException
+import rw.itunda.maps.MapPlaceCategory
 import rw.itunda.maps.MapsService
 import rw.itunda.maps.RouteNotFoundException
 
@@ -36,9 +38,32 @@ class MapsController(private val mapsService: MapsService) {
         mapOf("success" to true, "route" to mapsService.getDirections(currentUser.userId, fromLat, fromLng, toLat, toLng)),
     )
 
+    @GetMapping("/categories")
+    fun categories(): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
+        mapOf(
+            "success" to true,
+            "categories" to MapPlaceCategory.entries.map { mapOf("id" to it.name, "label" to it.label) },
+        ),
+    )
+
+    @GetMapping("/nearby")
+    fun nearby(
+        @RequestParam category: String,
+        @RequestParam lat: Double,
+        @RequestParam lng: Double,
+        @RequestParam(defaultValue = "2.0") radiusKm: Double,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
+        mapOf("success" to true, "places" to mapsService.getNearbyPlaces(currentUser.userId, category, lat, lng, radiusKm)),
+    )
+
     @ExceptionHandler(InvalidMapsCoordinateException::class)
     fun handleInvalidCoordinate(ex: InvalidMapsCoordinateException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_COORDINATES", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidMapsCategoryException::class)
+    fun handleInvalidCategory(ex: InvalidMapsCategoryException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_CATEGORY", ex.message ?: "Bad request"))
 
     @ExceptionHandler(RouteNotFoundException::class)
     fun handleRouteNotFound(ex: RouteNotFoundException) =
