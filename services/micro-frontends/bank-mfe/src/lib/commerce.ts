@@ -49,6 +49,9 @@ export const placeOrder = (merchantId: string, items: { productId: string; quant
     body: JSON.stringify({ merchantId, items, deliveryAddress }),
   });
 
+export const fetchOrderDetail = (orderId: string) =>
+  apiFetch<{ success: boolean; order: CommerceOrder; items: CommerceOrderItem[] }>(`/api/v1/orders/${orderId}`);
+
 export const fetchMyOrders = () =>
   apiFetch<{ success: boolean; orders: CommerceOrder[] }>('/api/v1/orders/my-orders').then((r) => r.orders);
 
@@ -67,3 +70,32 @@ export const cancelOrder = (orderId: string) =>
   apiFetch<{ success: boolean; order: CommerceOrder }>(`/api/v1/orders/${orderId}/cancel`, {
     method: 'POST',
   }).then((r) => r.order);
+
+// Real post-delivery product reviews (2026-07-20), mirroring Eats' own restaurant/rider
+// review pattern -- see ProductReviewService's own doc comment for the full backend
+// account. One real review per real delivered order line item.
+export interface ProductReview {
+  id: string;
+  orderItemId: string;
+  orderId: string;
+  buyerId: string;
+  productId: string;
+  merchantId: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+}
+
+export const submitProductReview = (orderItemId: string, rating: number, comment?: string) =>
+  apiFetch<{ success: boolean; review: ProductReview }>(`/api/v1/orders/items/${orderItemId}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ rating, comment }),
+  }).then((r) => r.review);
+
+export const fetchProductReviews = (productId: string) =>
+  apiFetch<{ success: boolean; reviews: ProductReview[] }>(`/api/v1/orders/products/${productId}/reviews`).then(
+    (r) => r.reviews,
+  );
+
+export const fetchProductRating = (productId: string) =>
+  apiFetch<{ success: boolean; average: number | null; count: number }>(`/api/v1/orders/products/${productId}/rating`);

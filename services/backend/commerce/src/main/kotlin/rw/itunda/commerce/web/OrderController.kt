@@ -27,17 +27,23 @@ import rw.itunda.commerce.BuyerNoWalletException
 import rw.itunda.commerce.EmptyOrderException
 import rw.itunda.commerce.InvalidDeliveryAddressException
 import rw.itunda.commerce.InvalidOrderStatusTransitionException
+import rw.itunda.commerce.InvalidProductRatingException
 import rw.itunda.commerce.InvalidQuantityException
 import rw.itunda.commerce.MerchantNoWalletException
 import rw.itunda.commerce.MerchantNotFoundException
+import rw.itunda.commerce.OrderItemNotFoundException
 import rw.itunda.commerce.OrderItemRequest
 import rw.itunda.commerce.OrderNotFoundException
 import rw.itunda.commerce.OrderProductNotFoundException
 import rw.itunda.commerce.OrderService
+import rw.itunda.commerce.ProductAlreadyReviewedException
+import rw.itunda.commerce.ProductNotYetDeliveredException
+import rw.itunda.commerce.ProductReviewService
 import rw.itunda.commerce.SelfOrderException
 
 data class PlaceOrderRequest(val merchantId: String, val items: List<OrderItemRequest>, val deliveryAddress: String)
 data class UpdateOrderStatusRequest(val status: OrderStatus)
+data class SubmitProductReviewRequest(val rating: Int, val comment: String? = null)
 
 // Real Coupang-style checkout -- see OrderService's own doc comment for the full
 // account, including the honest "self-declared fulfillment, no real courier network"
@@ -47,6 +53,7 @@ data class UpdateOrderStatusRequest(val status: OrderStatus)
 class OrderController(
     private val orderService: OrderService,
     private val idempotencyService: IdempotencyService,
+    private val productReviewService: ProductReviewService,
 ) {
     @PostMapping
     fun placeOrder(
@@ -108,6 +115,52 @@ class OrderController(
         val order = orderService.cancelOrder(currentUser.userId, orderId)
         return ResponseEntity.ok(mapOf("success" to true, "order" to order))
     }
+
+    // Real post-delivery product reviews (2026-07-20) -- see ProductReviewService's own
+    // doc comment for the full account, mirroring EatsReviewService's already-proven
+    // shape. Review submission is buyer-only, ownership-checked inside the service;
+    // reading a product's reviews/rating is public (any authenticated itunda user can
+    // browse a product's real reviews before buying, same as the catalog itself).
+    @PostMapping("/items/{orderItemId}/review")
+    fun submitProductReview(
+        @PathVariable orderItemId: String,
+        @RequestBody request: SubmitProductReviewRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val review = productReviewService.submitReview(currentUser.userId, orderItemId, request.rating, request.comment)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "review" to review))
+    }
+
+    @GetMapping("/products/{productId}/reviews")
+    fun getProductReviews(
+        @PathVariable productId: String,
+        @PageableDefault(size = 20) pageable: Pageable,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = productReviewService.getProductReviews(productId, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "reviews" to page.content) + pageMeta(page))
+    }
+
+    @GetMapping("/products/{productId}/rating")
+    fun getProductRating(@PathVariable productId: String): ResponseEntity<Map<String, Any?>> {
+        val summary = productReviewService.getProductRating(productId)
+        return ResponseEntity.ok(mapOf("success" to true, "average" to summary.average, "count" to summary.count))
+    }
+
+    @ExceptionHandler(OrderItemNotFoundException::class)
+    fun handleOrderItemNotFound(ex: OrderItemNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ORDER_ITEM_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(ProductNotYetDeliveredException::class)
+    fun handleProductNotYetDelivered(ex: ProductNotYetDeliveredException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("PRODUCT_NOT_YET_DELIVERED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(ProductAlreadyReviewedException::class)
+    fun handleProductAlreadyReviewed(ex: ProductAlreadyReviewedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("PRODUCT_ALREADY_REVIEWED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(InvalidProductRatingException::class)
+    fun handleInvalidProductRating(ex: InvalidProductRatingException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_RATING", ex.message ?: "Bad request"))
 
     @ExceptionHandler(MerchantNotFoundException::class)
     fun handleMerchantNotFound(ex: MerchantNotFoundException) =

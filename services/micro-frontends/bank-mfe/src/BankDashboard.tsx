@@ -45,8 +45,9 @@ import {
   type AddressSuggestion, type EatsOrder, type EatsOrderStatus, type FavoriteRestaurant, type MenuItem, type RatingSummary, type Rider,
 } from './lib/eats';
 import {
-  advanceOrderStatus, cancelOrder, fetchMerchantOrders, fetchMerchantProducts, fetchMyOrders, placeOrder,
-  type CommerceOrder, type CommerceOrderStatus, type CommerceProduct,
+  advanceOrderStatus, cancelOrder, fetchMerchantOrders, fetchMerchantProducts, fetchMyOrders, fetchOrderDetail,
+  fetchProductRating, placeOrder, submitProductReview,
+  type CommerceOrder, type CommerceOrderItem, type CommerceOrderStatus, type CommerceProduct,
 } from './lib/commerce';
 import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
@@ -4436,6 +4437,110 @@ function CommerceOrderCard({ order, action }: { order: CommerceOrder; action?: R
   );
 }
 
+// Real post-delivery product reviews (2026-07-20), mirroring Eats' own
+// RestaurantRatingBadge/ReviewOrderCard pattern -- see ProductReviewService's own doc
+// comment for the full backend account. One real review per real delivered line item.
+function ProductRatingBadge({ productId }: { productId: string }) {
+  const [rating, setRating] = useState<{ average: number | null; count: number } | null>(null);
+
+  useEffect(() => {
+    fetchProductRating(productId).then(setRating).catch(() => {
+      // Real, non-critical -- a rating fetch failure shouldn't block browsing the catalog.
+    });
+  }, [productId]);
+
+  if (!rating || rating.count === 0) return null;
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--toss-grey-700)' }}>
+      <Star size={13} color="#F5A623" fill="#F5A623" />
+      {rating.average?.toFixed(1)} ({rating.count})
+    </span>
+  );
+}
+
+function ProductReviewRow({ item }: { item: CommerceOrderItem }) {
+  const [open, setOpen] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (rating === 0) {
+      setError('Pick a star rating.');
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      await submitProductReview(item.id, rating, comment);
+      setDone(true);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'PRODUCT_ALREADY_REVIEWED') {
+        setDone(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Could not submit this review.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (done) {
+    return (
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{item.productName}: thanks for your review!</p>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button className="toss-btn toss-btn-secondary" style={{ fontSize: '12px', padding: '8px 12px' }} onClick={() => setOpen(true)}>
+        Rate {item.productName}
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{item.productName}</p>
+      <StarRatingInput value={rating} onChange={setRating} />
+      <input
+        type="text"
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        placeholder="How was it? (optional)"
+        style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+      />
+      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
+          {submitting ? 'Submitting…' : 'Submit review'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function OrderItemReviews({ order }: { order: CommerceOrder }) {
+  const [items, setItems] = useState<CommerceOrderItem[] | null>(null);
+
+  useEffect(() => {
+    fetchOrderDetail(order.id).then((r) => setItems(r.items)).catch(() => {
+      // Real, non-critical -- if item fetch fails, the order card itself still renders fine.
+    });
+  }, [order.id]);
+
+  if (!items || items.length === 0) return null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+      {items.map((item) => <ProductReviewRow key={item.id} item={item} />)}
+    </div>
+  );
+}
+
 // Real cross-merchant cart (2026-07-20) -- closes the "real Coupang splits a
 // multi-seller cart into per-seller orders, not attempted here" simplification this
 // row's own text named. Keyed by merchantId so a buyer can browse merchant A, add
@@ -4508,6 +4613,7 @@ function ProductCatalogView({
               <div>
                 <p style={{ fontSize: '15px', fontWeight: 700 }}>{item.name}</p>
                 <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{item.price.toLocaleString()} RWF</p>
+                <ProductRatingBadge productId={item.id} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button onClick={() => onSetQty(merchant, item, qtyFor(item.id) - 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>−</button>
@@ -4703,11 +4809,15 @@ function MyCommerceOrdersView() {
         <CommerceOrderCard
           key={o.id}
           order={o}
-          action={o.status === 'PLACED' && (
-            <button className="toss-btn toss-btn-danger" disabled={cancellingId === o.id} onClick={() => handleCancel(o.id)}>
-              {cancellingId === o.id ? 'Cancelling…' : 'Cancel order'}
-            </button>
-          )}
+          action={
+            o.status === 'PLACED' ? (
+              <button className="toss-btn toss-btn-danger" disabled={cancellingId === o.id} onClick={() => handleCancel(o.id)}>
+                {cancellingId === o.id ? 'Cancelling…' : 'Cancel order'}
+              </button>
+            ) : o.status === 'DELIVERED' ? (
+              <OrderItemReviews order={o} />
+            ) : undefined
+          }
         />
       ))}
     </div>
