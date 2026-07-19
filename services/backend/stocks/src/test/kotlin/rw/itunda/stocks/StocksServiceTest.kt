@@ -188,6 +188,55 @@ class StocksServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("a real caller requesting a real stock's price history") {
+        val walletRepository = mockk<WalletRepository>()
+        val holdingRepository = mockk<HoldingRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val stockWatchlistRepository = mockk<StockWatchlistRepository>(relaxed = true)
+        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository)
+
+        When("requesting a real 30-day window") {
+            val history = service.getPriceHistory("s1", 30)
+
+            Then("it returns the real deterministic 30-point series") {
+                history.size shouldBe 30
+            }
+        }
+
+        When("requesting zero days") {
+            Then("it throws InvalidPriceHistoryRangeException") {
+                try {
+                    service.getPriceHistory("s1", 0)
+                    error("expected InvalidPriceHistoryRangeException")
+                } catch (e: InvalidPriceHistoryRangeException) {
+                    // expected
+                }
+            }
+        }
+
+        When("requesting more than a real year") {
+            Then("it throws InvalidPriceHistoryRangeException") {
+                try {
+                    service.getPriceHistory("s1", 366)
+                    error("expected InvalidPriceHistoryRangeException")
+                } catch (e: InvalidPriceHistoryRangeException) {
+                    // expected
+                }
+            }
+        }
+
+        When("requesting history for an unknown stock") {
+            Then("it throws StockNotFoundException") {
+                try {
+                    service.getPriceHistory("s999", 30)
+                    error("expected StockNotFoundException")
+                } catch (e: StockNotFoundException) {
+                    // expected
+                }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

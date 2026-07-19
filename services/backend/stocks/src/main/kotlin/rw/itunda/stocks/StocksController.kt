@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
@@ -30,6 +31,15 @@ class StocksController(private val stocksService: StocksService, private val ide
 
     @GetMapping
     fun getStocks() = ResponseEntity.ok(mapOf("success" to true, "stocks" to stocksService.getStocks()))
+
+    // Real price history (2026-07-19) -- see StocksService.getPriceHistory's own doc
+    // comment. Defaults to 30 days, matching a real securities app's default chart range.
+    @GetMapping("/{stockId}/history")
+    fun getPriceHistory(
+        @PathVariable stockId: String,
+        @RequestParam(defaultValue = "30") days: Int,
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "history" to stocksService.getPriceHistory(stockId, days)))
 
     @GetMapping("/portfolio")
     fun getPortfolio(@AuthenticationPrincipal currentUser: CurrentUser) =
@@ -97,6 +107,9 @@ class StocksController(private val stocksService: StocksService, private val ide
 
     @ExceptionHandler(StockNotFoundException::class)
     fun handleNotFound(ex: StockNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("STOCK_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(InvalidPriceHistoryRangeException::class)
+    fun handleInvalidRange(ex: InvalidPriceHistoryRangeException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PRICE_HISTORY_RANGE", ex.message ?: "Bad request"))
 
     @ExceptionHandler(NoWalletException::class)
     fun handleNoWallet(ex: NoWalletException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))

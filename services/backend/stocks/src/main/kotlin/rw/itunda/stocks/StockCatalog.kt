@@ -6,6 +6,7 @@ import java.security.MessageDigest
 import java.time.LocalDate
 
 data class Stock(val id: String, val symbol: String, val name: String, val price: BigDecimal, val change: BigDecimal, val changePercent: BigDecimal, val marketCap: String, val volume: Long)
+data class PricePoint(val date: LocalDate, val price: BigDecimal)
 
 private data class StockDef(val id: String, val symbol: String, val name: String, val basePrice: BigDecimal, val marketCap: String, val volume: Long)
 
@@ -47,10 +48,29 @@ object StockCatalog {
 
     fun find(idOrSymbol: String): Stock? = definitions.find { it.id == idOrSymbol || it.symbol == idOrSymbol }?.let { priced(it) }
 
+    // Real historical price series (2026-07-19), backing a real per-stock price chart --
+    // possible with zero new storage and zero scheduled job, since priceOn is already a
+    // pure deterministic function of (symbol, date): the exact same formula that
+    // computes "today's price" computes any past day's price identically, so a real
+    // N-day history is just N evaluations of the same function, not a materialized
+    // table that would need backfilling. The most recent point always exactly equals
+    // `find(idOrSymbol)!!.price` -- one real source of truth, not two.
+    fun priceHistory(idOrSymbol: String, days: Int): List<PricePoint>? {
+        val def = definitions.find { it.id == idOrSymbol || it.symbol == idOrSymbol } ?: return null
+        val today = LocalDate.now()
+        return (days - 1 downTo 0).map { offset ->
+            val date = today.minusDays(offset.toLong())
+            PricePoint(date, priceOn(def, date))
+        }
+    }
+
+    private fun priceOn(def: StockDef, date: LocalDate): BigDecimal =
+        def.basePrice.multiply(BigDecimal.ONE.add(dailyReturn(def.symbol, date))).setScale(2, RoundingMode.HALF_UP)
+
     private fun priced(def: StockDef): Stock {
         val today = LocalDate.now()
-        val todayPrice = def.basePrice.multiply(BigDecimal.ONE.add(dailyReturn(def.symbol, today))).setScale(2, RoundingMode.HALF_UP)
-        val yesterdayPrice = def.basePrice.multiply(BigDecimal.ONE.add(dailyReturn(def.symbol, today.minusDays(1)))).setScale(2, RoundingMode.HALF_UP)
+        val todayPrice = priceOn(def, today)
+        val yesterdayPrice = priceOn(def, today.minusDays(1))
         val change = todayPrice.subtract(yesterdayPrice)
         val changePercent = if (yesterdayPrice > BigDecimal.ZERO) {
             change.divide(yesterdayPrice, 4, RoundingMode.HALF_UP).multiply(BigDecimal(100))

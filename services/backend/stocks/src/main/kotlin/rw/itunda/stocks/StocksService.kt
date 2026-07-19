@@ -20,6 +20,7 @@ import java.util.UUID
 class StockNotFoundException(message: String) : RuntimeException(message)
 class NoWalletException(message: String) : RuntimeException(message)
 class NotEnoughSharesException(message: String) : RuntimeException(message)
+class InvalidPriceHistoryRangeException(message: String) : RuntimeException(message)
 
 /** Port of backend/src/controllers/stock.controller.ts. */
 @Service
@@ -30,6 +31,18 @@ class StocksService(
     private val stockWatchlistRepository: StockWatchlistRepository,
 ) {
     fun getStocks() = StockCatalog.stocks
+
+    // Real per-stock price history (2026-07-19), backing a real chart -- see
+    // StockCatalog.priceHistory's own doc comment for why this needs no new storage.
+    // Bounded to a real year, matching this codebase's own "bound anything that could
+    // otherwise become an unreasonably large single response" discipline (e.g.
+    // MarketplaceService.MAX_OSRM_TABLE_CANDIDATES).
+    fun getPriceHistory(stockId: String, days: Int): List<PricePoint> {
+        if (days < 1 || days > 365) {
+            throw InvalidPriceHistoryRangeException("days must be between 1 and 365")
+        }
+        return StockCatalog.priceHistory(stockId, days) ?: throw StockNotFoundException("Stock not found")
+    }
 
     fun getPortfolio(userId: String): Map<String, Any?> {
         val holdings = holdingRepository.findByUserId(userId).filter { it.shares > BigDecimal.ZERO }

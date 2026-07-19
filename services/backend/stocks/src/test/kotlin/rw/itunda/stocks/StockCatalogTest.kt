@@ -53,5 +53,33 @@ class StockCatalogTest : BehaviorSpec({
                 changePercents.toSet().size shouldBe changePercents.size
             }
         }
+
+        When("fetching a real 30-day price history") {
+            val history = StockCatalog.priceHistory("s1", 30)
+
+            Then("it returns exactly 30 real points, oldest to newest, with the last one matching today's live price") {
+                history?.size shouldBe 30
+                history?.first()?.date shouldBe java.time.LocalDate.now().minusDays(29)
+                history?.last()?.date shouldBe java.time.LocalDate.now()
+                history?.last()?.price shouldBe StockCatalog.find("s1")?.price
+            }
+        }
+
+        When("fetching the real price history twice") {
+            val first = StockCatalog.priceHistory("s1", 7)
+            val second = StockCatalog.priceHistory("s1", 7)
+
+            Then("every real point is identical both times -- deterministic, not random-per-call") {
+                first shouldBe second
+            }
+        }
+
+        When("fetching real price history for an unknown stock") {
+            val history = StockCatalog.priceHistory("s999", 30)
+
+            Then("it returns null, not a fabricated series") {
+                history shouldBe null
+            }
+        }
     }
 })
