@@ -588,6 +588,22 @@ data class FavoriteRestaurantsResponse(val success: Boolean, val favorites: List
 data class AddFavoriteResponse(val success: Boolean)
 data class RemoveFavoriteResponse(val success: Boolean)
 
+// Real Toss Securities-style stock investing (2026-07-20) -- see ApiService's own
+// getStocks doc comment for the full account.
+data class StockDto(val id: String, val symbol: String, val name: String, val price: Double, val change: Double, val changePercent: Double, val marketCap: String, val volume: Long)
+data class StocksResponse(val success: Boolean, val stocks: List<StockDto>, val watchlist: List<StockDto>? = null)
+data class StockPricePointDto(val date: String, val price: Double)
+data class StockHistoryResponse(val success: Boolean, val history: List<StockPricePointDto>)
+data class PortfolioValuePointDto(val date: String, val value: Double)
+data class PortfolioHistoryResponse(val success: Boolean, val history: List<PortfolioValuePointDto>)
+data class StockHoldingDto(val stockId: String, val symbol: String, val name: String, val shares: Double, val avgPrice: Double, val currentPrice: Double, val value: Double, val `return`: Double)
+data class StockPortfolioDto(val totalValue: Double, val totalReturn: Double, val totalReturnPercent: Double, val holdings: List<StockHoldingDto>)
+data class StockPortfolioResponse(val success: Boolean, val portfolio: StockPortfolioDto)
+data class TradeStockRequest(val stockId: String, val shares: Double)
+data class TradeStockResponse(val success: Boolean, val message: String)
+data class WatchStockResponse(val success: Boolean)
+data class UnwatchStockResponse(val success: Boolean)
+
 // Retrofit Interface to map to your Spring endpoints -- all require the real
 // Bearer token NetworkClient's authInterceptor now injects (2026-07-11).
 interface ApiService {
@@ -920,6 +936,39 @@ interface ApiService {
 
     @GET("api/v1/eats/favorites")
     suspend fun getMyFavoriteRestaurants(): FavoriteRestaurantsResponse
+
+    // Real Toss Securities-style stock investing (rw.itunda.stocks) -- this is the
+    // first mobile UI this feature has ever had (bank-mfe just got its own real UI the
+    // same session, closing what had been a zero-client-UI gap even for the original
+    // pre-existing buy/sell/portfolio backend). See StockCatalog.kt's own doc comment
+    // on the backend for why day-over-day movement/history is a real deterministic
+    // simulation, not fabricated randomness or live RSE data.
+    @GET("api/v1/stocks")
+    suspend fun getStocks(): StocksResponse
+
+    @GET("api/v1/stocks/{id}/history")
+    suspend fun getStockHistory(@Path("id") stockId: String, @Query("days") days: Int = 14): StockHistoryResponse
+
+    @GET("api/v1/stocks/portfolio")
+    suspend fun getStockPortfolio(): StockPortfolioResponse
+
+    @GET("api/v1/stocks/portfolio/history")
+    suspend fun getPortfolioHistory(@Query("days") days: Int = 30): PortfolioHistoryResponse
+
+    @POST("api/v1/stocks/buy")
+    suspend fun buyStock(@Header("Idempotency-Key") idempotencyKey: String, @Body request: TradeStockRequest): TradeStockResponse
+
+    @POST("api/v1/stocks/sell")
+    suspend fun sellStock(@Header("Idempotency-Key") idempotencyKey: String, @Body request: TradeStockRequest): TradeStockResponse
+
+    @GET("api/v1/stocks/watchlist")
+    suspend fun getStockWatchlist(): StocksResponse
+
+    @POST("api/v1/stocks/{id}/watch")
+    suspend fun watchStock(@Path("id") stockId: String): WatchStockResponse
+
+    @DELETE("api/v1/stocks/{id}/watch")
+    suspend fun unwatchStock(@Path("id") stockId: String): UnwatchStockResponse
 }
 
 data class TransactionHistoryResponse(val success: Boolean, val transactions: List<TransactionDto>)

@@ -199,6 +199,7 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
         var showBenefits by rememberSaveable { mutableStateOf(false) }
         var showPay by rememberSaveable { mutableStateOf(false) }
         var showMap by rememberSaveable { mutableStateOf(false) }
+        var showInvest by rememberSaveable { mutableStateOf(false) }
         // Real "message seller" hand-off from Hood to Talk (2026-07-18) -- mirrors
         // bank-mfe's BankDashboard.tsx pendingConversationId/onConsumedInitial pattern
         // exactly: HoodTab's contactSeller() switches the selected tab AND stashes the
@@ -423,6 +424,14 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
             MapScreen(onBack = { showMap = false })
             return@TdsTheme
         }
+        // Real Invest/Stocks screen (2026-07-20) -- same Quick-links full-screen
+        // pattern as Pay/Benefits/Map above; this feature never had ANY mobile UI
+        // before now, not even the original buy/sell/portfolio.
+        if (showInvest) {
+            BackHandler { showInvest = false }
+            InvestScreen(onBack = { showInvest = false })
+            return@TdsTheme
+        }
 
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
@@ -461,6 +470,7 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                         onOpenBenefits = { showBenefits = true },
                         onOpenPay = { showPay = true },
                         onOpenMap = { showMap = true },
+                        onOpenInvest = { showInvest = true },
                     )
                 }
             }
@@ -862,6 +872,7 @@ private fun AllTab(
     onOpenBenefits: () -> Unit = {},
     onOpenPay: () -> Unit = {},
     onOpenMap: () -> Unit = {},
+    onOpenInvest: () -> Unit = {},
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
@@ -887,6 +898,7 @@ private fun AllTab(
                 listOf(
                     FlatRow("Pay", subtitle = "Scan or pay by code", icon = Icons.Outlined.QrCodeScanner, iconColor = AccentBlue, onClick = onOpenPay),
                     FlatRow("Benefits", subtitle = "Points, coupons, rewards", icon = Icons.Outlined.CardGiftcard, iconColor = AccentOrange, onClick = onOpenBenefits),
+                    FlatRow("Invest", subtitle = "RSE stocks, real portfolio", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenInvest),
                     FlatRow("Map", subtitle = "Real Rwanda map, self-hosted", icon = Icons.Outlined.Map, iconColor = AccentTeal, onClick = onOpenMap),
                 ),
             )

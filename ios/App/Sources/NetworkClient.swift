@@ -894,6 +894,51 @@ struct FavoriteRestaurantDto: Decodable, Identifiable {
 struct FavoriteRestaurantsResponse: Decodable { let success: Bool; let favorites: [FavoriteRestaurantDto] }
 struct SuccessResponse: Decodable { let success: Bool }
 
+// Real Toss Securities-style stock investing (2026-07-20) -- the first iOS UI this
+// feature has ever had, ported from bank-mfe/Android the same session. Day-over-day
+// movement/history are real deterministic simulations, not live RSE data -- see the
+// backend's StockCatalog.kt for the full account.
+struct StockDto: Decodable, Identifiable {
+    let id: String
+    let symbol: String
+    let name: String
+    let price: Double
+    let change: Double
+    let changePercent: Double
+    let marketCap: String
+    let volume: Int
+}
+struct StocksResponse: Decodable { let success: Bool; let stocks: [StockDto]? ; let watchlist: [StockDto]? }
+struct StockPricePointDto: Decodable, Identifiable { let date: String; let price: Double; var id: String { date } }
+struct StockHistoryResponse: Decodable { let success: Bool; let history: [StockPricePointDto] }
+struct PortfolioValuePointDto: Decodable, Identifiable { let date: String; let value: Double; var id: String { date } }
+struct PortfolioHistoryResponse: Decodable { let success: Bool; let history: [PortfolioValuePointDto] }
+struct StockHoldingDto: Decodable, Identifiable {
+    let stockId: String
+    let symbol: String
+    let name: String
+    let shares: Double
+    let avgPrice: Double
+    let currentPrice: Double
+    let value: Double
+    let returnPercent: Double
+    var id: String { stockId }
+
+    enum CodingKeys: String, CodingKey {
+        case stockId, symbol, name, shares, avgPrice, currentPrice, value
+        case returnPercent = "return"
+    }
+}
+struct StockPortfolioDto: Decodable {
+    let totalValue: Double
+    let totalReturn: Double
+    let totalReturnPercent: Double
+    let holdings: [StockHoldingDto]
+}
+struct StockPortfolioResponse: Decodable { let success: Bool; let portfolio: StockPortfolioDto }
+struct TradeStockRequest: Encodable { let stockId: String; let shares: Double }
+struct TradeStockResponse: Decodable { let success: Bool; let message: String }
+
 extension NetworkClient {
     func startConversation(phoneNumber: String) async throws -> ConversationResponse {
         try await authenticatedPost("api/v1/messages/conversations", body: StartConversationRequest(phoneNumber: phoneNumber, otherUserId: nil))
@@ -1319,6 +1364,38 @@ extension NetworkClient {
     }
 
     func getMyFavoriteRestaurants() async throws -> FavoriteRestaurantsResponse { try await get("api/v1/eats/favorites") }
+
+    // Real Toss Securities-style stock investing (2026-07-20) -- see StocksResponse's
+    // own doc comment for the full account.
+    func getStocks() async throws -> StocksResponse { try await get("api/v1/stocks") }
+
+    func getStockHistory(stockId: String, days: Int = 14) async throws -> StockHistoryResponse {
+        try await get("api/v1/stocks/\(stockId)/history", query: [URLQueryItem(name: "days", value: String(days))])
+    }
+
+    func getStockPortfolio() async throws -> StockPortfolioResponse { try await get("api/v1/stocks/portfolio") }
+
+    func getPortfolioHistory(days: Int = 30) async throws -> PortfolioHistoryResponse {
+        try await get("api/v1/stocks/portfolio/history", query: [URLQueryItem(name: "days", value: String(days))])
+    }
+
+    func buyStock(stockId: String, shares: Double) async throws -> TradeStockResponse {
+        try await authenticatedPost("api/v1/stocks/buy", body: TradeStockRequest(stockId: stockId, shares: shares), idempotencyKey: UUID().uuidString)
+    }
+
+    func sellStock(stockId: String, shares: Double) async throws -> TradeStockResponse {
+        try await authenticatedPost("api/v1/stocks/sell", body: TradeStockRequest(stockId: stockId, shares: shares), idempotencyKey: UUID().uuidString)
+    }
+
+    func getStockWatchlist() async throws -> StocksResponse { try await get("api/v1/stocks/watchlist") }
+
+    func watchStock(stockId: String) async throws -> SuccessResponse {
+        try await authenticatedPost("api/v1/stocks/\(stockId)/watch", body: EmptyBody())
+    }
+
+    func unwatchStock(stockId: String) async throws -> SuccessResponse {
+        try await authenticatedDelete("api/v1/stocks/\(stockId)/watch")
+    }
 
     /// Real DELETE support -- every other authenticated call so far was GET/POST only,
     /// see `authenticatedPost`'s own doc comment for why the Idempotency-Key handling

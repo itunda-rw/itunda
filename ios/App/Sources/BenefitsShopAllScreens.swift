@@ -176,6 +176,10 @@ struct EntireMenuScreen: View {
     // Real self-hosted Rwanda map (2026-07-19) -- same Quick-links pattern as Pay/
     // Benefits above, since the 5-tab bottom nav has no free slot for a Map tab.
     @State private var showMap = false
+    // Real Invest/Stocks screen (2026-07-20) -- same Quick-links pattern as Pay/
+    // Benefits/Map above; this feature never had ANY mobile UI before now, not even
+    // the original buy/sell/portfolio.
+    @State private var showInvest = false
 
     var body: some View {
         ScrollView {
@@ -194,6 +198,7 @@ struct EntireMenuScreen: View {
                     FlatSection(title: "Quick links", rows: [
                         FlatRow(title: "Pay", subtitle: "Scan or pay by code", symbol: "qrcode", tint: .accentBlue, action: { showPay = true }),
                         FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", symbol: "gift.fill", tint: .accentOrange, action: { showBenefits = true }),
+                        FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showInvest = true }),
                         FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", symbol: "map.fill", tint: .accentTeal, action: { showMap = true }),
                     ])
                     TdsSearchBar(placeholder: "Search")
@@ -311,6 +316,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showMap) {
             MapScreenView()
+        }
+        .sheet(isPresented: $showInvest) {
+            InvestScreenView(onBack: { showInvest = false })
         }
     }
 }
