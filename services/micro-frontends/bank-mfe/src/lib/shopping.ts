@@ -9,6 +9,8 @@ export interface ShoppingMerchant {
   businessName: string;
   category: string | null;
   cashbackRate: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export const fetchShoppingCatalog = () =>

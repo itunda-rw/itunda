@@ -50,6 +50,11 @@ class ShoppingController(
                 "businessName" to merchant.businessName,
                 "category" to merchant.category,
                 "cashbackRate" to "1%",
+                // Real optional location (2026-07-19) -- lets a real map view plot real
+                // merchants, same field already set via POST /api/v1/merchant/location for
+                // Eats' distance-based delivery fee. Null for a merchant that hasn't set one.
+                "latitude" to merchant.latitude,
+                "longitude" to merchant.longitude,
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "merchants" to merchants) + pageMeta(page))

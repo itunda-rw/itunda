@@ -22,8 +22,9 @@ import {
   advanceOrderStatus, cancelOrder, fetchMerchantOrders, fetchMerchantProducts, fetchMyOrders, placeOrder,
   type CommerceOrder, type CommerceOrderStatus, type CommerceProduct,
 } from './lib/commerce';
+import MapView from './MapView';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'MESSAGES' | 'MARKETPLACE' | 'EATS';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'MESSAGES' | 'MARKETPLACE' | 'EATS' | 'MAP';
 
 function AccountBalance({ wallet }: { wallet: Wallet | null }) {
   return (
@@ -2757,6 +2758,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'EATS', label: 'Eats' },
     { id: 'MESSAGES', label: 'Messages' },
     { id: 'MARKETPLACE', label: 'Marketplace' },
+    { id: 'MAP', label: 'Map' },
     { id: 'CERTIFICATE', label: 'Certificate' },
     { id: 'SHOPPING', label: 'Shopping' },
   ];
@@ -2804,6 +2806,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         />
       )}
       {tab === 'MARKETPLACE' && <MarketplaceView onMessageSeller={handleMessageSeller} />}
+      {tab === 'MAP' && <MapView />}
       {tab === 'CERTIFICATE' && <CertificateView />}
       {tab === 'SHOPPING' && <ShoppingView />}
     </div>
