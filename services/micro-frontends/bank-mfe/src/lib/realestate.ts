@@ -20,6 +20,9 @@ export interface PropertyListing {
   createdAt: string;
   latitude?: number | null;
   longitude?: number | null;
+  // Real hyperlocal neighborhood (2026-07-20), cached at creation time -- see
+  // lib/neighborhood.ts's own doc comment for the full account.
+  neighborhood?: string | null;
 }
 
 export interface PropertyType {
@@ -42,6 +45,15 @@ export const fetchPropertyListings = (listingType?: PropertyListingType, propert
 
 export const fetchMyPropertyListings = () =>
   apiFetch<{ success: boolean; listings: PropertyListing[] }>('/api/v1/realestate/my-listings').then((r) => r.listings);
+
+// Real hyperlocal "my neighborhood" browse (2026-07-20) -- see lib/neighborhood.ts's own
+// doc comment. Throws ApiError with code NEIGHBORHOOD_NOT_SET (real 400) if the caller
+// hasn't set one yet. Deliberately not combined with listingType/propertyType filters --
+// PropertyListingRepository's own doc comment names this as an honest v1 scoping choice.
+export const fetchPropertyListingsMyNeighborhood = () =>
+  apiFetch<{ success: boolean; listings: PropertyListing[] }>('/api/v1/realestate/listings/my-neighborhood').then(
+    (r) => r.listings,
+  );
 
 export const createPropertyListing = (
   listingType: PropertyListingType,

@@ -18,22 +18,23 @@ import {
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup,
 } from './lib/messaging';
 import {
-  contactSeller, createListing, fetchListings, fetchMyListings, fetchOffersForConversation, makeOffer, markListingSold,
-  removeListing, respondToOffer, type Listing, type PriceOffer,
+  contactSeller, createListing, fetchListings, fetchListingsMyNeighborhood, fetchMyListings, fetchOffersForConversation,
+  makeOffer, markListingSold, removeListing, respondToOffer, type Listing, type PriceOffer,
 } from './lib/marketplace';
+import { fetchProfile, setNeighborhood } from './lib/neighborhood';
 import {
   addCommunityComment, createCommunityPost, fetchCommunityCategories, fetchCommunityComments, fetchCommunityPost,
-  fetchCommunityPosts, fetchMyCommunityPosts, removeCommunityPost, toggleCommunityLike,
+  fetchCommunityPosts, fetchCommunityPostsMyNeighborhood, fetchMyCommunityPosts, removeCommunityPost, toggleCommunityLike,
   type CommunityCategory, type CommunityComment, type CommunityPost,
 } from './lib/community';
 import {
-  contactPoster, createJobPost, fetchJobCategories, fetchJobPosts, fetchMyJobPosts, markJobPostFilled, removeJobPost,
-  type JobCategory, type JobPayType, type JobPost,
+  contactPoster, createJobPost, fetchJobCategories, fetchJobPosts, fetchJobPostsMyNeighborhood, fetchMyJobPosts,
+  markJobPostFilled, removeJobPost, type JobCategory, type JobPayType, type JobPost,
 } from './lib/jobs';
 import {
-  contactLister, createPropertyListing, fetchMyPropertyListings, fetchPropertyListings, fetchPropertyOffersForConversation,
-  fetchPropertyTypes, makePropertyOffer, markPropertyListingTaken, removePropertyListing, respondToPropertyOffer,
-  type PropertyListing, type PropertyListingType, type PropertyPriceOffer, type PropertyType,
+  contactLister, createPropertyListing, fetchMyPropertyListings, fetchPropertyListings, fetchPropertyListingsMyNeighborhood,
+  fetchPropertyOffersForConversation, fetchPropertyTypes, makePropertyOffer, markPropertyListingTaken, removePropertyListing,
+  respondToPropertyOffer, type PropertyListing, type PropertyListingType, type PropertyPriceOffer, type PropertyType,
 } from './lib/realestate';
 import {
   addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, fetchAvailableDeliveries,
@@ -2044,15 +2045,80 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller }: {
   );
 }
 
+// Real hyperlocal neighborhood setup (2026-07-20) -- shared across every Hood-tab
+// module (Marketplace/Community/Jobs/Property), same "one small component, four real
+// call sites" shape this project already uses for offer bubbles etc. See
+// lib/neighborhood.ts's own doc comment for the full backend account.
+function NeighborhoodSetupPrompt({ onDone }: { onDone: (neighborhood: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleShare = () => {
+    if (!navigator.geolocation) {
+      setError('This browser does not support real location access.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setNeighborhood(position.coords.latitude, position.coords.longitude)
+          .then((user) => {
+            setBusy(false);
+            if (user.neighborhood) onDone(user.neighborhood);
+          })
+          .catch((err) => {
+            setBusy(false);
+            setError(err instanceof ApiError ? err.message : 'Could not determine your neighborhood.');
+          });
+      },
+      () => {
+        setBusy(false);
+        setError('Could not get your real location. Check your browser permissions.');
+      },
+    );
+  };
+
+  return (
+    <div className="toss-card" style={{ textAlign: 'center', padding: '28px' }}>
+      <p style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>Set your neighborhood</p>
+      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+        Share your real location once to see what's happening near you.
+      </p>
+      <button className="toss-btn toss-btn-primary" onClick={handleShare} disabled={busy}>
+        {busy ? 'Finding your neighborhood…' : '📍 Share my location'}
+      </button>
+      {error && <p style={{ fontSize: '13px', color: '#E53935', marginTop: '12px' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
 function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId: string) => void }) {
-  const [view, setView] = useState<'BROWSE' | 'MINE'>('BROWSE');
+  const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD'>('BROWSE');
   const [listings, setListings] = useState<Listing[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
   const currentUser = getStoredUser();
 
   const load = () => {
     setError(null);
     setListings(null);
+    if (view === 'NEIGHBORHOOD') {
+      Promise.all([fetchProfile(), fetchListingsMyNeighborhood()])
+        .then(([profile, items]) => {
+          setNeighborhoodName(profile.neighborhood);
+          setListings(items);
+        })
+        .catch((err) => {
+          if (err instanceof ApiError && err.code === 'NEIGHBORHOOD_NOT_SET') {
+            setNeighborhoodName(null);
+            setListings([]);
+          } else {
+            setError(err instanceof ApiError ? err.message : 'Could not load your neighborhood.');
+          }
+        });
+      return;
+    }
     const fetcher = view === 'BROWSE' ? fetchListings() : fetchMyListings();
     fetcher
       .then(setListings)
@@ -2064,7 +2130,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'MINE'] as const).map((v) => (
+        {(['BROWSE', 'NEIGHBORHOOD', 'MINE'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -2074,12 +2140,22 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
               backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Browse' : 'My listings'}
+            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : 'My listings'}
           </button>
         ))}
       </div>
 
       {view === 'MINE' && <NewListingCard onCreated={load} />}
+
+      {view === 'NEIGHBORHOOD' && neighborhoodName === null && (
+        <NeighborhoodSetupPrompt onDone={() => load()} />
+      )}
+
+      {view === 'NEIGHBORHOOD' && neighborhoodName && (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
+          Your neighborhood: <strong style={{ color: 'var(--toss-grey-900)' }}>{neighborhoodName}</strong>
+        </p>
+      )}
 
       {error && (
         <div className="toss-card">
@@ -2088,10 +2164,10 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
         </div>
       )}
       {!error && listings === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
-      {!error && listings !== null && listings.length === 0 && (
+      {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
         <div className="toss-card">
           <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-            {view === 'BROWSE' ? 'No listings yet.' : "You haven't listed anything yet."}
+            {view === 'BROWSE' ? 'No listings yet.' : view === 'NEIGHBORHOOD' ? 'No listings in your neighborhood yet.' : "You haven't listed anything yet."}
           </p>
         </div>
       )}
@@ -2362,12 +2438,13 @@ function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: (
 }
 
 function CommunityView() {
-  const [view, setView] = useState<'BROWSE' | 'MINE'>('BROWSE');
+  const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD'>('BROWSE');
   const [categories, setCategories] = useState<CommunityCategory[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [posts, setPosts] = useState<CommunityPost[] | null>(null);
   const [openPostId, setOpenPostId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
   const currentUser = getStoredUser();
 
   useEffect(() => {
@@ -2377,6 +2454,22 @@ function CommunityView() {
   const load = () => {
     setError(null);
     setPosts(null);
+    if (view === 'NEIGHBORHOOD') {
+      Promise.all([fetchProfile(), fetchCommunityPostsMyNeighborhood(activeCategory ?? undefined)])
+        .then(([profile, items]) => {
+          setNeighborhoodName(profile.neighborhood);
+          setPosts(items);
+        })
+        .catch((err) => {
+          if (err instanceof ApiError && err.code === 'NEIGHBORHOOD_NOT_SET') {
+            setNeighborhoodName(null);
+            setPosts([]);
+          } else {
+            setError(err instanceof ApiError ? err.message : 'Could not load your neighborhood.');
+          }
+        });
+      return;
+    }
     const fetcher = view === 'BROWSE' ? fetchCommunityPosts(activeCategory ?? undefined) : fetchMyCommunityPosts();
     fetcher
       .then(setPosts)
@@ -2394,7 +2487,7 @@ function CommunityView() {
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'MINE'] as const).map((v) => (
+        {(['BROWSE', 'NEIGHBORHOOD', 'MINE'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -2404,12 +2497,12 @@ function CommunityView() {
               backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Neighborhood feed' : 'My posts'}
+            {v === 'BROWSE' ? 'Feed' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : 'My posts'}
           </button>
         ))}
       </div>
 
-      {view === 'BROWSE' && categories.length > 0 && (
+      {(view === 'BROWSE' || view === 'NEIGHBORHOOD') && categories.length > 0 && (
         <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '12px', paddingBottom: '2px' }}>
           {categories.map((c) => (
             <button
@@ -2430,6 +2523,16 @@ function CommunityView() {
 
       {view === 'MINE' && <NewCommunityPostCard categories={categories} onCreated={load} />}
 
+      {view === 'NEIGHBORHOOD' && neighborhoodName === null && (
+        <NeighborhoodSetupPrompt onDone={() => load()} />
+      )}
+
+      {view === 'NEIGHBORHOOD' && neighborhoodName && (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
+          Your neighborhood: <strong style={{ color: 'var(--toss-grey-900)' }}>{neighborhoodName}</strong>
+        </p>
+      )}
+
       {error && (
         <div className="toss-card">
           <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
@@ -2437,10 +2540,10 @@ function CommunityView() {
         </div>
       )}
       {!error && posts === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
-      {!error && posts !== null && posts.length === 0 && (
+      {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && posts !== null && posts.length === 0 && (
         <div className="toss-card">
           <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-            {view === 'BROWSE' ? 'No posts yet.' : "You haven't posted anything yet."}
+            {view === 'BROWSE' ? 'No posts yet.' : view === 'NEIGHBORHOOD' ? 'No posts in your neighborhood yet.' : "You haven't posted anything yet."}
           </p>
         </div>
       )}
@@ -2610,11 +2713,12 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact }: {
 }
 
 function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: string) => void }) {
-  const [view, setView] = useState<'BROWSE' | 'MINE'>('BROWSE');
+  const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD'>('BROWSE');
   const [categories, setCategories] = useState<JobCategory[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [posts, setPosts] = useState<JobPost[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
   const currentUser = getStoredUser();
 
   useEffect(() => {
@@ -2624,6 +2728,22 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
   const load = () => {
     setError(null);
     setPosts(null);
+    if (view === 'NEIGHBORHOOD') {
+      Promise.all([fetchProfile(), fetchJobPostsMyNeighborhood(activeCategory ?? undefined)])
+        .then(([profile, items]) => {
+          setNeighborhoodName(profile.neighborhood);
+          setPosts(items);
+        })
+        .catch((err) => {
+          if (err instanceof ApiError && err.code === 'NEIGHBORHOOD_NOT_SET') {
+            setNeighborhoodName(null);
+            setPosts([]);
+          } else {
+            setError(err instanceof ApiError ? err.message : 'Could not load your neighborhood.');
+          }
+        });
+      return;
+    }
     const fetcher = view === 'BROWSE' ? fetchJobPosts(activeCategory ?? undefined) : fetchMyJobPosts();
     fetcher
       .then(setPosts)
@@ -2646,7 +2766,7 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'MINE'] as const).map((v) => (
+        {(['BROWSE', 'NEIGHBORHOOD', 'MINE'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -2656,12 +2776,12 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
               backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Find work' : 'My posts'}
+            {v === 'BROWSE' ? 'Find work' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : 'My posts'}
           </button>
         ))}
       </div>
 
-      {view === 'BROWSE' && categories.length > 0 && (
+      {(view === 'BROWSE' || view === 'NEIGHBORHOOD') && categories.length > 0 && (
         <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '12px', paddingBottom: '2px' }}>
           {categories.map((c) => (
             <button
@@ -2682,6 +2802,16 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
 
       {view === 'MINE' && <NewJobPostCard categories={categories} onCreated={load} />}
 
+      {view === 'NEIGHBORHOOD' && neighborhoodName === null && (
+        <NeighborhoodSetupPrompt onDone={() => load()} />
+      )}
+
+      {view === 'NEIGHBORHOOD' && neighborhoodName && (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
+          Your neighborhood: <strong style={{ color: 'var(--toss-grey-900)' }}>{neighborhoodName}</strong>
+        </p>
+      )}
+
       {error && (
         <div className="toss-card">
           <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
@@ -2689,10 +2819,10 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
         </div>
       )}
       {!error && posts === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
-      {!error && posts !== null && posts.length === 0 && (
+      {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && posts !== null && posts.length === 0 && (
         <div className="toss-card">
           <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-            {view === 'BROWSE' ? 'No jobs posted yet.' : "You haven't posted any jobs yet."}
+            {view === 'BROWSE' ? 'No jobs posted yet.' : view === 'NEIGHBORHOOD' ? 'No jobs in your neighborhood yet.' : "You haven't posted any jobs yet."}
           </p>
         </div>
       )}
@@ -2928,12 +3058,13 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
 }
 
 function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: string) => void }) {
-  const [view, setView] = useState<'BROWSE' | 'MINE'>('BROWSE');
+  const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD'>('BROWSE');
   const [propertyTypes, setPropertyTypes] = useState<PropertyType[]>([]);
   const [listingTypeFilter, setListingTypeFilter] = useState<PropertyListingType | null>(null);
   const [propertyTypeFilter, setPropertyTypeFilter] = useState<string | null>(null);
   const [listings, setListings] = useState<PropertyListing[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
   const currentUser = getStoredUser();
 
   useEffect(() => {
@@ -2943,6 +3074,22 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
   const load = () => {
     setError(null);
     setListings(null);
+    if (view === 'NEIGHBORHOOD') {
+      Promise.all([fetchProfile(), fetchPropertyListingsMyNeighborhood()])
+        .then(([profile, items]) => {
+          setNeighborhoodName(profile.neighborhood);
+          setListings(items);
+        })
+        .catch((err) => {
+          if (err instanceof ApiError && err.code === 'NEIGHBORHOOD_NOT_SET') {
+            setNeighborhoodName(null);
+            setListings([]);
+          } else {
+            setError(err instanceof ApiError ? err.message : 'Could not load your neighborhood.');
+          }
+        });
+      return;
+    }
     const fetcher = view === 'BROWSE'
       ? fetchPropertyListings(listingTypeFilter ?? undefined, propertyTypeFilter ?? undefined)
       : fetchMyPropertyListings();
@@ -2967,7 +3114,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'MINE'] as const).map((v) => (
+        {(['BROWSE', 'NEIGHBORHOOD', 'MINE'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -2977,7 +3124,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
               backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Browse' : 'My listings'}
+            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : 'My listings'}
           </button>
         ))}
       </div>
@@ -3022,6 +3169,16 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
 
       {view === 'MINE' && <NewPropertyListingCard propertyTypes={propertyTypes} onCreated={load} />}
 
+      {view === 'NEIGHBORHOOD' && neighborhoodName === null && (
+        <NeighborhoodSetupPrompt onDone={() => load()} />
+      )}
+
+      {view === 'NEIGHBORHOOD' && neighborhoodName && (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
+          Your neighborhood: <strong style={{ color: 'var(--toss-grey-900)' }}>{neighborhoodName}</strong>
+        </p>
+      )}
+
       {error && (
         <div className="toss-card">
           <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
@@ -3029,10 +3186,10 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
         </div>
       )}
       {!error && listings === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
-      {!error && listings !== null && listings.length === 0 && (
+      {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
         <div className="toss-card">
           <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-            {view === 'BROWSE' ? 'No properties listed yet.' : "You haven't listed any properties yet."}
+            {view === 'BROWSE' ? 'No properties listed yet.' : view === 'NEIGHBORHOOD' ? 'No properties in your neighborhood yet.' : "You haven't listed any properties yet."}
           </p>
         </div>
       )}

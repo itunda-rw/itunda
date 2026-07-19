@@ -19,6 +19,9 @@ export interface Listing {
   // (MarketplaceService.nearby) and, 2026-07-19, "Get directions to this seller".
   latitude?: number | null;
   longitude?: number | null;
+  // Real hyperlocal neighborhood (2026-07-20), cached at creation time -- see
+  // lib/neighborhood.ts's own doc comment for the full account.
+  neighborhood?: string | null;
 }
 
 export const fetchListings = (category?: string) =>
@@ -28,6 +31,15 @@ export const fetchListings = (category?: string) =>
 
 export const fetchMyListings = () =>
   apiFetch<{ success: boolean; listings: Listing[] }>('/api/v1/marketplace/my-listings').then((r) => r.listings);
+
+// Real hyperlocal "my neighborhood" browse (2026-07-20) -- see lib/neighborhood.ts's own
+// doc comment for the full account. Throws ApiError with code NEIGHBORHOOD_NOT_SET
+// (real 400) if the caller hasn't set one yet -- callers should catch that specific
+// code and prompt for setup, not treat it as a generic load failure.
+export const fetchListingsMyNeighborhood = (category?: string) =>
+  apiFetch<{ success: boolean; listings: Listing[] }>(
+    `/api/v1/marketplace/listings/my-neighborhood${category ? `?category=${encodeURIComponent(category)}` : ''}`,
+  ).then((r) => r.listings);
 
 export const createListing = (
   title: string,

@@ -1,0 +1,18 @@
+import { apiFetch } from './api';
+
+// Real hyperlocal neighborhood (rw.itunda.core.domain.User.neighborhood, 2026-07-20) --
+// first UI touchpoint for this backend feature across any client (a real, honest gap
+// this row's own matrix text should have named and didn't -- found live while doing a
+// UX-copy pass on this session's newest features). See AuthService.setNeighborhood's own
+// doc comment for the full backend account: a real coordinate in, reverse-geocoded
+// through itunda's own self-hosted Nominatim into a real neighborhood/sector name, never
+// a self-declared free-text field.
+
+export const fetchProfile = () =>
+  apiFetch<{ success: boolean; user: { neighborhood: string | null } }>('/api/v1/auth/profile').then((r) => r.user);
+
+export const setNeighborhood = (latitude: number, longitude: number) =>
+  apiFetch<{ success: boolean; user: { neighborhood: string | null } }>('/api/v1/auth/profile/neighborhood', {
+    method: 'POST',
+    body: JSON.stringify({ latitude, longitude }),
+  }).then((r) => r.user);

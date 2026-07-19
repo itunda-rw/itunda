@@ -18,6 +18,9 @@ export interface JobPost {
   createdAt: string;
   latitude?: number | null;
   longitude?: number | null;
+  // Real hyperlocal neighborhood (2026-07-20), cached at creation time -- see
+  // lib/neighborhood.ts's own doc comment for the full account.
+  neighborhood?: string | null;
 }
 
 export interface JobCategory {
@@ -35,6 +38,14 @@ export const fetchJobPosts = (category?: string) =>
 
 export const fetchMyJobPosts = () =>
   apiFetch<{ success: boolean; posts: JobPost[] }>('/api/v1/jobs/my-posts').then((r) => r.posts);
+
+// Real hyperlocal "my neighborhood" browse (2026-07-20) -- see lib/neighborhood.ts's own
+// doc comment. Throws ApiError with code NEIGHBORHOOD_NOT_SET (real 400) if the caller
+// hasn't set one yet.
+export const fetchJobPostsMyNeighborhood = (category?: string) =>
+  apiFetch<{ success: boolean; posts: JobPost[] }>(
+    `/api/v1/jobs/posts/my-neighborhood${category ? `?category=${encodeURIComponent(category)}` : ''}`,
+  ).then((r) => r.posts);
 
 export const createJobPost = (
   category: string,
