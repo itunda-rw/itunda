@@ -96,6 +96,8 @@ import rw.itunda.app.network.MessagingSocketPush
 import rw.itunda.app.network.SendGroupMessageRequest
 import rw.itunda.app.network.SubmitEatsReviewRequest
 import rw.itunda.app.network.EatsOrderItemRequest
+import rw.itunda.app.network.GiftDto
+import rw.itunda.app.network.SendGiftInConversationRequest
 import rw.itunda.app.network.ListingDto
 import rw.itunda.app.network.MakeOfferRequest
 import rw.itunda.app.network.SetNeighborhoodRequest
@@ -122,6 +124,7 @@ import rw.itunda.app.network.ToggleReactionRequest
 import rw.itunda.app.network.UpdateEatsOrderStatusRequest
 import rw.itunda.core.designsystem.theme.Tds
 import java.io.IOException
+import java.time.Instant
 import java.util.UUID
 
 /**
@@ -740,11 +743,16 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
     BackHandler(onBack = onBack)
     var messages by remember { mutableStateOf<List<MessageDto>?>(null) }
     var offersByMessageId by remember { mutableStateOf<Map<String, OfferBubbleData>>(emptyMap()) }
+    var giftsByMessageId by remember { mutableStateOf<Map<String, GiftDto>>(emptyMap()) }
     var draft by remember { mutableStateOf("") }
     var sending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var otherOnline by remember { mutableStateOf<Boolean?>(null) }
     var otherTyping by remember { mutableStateOf(false) }
+    var giftComposerOpen by remember { mutableStateOf(false) }
+    var giftAmount by remember { mutableStateOf("") }
+    var giftNote by remember { mutableStateOf("") }
+    var sendingGift by remember { mutableStateOf(false) }
     var typingClearJob by remember { mutableStateOf<Job?>(null) }
     var socket by remember { mutableStateOf<WebSocket?>(null) }
     var lastTypingSentAt by remember { mutableStateOf(0L) }
@@ -778,6 +786,15 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
             .associate { (data, messageId) -> messageId to data }
     }
 
+    suspend fun loadGifts() {
+        try {
+            val res = NetworkClient.apiService.getGiftsForConversation(conversation.conversationId)
+            if (res.success) giftsByMessageId = res.gifts.associateBy { it.messageId }
+        } catch (_: Exception) {
+            // Real, non-critical -- only backs the inline gift bubble.
+        }
+    }
+
     suspend fun refresh() {
         try {
             val res = NetworkClient.apiService.getMessages(conversation.conversationId)
@@ -787,6 +804,7 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
             // on a transient poll failure.
         }
         loadOffers()
+        loadGifts()
     }
 
     // Real poll, kept as an always-correct fallback delivery path alongside the real
@@ -815,6 +833,7 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
                         // A pushed message might be a real offer/counter/accept/reject --
                         // refresh so it renders as an offer bubble immediately.
                         loadOffers()
+                        loadGifts()
                     }
                 }
                 push is MessagingSocketPush.PresenceChange && push.userId == conversation.otherUserId -> {
@@ -873,6 +892,19 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
                         isMine = m.senderId == currentUserId,
                         currentUserId = currentUserId,
                         offer = offersByMessageId[m.id],
+                        gift = giftsByMessageId[m.id],
+                        onClaimGift = { giftId ->
+                            coroutineScope.launch {
+                                try {
+                                    NetworkClient.apiService.claimGift(giftId, UUID.randomUUID().toString())
+                                    loadGifts()
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } catch (_: IOException) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
+                                }
+                            }
+                        },
                         onToggleReaction = { emoji ->
                             coroutineScope.launch {
                                 try {
@@ -911,7 +943,73 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
             Text("${conversation.otherUserName} is typing…", color = TossSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
         }
         error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(vertical = 6.dp)) }
+        if (giftComposerOpen) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(TossCardSoft)
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("🎁 Send a gift", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TossText)
+                OutlinedTextField(
+                    value = giftAmount,
+                    onValueChange = { giftAmount = it },
+                    placeholder = { Text("Amount (RWF)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = giftNote,
+                    onValueChange = { if (it.length <= 200) giftNote = it },
+                    placeholder = { Text("Add a note (optional)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val amountValue = giftAmount.toDoubleOrNull()
+                    OfferActionButton(if (sendingGift) "Sending…" else "Send gift") {
+                        if (amountValue == null || amountValue <= 0 || sendingGift) return@OfferActionButton
+                        sendingGift = true
+                        error = null
+                        coroutineScope.launch {
+                            try {
+                                NetworkClient.apiService.sendGiftInConversation(
+                                    conversation.conversationId,
+                                    UUID.randomUUID().toString(),
+                                    SendGiftInConversationRequest(amountValue, giftNote.trim().ifBlank { null }),
+                                )
+                                giftAmount = ""
+                                giftNote = ""
+                                giftComposerOpen = false
+                                refresh()
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } catch (_: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
+                            } finally {
+                                sendingGift = false
+                            }
+                        }
+                    }
+                    OfferActionButton("Cancel") { giftComposerOpen = false }
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(Tds.layout.minTouchTarget)
+                    .clip(CircleShape)
+                    .background(TossCardSoft)
+                    .clickable { giftComposerOpen = !giftComposerOpen },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("🎁", fontSize = 18.sp)
+            }
+            Spacer(modifier = Modifier.width(8.dp))
             OutlinedTextField(
                 value = draft,
                 onValueChange = { newValue ->
@@ -1088,14 +1186,47 @@ private fun OfferActionButton(label: String, onClick: () -> Unit) {
     }
 }
 
+// Real KakaoTalk-style gift bubble (2026-07-20) -- see GiftService's own doc comment.
+// Renders inline wherever a message carries a real gift, with a real Open/Claim button
+// shown only to the recipient of a still-PENDING, not-yet-expired gift.
+@Composable
+private fun GiftBubble(gift: GiftDto, isMine: Boolean, currentUserId: String?, onClaim: (String) -> Unit) {
+    val canClaim = gift.status == "PENDING" && currentUserId == gift.recipientId &&
+        runCatching { Instant.parse(gift.expiresAt).isAfter(Instant.now()) }.getOrDefault(true)
+    val statusLabel = when (gift.status) {
+        "PENDING" -> if (isMine) "Waiting to be opened" else "Tap to open"
+        "CLAIMED" -> "Opened"
+        "EXPIRED" -> "Expired — refunded"
+        else -> gift.status
+    }
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (isMine) TossBlue else TossCardSoft)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("🎁 %,.0f RWF".format(gift.amount), color = if (isMine) Color.White else TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            gift.note?.let { Text("\"$it\"", color = if (isMine) Color.White.copy(alpha = 0.9f) else TossSecondary, fontSize = 12.sp) }
+            Text(statusLabel, color = if (isMine) Color.White.copy(alpha = 0.85f) else TossSecondary, fontSize = 12.sp)
+            if (canClaim) {
+                OfferActionButton("Open gift") { onClaim(gift.id) }
+            }
+        }
+    }
+}
+
 @Composable
 private fun MessageBubble(
-    message: MessageDto, isMine: Boolean, currentUserId: String?, offer: OfferBubbleData?,
-    onToggleReaction: (String) -> Unit, onRespondToOffer: (String, String, Double?) -> Unit,
+    message: MessageDto, isMine: Boolean, currentUserId: String?, offer: OfferBubbleData?, gift: GiftDto?,
+    onToggleReaction: (String) -> Unit, onRespondToOffer: (String, String, Double?) -> Unit, onClaimGift: (String) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
-            if (offer != null) {
+            if (gift != null) {
+                GiftBubble(gift, isMine, currentUserId, onClaimGift)
+            } else if (offer != null) {
                 OfferBubble(offer, isMine, currentUserId, onRespondToOffer)
             } else {
                 Box(

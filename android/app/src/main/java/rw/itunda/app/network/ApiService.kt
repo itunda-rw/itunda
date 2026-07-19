@@ -383,6 +383,30 @@ data class PriceOfferResponse(val success: Boolean, val offer: PriceOfferDto)
 data class PriceOffersResponse(val success: Boolean, val offers: List<PriceOfferDto>)
 data class ContactSellerResponse(val success: Boolean, val conversation: ConversationDto)
 
+// Real KakaoTalk-style "선물하기" money gift (2026-07-20) -- see GiftService's own doc
+// comment. Money leaves the sender's wallet into a real escrow account the moment a
+// gift is sent, and only reaches the recipient's wallet once they explicitly claim it
+// (or is auto-refunded after 7 days). Rendered inline as a gift bubble, same "special
+// message body" convention PriceOfferDto already established.
+data class GiftDto(
+    val id: String,
+    val senderId: String,
+    val recipientId: String,
+    val conversationId: String,
+    val messageId: String,
+    val amount: Double,
+    val note: String?,
+    val status: String,
+    val holdTransactionId: String,
+    val claimTransactionId: String?,
+    val expiresAt: String,
+    val claimedAt: String?,
+    val createdAt: String,
+)
+data class SendGiftInConversationRequest(val amount: Double, val note: String? = null)
+data class GiftResponse(val success: Boolean, val gift: GiftDto)
+data class GiftsResponse(val success: Boolean, val gifts: List<GiftDto>)
+
 // Real 동네생활-style community board (2026-07-19) -- see rw.itunda.community.web.CommunityController.
 data class CommunityCategoryDto(val id: String, val label: String)
 data class CommunityPostDto(
@@ -764,6 +788,20 @@ interface ApiService {
 
     @GET("api/v1/marketplace/conversations/{id}/offers")
     suspend fun getOffersForConversation(@Path("id") conversationId: String): PriceOffersResponse
+
+    // Real KakaoTalk-style gift send/claim (2026-07-20) -- see GiftService.
+    @POST("api/v1/gifts/conversations/{id}")
+    suspend fun sendGiftInConversation(
+        @Path("id") conversationId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body request: SendGiftInConversationRequest,
+    ): GiftResponse
+
+    @POST("api/v1/gifts/{id}/claim")
+    suspend fun claimGift(@Path("id") giftId: String, @Header("Idempotency-Key") idempotencyKey: String): GiftResponse
+
+    @GET("api/v1/gifts/conversations/{id}")
+    suspend fun getGiftsForConversation(@Path("id") conversationId: String): GiftsResponse
 
     // Real 동네생활-style community board (2026-07-19) -- see rw.itunda.community.web.CommunityController.
     @GET("api/v1/community/categories")
