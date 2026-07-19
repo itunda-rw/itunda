@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowUpRight, Bike, Heart, LogOut, MessageCircle, Plus, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
-import { fetchTransactions, fetchWallets, type Transaction, type Wallet } from './lib/wallet';
+import { confirmTransfer, fetchTransactions, fetchWallets, quoteTransfer, type Transaction, type TransferQuote, type Wallet } from './lib/wallet';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
 import { collectPayment, fetchShoppingCatalog, type CollectPaymentResult, type ShoppingMerchant } from './lib/shopping';
 import {
@@ -50,7 +50,7 @@ import RouteMiniMap from './RouteMiniMap';
 
 type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'MAP';
 
-function AccountBalance({ wallet }: { wallet: Wallet | null }) {
+function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -69,14 +69,114 @@ function AccountBalance({ wallet }: { wallet: Wallet | null }) {
       </h1>
 
       <div style={{ display: 'flex', gap: '12px' }}>
-        <motion.button whileTap={{ scale: 0.96 }} className="toss-btn toss-btn-primary" style={{ flex: 1, gap: '8px' }}>
+        <motion.button whileTap={{ scale: 0.96 }} className="toss-btn toss-btn-primary" style={{ flex: 1, gap: '8px' }} onClick={onTransferClick}>
           <ArrowUpRight size={18} /> Transfer
         </motion.button>
-        <motion.button whileTap={{ scale: 0.96 }} className="toss-btn toss-btn-secondary" style={{ flex: 1, gap: '8px' }}>
+        <motion.button whileTap={{ scale: 0.96 }} className="toss-btn toss-btn-secondary" style={{ flex: 1, gap: '8px' }} disabled title="Real mobile-money top-up needs a live MTN/Airtel/bank provider relationship this backend doesn't have yet -- see docs/TOSS_PARITY_MATRIX.md's Transfer row">
           <Plus size={18} /> Top up
         </motion.button>
       </div>
     </motion.div>
+  );
+}
+
+// Real P2P wallet-to-wallet transfer (2026-07-20) -- closes a real gap found live: this
+// exact "Transfer" button had zero onClick handler despite WalletController's
+// quote/confirm transfer being fully real (already used by Android/iOS). Same
+// inline-card-replaces-trigger convention every other flow in this file already uses
+// (PayByCodeCard/CreateListingForm etc.), not a modal overlay -- there is no modal
+// pattern anywhere else in this codebase to match.
+function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [recipient, setRecipient] = useState('');
+  const [amount, setAmount] = useState('');
+  const [quote, setQuote] = useState<TransferQuote | null>(null);
+  const [result, setResult] = useState<{ message: string; newBalance: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const handleQuote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      setQuote(await quoteTransfer(recipient.trim(), Number(amount)));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not quote this transfer.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (!quote) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await confirmTransfer(quote.id);
+      setResult({ message: res.message, newBalance: res.newBalance });
+    } catch (err) {
+      // A quote is real and short-lived (60s) -- an expired/already-used quote surfaces
+      // its own real backend error here rather than silently retrying, matching this
+      // codebase's own "let the real error surface" discipline.
+      setError(err instanceof ApiError ? err.message : 'Could not complete this transfer.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (result) {
+    return (
+      <div className="toss-card" style={{ textAlign: 'center', padding: '28px', marginBottom: '16px' }}>
+        <ShieldCheck size={36} color="var(--toss-green)" style={{ marginBottom: '10px' }} />
+        <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '4px' }}>{result.message}</h3>
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+          New balance: {result.newBalance.toLocaleString()} RWF
+        </p>
+        <button className="toss-btn toss-btn-secondary" onClick={onSuccess}>Done</button>
+      </div>
+    );
+  }
+
+  if (quote) {
+    return (
+      <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Confirm transfer</h3>
+        <div style={{ fontSize: '13px', color: 'var(--toss-grey-700)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <span>To {quote.recipient}</span>
+          <span>Amount: {quote.amount.toLocaleString()} {quote.currency}</span>
+          <span>Fee: {quote.fee.toLocaleString()} {quote.currency}</span>
+          <span style={{ fontWeight: 700 }}>Total: {quote.totalDebit.toLocaleString()} {quote.currency}</span>
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onClose} disabled={busy}>Cancel</button>
+          <button type="button" className="toss-btn toss-btn-primary" style={{ flex: 1 }} onClick={handleConfirm} disabled={busy}>
+            {busy ? 'Sending…' : 'Confirm'}
+          </button>
+        </div>
+        {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleQuote} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+      <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Transfer</h3>
+      <input
+        type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="Recipient phone or account number" required
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      />
+      <input
+        type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount (RWF)" required min="1"
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      />
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onClose} disabled={busy}>Cancel</button>
+        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>
+          {busy ? 'Getting quote…' : 'Continue'}
+        </button>
+      </div>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+    </form>
   );
 }
 
@@ -159,6 +259,7 @@ function HomeView() {
   const [wallet, setWallet] = useState<Wallet | null | undefined>(undefined);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [showTransfer, setShowTransfer] = useState(false);
 
   const load = () => {
     setError(null);
@@ -192,7 +293,16 @@ function HomeView() {
 
   return (
     <div>
-      <AccountBalance wallet={wallet} />
+      <AccountBalance wallet={wallet} onTransferClick={() => setShowTransfer(true)} />
+      {showTransfer && (
+        <TransferFlow
+          onClose={() => setShowTransfer(false)}
+          onSuccess={() => {
+            setShowTransfer(false);
+            load();
+          }}
+        />
+      )}
       <QuickActions />
       <TransactionHistory transactions={transactions} />
     </div>
