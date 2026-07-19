@@ -31,5 +31,6 @@ include(
     ":commerce",
     ":eats",
     ":maps",
+    ":gift",
     ":app"
 )

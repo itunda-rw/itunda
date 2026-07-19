@@ -120,6 +120,7 @@ class WalletService(
                 LedgerAccountType.INSURANCE_PREMIUM_REVENUE -> "Insurance"
                 LedgerAccountType.FEE_REVENUE -> "Fees"
                 LedgerAccountType.EATS_DELIVERY_HOLDING -> "Food delivery"
+                LedgerAccountType.GIFT_HOLDING -> "Gifts"
                 // REWARDS_EXPENSE/INTEREST_EXPENSE/INSURANCE_CLAIMS_EXPENSE are all credit-side
                 // accounts (they pay money *into* a wallet) -- they'd never realistically be the
                 // counterpart to a WALLET debit here, but the compiler correctly demands every

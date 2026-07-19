@@ -42,6 +42,7 @@ dependencies {
     implementation(project(":commerce"))
     implementation(project(":eats"))
     implementation(project(":maps"))
+    implementation(project(":gift"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")

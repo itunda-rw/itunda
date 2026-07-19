@@ -51,6 +51,11 @@ class LedgerAccount(
             // wallet, it just hasn't reached its final recipient yet), not a fake holding
             // pattern invented for this feature.
             "eats_delivery_holding" to "Eats Delivery Fee Holding",
+            // Holds a real KakaoTalk-style gift's money from the moment it's sent until
+            // the recipient explicitly opens/claims it, or it's auto-refunded to the
+            // sender after Gift.EXPIRY (rw.itunda.gift.GiftService, 2026-07-20) -- same
+            // real escrow-clearing-account shape as eats_delivery_holding above.
+            "gift_holding" to "Gift Holding",
         )
     }
 }

@@ -115,6 +115,12 @@ class MessagingService(
         return conversation
     }
 
+    /** Public wrapper over [requireParticipant] -- lets a feature built on top of an
+     * already-open conversation (e.g. `rw.itunda.gift.GiftService`, a real chat-embedded
+     * gift) resolve "the other participant" without duplicating this same IDOR check. */
+    fun getConversationForParticipant(userId: String, conversationId: String): Conversation =
+        requireParticipant(userId, conversationId)
+
     @Transactional
     fun sendMessage(userId: String, conversationId: String, body: String): Message {
         val trimmed = body.trim()
