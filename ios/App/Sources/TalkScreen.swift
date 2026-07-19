@@ -145,8 +145,18 @@ struct TalkScreen: View {
         }
     }
 
+    // Real 400 case (found in a 2026-07-19 UX-copy sweep, prompted by the new
+    // price-offer flow's own-offer/invalid-amount validation errors): a real,
+    // user-actionable input problem was falling into the generic "Something went
+    // wrong" default below, unlike bank-mfe which already surfaces the real backend
+    // validation message directly. A full message pass-through would need
+    // NetworkError.httpError to carry the response body, a broader networking-layer
+    // change -- this generic-but-honest bucket closes the gap for every existing 400
+    // across the app that already routes through this shared helper, not just price
+    // offers (mirrors the identical fix made to Android's superAppErrorMessage).
     static func errorMessage(_ statusCode: Int) -> String {
         switch statusCode {
+        case 400: return "Please check what you entered and try again."
         case 401, 403: return "You don't have access to do that."
         case 404: return "That couldn't be found."
         case 409: return "That's already been done, or is being processed."
