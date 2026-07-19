@@ -74,3 +74,25 @@ export const searchNearbyPlaces = (category: string, lat: number, lng: number, r
   apiFetch<{ success: boolean; places: NearbyPlace[] }>(
     `/api/v1/maps/nearby?category=${encodeURIComponent(category)}&lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`,
   ).then((r) => r.places);
+
+// Real bookmarked/favorite places (2026-07-19) -- item 7 on the Maps "100%" roadmap, the
+// same star/save feature Naver/Kakao Maps offer. See MapsService's own doc comment.
+export interface MapBookmark {
+  id: string;
+  displayName: string;
+  latitude: number;
+  longitude: number;
+  createdAt: string;
+}
+
+export const fetchMyMapBookmarks = () =>
+  apiFetch<{ success: boolean; bookmarks: MapBookmark[] }>('/api/v1/maps/bookmarks').then((r) => r.bookmarks);
+
+export const addMapBookmark = (displayName: string, latitude: number, longitude: number) =>
+  apiFetch<{ success: boolean; bookmark: MapBookmark }>('/api/v1/maps/bookmarks', {
+    method: 'POST',
+    body: JSON.stringify({ displayName, latitude, longitude }),
+  }).then((r) => r.bookmark);
+
+export const removeMapBookmark = (latitude: number, longitude: number) =>
+  apiFetch<{ success: boolean }>(`/api/v1/maps/bookmarks?lat=${latitude}&lng=${longitude}`, { method: 'DELETE' });

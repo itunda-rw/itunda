@@ -7,11 +7,13 @@ import io.mockk.every
 import io.mockk.mockk
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.MapBookmark
 import rw.itunda.core.geo.GeocodeSuggestion
 import rw.itunda.core.geo.NearbyPlace
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.geo.RouteResult
+import rw.itunda.core.repository.MapBookmarkRepository
 import java.time.Duration
 
 class MapsServiceTest : BehaviorSpec({
@@ -20,7 +22,8 @@ class MapsServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val osrmRoutingClient = mockk<OsrmRoutingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter)
+        val mapBookmarkRepository = mockk<MapBookmarkRepository>(relaxed = true)
+        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository)
 
         When("a real query matches real places") {
             val suggestions = listOf(GeocodeSuggestion("Kigali International Airport, Rwanda", -1.9686, 30.1395))
@@ -52,7 +55,8 @@ class MapsServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val osrmRoutingClient = mockk<OsrmRoutingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter)
+        val mapBookmarkRepository = mockk<MapBookmarkRepository>(relaxed = true)
+        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository)
 
         // Kigali city center -> near the airport, the same real coordinate pair this
         // project's own Maps live-verification passes have used before.
@@ -112,7 +116,8 @@ class MapsServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val osrmRoutingClient = mockk<OsrmRoutingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter)
+        val mapBookmarkRepository = mockk<MapBookmarkRepository>(relaxed = true)
+        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository)
 
         val lat = -1.9441
         val lng = 30.0619
@@ -143,6 +148,53 @@ class MapsServiceTest : BehaviorSpec({
             Then("it returns an empty list without ever calling Nominatim") {
                 val results = service.getNearbyPlaces("user_1", "RESTAURANT", 0.0, 0.0, 2.0)
                 results shouldBe emptyList()
+            }
+        }
+    }
+
+    Given("a real user bookmarking a real place") {
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val mapBookmarkRepository = mockk<MapBookmarkRepository>()
+        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository)
+
+        val lat = -1.9686
+        val lng = 30.1395
+
+        When("a real new place is bookmarked") {
+            every { mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude("user_1", lat, lng) } returns null
+            every { mapBookmarkRepository.save(any()) } answers { firstArg() }
+
+            val bookmark = service.addBookmark("user_1", "Kigali International Airport", lat, lng)
+
+            Then("it saves a real new bookmark") {
+                bookmark.displayName shouldBe "Kigali International Airport"
+                bookmark.latitude shouldBe lat
+                bookmark.longitude shouldBe lng
+            }
+        }
+
+        When("a place already bookmarked by the same user is bookmarked again") {
+            val existing = MapBookmark(id = "map_bookmark_1", userId = "user_1", displayName = "Kigali International Airport", latitude = lat, longitude = lng)
+            every { mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude("user_1", lat, lng) } returns existing
+
+            val bookmark = service.addBookmark("user_1", "Kigali International Airport", lat, lng)
+
+            Then("it real-idempotently returns the existing bookmark rather than creating a duplicate") {
+                bookmark shouldBe existing
+                io.mockk.verify(exactly = 0) { mapBookmarkRepository.save(any()) }
+            }
+        }
+
+        When("an out-of-range coordinate is bookmarked") {
+            Then("it throws InvalidMapsCoordinateException before ever touching the repository") {
+                try {
+                    service.addBookmark("user_1", "Nowhere", 999.0, 30.0)
+                    error("expected InvalidMapsCoordinateException")
+                } catch (e: InvalidMapsCoordinateException) {
+                    // expected
+                }
             }
         }
     }

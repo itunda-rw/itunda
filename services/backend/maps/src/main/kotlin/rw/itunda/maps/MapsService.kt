@@ -1,14 +1,18 @@
 package rw.itunda.maps
 
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.MapBookmark
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.GeocodeSuggestion
 import rw.itunda.core.geo.NearbyPlace
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.geo.RouteResult
+import rw.itunda.core.repository.MapBookmarkRepository
 import java.time.Duration
+import java.util.UUID
 
 class InvalidMapsCoordinateException(message: String) : RuntimeException(message)
 class RouteNotFoundException(message: String) : RuntimeException(message)
@@ -29,6 +33,7 @@ class MapsService(
     private val nominatimGeocodingClient: NominatimGeocodingClient,
     private val osrmRoutingClient: OsrmRoutingClient,
     private val rateLimiter: RateLimiter,
+    private val mapBookmarkRepository: MapBookmarkRepository,
 ) {
     // Real anti-spam limit -- same convention every other user-facing endpoint in this
     // codebase already has (search-as-you-type is easy to hammer otherwise).
@@ -77,4 +82,34 @@ class MapsService(
         }
         return nominatimGeocodingClient.searchNearby(category.searchTerm, latitude, longitude, boundedRadiusKm, limit = 20)
     }
+
+    // Real bookmarked/favorite places (item 7 on the Maps "100%" roadmap) -- the same
+    // star/save feature Naver/Kakao Maps offer. `addBookmark` is deliberately idempotent
+    // (bookmarking an already-bookmarked place just returns the existing row rather than a
+    // 409) -- matches `EatsFavoriteService.addFavorite`'s own precedent, since a real
+    // star-toggle UI shouldn't error on a double-tap and the real DB unique constraint
+    // already makes a concurrent double-add safe without this check either.
+    @Transactional
+    fun addBookmark(userId: String, displayName: String, latitude: Double, longitude: Double): MapBookmark {
+        if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
+            throw InvalidMapsCoordinateException("Latitude must be between -90 and 90, longitude between -180 and 180")
+        }
+        mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude(userId, latitude, longitude)?.let { return it }
+        return mapBookmarkRepository.save(
+            MapBookmark(
+                id = "map_bookmark_${UUID.randomUUID()}",
+                userId = userId,
+                displayName = displayName,
+                latitude = latitude,
+                longitude = longitude,
+            ),
+        )
+    }
+
+    @Transactional
+    fun removeBookmark(userId: String, latitude: Double, longitude: Double) {
+        mapBookmarkRepository.deleteByUserIdAndLatitudeAndLongitude(userId, latitude, longitude)
+    }
+
+    fun getMyBookmarks(userId: String): List<MapBookmark> = mapBookmarkRepository.findByUserIdOrderByCreatedAtDesc(userId)
 }

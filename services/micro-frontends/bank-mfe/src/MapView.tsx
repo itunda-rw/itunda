@@ -8,8 +8,12 @@ import {
   getDirections,
   searchNearbyPlaces,
   NEARBY_CATEGORIES,
+  fetchMyMapBookmarks,
+  addMapBookmark,
+  removeMapBookmark,
   type PlaceSearchResult,
   type NearbyPlace,
+  type MapBookmark,
 } from './lib/maps';
 import { fetchShoppingCatalog, type ShoppingMerchant } from './lib/shopping';
 import { ApiError } from './lib/api';
@@ -114,6 +118,8 @@ export default function MapView() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [categoryLoading, setCategoryLoading] = useState(false);
   const [categoryResults, setCategoryResults] = useState<NearbyPlace[] | null>(null);
+  const [bookmarks, setBookmarks] = useState<MapBookmark[]>([]);
+  const [bookmarking, setBookmarking] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -134,6 +140,15 @@ export default function MapView() {
       if (!cancelled) setError('Map tiles are temporarily unavailable.');
       console.warn('MapLibre error', e.error);
     });
+
+    fetchMyMapBookmarks()
+      .then((real) => {
+        if (!cancelled) setBookmarks(real);
+      })
+      .catch(() => {
+        // Honest partial failure -- bookmarks are a real-nice-to-have, never block the
+        // base map or the rest of the Maps feature set from loading.
+      });
 
     fetchShoppingCatalog()
       .then((merchants: ShoppingMerchant[]) => {
@@ -195,6 +210,27 @@ export default function MapView() {
     // Clear any previously-drawn route -- a new destination needs a fresh "Directions" tap.
     const source = map.getSource('route') as maplibregl.GeoJSONSource | undefined;
     source?.setData(EMPTY_ROUTE_GEOJSON);
+  };
+
+  const isBookmarked = (place: PlaceSearchResult) =>
+    bookmarks.some((b) => b.latitude === place.latitude && b.longitude === place.longitude);
+
+  const toggleBookmark = async (place: PlaceSearchResult) => {
+    setBookmarking(true);
+    setError(null);
+    try {
+      if (isBookmarked(place)) {
+        await removeMapBookmark(place.latitude, place.longitude);
+        setBookmarks((prev) => prev.filter((b) => !(b.latitude === place.latitude && b.longitude === place.longitude)));
+      } else {
+        const saved = await addMapBookmark(place.displayName, place.latitude, place.longitude);
+        setBookmarks((prev) => [saved, ...prev]);
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not save this place.');
+    } finally {
+      setBookmarking(false);
+    }
   };
 
   const findMyLocation = () => {
@@ -396,7 +432,18 @@ export default function MapView() {
 
       {selectedPlace && (
         <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{selectedPlace.displayName}</p>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+            <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-grey-900)', flex: 1 }}>{selectedPlace.displayName}</p>
+            <button
+              type="button"
+              onClick={() => toggleBookmark(selectedPlace)}
+              disabled={bookmarking}
+              aria-label={isBookmarked(selectedPlace) ? 'Remove real bookmark' : 'Save this real place'}
+              style={{ fontSize: '18px', lineHeight: 1, color: isBookmarked(selectedPlace) ? '#F5A623' : 'var(--toss-grey-300)' }}
+            >
+              {isBookmarked(selectedPlace) ? '★' : '☆'}
+            </button>
+          </div>
           {route ? (
             <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>
               🚗 {route.distanceKm.toFixed(1)} km · {Math.round(route.durationMinutes)} min by real road, via itunda's own self-hosted OSRM
@@ -406,6 +453,21 @@ export default function MapView() {
               {routing ? 'Finding real route…' : 'Directions'}
             </button>
           )}
+        </div>
+      )}
+
+      {!selectedPlace && bookmarks.length > 0 && (
+        <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px' }}>
+          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-500)', padding: '4px 8px 0' }}>★ Your saved places</p>
+          {bookmarks.map((b) => (
+            <button
+              key={b.id}
+              onClick={() => selectPlace({ displayName: b.displayName, latitude: b.latitude, longitude: b.longitude })}
+              style={{ textAlign: 'left', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', color: 'var(--toss-grey-900)' }}
+            >
+              {b.displayName}
+            </button>
+          ))}
         </div>
       )}
 
