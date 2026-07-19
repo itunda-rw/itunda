@@ -11,8 +11,7 @@ import rw.itunda.app.network.SavingsGoal
 import rw.itunda.app.network.InterestJar
 import rw.itunda.app.network.DiscoverItem
 import rw.itunda.app.network.NetworkClient
-import rw.itunda.app.network.QuoteTransferRequest
-import rw.itunda.app.network.ConfirmTransferRequest
+import rw.itunda.app.network.SendDirectP2pRequest
 import rw.itunda.app.network.DepositRequest
 import rw.itunda.app.network.BatchActionRequest
 import rw.itunda.app.network.BatchRequest
@@ -218,25 +217,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun markAllNotificationsRead() = markNotificationRead("all")
 
     /**
-     * Real quote-then-confirm transfer (2026-07-12) -- previously TransferFlow.kt's
-     * screens were UI-only ("Backed by local state only, not TransferService", see
-     * that file's header); now that a real session exists (SessionManager.kt), this
-     * calls the actual services/backend wallet endpoints. A fresh Idempotency-Key
-     * per attempt means a retried tap after a timeout replays the same result
-     * instead of double-sending money -- same contract the backend's own
-     * IdempotencyService enforces.
+     * Real direct P2P push-transfer (2026-07-20) -- switched from the previous
+     * quote-then-confirm `quoteTransfer`/`confirmTransfer` pair (built 2026-07-12) to
+     * the new `sendDirect` endpoint: those older endpoints always route through a
+     * simulated external rail and never actually credit another itunda user's wallet,
+     * even when the recipient is a real itunda account (confirmed via a direct MySQL
+     * check while building the real fix on the backend one day earlier -- see
+     * SendDirectP2pRequest's own doc comment). No quote step needed here, since there's
+     * no external rail decision to quote -- a fresh Idempotency-Key per attempt still
+     * means a retried tap after a timeout replays the same result instead of
+     * double-sending money, same contract the backend's own IdempotencyService enforces.
      */
-    suspend fun sendTransfer(recipientAccountNumber: String, amountRwf: Long): MoneyActionResult {
+    suspend fun sendTransfer(recipientIdentifier: String, amountRwf: Long): MoneyActionResult {
         return try {
-            val quoteRes = NetworkClient.apiService.quoteTransfer(
-                QuoteTransferRequest(amount = BigDecimal(amountRwf), recipient = recipientAccountNumber)
-            )
-            val confirmRes = NetworkClient.apiService.confirmTransfer(
+            val res = NetworkClient.apiService.sendDirect(
                 idempotencyKey = UUID.randomUUID().toString(),
-                request = ConfirmTransferRequest(quoteId = quoteRes.quote.id)
+                request = SendDirectP2pRequest(recipient = recipientIdentifier, amount = BigDecimal(amountRwf)),
             )
             fetchData()
-            MoneyActionResult.Success(confirmRes.message)
+            MoneyActionResult.Success(res.message)
         } catch (e: retrofit2.HttpException) {
             MoneyActionResult.Failure(backendErrorMessage(e))
         } catch (e: IOException) {

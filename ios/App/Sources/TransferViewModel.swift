@@ -9,17 +9,24 @@ enum MoneyActionResult {
     case failure(String)
 }
 
-/// Real quote-then-confirm transfer + savings deposit/claim (2026-07-12) -- mirrors
-/// Android's MainViewModel.sendTransfer/depositToSavingsGoal/claimInterest exactly.
-/// Lives in the App target for the same reason BankViewModel does (Features/Payments
-/// can't depend back on App's NetworkClient -- see BankView.swift's note).
+/// Real direct P2P push-transfer + savings deposit/claim -- mirrors Android's
+/// MainViewModel.sendTransfer/depositToSavingsGoal/claimInterest exactly. Lives in the
+/// App target for the same reason BankViewModel does (Features/Payments can't depend
+/// back on App's NetworkClient -- see BankView.swift's note).
+///
+/// `sendTransfer` switched 2026-07-20 from the previous quote-then-confirm
+/// `quoteTransfer`/`confirmTransfer` pair (built 2026-07-12) to the new `sendDirect`
+/// endpoint: those older endpoints always route through a simulated external rail and
+/// never actually credit another itunda user's wallet, even when the recipient is a real
+/// itunda account (confirmed via a direct MySQL check while building the real fix on the
+/// backend one day earlier -- see SendDirectP2pRequest's own doc comment). No quote step
+/// needed here, since there's no external rail decision to quote.
 @MainActor
 final class TransferViewModel: ObservableObject {
     func sendTransfer(recipientAccountNumber: String, amountRwf: Int) async -> MoneyActionResult {
         do {
-            let quote = try await NetworkClient.shared.quoteTransfer(amount: Double(amountRwf), recipient: recipientAccountNumber)
-            let confirm = try await NetworkClient.shared.confirmTransfer(quoteId: quote.quote.id)
-            return .success(confirm.message)
+            let response = try await NetworkClient.shared.sendDirect(recipient: recipientAccountNumber, amount: Double(amountRwf))
+            return .success(response.message)
         } catch let NetworkError.httpError(statusCode) {
             return .failure(Self.errorMessage(statusCode))
         } catch {
@@ -34,8 +41,10 @@ final class TransferViewModel: ObservableObject {
     /// automatically once BankViewModel's ConnectivityObserver reports a real
     /// network again. Mirrors Android's MainViewModel.depositToSavingsGoal exactly,
     /// including the same scope decision: sendTransfer above is intentionally never
-    /// queued, for the same 60-second-quote-expiry reason the backend's
-    /// ActionsBatchController doesn't support a transfer action type at all.
+    /// queued -- the backend's ActionsBatchController doesn't support a transfer
+    /// action type at all, and a retried offline send should surface its own real
+    /// error/idempotent-replay rather than being silently re-attempted later against
+    /// whatever the sender's balance happens to be by then.
     func depositToSavingsGoal(goalId: String, amountRwf: Int) async -> MoneyActionResult {
         do {
             let response = try await NetworkClient.shared.depositToGoal(goalId: goalId, amount: Double(amountRwf))

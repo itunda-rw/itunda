@@ -181,6 +181,16 @@ data class TransactionDto(
 
 data class ConfirmTransferResponse(val success: Boolean, val message: String, val transaction: TransactionDto, val newBalance: Double)
 
+// Real direct itunda-to-itunda push-transfer (rw.itunda.p2p, 2026-07-20) -- mirrors
+// P2pController's real SendDirectP2pRequest exactly. Deliberately distinct from
+// QuoteTransferRequest/ConfirmTransferRequest above: those always route through a
+// simulated external rail and never actually credit another itunda user's wallet, even
+// when the recipient is a real itunda account (confirmed via a direct MySQL check while
+// building this on the backend/bank-mfe side one day earlier). This is the real one --
+// no quote step needed, since there's no external rail decision to quote.
+data class SendDirectP2pRequest(val recipient: String, val amount: java.math.BigDecimal, val description: String = "")
+data class SendDirectP2pResponse(val success: Boolean, val message: String, val transaction: TransactionDto, val newBalance: Double)
+
 // Mirrors services/backend/savings's SavingsController.kt.
 data class DepositRequest(val goalId: String, val amount: java.math.BigDecimal, val fromWalletId: String? = null)
 data class DepositResponse(val success: Boolean, val message: String, val goal: SavingsGoal)
@@ -624,6 +634,12 @@ interface ApiService {
 
     @POST("api/v1/wallet/transfer/confirm")
     suspend fun confirmTransfer(@Header("Idempotency-Key") idempotencyKey: String, @Body request: ConfirmTransferRequest): ConfirmTransferResponse
+
+    // Real direct P2P push-transfer (2026-07-20) -- see SendDirectP2pRequest's own doc
+    // comment for why this replaces quoteTransfer/confirmTransfer above in
+    // MainViewModel.sendTransfer.
+    @POST("api/v1/p2p/send")
+    suspend fun sendDirect(@Header("Idempotency-Key") idempotencyKey: String, @Body request: SendDirectP2pRequest): SendDirectP2pResponse
 
     @POST("api/v1/savings/deposit")
     suspend fun depositToGoal(@Header("Idempotency-Key") idempotencyKey: String, @Body request: DepositRequest): DepositResponse

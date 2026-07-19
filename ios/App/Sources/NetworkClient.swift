@@ -287,6 +287,22 @@ struct ConfirmTransferResponse: Decodable {
     let newBalance: Double
 }
 
+// Real direct itunda-to-itunda push-transfer (rw.itunda.p2p, 2026-07-20) -- mirrors
+// P2pController's real SendDirectP2pRequest exactly, same as Android's ApiService.kt.
+// Deliberately distinct from QuoteTransferRequest/ConfirmTransferRequest above: those
+// always route through a simulated external rail and never actually credit another
+// itunda user's wallet, even when the recipient is a real itunda account (confirmed via
+// a direct MySQL check while building the real fix on the backend one day earlier). This
+// is the real one -- no quote step needed, since there's no external rail decision to
+// quote.
+struct SendDirectP2pRequest: Encodable { let recipient: String; let amount: Double; let description: String }
+struct SendDirectP2pResponse: Decodable {
+    let success: Bool
+    let message: String
+    let transaction: TransactionDto
+    let newBalance: Double
+}
+
 struct DepositRequest: Encodable { let goalId: String; let amount: Double }
 struct DepositResponse: Decodable { let success: Bool; let message: String; let goal: SavingsGoal }
 struct ClaimInterestResponse: Decodable { let success: Bool; let message: String }
@@ -341,6 +357,17 @@ extension NetworkClient {
         try await authenticatedPost(
             "api/v1/wallet/transfer/confirm",
             body: ConfirmTransferRequest(quoteId: quoteId),
+            idempotencyKey: UUID().uuidString
+        )
+    }
+
+    // Real direct P2P push-transfer (2026-07-20) -- see SendDirectP2pRequest's own doc
+    // comment for why this replaces quoteTransfer/confirmTransfer above in
+    // TransferViewModel.sendTransfer.
+    func sendDirect(recipient: String, amount: Double) async throws -> SendDirectP2pResponse {
+        try await authenticatedPost(
+            "api/v1/p2p/send",
+            body: SendDirectP2pRequest(recipient: recipient, amount: amount, description: ""),
             idempotencyKey: UUID().uuidString
         )
     }
