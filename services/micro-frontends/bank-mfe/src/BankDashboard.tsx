@@ -21,6 +21,10 @@ import {
   type CommunityCategory, type CommunityComment, type CommunityPost,
 } from './lib/community';
 import {
+  contactPoster, createJobPost, fetchJobCategories, fetchJobPosts, fetchMyJobPosts, markJobPostFilled, removeJobPost,
+  type JobCategory, type JobPayType, type JobPost,
+} from './lib/jobs';
+import {
   addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, fetchAvailableDeliveries,
   fetchEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyRiderProfile, fetchRestaurantCategories,
   fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRiderDeliveries, placeEatsOrder, registerRider,
@@ -34,7 +38,7 @@ import {
 import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'EATS' | 'MAP';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'EATS' | 'MAP';
 
 function AccountBalance({ wallet }: { wallet: Wallet | null }) {
   return (
@@ -2011,6 +2015,258 @@ function CommunityView() {
   );
 }
 
+// ============================== JOBS (당근알바) ==============================
+
+function NewJobPostCard({ categories, onCreated }: { categories: JobCategory[]; onCreated: () => void }) {
+  const [category, setCategory] = useState(categories[0]?.id ?? '');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [payType, setPayType] = useState<JobPayType>('HOURLY');
+  const [payAmount, setPayAmount] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      await createJobPost(category, title, description, payType, Number(payAmount));
+      setTitle('');
+      setDescription('');
+      setPayAmount('');
+      setOpen(false);
+      onCreated();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not post this job.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button className="toss-btn toss-btn-primary" style={{ width: '100%', marginBottom: '16px' }} onClick={() => setOpen(true)}>
+        + Post a job
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="toss-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Post a job</h3>
+      <select
+        value={category} onChange={(e) => setCategory(e.target.value)}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      >
+        {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+      </select>
+      <input
+        type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What do you need done?" required
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      />
+      <textarea
+        value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the work" required rows={3}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
+      />
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <select
+          value={payType} onChange={(e) => setPayType(e.target.value as JobPayType)}
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        >
+          <option value="HOURLY">Per hour</option>
+          <option value="FIXED">Fixed price</option>
+        </select>
+        <input
+          type="number" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} placeholder="Pay (RWF)" required min="1"
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        />
+      </div>
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
+          {submitting ? 'Posting…' : 'Post job'}
+        </button>
+      </div>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+    </form>
+  );
+}
+
+function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact }: {
+  post: JobPost; categoryLabel: string; isMine: boolean; onChanged: () => void; onContact: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const payLabel = `${post.payAmount.toLocaleString()} RWF${post.payType === 'HOURLY' ? '/hr' : ''}`;
+
+  return (
+    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--toss-blue)' }}>{categoryLabel}</span>
+          {post.status === 'FILLED' && (
+            <span style={{ marginLeft: '8px', fontSize: '10px', fontWeight: 700, color: 'var(--toss-grey-500)', backgroundColor: 'var(--toss-grey-100)', padding: '2px 8px', borderRadius: '8px' }}>
+              FILLED
+            </span>
+          )}
+        </div>
+        <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{payLabel}</span>
+      </div>
+      <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{post.title}</p>
+      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{post.description}</p>
+      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      <div style={{ display: 'flex', gap: '10px' }}>
+        {isMine ? (
+          <>
+            {post.status === 'OPEN' && (
+              <button
+                className="toss-btn toss-btn-secondary"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  try { await markJobPostFilled(post.id); onChanged(); }
+                  catch (err) { setError(err instanceof ApiError ? err.message : 'Could not update this job.'); }
+                  finally { setBusy(false); }
+                }}
+              >
+                Mark filled
+              </button>
+            )}
+            {post.status !== 'REMOVED' && (
+              <button
+                className="toss-btn toss-btn-secondary"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  try { await removeJobPost(post.id); onChanged(); }
+                  catch (err) { setError(err instanceof ApiError ? err.message : 'Could not remove this job.'); }
+                  finally { setBusy(false); }
+                }}
+              >
+                Remove
+              </button>
+            )}
+          </>
+        ) : (
+          post.status === 'OPEN' && (
+            <button className="toss-btn toss-btn-primary" disabled={busy} onClick={onContact}>
+              Message poster
+            </button>
+          )
+        )}
+      </div>
+    </div>
+  );
+}
+
+function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: string) => void }) {
+  const [view, setView] = useState<'BROWSE' | 'MINE'>('BROWSE');
+  const [categories, setCategories] = useState<JobCategory[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [posts, setPosts] = useState<JobPost[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const currentUser = getStoredUser();
+
+  useEffect(() => {
+    fetchJobCategories().then(setCategories).catch(() => { /* chips just won't render, browse still works */ });
+  }, []);
+
+  const load = () => {
+    setError(null);
+    setPosts(null);
+    const fetcher = view === 'BROWSE' ? fetchJobPosts(activeCategory ?? undefined) : fetchMyJobPosts();
+    fetcher
+      .then(setPosts)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load jobs.'));
+  };
+
+  useEffect(load, [view, activeCategory]);
+
+  const categoryLabel = (id: string) => categories.find((c) => c.id === id)?.label ?? id;
+
+  const handleContact = async (jobPostId: string) => {
+    try {
+      const conversation = await contactPoster(jobPostId);
+      onMessagePoster(conversation.id);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not message this poster.');
+    }
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+        {(['BROWSE', 'MINE'] as const).map((v) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            style={{
+              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
+              color: view === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+              backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
+            }}
+          >
+            {v === 'BROWSE' ? 'Find work' : 'My posts'}
+          </button>
+        ))}
+      </div>
+
+      {view === 'BROWSE' && categories.length > 0 && (
+        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '12px', paddingBottom: '2px' }}>
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setActiveCategory(activeCategory === c.id ? null : c.id)}
+              style={{
+                whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
+                border: `1px solid ${activeCategory === c.id ? 'var(--toss-blue)' : 'var(--toss-grey-200)'}`,
+                color: activeCategory === c.id ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+                backgroundColor: activeCategory === c.id ? 'var(--toss-blue)' : 'transparent',
+              }}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {view === 'MINE' && <NewJobPostCard categories={categories} onCreated={load} />}
+
+      {error && (
+        <div className="toss-card">
+          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+          <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+        </div>
+      )}
+      {!error && posts === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
+      {!error && posts !== null && posts.length === 0 && (
+        <div className="toss-card">
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+            {view === 'BROWSE' ? 'No jobs posted yet.' : "You haven't posted any jobs yet."}
+          </p>
+        </div>
+      )}
+      {!error && posts !== null && posts.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {posts.map((post) => (
+            <JobPostCard
+              key={post.id}
+              post={post}
+              categoryLabel={categoryLabel(post.category)}
+              isMine={view === 'MINE' || post.posterId === currentUser?.id}
+              onChanged={load}
+              onContact={() => handleContact(post.id)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const EATS_STATUS_LABEL: Record<EatsOrderStatus, string> = {
   PLACED: 'Placed',
   ACCEPTED: 'Accepted by restaurant',
@@ -3471,6 +3727,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'MESSAGES', label: 'Messages' },
     { id: 'MARKETPLACE', label: 'Marketplace' },
     { id: 'COMMUNITY', label: 'Community' },
+    { id: 'JOBS', label: 'Jobs' },
     { id: 'MAP', label: 'Map' },
     { id: 'CERTIFICATE', label: 'Certificate' },
     { id: 'SHOPPING', label: 'Shopping' },
@@ -3520,6 +3777,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       )}
       {tab === 'MARKETPLACE' && <MarketplaceView onMessageSeller={handleMessageSeller} />}
       {tab === 'COMMUNITY' && <CommunityView />}
+      {tab === 'JOBS' && <JobsView onMessagePoster={handleMessageSeller} />}
       {tab === 'MAP' && <MapView />}
       {tab === 'CERTIFICATE' && <CertificateView />}
       {tab === 'SHOPPING' && <ShoppingView />}
