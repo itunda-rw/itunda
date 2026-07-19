@@ -97,7 +97,20 @@ for core in coreModules {
             bundleId: "rw.itunda.core.\(core.lowercased())",
             infoPlist: .default,
             sources: ["Core/\(core)/Sources/**"],
-            dependencies: []
+            // Real bug found 2026-07-20 by actually launching ItundaRiderApp on a
+            // Simulator: CoreDesignSystem/Sources/SDUI/SduiRenderer.swift imports
+            // CoreNetwork directly, but this target declared zero dependencies --
+            // it only ever "worked" for ItundaApp because that target separately,
+            // redundantly declares CoreNetwork itself (see featureDependencies
+            // below), so CoreNetwork.framework happened to already be embedded in
+            // its bundle. Any new target depending on CoreDesignSystem alone (the
+            // new ItundaRiderApp/ItundaMerchantApp targets) crashed at launch with
+            // a real dyld "Library not loaded: @rpath/CoreNetwork.framework" error
+            // -- CoreNetwork.framework was never embedded since Tuist only embeds
+            // a target's own declared dependencies. Fixed at the source (declare
+            // CoreDesignSystem's own real dependency) rather than patching every
+            // consumer to redundantly re-declare it.
+            dependencies: core == "DesignSystem" ? [.target(name: "CoreNetwork")] : []
         )
     )
 }
