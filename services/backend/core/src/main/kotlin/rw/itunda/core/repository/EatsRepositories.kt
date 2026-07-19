@@ -10,6 +10,11 @@ import rw.itunda.core.domain.Rider
 
 interface RiderRepository : JpaRepository<Rider, String> {
     fun findByUserId(userId: String): Rider?
+
+    // Real candidate pool for proactive nearest-rider push notification (2026-07-19) --
+    // every online rider with a real known position, the same real coordinate fields
+    // getAvailableDeliveries' own proximity ranking already reads.
+    fun findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull(): List<Rider>
 }
 
 interface EatsOrderRepository : JpaRepository<EatsOrder, String> {

@@ -1,5 +1,6 @@
 package rw.itunda.eats
 
+import org.slf4j.LoggerFactory
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
@@ -11,6 +12,8 @@ import rw.itunda.core.domain.EatsOrderItem
 import rw.itunda.core.domain.EatsOrderStatus
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Merchant
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
@@ -27,6 +30,7 @@ import rw.itunda.core.repository.EatsOrderRepository
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.RiderRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
@@ -86,13 +90,21 @@ class EatsOrderService(
     private val osrmRoutingClient: OsrmRoutingClient,
     private val nominatimGeocodingClient: NominatimGeocodingClient,
     private val rateLimiter: RateLimiter,
+    private val notificationRepository: NotificationRepository,
 ) {
+    private val logger = LoggerFactory.getLogger(EatsOrderService::class.java)
+
     companion object {
         // Same bound MarketplaceService.nearby's own doc comment establishes -- caps a
         // single OSRM /table request's URL length and the private cloud's per-request
         // load; beyond this, getAvailableDeliveries quietly stays on the already-honest
         // Haversine ranking rather than risking an oversized request.
         private const val MAX_OSRM_TABLE_CANDIDATES = 100
+
+        // How many of the nearest available riders get a real proactive push
+        // notification when an order reaches READY_FOR_PICKUP -- see
+        // notifyNearestRiders's own doc comment for the full account.
+        private const val NEAREST_RIDERS_TO_NOTIFY = 5
     }
 
     // Same 1.5% Toss Payments fee-schedule reasoning OrderService.feeRate/
@@ -435,7 +447,53 @@ class EatsOrderService(
         }
         order.status = newStatus
         order.updatedAt = Instant.now()
-        return eatsOrderRepository.save(order)
+        val saved = eatsOrderRepository.save(order)
+        if (newStatus == EatsOrderStatus.READY_FOR_PICKUP) {
+            notifyNearestRiders(saved, restaurant)
+        }
+        return saved
+    }
+
+    // Real proactive nearest-rider push (2026-07-19) -- the "push" half of "push-based
+    // rider assignment": rather than every online rider having to poll/browse to
+    // discover a new READY_FOR_PICKUP order, the closest few get a real Notification the
+    // moment one appears. Deliberately NOT full automatic assignment -- no rider is
+    // auto-committed to anything, this only surfaces the real opportunity faster; the
+    // existing race-safe claimDelivery (first successful claim wins, already real-409s a
+    // second attempt) is completely unchanged and still decides who actually gets it.
+    // Ranked by real GeoUtils.haversineKm only, not the OSRM road-distance
+    // getAvailableDeliveries itself uses -- a notification trigger only needs a rough
+    // "who's actually close," the definitive ranking a rider sees once they open the app
+    // is still the fully real one. Best-effort by design, same "an auxiliary side-effect
+    // can't block the real operation it's attached to" discipline
+    // ShoppingCashbackService's own doc comment already established -- a notification
+    // failure must never fail the real status transition it's reacting to.
+    private fun notifyNearestRiders(order: EatsOrder, restaurant: Merchant) {
+        try {
+            val restaurantLat = restaurant.latitude
+            val restaurantLng = restaurant.longitude
+            if (restaurantLat == null || restaurantLng == null) return
+            val candidates = riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull()
+            if (candidates.isEmpty()) return
+
+            val nearest = candidates
+                .map { rider -> rider to GeoUtils.haversineKm(restaurantLat, restaurantLng, rider.currentLatitude!!, rider.currentLongitude!!) }
+                .sortedBy { (_, distanceKm) -> distanceKm }
+                .take(NEAREST_RIDERS_TO_NOTIFY)
+
+            notificationRepository.saveAll(
+                nearest.map { (rider, distanceKm) ->
+                    val roundedKm = BigDecimal(distanceKm).setScale(1, RoundingMode.HALF_UP)
+                    Notification(
+                        id = "notif_${UUID.randomUUID()}", userId = rider.userId, type = "NEW_DELIVERY_NEARBY",
+                        title = "New delivery near you", body = "${restaurant.businessName} -- about $roundedKm km away",
+                        isRead = false, createdAt = Instant.now(), dataJson = "{\"orderId\":\"${order.id}\"}",
+                    )
+                },
+            )
+        } catch (e: Exception) {
+            logger.warn("Failed to notify nearest riders for order {} -- the order is still real and claimable via browse, this is best-effort only: {}", order.id, e.message)
+        }
     }
 
     /**

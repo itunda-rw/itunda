@@ -21,6 +21,7 @@ import rw.itunda.core.domain.LedgerEntry
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.domain.MerchantStatus
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Rider
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
@@ -37,6 +38,7 @@ import rw.itunda.core.repository.EatsOrderRepository
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.RiderRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
@@ -71,10 +73,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         every { nominatimGeocodingClient.geocode(any()) } returns null
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
-            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter,
+            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
         )
 
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
@@ -366,10 +369,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         every { nominatimGeocodingClient.geocode(any()) } returns null
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
-            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter,
+            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
         val order = EatsOrder(
@@ -420,6 +424,50 @@ class EatsOrderServiceTest : BehaviorSpec({
                 } catch (e: InvalidEatsOrderStatusTransitionException) {
                     // expected
                 }
+            }
+        }
+
+        When("the real restaurant marks an order READY_FOR_PICKUP with real nearby riders online") {
+            val locatedRestaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE, latitude = -1.9536, longitude = 30.0605)
+            val preparingOrder = EatsOrder(
+                id = "eats_order_2", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_2", status = EatsOrderStatus.PREPARING,
+            )
+            val closeRider = Rider(id = "rider_close", userId = "rider_user_close", walletId = "wallet_close", available = true, currentLatitude = -1.9536, currentLongitude = 30.0620)
+            val farRider = Rider(id = "rider_far", userId = "rider_user_far", walletId = "wallet_far", available = true, currentLatitude = -2.5967, currentLongitude = 29.7392)
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns locatedRestaurant
+            every { eatsOrderRepository.findById("eats_order_2") } returns Optional.of(preparingOrder)
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+            every { riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns listOf(farRider, closeRider)
+
+            service.updateRestaurantStatus("owner_1", "eats_order_2", EatsOrderStatus.READY_FOR_PICKUP)
+
+            Then("it real-notifies every online rider with a known location, nearest first in no particular verified order but all included") {
+                verify {
+                    notificationRepository.saveAll(match<List<Notification>> { notifications ->
+                        notifications.size == 2 && notifications.all { it.type == "NEW_DELIVERY_NEARBY" } &&
+                            notifications.map { it.userId }.toSet() == setOf("rider_user_close", "rider_user_far")
+                    })
+                }
+            }
+        }
+
+        When("the real restaurant marks an order READY_FOR_PICKUP but has no real coordinates set") {
+            val order2 = EatsOrder(
+                id = "eats_order_3", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_3", status = EatsOrderStatus.PREPARING,
+            )
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns restaurant
+            every { eatsOrderRepository.findById("eats_order_3") } returns Optional.of(order2)
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            val result = service.updateRestaurantStatus("owner_1", "eats_order_3", EatsOrderStatus.READY_FOR_PICKUP)
+
+            Then("the real status transition still succeeds -- notification is best-effort, never blocking") {
+                result.status shouldBe EatsOrderStatus.READY_FOR_PICKUP
+                verify(exactly = 0) { notificationRepository.saveAll(any<List<Notification>>()) }
             }
         }
 
@@ -541,10 +589,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         every { nominatimGeocodingClient.geocode(any()) } returns null
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
-            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter,
+            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
         val readyOrder = EatsOrder(
@@ -616,10 +665,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         every { nominatimGeocodingClient.geocode(any()) } returns null
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
-            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter,
+            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
         val riderWallet = wallet("wallet_rider", "rider_user_1")
@@ -698,10 +748,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         val osrmRoutingClient = mockk<OsrmRoutingClient>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
-            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter,
+            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
         )
         val riderWithLocation = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", currentLatitude = -1.95, currentLongitude = 30.06, locationUpdatedAt = java.time.Instant.parse("2026-07-19T12:00:00Z"))
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Test Spot", status = MerchantStatus.ACTIVE)
@@ -810,10 +861,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         val osrmRoutingClient = mockk<OsrmRoutingClient>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val rateLimiter = mockk<RateLimiter>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
-            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter,
+            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
         )
 
         When("a real query matches real Nominatim suggestions") {
@@ -864,10 +916,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { osrmRoutingClient.isConfigured } returns false
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
-            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter,
+            ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
         )
 
         // Kigali city center vs. Huye (real Rwandan towns, ~135km apart) -- a rider
