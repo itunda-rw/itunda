@@ -92,6 +92,14 @@ rootProject.name = "itunda"
 
 include(":app")
 
+// Real standalone delivery-rider app (2026-07-20) -- a rider's own app, separate
+// installable APK (applicationId rw.itunda.rider), matching how Coupang Eats' rider
+// app is a distinct product from the consumer app rather than a mode inside it. Does
+// NOT depend on :app (an application module can't depend on another application
+// module) -- has its own minimal Retrofit/OkHttp client hitting the same real
+// backend, scoped to exactly what a rider needs (see riderapp/build.gradle.kts).
+include(":riderapp")
+
 // Core Bounded Contexts
 include(":core:designsystem")
 include(":core:network")
