@@ -36,6 +36,7 @@ dependencies {
     implementation(project(":support"))
     implementation(project(":messaging"))
     implementation(project(":marketplace"))
+    implementation(project(":community"))
     implementation(project(":commerce"))
     implementation(project(":eats"))
     implementation(project(":maps"))

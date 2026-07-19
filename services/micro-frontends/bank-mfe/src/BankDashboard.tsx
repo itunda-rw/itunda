@@ -16,6 +16,11 @@ import {
   removeListing, respondToOffer, type Listing, type PriceOffer,
 } from './lib/marketplace';
 import {
+  addCommunityComment, createCommunityPost, fetchCommunityCategories, fetchCommunityComments, fetchCommunityPost,
+  fetchCommunityPosts, fetchMyCommunityPosts, removeCommunityPost, toggleCommunityLike,
+  type CommunityCategory, type CommunityComment, type CommunityPost,
+} from './lib/community';
+import {
   addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, fetchAvailableDeliveries,
   fetchEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyRiderProfile, fetchRestaurantCategories,
   fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRiderDeliveries, placeEatsOrder, registerRider,
@@ -29,7 +34,7 @@ import {
 import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'MESSAGES' | 'MARKETPLACE' | 'EATS' | 'MAP';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'EATS' | 'MAP';
 
 function AccountBalance({ wallet }: { wallet: Wallet | null }) {
   return (
@@ -1656,6 +1661,356 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
   );
 }
 
+// ============================== COMMUNITY (동네생활) ==============================
+
+function NewCommunityPostCard({ categories, onCreated }: { categories: CommunityCategory[]; onCreated: () => void }) {
+  const [category, setCategory] = useState(categories[0]?.id ?? '');
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [open, setOpen] = useState(false);
+  // Real optional post location (opt-in, same pattern NewListingCard already
+  // established) -- powers a real "near me" browse.
+  const [shareLocation, setShareLocation] = useState(false);
+  const [myLocation, setMyLocation] = useState<[number, number] | null>(null);
+  const [locating, setLocating] = useState(false);
+
+  const handleToggleShareLocation = () => {
+    if (shareLocation) {
+      setShareLocation(false);
+      return;
+    }
+    if (!navigator.geolocation) {
+      setError('This browser does not support real location access.');
+      return;
+    }
+    setLocating(true);
+    setError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocating(false);
+        setMyLocation([position.coords.latitude, position.coords.longitude]);
+        setShareLocation(true);
+      },
+      () => {
+        setLocating(false);
+        setError('Could not access your real location. Check your browser permissions.');
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      const [lat, lng] = shareLocation && myLocation ? myLocation : [undefined, undefined];
+      await createCommunityPost(category, title, body, lat, lng);
+      setTitle('');
+      setBody('');
+      setShareLocation(false);
+      setMyLocation(null);
+      setOpen(false);
+      onCreated();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not create this post.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button className="toss-btn toss-btn-primary" style={{ width: '100%', marginBottom: '16px' }} onClick={() => setOpen(true)}>
+        + Write a post
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="toss-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Write a post</h3>
+      <select
+        value={category} onChange={(e) => setCategory(e.target.value)}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      >
+        {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+      </select>
+      <input
+        type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" required
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      />
+      <textarea
+        value={body} onChange={(e) => setBody(e.target.value)} placeholder="What's going on in the neighborhood?" required rows={4}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
+      />
+      <button
+        type="button"
+        className="toss-btn toss-btn-secondary"
+        disabled={locating}
+        onClick={handleToggleShareLocation}
+        style={{ fontSize: '13px' }}
+      >
+        {locating ? 'Finding your real location…' : shareLocation ? '📍 Real location shared -- others nearby can find this post' : '📍 Share my real location (optional)'}
+      </button>
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
+          {submitting ? 'Posting…' : 'Post'}
+        </button>
+      </div>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+    </form>
+  );
+}
+
+function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChanged }: {
+  post: CommunityPost; categoryLabel: string; isMine: boolean; onOpen: () => void; onChanged: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleRemove = async () => {
+    setBusy(true);
+    try {
+      await removeCommunityPost(post.id);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not remove this post.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px', cursor: 'pointer' }} onClick={onOpen}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--toss-blue)' }}>{categoryLabel}</span>
+        {isMine && (
+          <button
+            className="toss-btn toss-btn-secondary"
+            style={{ fontSize: '11px', padding: '4px 10px' }}
+            disabled={busy}
+            onClick={(e) => { e.stopPropagation(); void handleRemove(); }}
+          >
+            {busy ? 'Removing…' : 'Remove'}
+          </button>
+        )}
+      </div>
+      <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{post.title}</p>
+      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
+        {post.body}
+      </p>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-400)' }}>
+        ❤️ {post.likeCount} · 💬 {post.commentCount}
+      </p>
+      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
+function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: () => void }) {
+  const [post, setPost] = useState<CommunityPost | null>(null);
+  const [authorName, setAuthorName] = useState('');
+  const [likedByMe, setLikedByMe] = useState(false);
+  const [comments, setComments] = useState<{ comment: CommunityComment; authorName: string }[] | null>(null);
+  const [commentBody, setCommentBody] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [liking, setLiking] = useState(false);
+  const [commenting, setCommenting] = useState(false);
+
+  const load = () => {
+    setError(null);
+    fetchCommunityPost(postId)
+      .then((r) => { setPost(r.post); setAuthorName(r.authorName); setLikedByMe(r.likedByMe); })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this post.'));
+    fetchCommunityComments(postId)
+      .then(setComments)
+      .catch(() => { /* non-critical -- the post itself still renders */ });
+  };
+
+  useEffect(load, [postId]);
+
+  const handleLike = async () => {
+    setLiking(true);
+    try {
+      const liked = await toggleCommunityLike(postId);
+      setLikedByMe(liked);
+      setPost((p) => (p ? { ...p, likeCount: p.likeCount + (liked ? 1 : -1) } : p));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update your like.');
+    } finally {
+      setLiking(false);
+    }
+  };
+
+  const handleComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentBody.trim()) return;
+    setCommenting(true);
+    setError(null);
+    try {
+      await addCommunityComment(postId, commentBody);
+      setCommentBody('');
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not post your comment.');
+    } finally {
+      setCommenting(false);
+    }
+  };
+
+  return (
+    <div>
+      <button className="toss-btn toss-btn-secondary" style={{ marginBottom: '12px' }} onClick={onBack}>← Back</button>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {!post && !error && <div className="toss-card skeleton" style={{ height: '160px' }} />}
+      {post && (
+        <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+          <p style={{ fontSize: '17px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{post.title}</p>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>by {authorName}</p>
+          <p style={{ fontSize: '14px', color: 'var(--toss-grey-700)', whiteSpace: 'pre-wrap' }}>{post.body}</p>
+          <button
+            className="toss-btn toss-btn-secondary"
+            disabled={liking}
+            onClick={handleLike}
+            style={{ alignSelf: 'flex-start', fontSize: '13px' }}
+          >
+            {likedByMe ? '❤️' : '🤍'} {post.likeCount}
+          </button>
+        </div>
+      )}
+      <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Comments</h3>
+      {comments === null && <div className="toss-card skeleton" style={{ height: '80px' }} />}
+      {comments !== null && comments.length === 0 && (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>No comments yet -- be the first to reply.</p>
+      )}
+      {comments !== null && comments.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+          {comments.map(({ comment, authorName: name }) => (
+            <div key={comment.id} className="toss-card" style={{ padding: '10px 14px' }}>
+              <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-700)' }}>{name}</p>
+              <p style={{ fontSize: '13px', color: 'var(--toss-grey-900)' }}>{comment.body}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      <form onSubmit={handleComment} style={{ display: 'flex', gap: '8px' }}>
+        <input
+          type="text" value={commentBody} onChange={(e) => setCommentBody(e.target.value)} placeholder="Add a comment"
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        />
+        <button type="submit" className="toss-btn toss-btn-primary" disabled={commenting || !commentBody.trim()}>
+          {commenting ? '…' : 'Send'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function CommunityView() {
+  const [view, setView] = useState<'BROWSE' | 'MINE'>('BROWSE');
+  const [categories, setCategories] = useState<CommunityCategory[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [posts, setPosts] = useState<CommunityPost[] | null>(null);
+  const [openPostId, setOpenPostId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const currentUser = getStoredUser();
+
+  useEffect(() => {
+    fetchCommunityCategories().then(setCategories).catch(() => { /* chips just won't render, browse still works */ });
+  }, []);
+
+  const load = () => {
+    setError(null);
+    setPosts(null);
+    const fetcher = view === 'BROWSE' ? fetchCommunityPosts(activeCategory ?? undefined) : fetchMyCommunityPosts();
+    fetcher
+      .then(setPosts)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load posts.'));
+  };
+
+  useEffect(load, [view, activeCategory]);
+
+  if (openPostId) {
+    return <CommunityPostDetailView postId={openPostId} onBack={() => { setOpenPostId(null); load(); }} />;
+  }
+
+  const categoryLabel = (id: string) => categories.find((c) => c.id === id)?.label ?? id;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+        {(['BROWSE', 'MINE'] as const).map((v) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            style={{
+              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
+              color: view === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+              backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
+            }}
+          >
+            {v === 'BROWSE' ? 'Neighborhood feed' : 'My posts'}
+          </button>
+        ))}
+      </div>
+
+      {view === 'BROWSE' && categories.length > 0 && (
+        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '12px', paddingBottom: '2px' }}>
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setActiveCategory(activeCategory === c.id ? null : c.id)}
+              style={{
+                whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
+                border: `1px solid ${activeCategory === c.id ? 'var(--toss-blue)' : 'var(--toss-grey-200)'}`,
+                color: activeCategory === c.id ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+                backgroundColor: activeCategory === c.id ? 'var(--toss-blue)' : 'transparent',
+              }}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {view === 'MINE' && <NewCommunityPostCard categories={categories} onCreated={load} />}
+
+      {error && (
+        <div className="toss-card">
+          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+          <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+        </div>
+      )}
+      {!error && posts === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
+      {!error && posts !== null && posts.length === 0 && (
+        <div className="toss-card">
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+            {view === 'BROWSE' ? 'No posts yet.' : "You haven't posted anything yet."}
+          </p>
+        </div>
+      )}
+      {!error && posts !== null && posts.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {posts.map((post) => (
+            <CommunityPostCard
+              key={post.id}
+              post={post}
+              categoryLabel={categoryLabel(post.category)}
+              isMine={view === 'MINE' || post.authorId === currentUser?.id}
+              onOpen={() => setOpenPostId(post.id)}
+              onChanged={load}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const EATS_STATUS_LABEL: Record<EatsOrderStatus, string> = {
   PLACED: 'Placed',
   ACCEPTED: 'Accepted by restaurant',
@@ -3115,6 +3470,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'EATS', label: 'Eats' },
     { id: 'MESSAGES', label: 'Messages' },
     { id: 'MARKETPLACE', label: 'Marketplace' },
+    { id: 'COMMUNITY', label: 'Community' },
     { id: 'MAP', label: 'Map' },
     { id: 'CERTIFICATE', label: 'Certificate' },
     { id: 'SHOPPING', label: 'Shopping' },
@@ -3163,6 +3519,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         />
       )}
       {tab === 'MARKETPLACE' && <MarketplaceView onMessageSeller={handleMessageSeller} />}
+      {tab === 'COMMUNITY' && <CommunityView />}
       {tab === 'MAP' && <MapView />}
       {tab === 'CERTIFICATE' && <CertificateView />}
       {tab === 'SHOPPING' && <ShoppingView />}
