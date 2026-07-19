@@ -86,6 +86,14 @@ class EatsOrderService(
     private val nominatimGeocodingClient: NominatimGeocodingClient,
     private val rateLimiter: RateLimiter,
 ) {
+    companion object {
+        // Same bound MarketplaceService.nearby's own doc comment establishes -- caps a
+        // single OSRM /table request's URL length and the private cloud's per-request
+        // load; beyond this, getAvailableDeliveries quietly stays on the already-honest
+        // Haversine ranking rather than risking an oversized request.
+        private const val MAX_OSRM_TABLE_CANDIDATES = 100
+    }
+
     // Same 1.5% Toss Payments fee-schedule reasoning OrderService.feeRate/
     // MerchantService.feeRate already give -- reused rather than inventing a third number
     // for what is, underneath, the same kind of wallet-to-wallet merchant collection.
@@ -110,6 +118,23 @@ class EatsOrderService(
         val raw = baseDeliveryFee.add(perKmDeliveryRate.multiply(distance)).setScale(2, RoundingMode.HALF_UP)
         return raw.max(minDeliveryFee).min(maxDeliveryFee) to distance
     }
+
+    // Real road distance via itunda's own self-hosted, Rwanda-only OSRM when both points
+    // are plausibly within Rwanda (real Rwanda road network, not a straight line) --
+    // outside that envelope OSRM has no configured max-matching-radius and would
+    // silently snap to the nearest network node instead of correctly finding no route
+    // (found live, 2026-07-18), so this skips straight to the honest Haversine
+    // straight-line distance instead. Also falls back to Haversine when OSRM isn't
+    // configured/reachable/finds no route -- never a fabricated number either way.
+    // Shared by placeOrder's delivery-fee calculation and getAvailableDeliveries' real
+    // proximity ranking (2026-07-19) -- one real distance computation, not two that could
+    // silently drift apart.
+    private fun resolveRealDistanceKm(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double =
+        if (GeoUtils.isWithinRwanda(lat1, lng1) && GeoUtils.isWithinRwanda(lat2, lng2)) {
+            osrmRoutingClient.routeDistanceKm(lat1, lng1, lat2, lng2) ?: GeoUtils.haversineKm(lat1, lng1, lat2, lng2)
+        } else {
+            GeoUtils.haversineKm(lat1, lng1, lat2, lng2)
+        }
 
     // Real user-facing address search (2026-07-18), backing a real autocomplete UI so a
     // buyer can see and confirm the real coordinates their typed address resolves to
@@ -201,20 +226,7 @@ class EatsOrderService(
         val resolvedDeliveryLng = deliveryLongitude ?: geocoded?.longitude
 
         val distanceKm = if (resolvedDeliveryLat != null && resolvedDeliveryLng != null && restaurantLat != null && restaurantLng != null) {
-            // Real road distance via itunda's own self-hosted, Rwanda-only OSRM when
-            // both points are plausibly within Rwanda (real Rwanda road network, not a
-            // straight line) -- outside that envelope OSRM has no configured
-            // max-matching-radius and would silently snap to the nearest network node
-            // instead of correctly finding no route (found live, 2026-07-18), so this
-            // skips straight to the honest Haversine straight-line distance instead.
-            // Also falls back to Haversine when OSRM isn't configured/reachable/finds
-            // no route -- never a fabricated number either way.
-            if (GeoUtils.isWithinRwanda(restaurantLat, restaurantLng) && GeoUtils.isWithinRwanda(resolvedDeliveryLat, resolvedDeliveryLng)) {
-                osrmRoutingClient.routeDistanceKm(restaurantLat, restaurantLng, resolvedDeliveryLat, resolvedDeliveryLng)
-                    ?: GeoUtils.haversineKm(restaurantLat, restaurantLng, resolvedDeliveryLat, resolvedDeliveryLng)
-            } else {
-                GeoUtils.haversineKm(restaurantLat, restaurantLng, resolvedDeliveryLat, resolvedDeliveryLng)
-            }
+            resolveRealDistanceKm(restaurantLat, restaurantLng, resolvedDeliveryLat, resolvedDeliveryLng)
         } else {
             null
         }
@@ -290,13 +302,19 @@ class EatsOrderService(
      * available ones (a rider deciding whether to go online can see the real demand).
      *
      * Real nearest-first ranking (2026-07-19): when the calling rider has a real current
-     * location (`RiderService.updateLocation`), candidates are sorted by real
-     * `GeoUtils.haversineKm` distance from the rider to each order's restaurant, closest
-     * first -- real Coupang Eats-style proximity dispatch, using coordinates
-     * `Merchant`/`EatsOrder` already carry. Falls back to the original createdAt-ascending
+     * location (`RiderService.updateLocation`), candidates are sorted by real distance
+     * from the rider to each order's restaurant, closest first -- real Coupang
+     * Eats-style proximity dispatch. Falls back to the original createdAt-ascending
      * (oldest-first) order when the rider hasn't shared a location yet, or when a
-     * candidate's restaurant has no real coordinates -- never a fabricated distance,
-     * same honest-fallback discipline `computeDeliveryFee` already established.
+     * candidate's restaurant has no real coordinates -- never a fabricated distance.
+     *
+     * Real road-distance ranking, not straight-line-only: same discipline
+     * `MarketplaceService.nearby`'s own doc comment already established for proximity
+     * search -- `GeoUtils.haversineKm` first does a cheap in-memory rank (also the
+     * final answer for anything outside Rwanda or when OSRM is unconfigured), then a
+     * SINGLE batched `OsrmRoutingClient.routeDistancesKm` `/table` call re-ranks every
+     * in-Rwanda candidate by real road distance in one round trip -- never one `/route`
+     * call per candidate, which would just be an HTTP-level N+1 in place of a DB one.
      *
      * Sorted in-app over a single bounded fetch, not a DB-level query, matching this
      * codebase's own established "honest choice at this system's real data scale"
@@ -320,16 +338,31 @@ class EatsOrderService(
         if (candidates.isEmpty()) return PageImpl(emptyList(), pageable, 0)
 
         val restaurantsById = merchantRepository.findAllById(candidates.map { it.restaurantId }.distinct()).associateBy { it.id }
-        val sorted = candidates.sortedBy { order ->
-            val restaurant = restaurantsById[order.restaurantId]
-            val restaurantLat = restaurant?.latitude
-            val restaurantLng = restaurant?.longitude
-            if (restaurantLat != null && restaurantLng != null) {
-                GeoUtils.haversineKm(riderLat, riderLng, restaurantLat, restaurantLng)
-            } else {
-                Double.MAX_VALUE
-            }
+        // Orders whose restaurant has no real coordinates yet sort last -- never
+        // silently dropped, just unranked, same fallback discipline as everywhere else.
+        val (locatable, unlocatable) = candidates.partition { order ->
+            val r = restaurantsById[order.restaurantId]
+            r?.latitude != null && r.longitude != null
         }
+
+        val haversineRanked = locatable.map { order ->
+            val r = restaurantsById.getValue(order.restaurantId)
+            order to GeoUtils.haversineKm(riderLat, riderLng, r.latitude!!, r.longitude!!)
+        }
+        val riderInRwanda = GeoUtils.isWithinRwanda(riderLat, riderLng)
+        val (inRwanda, outsideRwanda) = haversineRanked.partition { (order, _) ->
+            val r = restaurantsById.getValue(order.restaurantId)
+            riderInRwanda && GeoUtils.isWithinRwanda(r.latitude!!, r.longitude!!)
+        }
+        val roadRanked = if (osrmRoutingClient.isConfigured && inRwanda.isNotEmpty() && inRwanda.size <= MAX_OSRM_TABLE_CANDIDATES) {
+            val destinations = inRwanda.map { (order, _) -> restaurantsById.getValue(order.restaurantId).let { it.latitude!! to it.longitude!! } }
+            val roadDistances = osrmRoutingClient.routeDistancesKm(riderLat, riderLng, destinations)
+            inRwanda.mapIndexed { index, (order, haversineDistanceKm) -> order to (roadDistances.getOrNull(index) ?: haversineDistanceKm) }
+        } else {
+            inRwanda
+        }
+
+        val sorted = (roadRanked + outsideRwanda).sortedBy { (_, distanceKm) -> distanceKm }.map { (order, _) -> order } + unlocatable
         val start = (pageable.offset).coerceAtMost(sorted.size.toLong()).toInt()
         val end = (start + pageable.pageSize).coerceAtMost(sorted.size)
         return PageImpl(sorted.subList(start, end), pageable, sorted.size.toLong())

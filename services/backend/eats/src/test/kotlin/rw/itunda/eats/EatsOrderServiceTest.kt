@@ -746,6 +746,10 @@ class EatsOrderServiceTest : BehaviorSpec({
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
         val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        // Not configured for most cases in this block -- exercises the honest Haversine
+        // fallback, same as OSRM being unavailable in production. A dedicated case below
+        // separately proves the real road-distance path when OSRM IS configured.
+        every { osrmRoutingClient.isConfigured } returns false
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val service = EatsOrderService(
@@ -792,6 +796,29 @@ class EatsOrderServiceTest : BehaviorSpec({
             val page = service.getAvailableDeliveries("rider_user_2", PageRequest.of(0, 20))
 
             Then("it honestly falls back to createdAt order -- never a fabricated distance") {
+                page.content.map { it.id } shouldBe listOf("order_far", "order_near")
+            }
+        }
+
+        When("OSRM is configured and reports a real road distance that flips the Haversine ranking") {
+            // Real road distance can exceed straight-line -- here the "near" restaurant's
+            // actual road distance is longer than the "far" one's, proving the final sort
+            // genuinely comes from OSRM's real /table response, not just Haversine.
+            every { osrmRoutingClient.isConfigured } returns true
+            val riderAtKigaliCenter = Rider(id = "rider_3", userId = "rider_user_3", walletId = "wallet_rider_3", currentLatitude = -1.9441, currentLongitude = 30.0619)
+            every { riderRepository.findByUserId("rider_user_3") } returns riderAtKigaliCenter
+            every { eatsOrderRepository.findByStatusAndRiderIdIsNullOrderByCreatedAtAsc(EatsOrderStatus.READY_FOR_PICKUP, Pageable.unpaged()) } returns
+                org.springframework.data.domain.PageImpl(listOf(orderFromFarRestaurant, orderFromNearRestaurant))
+            every { merchantRepository.findAllById(listOf("restaurant_far", "restaurant_near")) } returns listOf(farRestaurant, nearRestaurant)
+            // routeDistancesKm's destinations line up positionally with the in-Rwanda
+            // candidate order the service builds them in (far, then near, matching
+            // eatsOrderRepository's own returned order) -- real road distance flips it:
+            // "near" is actually 200km by road, "far" is only 10km.
+            every { osrmRoutingClient.routeDistancesKm(-1.9441, 30.0619, listOf(-2.5967 to 29.7392, -1.9536 to 30.0605)) } returns listOf(10.0, 200.0)
+
+            val page = service.getAvailableDeliveries("rider_user_3", PageRequest.of(0, 20))
+
+            Then("it real-ranks by the real road distance, not the straight-line one") {
                 page.content.map { it.id } shouldBe listOf("order_far", "order_near")
             }
         }
