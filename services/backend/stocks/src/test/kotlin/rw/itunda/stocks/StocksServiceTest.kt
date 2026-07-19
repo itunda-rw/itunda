@@ -7,12 +7,14 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import rw.itunda.core.domain.Holding
+import rw.itunda.core.domain.StockTrade
 import rw.itunda.core.domain.StockWatchlist
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.HoldingRepository
+import rw.itunda.core.repository.StockTradeRepository
 import rw.itunda.core.repository.StockWatchlistRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -31,10 +33,17 @@ class StocksServiceTest : BehaviorSpec({
         val holdingRepository = mockk<HoldingRepository>()
         val ledgerService = mockk<LedgerService>()
         val stockWatchlistRepository = mockk<StockWatchlistRepository>(relaxed = true)
-        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository)
+        val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
+        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository)
 
         every { walletRepository.findByUserIdAndType("user_1", WalletType.INVESTMENT) } returns investmentWallet()
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
+        // Explicit stub even though stockTradeRepository is relaxed -- mockk's relaxed
+        // default can't correctly infer JpaRepository's generic `<S extends T> S save(S)`
+        // signature, throwing a real ClassCastException back in the caller (same known
+        // gotcha MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/
+        // GroupMessagingServiceTest already document).
+        every { stockTradeRepository.save(any()) } answers { firstArg() }
 
         When("buying shares of a stock with no existing position") {
             every { holdingRepository.findByUserIdAndStockId("user_1", "s1") } returns null
@@ -128,7 +137,8 @@ class StocksServiceTest : BehaviorSpec({
         val holdingRepository = mockk<HoldingRepository>()
         val ledgerService = mockk<LedgerService>()
         val stockWatchlistRepository = mockk<StockWatchlistRepository>()
-        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository)
+        val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
+        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository)
 
         When("watching a real stock for the first time") {
             every { stockWatchlistRepository.findByUserIdAndStockId("user_1", "s1") } returns null
@@ -194,7 +204,8 @@ class StocksServiceTest : BehaviorSpec({
         val holdingRepository = mockk<HoldingRepository>()
         val ledgerService = mockk<LedgerService>()
         val stockWatchlistRepository = mockk<StockWatchlistRepository>(relaxed = true)
-        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository)
+        val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
+        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository)
 
         When("requesting a real 30-day window") {
             val history = service.getPriceHistory("s1", 30)
@@ -238,28 +249,60 @@ class StocksServiceTest : BehaviorSpec({
         }
     }
 
-    Given("a real user with a real current stock position, checking their portfolio's value chart") {
+    Given("a real user with a real trade history, checking their portfolio's real value chart") {
         val walletRepository = mockk<WalletRepository>()
         val holdingRepository = mockk<HoldingRepository>()
         val ledgerService = mockk<LedgerService>()
         val stockWatchlistRepository = mockk<StockWatchlistRepository>(relaxed = true)
-        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository)
+        val stockTradeRepository = mockk<StockTradeRepository>()
+        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository)
 
-        val holding = Holding(id = "hold_1", userId = "user_1", walletId = "wallet_inv", stockId = "s1", shares = BigDecimal("10"), avgPrice = BigDecimal("500"))
-        every { holdingRepository.findByUserId("user_1") } returns listOf(holding)
+        When("a single real buy happened 3 real days ago") {
+            val buy = StockTrade(
+                id = "trade_1", userId = "user_1", stockId = "s1", type = "BUY",
+                shares = BigDecimal("10"), price = BigDecimal("500"),
+                executedAt = java.time.LocalDate.now().minusDays(3).atStartOfDay(java.time.ZoneOffset.UTC).toInstant(),
+            )
+            every { stockTradeRepository.findByUserIdOrderByExecutedAtAsc("user_1") } returns listOf(buy)
 
-        When("requesting a real 7-day window") {
             val history = service.getPortfolioHistory("user_1", 7)
 
-            Then("it returns 7 real points, and the most recent one exactly matches shares times today's live price") {
+            Then("it real-reconstructs zero before the buy and the real position after -- not an approximation applied to the whole window") {
                 history.size shouldBe 7
+                // Days 0-3 (7 days ago .. 4 days ago): before the real buy, honestly zero.
+                history.take(3).all { it.value == BigDecimal.ZERO } shouldBe true
+                // The buy day itself and every day after: real 10 shares at that real day's price.
                 val todayPrice = StockCatalog.find("s1")!!.price
                 history.last().value shouldBe BigDecimal("10").multiply(todayPrice)
+                history.drop(3).all { it.value > BigDecimal.ZERO } shouldBe true
             }
         }
 
-        When("the real user holds nothing at all") {
-            every { holdingRepository.findByUserId("user_2") } returns emptyList()
+        When("a real buy is followed by a real full sell 2 real days ago") {
+            val buy = StockTrade(
+                id = "trade_2", userId = "user_1", stockId = "s1", type = "BUY",
+                shares = BigDecimal("10"), price = BigDecimal("500"),
+                executedAt = java.time.LocalDate.now().minusDays(5).atStartOfDay(java.time.ZoneOffset.UTC).toInstant(),
+            )
+            val sell = StockTrade(
+                id = "trade_3", userId = "user_1", stockId = "s1", type = "SELL",
+                shares = BigDecimal("10"), price = BigDecimal("600"),
+                executedAt = java.time.LocalDate.now().minusDays(2).atStartOfDay(java.time.ZoneOffset.UTC).toInstant(),
+            )
+            every { stockTradeRepository.findByUserIdOrderByExecutedAtAsc("user_1") } returns listOf(buy, sell)
+
+            val history = service.getPortfolioHistory("user_1", 7)
+
+            Then("it real-reflects the position dropping back to zero after the real sell, not still showing a phantom holding") {
+                // Today (the most recent point): fully sold, real zero -- the exact case
+                // the old "current holdings" approximation could never get right, since
+                // a fully-sold position wouldn't even appear in current holdings at all.
+                history.last().value shouldBe BigDecimal.ZERO
+            }
+        }
+
+        When("the real user has no trade history at all") {
+            every { stockTradeRepository.findByUserIdOrderByExecutedAtAsc("user_2") } returns emptyList()
 
             val history = service.getPortfolioHistory("user_2", 7)
 

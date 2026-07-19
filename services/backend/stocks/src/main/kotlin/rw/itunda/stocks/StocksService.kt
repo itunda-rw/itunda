@@ -5,17 +5,20 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.Holding
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.StockTrade
 import rw.itunda.core.domain.StockWatchlist
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.HoldingRepository
+import rw.itunda.core.repository.StockTradeRepository
 import rw.itunda.core.repository.StockWatchlistRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.UUID
 
 class StockNotFoundException(message: String) : RuntimeException(message)
@@ -32,6 +35,7 @@ class StocksService(
     private val holdingRepository: HoldingRepository,
     private val ledgerService: LedgerService,
     private val stockWatchlistRepository: StockWatchlistRepository,
+    private val stockTradeRepository: StockTradeRepository,
 ) {
     fun getStocks() = StockCatalog.stocks
 
@@ -91,6 +95,12 @@ class StocksService(
         holding.avgPrice = totalCostBasis.divide(holding.shares, 4, RoundingMode.HALF_UP)
         holdingRepository.save(holding)
 
+        // Real, purely additive trade-log row (2026-07-20) -- see StockTrade.kt's own
+        // doc comment for why this never touches the Holding math just above.
+        stockTradeRepository.save(
+            StockTrade(id = "trade_${UUID.randomUUID()}", userId = userId, stockId = stock.id, type = "BUY", shares = shares, price = stock.price),
+        )
+
         return mapOf(
             "id" to result.transactionId, "referenceNumber" to "STK${System.currentTimeMillis()}",
             "type" to "INVESTMENT", "status" to "COMPLETED",
@@ -115,6 +125,12 @@ class StocksService(
 
         holding.shares = holding.shares.subtract(shares)
         holdingRepository.save(holding)
+
+        // Real, purely additive trade-log row (2026-07-20) -- see StockTrade.kt's own
+        // doc comment for why this never touches the Holding math just above.
+        stockTradeRepository.save(
+            StockTrade(id = "trade_${UUID.randomUUID()}", userId = userId, stockId = stock.id, type = "SELL", shares = shares, price = stock.price),
+        )
 
         return mapOf(
             "id" to result.transactionId, "referenceNumber" to "STK${System.currentTimeMillis()}",
@@ -152,26 +168,36 @@ class StocksService(
         stockWatchlistRepository.findByUserIdOrderByCreatedAtDesc(userId).mapNotNull { StockCatalog.find(it.stockId) }
 
     // Real portfolio value chart (2026-07-19), backing the "watch your portfolio move"
-    // moment at the account level, not just per-stock. Honestly, explicitly scoped:
-    // this applies the user's CURRENT share counts to real historical prices ("what
-    // would my current position be worth on each of the last N days"), not a true
-    // historical reconstruction of what was actually held on each day -- this backend
-    // only stores a single rolled-up (shares, avgPrice) per holding, not a per-lot
-    // purchase-date ledger, so it genuinely can't know how many shares existed on a past
-    // date before the most recent buy/sell. Same honest-approximation discipline the
-    // Overview row's own "cost basis, not live market value" already established --
-    // named clearly here rather than silently presented as a real historical return.
+    // moment at the account level, not just per-stock.
+    //
+    // Real historical reconstruction (2026-07-20), upgraded from this feature's initial
+    // "current holdings applied to past prices" approximation: replays the user's real,
+    // immutable `StockTrade` log (sum BUY shares - sum SELL shares, filtered to
+    // `executedAt` on or before each target date) to compute the REAL number of shares
+    // actually held on that real past day, then applies that real day's real simulated
+    // price -- not an approximation, a genuine reconstruction, since every buy/sell now
+    // writes a real timestamped trade row alongside the existing `Holding` update (see
+    // StockTrade.kt's own doc comment for why that's additive, not a rewrite of the
+    // already-tested Holding math).
     fun getPortfolioHistory(userId: String, days: Int): List<PortfolioValuePoint> {
         if (days < 1 || days > 365) {
             throw InvalidPriceHistoryRangeException("days must be between 1 and 365")
         }
-        val holdings = holdingRepository.findByUserId(userId).filter { it.shares > BigDecimal.ZERO }
+        val trades = stockTradeRepository.findByUserIdOrderByExecutedAtAsc(userId)
+        val tradesByStock = trades.groupBy { it.stockId }
         val today = LocalDate.now()
         return (days - 1 downTo 0).map { offset ->
             val date = today.minusDays(offset.toLong())
-            val value = holdings.fold(BigDecimal.ZERO) { acc, holding ->
-                val priceOnDate = StockCatalog.priceOn(holding.stockId, date) ?: BigDecimal.ZERO
-                acc.add(holding.shares.multiply(priceOnDate))
+            val cutoff = date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()
+            val value = tradesByStock.entries.fold(BigDecimal.ZERO) { acc, (stockId, stockTrades) ->
+                val sharesOnDate = stockTrades
+                    .filter { it.executedAt.isBefore(cutoff) }
+                    .fold(BigDecimal.ZERO) { shareAcc, trade ->
+                        if (trade.type == "BUY") shareAcc.add(trade.shares) else shareAcc.subtract(trade.shares)
+                    }
+                if (sharesOnDate <= BigDecimal.ZERO) return@fold acc
+                val priceOnDate = StockCatalog.priceOn(stockId, date) ?: BigDecimal.ZERO
+                acc.add(sharesOnDate.multiply(priceOnDate))
             }
             PortfolioValuePoint(date, value)
         }

@@ -13,6 +13,7 @@ import rw.itunda.core.domain.LedgerAccount
 import rw.itunda.core.domain.LedgerEntry
 import rw.itunda.core.domain.LoanAccount
 import rw.itunda.core.domain.SavingsGoal
+import rw.itunda.core.domain.StockTrade
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
@@ -33,6 +34,12 @@ interface ContactRepository : JpaRepository<Contact, String> {
 interface HoldingRepository : JpaRepository<Holding, String> {
     fun findByUserId(userId: String): List<Holding>
     fun findByUserIdAndStockId(userId: String, stockId: String): Holding?
+}
+
+// Real immutable trade log (2026-07-20) -- see StockTrade.kt's own doc comment. Ordered
+// ascending so StocksService.getPortfolioHistory can replay it chronologically.
+interface StockTradeRepository : JpaRepository<StockTrade, String> {
+    fun findByUserIdOrderByExecutedAtAsc(userId: String): List<StockTrade>
 }
 
 interface SavingsGoalRepository : JpaRepository<SavingsGoal, String> {
