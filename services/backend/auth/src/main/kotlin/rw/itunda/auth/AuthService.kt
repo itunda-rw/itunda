@@ -172,6 +172,14 @@ class AuthService(
         if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
             throw InvalidCoordinatesException("Latitude must be between -90 and 90, longitude between -180 and 180")
         }
+        // Real anti-spam limit (found missing in a 2026-07-20 security sweep) -- every
+        // other real endpoint in this codebase that burns a real external-network call
+        // per request already has one (e.g. AccountAggregationService's "accounts:link",
+        // 10/hour, whose own comment says exactly why: unlimited calls would just burn
+        // another real simulated connector/provider call every single time). This one
+        // calls itunda's own real self-hosted Nominatim on every invocation and had
+        // shipped with zero protection.
+        rateLimiter.checkLimit("auth:neighborhood:$userId", limit = 10, window = Duration.ofHours(1))
         val user = userRepository.findById(userId).orElseThrow { UserNotFoundException("User not found") }
         val neighborhood = nominatimGeocodingClient.reverseGeocode(latitude, longitude)
             ?: throw NeighborhoodNotResolvedException("Couldn't determine a neighborhood for this location")

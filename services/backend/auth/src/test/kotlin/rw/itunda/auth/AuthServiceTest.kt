@@ -18,6 +18,7 @@ import rw.itunda.core.repository.EmailVerificationTokenRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
+import java.time.Duration
 import java.time.Instant
 import java.util.Optional
 
@@ -382,6 +383,7 @@ class AuthServiceTest : BehaviorSpec({
 
         When("setting a real neighborhood from a real coordinate that reverse-geocodes successfully") {
             val user = User(id = "user_6", phoneNumber = "+250788000008", firstName = "A", lastName = "B", passwordHash = "x")
+            every { rateLimiter.checkLimit("auth:neighborhood:user_6", limit = 10, window = Duration.ofHours(1)) } returns Unit
             every { userRepository.findById("user_6") } returns Optional.of(user)
             every { nominatimGeocodingClient.reverseGeocode(-1.9536, 30.0605) } returns "Nyarugenge"
             every { userRepository.save(any()) } answers { firstArg() }
@@ -394,6 +396,7 @@ class AuthServiceTest : BehaviorSpec({
         }
 
         When("setting a neighborhood but reverse geocoding can't resolve one") {
+            every { rateLimiter.checkLimit("auth:neighborhood:user_6", limit = 10, window = Duration.ofHours(1)) } returns Unit
             every { userRepository.findById("user_6") } returns Optional.of(
                 User(id = "user_6", phoneNumber = "+250788000008", firstName = "A", lastName = "B", passwordHash = "x"),
             )
@@ -410,12 +413,27 @@ class AuthServiceTest : BehaviorSpec({
         }
 
         When("setting a neighborhood with an invalid coordinate") {
-            Then("it throws InvalidCoordinatesException") {
+            Then("it throws InvalidCoordinatesException before ever touching the real rate limiter or geocoder") {
                 try {
                     service.setNeighborhood("user_6", 200.0, 30.0)
                     error("expected InvalidCoordinatesException")
                 } catch (e: InvalidCoordinatesException) {
-                    // expected
+                    verify(exactly = 0) { rateLimiter.checkLimit(any(), any(), any()) }
+                }
+            }
+        }
+
+        When("a real user exceeds the real neighborhood-setting rate limit") {
+            every {
+                rateLimiter.checkLimit("auth:neighborhood:user_6", limit = 10, window = Duration.ofHours(1))
+            } throws RateLimitExceededException("Too many requests")
+
+            Then("it real-propagates RateLimitExceededException, found missing in a 2026-07-20 security sweep") {
+                try {
+                    service.setNeighborhood("user_6", -1.9536, 30.0605)
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { nominatimGeocodingClient.reverseGeocode(any(), any()) }
                 }
             }
         }
