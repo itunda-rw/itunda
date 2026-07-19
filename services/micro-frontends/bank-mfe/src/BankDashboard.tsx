@@ -27,6 +27,7 @@ import {
   type CommerceOrder, type CommerceOrderStatus, type CommerceProduct,
 } from './lib/commerce';
 import MapView from './MapView';
+import RouteMiniMap from './RouteMiniMap';
 
 type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'MESSAGES' | 'MARKETPLACE' | 'EATS' | 'MAP';
 
@@ -1307,17 +1308,51 @@ function NewListingCard({ onCreated }: { onCreated: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
+  // Real optional seller location (2026-07-18 backend support, 2026-07-19 this UI) --
+  // powers real proximity search and "Directions to this seller"; a listing without it
+  // simply doesn't appear in either, an honest opt-in, never assumed.
+  const [shareLocation, setShareLocation] = useState(false);
+  const [myLocation, setMyLocation] = useState<[number, number] | null>(null); // [lat, lng]
+  const [locating, setLocating] = useState(false);
+
+  const handleToggleShareLocation = () => {
+    if (shareLocation) {
+      setShareLocation(false);
+      return;
+    }
+    if (!navigator.geolocation) {
+      setError('This browser does not support real location access.');
+      return;
+    }
+    setLocating(true);
+    setError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocating(false);
+        setMyLocation([position.coords.latitude, position.coords.longitude]);
+        setShareLocation(true);
+      },
+      () => {
+        setLocating(false);
+        setError('Could not access your real location. Check your browser permissions.');
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
-      await createListing(title, description, Number(price), category);
+      const [lat, lng] = shareLocation && myLocation ? myLocation : [undefined, undefined];
+      await createListing(title, description, Number(price), category, lat, lng);
       setTitle('');
       setDescription('');
       setPrice('');
       setCategory('');
+      setShareLocation(false);
+      setMyLocation(null);
       setOpen(false);
       onCreated();
     } catch (err) {
@@ -1356,6 +1391,15 @@ function NewListingCard({ onCreated }: { onCreated: () => void }) {
           style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
         />
       </div>
+      <button
+        type="button"
+        className="toss-btn toss-btn-secondary"
+        disabled={locating}
+        onClick={handleToggleShareLocation}
+        style={{ fontSize: '13px' }}
+      >
+        {locating ? 'Finding your real location…' : shareLocation ? '📍 Real location shared -- buyers can see distance & get directions' : '📍 Share my real location (optional)'}
+      </button>
       <div style={{ display: 'flex', gap: '10px' }}>
         <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
         <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
@@ -1377,6 +1421,38 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller }: {
   const [error, setError] = useState<string | null>(null);
   const [offering, setOffering] = useState(false);
   const [offerAmount, setOfferAmount] = useState('');
+  const [myLocation, setMyLocation] = useState<[number, number] | null>(null); // [lat, lng]
+  const [showRoute, setShowRoute] = useState(false);
+  const [locating, setLocating] = useState(false);
+
+  const handleShowDirections = () => {
+    if (showRoute) {
+      setShowRoute(false);
+      return;
+    }
+    if (myLocation) {
+      setShowRoute(true);
+      return;
+    }
+    if (!navigator.geolocation) {
+      setError('This browser does not support real location access.');
+      return;
+    }
+    setLocating(true);
+    setError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocating(false);
+        setMyLocation([position.coords.latitude, position.coords.longitude]);
+        setShowRoute(true);
+      },
+      () => {
+        setLocating(false);
+        setError('Could not access your real location. Check your browser permissions.');
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
 
   const handleMarkSold = async () => {
     setBusy(true);
@@ -1492,6 +1568,21 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller }: {
           )
         )}
       </div>
+      {!isMine && listing.status === 'ACTIVE' && listing.latitude != null && listing.longitude != null && (
+        <button className="toss-btn toss-btn-secondary" disabled={locating} onClick={handleShowDirections}>
+          {locating ? 'Finding your real location…' : showRoute ? 'Hide directions' : '🚗 Directions to this seller'}
+        </button>
+      )}
+      {showRoute && myLocation && listing.latitude != null && listing.longitude != null && (
+        <RouteMiniMap
+          fromLat={myLocation[0]}
+          fromLng={myLocation[1]}
+          toLat={listing.latitude}
+          toLng={listing.longitude}
+          fromLabel="You"
+          toLabel={listing.title}
+        />
+      )}
       {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
     </div>
   );
@@ -1584,7 +1675,10 @@ function nextInChain<T>(chain: T[], current: T): T | null {
   return idx >= 0 && idx + 1 < chain.length ? chain[idx + 1] : null;
 }
 
-function EatsOrderCard({ order, action }: { order: EatsOrder; action?: React.ReactNode }) {
+function EatsOrderCard({ order, restaurant, action }: { order: EatsOrder; restaurant?: ShoppingMerchant; action?: React.ReactNode }) {
+  const [showRoute, setShowRoute] = useState(false);
+  const canShowRoute = restaurant?.latitude != null && restaurant?.longitude != null && order.deliveryLatitude != null && order.deliveryLongitude != null;
+
   return (
     <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -1598,6 +1692,21 @@ function EatsOrderCard({ order, action }: { order: EatsOrder; action?: React.Rea
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)', backgroundColor: 'var(--toss-grey-100)', borderRadius: '8px', padding: '8px 10px' }}>
           Note: {order.deliveryNotes}
         </p>
+      )}
+      {canShowRoute && (
+        <button className="toss-btn toss-btn-secondary" onClick={() => setShowRoute((v) => !v)}>
+          {showRoute ? 'Hide route' : '🚗 View real delivery route'}
+        </button>
+      )}
+      {showRoute && restaurant?.latitude != null && restaurant?.longitude != null && order.deliveryLatitude != null && order.deliveryLongitude != null && (
+        <RouteMiniMap
+          fromLat={restaurant.latitude}
+          fromLng={restaurant.longitude}
+          toLat={order.deliveryLatitude}
+          toLng={order.deliveryLongitude}
+          fromLabel={restaurant.businessName}
+          toLabel="Delivery address"
+        />
       )}
       {action}
     </div>
@@ -1932,7 +2041,7 @@ function MenuView({
   );
 }
 
-function MyEatsOrdersView({ onReorder, reorderingId }: { onReorder: (order: EatsOrder) => void; reorderingId: string | null }) {
+function MyEatsOrdersView({ onReorder, reorderingId, restaurants }: { onReorder: (order: EatsOrder) => void; reorderingId: string | null; restaurants: ShoppingMerchant[] | null }) {
   const [orders, setOrders] = useState<EatsOrder[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -1980,6 +2089,7 @@ function MyEatsOrdersView({ onReorder, reorderingId }: { onReorder: (order: Eats
         <EatsOrderCard
           key={o.id}
           order={o}
+          restaurant={restaurants?.find((r) => r.merchantId === o.restaurantId)}
           action={
             o.status === 'PLACED' ? (
               <button className="toss-btn toss-btn-danger" disabled={cancellingId === o.id} onClick={() => handleCancel(o.id)}>
@@ -2152,7 +2262,7 @@ function OrderFoodView() {
       {view === 'ORDERS' ? (
         <>
           {reorderError && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '10px' }} role="alert">{reorderError}</p>}
-          <MyEatsOrdersView onReorder={handleReorder} reorderingId={reorderingId} />
+          <MyEatsOrdersView onReorder={handleReorder} reorderingId={reorderingId} restaurants={allRestaurants} />
         </>
       ) : view === 'FAVORITES' ? (
         <FavoriteRestaurantsView

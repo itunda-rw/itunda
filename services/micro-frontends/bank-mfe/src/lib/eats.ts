@@ -64,6 +64,11 @@ export interface EatsOrder {
   createdAt: string;
   updatedAt: string;
   deliveryNotes: string | null;
+  // Real optional delivery coordinates + OSRM road distance (2026-07-18) -- backs the
+  // real distance-based delivery fee. See EatsOrderService's own doc comment.
+  deliveryLatitude?: number | null;
+  deliveryLongitude?: number | null;
+  distanceKm?: number | null;
 }
 
 export const placeEatsOrder = (

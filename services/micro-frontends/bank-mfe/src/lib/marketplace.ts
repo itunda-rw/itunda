@@ -15,6 +15,10 @@ export interface Listing {
   category: string;
   status: 'ACTIVE' | 'SOLD' | 'REMOVED';
   createdAt: string;
+  // Real optional seller-set location (2026-07-18) -- backs real proximity search
+  // (MarketplaceService.nearby) and, 2026-07-19, "Get directions to this seller".
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export const fetchListings = (category?: string) =>
@@ -25,10 +29,17 @@ export const fetchListings = (category?: string) =>
 export const fetchMyListings = () =>
   apiFetch<{ success: boolean; listings: Listing[] }>('/api/v1/marketplace/my-listings').then((r) => r.listings);
 
-export const createListing = (title: string, description: string, price: number, category: string) =>
+export const createListing = (
+  title: string,
+  description: string,
+  price: number,
+  category: string,
+  latitude?: number,
+  longitude?: number,
+) =>
   apiFetch<{ success: boolean; listing: Listing }>('/api/v1/marketplace/listings', {
     method: 'POST',
-    body: JSON.stringify({ title, description, price, category }),
+    body: JSON.stringify({ title, description, price, category, latitude, longitude }),
   }).then((r) => r.listing);
 
 export const markListingSold = (listingId: string) =>
