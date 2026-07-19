@@ -179,6 +179,30 @@ class GiftServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        When("a real participant fetches the conversation's gift history") {
+            val gift = service.sendGiftInConversation("user_a", "conversation_1", BigDecimal("3000"), "For you")
+            every { giftRepository.findByConversationId("conversation_1") } returns listOf(gift)
+
+            Then("it returns the real gifts sent in that thread") {
+                service.getGiftsForConversation("user_a", "conversation_1") shouldBe listOf(gift)
+            }
+        }
+
+        When("a non-participant fetches the conversation's gift history") {
+            every { messagingService.getConversationForParticipant("user_stranger", "conversation_1") } throws
+                rw.itunda.messaging.ConversationNotFoundException("Conversation not found")
+
+            Then("the real 404 from messaging's own IDOR check propagates, never leaking gift data") {
+                try {
+                    service.getGiftsForConversation("user_stranger", "conversation_1")
+                    error("expected ConversationNotFoundException")
+                } catch (e: rw.itunda.messaging.ConversationNotFoundException) {
+                    // expected
+                }
+                verify(exactly = 0) { giftRepository.findByConversationId(any()) }
+            }
+        }
     }
 
     Given("a real pending gift addressed to a real recipient") {

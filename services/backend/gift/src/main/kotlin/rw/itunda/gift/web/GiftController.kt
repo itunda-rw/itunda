@@ -72,6 +72,13 @@ class GiftController(private val giftService: GiftService, private val idempoten
     fun getGift(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "gift" to giftService.getGift(currentUser.userId, id)))
 
+    @GetMapping("/conversations/{conversationId}")
+    fun getGiftsForConversation(
+        @PathVariable conversationId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "gifts" to giftService.getGiftsForConversation(currentUser.userId, conversationId)))
+
     @PostMapping("/{id}/claim")
     fun claimGift(
         @PathVariable id: String,

@@ -149,6 +149,16 @@ class GiftService(
         return gift
     }
 
+    /** Real per-thread gift history -- fetched alongside a conversation's messages so
+     * the Talk thread can render gift bubbles for whichever messages carry one, same
+     * shape as [rw.itunda.marketplace.PriceOfferService]'s own per-conversation offer
+     * fetch. IDOR-checked via [MessagingService.getConversationForParticipant] rather
+     * than trusting the caller's own claimed userId against each gift row. */
+    fun getGiftsForConversation(userId: String, conversationId: String): List<Gift> {
+        messagingService.getConversationForParticipant(userId, conversationId)
+        return giftRepository.findByConversationId(conversationId)
+    }
+
     @Transactional
     fun claimGift(recipientUserId: String, giftId: String): Gift {
         val gift = giftRepository.findById(giftId).orElseThrow { GiftNotFoundException("Gift not found") }

@@ -7,4 +7,5 @@ import java.time.Instant
 
 interface GiftRepository : JpaRepository<Gift, String> {
     fun findByStatusAndExpiresAtBefore(status: GiftStatus, expiresAt: Instant): List<Gift>
+    fun findByConversationId(conversationId: String): List<Gift>
 }
