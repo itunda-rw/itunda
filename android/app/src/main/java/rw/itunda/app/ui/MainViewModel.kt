@@ -232,7 +232,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return try {
             val res = NetworkClient.apiService.sendDirect(
                 idempotencyKey = UUID.randomUUID().toString(),
-                request = SendDirectP2pRequest(recipient = recipientIdentifier, amount = BigDecimal(amountRwf)),
+                request = SendDirectP2pRequest(recipient = normalizeRecipientIdentifier(recipientIdentifier), amount = BigDecimal(amountRwf)),
             )
             fetchData()
             MoneyActionResult.Success(res.message)
@@ -332,5 +332,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         409 -> "This request is already being processed."
         502 -> "The payment provider declined this transaction."
         else -> "Something went wrong. Please try again."
+    }
+
+    /**
+     * Real phone-vs-account-number disambiguation for the numeric-keypad recipient
+     * screen (2026-07-20) -- RecipientEntryScreen's real Toss-reference-matching design
+     * (TransferFlow.kt, 2026-07-11) is a pure digit keypad with no "+" key, so a real
+     * Rwandan mobile number typed there arrives as raw digits ("0788000001" or
+     * "250788000001"), not the "+250XXXXXXXXX" form `User.phoneNumber` is actually
+     * stored in (every real registration in this app uses that format). Same real,
+     * sourced national-number shape `RailCatalog.resolveByPhoneNumber` already
+     * recognizes on the backend (Rwanda's RURA numbering plan: a local number is
+     * 0-prefixed + 9 digits, an international one is 250-prefixed + 9 digits) --
+     * converged here to the canonical +250 form `sendDirect`'s exact-match phone lookup
+     * needs, instead of stripped down to a bare national number. A real itunda account
+     * number (always 10 digits starting 2024/2025, see AuthService.
+     * generateAccountNumber) never matches either digit shape, so it passes through
+     * unchanged and still resolves via `sendDirect`'s own account-number fallback.
+     * Honestly scoped: a phone number stored in a genuinely non-standard format at
+     * registration won't match this guess -- same accepted-limitation precedent
+     * `RailCatalog`'s own doc comment already established ("deliberately
+     * conservative... falls back rather than guessing").
+     */
+    private fun normalizeRecipientIdentifier(raw: String): String {
+        val digits = raw.filter { it.isDigit() }
+        return when {
+            digits.startsWith("0") && digits.length == 10 -> "+250" + digits.substring(1)
+            digits.startsWith("250") && digits.length == 12 -> "+$digits"
+            else -> raw
+        }
     }
 }

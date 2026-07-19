@@ -75,7 +75,12 @@ fun RecipientEntryScreen(
                 lineHeight = 34.sp
             )
             Spacer(modifier = Modifier.height(28.dp))
-            Text("Enter account number", color = Tds.colors.brand, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            // Copy widened 2026-07-20: this same digit keypad now also accepts a real
+            // phone number (a local "07XXXXXXXX" or international "2507XXXXXXXX" shape
+            // is recognized and normalized client-side -- see MainViewModel.
+            // normalizeRecipientIdentifier), not just an account number, now that
+            // MainViewModel.sendTransfer calls the real rw.itunda.p2p.sendDirect.
+            Text("Enter phone or account number", color = Tds.colors.brand, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Spacer(modifier = Modifier.height(6.dp))
             // Fixed (2026-07-11): the only form input in this app had no accessible
             // label at all -- BasicTextField, unlike a View-based TextInputLayout,
@@ -91,7 +96,7 @@ fun RecipientEntryScreen(
                 cursorBrush = androidx.compose.ui.graphics.SolidColor(Tds.colors.brand),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .semantics { contentDescription = "Account number, up to 16 digits" }
+                    .semantics { contentDescription = "Phone or account number, up to 16 digits" }
             )
             Spacer(modifier = Modifier.height(8.dp))
             androidx.compose.material3.Divider(color = Tds.colors.brand, thickness = 2.dp)

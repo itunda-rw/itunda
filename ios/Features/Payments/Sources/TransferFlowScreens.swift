@@ -36,7 +36,13 @@ public struct RecipientEntryScreen: View {
 
                 Spacer().frame(height: 28)
 
-                Text("Enter account number")
+                // Copy widened 2026-07-20: this same digit keypad now also accepts a
+                // real phone number (a local "07XXXXXXXX" or international
+                // "2507XXXXXXXX" shape is recognized and normalized client-side -- see
+                // TransferViewModel.normalizeRecipientIdentifier), not just an account
+                // number, now that TransferViewModel.sendTransfer calls the real
+                // rw.itunda.p2p.sendDirect.
+                Text("Enter phone or account number")
                     .font(IDS.scaledFont(size: 14, weight: .semibold, relativeTo: .footnote))
                     .foregroundColor(IDS.Colors.brand)
                 Spacer().frame(height: 6)
@@ -45,7 +51,7 @@ public struct RecipientEntryScreen: View {
                     .font(IDS.scaledFont(size: 22, weight: .semibold, relativeTo: .title3))
                     .foregroundColor(IDS.Colors.textPrimary)
                     .keyboardType(.numberPad)
-                    .accessibilityLabel("Account number, up to 16 digits")
+                    .accessibilityLabel("Phone or account number, up to 16 digits")
                     .onChange(of: accountNumber) { newValue in
                         accountNumber = String(newValue.filter(\.isNumber).prefix(16))
                     }

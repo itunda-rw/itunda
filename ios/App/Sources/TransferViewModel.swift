@@ -25,13 +25,39 @@ enum MoneyActionResult {
 final class TransferViewModel: ObservableObject {
     func sendTransfer(recipientAccountNumber: String, amountRwf: Int) async -> MoneyActionResult {
         do {
-            let response = try await NetworkClient.shared.sendDirect(recipient: recipientAccountNumber, amount: Double(amountRwf))
+            let response = try await NetworkClient.shared.sendDirect(
+                recipient: Self.normalizeRecipientIdentifier(recipientAccountNumber),
+                amount: Double(amountRwf)
+            )
             return .success(response.message)
         } catch let NetworkError.httpError(statusCode) {
             return .failure(Self.errorMessage(statusCode))
         } catch {
             return .failure("Couldn't reach itunda. Check your connection and try again.")
         }
+    }
+
+    /// Real phone-vs-account-number disambiguation for the numeric-keypad recipient
+    /// screen (2026-07-20) -- mirrors Android's MainViewModel.
+    /// normalizeRecipientIdentifier exactly. RecipientEntryScreen's real
+    /// Toss-reference-matching design is a pure digit keypad with no "+" key, so a real
+    /// Rwandan mobile number typed there arrives as raw digits ("0788000001" or
+    /// "250788000001"), not the "+250XXXXXXXXX" form `User.phoneNumber` is actually
+    /// stored in. Same real, sourced national-number shape `RailCatalog.
+    /// resolveByPhoneNumber` already recognizes on the backend (Rwanda's RURA numbering
+    /// plan) -- converged here to the canonical +250 form `sendDirect`'s exact-match
+    /// phone lookup needs. A real itunda account number (always 10 digits starting
+    /// 2024/2025) never matches either digit shape, so it passes through unchanged and
+    /// still resolves via `sendDirect`'s own account-number fallback.
+    private static func normalizeRecipientIdentifier(_ raw: String) -> String {
+        let digits = raw.filter(\.isNumber)
+        if digits.hasPrefix("0"), digits.count == 10 {
+            return "+250" + digits.dropFirst()
+        }
+        if digits.hasPrefix("250"), digits.count == 12 {
+            return "+" + digits
+        }
+        return raw
     }
 
     /// Real offline queueing (2026-07-13): on a genuine connectivity failure
