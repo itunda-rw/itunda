@@ -48,6 +48,7 @@ import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.LocalShipping
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Payments
@@ -197,6 +198,7 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
         var showSettings by rememberSaveable { mutableStateOf(false) }
         var showBenefits by rememberSaveable { mutableStateOf(false) }
         var showPay by rememberSaveable { mutableStateOf(false) }
+        var showMap by rememberSaveable { mutableStateOf(false) }
         // Real "message seller" hand-off from Hood to Talk (2026-07-18) -- mirrors
         // bank-mfe's BankDashboard.tsx pendingConversationId/onConsumedInitial pattern
         // exactly: HoodTab's contactSeller() switches the selected tab AND stashes the
@@ -414,6 +416,13 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
             }
             return@TdsTheme
         }
+        // Real self-hosted Rwanda map (2026-07-19) -- same Quick-links full-screen
+        // pattern as Pay/Benefits above, since the 5-tab bottom nav has no free slot.
+        if (showMap) {
+            BackHandler { showMap = false }
+            MapScreen(onBack = { showMap = false })
+            return@TdsTheme
+        }
 
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
@@ -451,6 +460,7 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                         onOpenSettings = { showSettings = true },
                         onOpenBenefits = { showBenefits = true },
                         onOpenPay = { showPay = true },
+                        onOpenMap = { showMap = true },
                     )
                 }
             }
@@ -851,6 +861,7 @@ private fun AllTab(
     onOpenSettings: () -> Unit,
     onOpenBenefits: () -> Unit = {},
     onOpenPay: () -> Unit = {},
+    onOpenMap: () -> Unit = {},
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
@@ -876,6 +887,7 @@ private fun AllTab(
                 listOf(
                     FlatRow("Pay", subtitle = "Scan or pay by code", icon = Icons.Outlined.QrCodeScanner, iconColor = AccentBlue, onClick = onOpenPay),
                     FlatRow("Benefits", subtitle = "Points, coupons, rewards", icon = Icons.Outlined.CardGiftcard, iconColor = AccentOrange, onClick = onOpenBenefits),
+                    FlatRow("Map", subtitle = "Real Rwanda map, self-hosted", icon = Icons.Outlined.Map, iconColor = AccentTeal, onClick = onOpenMap),
                 ),
             )
         }

@@ -325,7 +325,11 @@ data class ContactSellerResponse(val success: Boolean, val conversation: Convers
 // "Shop" bottom-nav tab (Coupang-style multi-item checkout), replacing the old Shop
 // tab's Toss-Shopping-cashback content. See rw.itunda.commerce.OrderService's own doc
 // comment for the honest "self-declared fulfillment, no real courier network" scope.
-data class ShoppingMerchantDto(val merchantId: String, val businessName: String, val category: String?, val cashbackRate: String)
+data class ShoppingMerchantDto(
+    val merchantId: String, val businessName: String, val category: String?, val cashbackRate: String,
+    // Real optional location (2026-07-19) -- backs the real self-hosted Map view.
+    val latitude: Double? = null, val longitude: Double? = null,
+)
 data class ShoppingMerchantsResponse(val success: Boolean, val merchants: List<ShoppingMerchantDto>)
 data class MerchantCategoriesResponse(val success: Boolean, val categories: List<String>)
 

@@ -173,6 +173,9 @@ struct EntireMenuScreen: View {
     // through (see ItundaAppScreen.kt's "Quick links" FlatSection).
     @State private var showBenefits = false
     @State private var showPay = false
+    // Real self-hosted Rwanda map (2026-07-19) -- same Quick-links pattern as Pay/
+    // Benefits above, since the 5-tab bottom nav has no free slot for a Map tab.
+    @State private var showMap = false
 
     var body: some View {
         ScrollView {
@@ -191,6 +194,7 @@ struct EntireMenuScreen: View {
                     FlatSection(title: "Quick links", rows: [
                         FlatRow(title: "Pay", subtitle: "Scan or pay by code", symbol: "qrcode", tint: .accentBlue, action: { showPay = true }),
                         FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", symbol: "gift.fill", tint: .accentOrange, action: { showBenefits = true }),
+                        FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", symbol: "map.fill", tint: .accentTeal, action: { showMap = true }),
                     ])
                     TdsSearchBar(placeholder: "Search")
                     IconGridSection(title: "Quick access", items: [
@@ -304,6 +308,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showPay) {
             PayScreen()
+        }
+        .sheet(isPresented: $showMap) {
+            MapScreenView()
         }
     }
 }

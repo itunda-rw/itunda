@@ -516,7 +516,19 @@ struct ShoppingMerchantDto: Decodable, Identifiable {
     let businessName: String
     let category: String?
     let cashbackRate: String
+    // Real optional location (2026-07-19) -- backs the real self-hosted Map view.
+    let latitude: Double?
+    let longitude: Double?
     var id: String { merchantId }
+
+    init(merchantId: String, businessName: String, category: String?, cashbackRate: String, latitude: Double? = nil, longitude: Double? = nil) {
+        self.merchantId = merchantId
+        self.businessName = businessName
+        self.category = category
+        self.cashbackRate = cashbackRate
+        self.latitude = latitude
+        self.longitude = longitude
+    }
 }
 struct ShoppingMerchantsResponse: Decodable { let success: Bool; let merchants: [ShoppingMerchantDto] }
 struct MerchantCategoriesResponse: Decodable { let success: Bool; let categories: [String] }

@@ -161,6 +161,11 @@ dependencies {
     // plain SharedPreferences. See network/TokenStore.kt.
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
+    // Real self-hosted Rwanda map (2026-07-19) -- itunda's own MapLibre GL tile server
+    // (see docs/TOSS_PARITY_MATRIX.md's Maps row), not Google Maps. Plain Maven Central
+    // coordinate, no new repository needed (already declared in settings.gradle.kts).
+    implementation("org.maplibre.gl:android-sdk:13.3.1")
+
     // Project Modules
     implementation(project(":core:designsystem"))
     implementation(project(":core:risk"))

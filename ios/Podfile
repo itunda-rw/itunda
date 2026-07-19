@@ -64,6 +64,11 @@ target 'ItundaApp' do
   pod 'RNScreens', :path => '../packages/saronite/node_modules/react-native-screens'
   pod 'RNSVG', :path => '../packages/saronite/node_modules/react-native-svg'
 
+  # Real self-hosted Rwanda map (2026-07-19) -- itunda's own MapLibre GL tile server
+  # (see docs/TOSS_PARITY_MATRIX.md's Maps row), not Google/Apple Maps. Real CocoaPods
+  # trunk pod, same integration mechanism as every other pod in this file.
+  pod 'MapLibre'
+
   post_install do |installer|
     react_native_post_install(
       installer,
