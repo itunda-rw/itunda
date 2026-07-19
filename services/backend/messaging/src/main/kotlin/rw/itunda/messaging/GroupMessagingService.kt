@@ -84,8 +84,12 @@ class GroupMessagingService(
         if (distinctOtherMembers.isEmpty()) {
             throw GroupNeedsMoreMembersException("A group needs at least one other real member")
         }
-        distinctOtherMembers.forEach { id ->
-            userRepository.findById(id).orElseThrow { GroupMemberNotFoundException("No itunda account found for one of the invited members") }
+        // Real N+1 fix (2026-07-19 sweep): one batch findAllById instead of one
+        // findById call per invited member, same convention as
+        // WalletRepository.findByUserIdInAndType/UserRepository.findAllByPhoneNumberIn.
+        val foundIds = userRepository.findAllById(distinctOtherMembers).map { it.id }.toSet()
+        if (foundIds.size != distinctOtherMembers.size) {
+            throw GroupMemberNotFoundException("No itunda account found for one of the invited members")
         }
         return createGroupInternal(creatorUserId, trimmedName, distinctOtherMembers)
     }
@@ -101,9 +105,13 @@ class GroupMessagingService(
         if (trimmedName.isEmpty()) {
             throw GroupNameRequiredException("A group needs a name")
         }
-        val distinctOtherMembers = memberPhoneNumbers.map { it.trim() }.filter { it.isNotEmpty() }.distinct().map { phone ->
-            userRepository.findByPhoneNumber(phone)?.id
-                ?: throw GroupMemberNotFoundException("No itunda account found for phone number $phone")
+        // Real N+1 fix (2026-07-19 sweep): one batch findAllByPhoneNumberIn instead of
+        // one findByPhoneNumber call per invited phone number, same convention as
+        // createGroup's own fix just above.
+        val trimmedPhones = memberPhoneNumbers.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+        val usersByPhone = userRepository.findAllByPhoneNumberIn(trimmedPhones).associateBy { it.phoneNumber }
+        val distinctOtherMembers = trimmedPhones.map { phone ->
+            usersByPhone[phone]?.id ?: throw GroupMemberNotFoundException("No itunda account found for phone number $phone")
         }.filter { it != creatorUserId }.distinct()
         if (distinctOtherMembers.isEmpty()) {
             throw GroupNeedsMoreMembersException("A group needs at least one other real member")
@@ -152,15 +160,18 @@ class GroupMessagingService(
             .map { it.userId }
             .filter { it != userId }
         val senderName = userRepository.findById(userId).map { "${it.firstName} ${it.lastName}" }.orElse("Someone")
-        recipientIds.forEach { recipientId ->
-            notificationRepository.save(
+        // Real N+1 fix (2026-07-19 sweep): one batch saveAll instead of one save call
+        // per recipient, same convention createGroupInternal's own member-insert already
+        // uses just above.
+        notificationRepository.saveAll(
+            recipientIds.map { recipientId ->
                 Notification(
                     id = "notif_${UUID.randomUUID()}", userId = recipientId, type = "NEW_GROUP_MESSAGE",
                     title = "${group.name}: $senderName", body = trimmed.take(120),
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"groupConversationId\":\"$groupId\"}",
-                ),
-            )
-        }
+                )
+            },
+        )
         realtimeMessagePublisher.publishNewGroupMessage(groupId, recipientIds, message)
         return message
     }

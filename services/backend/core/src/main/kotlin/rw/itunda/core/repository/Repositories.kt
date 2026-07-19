@@ -58,6 +58,12 @@ interface UserRepository : JpaRepository<User, String> {
     fun existsByPhoneNumber(phoneNumber: String): Boolean
     fun findByReferralCode(referralCode: String): User?
     fun findAllByReferredByUserId(referredByUserId: String): List<User>
+
+    // Batch form of findByPhoneNumber -- GroupMessagingService.createGroupByPhoneNumbers
+    // uses this to resolve every invited member in one round trip instead of one
+    // findByPhoneNumber call per invitee (a real N+1 found in a 2026-07-19 sweep, same
+    // shape as PayrollService.runPayroll's own findByUserIdInAndType fix above).
+    fun findAllByPhoneNumberIn(phoneNumbers: List<String>): List<User>
 }
 
 interface EmailVerificationTokenRepository : JpaRepository<EmailVerificationToken, String> {

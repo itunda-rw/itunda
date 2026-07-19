@@ -27,8 +27,8 @@ import java.util.Optional
 
 class GroupMessagingServiceTest : BehaviorSpec({
 
-    fun user(id: String, first: String) =
-        User(id = id, phoneNumber = "+2507880000$id", firstName = first, lastName = "Test", passwordHash = "hash")
+    fun user(id: String, first: String, phoneNumber: String = "+2507880000$id") =
+        User(id = id, phoneNumber = phoneNumber, firstName = first, lastName = "Test", passwordHash = "hash")
 
     Given("a real user creating a real group") {
         val groupConversationRepository = mockk<GroupConversationRepository>()
@@ -45,8 +45,7 @@ class GroupMessagingServiceTest : BehaviorSpec({
         )
 
         When("creating a group with two real other members") {
-            every { userRepository.findById("user_b") } returns Optional.of(user("user_b", "Beata"))
-            every { userRepository.findById("user_c") } returns Optional.of(user("user_c", "Claude"))
+            every { userRepository.findAllById(listOf("user_b", "user_c")) } returns listOf(user("user_b", "Beata"), user("user_c", "Claude"))
             val savedSlot = slot<GroupConversation>()
             every { groupConversationRepository.save(capture(savedSlot)) } answers { firstArg() }
 
@@ -82,7 +81,7 @@ class GroupMessagingServiceTest : BehaviorSpec({
         }
 
         When("inviting a phone number with no real itunda account") {
-            every { userRepository.findById("ghost") } returns Optional.empty()
+            every { userRepository.findAllById(listOf("ghost")) } returns emptyList()
 
             Then("it throws GroupMemberNotFoundException") {
                 try {
@@ -95,7 +94,7 @@ class GroupMessagingServiceTest : BehaviorSpec({
         }
 
         When("creating a group by real phone numbers") {
-            every { userRepository.findByPhoneNumber("+250780000002") } returns user("user_b", "Beata")
+            every { userRepository.findAllByPhoneNumberIn(listOf("+250780000002")) } returns listOf(user("user_b", "Beata", "+250780000002"))
             val savedSlot = slot<GroupConversation>()
             every { groupConversationRepository.save(capture(savedSlot)) } answers { firstArg() }
 
@@ -108,7 +107,7 @@ class GroupMessagingServiceTest : BehaviorSpec({
         }
 
         When("creating a group by an unknown phone number") {
-            every { userRepository.findByPhoneNumber("+250780000099") } returns null
+            every { userRepository.findAllByPhoneNumberIn(listOf("+250780000099")) } returns emptyList()
 
             Then("it throws GroupMemberNotFoundException") {
                 try {
@@ -149,10 +148,10 @@ class GroupMessagingServiceTest : BehaviorSpec({
             every { groupMessageRepository.save(any()) } answers { firstArg() }
             // Explicit stub even though notificationRepository is relaxed -- mockk's
             // relaxed default can't correctly infer JpaRepository's generic
-            // `<S extends T> S save(S)` signature, throwing a real ClassCastException
-            // back in the caller (same known gotcha MerchantServiceTest/OrderServiceTest/
-            // EatsOrderServiceTest already document).
-            every { notificationRepository.save(any()) } answers { firstArg() }
+            // `<S extends T> S save(S)`/`saveAll` signature, throwing a real
+            // ClassCastException back in the caller (same known gotcha
+            // MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest already document).
+            every { notificationRepository.saveAll(any<List<rw.itunda.core.domain.Notification>>()) } answers { firstArg() }
             every { groupConversationMemberRepository.findByGroupConversationId("group_1") } returns members
             every { userRepository.findById("user_a") } returns Optional.of(user("user_a", "Alice"))
 
@@ -162,7 +161,7 @@ class GroupMessagingServiceTest : BehaviorSpec({
                 message.body shouldBe "Hey everyone"
                 message.senderId shouldBe "user_a"
                 verify { realtimeMessagePublisher.publishNewGroupMessage("group_1", match { it.toSet() == setOf("user_b", "user_c") }, message) }
-                verify(exactly = 2) { notificationRepository.save(any()) }
+                verify { notificationRepository.saveAll(match<List<rw.itunda.core.domain.Notification>> { it.size == 2 && it.map { n -> n.userId }.toSet() == setOf("user_b", "user_c") }) }
             }
         }
 
