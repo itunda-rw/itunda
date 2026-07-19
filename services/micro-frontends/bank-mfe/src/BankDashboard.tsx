@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowUpRight, Bike, Heart, LogOut, MessageCircle, Plus, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Bike, Heart, LogOut, MessageCircle, Plus, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { fetchTransactions, fetchWallets, type Transaction, type Wallet } from './lib/wallet';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
 import { collectPayment, fetchShoppingCatalog, type CollectPaymentResult, type ShoppingMerchant } from './lib/shopping';
+import {
+  buyStock, fetchPortfolio, fetchPortfolioHistory, fetchStockHistory, fetchStocks, fetchWatchlist,
+  sellStock, unwatchStock, watchStock,
+  type Portfolio, type PortfolioValuePoint, type PricePoint, type Stock,
+} from './lib/stocks';
 import {
   connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages,
   fetchPresence, sendGroupMessage, sendMessage, startConversation, toggleGroupReaction, toggleReaction,
@@ -43,7 +48,7 @@ import {
 import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'MAP';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'MAP';
 
 function AccountBalance({ wallet }: { wallet: Wallet | null }) {
   return (
@@ -410,6 +415,313 @@ function ShoppingView() {
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+// Lightweight dependency-free bar sparkline -- no charting library exists anywhere in
+// this app yet, and pulling one in just for this would be disproportionate to a real
+// MVP chart. Real values, real relative scaling, just rendered as flexbox bars instead
+// of an SVG line chart.
+function Sparkline({ values, positive }: { values: number[]; positive: boolean }) {
+  if (values.length === 0) return null;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', height: '48px' }}>
+      {values.map((v, i) => (
+        <div
+          key={i}
+          style={{
+            flex: 1,
+            height: `${Math.max(8, ((v - min) / range) * 100)}%`,
+            backgroundColor: positive ? 'var(--toss-green)' : '#E53935',
+            borderRadius: '2px',
+            opacity: 0.3 + (0.7 * i) / values.length,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled }: {
+  stock: Stock;
+  isWatched: boolean;
+  onClose: () => void;
+  onTraded: () => void;
+  onWatchToggled: () => void;
+}) {
+  const [history, setHistory] = useState<PricePoint[] | null>(null);
+  const [shares, setShares] = useState('');
+  const [mode, setMode] = useState<'BUY' | 'SELL'>('BUY');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [watching, setWatching] = useState(isWatched);
+  const [watchBusy, setWatchBusy] = useState(false);
+
+  useEffect(() => {
+    fetchStockHistory(stock.id, 14).then(setHistory).catch(() => setHistory([]));
+  }, [stock.id]);
+
+  const handleTrade = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    const shareCount = Number(shares);
+    if (!shareCount || shareCount <= 0) {
+      setError('Enter a real number of shares.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      if (mode === 'BUY') await buyStock(stock.id, shareCount);
+      else await sellStock(stock.id, shareCount);
+      setShares('');
+      onTraded();
+      onClose();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : `Could not ${mode === 'BUY' ? 'buy' : 'sell'} this stock.`);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleToggleWatch = async () => {
+    setWatchBusy(true);
+    try {
+      if (watching) {
+        await unwatchStock(stock.id);
+        setWatching(false);
+      } else {
+        await watchStock(stock.id);
+        setWatching(true);
+      }
+      onWatchToggled();
+    } catch {
+      // Non-critical -- the star just doesn't flip, no error surfaced for a real
+      // watch/unwatch toggle failure.
+    } finally {
+      setWatchBusy(false);
+    }
+  };
+
+  const positive = stock.changePercent >= 0;
+
+  return (
+    <div className="toss-card" style={{ marginBottom: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+        <button onClick={onClose} style={{ color: 'var(--toss-grey-500)', display: 'flex' }} aria-label="Back">
+          <ArrowLeft size={18} />
+        </button>
+        <button onClick={handleToggleWatch} disabled={watchBusy} style={{ color: watching ? '#FFC107' : 'var(--toss-grey-300)', display: 'flex' }} aria-label="Toggle watch">
+          <Star size={20} fill={watching ? '#FFC107' : 'none'} />
+        </button>
+      </div>
+      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', fontWeight: 600 }}>{stock.symbol} · {stock.marketCap}</p>
+      <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '6px' }}>{stock.name}</h3>
+      <p style={{ fontSize: '26px', fontWeight: 700, marginBottom: '4px' }}>{stock.price.toLocaleString()} RWF</p>
+      <p style={{ fontSize: '14px', fontWeight: 700, color: positive ? 'var(--toss-green)' : '#E53935', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '16px' }}>
+        {positive ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+        {positive ? '+' : ''}{stock.change.toLocaleString()} ({positive ? '+' : ''}{stock.changePercent.toFixed(2)}%) today
+      </p>
+
+      {history === null ? (
+        <div className="skeleton" style={{ height: '48px', borderRadius: '8px', marginBottom: '16px' }} />
+      ) : history.length > 0 ? (
+        <div style={{ marginBottom: '16px' }}>
+          <Sparkline values={history.map((h) => h.price)} positive={positive} />
+          <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>Last 14 days -- real deterministic simulation, not live RSE data</p>
+        </div>
+      ) : null}
+
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '12px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+        {(['BUY', 'SELL'] as const).map((m) => (
+          <button
+            key={m}
+            onClick={() => setMode(m)}
+            style={{
+              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
+              color: mode === m ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+              backgroundColor: mode === m ? (m === 'BUY' ? 'var(--toss-blue)' : '#E53935') : 'transparent',
+            }}
+          >
+            {m === 'BUY' ? 'Buy' : 'Sell'}
+          </button>
+        ))}
+      </div>
+      <form onSubmit={handleTrade} style={{ display: 'flex', gap: '10px' }}>
+        <input
+          type="number" min="0.0001" step="any" value={shares} onChange={(e) => setShares(e.target.value)}
+          placeholder="Shares" required
+          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        />
+        <button type="submit" className={mode === 'BUY' ? 'toss-btn toss-btn-primary' : 'toss-btn'} style={mode === 'SELL' ? { backgroundColor: '#E53935', color: 'white' } : undefined} disabled={submitting}>
+          {submitting ? 'Working…' : mode === 'BUY' ? 'Buy' : 'Sell'}
+        </button>
+      </form>
+      {error && <p style={{ fontSize: '13px', color: '#E53935', marginTop: '10px' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
+function StocksView() {
+  const [subTab, setSubTab] = useState<'MARKET' | 'PORTFOLIO' | 'WATCHLIST'>('MARKET');
+  const [stocks, setStocks] = useState<Stock[] | null>(null);
+  const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [portfolioHistory, setPortfolioHistory] = useState<PortfolioValuePoint[] | null>(null);
+  const [watchlist, setWatchlist] = useState<Stock[] | null>(null);
+  const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadMarket = () => {
+    setError(null);
+    fetchStocks().then(setStocks).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load the real market.'));
+  };
+  const loadPortfolio = () => {
+    setError(null);
+    Promise.all([fetchPortfolio(), fetchPortfolioHistory(30)])
+      .then(([p, h]) => { setPortfolio(p); setPortfolioHistory(h); })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your real portfolio.'));
+  };
+  const loadWatchlist = () => {
+    setError(null);
+    fetchWatchlist().then(setWatchlist).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your real watchlist.'));
+  };
+
+  useEffect(() => {
+    if (subTab === 'MARKET') loadMarket();
+    else if (subTab === 'PORTFOLIO') loadPortfolio();
+    else loadWatchlist();
+    setSelectedStock(null);
+  }, [subTab]);
+
+  const watchedIds = new Set((watchlist ?? []).map((s) => s.id));
+
+  const renderStockRow = (stock: Stock) => {
+    const positive = stock.changePercent >= 0;
+    return (
+      <div
+        key={stock.id}
+        onClick={() => setSelectedStock(stock)}
+        className="toss-card"
+        style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px 18px', cursor: 'pointer' }}
+      >
+        <div style={{ flex: 1 }}>
+          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{stock.symbol}</p>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{stock.name}</p>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <p style={{ fontSize: '15px', fontWeight: 700 }}>{stock.price.toLocaleString()} RWF</p>
+          <p style={{ fontSize: '12px', fontWeight: 700, color: positive ? 'var(--toss-green)' : '#E53935', display: 'flex', alignItems: 'center', gap: '2px', justifyContent: 'flex-end' }}>
+            {positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+            {positive ? '+' : ''}{stock.changePercent.toFixed(2)}%
+          </p>
+        </div>
+      </div>
+    );
+  };
+
+  if (selectedStock) {
+    return (
+      <StockDetailSheet
+        stock={selectedStock}
+        isWatched={watchedIds.has(selectedStock.id)}
+        onClose={() => setSelectedStock(null)}
+        onTraded={() => { loadPortfolio(); if (subTab === 'MARKET') loadMarket(); }}
+        onWatchToggled={loadWatchlist}
+      />
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+        {([{ id: 'MARKET', label: 'Market' }, { id: 'PORTFOLIO', label: 'Portfolio' }, { id: 'WATCHLIST', label: 'Watchlist' }] as const).map(({ id, label }) => (
+          <button
+            key={id}
+            onClick={() => setSubTab(id)}
+            style={{
+              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
+              color: subTab === id ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+              backgroundColor: subTab === id ? 'var(--toss-blue)' : 'transparent',
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {error && (
+        <div className="toss-card" style={{ marginBottom: '16px' }}>
+          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+          <button className="toss-btn toss-btn-secondary" onClick={subTab === 'MARKET' ? loadMarket : subTab === 'PORTFOLIO' ? loadPortfolio : loadWatchlist} style={{ marginTop: '12px' }}>Retry</button>
+        </div>
+      )}
+
+      {subTab === 'MARKET' && (
+        stocks === null ? <div className="toss-card skeleton" style={{ height: '220px' }} /> : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {stocks.map(renderStockRow)}
+          </div>
+        )
+      )}
+
+      {subTab === 'PORTFOLIO' && (
+        portfolio === null ? <div className="toss-card skeleton" style={{ height: '220px' }} /> : (
+          <div>
+            <div className="toss-card" style={{ marginBottom: '16px' }}>
+              <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', fontWeight: 600 }}>Total value</p>
+              <p style={{ fontSize: '26px', fontWeight: 700, marginBottom: '4px' }}>{portfolio.totalValue.toLocaleString()} RWF</p>
+              <p style={{ fontSize: '14px', fontWeight: 700, color: portfolio.totalReturn >= 0 ? 'var(--toss-green)' : '#E53935', marginBottom: '12px' }}>
+                {portfolio.totalReturn >= 0 ? '+' : ''}{portfolio.totalReturn.toLocaleString()} RWF ({portfolio.totalReturn >= 0 ? '+' : ''}{portfolio.totalReturnPercent.toFixed(2)}%)
+              </p>
+              {portfolioHistory && portfolioHistory.length > 0 && (
+                <div>
+                  <Sparkline values={portfolioHistory.map((h) => h.value)} positive={portfolio.totalReturn >= 0} />
+                  <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>
+                    Last 30 days -- based on your current holdings applied to real historical prices, not a full historical reconstruction
+                  </p>
+                </div>
+              )}
+            </div>
+            {portfolio.holdings.length === 0 ? (
+              <div className="toss-card">
+                <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>You don't hold any real shares yet. Browse the Market tab to buy some.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {portfolio.holdings.map((h) => (
+                  <div key={h.stockId} className="toss-card" style={{ padding: '16px 18px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <p style={{ fontSize: '15px', fontWeight: 700 }}>{h.symbol}</p>
+                      <p style={{ fontSize: '15px', fontWeight: 700 }}>{h.value.toLocaleString()} RWF</p>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{h.shares} shares @ {h.avgPrice.toLocaleString()} avg</p>
+                      <p style={{ fontSize: '12px', fontWeight: 700, color: h.return >= 0 ? 'var(--toss-green)' : '#E53935' }}>
+                        {h.return >= 0 ? '+' : ''}{h.return.toFixed(2)}%
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      )}
+
+      {subTab === 'WATCHLIST' && (
+        watchlist === null ? <div className="toss-card skeleton" style={{ height: '220px' }} /> : watchlist.length === 0 ? (
+          <div className="toss-card">
+            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No stocks watched yet. Tap the star on any stock in the Market tab to follow it.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {watchlist.map(renderStockRow)}
+          </div>
+        )
       )}
     </div>
   );
@@ -4096,6 +4408,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'HOME', label: 'Home' },
     { id: 'SHOP', label: 'Shop' },
     { id: 'EATS', label: 'Eats' },
+    { id: 'STOCKS', label: 'Invest' },
     { id: 'MESSAGES', label: 'Messages' },
     { id: 'MARKETPLACE', label: 'Marketplace' },
     { id: 'COMMUNITY', label: 'Community' },
@@ -4142,6 +4455,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'HOME' && <HomeView />}
       {tab === 'SHOP' && <ShopView />}
       {tab === 'EATS' && <EatsView />}
+      {tab === 'STOCKS' && <StocksView />}
       {tab === 'MESSAGES' && (
         <MessagesView
           initialConversationId={pendingConversationId}
