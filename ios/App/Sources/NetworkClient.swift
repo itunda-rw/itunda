@@ -588,6 +588,90 @@ struct CreateListingRequest: Encodable {
 
 struct ListingResponse: Decodable { let success: Bool; let listing: ListingDto }
 struct ListingsResponse: Decodable { let success: Bool; let listings: [ListingDto] }
+
+// Real 동네생활-style community board (2026-07-19) -- see rw.itunda.community.web.CommunityController.
+struct CommunityCategoryDto: Decodable, Identifiable { let id: String; let label: String }
+struct CommunityPostDto: Decodable, Identifiable {
+    let id: String
+    let authorId: String
+    let category: String
+    let title: String
+    let body: String
+    let status: String
+    let likeCount: Int
+    let commentCount: Int
+    let createdAt: String
+    let latitude: Double?
+    let longitude: Double?
+}
+struct CreateCommunityPostRequest: Encodable {
+    let category: String; let title: String; let body: String
+    let latitude: Double?; let longitude: Double?
+}
+struct CommunityPostResponse: Decodable { let success: Bool; let post: CommunityPostDto }
+struct CommunityPostsResponse: Decodable { let success: Bool; let posts: [CommunityPostDto] }
+struct CommunityCategoriesResponse: Decodable { let success: Bool; let categories: [CommunityCategoryDto] }
+struct CommunityPostDetailResponse: Decodable { let success: Bool; let post: CommunityPostDto; let authorName: String; let likedByMe: Bool }
+struct CommunityCommentDto: Decodable, Identifiable { let id: String; let postId: String; let authorId: String; let body: String; let createdAt: String }
+struct CommunityCommentWithAuthorDto: Decodable, Identifiable {
+    let comment: CommunityCommentDto
+    let authorName: String
+    var id: String { comment.id }
+}
+struct CommunityCommentsResponse: Decodable { let success: Bool; let comments: [CommunityCommentWithAuthorDto] }
+struct AddCommunityCommentRequest: Encodable { let body: String }
+struct CommunityCommentResponse: Decodable { let success: Bool; let comment: CommunityCommentDto }
+struct ToggleCommunityLikeResponse: Decodable { let success: Bool; let liked: Bool }
+
+// Real 당근알바-style local job board (2026-07-19) -- see rw.itunda.jobs.web.JobPostController.
+struct JobCategoryDto: Decodable, Identifiable { let id: String; let label: String }
+struct JobPostDto: Decodable, Identifiable {
+    let id: String
+    let posterId: String
+    let category: String
+    let title: String
+    let description: String
+    let payType: String
+    let payAmount: Double
+    let status: String
+    let createdAt: String
+    let latitude: Double?
+    let longitude: Double?
+}
+struct CreateJobPostRequest: Encodable {
+    let category: String; let title: String; let description: String; let payType: String; let payAmount: Double
+    let latitude: Double?; let longitude: Double?
+}
+struct JobPostResponse: Decodable { let success: Bool; let post: JobPostDto }
+struct JobPostsResponse: Decodable { let success: Bool; let posts: [JobPostDto] }
+struct JobCategoriesResponse: Decodable { let success: Bool; let categories: [JobCategoryDto] }
+struct ContactPosterResponse: Decodable { let success: Bool; let conversation: ConversationDto }
+
+// Real 당근부동산-style property listing (2026-07-19) -- see rw.itunda.realestate.web.PropertyListingController.
+struct PropertyTypeDto: Decodable, Identifiable { let id: String; let label: String }
+struct PropertyListingDto: Decodable, Identifiable {
+    let id: String
+    let listerId: String
+    let listingType: String
+    let propertyType: String
+    let title: String
+    let description: String
+    let price: Double
+    let bedrooms: Int?
+    let sizeSqm: Double?
+    let status: String
+    let createdAt: String
+    let latitude: Double?
+    let longitude: Double?
+}
+struct CreatePropertyListingRequest: Encodable {
+    let listingType: String; let propertyType: String; let title: String; let description: String; let price: Double
+    let bedrooms: Int?; let sizeSqm: Double?; let latitude: Double?; let longitude: Double?
+}
+struct PropertyListingResponse: Decodable { let success: Bool; let listing: PropertyListingDto }
+struct PropertyListingsResponse: Decodable { let success: Bool; let listings: [PropertyListingDto] }
+struct PropertyTypesResponse: Decodable { let success: Bool; let propertyTypes: [PropertyTypeDto] }
+struct ContactListerResponse: Decodable { let success: Bool; let conversation: ConversationDto }
 struct ContactSellerResponse: Decodable { let success: Bool; let conversation: ConversationDto }
 
 // Real 당근-style price-offer negotiation (2026-07-19) -- see PriceOfferService's own
@@ -948,6 +1032,99 @@ extension NetworkClient {
 
     func getOffersForConversation(conversationId: String) async throws -> PriceOffersResponse {
         try await get("api/v1/marketplace/conversations/\(conversationId)/offers")
+    }
+
+    // Real 동네생활-style community board (2026-07-19) -- see rw.itunda.community.web.CommunityController.
+    func getCommunityCategories() async throws -> CommunityCategoriesResponse { try await get("api/v1/community/categories") }
+
+    func createCommunityPost(category: String, title: String, body: String) async throws -> CommunityPostResponse {
+        try await authenticatedPost("api/v1/community/posts", body: CreateCommunityPostRequest(category: category, title: title, body: body, latitude: nil, longitude: nil))
+    }
+
+    func browseCommunityPosts(category: String? = nil) async throws -> CommunityPostsResponse {
+        try await get("api/v1/community/posts", query: [URLQueryItem(name: "category", value: category)])
+    }
+
+    func getMyCommunityPosts() async throws -> CommunityPostsResponse { try await get("api/v1/community/my-posts") }
+
+    func getCommunityPost(_ postId: String) async throws -> CommunityPostDetailResponse { try await get("api/v1/community/posts/\(postId)") }
+
+    func removeCommunityPost(_ postId: String) async throws -> CommunityPostResponse {
+        try await authenticatedDelete("api/v1/community/posts/\(postId)")
+    }
+
+    func getCommunityComments(_ postId: String) async throws -> CommunityCommentsResponse {
+        try await get("api/v1/community/posts/\(postId)/comments")
+    }
+
+    func addCommunityComment(_ postId: String, body: String) async throws -> CommunityCommentResponse {
+        try await authenticatedPost("api/v1/community/posts/\(postId)/comments", body: AddCommunityCommentRequest(body: body))
+    }
+
+    func toggleCommunityLike(_ postId: String) async throws -> ToggleCommunityLikeResponse {
+        try await authenticatedPost("api/v1/community/posts/\(postId)/like", body: EmptyBody())
+    }
+
+    // Real 당근알바-style local job board (2026-07-19) -- see rw.itunda.jobs.web.JobPostController.
+    func getJobCategories() async throws -> JobCategoriesResponse { try await get("api/v1/jobs/categories") }
+
+    func createJobPost(category: String, title: String, description: String, payType: String, payAmount: Double) async throws -> JobPostResponse {
+        try await authenticatedPost("api/v1/jobs/posts", body: CreateJobPostRequest(category: category, title: title, description: description, payType: payType, payAmount: payAmount, latitude: nil, longitude: nil))
+    }
+
+    func browseJobPosts(category: String? = nil) async throws -> JobPostsResponse {
+        try await get("api/v1/jobs/posts", query: [URLQueryItem(name: "category", value: category)])
+    }
+
+    func getMyJobPosts() async throws -> JobPostsResponse { try await get("api/v1/jobs/my-posts") }
+
+    func markJobPostFilled(_ jobPostId: String) async throws -> JobPostResponse {
+        try await authenticatedPost("api/v1/jobs/posts/\(jobPostId)/mark-filled", body: EmptyBody())
+    }
+
+    func removeJobPost(_ jobPostId: String) async throws -> JobPostResponse {
+        try await authenticatedDelete("api/v1/jobs/posts/\(jobPostId)")
+    }
+
+    func contactPoster(_ jobPostId: String) async throws -> ContactPosterResponse {
+        try await authenticatedPost("api/v1/jobs/posts/\(jobPostId)/contact-poster", body: EmptyBody())
+    }
+
+    // Real 당근부동산-style property listing (2026-07-19) -- see rw.itunda.realestate.web.PropertyListingController.
+    func getPropertyTypes() async throws -> PropertyTypesResponse { try await get("api/v1/realestate/property-types") }
+
+    func createPropertyListing(
+        listingType: String, propertyType: String, title: String, description: String, price: Double,
+        bedrooms: Int? = nil, sizeSqm: Double? = nil,
+    ) async throws -> PropertyListingResponse {
+        try await authenticatedPost(
+            "api/v1/realestate/listings",
+            body: CreatePropertyListingRequest(
+                listingType: listingType, propertyType: propertyType, title: title, description: description, price: price,
+                bedrooms: bedrooms, sizeSqm: sizeSqm, latitude: nil, longitude: nil,
+            ),
+        )
+    }
+
+    func browsePropertyListings(listingType: String? = nil, propertyType: String? = nil) async throws -> PropertyListingsResponse {
+        try await get("api/v1/realestate/listings", query: [
+            URLQueryItem(name: "listingType", value: listingType),
+            URLQueryItem(name: "propertyType", value: propertyType),
+        ])
+    }
+
+    func getMyPropertyListings() async throws -> PropertyListingsResponse { try await get("api/v1/realestate/my-listings") }
+
+    func markPropertyListingTaken(_ propertyListingId: String) async throws -> PropertyListingResponse {
+        try await authenticatedPost("api/v1/realestate/listings/\(propertyListingId)/mark-taken", body: EmptyBody())
+    }
+
+    func removePropertyListing(_ propertyListingId: String) async throws -> PropertyListingResponse {
+        try await authenticatedDelete("api/v1/realestate/listings/\(propertyListingId)")
+    }
+
+    func contactLister(_ propertyListingId: String) async throws -> ContactListerResponse {
+        try await authenticatedPost("api/v1/realestate/listings/\(propertyListingId)/contact-lister", body: EmptyBody())
     }
 
     // Real category/search filter (2026-07-19) -- both optional and combinable. See

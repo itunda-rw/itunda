@@ -361,6 +361,60 @@ data class PriceOfferResponse(val success: Boolean, val offer: PriceOfferDto)
 data class PriceOffersResponse(val success: Boolean, val offers: List<PriceOfferDto>)
 data class ContactSellerResponse(val success: Boolean, val conversation: ConversationDto)
 
+// Real 동네생활-style community board (2026-07-19) -- see rw.itunda.community.web.CommunityController.
+data class CommunityCategoryDto(val id: String, val label: String)
+data class CommunityPostDto(
+    val id: String, val authorId: String, val category: String, val title: String, val body: String,
+    val status: String, val likeCount: Long, val commentCount: Long, val createdAt: String,
+    val latitude: Double? = null, val longitude: Double? = null,
+)
+data class CreateCommunityPostRequest(
+    val category: String, val title: String, val body: String,
+    val latitude: Double? = null, val longitude: Double? = null,
+)
+data class CommunityPostResponse(val success: Boolean, val post: CommunityPostDto)
+data class CommunityPostsResponse(val success: Boolean, val posts: List<CommunityPostDto>)
+data class CommunityCategoriesResponse(val success: Boolean, val categories: List<CommunityCategoryDto>)
+data class CommunityPostDetailResponse(val success: Boolean, val post: CommunityPostDto, val authorName: String, val likedByMe: Boolean)
+data class CommunityCommentDto(val id: String, val postId: String, val authorId: String, val body: String, val createdAt: String)
+data class CommunityCommentWithAuthorDto(val comment: CommunityCommentDto, val authorName: String)
+data class CommunityCommentsResponse(val success: Boolean, val comments: List<CommunityCommentWithAuthorDto>)
+data class AddCommunityCommentRequest(val body: String)
+data class CommunityCommentResponse(val success: Boolean, val comment: CommunityCommentDto)
+data class ToggleCommunityLikeResponse(val success: Boolean, val liked: Boolean)
+
+// Real 당근알바-style local job board (2026-07-19) -- see rw.itunda.jobs.web.JobPostController.
+data class JobCategoryDto(val id: String, val label: String)
+data class JobPostDto(
+    val id: String, val posterId: String, val category: String, val title: String, val description: String,
+    val payType: String, val payAmount: Double, val status: String, val createdAt: String,
+    val latitude: Double? = null, val longitude: Double? = null,
+)
+data class CreateJobPostRequest(
+    val category: String, val title: String, val description: String, val payType: String, val payAmount: Double,
+    val latitude: Double? = null, val longitude: Double? = null,
+)
+data class JobPostResponse(val success: Boolean, val post: JobPostDto)
+data class JobPostsResponse(val success: Boolean, val posts: List<JobPostDto>)
+data class JobCategoriesResponse(val success: Boolean, val categories: List<JobCategoryDto>)
+data class ContactPosterResponse(val success: Boolean, val conversation: ConversationDto)
+
+// Real 당근부동산-style property listing (2026-07-19) -- see rw.itunda.realestate.web.PropertyListingController.
+data class PropertyTypeDto(val id: String, val label: String)
+data class PropertyListingDto(
+    val id: String, val listerId: String, val listingType: String, val propertyType: String,
+    val title: String, val description: String, val price: Double, val bedrooms: Int? = null, val sizeSqm: Double? = null,
+    val status: String, val createdAt: String, val latitude: Double? = null, val longitude: Double? = null,
+)
+data class CreatePropertyListingRequest(
+    val listingType: String, val propertyType: String, val title: String, val description: String, val price: Double,
+    val bedrooms: Int? = null, val sizeSqm: Double? = null, val latitude: Double? = null, val longitude: Double? = null,
+)
+data class PropertyListingResponse(val success: Boolean, val listing: PropertyListingDto)
+data class PropertyListingsResponse(val success: Boolean, val listings: List<PropertyListingDto>)
+data class PropertyTypesResponse(val success: Boolean, val propertyTypes: List<PropertyTypeDto>)
+data class ContactListerResponse(val success: Boolean, val conversation: ConversationDto)
+
 // Mirrors services/backend/commerce's real DTOs exactly (2026-07-18) -- backs the new
 // "Shop" bottom-nav tab (Coupang-style multi-item checkout), replacing the old Shop
 // tab's Toss-Shopping-cashback content. See rw.itunda.commerce.OrderService's own doc
@@ -641,6 +695,81 @@ interface ApiService {
 
     @GET("api/v1/marketplace/conversations/{id}/offers")
     suspend fun getOffersForConversation(@Path("id") conversationId: String): PriceOffersResponse
+
+    // Real 동네생활-style community board (2026-07-19) -- see rw.itunda.community.web.CommunityController.
+    @GET("api/v1/community/categories")
+    suspend fun getCommunityCategories(): CommunityCategoriesResponse
+
+    @POST("api/v1/community/posts")
+    suspend fun createCommunityPost(@Body request: CreateCommunityPostRequest): CommunityPostResponse
+
+    @GET("api/v1/community/posts")
+    suspend fun browseCommunityPosts(@Query("category") category: String? = null): CommunityPostsResponse
+
+    @GET("api/v1/community/my-posts")
+    suspend fun getMyCommunityPosts(): CommunityPostsResponse
+
+    @GET("api/v1/community/posts/{id}")
+    suspend fun getCommunityPost(@Path("id") postId: String): CommunityPostDetailResponse
+
+    @DELETE("api/v1/community/posts/{id}")
+    suspend fun removeCommunityPost(@Path("id") postId: String): CommunityPostResponse
+
+    @GET("api/v1/community/posts/{id}/comments")
+    suspend fun getCommunityComments(@Path("id") postId: String): CommunityCommentsResponse
+
+    @POST("api/v1/community/posts/{id}/comments")
+    suspend fun addCommunityComment(@Path("id") postId: String, @Body request: AddCommunityCommentRequest): CommunityCommentResponse
+
+    @POST("api/v1/community/posts/{id}/like")
+    suspend fun toggleCommunityLike(@Path("id") postId: String): ToggleCommunityLikeResponse
+
+    // Real 당근알바-style local job board (2026-07-19) -- see rw.itunda.jobs.web.JobPostController.
+    @GET("api/v1/jobs/categories")
+    suspend fun getJobCategories(): JobCategoriesResponse
+
+    @POST("api/v1/jobs/posts")
+    suspend fun createJobPost(@Body request: CreateJobPostRequest): JobPostResponse
+
+    @GET("api/v1/jobs/posts")
+    suspend fun browseJobPosts(@Query("category") category: String? = null): JobPostsResponse
+
+    @GET("api/v1/jobs/my-posts")
+    suspend fun getMyJobPosts(): JobPostsResponse
+
+    @POST("api/v1/jobs/posts/{id}/mark-filled")
+    suspend fun markJobPostFilled(@Path("id") jobPostId: String): JobPostResponse
+
+    @DELETE("api/v1/jobs/posts/{id}")
+    suspend fun removeJobPost(@Path("id") jobPostId: String): JobPostResponse
+
+    @POST("api/v1/jobs/posts/{id}/contact-poster")
+    suspend fun contactPoster(@Path("id") jobPostId: String): ContactPosterResponse
+
+    // Real 당근부동산-style property listing (2026-07-19) -- see rw.itunda.realestate.web.PropertyListingController.
+    @GET("api/v1/realestate/property-types")
+    suspend fun getPropertyTypes(): PropertyTypesResponse
+
+    @POST("api/v1/realestate/listings")
+    suspend fun createPropertyListing(@Body request: CreatePropertyListingRequest): PropertyListingResponse
+
+    @GET("api/v1/realestate/listings")
+    suspend fun browsePropertyListings(
+        @Query("listingType") listingType: String? = null,
+        @Query("propertyType") propertyType: String? = null,
+    ): PropertyListingsResponse
+
+    @GET("api/v1/realestate/my-listings")
+    suspend fun getMyPropertyListings(): PropertyListingsResponse
+
+    @POST("api/v1/realestate/listings/{id}/mark-taken")
+    suspend fun markPropertyListingTaken(@Path("id") propertyListingId: String): PropertyListingResponse
+
+    @DELETE("api/v1/realestate/listings/{id}")
+    suspend fun removePropertyListing(@Path("id") propertyListingId: String): PropertyListingResponse
+
+    @POST("api/v1/realestate/listings/{id}/contact-lister")
+    suspend fun contactLister(@Path("id") propertyListingId: String): ContactListerResponse
 
     // Real per-merchant public product browse (2026-07-18) -- see
     // rw.itunda.merchant.web.ShoppingController.getMerchantProducts.

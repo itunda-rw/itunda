@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -70,8 +71,19 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.WebSocket
 import retrofit2.HttpException
+import rw.itunda.app.network.AddCommunityCommentRequest
+import rw.itunda.app.network.CommunityCategoryDto
+import rw.itunda.app.network.CommunityCommentWithAuthorDto
+import rw.itunda.app.network.CommunityPostDto
 import rw.itunda.app.network.ConversationSummaryDto
+import rw.itunda.app.network.CreateCommunityPostRequest
+import rw.itunda.app.network.CreateJobPostRequest
 import rw.itunda.app.network.CreateListingRequest
+import rw.itunda.app.network.CreatePropertyListingRequest
+import rw.itunda.app.network.JobCategoryDto
+import rw.itunda.app.network.JobPostDto
+import rw.itunda.app.network.PropertyListingDto
+import rw.itunda.app.network.PropertyTypeDto
 import rw.itunda.app.network.EatsOrderDto
 import rw.itunda.app.network.FavoriteRestaurantDto
 import rw.itunda.app.network.AddressSuggestionDto
@@ -1073,10 +1085,57 @@ private fun MessageBubble(
 
 // ============================== HOOD (Marketplace) ==============================
 
+private enum class HoodMode { MARKETPLACE, COMMUNITY, JOBS, PROPERTY }
+
+// Real 당근-style neighborhood-services hub (2026-07-19) -- Marketplace, Community
+// (동네생활), Jobs (당근알바), and Property (당근부동산) all fold into this one tab
+// via a segmented toggle, matching the exact "no free bottom-nav slot, fold into an
+// existing tab" pattern ShopTab's own Shop/Eats toggle already established.
+@Composable
+internal fun HoodTab(onMessageSeller: (String) -> Unit) {
+    var mode by remember { mutableStateOf(HoodMode.MARKETPLACE) }
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Tds.layout.screenHorizontal, vertical = 8.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(TossCardSoft)
+                .padding(4.dp),
+        ) {
+            listOf(
+                HoodMode.MARKETPLACE to "Market", HoodMode.COMMUNITY to "Life",
+                HoodMode.JOBS to "Jobs", HoodMode.PROPERTY to "Home",
+            ).forEach { (m, label) ->
+                val selected = m == mode
+                Text(
+                    label,
+                    color = if (selected) Color.White else TossSecondary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (selected) TossBlue else Color.Transparent)
+                        .clickable { mode = m }
+                        .padding(vertical = 8.dp),
+                )
+            }
+        }
+        when (mode) {
+            HoodMode.MARKETPLACE -> MarketplaceContent(onMessageSeller)
+            HoodMode.COMMUNITY -> CommunityContent()
+            HoodMode.JOBS -> JobsContent(onMessageSeller)
+            HoodMode.PROPERTY -> PropertyContent(onMessageSeller)
+        }
+    }
+}
+
 private enum class HoodView { BROWSE, MINE }
 
 @Composable
-internal fun HoodTab(onMessageSeller: (String) -> Unit) {
+private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
     var view by remember { mutableStateOf(HoodView.BROWSE) }
     var listings by remember { mutableStateOf<List<ListingDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -1431,6 +1490,897 @@ private fun ListingActionButton(label: String, disabled: Boolean, filled: Boolea
             .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
         Text(label, color = if (filled) Color.White else TossText, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+// ============================== COMMUNITY (동네생활) ==============================
+
+private enum class CommunityView { BROWSE, MINE }
+
+@Composable
+private fun CommunityContent() {
+    var view by remember { mutableStateOf(CommunityView.BROWSE) }
+    var categories by remember { mutableStateOf<List<CommunityCategoryDto>>(emptyList()) }
+    var activeCategory by remember { mutableStateOf<String?>(null) }
+    var posts by remember { mutableStateOf<List<CommunityPostDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var showNewPost by remember { mutableStateOf(false) }
+    var openPostId by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+    val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
+
+    LaunchedEffect(Unit) {
+        try { categories = NetworkClient.apiService.getCommunityCategories().categories } catch (e: Exception) { /* chips just won't render */ }
+    }
+
+    fun load() {
+        posts = null
+        coroutineScope.launch {
+            try {
+                val res = if (view == CommunityView.BROWSE) NetworkClient.apiService.browseCommunityPosts(activeCategory) else NetworkClient.apiService.getMyCommunityPosts()
+                if (res.success) posts = res.posts
+                error = null
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+    LaunchedEffect(view, activeCategory) { load() }
+
+    if (openPostId != null) {
+        CommunityPostDetailScreen(postId = openPostId!!, onBack = { openPostId = null; load() })
+        return
+    }
+
+    if (showNewPost) {
+        BackHandler { showNewPost = false }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
+        verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap),
+    ) {
+        item {
+            Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
+                listOf(CommunityView.BROWSE to "Neighborhood feed", CommunityView.MINE to "My posts").forEach { (v, label) ->
+                    val selected = v == view
+                    Text(
+                        label,
+                        color = if (selected) Color.White else TossSecondary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (selected) TossBlue else Color.Transparent)
+                            .clickable { view = v }
+                            .padding(vertical = 8.dp),
+                    )
+                }
+            }
+        }
+        if (view == CommunityView.BROWSE && categories.isNotEmpty()) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    categories.forEach { c ->
+                        val active = activeCategory == c.id
+                        Box(
+                            modifier = Modifier
+                                .background(if (active) TossBlue else Color.White, RoundedCornerShape(999.dp))
+                                .border(1.dp, if (active) TossBlue else TossSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
+                                .clickable { activeCategory = if (active) null else c.id }
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                        ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else TossText) }
+                    }
+                }
+            }
+        }
+        if (view == CommunityView.MINE) {
+            item {
+                if (!showNewPost) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(TossBlue).clickable { showNewPost = true }.padding(vertical = 14.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("+ Write a post", color = Color.White, fontWeight = FontWeight.Bold) }
+                } else {
+                    NewCommunityPostForm(categories, onCreated = { showNewPost = false; load() }, onCancel = { showNewPost = false })
+                }
+            }
+        }
+        if (error != null) {
+            item { ErrorCard(error!!, onRetry = ::load) }
+        } else if (posts == null) {
+            item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+        } else if (posts!!.isEmpty()) {
+            item { Text(if (view == CommunityView.BROWSE) "No posts yet." else "You haven't posted anything yet.", color = TossSecondary, fontSize = 14.sp) }
+        } else {
+            items(posts!!, key = { it.id }) { post ->
+                CommunityPostCard(
+                    post = post,
+                    categoryLabel = categories.firstOrNull { it.id == post.category }?.label ?: post.category,
+                    isMine = view == CommunityView.MINE || post.authorId == currentUserId,
+                    onOpen = { openPostId = post.id },
+                    onRemoved = ::load,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreated: () -> Unit, onCancel: () -> Unit) {
+    var category by remember { mutableStateOf(categories.firstOrNull()?.id ?: "") }
+    var title by remember { mutableStateOf("") }
+    var body by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var submitting by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Write a post", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                categories.forEach { c ->
+                    val selected = category == c.id
+                    Box(
+                        modifier = Modifier
+                            .background(if (selected) TossBlue else TossCardSoft, RoundedCornerShape(999.dp))
+                            .clickable { category = c.id }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else TossText) }
+                }
+            }
+            OutlinedTextField(value = title, onValueChange = { title = it }, placeholder = { Text("Title") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = body, onValueChange = { body = it }, placeholder = { Text("What's going on in the neighborhood?") }, modifier = Modifier.fillMaxWidth())
+            error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Cancel") }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(TossBlue)
+                        .clickable(enabled = !submitting) {
+                            if (title.isBlank() || body.isBlank() || category.isBlank()) {
+                                error = "Fill in every field."
+                                return@clickable
+                            }
+                            submitting = true
+                            error = null
+                            coroutineScope.launch {
+                                try {
+                                    val res = NetworkClient.apiService.createCommunityPost(CreateCommunityPostRequest(category, title, body))
+                                    if (res.success) onCreated()
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } catch (e: IOException) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
+                                } finally {
+                                    submitting = false
+                                }
+                            }
+                        }
+                        .padding(vertical = 14.dp),
+                    contentAlignment = Alignment.Center,
+                ) { Text(if (submitting) "Posting…" else "Post", color = Color.White, fontWeight = FontWeight.Bold) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommunityPostCard(post: CommunityPostDto, categoryLabel: String, isMine: Boolean, onOpen: () -> Unit, onRemoved: () -> Unit) {
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    Card(
+        shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
+    ) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(categoryLabel, color = TossBlue, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                if (isMine) {
+                    ListingActionButton("Remove", busy) {
+                        busy = true
+                        coroutineScope.launch {
+                            try {
+                                NetworkClient.apiService.removeCommunityPost(post.id)
+                                onRemoved()
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    }
+                }
+            }
+            Text(post.title, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(post.body, color = TossSecondary, fontSize = 13.sp, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            Text("❤️ ${post.likeCount} · 💬 ${post.commentCount}", color = TossSecondary, fontSize = 12.sp)
+            error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+        }
+    }
+}
+
+@Composable
+private fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
+    var post by remember { mutableStateOf<CommunityPostDto?>(null) }
+    var authorName by remember { mutableStateOf("") }
+    var likedByMe by remember { mutableStateOf(false) }
+    var comments by remember { mutableStateOf<List<CommunityCommentWithAuthorDto>?>(null) }
+    var commentBody by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var liking by remember { mutableStateOf(false) }
+    var commenting by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                val detail = NetworkClient.apiService.getCommunityPost(postId)
+                post = detail.post; authorName = detail.authorName; likedByMe = detail.likedByMe
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+            try {
+                comments = NetworkClient.apiService.getCommunityComments(postId).comments
+            } catch (e: Exception) { /* non-critical -- the post itself still renders */ }
+        }
+    }
+    LaunchedEffect(postId) { load() }
+
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical)) {
+        BackTopBar("Post", onBack)
+        Spacer(modifier = Modifier.height(12.dp))
+        error?.let { Text(it, color = Tds.colors.danger, fontSize = 13.sp) }
+        post?.let { p ->
+            Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(p.title, color = TossText, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                    Text("by $authorName", color = TossSecondary, fontSize = 12.sp)
+                    Text(p.body, color = TossText, fontSize = 14.sp)
+                    ListingActionButton(if (likedByMe) "❤️ ${p.likeCount}" else "🤍 ${p.likeCount}", liking) {
+                        liking = true
+                        coroutineScope.launch {
+                            try {
+                                val liked = NetworkClient.apiService.toggleCommunityLike(postId).liked
+                                likedByMe = liked
+                                post = p.copy(likeCount = p.likeCount + if (liked) 1 else -1)
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } finally {
+                                liking = false
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Comments", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Spacer(modifier = Modifier.height(8.dp))
+        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (comments == null) {
+                item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(80.dp)) {} }
+            } else if (comments!!.isEmpty()) {
+                item { Text("No comments yet -- be the first to reply.", color = TossSecondary, fontSize = 13.sp) }
+            } else {
+                items(comments!!, key = { it.comment.id }) { c ->
+                    Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = TossCardSoft), modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(c.authorName, color = TossSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            Text(c.comment.body, color = TossText, fontSize = 13.sp)
+                        }
+                    }
+                }
+            }
+        }
+        Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = commentBody, onValueChange = { commentBody = it }, placeholder = { Text("Add a comment") },
+                singleLine = true, modifier = Modifier.weight(1f),
+            )
+            Box(
+                modifier = Modifier
+                    .background(if (commentBody.isBlank()) TossSecondary else TossBlue, RoundedCornerShape(10.dp))
+                    .clickable(enabled = !commenting && commentBody.isNotBlank()) {
+                        commenting = true
+                        coroutineScope.launch {
+                            try {
+                                NetworkClient.apiService.addCommunityComment(postId, AddCommunityCommentRequest(commentBody))
+                                commentBody = ""
+                                load()
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } finally {
+                                commenting = false
+                            }
+                        }
+                    }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+            ) { Text(if (commenting) "…" else "Send", color = Color.White, fontSize = 13.sp) }
+        }
+    }
+}
+
+// ============================== JOBS (당근알바) ==============================
+
+private enum class JobsView { BROWSE, MINE }
+
+@Composable
+private fun JobsContent(onMessagePoster: (String) -> Unit) {
+    var view by remember { mutableStateOf(JobsView.BROWSE) }
+    var categories by remember { mutableStateOf<List<JobCategoryDto>>(emptyList()) }
+    var activeCategory by remember { mutableStateOf<String?>(null) }
+    var posts by remember { mutableStateOf<List<JobPostDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var showNewPost by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
+
+    LaunchedEffect(Unit) {
+        try { categories = NetworkClient.apiService.getJobCategories().categories } catch (e: Exception) { /* chips just won't render */ }
+    }
+
+    fun load() {
+        posts = null
+        coroutineScope.launch {
+            try {
+                val res = if (view == JobsView.BROWSE) NetworkClient.apiService.browseJobPosts(activeCategory) else NetworkClient.apiService.getMyJobPosts()
+                if (res.success) posts = res.posts
+                error = null
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+    LaunchedEffect(view, activeCategory) { load() }
+
+    if (showNewPost) {
+        BackHandler { showNewPost = false }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
+        verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap),
+    ) {
+        item {
+            Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
+                listOf(JobsView.BROWSE to "Find work", JobsView.MINE to "My posts").forEach { (v, label) ->
+                    val selected = v == view
+                    Text(
+                        label,
+                        color = if (selected) Color.White else TossSecondary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (selected) TossBlue else Color.Transparent)
+                            .clickable { view = v }
+                            .padding(vertical = 8.dp),
+                    )
+                }
+            }
+        }
+        if (view == JobsView.BROWSE && categories.isNotEmpty()) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    categories.forEach { c ->
+                        val active = activeCategory == c.id
+                        Box(
+                            modifier = Modifier
+                                .background(if (active) TossBlue else Color.White, RoundedCornerShape(999.dp))
+                                .border(1.dp, if (active) TossBlue else TossSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
+                                .clickable { activeCategory = if (active) null else c.id }
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                        ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else TossText) }
+                    }
+                }
+            }
+        }
+        if (view == JobsView.MINE) {
+            item {
+                if (!showNewPost) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(TossBlue).clickable { showNewPost = true }.padding(vertical = 14.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("+ Post a job", color = Color.White, fontWeight = FontWeight.Bold) }
+                } else {
+                    NewJobPostForm(categories, onCreated = { showNewPost = false; load() }, onCancel = { showNewPost = false })
+                }
+            }
+        }
+        if (error != null) {
+            item { ErrorCard(error!!, onRetry = ::load) }
+        } else if (posts == null) {
+            item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+        } else if (posts!!.isEmpty()) {
+            item { Text(if (view == JobsView.BROWSE) "No jobs posted yet." else "You haven't posted any jobs yet.", color = TossSecondary, fontSize = 14.sp) }
+        } else {
+            items(posts!!, key = { it.id }) { post ->
+                JobPostCard(
+                    post = post,
+                    categoryLabel = categories.firstOrNull { it.id == post.category }?.label ?: post.category,
+                    isMine = view == JobsView.MINE || post.posterId == currentUserId,
+                    onChanged = ::load,
+                    onContact = {
+                        coroutineScope.launch {
+                            try {
+                                val res = NetworkClient.apiService.contactPoster(post.id)
+                                if (res.success) onMessagePoster(res.conversation.id)
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
+                            }
+                        }
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> Unit, onCancel: () -> Unit) {
+    var category by remember { mutableStateOf(categories.firstOrNull()?.id ?: "") }
+    var title by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var payType by remember { mutableStateOf("HOURLY") }
+    var payAmount by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var submitting by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Post a job", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                categories.forEach { c ->
+                    val selected = category == c.id
+                    Box(
+                        modifier = Modifier
+                            .background(if (selected) TossBlue else TossCardSoft, RoundedCornerShape(999.dp))
+                            .clickable { category = c.id }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    ) { Text(c.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else TossText) }
+                }
+            }
+            OutlinedTextField(value = title, onValueChange = { title = it }, placeholder = { Text("What do you need done?") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = description, onValueChange = { description = it }, placeholder = { Text("Describe the work") }, modifier = Modifier.fillMaxWidth())
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                listOf("HOURLY" to "Per hour", "FIXED" to "Fixed price").forEach { (v, label) ->
+                    val selected = payType == v
+                    Text(
+                        label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else TossText,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (selected) TossBlue else TossCardSoft)
+                            .clickable { payType = v }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                    )
+                }
+                OutlinedTextField(
+                    value = payAmount, onValueChange = { payAmount = it }, placeholder = { Text("Pay (RWF)") }, singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Cancel") }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(TossBlue)
+                        .clickable(enabled = !submitting) {
+                            val amount = payAmount.toDoubleOrNull()
+                            if (title.isBlank() || description.isBlank() || category.isBlank() || amount == null || amount <= 0) {
+                                error = "Fill in every field with a real pay amount."
+                                return@clickable
+                            }
+                            submitting = true
+                            error = null
+                            coroutineScope.launch {
+                                try {
+                                    val res = NetworkClient.apiService.createJobPost(CreateJobPostRequest(category, title, description, payType, amount))
+                                    if (res.success) onCreated()
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } catch (e: IOException) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
+                                } finally {
+                                    submitting = false
+                                }
+                            }
+                        }
+                        .padding(vertical = 14.dp),
+                    contentAlignment = Alignment.Center,
+                ) { Text(if (submitting) "Posting…" else "Post job", color = Color.White, fontWeight = FontWeight.Bold) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun JobPostCard(post: JobPostDto, categoryLabel: String, isMine: Boolean, onChanged: () -> Unit, onContact: () -> Unit) {
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+    val payLabel = "%,.0f RWF".format(post.payAmount) + if (post.payType == "HOURLY") "/hr" else ""
+
+    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(categoryLabel, color = TossBlue, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    if (post.status == "FILLED") {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(TossCardSoft).padding(horizontal = 8.dp, vertical = 2.dp)) {
+                            Text("FILLED", color = TossSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+                Text(payLabel, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+            Text(post.title, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(post.description, color = TossSecondary, fontSize = 13.sp)
+            error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (isMine) {
+                    if (post.status == "OPEN") {
+                        ListingActionButton("Mark filled", busy) {
+                            busy = true
+                            coroutineScope.launch {
+                                try { NetworkClient.apiService.markJobPostFilled(post.id); onChanged() }
+                                catch (e: HttpException) { error = superAppErrorMessage(e) }
+                                finally { busy = false }
+                            }
+                        }
+                    }
+                    if (post.status != "REMOVED") {
+                        ListingActionButton("Remove", busy) {
+                            busy = true
+                            coroutineScope.launch {
+                                try { NetworkClient.apiService.removeJobPost(post.id); onChanged() }
+                                catch (e: HttpException) { error = superAppErrorMessage(e) }
+                                finally { busy = false }
+                            }
+                        }
+                    }
+                } else if (post.status == "OPEN") {
+                    ListingActionButton("Message poster", busy, filled = true, onClick = onContact)
+                }
+            }
+        }
+    }
+}
+
+// ============================== PROPERTY (당근부동산) ==============================
+
+private enum class PropertyView { BROWSE, MINE }
+
+@Composable
+private fun PropertyContent(onMessageLister: (String) -> Unit) {
+    var view by remember { mutableStateOf(PropertyView.BROWSE) }
+    var propertyTypes by remember { mutableStateOf<List<PropertyTypeDto>>(emptyList()) }
+    var listingTypeFilter by remember { mutableStateOf<String?>(null) }
+    var propertyTypeFilter by remember { mutableStateOf<String?>(null) }
+    var listings by remember { mutableStateOf<List<PropertyListingDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var showNewListing by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
+
+    LaunchedEffect(Unit) {
+        try { propertyTypes = NetworkClient.apiService.getPropertyTypes().propertyTypes } catch (e: Exception) { /* chips just won't render */ }
+    }
+
+    fun load() {
+        listings = null
+        coroutineScope.launch {
+            try {
+                val res = if (view == PropertyView.BROWSE) {
+                    NetworkClient.apiService.browsePropertyListings(listingTypeFilter, propertyTypeFilter)
+                } else {
+                    NetworkClient.apiService.getMyPropertyListings()
+                }
+                if (res.success) listings = res.listings
+                error = null
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+    LaunchedEffect(view, listingTypeFilter, propertyTypeFilter) { load() }
+
+    if (showNewListing) {
+        BackHandler { showNewListing = false }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
+        verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap),
+    ) {
+        item {
+            Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
+                listOf(PropertyView.BROWSE to "Browse", PropertyView.MINE to "My listings").forEach { (v, label) ->
+                    val selected = v == view
+                    Text(
+                        label,
+                        color = if (selected) Color.White else TossSecondary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (selected) TossBlue else Color.Transparent)
+                            .clickable { view = v }
+                            .padding(vertical = 8.dp),
+                    )
+                }
+            }
+        }
+        if (view == PropertyView.BROWSE) {
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("RENT" to "For rent", "SALE" to "For sale").forEach { (v, label) ->
+                        val active = listingTypeFilter == v
+                        Box(
+                            modifier = Modifier
+                                .background(if (active) TossBlue else Color.White, RoundedCornerShape(999.dp))
+                                .border(1.dp, if (active) TossBlue else TossSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
+                                .clickable { listingTypeFilter = if (active) null else v }
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                        ) { Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else TossText) }
+                    }
+                }
+            }
+            if (propertyTypes.isNotEmpty()) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        propertyTypes.forEach { t ->
+                            val active = propertyTypeFilter == t.id
+                            Box(
+                                modifier = Modifier
+                                    .background(if (active) TossBlue else Color.White, RoundedCornerShape(999.dp))
+                                    .border(1.dp, if (active) TossBlue else TossSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
+                                    .clickable { propertyTypeFilter = if (active) null else t.id }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                            ) { Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (active) Color.White else TossText) }
+                        }
+                    }
+                }
+            }
+        }
+        if (view == PropertyView.MINE) {
+            item {
+                if (!showNewListing) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(TossBlue).clickable { showNewListing = true }.padding(vertical = 14.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("+ List a property", color = Color.White, fontWeight = FontWeight.Bold) }
+                } else {
+                    NewPropertyListingForm(propertyTypes, onCreated = { showNewListing = false; load() }, onCancel = { showNewListing = false })
+                }
+            }
+        }
+        if (error != null) {
+            item { ErrorCard(error!!, onRetry = ::load) }
+        } else if (listings == null) {
+            item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+        } else if (listings!!.isEmpty()) {
+            item { Text(if (view == PropertyView.BROWSE) "No properties listed yet." else "You haven't listed any properties yet.", color = TossSecondary, fontSize = 14.sp) }
+        } else {
+            items(listings!!, key = { it.id }) { listing ->
+                PropertyListingCard(
+                    listing = listing,
+                    propertyTypeLabel = propertyTypes.firstOrNull { it.id == listing.propertyType }?.label ?: listing.propertyType,
+                    isMine = view == PropertyView.MINE || listing.listerId == currentUserId,
+                    onChanged = ::load,
+                    onContact = {
+                        coroutineScope.launch {
+                            try {
+                                val res = NetworkClient.apiService.contactLister(listing.id)
+                                if (res.success) onMessageLister(res.conversation.id)
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
+                            }
+                        }
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreated: () -> Unit, onCancel: () -> Unit) {
+    var listingType by remember { mutableStateOf("RENT") }
+    var propertyType by remember { mutableStateOf(propertyTypes.firstOrNull()?.id ?: "") }
+    var title by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var price by remember { mutableStateOf("") }
+    var bedrooms by remember { mutableStateOf("") }
+    var sizeSqm by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var submitting by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("List a property", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("RENT" to "For rent", "SALE" to "For sale").forEach { (v, label) ->
+                    val selected = listingType == v
+                    Text(
+                        label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else TossText,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (selected) TossBlue else TossCardSoft)
+                            .clickable { listingType = v }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                propertyTypes.forEach { t ->
+                    val selected = propertyType == t.id
+                    Box(
+                        modifier = Modifier
+                            .background(if (selected) TossBlue else TossCardSoft, RoundedCornerShape(999.dp))
+                            .clickable { propertyType = t.id }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    ) { Text(t.label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else TossText) }
+                }
+            }
+            OutlinedTextField(value = title, onValueChange = { title = it }, placeholder = { Text("e.g. 2-bedroom apartment in Kacyiru") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = description, onValueChange = { description = it }, placeholder = { Text("Describe the property") }, modifier = Modifier.fillMaxWidth())
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = price, onValueChange = { price = it },
+                    placeholder = { Text(if (listingType == "RENT") "Rent/mo (RWF)" else "Price (RWF)") }, singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedTextField(value = bedrooms, onValueChange = { bedrooms = it }, placeholder = { Text("Bedrooms") }, singleLine = true, modifier = Modifier.weight(1f))
+                OutlinedTextField(value = sizeSqm, onValueChange = { sizeSqm = it }, placeholder = { Text("Size (m²)") }, singleLine = true, modifier = Modifier.weight(1f))
+            }
+            error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Cancel") }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(TossBlue)
+                        .clickable(enabled = !submitting) {
+                            val priceValue = price.toDoubleOrNull()
+                            if (title.isBlank() || description.isBlank() || propertyType.isBlank() || priceValue == null || priceValue <= 0) {
+                                error = "Fill in every field with a real price."
+                                return@clickable
+                            }
+                            submitting = true
+                            error = null
+                            coroutineScope.launch {
+                                try {
+                                    val res = NetworkClient.apiService.createPropertyListing(
+                                        CreatePropertyListingRequest(
+                                            listingType, propertyType, title, description, priceValue,
+                                            bedrooms.toIntOrNull(), sizeSqm.toDoubleOrNull(),
+                                        ),
+                                    )
+                                    if (res.success) onCreated()
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } catch (e: IOException) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
+                                } finally {
+                                    submitting = false
+                                }
+                            }
+                        }
+                        .padding(vertical = 14.dp),
+                    contentAlignment = Alignment.Center,
+                ) { Text(if (submitting) "Listing…" else "List it", color = Color.White, fontWeight = FontWeight.Bold) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PropertyListingCard(listing: PropertyListingDto, propertyTypeLabel: String, isMine: Boolean, onChanged: () -> Unit, onContact: () -> Unit) {
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+    val priceLabel = "%,.0f RWF".format(listing.price) + if (listing.listingType == "RENT") "/mo" else ""
+    val details = listOfNotNull(
+        listing.bedrooms?.let { "$it bd" },
+        listing.sizeSqm?.let { "${it} m²" },
+    ).joinToString(" · ")
+
+    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "${if (listing.listingType == "RENT") "For rent" else "For sale"} · $propertyTypeLabel",
+                        color = TossBlue, fontWeight = FontWeight.Bold, fontSize = 11.sp,
+                    )
+                    if (listing.status == "TAKEN") {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(TossCardSoft).padding(horizontal = 8.dp, vertical = 2.dp)) {
+                            Text("TAKEN", color = TossSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+                Text(priceLabel, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+            Text(listing.title, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            if (details.isNotBlank()) Text(details, color = TossSecondary, fontSize = 12.sp)
+            Text(listing.description, color = TossSecondary, fontSize = 13.sp)
+            error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (isMine) {
+                    if (listing.status == "AVAILABLE") {
+                        ListingActionButton("Mark taken", busy) {
+                            busy = true
+                            coroutineScope.launch {
+                                try { NetworkClient.apiService.markPropertyListingTaken(listing.id); onChanged() }
+                                catch (e: HttpException) { error = superAppErrorMessage(e) }
+                                finally { busy = false }
+                            }
+                        }
+                    }
+                    if (listing.status != "REMOVED") {
+                        ListingActionButton("Remove", busy) {
+                            busy = true
+                            coroutineScope.launch {
+                                try { NetworkClient.apiService.removePropertyListing(listing.id); onChanged() }
+                                catch (e: HttpException) { error = superAppErrorMessage(e) }
+                                finally { busy = false }
+                            }
+                        }
+                    }
+                } else if (listing.status == "AVAILABLE") {
+                    ListingActionButton("Message lister", busy, filled = true, onClick = onContact)
+                }
+            }
+        }
     }
 }
 
