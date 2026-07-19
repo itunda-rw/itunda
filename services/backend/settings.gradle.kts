@@ -27,6 +27,7 @@ include(
     ":marketplace",
     ":community",
     ":jobs",
+    ":realestate",
     ":commerce",
     ":eats",
     ":maps",

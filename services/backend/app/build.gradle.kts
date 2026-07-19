@@ -38,6 +38,7 @@ dependencies {
     implementation(project(":marketplace"))
     implementation(project(":community"))
     implementation(project(":jobs"))
+    implementation(project(":realestate"))
     implementation(project(":commerce"))
     implementation(project(":eats"))
     implementation(project(":maps"))
