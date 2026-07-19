@@ -635,6 +635,30 @@ struct RouteResultDto: Decodable { let distanceKm: Double; let durationMinutes: 
 struct MapsDirectionsResponse: Decodable { let success: Bool; let route: RouteResultDto }
 struct MerchantCategoriesResponse: Decodable { let success: Bool; let categories: [String] }
 
+// Real "nearby places" category search + bookmarked/favorite places (2026-07-19) -- see
+// rw.itunda.maps.MapsService's own doc comment on the backend. `mapNearbyCategories`
+// mirrors bank-mfe's own hardcoded `NEARBY_CATEGORIES` list exactly.
+struct NearbyPlaceDto: Decodable { let displayName: String; let latitude: Double; let longitude: Double; let distanceKm: Double }
+struct MapNearbyResponse: Decodable { let success: Bool; let places: [NearbyPlaceDto] }
+struct MapBookmarkDto: Decodable, Identifiable { let id: String; let displayName: String; let latitude: Double; let longitude: Double; let createdAt: String }
+struct MapBookmarksResponse: Decodable { let success: Bool; let bookmarks: [MapBookmarkDto] }
+struct AddMapBookmarkRequest: Encodable { let displayName: String; let latitude: Double; let longitude: Double }
+struct AddMapBookmarkResponse: Decodable { let success: Bool; let bookmark: MapBookmarkDto }
+
+struct MapPlaceCategory: Identifiable { let id: String; let label: String }
+let mapNearbyCategories: [MapPlaceCategory] = [
+    MapPlaceCategory(id: "RESTAURANT", label: "Restaurants"),
+    MapPlaceCategory(id: "CAFE", label: "Cafes"),
+    MapPlaceCategory(id: "HOSPITAL", label: "Hospitals"),
+    MapPlaceCategory(id: "PHARMACY", label: "Pharmacies"),
+    MapPlaceCategory(id: "BANK", label: "Banks"),
+    MapPlaceCategory(id: "ATM", label: "ATMs"),
+    MapPlaceCategory(id: "HOTEL", label: "Hotels"),
+    MapPlaceCategory(id: "SUPERMARKET", label: "Supermarkets"),
+    MapPlaceCategory(id: "GAS_STATION", label: "Gas stations"),
+    MapPlaceCategory(id: "SCHOOL", label: "Schools"),
+]
+
 struct MerchantProductDto: Decodable, Identifiable {
     let id: String
     let merchantId: String
@@ -942,6 +966,42 @@ extension NetworkClient {
             URLQueryItem(name: "toLat", value: String(toLat)),
             URLQueryItem(name: "toLng", value: String(toLng)),
         ])
+    }
+
+    // Real "nearby places" category search + bookmarked/favorite places (2026-07-19) --
+    // see rw.itunda.maps.MapsService's own doc comment on the backend.
+    func searchNearbyPlaces(category: String, lat: Double, lng: Double, radiusKm: Double = 2.0) async throws -> MapNearbyResponse {
+        try await get("api/v1/maps/nearby", query: [
+            URLQueryItem(name: "category", value: category),
+            URLQueryItem(name: "lat", value: String(lat)),
+            URLQueryItem(name: "lng", value: String(lng)),
+            URLQueryItem(name: "radiusKm", value: String(radiusKm)),
+        ])
+    }
+
+    func getMyMapBookmarks() async throws -> MapBookmarksResponse { try await get("api/v1/maps/bookmarks") }
+
+    func addMapBookmark(displayName: String, latitude: Double, longitude: Double) async throws -> AddMapBookmarkResponse {
+        try await authenticatedPost("api/v1/maps/bookmarks", body: AddMapBookmarkRequest(displayName: displayName, latitude: latitude, longitude: longitude))
+    }
+
+    // A real query-param DELETE -- `authenticatedDelete(_:)` below takes no query, so
+    // this is a one-off manual request, same pattern `searchDeliveryAddress` already
+    // uses for its own query-param GET.
+    func removeMapBookmark(latitude: Double, longitude: Double) async throws -> SuccessResponse {
+        var components = URLComponents(url: baseURL.appendingPathComponent("api/v1/maps/bookmarks"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [URLQueryItem(name: "lat", value: String(latitude)), URLQueryItem(name: "lng", value: String(longitude))]
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "DELETE"
+        if let token = KeychainTokenStore.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
+        }
+        return try decoder.decode(SuccessResponse.self, from: data)
     }
 
     func getMerchantProducts(merchantId: String) async throws -> MerchantProductsResponse {

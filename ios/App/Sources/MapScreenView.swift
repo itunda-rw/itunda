@@ -115,7 +115,16 @@ struct MapScreenView: View {
     @State private var route: RouteResultDto?
     @State private var routing = false
     @State private var error: String?
+    @State private var activeCategory: String?
+    @State private var categoryLoading = false
+    @State private var categoryResults: [NearbyPlaceDto]?
+    @State private var bookmarks: [MapBookmarkDto] = []
+    @State private var bookmarking = false
     @StateObject private var locationFetcher = LocationFetcher()
+
+    private func isBookmarked(_ place: PlaceSearchResultDto) -> Bool {
+        bookmarks.contains { $0.latitude == place.latitude && $0.longitude == place.longitude }
+    }
 
     var body: some View {
         NavigationStack {
@@ -137,6 +146,39 @@ struct MapScreenView: View {
                 }
                 .padding(.horizontal, IDS.Layout.screenHorizontal)
                 .padding(.top, 8)
+
+                // Real category-chip "nearby places" search (Naver/Kakao's own
+                // convention) -- mirrors bank-mfe's MapView.tsx / Android's MapScreen.kt
+                // chip row exactly.
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(mapNearbyCategories) { category in
+                            let active = activeCategory == category.id
+                            Button(action: { Task { await searchNearbyCategory(category.id) } }) {
+                                Text(active && categoryLoading ? "…" : category.label)
+                                    .font(.caption).bold()
+                                    .foregroundColor(active ? .white : IDS.Colors.textPrimary)
+                                    .padding(.horizontal, 12).padding(.vertical, 6)
+                                    .background(active ? Color(red: 0.545, green: 0.361, blue: 0.965) : Color.clear)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 999)
+                                            .stroke(active ? Color(red: 0.545, green: 0.361, blue: 0.965) : IDS.Colors.textSecondary.opacity(0.3), lineWidth: 1)
+                                    )
+                                    .cornerRadius(999)
+                            }
+                            .disabled(categoryLoading && !active)
+                        }
+                    }
+                    .padding(.horizontal, IDS.Layout.screenHorizontal)
+                }
+                .padding(.top, 8)
+
+                if let activeCategory, let categoryResults {
+                    let label = mapNearbyCategories.first { $0.id == activeCategory }?.label.lowercased() ?? ""
+                    Text(categoryResults.isEmpty ? "No real matches found nearby for that category." : "\(categoryResults.count) real \(label) found nearby, closest first.")
+                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        .padding(.horizontal, IDS.Layout.screenHorizontal).padding(.top, 4)
+                }
 
                 if let results = searchResults {
                     ScrollView {
@@ -163,12 +205,44 @@ struct MapScreenView: View {
                     Text(error).font(.caption).foregroundColor(.red).padding(.horizontal, IDS.Layout.screenHorizontal)
                 }
 
-                MapLibreMapRepresentable(merchants: merchants, myLocation: locationFetcher.coordinate, destination: selectedPlace, routeGeometry: route?.geometry)
+                MapLibreMapRepresentable(
+                    merchants: merchants, myLocation: locationFetcher.coordinate, destination: selectedPlace,
+                    routeGeometry: route?.geometry, nearbyPlaces: categoryResults,
+                )
                     .ignoresSafeArea(edges: .bottom)
+
+                if selectedPlace == nil && !bookmarks.isEmpty {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("★ Your saved places").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
+                                .padding(.horizontal, 8).padding(.top, 4)
+                            ForEach(bookmarks) { bookmark in
+                                Text(bookmark.displayName)
+                                    .font(.caption).foregroundColor(IDS.Colors.textPrimary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(10)
+                                    .onTapGesture {
+                                        selectPlace(PlaceSearchResultDto(displayName: bookmark.displayName, latitude: bookmark.latitude, longitude: bookmark.longitude))
+                                    }
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 160)
+                    .padding(.horizontal, IDS.Layout.screenHorizontal)
+                }
 
                 if let place = selectedPlace {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(place.displayName).font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                        HStack(alignment: .top) {
+                            Text(place.displayName).font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                            Spacer()
+                            Button(action: { Task { await toggleBookmark(place) } }) {
+                                Text(isBookmarked(place) ? "★" : "☆")
+                                    .font(.title3)
+                                    .foregroundColor(isBookmarked(place) ? Color(red: 0.961, green: 0.651, blue: 0.137) : IDS.Colors.textSecondary)
+                            }
+                            .disabled(bookmarking)
+                        }
                         if let route {
                             Text("🚗 \(String(format: "%.1f", route.distanceKm)) km · \(Int(route.durationMinutes)) min by real road, via itunda's own self-hosted OSRM")
                                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
@@ -201,6 +275,14 @@ struct MapScreenView: View {
                     // Honest partial failure -- the base map still renders even if the
                     // real merchant overlay fails to load, never a blank screen for a
                     // real infra hiccup.
+                }
+            }
+            .task {
+                do {
+                    bookmarks = try await NetworkClient.shared.getMyMapBookmarks().bookmarks
+                } catch {
+                    // Honest partial failure -- bookmarks are a real-nice-to-have, never
+                    // block the rest of the Maps feature set from loading.
                 }
             }
             .onChange(of: locationFetcher.errorMessage) { newValue in
@@ -242,16 +324,55 @@ struct MapScreenView: View {
             self.error = "Could not find directions to this place."
         }
     }
+
+    private func searchNearbyCategory(_ categoryId: String) async {
+        if activeCategory == categoryId {
+            activeCategory = nil
+            categoryResults = nil
+            return
+        }
+        let center = locationFetcher.coordinate ?? CLLocationCoordinate2D(latitude: rwandaCenterLat, longitude: rwandaCenterLng)
+        activeCategory = categoryId
+        categoryLoading = true
+        error = nil
+        defer { categoryLoading = false }
+        do {
+            categoryResults = try await NetworkClient.shared.searchNearbyPlaces(category: categoryId, lat: center.latitude, lng: center.longitude).places
+        } catch {
+            self.error = "Could not search nearby places."
+            activeCategory = nil
+        }
+    }
+
+    private func toggleBookmark(_ place: PlaceSearchResultDto) async {
+        bookmarking = true
+        error = nil
+        defer { bookmarking = false }
+        do {
+            if isBookmarked(place) {
+                _ = try await NetworkClient.shared.removeMapBookmark(latitude: place.latitude, longitude: place.longitude)
+                bookmarks.removeAll { $0.latitude == place.latitude && $0.longitude == place.longitude }
+            } else {
+                let saved = try await NetworkClient.shared.addMapBookmark(displayName: place.displayName, latitude: place.latitude, longitude: place.longitude).bookmark
+                bookmarks.insert(saved, at: 0)
+            }
+        } catch {
+            self.error = "Could not save this place."
+        }
+    }
 }
 
 private let routeSourceIdentifier = "itunda-route"
 private let routeLayerIdentifier = "itunda-route-line"
+
+private let nearbyAnnotationTitlePrefix = "itunda-nearby:"
 
 private struct MapLibreMapRepresentable: UIViewRepresentable {
     let merchants: [ShoppingMerchantDto]
     let myLocation: CLLocationCoordinate2D?
     let destination: PlaceSearchResultDto?
     let routeGeometry: [[Double]]?
+    let nearbyPlaces: [NearbyPlaceDto]?
 
     private let myLocationAnnotationTitle = "itunda-my-location"
 
@@ -288,6 +409,15 @@ private struct MapLibreMapRepresentable: UIViewRepresentable {
             let point = MLNPointAnnotation()
             point.coordinate = myLocation
             point.title = myLocationAnnotationTitle
+            points.append(point)
+        }
+        // Real "nearby places" category-search markers (2026-07-19) -- a distinct
+        // violet color, same as bank-mfe's MapView.tsx category chips, tagged via a
+        // sentinel title prefix so the coordinator's viewFor annotation can style them.
+        for place in nearbyPlaces ?? [] {
+            let point = MLNPointAnnotation()
+            point.coordinate = CLLocationCoordinate2D(latitude: place.latitude, longitude: place.longitude)
+            point.title = nearbyAnnotationTitlePrefix + place.displayName
             points.append(point)
         }
         mapView.addAnnotations(points)
@@ -330,17 +460,38 @@ private struct MapLibreMapRepresentable: UIViewRepresentable {
 
         // Real distinct "my location" blue dot, styled differently from the default red
         // pin used for merchants/search destinations -- matches Naver/Kakao Maps' own
-        // real convention for a location indicator.
+        // real convention for a location indicator. Real "nearby places" category-search
+        // markers get their own distinct violet dot, same as bank-mfe/Android.
         func mapView(_ mapView: MLNMapView, viewFor annotation: MLNAnnotation) -> MLNAnnotationView? {
-            guard annotation.title == myLocationAnnotationTitle else { return nil }
-            let identifier = "itunda-my-location-view"
-            let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) ?? MLNAnnotationView(reuseIdentifier: identifier)
-            view.frame = CGRect(x: 0, y: 0, width: 18, height: 18)
-            view.backgroundColor = UIColor(red: 0.19, green: 0.51, blue: 0.96, alpha: 1.0)
-            view.layer.cornerRadius = 9
-            view.layer.borderColor = UIColor.white.cgColor
-            view.layer.borderWidth = 3
-            return view
+            let title = annotation.title ?? nil
+            if title == myLocationAnnotationTitle {
+                let identifier = "itunda-my-location-view"
+                let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) ?? MLNAnnotationView(reuseIdentifier: identifier)
+                view.frame = CGRect(x: 0, y: 0, width: 18, height: 18)
+                view.backgroundColor = UIColor(red: 0.19, green: 0.51, blue: 0.96, alpha: 1.0)
+                view.layer.cornerRadius = 9
+                view.layer.borderColor = UIColor.white.cgColor
+                view.layer.borderWidth = 3
+                return view
+            }
+            if let title, title.hasPrefix(nearbyAnnotationTitlePrefix) {
+                let identifier = "itunda-nearby-view"
+                let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) ?? MLNAnnotationView(reuseIdentifier: identifier)
+                view.frame = CGRect(x: 0, y: 0, width: 14, height: 14)
+                view.backgroundColor = UIColor(red: 0.545, green: 0.361, blue: 0.965, alpha: 1.0)
+                view.layer.cornerRadius = 7
+                view.layer.borderColor = UIColor.white.cgColor
+                view.layer.borderWidth = 2
+                return view
+            }
+            return nil
+        }
+
+        // Nearby-place markers carry a sentinel-prefixed title (not real display text,
+        // just a tag the annotation-view lookup above keys off), so their callout is
+        // suppressed rather than showing that raw prefix to a real user.
+        func mapView(_ mapView: MLNMapView, annotationCanShowCallout annotation: MLNAnnotation) -> Bool {
+            !(annotation.title.flatMap { $0 }?.hasPrefix(nearbyAnnotationTitlePrefix) ?? false)
         }
     }
 }

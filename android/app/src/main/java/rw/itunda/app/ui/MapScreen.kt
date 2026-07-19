@@ -5,7 +5,9 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +15,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.MyLocation
@@ -67,7 +71,11 @@ import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
 import retrofit2.HttpException
+import rw.itunda.app.network.AddMapBookmarkRequest
+import rw.itunda.app.network.MAP_NEARBY_CATEGORIES
+import rw.itunda.app.network.MapBookmarkDto
 import rw.itunda.app.network.MapsDirectionsResponse
+import rw.itunda.app.network.NearbyPlaceDto
 import rw.itunda.core.designsystem.theme.Tds
 import rw.itunda.app.network.NetworkClient
 import rw.itunda.app.network.PlaceSearchResultDto
@@ -86,6 +94,8 @@ private const val DESTINATION_SOURCE_ID = "destination"
 private const val DESTINATION_LAYER_ID = "destination-circle"
 private const val ROUTE_SOURCE_ID = "route"
 private const val ROUTE_LAYER_ID = "route-line"
+private const val NEARBY_SOURCE_ID = "nearby-places"
+private const val NEARBY_LAYER_ID = "nearby-places-circle"
 
 // A real, minimal MapLibre style over itunda's own self-hosted vector tiles -- mirrors
 // bank-mfe's MapView.tsx MAP_STYLE constant exactly (same source, same layer set, no
@@ -158,6 +168,11 @@ fun MapScreen(onBack: () -> Unit) {
     var locating by remember { mutableStateOf(false) }
     var myLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) } // lat, lng
     var error by remember { mutableStateOf<String?>(null) }
+    var activeCategory by remember { mutableStateOf<String?>(null) }
+    var categoryLoading by remember { mutableStateOf(false) }
+    var categoryResults by remember { mutableStateOf<List<NearbyPlaceDto>?>(null) }
+    var bookmarks by remember { mutableStateOf<List<MapBookmarkDto>>(emptyList()) }
+    var bookmarking by remember { mutableStateOf(false) }
 
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
@@ -198,7 +213,67 @@ fun MapScreen(onBack: () -> Unit) {
             // merchant overlay fails to load, never a blank screen for a real infra hiccup.
         }
     }
+    LaunchedEffect(Unit) {
+        try {
+            bookmarks = NetworkClient.apiService.getMyMapBookmarks().bookmarks
+        } catch (e: Exception) {
+            // Honest partial failure -- bookmarks are a real-nice-to-have, never block the
+            // rest of the Maps feature set from loading.
+        }
+    }
     val currentMerchants by rememberUpdatedState(merchants)
+
+    fun isBookmarked(place: PlaceSearchResultDto): Boolean =
+        bookmarks.any { it.latitude == place.latitude && it.longitude == place.longitude }
+
+    fun toggleBookmark(place: PlaceSearchResultDto) {
+        coroutineScope.launch {
+            bookmarking = true
+            error = null
+            try {
+                if (isBookmarked(place)) {
+                    NetworkClient.apiService.removeMapBookmark(place.latitude, place.longitude)
+                    bookmarks = bookmarks.filterNot { it.latitude == place.latitude && it.longitude == place.longitude }
+                } else {
+                    val saved = NetworkClient.apiService.addMapBookmark(
+                        AddMapBookmarkRequest(place.displayName, place.latitude, place.longitude),
+                    ).bookmark
+                    bookmarks = listOf(saved) + bookmarks
+                }
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: Exception) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                bookmarking = false
+            }
+        }
+    }
+
+    fun searchNearbyCategory(categoryId: String) {
+        if (activeCategory == categoryId) {
+            activeCategory = null
+            categoryResults = null
+            return
+        }
+        val center = myLocation ?: (RWANDA_CENTER_LAT to RWANDA_CENTER_LNG)
+        activeCategory = categoryId
+        coroutineScope.launch {
+            categoryLoading = true
+            error = null
+            try {
+                categoryResults = NetworkClient.apiService.searchNearbyPlaces(categoryId, center.first, center.second).places
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+                activeCategory = null
+            } catch (e: Exception) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+                activeCategory = null
+            } finally {
+                categoryLoading = false
+            }
+        }
+    }
 
     Scaffold { padding ->
         val mapView = remember { MapView(context) }
@@ -253,6 +328,14 @@ fun MapScreen(onBack: () -> Unit) {
                             circleRadius(7f), circleColor("#3182F6"), circleStrokeWidth(3f), circleStrokeColor("#ffffff"),
                         ),
                     )
+                    // Real "nearby places" category-search markers (2026-07-19) -- a
+                    // distinct violet color, same as bank-mfe's MapView.tsx category chips.
+                    style.addSource(GeoJsonSource(NEARBY_SOURCE_ID, FeatureCollection.fromFeatures(emptyArray())))
+                    style.addLayer(
+                        CircleLayer(NEARBY_LAYER_ID, NEARBY_SOURCE_ID).withProperties(
+                            circleRadius(7f), circleColor("#8B5CF6"), circleStrokeWidth(2f), circleStrokeColor("#ffffff"),
+                        ),
+                    )
                     val featureCollection = FeatureCollection.fromFeatures(
                         currentMerchants.map { m -> Feature.fromGeometry(Point.fromLngLat(m.longitude!!, m.latitude!!)) },
                     )
@@ -302,6 +385,18 @@ fun MapScreen(onBack: () -> Unit) {
                 // A new destination needs a fresh "Directions" tap -- clear any
                 // previously-drawn route.
                 (style.getSourceAs<GeoJsonSource>(ROUTE_SOURCE_ID))?.setGeoJson(FeatureCollection.fromFeatures(emptyArray()))
+            }
+        }
+        LaunchedEffect(categoryResults) {
+            val places = categoryResults
+            mapView.getMapAsync { map ->
+                val style = map.style ?: return@getMapAsync
+                val source = style.getSourceAs<GeoJsonSource>(NEARBY_SOURCE_ID) ?: return@getMapAsync
+                source.setGeoJson(
+                    FeatureCollection.fromFeatures(
+                        (places ?: emptyList()).map { p -> Feature.fromGeometry(Point.fromLngLat(p.longitude, p.latitude)) },
+                    ),
+                )
             }
         }
         LaunchedEffect(route) {
@@ -362,6 +457,45 @@ fun MapScreen(onBack: () -> Unit) {
                 )
             }
 
+            // Real category-chip "nearby places" search (Naver/Kakao's own convention) --
+            // mirrors bank-mfe's MapView.tsx chip row exactly.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                MAP_NEARBY_CATEGORIES.forEach { category ->
+                    val active = activeCategory == category.id
+                    Box(
+                        modifier = Modifier
+                            .background(if (active) androidx.compose.ui.graphics.Color(0xFF8B5CF6) else androidx.compose.ui.graphics.Color.White, RoundedCornerShape(999.dp))
+                            .border(1.dp, if (active) androidx.compose.ui.graphics.Color(0xFF8B5CF6) else TossSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
+                            .clickable(enabled = !categoryLoading || active) { searchNearbyCategory(category.id) }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                    ) {
+                        Text(
+                            if (active && categoryLoading) "…" else category.label,
+                            fontSize = 12.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                            color = if (active) androidx.compose.ui.graphics.Color.White else TossText,
+                        )
+                    }
+                }
+            }
+
+            if (activeCategory != null && categoryResults != null) {
+                val label = MAP_NEARBY_CATEGORIES.firstOrNull { it.id == activeCategory }?.label?.lowercase()
+                Text(
+                    if (categoryResults!!.isEmpty()) "No real matches found nearby for that category."
+                    else "${categoryResults!!.size} real $label found nearby, closest first.",
+                    color = TossSecondary,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
+
             searchResults?.let { results ->
                 Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
                     if (results.isEmpty()) {
@@ -397,7 +531,21 @@ fun MapScreen(onBack: () -> Unit) {
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(place.displayName, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, fontSize = 13.sp, color = TossText)
+                        Row(verticalAlignment = Alignment.Top) {
+                            Text(
+                                place.displayName,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = TossText,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                if (isBookmarked(place)) "★" else "☆",
+                                fontSize = 18.sp,
+                                color = if (isBookmarked(place)) androidx.compose.ui.graphics.Color(0xFFF5A623) else TossSecondary,
+                                modifier = Modifier.clickable(enabled = !bookmarking) { toggleBookmark(place) },
+                            )
+                        }
                         val currentRoute = route
                         if (currentRoute != null) {
                             Text(
@@ -426,6 +574,38 @@ fun MapScreen(onBack: () -> Unit) {
                                     }
                                     .padding(horizontal = 16.dp, vertical = 10.dp),
                             ) { Text(if (routing) "Finding real route…" else "Directions", color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp) }
+                        }
+                    }
+                }
+            }
+
+            if (selectedPlace == null && bookmarks.isNotEmpty()) {
+                Card(
+                    shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+                    colors = CardDefaults.cardColors(containerColor = TossCard),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                ) {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Text(
+                            "★ Your saved places",
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = TossSecondary,
+                            modifier = Modifier.padding(8.dp, 4.dp),
+                        )
+                        bookmarks.forEach { bookmark ->
+                            Text(
+                                bookmark.displayName,
+                                fontSize = 13.sp,
+                                color = TossText,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedPlace = PlaceSearchResultDto(bookmark.displayName, bookmark.latitude, bookmark.longitude)
+                                        route = null
+                                    }
+                                    .padding(10.dp),
+                            )
                         }
                     }
                 }

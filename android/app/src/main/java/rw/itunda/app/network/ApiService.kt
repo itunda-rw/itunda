@@ -370,6 +370,31 @@ data class RouteResultDto(val distanceKm: Double, val durationMinutes: Double, v
 data class MapsDirectionsResponse(val success: Boolean, val route: RouteResultDto)
 data class MerchantCategoriesResponse(val success: Boolean, val categories: List<String>)
 
+// Real "nearby places" category search + bookmarked/favorite places (2026-07-19) -- see
+// rw.itunda.maps.MapsService's own doc comment on the backend. `MAP_NEARBY_CATEGORIES`
+// mirrors bank-mfe's own hardcoded `NEARBY_CATEGORIES` list exactly.
+data class NearbyPlaceDto(val displayName: String, val latitude: Double, val longitude: Double, val distanceKm: Double)
+data class MapNearbyResponse(val success: Boolean, val places: List<NearbyPlaceDto>)
+data class MapBookmarkDto(val id: String, val displayName: String, val latitude: Double, val longitude: Double, val createdAt: String)
+data class MapBookmarksResponse(val success: Boolean, val bookmarks: List<MapBookmarkDto>)
+data class AddMapBookmarkRequest(val displayName: String, val latitude: Double, val longitude: Double)
+data class AddMapBookmarkResponse(val success: Boolean, val bookmark: MapBookmarkDto)
+data class RemoveMapBookmarkResponse(val success: Boolean)
+
+data class MapPlaceCategory(val id: String, val label: String)
+val MAP_NEARBY_CATEGORIES = listOf(
+    MapPlaceCategory("RESTAURANT", "Restaurants"),
+    MapPlaceCategory("CAFE", "Cafes"),
+    MapPlaceCategory("HOSPITAL", "Hospitals"),
+    MapPlaceCategory("PHARMACY", "Pharmacies"),
+    MapPlaceCategory("BANK", "Banks"),
+    MapPlaceCategory("ATM", "ATMs"),
+    MapPlaceCategory("HOTEL", "Hotels"),
+    MapPlaceCategory("SUPERMARKET", "Supermarkets"),
+    MapPlaceCategory("GAS_STATION", "Gas stations"),
+    MapPlaceCategory("SCHOOL", "Schools"),
+)
+
 // Mirrors services/backend/core's real MerchantProduct entity exactly.
 data class MerchantProductDto(val id: String, val merchantId: String, val name: String, val price: Double, val active: Boolean, val createdAt: String)
 data class MerchantSummaryDto(val id: String, val businessName: String)
@@ -622,6 +647,25 @@ interface ApiService {
         @Query("toLat") toLat: Double,
         @Query("toLng") toLng: Double,
     ): MapsDirectionsResponse
+
+    // Real "nearby places" category search + bookmarked/favorite places (2026-07-19) --
+    // see rw.itunda.maps.MapsService's own doc comment on the backend.
+    @GET("api/v1/maps/nearby")
+    suspend fun searchNearbyPlaces(
+        @Query("category") category: String,
+        @Query("lat") lat: Double,
+        @Query("lng") lng: Double,
+        @Query("radiusKm") radiusKm: Double = 2.0,
+    ): MapNearbyResponse
+
+    @GET("api/v1/maps/bookmarks")
+    suspend fun getMyMapBookmarks(): MapBookmarksResponse
+
+    @POST("api/v1/maps/bookmarks")
+    suspend fun addMapBookmark(@Body request: AddMapBookmarkRequest): AddMapBookmarkResponse
+
+    @DELETE("api/v1/maps/bookmarks")
+    suspend fun removeMapBookmark(@Query("lat") lat: Double, @Query("lng") lng: Double): RemoveMapBookmarkResponse
 
     // Real distinct category list -- see MerchantRepository.findDistinctCategories's own
     // doc comment on the backend.
