@@ -25,9 +25,9 @@ import {
   type JobCategory, type JobPayType, type JobPost,
 } from './lib/jobs';
 import {
-  contactLister, createPropertyListing, fetchMyPropertyListings, fetchPropertyListings, fetchPropertyTypes,
-  markPropertyListingTaken, removePropertyListing,
-  type PropertyListing, type PropertyListingType, type PropertyType,
+  contactLister, createPropertyListing, fetchMyPropertyListings, fetchPropertyListings, fetchPropertyOffersForConversation,
+  fetchPropertyTypes, makePropertyOffer, markPropertyListingTaken, removePropertyListing, respondToPropertyOffer,
+  type PropertyListing, type PropertyListingType, type PropertyPriceOffer, type PropertyType,
 } from './lib/realestate';
 import {
   addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, fetchAvailableDeliveries,
@@ -591,16 +591,28 @@ function MessageReactions({
 // Real 당근-style price-offer bubble -- see PriceOfferService's own doc comment.
 // Renders inline wherever a message carries a real offer, replacing the plain-text
 // bubble with amount + status + real Accept/Reject/Counter actions (only shown to
-// whichever participant did NOT propose the current pending amount).
+// whichever participant did NOT propose the current pending amount). Prop type
+// deliberately narrowed to just the fields this component actually reads (not the full
+// `PriceOffer` shape) so it structurally accepts both Marketplace's `PriceOffer` and
+// Real Estate's `PropertyPriceOffer` (2026-07-19) without duplicating this component --
+// the two types have different field names for listing/buyer/seller (irrelevant here),
+// but identical id/amount/status/proposedByUserId shapes.
+interface OfferBubbleData {
+  id: string;
+  amount: number;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTERED';
+  proposedByUserId: string;
+}
+
 function OfferBubble({
   offer, isMine, currentUserId, onRespond,
 }: {
-  offer: PriceOffer; isMine: boolean; currentUserId: string | undefined; onRespond: (offerId: string, action: 'ACCEPT' | 'REJECT' | 'COUNTER', counterAmount?: number) => void;
+  offer: OfferBubbleData; isMine: boolean; currentUserId: string | undefined; onRespond: (offerId: string, action: 'ACCEPT' | 'REJECT' | 'COUNTER', counterAmount?: number) => void;
 }) {
   const [countering, setCountering] = useState(false);
   const [counterAmount, setCounterAmount] = useState('');
   const canRespond = offer.status === 'PENDING' && currentUserId && currentUserId !== offer.proposedByUserId;
-  const statusLabel: Record<PriceOffer['status'], string> = {
+  const statusLabel: Record<OfferBubbleData['status'], string> = {
     PENDING: 'Pending', ACCEPTED: 'Accepted', REJECTED: 'Declined', COUNTERED: 'Countered',
   };
 
@@ -657,7 +669,7 @@ function OfferBubble({
 
 function ConversationThread({ conversation, onBack }: { conversation: ConversationSummary; onBack: () => void }) {
   const [messages, setMessages] = useState<Message[] | null>(null);
-  const [offersByMessageId, setOffersByMessageId] = useState<Record<string, PriceOffer>>({});
+  const [offersByMessageId, setOffersByMessageId] = useState<Record<string, OfferBubbleData>>({});
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -674,13 +686,20 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation.otherUserId]);
 
-  const loadOffers = () =>
-    fetchOffersForConversation(conversation.conversationId)
-      .then((offers) => setOffersByMessageId(Object.fromEntries(offers.map((o) => [o.messageId, o]))))
-      .catch(() => {
-        // Real, non-critical -- a failed offer-history fetch just means offer messages
-        // render as plain text this pass; never blocks the thread.
-      });
+  // Real-fetches both Marketplace and Real Estate offer history for this conversation --
+  // a given real conversation only ever carries one type in practice (a listing/property
+  // negotiation thread), but fetching both is cheap and correct rather than guessing
+  // which one applies; each failure is independently non-critical.
+  const loadOffers = () => {
+    Promise.all([
+      fetchOffersForConversation(conversation.conversationId).catch(() => [] as PriceOffer[]),
+      fetchPropertyOffersForConversation(conversation.conversationId).catch(() => [] as PropertyPriceOffer[]),
+    ]).then(([marketplaceOffers, propertyOffers]) => {
+      setOffersByMessageId(
+        Object.fromEntries([...marketplaceOffers, ...propertyOffers].map((o) => [o.messageId, o])),
+      );
+    });
+  };
 
   const load = () => {
     fetchMessages(conversation.conversationId)
@@ -691,7 +710,14 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
 
   const handleRespondToOffer = async (offerId: string, action: 'ACCEPT' | 'REJECT' | 'COUNTER', counterAmount?: number) => {
     try {
-      await respondToOffer(offerId, action, counterAmount);
+      // Real offer ids are stably prefixed by their real owning service
+      // ("price_offer_"/"property_offer_"), a reliable dispatch key -- avoids needing
+      // the thread to already know which listing type this conversation is about.
+      if (offerId.startsWith('property_offer_')) {
+        await respondToPropertyOffer(offerId, action, counterAmount);
+      } else {
+        await respondToOffer(offerId, action, counterAmount);
+      }
       loadOffers();
       load();
     } catch (err) {
@@ -2369,17 +2395,39 @@ function NewPropertyListingCard({ propertyTypes, onCreated }: { propertyTypes: P
   );
 }
 
-function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, onContact }: {
+function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, onContact, onMessageLister }: {
   listing: PropertyListing; propertyTypeLabel: string; isMine: boolean; onChanged: () => void; onContact: () => void;
+  onMessageLister: (conversationId: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Real 당근-style price-offer negotiation (2026-07-19) -- see PropertyPriceOfferService's
+  // own doc comment; mirrors ListingCard's own offering state exactly.
+  const [offering, setOffering] = useState(false);
+  const [offerAmount, setOfferAmount] = useState('');
 
   const priceLabel = `${listing.price.toLocaleString()} RWF${listing.listingType === 'RENT' ? '/mo' : ''}`;
   const detailsLabel = [
     listing.bedrooms != null ? `${listing.bedrooms} bd` : null,
     listing.sizeSqm != null ? `${listing.sizeSqm} m²` : null,
   ].filter(Boolean).join(' · ');
+
+  const handleMakeOffer = async () => {
+    const amount = Number(offerAmount);
+    if (!amount || amount <= 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const offer = await makePropertyOffer(listing.id, amount);
+      setOffering(false);
+      setOfferAmount('');
+      onMessageLister(offer.conversationId);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send this offer.');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -2399,6 +2447,20 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
       <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{listing.title}</p>
       {detailsLabel && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{detailsLabel}</p>}
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{listing.description}</p>
+      {offering && (
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input
+            type="number"
+            value={offerAmount}
+            onChange={(e) => setOfferAmount(e.target.value)}
+            placeholder="Your offer (RWF)"
+            style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <button className="toss-btn toss-btn-primary" disabled={busy || !offerAmount} onClick={handleMakeOffer}>
+            Send
+          </button>
+        </div>
+      )}
       {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '10px' }}>
         {isMine ? (
@@ -2433,10 +2495,15 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
             )}
           </>
         ) : (
-          listing.status === 'AVAILABLE' && (
-            <button className="toss-btn toss-btn-primary" disabled={busy} onClick={onContact}>
-              Message lister
-            </button>
+          listing.status === 'AVAILABLE' && !offering && (
+            <>
+              <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={onContact}>
+                Message lister
+              </button>
+              <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={() => setOffering(true)}>
+                Make an offer
+              </button>
+            </>
           )
         )}
       </div>
@@ -2563,6 +2630,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
               isMine={view === 'MINE' || listing.listerId === currentUser?.id}
               onChanged={load}
               onContact={() => handleContact(listing.id)}
+              onMessageLister={onMessageLister}
             />
           ))}
         </div>

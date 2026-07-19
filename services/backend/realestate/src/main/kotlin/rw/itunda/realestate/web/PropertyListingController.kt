@@ -21,10 +21,16 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.realestate.InvalidPropertyCoordinatesException
 import rw.itunda.realestate.InvalidPropertyListingException
+import rw.itunda.realestate.InvalidPropertyOfferAmountException
 import rw.itunda.realestate.OwnPropertyListingException
+import rw.itunda.realestate.OwnPropertyOfferException
 import rw.itunda.realestate.PropertyListingNotAvailableException
 import rw.itunda.realestate.PropertyListingNotFoundException
 import rw.itunda.realestate.PropertyListingService
+import rw.itunda.realestate.PropertyOfferAlreadyResolvedException
+import rw.itunda.realestate.PropertyOfferNotFoundException
+import rw.itunda.realestate.PropertyOfferResponseAction
+import rw.itunda.realestate.PropertyPriceOfferService
 import java.math.BigDecimal
 
 data class CreatePropertyListingRequest(
@@ -39,11 +45,19 @@ data class CreatePropertyListingRequest(
     val longitude: Double? = null,
 )
 
+// Real 당근-style price-offer negotiation (2026-07-19) -- see PropertyPriceOfferService's
+// own doc comment. Mirrors MarketplaceController's MakeOfferRequest/RespondToOfferRequest exactly.
+data class MakePropertyOfferRequest(val amount: BigDecimal)
+data class RespondToPropertyOfferRequest(val action: PropertyOfferResponseAction, val counterAmount: BigDecimal? = null)
+
 // Real 당근부동산-style property board -- see PropertyListingService's own doc comment.
 // Normal itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
 @RestController
 @RequestMapping("/api/v1/realestate")
-class PropertyListingController(private val propertyListingService: PropertyListingService) {
+class PropertyListingController(
+    private val propertyListingService: PropertyListingService,
+    private val propertyPriceOfferService: PropertyPriceOfferService,
+) {
 
     @GetMapping("/property-types")
     fun propertyTypes(): ResponseEntity<Map<String, Any?>> =
@@ -117,6 +131,50 @@ class PropertyListingController(private val propertyListingService: PropertyList
         val conversation = propertyListingService.contactLister(currentUser.userId, propertyListingId)
         return ResponseEntity.ok(mapOf("success" to true, "conversation" to conversation))
     }
+
+    // Real 당근-style price-offer negotiation (2026-07-19) -- see PropertyPriceOfferService.
+    @PostMapping("/listings/{propertyListingId}/offers")
+    fun makeOffer(
+        @PathVariable propertyListingId: String,
+        @RequestBody request: MakePropertyOfferRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val offer = propertyPriceOfferService.makeOffer(currentUser.userId, propertyListingId, request.amount)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "offer" to offer))
+    }
+
+    @PostMapping("/offers/{offerId}/respond")
+    fun respondToOffer(
+        @PathVariable offerId: String,
+        @RequestBody request: RespondToPropertyOfferRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val offer = propertyPriceOfferService.respondToOffer(currentUser.userId, offerId, request.action, request.counterAmount)
+        return ResponseEntity.ok(mapOf("success" to true, "offer" to offer))
+    }
+
+    @GetMapping("/conversations/{conversationId}/offers")
+    fun getOffersForConversation(
+        @PathVariable conversationId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "offers" to propertyPriceOfferService.getOffersForConversation(currentUser.userId, conversationId)))
+
+    @ExceptionHandler(PropertyOfferNotFoundException::class)
+    fun handleOfferNotFound(ex: PropertyOfferNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("OFFER_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(InvalidPropertyOfferAmountException::class)
+    fun handleInvalidOfferAmount(ex: InvalidPropertyOfferAmountException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_OFFER_AMOUNT", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(PropertyOfferAlreadyResolvedException::class)
+    fun handleOfferAlreadyResolved(ex: PropertyOfferAlreadyResolvedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("OFFER_ALREADY_RESOLVED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(OwnPropertyOfferException::class)
+    fun handleOwnOffer(ex: OwnPropertyOfferException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("OWN_OFFER", ex.message ?: "Bad request"))
 
     @ExceptionHandler(PropertyListingNotFoundException::class)
     fun handleNotFound(ex: PropertyListingNotFoundException) =

@@ -75,3 +75,42 @@ export const contactLister = (propertyListingId: string) =>
   apiFetch<{ success: boolean; conversation: { id: string } }>(`/api/v1/realestate/listings/${propertyListingId}/contact-lister`, {
     method: 'POST',
   }).then((r) => r.conversation);
+
+// Real 당근-style price-offer negotiation (2026-07-19) -- see PropertyPriceOfferService's
+// own doc comment. Mirrors lib/marketplace.ts's PriceOffer/makeOffer/respondToOffer
+// exactly; each offer/counter/accept/reject is a real message posted in the same real
+// conversation contactLister establishes, rendered inline as an offer bubble (the same
+// OfferBubble component Marketplace uses -- see its narrowed prop type in
+// BankDashboard.tsx for why this reuse is type-safe despite the different field names).
+export type PropertyOfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTERED';
+
+export interface PropertyPriceOffer {
+  id: string;
+  propertyListingId: string;
+  messageId: string;
+  conversationId: string;
+  inquirerId: string;
+  listerId: string;
+  proposedByUserId: string;
+  amount: number;
+  status: PropertyOfferStatus;
+  createdAt: string;
+  respondedAt: string | null;
+}
+
+export const makePropertyOffer = (propertyListingId: string, amount: number) =>
+  apiFetch<{ success: boolean; offer: PropertyPriceOffer }>(`/api/v1/realestate/listings/${propertyListingId}/offers`, {
+    method: 'POST',
+    body: JSON.stringify({ amount }),
+  }).then((r) => r.offer);
+
+export const respondToPropertyOffer = (offerId: string, action: 'ACCEPT' | 'REJECT' | 'COUNTER', counterAmount?: number) =>
+  apiFetch<{ success: boolean; offer: PropertyPriceOffer }>(`/api/v1/realestate/offers/${offerId}/respond`, {
+    method: 'POST',
+    body: JSON.stringify({ action, counterAmount }),
+  }).then((r) => r.offer);
+
+export const fetchPropertyOffersForConversation = (conversationId: string) =>
+  apiFetch<{ success: boolean; offers: PropertyPriceOffer[] }>(`/api/v1/realestate/conversations/${conversationId}/offers`).then(
+    (r) => r.offers,
+  );
