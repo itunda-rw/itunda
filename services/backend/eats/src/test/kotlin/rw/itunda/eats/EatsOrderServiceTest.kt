@@ -832,8 +832,8 @@ class EatsOrderServiceTest : BehaviorSpec({
             val timedOutRider = Rider(id = "rider_timed_out", userId = "rider_user_timed_out", walletId = "wallet_timedout")
             val nextRider = Rider(id = "rider_next", userId = "rider_user_next", walletId = "wallet_next", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605)
             every { eatsOrderRepository.findByOfferExpiresAtBeforeAndRiderIdIsNull(any()) } returns listOf(expiredOrder)
-            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
-            every { riderRepository.findById("rider_timed_out") } returns Optional.of(timedOutRider)
+            every { merchantRepository.findAllById(listOf("restaurant_1")) } returns listOf(restaurant)
+            every { riderRepository.findAllById(listOf("rider_timed_out")) } returns listOf(timedOutRider)
             every { eatsOrderRepository.save(any()) } answers { firstArg() }
             every { riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns listOf(nextRider)
 
@@ -845,6 +845,39 @@ class EatsOrderServiceTest : BehaviorSpec({
                 expiredOrder.excludedRiderUserIds shouldBe "rider_user_timed_out"
                 expiredOrder.offeredRiderId shouldBe "rider_next"
                 verify { notificationRepository.save(match<Notification> { it.type == "DELIVERY_OFFER" && it.userId == "rider_user_next" }) }
+            }
+        }
+
+        When("the real scheduler reassigns two real expired offers for two different real restaurants in one tick") {
+            val restaurant2 = Merchant(id = "restaurant_2", ownerUserId = "owner_2", walletId = "wallet_restaurant_2", businessName = "Huye Grill", status = MerchantStatus.ACTIVE, latitude = -2.5967, longitude = 29.7392)
+            val expiredOrder1 = EatsOrder(
+                id = "eats_order_12", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_12", status = EatsOrderStatus.READY_FOR_PICKUP,
+                offeredRiderId = "rider_timed_out_1", offerExpiresAt = Instant.now().minusSeconds(5),
+            )
+            val expiredOrder2 = EatsOrder(
+                id = "eats_order_13", buyerId = "buyer_2", restaurantId = "restaurant_2", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_13", status = EatsOrderStatus.READY_FOR_PICKUP,
+                offeredRiderId = "rider_timed_out_2", offerExpiresAt = Instant.now().minusSeconds(5),
+            )
+            val timedOutRider1 = Rider(id = "rider_timed_out_1", userId = "rider_user_timed_out_1", walletId = "wallet_to1")
+            val timedOutRider2 = Rider(id = "rider_timed_out_2", userId = "rider_user_timed_out_2", walletId = "wallet_to2")
+            val nextRider = Rider(id = "rider_next", userId = "rider_user_next", walletId = "wallet_next", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605)
+            every { merchantRepository.findAllById(listOf("restaurant_1", "restaurant_2")) } returns listOf(restaurant, restaurant2)
+            every { riderRepository.findAllById(listOf("rider_timed_out_1", "rider_timed_out_2")) } returns listOf(timedOutRider1, timedOutRider2)
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+            every { riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns listOf(nextRider)
+
+            service.reassignExpiredOffers(listOf(expiredOrder1, expiredOrder2))
+
+            Then("the real candidate pool is fetched exactly once for the whole batch, not once per order") {
+                verify(exactly = 1) { riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() }
+                verify(exactly = 1) { merchantRepository.findAllById(any<List<String>>()) }
+                verify(exactly = 1) { riderRepository.findAllById(any<List<String>>()) }
+                expiredOrder1.excludedRiderUserIds shouldBe "rider_user_timed_out_1"
+                expiredOrder2.excludedRiderUserIds shouldBe "rider_user_timed_out_2"
             }
         }
     }

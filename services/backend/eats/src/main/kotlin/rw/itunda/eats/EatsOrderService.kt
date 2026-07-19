@@ -14,6 +14,7 @@ import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.Notification
+import rw.itunda.core.domain.Rider
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
@@ -479,8 +480,21 @@ class EatsOrderService(
     // the OSRM road-distance getAvailableDeliveries itself uses -- a dispatch/
     // notification trigger only needs a rough "who's actually close," the definitive
     // ranking a rider sees once they open the app is still the fully real one.
-    private fun rankNearbyRiders(restaurantLat: Double, restaurantLng: Double, excludedUserIds: Set<String> = emptySet()) =
-        riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull()
+    // `candidatePool` (2026-07-20 performance sweep) -- lets a caller processing several
+    // orders in one pass (DispatchOfferScheduler.reassignExpiredOffers) fetch the real
+    // available-rider pool ONCE and reuse it across every order, instead of this method's
+    // own default re-querying it fresh per call. Same real N+1 shape this project's own
+    // sweeps have already fixed elsewhere (PayrollService.runPayroll, GroupMessagingService
+    // .createGroup): the query has no per-order parameters, so it returns the identical
+    // real result set every time within one short scheduler tick -- N calls for N orders
+    // was real, avoidable repeated work, not N genuinely different queries.
+    private fun rankNearbyRiders(
+        restaurantLat: Double,
+        restaurantLng: Double,
+        excludedUserIds: Set<String> = emptySet(),
+        candidatePool: List<Rider>? = null,
+    ) =
+        (candidatePool ?: riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull())
             .filterNot { it.userId in excludedUserIds }
             .map { rider -> rider to GeoUtils.haversineKm(restaurantLat, restaurantLng, rider.currentLatitude!!, rider.currentLongitude!!) }
             .sortedBy { (_, distanceKm) -> distanceKm }
@@ -497,12 +511,12 @@ class EatsOrderService(
     // side-effect can't block the real operation it's attached to" discipline
     // ShoppingCashbackService's own doc comment already established -- a notification
     // failure must never fail the real status transition it's reacting to.
-    private fun notifyNearestRiders(order: EatsOrder, restaurant: Merchant) {
+    private fun notifyNearestRiders(order: EatsOrder, restaurant: Merchant, candidatePool: List<Rider>? = null) {
         try {
             val restaurantLat = restaurant.latitude
             val restaurantLng = restaurant.longitude
             if (restaurantLat == null || restaurantLng == null) return
-            val nearest = rankNearbyRiders(restaurantLat, restaurantLng).take(NEAREST_RIDERS_TO_NOTIFY)
+            val nearest = rankNearbyRiders(restaurantLat, restaurantLng, candidatePool = candidatePool).take(NEAREST_RIDERS_TO_NOTIFY)
             if (nearest.isEmpty()) return
 
             notificationRepository.saveAll(
@@ -532,22 +546,22 @@ class EatsOrderService(
     // degrades to the pre-existing open browse/first-claim-wins model via
     // notifyNearestRiders -- a real delivery is never left silently stuck just because
     // automatic dispatch ran out of real candidates.
-    private fun dispatchToNextCandidate(order: EatsOrder, restaurant: Merchant) {
+    private fun dispatchToNextCandidate(order: EatsOrder, restaurant: Merchant, candidatePool: List<Rider>? = null) {
         try {
             val restaurantLat = restaurant.latitude
             val restaurantLng = restaurant.longitude
             if (restaurantLat == null || restaurantLng == null) {
-                notifyNearestRiders(order, restaurant)
+                notifyNearestRiders(order, restaurant, candidatePool)
                 return
             }
             val excluded = order.excludedRiderUserIds?.split(",")?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
-            val next = rankNearbyRiders(restaurantLat, restaurantLng, excluded).firstOrNull()?.first
+            val next = rankNearbyRiders(restaurantLat, restaurantLng, excluded, candidatePool).firstOrNull()?.first
 
             if (next == null) {
                 order.offeredRiderId = null
                 order.offerExpiresAt = null
                 eatsOrderRepository.save(order)
-                notifyNearestRiders(order, restaurant)
+                notifyNearestRiders(order, restaurant, candidatePool)
                 return
             }
 
@@ -575,16 +589,37 @@ class EatsOrderService(
     fun getExpiredOffers(): List<EatsOrder> = eatsOrderRepository.findByOfferExpiresAtBeforeAndRiderIdIsNull(Instant.now())
 
     @Transactional
-    fun reassignExpiredOffer(order: EatsOrder) {
-        val restaurant = merchantRepository.findById(order.restaurantId).orElse(null) ?: return
-        val expiredRiderUserId = order.offeredRiderId?.let { riderId -> riderRepository.findById(riderId).orElse(null)?.userId }
-        order.excludedRiderUserIds = (
-            (order.excludedRiderUserIds?.split(",")?.filter { it.isNotBlank() } ?: emptyList()) + listOfNotNull(expiredRiderUserId)
-            ).distinct().joinToString(",")
-        order.offeredRiderId = null
-        order.offerExpiresAt = null
-        eatsOrderRepository.save(order)
-        dispatchToNextCandidate(order, restaurant)
+    fun reassignExpiredOffer(order: EatsOrder) = reassignExpiredOffers(listOf(order))
+
+    // Real batched reassignment (2026-07-20 performance sweep) -- backs
+    // DispatchOfferScheduler. Processing N expired orders one at a time used to mean N
+    // separate merchantRepository.findById calls, N riderRepository.findById calls for
+    // each order's timed-out rider, and N full riderRepository.findByAvailableTrueAnd...()
+    // calls that all returned the exact same real candidate pool within one short
+    // scheduler tick -- the same real repeated-work shape this project's own sweeps
+    // already fixed for PayrollService.runPayroll/GroupMessagingService.createGroup, just
+    // here in a scheduler rather than a request handler. Batched into three real queries
+    // total (restaurants, expired riders, the candidate pool), no matter how many orders
+    // expired in the same tick.
+    @Transactional
+    fun reassignExpiredOffers(orders: List<EatsOrder>) {
+        if (orders.isEmpty()) return
+        val restaurantsById = merchantRepository.findAllById(orders.map { it.restaurantId }.distinct()).associateBy { it.id }
+        val expiredRiderIds = orders.mapNotNull { it.offeredRiderId }.distinct()
+        val expiredRidersById = if (expiredRiderIds.isEmpty()) emptyMap() else riderRepository.findAllById(expiredRiderIds).associateBy { it.id }
+        val candidatePool = riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull()
+
+        for (order in orders) {
+            val restaurant = restaurantsById[order.restaurantId] ?: continue
+            val expiredRiderUserId = order.offeredRiderId?.let { expiredRidersById[it]?.userId }
+            order.excludedRiderUserIds = (
+                (order.excludedRiderUserIds?.split(",")?.filter { it.isNotBlank() } ?: emptyList()) + listOfNotNull(expiredRiderUserId)
+                ).distinct().joinToString(",")
+            order.offeredRiderId = null
+            order.offerExpiresAt = null
+            eatsOrderRepository.save(order)
+            dispatchToNextCandidate(order, restaurant, candidatePool)
+        }
     }
 
     /** Real explicit decline (2026-07-20) -- the offered rider proactively passes rather
