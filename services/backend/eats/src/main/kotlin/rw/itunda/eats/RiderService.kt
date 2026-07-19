@@ -1,11 +1,13 @@
 package rw.itunda.eats
 
 import org.springframework.stereotype.Service
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Rider
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.repository.RiderRepository
 import rw.itunda.core.repository.WalletRepository
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -26,6 +28,7 @@ class InvalidRiderLocationException(message: String) : RuntimeException(message)
 class RiderService(
     private val riderRepository: RiderRepository,
     private val walletRepository: WalletRepository,
+    private val rateLimiter: RateLimiter,
 ) {
     fun register(userId: String): Rider {
         if (riderRepository.findByUserId(userId) != null) {
@@ -51,7 +54,16 @@ class RiderService(
     // A client is expected to call this periodically while the rider is online, the same
     // "the client owns when to push a fresh reading" model every real ride/delivery app
     // uses -- this backend never polls a device for its location.
+    //
+    // Real rate limit added 2026-07-20, found in a security sweep after this endpoint
+    // got its first actual callers (the new standalone rider apps push a real coordinate
+    // every 15s during an active delivery, plus once on going online) -- until then it
+    // had zero client integration and so had never been sanity-checked the way every
+    // other real, exercised endpoint in this codebase routinely is. 20/min comfortably
+    // covers the real client's own cadence (~4/min) with headroom, while still bounding
+    // an abusive caller from writing to this row unboundedly.
     fun updateLocation(userId: String, latitude: Double, longitude: Double): Rider {
+        rateLimiter.checkLimit("eats:rider-location:$userId", limit = 20, window = Duration.ofMinutes(1))
         if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
             throw InvalidRiderLocationException("Latitude must be between -90 and 90, longitude between -180 and 180")
         }

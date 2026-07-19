@@ -4,13 +4,19 @@ import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.Runs
+import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Rider
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.repository.RiderRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
+import java.time.Duration
 
 class RiderServiceTest : BehaviorSpec({
 
@@ -22,7 +28,8 @@ class RiderServiceTest : BehaviorSpec({
     Given("a real itunda user with an existing wallet") {
         val riderRepository = mockk<RiderRepository>()
         val walletRepository = mockk<WalletRepository>()
-        val service = RiderService(riderRepository, walletRepository)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = RiderService(riderRepository, walletRepository, rateLimiter)
         val wallet = wallet("wallet_1", "user_1")
 
         When("they register as a rider for the first time") {
@@ -112,6 +119,36 @@ class RiderServiceTest : BehaviorSpec({
                 } catch (e: RiderNotRegisteredException) {
                     // expected
                 }
+            }
+        }
+
+        // Real rate limit added 2026-07-20 -- see updateLocation's own doc comment for
+        // why this endpoint only just got its first real client callers.
+        When("a real rider's location update is checked against the rate limiter first") {
+            val rider = Rider(id = "rider_1", userId = "user_1", walletId = "wallet_1")
+            every { riderRepository.findByUserId("user_1") } returns rider
+            every { riderRepository.save(any()) } answers { firstArg() }
+            every { rateLimiter.checkLimit("eats:rider-location:user_1", limit = 20, window = Duration.ofMinutes(1)) } just Runs
+
+            service.updateLocation("user_1", -1.9536, 30.0605)
+
+            Then("the real rate limiter was consulted with the correct key/limit before the repository was touched") {
+                verify(exactly = 1) { rateLimiter.checkLimit("eats:rider-location:user_1", limit = 20, window = Duration.ofMinutes(1)) }
+            }
+        }
+
+        When("a real rider has exceeded the location-update rate limit") {
+            every { rateLimiter.checkLimit("eats:rider-location:user_1", limit = 20, window = Duration.ofMinutes(1)) } throws
+                RateLimitExceededException("Too many attempts, please try again later")
+
+            Then("it throws RateLimitExceededException before ever looking up the rider") {
+                try {
+                    service.updateLocation("user_1", -1.9536, 30.0605)
+                    error("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    // expected
+                }
+                verify(exactly = 0) { riderRepository.findByUserId("user_1") }
             }
         }
     }
