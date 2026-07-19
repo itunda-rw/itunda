@@ -43,6 +43,10 @@ data class PublicUser(
     val kycVerified: Boolean,
     val creditScore: Int,
     val createdAt: String,
+    // Real hyperlocal neighborhood (2026-07-20) -- see AuthService.setNeighborhood's own
+    // doc comment. Set via a real coordinate, reverse-geocoded server-side; never
+    // self-declared free text.
+    val neighborhood: String? = null,
 )
 
 data class AuthResponse(
@@ -73,9 +77,17 @@ interface AuthApi {
     // the new Settings screen.
     @GET("api/v1/auth/profile")
     suspend fun getProfile(): ProfileResponse
+
+    // Real hyperlocal neighborhood (2026-07-20) -- see AuthService.setNeighborhood's own
+    // doc comment. A real coordinate in, reverse-geocoded server-side into a real
+    // neighborhood/sector name -- see lib/neighborhood.ts's bank-mfe equivalent this
+    // mirrors exactly.
+    @POST("api/v1/auth/profile/neighborhood")
+    suspend fun setNeighborhood(@Body request: SetNeighborhoodRequest): ProfileResponse
 }
 
 data class ProfileResponse(val success: Boolean, val user: PublicUser)
+data class SetNeighborhoodRequest(val latitude: Double, val longitude: Double)
 
 // Mirrors services/backend/core/.../domain/Wallet.kt exactly (2026-07-11 fix) --
 // the previous shape (currency/balance/isPrimary only) didn't match the real
@@ -729,6 +741,11 @@ interface ApiService {
     @GET("api/v1/marketplace/my-listings")
     suspend fun getMyListings(): ListingsResponse
 
+    // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see AuthApi.setNeighborhood.
+    // Real 400 NEIGHBORHOOD_NOT_SET if the caller hasn't set one yet.
+    @GET("api/v1/marketplace/listings/my-neighborhood")
+    suspend fun getListingsMyNeighborhood(@Query("category") category: String? = null): ListingsResponse
+
     @POST("api/v1/marketplace/listings/{id}/mark-sold")
     suspend fun markListingSold(@Path("id") listingId: String): ListingResponse
 
@@ -761,6 +778,10 @@ interface ApiService {
     @GET("api/v1/community/my-posts")
     suspend fun getMyCommunityPosts(): CommunityPostsResponse
 
+    // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see AuthApi.setNeighborhood.
+    @GET("api/v1/community/posts/my-neighborhood")
+    suspend fun getCommunityPostsMyNeighborhood(@Query("category") category: String? = null): CommunityPostsResponse
+
     @GET("api/v1/community/posts/{id}")
     suspend fun getCommunityPost(@Path("id") postId: String): CommunityPostDetailResponse
 
@@ -789,6 +810,10 @@ interface ApiService {
     @GET("api/v1/jobs/my-posts")
     suspend fun getMyJobPosts(): JobPostsResponse
 
+    // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see AuthApi.setNeighborhood.
+    @GET("api/v1/jobs/posts/my-neighborhood")
+    suspend fun getJobPostsMyNeighborhood(@Query("category") category: String? = null): JobPostsResponse
+
     @POST("api/v1/jobs/posts/{id}/mark-filled")
     suspend fun markJobPostFilled(@Path("id") jobPostId: String): JobPostResponse
 
@@ -813,6 +838,12 @@ interface ApiService {
 
     @GET("api/v1/realestate/my-listings")
     suspend fun getMyPropertyListings(): PropertyListingsResponse
+
+    // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see AuthApi.setNeighborhood.
+    // Deliberately not combined with listingType/propertyType filters -- an honest v1
+    // scoping choice, same as the real backend endpoint this calls.
+    @GET("api/v1/realestate/listings/my-neighborhood")
+    suspend fun getPropertyListingsMyNeighborhood(): PropertyListingsResponse
 
     @POST("api/v1/realestate/listings/{id}/mark-taken")
     suspend fun markPropertyListingTaken(@Path("id") propertyListingId: String): PropertyListingResponse

@@ -98,6 +98,7 @@ import rw.itunda.app.network.SubmitEatsReviewRequest
 import rw.itunda.app.network.EatsOrderItemRequest
 import rw.itunda.app.network.ListingDto
 import rw.itunda.app.network.MakeOfferRequest
+import rw.itunda.app.network.SetNeighborhoodRequest
 import rw.itunda.app.network.MerchantProductDto
 import rw.itunda.app.network.MessageDto
 import rw.itunda.app.network.NetworkClient
@@ -1160,11 +1161,73 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit) {
     }
 }
 
-private enum class HoodView { BROWSE, MINE }
+private enum class HoodView { BROWSE, NEIGHBORHOOD, MINE }
+
+private fun HoodView.label() = when (this) {
+    HoodView.BROWSE -> "Browse"
+    HoodView.NEIGHBORHOOD -> "Neighborhood"
+    HoodView.MINE -> "My listings"
+}
+
+// Real hyperlocal neighborhood setup (2026-07-20) -- shared across every Hood-mode
+// content composable (Marketplace/Community/Jobs/Property), mirroring bank-mfe's
+// NeighborhoodSetupPrompt exactly. Reuses rememberRealLocationRequester, the same real
+// FusedLocationProviderClient helper NewListingForm's own "share my location" already
+// established -- one location permission flow, not a second one invented for this.
+@Composable
+private fun NeighborhoodSetupPrompt(onDone: (String) -> Unit) {
+    val coroutineScope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val requestLocation = rememberRealLocationRequester(
+        onLocating = { busy = it },
+        onSuccess = { lat, lng ->
+            coroutineScope.launch {
+                busy = true
+                try {
+                    val res = NetworkClient.authApi.setNeighborhood(SetNeighborhoodRequest(lat, lng))
+                    busy = false
+                    res.user.neighborhood?.let(onDone)
+                } catch (e: HttpException) {
+                    busy = false
+                    error = superAppErrorMessage(e)
+                } catch (e: IOException) {
+                    busy = false
+                    error = "Couldn't reach itunda. Check your connection and try again."
+                }
+            }
+        },
+        onError = { error = it },
+    )
+
+    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Set your neighborhood", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "Share your real location once to see what's happening near you.",
+                color = TossSecondary, fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(TossBlue)
+                    .clickable(enabled = !busy) { requestLocation() }
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+            ) {
+                Text(if (busy) "Finding your neighborhood…" else "📍 Share my location", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            }
+            error?.let { Spacer(modifier = Modifier.height(12.dp)); Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+        }
+    }
+}
 
 @Composable
 private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
     var view by remember { mutableStateOf(HoodView.BROWSE) }
+    var neighborhoodName by remember { mutableStateOf<String?>(null) }
+    var neighborhoodChecked by remember { mutableStateOf(false) }
     var listings by remember { mutableStateOf<List<ListingDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var showNewListing by remember { mutableStateOf(false) }
@@ -1176,6 +1239,31 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
 
     fun load() {
         listings = null
+        if (view == HoodView.NEIGHBORHOOD) {
+            neighborhoodChecked = false
+            coroutineScope.launch {
+                try {
+                    val profileRes = NetworkClient.authApi.getProfile()
+                    val res = NetworkClient.apiService.getListingsMyNeighborhood()
+                    neighborhoodName = profileRes.user.neighborhood
+                    if (res.success) listings = res.listings
+                    error = null
+                } catch (e: HttpException) {
+                    if (e.code() == 400) {
+                        neighborhoodName = null
+                        listings = emptyList()
+                        error = null
+                    } else {
+                        error = superAppErrorMessage(e)
+                    }
+                } catch (e: IOException) {
+                    error = "Couldn't reach itunda. Check your connection and try again."
+                } finally {
+                    neighborhoodChecked = true
+                }
+            }
+            return
+        }
         coroutineScope.launch {
             try {
                 val res = if (view == HoodView.BROWSE) NetworkClient.apiService.browseListings() else NetworkClient.apiService.getMyListings()
@@ -1197,10 +1285,10 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
         item { TabHeader("Hood") }
         item {
             Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
-                listOf(HoodView.BROWSE to "Browse", HoodView.MINE to "My listings").forEach { (v, label) ->
+                HoodView.entries.forEach { v ->
                     val selected = v == view
                     Text(
-                        label,
+                        v.label(),
                         color = if (selected) Color.White else TossSecondary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp,
@@ -1227,13 +1315,28 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
                 }
             }
         }
+        if (view == HoodView.NEIGHBORHOOD && neighborhoodChecked && neighborhoodName == null) {
+            item { NeighborhoodSetupPrompt(onDone = { load() }) }
+        }
+        if (view == HoodView.NEIGHBORHOOD && neighborhoodName != null) {
+            item { Text("Your neighborhood: $neighborhoodName", color = TossSecondary, fontSize = 13.sp) }
+        }
         if (error != null) {
             item { ErrorCard(error!!, onRetry = ::load) }
         } else if (listings == null) {
             item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
-        } else if (listings!!.isEmpty()) {
-            item { Text(if (view == HoodView.BROWSE) "No listings yet." else "You haven't listed anything yet.", color = TossSecondary, fontSize = 14.sp) }
-        } else {
+        } else if (listings!!.isEmpty() && (view != HoodView.NEIGHBORHOOD || neighborhoodName != null)) {
+            item {
+                Text(
+                    when (view) {
+                        HoodView.BROWSE -> "No listings yet."
+                        HoodView.NEIGHBORHOOD -> "No listings in your neighborhood yet."
+                        HoodView.MINE -> "You haven't listed anything yet."
+                    },
+                    color = TossSecondary, fontSize = 14.sp,
+                )
+            }
+        } else if (listings!!.isNotEmpty()) {
             items(listings!!, key = { it.id }) { listing ->
                 ListingCard(
                     listing = listing,
@@ -1523,7 +1626,7 @@ private fun ListingActionButton(label: String, disabled: Boolean, filled: Boolea
 
 // ============================== COMMUNITY (동네생활) ==============================
 
-private enum class CommunityView { BROWSE, MINE }
+private enum class CommunityView { BROWSE, NEIGHBORHOOD, MINE }
 
 @Composable
 private fun CommunityContent() {
@@ -1534,6 +1637,8 @@ private fun CommunityContent() {
     var error by remember { mutableStateOf<String?>(null) }
     var showNewPost by remember { mutableStateOf(false) }
     var openPostId by remember { mutableStateOf<String?>(null) }
+    var neighborhoodName by remember { mutableStateOf<String?>(null) }
+    var neighborhoodChecked by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
 
@@ -1543,6 +1648,31 @@ private fun CommunityContent() {
 
     fun load() {
         posts = null
+        if (view == CommunityView.NEIGHBORHOOD) {
+            neighborhoodChecked = false
+            coroutineScope.launch {
+                try {
+                    val profileRes = NetworkClient.authApi.getProfile()
+                    val res = NetworkClient.apiService.getCommunityPostsMyNeighborhood(activeCategory)
+                    neighborhoodName = profileRes.user.neighborhood
+                    if (res.success) posts = res.posts
+                    error = null
+                } catch (e: HttpException) {
+                    if (e.code() == 400) {
+                        neighborhoodName = null
+                        posts = emptyList()
+                        error = null
+                    } else {
+                        error = superAppErrorMessage(e)
+                    }
+                } catch (e: IOException) {
+                    error = "Couldn't reach itunda. Check your connection and try again."
+                } finally {
+                    neighborhoodChecked = true
+                }
+            }
+            return
+        }
         coroutineScope.launch {
             try {
                 val res = if (view == CommunityView.BROWSE) NetworkClient.apiService.browseCommunityPosts(activeCategory) else NetworkClient.apiService.getMyCommunityPosts()
@@ -1572,7 +1702,7 @@ private fun CommunityContent() {
     ) {
         item {
             Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
-                listOf(CommunityView.BROWSE to "Neighborhood feed", CommunityView.MINE to "My posts").forEach { (v, label) ->
+                listOf(CommunityView.BROWSE to "Feed", CommunityView.NEIGHBORHOOD to "Neighborhood", CommunityView.MINE to "My posts").forEach { (v, label) ->
                     val selected = v == view
                     Text(
                         label,
@@ -1590,7 +1720,7 @@ private fun CommunityContent() {
                 }
             }
         }
-        if (view == CommunityView.BROWSE && categories.isNotEmpty()) {
+        if ((view == CommunityView.BROWSE || view == CommunityView.NEIGHBORHOOD) && categories.isNotEmpty()) {
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -1621,13 +1751,28 @@ private fun CommunityContent() {
                 }
             }
         }
+        if (view == CommunityView.NEIGHBORHOOD && neighborhoodChecked && neighborhoodName == null) {
+            item { NeighborhoodSetupPrompt(onDone = { load() }) }
+        }
+        if (view == CommunityView.NEIGHBORHOOD && neighborhoodName != null) {
+            item { Text("Your neighborhood: $neighborhoodName", color = TossSecondary, fontSize = 13.sp) }
+        }
         if (error != null) {
             item { ErrorCard(error!!, onRetry = ::load) }
         } else if (posts == null) {
             item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
-        } else if (posts!!.isEmpty()) {
-            item { Text(if (view == CommunityView.BROWSE) "No posts yet." else "You haven't posted anything yet.", color = TossSecondary, fontSize = 14.sp) }
-        } else {
+        } else if (posts!!.isEmpty() && (view != CommunityView.NEIGHBORHOOD || neighborhoodName != null)) {
+            item {
+                Text(
+                    when (view) {
+                        CommunityView.BROWSE -> "No posts yet."
+                        CommunityView.NEIGHBORHOOD -> "No posts in your neighborhood yet."
+                        CommunityView.MINE -> "You haven't posted anything yet."
+                    },
+                    color = TossSecondary, fontSize = 14.sp,
+                )
+            }
+        } else if (posts!!.isNotEmpty()) {
             items(posts!!, key = { it.id }) { post ->
                 CommunityPostCard(
                     post = post,
@@ -1847,7 +1992,7 @@ private fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
 
 // ============================== JOBS (당근알바) ==============================
 
-private enum class JobsView { BROWSE, MINE }
+private enum class JobsView { BROWSE, NEIGHBORHOOD, MINE }
 
 @Composable
 private fun JobsContent(onMessagePoster: (String) -> Unit) {
@@ -1857,6 +2002,8 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
     var posts by remember { mutableStateOf<List<JobPostDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var showNewPost by remember { mutableStateOf(false) }
+    var neighborhoodName by remember { mutableStateOf<String?>(null) }
+    var neighborhoodChecked by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
 
@@ -1866,6 +2013,31 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
 
     fun load() {
         posts = null
+        if (view == JobsView.NEIGHBORHOOD) {
+            neighborhoodChecked = false
+            coroutineScope.launch {
+                try {
+                    val profileRes = NetworkClient.authApi.getProfile()
+                    val res = NetworkClient.apiService.getJobPostsMyNeighborhood(activeCategory)
+                    neighborhoodName = profileRes.user.neighborhood
+                    if (res.success) posts = res.posts
+                    error = null
+                } catch (e: HttpException) {
+                    if (e.code() == 400) {
+                        neighborhoodName = null
+                        posts = emptyList()
+                        error = null
+                    } else {
+                        error = superAppErrorMessage(e)
+                    }
+                } catch (e: IOException) {
+                    error = "Couldn't reach itunda. Check your connection and try again."
+                } finally {
+                    neighborhoodChecked = true
+                }
+            }
+            return
+        }
         coroutineScope.launch {
             try {
                 val res = if (view == JobsView.BROWSE) NetworkClient.apiService.browseJobPosts(activeCategory) else NetworkClient.apiService.getMyJobPosts()
@@ -1890,7 +2062,7 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
     ) {
         item {
             Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
-                listOf(JobsView.BROWSE to "Find work", JobsView.MINE to "My posts").forEach { (v, label) ->
+                listOf(JobsView.BROWSE to "Find work", JobsView.NEIGHBORHOOD to "Neighborhood", JobsView.MINE to "My posts").forEach { (v, label) ->
                     val selected = v == view
                     Text(
                         label,
@@ -1908,7 +2080,7 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
                 }
             }
         }
-        if (view == JobsView.BROWSE && categories.isNotEmpty()) {
+        if ((view == JobsView.BROWSE || view == JobsView.NEIGHBORHOOD) && categories.isNotEmpty()) {
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -1939,13 +2111,28 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
                 }
             }
         }
+        if (view == JobsView.NEIGHBORHOOD && neighborhoodChecked && neighborhoodName == null) {
+            item { NeighborhoodSetupPrompt(onDone = { load() }) }
+        }
+        if (view == JobsView.NEIGHBORHOOD && neighborhoodName != null) {
+            item { Text("Your neighborhood: $neighborhoodName", color = TossSecondary, fontSize = 13.sp) }
+        }
         if (error != null) {
             item { ErrorCard(error!!, onRetry = ::load) }
         } else if (posts == null) {
             item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
-        } else if (posts!!.isEmpty()) {
-            item { Text(if (view == JobsView.BROWSE) "No jobs posted yet." else "You haven't posted any jobs yet.", color = TossSecondary, fontSize = 14.sp) }
-        } else {
+        } else if (posts!!.isEmpty() && (view != JobsView.NEIGHBORHOOD || neighborhoodName != null)) {
+            item {
+                Text(
+                    when (view) {
+                        JobsView.BROWSE -> "No jobs posted yet."
+                        JobsView.NEIGHBORHOOD -> "No jobs in your neighborhood yet."
+                        JobsView.MINE -> "You haven't posted any jobs yet."
+                    },
+                    color = TossSecondary, fontSize = 14.sp,
+                )
+            }
+        } else if (posts!!.isNotEmpty()) {
             items(posts!!, key = { it.id }) { post ->
                 JobPostCard(
                     post = post,
@@ -2110,7 +2297,7 @@ private fun JobPostCard(post: JobPostDto, categoryLabel: String, isMine: Boolean
 
 // ============================== PROPERTY (당근부동산) ==============================
 
-private enum class PropertyView { BROWSE, MINE }
+private enum class PropertyView { BROWSE, NEIGHBORHOOD, MINE }
 
 @Composable
 private fun PropertyContent(onMessageLister: (String) -> Unit) {
@@ -2121,6 +2308,8 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
     var listings by remember { mutableStateOf<List<PropertyListingDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var showNewListing by remember { mutableStateOf(false) }
+    var neighborhoodName by remember { mutableStateOf<String?>(null) }
+    var neighborhoodChecked by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
 
@@ -2130,6 +2319,31 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
 
     fun load() {
         listings = null
+        if (view == PropertyView.NEIGHBORHOOD) {
+            neighborhoodChecked = false
+            coroutineScope.launch {
+                try {
+                    val profileRes = NetworkClient.authApi.getProfile()
+                    val res = NetworkClient.apiService.getPropertyListingsMyNeighborhood()
+                    neighborhoodName = profileRes.user.neighborhood
+                    if (res.success) listings = res.listings
+                    error = null
+                } catch (e: HttpException) {
+                    if (e.code() == 400) {
+                        neighborhoodName = null
+                        listings = emptyList()
+                        error = null
+                    } else {
+                        error = superAppErrorMessage(e)
+                    }
+                } catch (e: IOException) {
+                    error = "Couldn't reach itunda. Check your connection and try again."
+                } finally {
+                    neighborhoodChecked = true
+                }
+            }
+            return
+        }
         coroutineScope.launch {
             try {
                 val res = if (view == PropertyView.BROWSE) {
@@ -2158,7 +2372,7 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
     ) {
         item {
             Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
-                listOf(PropertyView.BROWSE to "Browse", PropertyView.MINE to "My listings").forEach { (v, label) ->
+                listOf(PropertyView.BROWSE to "Browse", PropertyView.NEIGHBORHOOD to "Neighborhood", PropertyView.MINE to "My listings").forEach { (v, label) ->
                     val selected = v == view
                     Text(
                         label,
@@ -2223,13 +2437,28 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
                 }
             }
         }
+        if (view == PropertyView.NEIGHBORHOOD && neighborhoodChecked && neighborhoodName == null) {
+            item { NeighborhoodSetupPrompt(onDone = { load() }) }
+        }
+        if (view == PropertyView.NEIGHBORHOOD && neighborhoodName != null) {
+            item { Text("Your neighborhood: $neighborhoodName", color = TossSecondary, fontSize = 13.sp) }
+        }
         if (error != null) {
             item { ErrorCard(error!!, onRetry = ::load) }
         } else if (listings == null) {
             item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
-        } else if (listings!!.isEmpty()) {
-            item { Text(if (view == PropertyView.BROWSE) "No properties listed yet." else "You haven't listed any properties yet.", color = TossSecondary, fontSize = 14.sp) }
-        } else {
+        } else if (listings!!.isEmpty() && (view != PropertyView.NEIGHBORHOOD || neighborhoodName != null)) {
+            item {
+                Text(
+                    when (view) {
+                        PropertyView.BROWSE -> "No properties listed yet."
+                        PropertyView.NEIGHBORHOOD -> "No properties in your neighborhood yet."
+                        PropertyView.MINE -> "You haven't listed any properties yet."
+                    },
+                    color = TossSecondary, fontSize = 14.sp,
+                )
+            }
+        } else if (listings!!.isNotEmpty()) {
             items(listings!!, key = { it.id }) { listing ->
                 PropertyListingCard(
                     listing = listing,
