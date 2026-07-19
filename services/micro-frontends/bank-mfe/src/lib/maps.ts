@@ -10,6 +10,15 @@ export const TILES_BASE_URL = import.meta.env.VITE_TILES_BASE_URL ?? 'http://192
 
 export const TILES_SOURCE_URL = `${TILES_BASE_URL}/rwanda/{z}/{x}/{y}.mvt`;
 
+// Real self-hosted glyphs (font PBF) server (2026-07-19) -- closes item 5, the last item
+// on the Maps "100%" roadmap. Real pre-generated Noto Sans Regular/Bold glyph PBFs
+// (github.com/openmaptiles/fonts, the standard self-hosted-MapLibre glyph source),
+// served statically by nginx on itunda-dc-b alongside the tile server -- purely static
+// byte-range serving, not a live rendering service, so it carries none of OSRM/
+// Nominatim's RAM cost despite being this host's fourth persistent private-cloud
+// service. `{fontstack}` is url-encoded by MapLibre itself from a layer's `text-font`.
+export const GLYPHS_URL = import.meta.env.VITE_GLYPHS_BASE_URL ?? 'http://192.168.252.3:8091/{fontstack}/{range}.pbf';
+
 // Kigali -- the same default center EatsOrderServiceTest/MarketplaceServiceTest use for
 // their real-coordinate fixtures, kept consistent across this codebase.
 export const RWANDA_CENTER: [number, number] = [30.0619, -1.9441];

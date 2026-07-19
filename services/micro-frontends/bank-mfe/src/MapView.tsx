@@ -4,6 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import {
   RWANDA_CENTER,
   TILES_SOURCE_URL,
+  GLYPHS_URL,
   searchPlaces,
   getDirections,
   searchNearbyPlaces,
@@ -19,13 +20,15 @@ import { fetchShoppingCatalog, type ShoppingMerchant } from './lib/shopping';
 import { ApiError } from './lib/api';
 
 // A real, minimal MapLibre style over itunda's own self-hosted vector tiles -- basic
-// OpenMapTiles-schema layers (water/landcover/roads/buildings), no text labels yet since
-// that needs a self-hosted glyphs/fonts server too (a real, honestly-named follow-up,
-// not attempted this pass). Real Rwanda geography, not a fabricated placeholder map.
-// Also declares the two real, empty-until-populated sources the search/directions
-// features below write into: a destination marker and a real road-following route line.
+// OpenMapTiles-schema layers (water/landcover/roads/buildings) plus, 2026-07-19, real
+// text labels (place/road/water/POI names) via itunda's own self-hosted glyphs server
+// -- see lib/maps.ts's GLYPHS_URL doc comment. Real Rwanda geography and real OSM place
+// names, not a fabricated placeholder map. Also declares the two real,
+// empty-until-populated sources the search/directions features below write into: a
+// destination marker and a real road-following route line.
 const MAP_STYLE: maplibregl.StyleSpecification = {
   version: 8,
+  glyphs: GLYPHS_URL,
   sources: {
     rwanda: {
       type: 'vector',
@@ -80,6 +83,50 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
       id: 'route-line', type: 'line', source: 'route',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': '#3182F6', 'line-width': 5, 'line-opacity': 0.9 },
+    },
+    // Real text labels (2026-07-19) -- item 5, the last item on the Maps "100%"
+    // roadmap. Real OSM name data already baked into the tile archive (see the
+    // vector_layers this project's own `pmtiles show --metadata` inspection confirmed:
+    // `place`/`transportation_name`/`water_name`/`poi` all carry a real `name` field),
+    // rendered via itunda's own self-hosted glyph PBFs (GLYPHS_URL above). Ordered so
+    // labels paint above every fill/line/route layer -- real map text always wins
+    // legibility over the geometry beneath it.
+    {
+      id: 'water-label', type: 'symbol', source: 'rwanda', 'source-layer': 'water_name',
+      minzoom: 7,
+      layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 12 },
+      paint: { 'text-color': '#3d6e8f', 'text-halo-color': '#ffffff', 'text-halo-width': 1 },
+    },
+    {
+      id: 'road-label', type: 'symbol', source: 'rwanda', 'source-layer': 'transportation_name',
+      minzoom: 12,
+      layout: {
+        'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 12,
+        'symbol-placement': 'line', 'text-letter-spacing': 0.05,
+      },
+      paint: { 'text-color': '#6b5a2a', 'text-halo-color': '#ffffff', 'text-halo-width': 1.2 },
+    },
+    {
+      id: 'poi-label', type: 'symbol', source: 'rwanda', 'source-layer': 'poi',
+      minzoom: 14,
+      layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11 },
+      paint: { 'text-color': '#5a5044', 'text-halo-color': '#ffffff', 'text-halo-width': 1 },
+    },
+    {
+      id: 'place-label-minor', type: 'symbol', source: 'rwanda', 'source-layer': 'place',
+      minzoom: 10,
+      filter: ['!', ['match', ['get', 'class'], ['city', 'town'], true, false]],
+      layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 12 },
+      paint: { 'text-color': '#3d3d3d', 'text-halo-color': '#ffffff', 'text-halo-width': 1.2 },
+    },
+    {
+      id: 'place-label-major', type: 'symbol', source: 'rwanda', 'source-layer': 'place',
+      filter: ['match', ['get', 'class'], ['city', 'town'], true, false],
+      layout: {
+        'text-field': ['get', 'name'], 'text-font': ['Noto Sans Bold'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 4, 12, 10, 18],
+      },
+      paint: { 'text-color': '#1f1f1f', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
     },
   ],
 };

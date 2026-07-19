@@ -86,6 +86,12 @@ import rw.itunda.app.network.ShoppingMerchantDto
 private const val RWANDA_CENTER_LAT = -1.9441
 private const val RWANDA_CENTER_LNG = 30.0619
 private const val TILES_URL = "http://192.168.252.3:8090/rwanda/{z}/{x}/{y}.mvt"
+// Real self-hosted glyphs (font PBF) server (2026-07-19) -- closes item 5, the last item
+// on the Maps "100%" roadmap. See bank-mfe's lib/maps.ts GLYPHS_URL doc comment for the
+// full account (real pre-generated Noto Sans Regular/Bold glyph PBFs, served statically
+// by nginx on itunda-dc-b, ~14MB RSS -- an order of magnitude lighter than OSRM/
+// Nominatim despite being this host's fourth persistent private-cloud service).
+private const val GLYPHS_URL = "http://192.168.252.3:8091/{fontstack}/{range}.pbf"
 private const val MERCHANTS_SOURCE_ID = "merchants"
 private const val MERCHANTS_LAYER_ID = "merchants-circle"
 private const val MY_LOCATION_SOURCE_ID = "my-location"
@@ -108,6 +114,7 @@ private const val NEARBY_LAYER_ID = "nearby-places-circle"
 private val MAP_STYLE_JSON = """
 {
   "version": 8,
+  "glyphs": "$GLYPHS_URL",
   "sources": {
     "rwanda": { "type": "vector", "tiles": ["$TILES_URL"], "minzoom": 0, "maxzoom": 14 }
   },
@@ -132,7 +139,26 @@ private val MAP_STYLE_JSON = """
       "paint": { "line-color": "#f5c96b", "line-width": ["interpolate", ["linear"], ["zoom"], 6, 1, 16, 5] } },
     { "id": "boundary", "type": "line", "source": "rwanda", "source-layer": "boundary",
       "filter": ["<=", ["get", "admin_level"], 4],
-      "paint": { "line-color": "#a08ccb", "line-width": 1, "line-dasharray": [2, 1] } }
+      "paint": { "line-color": "#a08ccb", "line-width": 1, "line-dasharray": [2, 1] } },
+    { "id": "water-label", "type": "symbol", "source": "rwanda", "source-layer": "water_name", "minzoom": 7,
+      "layout": { "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"], "text-size": 12 },
+      "paint": { "text-color": "#3d6e8f", "text-halo-color": "#ffffff", "text-halo-width": 1 } },
+    { "id": "road-label", "type": "symbol", "source": "rwanda", "source-layer": "transportation_name", "minzoom": 12,
+      "layout": { "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"], "text-size": 12,
+        "symbol-placement": "line", "text-letter-spacing": 0.05 },
+      "paint": { "text-color": "#6b5a2a", "text-halo-color": "#ffffff", "text-halo-width": 1.2 } },
+    { "id": "poi-label", "type": "symbol", "source": "rwanda", "source-layer": "poi", "minzoom": 14,
+      "layout": { "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"], "text-size": 11 },
+      "paint": { "text-color": "#5a5044", "text-halo-color": "#ffffff", "text-halo-width": 1 } },
+    { "id": "place-label-minor", "type": "symbol", "source": "rwanda", "source-layer": "place", "minzoom": 10,
+      "filter": ["!", ["match", ["get", "class"], ["city", "town"], true, false]],
+      "layout": { "text-field": ["get", "name"], "text-font": ["Noto Sans Regular"], "text-size": 12 },
+      "paint": { "text-color": "#3d3d3d", "text-halo-color": "#ffffff", "text-halo-width": 1.2 } },
+    { "id": "place-label-major", "type": "symbol", "source": "rwanda", "source-layer": "place",
+      "filter": ["match", ["get", "class"], ["city", "town"], true, false],
+      "layout": { "text-field": ["get", "name"], "text-font": ["Noto Sans Bold"],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 4, 12, 10, 18] },
+      "paint": { "text-color": "#1f1f1f", "text-halo-color": "#ffffff", "text-halo-width": 1.5 } }
   ]
 }
 """.trimIndent()
