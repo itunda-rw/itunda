@@ -5,10 +5,12 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.Holding
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.StockWatchlist
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.HoldingRepository
+import rw.itunda.core.repository.StockWatchlistRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -25,6 +27,7 @@ class StocksService(
     private val walletRepository: WalletRepository,
     private val holdingRepository: HoldingRepository,
     private val ledgerService: LedgerService,
+    private val stockWatchlistRepository: StockWatchlistRepository,
 ) {
     fun getStocks() = StockCatalog.stocks
 
@@ -103,4 +106,32 @@ class StocksService(
             "description" to "Sold $shares shares of ${stock.symbol}", "completedAt" to Instant.now().toString(),
         )
     }
+
+    // Real stock watchlist (2026-07-19) -- "follow a stock without holding it," closing
+    // part of "Toss Securities as its own distinct surface". Same idempotent-toggle
+    // discipline EatsFavoriteService already established: watching an already-watched
+    // stock returns the existing row rather than a 409 (a real watch/follow toggle
+    // shouldn't error on a double-tap, and the real DB unique constraint means a
+    // concurrent double-add still can't create two rows even without this check).
+    // Un-watching something never watched is a silent no-op -- the end state ("not
+    // watched") is what the caller actually wants, regardless of what state it started in.
+    @Transactional
+    fun watchStock(userId: String, stockId: String): StockWatchlist {
+        val stock = StockCatalog.find(stockId) ?: throw StockNotFoundException("Stock not found")
+        stockWatchlistRepository.findByUserIdAndStockId(userId, stock.id)?.let { return it }
+        return stockWatchlistRepository.save(
+            StockWatchlist(id = "watch_${UUID.randomUUID()}", userId = userId, stockId = stock.id),
+        )
+    }
+
+    @Transactional
+    fun unwatchStock(userId: String, stockId: String) {
+        stockWatchlistRepository.deleteByUserIdAndStockId(userId, stockId)
+    }
+
+    // StockCatalog is a small, static, in-memory list (no DB round trip involved at
+    // all), unlike EatsFavoriteService's batch findAllById -- calling find() once per
+    // watched stock here is not an N+1, there's no database on the other end of it.
+    fun getWatchlist(userId: String): List<Stock> =
+        stockWatchlistRepository.findByUserIdOrderByCreatedAtDesc(userId).mapNotNull { StockCatalog.find(it.stockId) }
 }

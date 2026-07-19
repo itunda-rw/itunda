@@ -4,8 +4,10 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.MissingRequestHeaderException
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
@@ -58,6 +60,31 @@ class StocksController(private val stocksService: StocksService, private val ide
         }
         return ResponseEntity.status(status).body(body)
     }
+
+    // Real stock watchlist (2026-07-19) -- see StocksService.watchStock's own doc
+    // comment. Not money-moving, no Idempotency-Key requirement, same convention
+    // EatsFavoriteController's own toggle endpoints already use.
+    @PostMapping("/{stockId}/watch")
+    fun watch(
+        @PathVariable stockId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val watch = stocksService.watchStock(currentUser.userId, stockId)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "watch" to watch))
+    }
+
+    @DeleteMapping("/{stockId}/watch")
+    fun unwatch(
+        @PathVariable stockId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        stocksService.unwatchStock(currentUser.userId, stockId)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    @GetMapping("/watchlist")
+    fun getWatchlist(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "watchlist" to stocksService.getWatchlist(currentUser.userId)))
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENCY_KEY_CONFLICT", ex.message ?: "Conflict"))

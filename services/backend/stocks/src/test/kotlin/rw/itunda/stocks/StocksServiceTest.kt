@@ -7,11 +7,13 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import rw.itunda.core.domain.Holding
+import rw.itunda.core.domain.StockWatchlist
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.HoldingRepository
+import rw.itunda.core.repository.StockWatchlistRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 
@@ -28,7 +30,8 @@ class StocksServiceTest : BehaviorSpec({
         val walletRepository = mockk<WalletRepository>()
         val holdingRepository = mockk<HoldingRepository>()
         val ledgerService = mockk<LedgerService>()
-        val service = StocksService(walletRepository, holdingRepository, ledgerService)
+        val stockWatchlistRepository = mockk<StockWatchlistRepository>(relaxed = true)
+        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository)
 
         every { walletRepository.findByUserIdAndType("user_1", WalletType.INVESTMENT) } returns investmentWallet()
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
@@ -116,6 +119,72 @@ class StocksServiceTest : BehaviorSpec({
                 } catch (e: NotEnoughSharesException) {
                     // expected
                 }
+            }
+        }
+    }
+
+    Given("a real user managing their real stock watchlist") {
+        val walletRepository = mockk<WalletRepository>()
+        val holdingRepository = mockk<HoldingRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val stockWatchlistRepository = mockk<StockWatchlistRepository>()
+        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository)
+
+        When("watching a real stock for the first time") {
+            every { stockWatchlistRepository.findByUserIdAndStockId("user_1", "s1") } returns null
+            val savedSlot = mutableListOf<StockWatchlist>()
+            every { stockWatchlistRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            val watch = service.watchStock("user_1", "s1")
+
+            Then("it persists a real new watch") {
+                watch.userId shouldBe "user_1"
+                watch.stockId shouldBe "s1"
+                savedSlot.first().stockId shouldBe "s1"
+            }
+        }
+
+        When("watching an already-watched stock") {
+            val existing = StockWatchlist(id = "watch_1", userId = "user_1", stockId = "s1")
+            every { stockWatchlistRepository.findByUserIdAndStockId("user_1", "s1") } returns existing
+
+            val watch = service.watchStock("user_1", "s1")
+
+            Then("it idempotently returns the real existing watch, never a duplicate") {
+                watch shouldBe existing
+                verify(exactly = 0) { stockWatchlistRepository.save(any()) }
+            }
+        }
+
+        When("watching a stock that doesn't exist") {
+            Then("it throws StockNotFoundException before touching the repository") {
+                try {
+                    service.watchStock("user_1", "s999")
+                    error("expected StockNotFoundException")
+                } catch (e: StockNotFoundException) {
+                    verify(exactly = 0) { stockWatchlistRepository.save(any()) }
+                }
+            }
+        }
+
+        When("un-watching a stock that was never watched") {
+            every { stockWatchlistRepository.deleteByUserIdAndStockId("user_1", "never_watched") } returns 0L
+
+            Then("it silently no-ops rather than throwing") {
+                service.unwatchStock("user_1", "never_watched")
+                verify { stockWatchlistRepository.deleteByUserIdAndStockId("user_1", "never_watched") }
+            }
+        }
+
+        When("listing a real user's watchlist") {
+            every { stockWatchlistRepository.findByUserIdOrderByCreatedAtDesc("user_1") } returns
+                listOf(StockWatchlist(id = "watch_1", userId = "user_1", stockId = "s1"), StockWatchlist(id = "watch_2", userId = "user_1", stockId = "s2"))
+
+            val watchlist = service.getWatchlist("user_1")
+
+            Then("it resolves each real stock's live current data") {
+                watchlist.map { it.id } shouldBe listOf("s1", "s2")
+                watchlist.all { it.price > BigDecimal.ZERO } shouldBe true
             }
         }
     }
