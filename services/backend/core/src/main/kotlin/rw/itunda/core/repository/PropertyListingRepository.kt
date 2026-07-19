@@ -23,4 +23,11 @@ interface PropertyListingRepository : JpaRepository<PropertyListing, String> {
     // Real proximity "near me" browse -- same bounded-candidate-set-then-Haversine-in-app
     // shape ListingRepository/CommunityPostRepository/JobPostRepository already established.
     fun findByStatusAndLatitudeIsNotNullAndLongitudeIsNotNull(status: PropertyListingStatus): List<PropertyListing>
+
+    // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see
+    // PropertyListingService.myNeighborhood and User.neighborhood's own doc comments.
+    // Deliberately not combined with listingType/propertyType (unlike browse()'s four
+    // variants) -- an honest v1 scoping choice, named here not silently dropped, matching
+    // this project's own "one new capability per turn" precedent.
+    fun findByStatusAndNeighborhoodOrderByCreatedAtDesc(status: PropertyListingStatus, neighborhood: String, pageable: Pageable): Page<PropertyListing>
 }

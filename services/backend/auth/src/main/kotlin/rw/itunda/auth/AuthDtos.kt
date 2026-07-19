@@ -34,6 +34,7 @@ data class PublicUser(
     val referralCode: String?,
     val profilePhotoUrl: String?,
     val emailVerified: Boolean,
+    val neighborhood: String?,
 )
 
 data class AuthResponse(
@@ -49,3 +50,8 @@ data class AuthResponse(
 data class UpdateProfilePhotoRequest(val profilePhotoUrl: String)
 
 data class ConfirmEmailVerificationRequest(val token: String)
+
+// Real hyperlocal neighborhood (2026-07-20) -- see User.neighborhood's own doc comment.
+// A coordinate in, never a self-declared free-text neighborhood name -- AuthService
+// reverse-geocodes it through itunda's own self-hosted Nominatim.
+data class SetNeighborhoodRequest(val latitude: Double, val longitude: Double)

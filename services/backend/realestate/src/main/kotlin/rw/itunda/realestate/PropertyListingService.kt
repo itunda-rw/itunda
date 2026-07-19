@@ -11,7 +11,9 @@ import rw.itunda.core.domain.PropertyListing
 import rw.itunda.core.domain.PropertyListingStatus
 import rw.itunda.core.domain.PropertyListingType
 import rw.itunda.core.geo.GeoUtils
+import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.repository.PropertyListingRepository
+import rw.itunda.core.repository.UserRepository
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
 import java.math.BigDecimal
@@ -23,6 +25,7 @@ class InvalidPropertyListingException(message: String) : RuntimeException(messag
 class PropertyListingNotAvailableException(message: String) : RuntimeException(message)
 class OwnPropertyListingException(message: String) : RuntimeException(message)
 class InvalidPropertyCoordinatesException(message: String) : RuntimeException(message)
+class RealEstateNeighborhoodNotSetException(message: String) : RuntimeException(message)
 
 data class PropertyType(val id: String, val label: String)
 
@@ -45,6 +48,8 @@ class PropertyListingService(
     private val propertyListingRepository: PropertyListingRepository,
     private val rateLimiter: RateLimiter,
     private val messagingService: MessagingService,
+    private val nominatimGeocodingClient: NominatimGeocodingClient,
+    private val userRepository: UserRepository,
 ) {
     companion object {
         val PROPERTY_TYPES = listOf(
@@ -110,11 +115,20 @@ class PropertyListingService(
         // already established.
         rateLimiter.checkLimit("realestate:listing:$listerId", limit = 10, window = Duration.ofHours(1))
 
+        // Real hyperlocal neighborhood (2026-07-20) -- see MarketplaceService.
+        // createListing's own doc comment for the full account; identical here.
+        val neighborhood = if (latitude != null && longitude != null) {
+            nominatimGeocodingClient.reverseGeocode(latitude, longitude)
+        } else {
+            null
+        }
+
         return propertyListingRepository.save(
             PropertyListing(
                 id = "property_listing_${UUID.randomUUID()}", listerId = listerId, listingType = listingType,
                 propertyType = propertyType, title = trimmedTitle, description = trimmedDescription, price = price,
                 bedrooms = bedrooms, sizeSqm = sizeSqm, latitude = latitude, longitude = longitude,
+                neighborhood = neighborhood,
             ),
         )
     }
@@ -134,6 +148,17 @@ class PropertyListingService(
 
     fun getMyListings(listerId: String, pageable: Pageable): Page<PropertyListing> =
         propertyListingRepository.findByListerIdOrderByCreatedAtDesc(listerId, pageable)
+
+    // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see MarketplaceService.
+    // myNeighborhood's own doc comment for the full account. See
+    // PropertyListingRepository's own note on why this isn't combined with
+    // listingType/propertyType this pass.
+    fun myNeighborhood(callerUserId: String, pageable: Pageable): Page<PropertyListing> {
+        val caller = userRepository.findById(callerUserId).orElseThrow { PropertyListingNotFoundException("User not found") }
+        val neighborhood = caller.neighborhood
+            ?: throw RealEstateNeighborhoodNotSetException("Set your neighborhood first via POST /api/v1/auth/profile/neighborhood")
+        return propertyListingRepository.findByStatusAndNeighborhoodOrderByCreatedAtDesc(PropertyListingStatus.AVAILABLE, neighborhood, pageable)
+    }
 
     // Real opt-in "near me" browse -- location matters a lot for real estate, same shape
     // MarketplaceService.nearby/CommunityService.nearby/JobPostService.nearby already use.

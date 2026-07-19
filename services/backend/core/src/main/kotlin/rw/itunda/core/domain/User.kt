@@ -64,6 +64,16 @@ class User(
 
     @Column(name = "email_verified", nullable = false)
     var emailVerified: Boolean = false,
+
+    // Real hyperlocal neighborhood (2026-07-20) -- closes the "User has no address/
+    // district field" gap Marketplace/Community/Jobs/RealEstate's own doc comments all
+    // name. Set once via AuthService.setNeighborhood from a real coordinate the user
+    // shares (same opt-in-location convention those modules already use), reverse-
+    // geocoded through itunda's own self-hosted Nominatim (NominatimGeocodingClient.
+    // reverseGeocode) into a real neighborhood/sector-level name -- never self-declared
+    // free text, so it can't drift from where the user actually is.
+    @Column(name = "neighborhood", length = 120)
+    var neighborhood: String? = null,
 ) {
     // JPA requires a no-arg constructor; Kotlin generates one only when every
     // property has a default, which id/phoneNumber/etc. intentionally don't.

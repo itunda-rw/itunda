@@ -15,7 +15,10 @@ import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.PropertyListing
 import rw.itunda.core.domain.PropertyListingStatus
 import rw.itunda.core.domain.PropertyListingType
+import rw.itunda.core.domain.User
+import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.repository.PropertyListingRepository
+import rw.itunda.core.repository.UserRepository
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
 import java.math.BigDecimal
@@ -28,7 +31,9 @@ class PropertyListingServiceTest : BehaviorSpec({
         val propertyListingRepository = mockk<PropertyListingRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
-        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
 
         When("listing with valid fields") {
             val savedSlot = slot<PropertyListing>()
@@ -114,7 +119,9 @@ class PropertyListingServiceTest : BehaviorSpec({
         val propertyListingRepository = mockk<PropertyListingRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
-        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
         val listing = PropertyListing(
             id = "property_listing_1", listerId = "lister_1", listingType = PropertyListingType.RENT,
             propertyType = "apartment", title = "T", description = "D", price = BigDecimal("250000"),
@@ -205,7 +212,9 @@ class PropertyListingServiceTest : BehaviorSpec({
         val propertyListingRepository = mockk<PropertyListingRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
-        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
 
         When("no filter is given") {
             val page = PageImpl(listOf<PropertyListing>())
@@ -255,7 +264,9 @@ class PropertyListingServiceTest : BehaviorSpec({
         val propertyListingRepository = mockk<PropertyListingRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
-        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
 
         val near = PropertyListing(
             id = "property_near", listerId = "a", listingType = PropertyListingType.RENT, propertyType = "house",
@@ -282,6 +293,44 @@ class PropertyListingServiceTest : BehaviorSpec({
                     service.nearby(-1.9441, 30.0619, 0.0, PageRequest.of(0, 20))
                     error("expected InvalidPropertyCoordinatesException")
                 } catch (e: InvalidPropertyCoordinatesException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real caller browsing their own real neighborhood") {
+        val propertyListingRepository = mockk<PropertyListingRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val messagingService = mockk<MessagingService>()
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
+
+        When("the caller has a real neighborhood set") {
+            val caller = User(id = "user_1", phoneNumber = "+250780000001", firstName = "A", lastName = "B", passwordHash = "x", neighborhood = "Kimironko")
+            val expectedPage = PageImpl(listOf(mockk<PropertyListing>()))
+            every { userRepository.findById("user_1") } returns Optional.of(caller)
+            every {
+                propertyListingRepository.findByStatusAndNeighborhoodOrderByCreatedAtDesc(PropertyListingStatus.AVAILABLE, "Kimironko", any())
+            } returns expectedPage
+
+            val page = service.myNeighborhood("user_1", PageRequest.of(0, 20))
+
+            Then("it real-filters to exactly that neighborhood") {
+                page shouldBe expectedPage
+            }
+        }
+
+        When("the caller hasn't set a real neighborhood yet") {
+            val caller = User(id = "user_1", phoneNumber = "+250780000001", firstName = "A", lastName = "B", passwordHash = "x")
+            every { userRepository.findById("user_1") } returns Optional.of(caller)
+
+            Then("it throws RealEstateNeighborhoodNotSetException rather than silently returning an empty page") {
+                try {
+                    service.myNeighborhood("user_1", PageRequest.of(0, 20))
+                    error("expected RealEstateNeighborhoodNotSetException")
+                } catch (e: RealEstateNeighborhoodNotSetException) {
                     // expected
                 }
             }

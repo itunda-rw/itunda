@@ -10,8 +10,10 @@ import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.Listing
 import rw.itunda.core.domain.ListingStatus
 import rw.itunda.core.geo.GeoUtils
+import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.repository.ListingRepository
+import rw.itunda.core.repository.UserRepository
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
 import java.math.BigDecimal
@@ -24,6 +26,7 @@ class InvalidListingException(message: String) : RuntimeException(message)
 class ListingNotActiveException(message: String) : RuntimeException(message)
 class OwnListingException(message: String) : RuntimeException(message)
 class InvalidCoordinatesException(message: String) : RuntimeException(message)
+class NeighborhoodNotSetException(message: String) : RuntimeException(message)
 
 /**
  * A real 당근마켓 (Danggeun/Karrot Market)-style secondhand marketplace -- the second
@@ -41,6 +44,8 @@ class MarketplaceService(
     private val rateLimiter: RateLimiter,
     private val messagingService: MessagingService,
     private val osrmRoutingClient: OsrmRoutingClient,
+    private val nominatimGeocodingClient: NominatimGeocodingClient,
+    private val userRepository: UserRepository,
 ) {
     companion object {
         // Bounds a single OSRM /table request's URL length and the private cloud's
@@ -94,13 +99,43 @@ class MarketplaceService(
         // in one sitting while bounding a spam-listing flood.
         rateLimiter.checkLimit("marketplace:create:$sellerId", limit = 10, window = Duration.ofHours(1))
 
+        // Real hyperlocal neighborhood (2026-07-20) -- cached once here from a real
+        // reverse-geocode, same "cache, don't recompute at read time" discipline this
+        // codebase already established for CommunityPost's like/comment counters. Best-
+        // effort: null when unconfigured/unreachable/no match, never blocks the listing
+        // itself from being created (matching notifyNearestRiders' own "never fail the
+        // real transition it's reacting to" precedent for auxiliary geo lookups).
+        val neighborhood = if (latitude != null && longitude != null) {
+            nominatimGeocodingClient.reverseGeocode(latitude, longitude)
+        } else {
+            null
+        }
+
         return listingRepository.save(
             Listing(
                 id = "listing_${UUID.randomUUID()}", sellerId = sellerId, title = trimmedTitle,
                 description = trimmedDescription, price = price, category = trimmedCategory,
-                latitude = latitude, longitude = longitude,
+                latitude = latitude, longitude = longitude, neighborhood = neighborhood,
             ),
         )
+    }
+
+    // Real hyperlocal "my neighborhood" browse (2026-07-20) -- closes the "no real
+    // hyperlocal auto-filtering by a user's actual neighborhood" gap this class's own doc
+    // comment named. Resolves the caller's own real User.neighborhood (set via
+    // AuthService.setNeighborhood) and filters to listings whose own cached neighborhood
+    // matches exactly -- an honest, real string match, not a radius guess. Throws rather
+    // than silently returning an empty page when the caller hasn't set one yet, matching
+    // this feature's own "honest failure, not a silent no-op" discipline.
+    fun myNeighborhood(callerUserId: String, category: String?, pageable: Pageable): Page<Listing> {
+        val caller = userRepository.findById(callerUserId).orElseThrow { ListingNotFoundException("User not found") }
+        val neighborhood = caller.neighborhood
+            ?: throw NeighborhoodNotSetException("Set your neighborhood first via POST /api/v1/auth/profile/neighborhood")
+        return if (category.isNullOrBlank()) {
+            listingRepository.findByStatusAndNeighborhoodOrderByCreatedAtDesc(ListingStatus.ACTIVE, neighborhood, pageable)
+        } else {
+            listingRepository.findByStatusAndNeighborhoodAndCategoryOrderByCreatedAtDesc(ListingStatus.ACTIVE, neighborhood, category, pageable)
+        }
     }
 
     // Real proximity search (2026-07-18) -- the hyperlocal-discovery gap this class's own

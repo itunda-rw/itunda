@@ -8,6 +8,8 @@ import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.geo.GeoUtils
+import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.repository.EmailVerificationTokenRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
@@ -33,6 +35,7 @@ class AuthService(
     private val rateLimiter: RateLimiter,
     private val emailVerificationTokenRepository: EmailVerificationTokenRepository,
     private val notificationRepository: NotificationRepository,
+    private val nominatimGeocodingClient: NominatimGeocodingClient,
 ) {
     private val passwordEncoder = BCryptPasswordEncoder()
 
@@ -155,6 +158,28 @@ class AuthService(
         return user.toPublic()
     }
 
+    // Real hyperlocal neighborhood (2026-07-20) -- closes the "User has no address/
+    // district field" gap Marketplace/Community/Jobs/RealEstate's own doc comments all
+    // name. A real coordinate in (the same opt-in-share-my-location convention those
+    // modules already use for a single post), reverse-geocoded through itunda's own
+    // self-hosted Nominatim into a real neighborhood/sector-level name -- never a
+    // self-declared free-text field, so it can't drift from where the user actually is.
+    // Throws rather than silently storing null when geocoding can't resolve a real
+    // neighborhood (unconfigured/unreachable/no match) -- an honest failure a client can
+    // show, not a silent no-op that looks like it worked.
+    @Transactional
+    fun setNeighborhood(userId: String, latitude: Double, longitude: Double): PublicUser {
+        if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
+            throw InvalidCoordinatesException("Latitude must be between -90 and 90, longitude between -180 and 180")
+        }
+        val user = userRepository.findById(userId).orElseThrow { UserNotFoundException("User not found") }
+        val neighborhood = nominatimGeocodingClient.reverseGeocode(latitude, longitude)
+            ?: throw NeighborhoodNotResolvedException("Couldn't determine a neighborhood for this location")
+        user.neighborhood = neighborhood
+        userRepository.save(user)
+        return user.toPublic()
+    }
+
     // Real, single-use, 30-minute token -- see EmailVerificationToken's doc comment.
     // Delivered via a real Notification (this backend's own existing in-app delivery
     // mechanism, already used for budget alerts) rather than a real email, since there
@@ -218,5 +243,6 @@ class AuthService(
         id = id, phoneNumber = phoneNumber, email = email, firstName = firstName,
         lastName = lastName, kycVerified = kycVerified, creditScore = creditScore, createdAt = createdAt,
         referralCode = referralCode, profilePhotoUrl = profilePhotoUrl, emailVerified = emailVerified,
+        neighborhood = neighborhood,
     )
 }

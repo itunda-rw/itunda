@@ -15,4 +15,14 @@ interface CommunityPostRepository : JpaRepository<CommunityPost, String> {
     // bounded-candidate-set-then-Haversine-in-app shape ListingRepository's own note
     // already established, not a real geospatial DB index.
     fun findByStatusAndLatitudeIsNotNullAndLongitudeIsNotNull(status: CommunityPostStatus): List<CommunityPost>
+
+    // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see CommunityService.
+    // myNeighborhood and User.neighborhood's own doc comments.
+    fun findByStatusAndNeighborhoodOrderByCreatedAtDesc(status: CommunityPostStatus, neighborhood: String, pageable: Pageable): Page<CommunityPost>
+    fun findByStatusAndNeighborhoodAndCategoryOrderByCreatedAtDesc(
+        status: CommunityPostStatus,
+        neighborhood: String,
+        category: String,
+        pageable: Pageable,
+    ): Page<CommunityPost>
 }

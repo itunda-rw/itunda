@@ -24,6 +24,7 @@ import rw.itunda.jobs.InvalidJobPostException
 import rw.itunda.jobs.JobPostNotFoundException
 import rw.itunda.jobs.JobPostNotOpenException
 import rw.itunda.jobs.JobPostService
+import rw.itunda.jobs.JobsNeighborhoodNotSetException
 import rw.itunda.jobs.OwnJobPostException
 import java.math.BigDecimal
 
@@ -76,6 +77,18 @@ class JobPostController(private val jobPostService: JobPostService) {
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
         val page = jobPostService.nearby(latitude, longitude, radiusKm, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content) + pageMeta(page))
+    }
+
+    // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see JobPostService.
+    // myNeighborhood's own doc comment.
+    @GetMapping("/posts/my-neighborhood")
+    fun myNeighborhood(
+        @RequestParam(required = false) category: String?,
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = jobPostService.myNeighborhood(currentUser.userId, category, pageable)
         return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content) + pageMeta(page))
     }
 
@@ -138,4 +151,8 @@ class JobPostController(private val jobPostService: JobPostService) {
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =
         ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
+
+    @ExceptionHandler(JobsNeighborhoodNotSetException::class)
+    fun handleNeighborhoodNotSet(ex: JobsNeighborhoodNotSetException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("NEIGHBORHOOD_NOT_SET", ex.message ?: "Bad request"))
 }

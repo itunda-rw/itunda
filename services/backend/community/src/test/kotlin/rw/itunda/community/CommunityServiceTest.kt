@@ -17,6 +17,7 @@ import rw.itunda.core.domain.CommunityPost
 import rw.itunda.core.domain.CommunityPostStatus
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.User
+import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.repository.CommunityCommentRepository
 import rw.itunda.core.repository.CommunityLikeRepository
 import rw.itunda.core.repository.CommunityPostRepository
@@ -37,7 +38,8 @@ class CommunityServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = CommunityService(postRepository, commentRepository, likeRepository, userRepository, notificationRepository, rateLimiter)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val service = CommunityService(postRepository, commentRepository, likeRepository, userRepository, notificationRepository, rateLimiter, nominatimGeocodingClient)
 
         When("posting with valid fields") {
             val savedSlot = slot<CommunityPost>()
@@ -109,7 +111,8 @@ class CommunityServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = CommunityService(postRepository, commentRepository, likeRepository, userRepository, notificationRepository, rateLimiter)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val service = CommunityService(postRepository, commentRepository, likeRepository, userRepository, notificationRepository, rateLimiter, nominatimGeocodingClient)
         val post = CommunityPost(id = "post_1", authorId = "author_1", category = "question", title = "T", body = "B")
 
         When("the real author removes it") {
@@ -238,7 +241,8 @@ class CommunityServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = CommunityService(postRepository, commentRepository, likeRepository, userRepository, notificationRepository, rateLimiter)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val service = CommunityService(postRepository, commentRepository, likeRepository, userRepository, notificationRepository, rateLimiter, nominatimGeocodingClient)
 
         When("no category filter is given") {
             val page = PageImpl(listOf<CommunityPost>())
@@ -270,7 +274,8 @@ class CommunityServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = CommunityService(postRepository, commentRepository, likeRepository, userRepository, notificationRepository, rateLimiter)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val service = CommunityService(postRepository, commentRepository, likeRepository, userRepository, notificationRepository, rateLimiter, nominatimGeocodingClient)
 
         // Real Kigali-area coordinates, same convention every geo test in this codebase uses.
         val near = CommunityPost(id = "post_near", authorId = "a", category = "news", title = "T", body = "B", latitude = -1.9500, longitude = 30.0619)
@@ -292,6 +297,44 @@ class CommunityServiceTest : BehaviorSpec({
                     service.nearby(-1.9441, 30.0619, 0.0, PageRequest.of(0, 20))
                     error("expected InvalidCommunityCoordinatesException")
                 } catch (e: InvalidCommunityCoordinatesException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real caller browsing their own real neighborhood") {
+        val postRepository = mockk<CommunityPostRepository>()
+        val commentRepository = mockk<CommunityCommentRepository>()
+        val likeRepository = mockk<CommunityLikeRepository>()
+        val userRepository = mockk<UserRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val service = CommunityService(postRepository, commentRepository, likeRepository, userRepository, notificationRepository, rateLimiter, nominatimGeocodingClient)
+
+        When("the caller has a real neighborhood set") {
+            val caller = realUser("user_1", "A", "B").also { it.neighborhood = "Kimironko" }
+            val expectedPage = PageImpl(listOf(mockk<CommunityPost>()))
+            every { userRepository.findById("user_1") } returns Optional.of(caller)
+            every { postRepository.findByStatusAndNeighborhoodOrderByCreatedAtDesc(CommunityPostStatus.ACTIVE, "Kimironko", any()) } returns expectedPage
+
+            val page = service.myNeighborhood("user_1", null, PageRequest.of(0, 20))
+
+            Then("it real-filters to exactly that neighborhood") {
+                page shouldBe expectedPage
+            }
+        }
+
+        When("the caller hasn't set a real neighborhood yet") {
+            val caller = realUser("user_1", "A", "B")
+            every { userRepository.findById("user_1") } returns Optional.of(caller)
+
+            Then("it throws CommunityNeighborhoodNotSetException rather than silently returning an empty page") {
+                try {
+                    service.myNeighborhood("user_1", null, PageRequest.of(0, 20))
+                    error("expected CommunityNeighborhoodNotSetException")
+                } catch (e: CommunityNeighborhoodNotSetException) {
                     // expected
                 }
             }

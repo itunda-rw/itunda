@@ -6,13 +6,17 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.Listing
 import rw.itunda.core.domain.ListingStatus
+import rw.itunda.core.domain.User
+import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.repository.ListingRepository
+import rw.itunda.core.repository.UserRepository
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
 import java.math.BigDecimal
@@ -25,7 +29,9 @@ class MarketplaceServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
         val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
-        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository)
 
         When("creating a listing with valid fields") {
             val savedSlot = slot<Listing>()
@@ -69,7 +75,9 @@ class MarketplaceServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
         val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
-        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository)
         val listing = Listing(
             id = "listing_1", sellerId = "seller_1", title = "Bicycle", description = "desc",
             price = BigDecimal("15000"), category = "sports",
@@ -144,7 +152,9 @@ class MarketplaceServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
         val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
-        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository)
 
         When("no category filter is given") {
             every { listingRepository.findByStatusOrderByCreatedAtDesc(ListingStatus.ACTIVE, any()) } returns
@@ -163,7 +173,9 @@ class MarketplaceServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
         val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
-        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository)
 
         When("only one of latitude/longitude is given") {
             Then("it throws InvalidCoordinatesException") {
@@ -205,7 +217,9 @@ class MarketplaceServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
         val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
-        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository)
 
         // Searcher at (-1.9441, 30.0619). Same longitude as both listings, only latitude
         // differs, so a real Haversine distance along a meridian is exact:
@@ -266,7 +280,9 @@ class MarketplaceServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
         val osrmRoutingClient = mockk<OsrmRoutingClient>()
-        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository)
 
         // Both within Rwanda's bounding envelope, both within a real 5km straight-line
         // radius of the searcher -- Haversine says listingA is closer.
@@ -331,6 +347,92 @@ class MarketplaceServiceTest : BehaviorSpec({
             Then("OSRM is never consulted -- ranking falls straight back to Haversine, matching EatsOrderService's own guard against OSRM silently snapping an out-of-Rwanda point") {
                 io.mockk.verify(exactly = 0) { osrmRoutingClient.routeDistancesKm(any(), any(), any()) }
                 page.content.map { it.id } shouldBe listOf("listing_a", "listing_b")
+            }
+        }
+    }
+
+    Given("a real seller listing an item with real coordinates") {
+        val listingRepository = mockk<ListingRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val messagingService = mockk<MessagingService>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
+        val userRepository = mockk<UserRepository>()
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository)
+
+        When("the real coordinates reverse-geocode to a real neighborhood") {
+            val savedSlot = slot<Listing>()
+            every { nominatimGeocodingClient.reverseGeocode(-1.9536, 30.0605) } returns "Nyarugenge"
+            every { listingRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            service.createListing("seller_1", "Sofa", "Real leather sofa", BigDecimal("50000"), "furniture", -1.9536, 30.0605)
+
+            Then("the real neighborhood is cached on the listing at creation time, not recomputed later") {
+                savedSlot.captured.neighborhood shouldBe "Nyarugenge"
+            }
+        }
+
+        When("no real coordinates are given") {
+            val savedSlot = slot<Listing>()
+            every { listingRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            service.createListing("seller_1", "Sofa", "Real leather sofa", BigDecimal("50000"), "furniture")
+
+            Then("neighborhood stays null -- never a fabricated guess, and geocoding is never even called") {
+                savedSlot.captured.neighborhood shouldBe null
+                io.mockk.verify(exactly = 0) { nominatimGeocodingClient.reverseGeocode(any(), any()) }
+            }
+        }
+    }
+
+    Given("a real caller browsing their own real neighborhood") {
+        val listingRepository = mockk<ListingRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val messagingService = mockk<MessagingService>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository)
+
+        When("the caller has a real neighborhood set, no category filter") {
+            val caller = User(id = "user_1", phoneNumber = "+250780000001", firstName = "A", lastName = "B", passwordHash = "x", neighborhood = "Kimironko")
+            val expectedPage = PageImpl(listOf(mockk<Listing>()))
+            every { userRepository.findById("user_1") } returns Optional.of(caller)
+            every { listingRepository.findByStatusAndNeighborhoodOrderByCreatedAtDesc(ListingStatus.ACTIVE, "Kimironko", any()) } returns expectedPage
+
+            val page = service.myNeighborhood("user_1", null, PageRequest.of(0, 20))
+
+            Then("it real-filters to exactly that neighborhood") {
+                page shouldBe expectedPage
+            }
+        }
+
+        When("the caller has a real neighborhood set, combined with a category filter") {
+            val caller = User(id = "user_1", phoneNumber = "+250780000001", firstName = "A", lastName = "B", passwordHash = "x", neighborhood = "Kimironko")
+            val expectedPage = PageImpl(listOf(mockk<Listing>()))
+            every { userRepository.findById("user_1") } returns Optional.of(caller)
+            every {
+                listingRepository.findByStatusAndNeighborhoodAndCategoryOrderByCreatedAtDesc(ListingStatus.ACTIVE, "Kimironko", "furniture", any())
+            } returns expectedPage
+
+            val page = service.myNeighborhood("user_1", "furniture", PageRequest.of(0, 20))
+
+            Then("neighborhood and category combine, matching the established combinable-filter shape") {
+                page shouldBe expectedPage
+            }
+        }
+
+        When("the caller hasn't set a real neighborhood yet") {
+            val caller = User(id = "user_1", phoneNumber = "+250780000001", firstName = "A", lastName = "B", passwordHash = "x", neighborhood = null)
+            every { userRepository.findById("user_1") } returns Optional.of(caller)
+
+            Then("it throws NeighborhoodNotSetException rather than silently returning an empty page") {
+                try {
+                    service.myNeighborhood("user_1", null, PageRequest.of(0, 20))
+                    error("expected NeighborhoodNotSetException")
+                } catch (e: NeighborhoodNotSetException) {
+                    // expected
+                }
             }
         }
     }

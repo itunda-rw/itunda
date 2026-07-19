@@ -24,6 +24,7 @@ import rw.itunda.marketplace.InvalidOfferAmountException
 import rw.itunda.marketplace.ListingNotActiveException
 import rw.itunda.marketplace.ListingNotFoundException
 import rw.itunda.marketplace.MarketplaceService
+import rw.itunda.marketplace.NeighborhoodNotSetException
 import rw.itunda.marketplace.OfferAlreadyResolvedException
 import rw.itunda.marketplace.OfferResponseAction
 import rw.itunda.marketplace.OwnListingException
@@ -82,6 +83,18 @@ class MarketplaceController(private val marketplaceService: MarketplaceService, 
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
         val page = marketplaceService.nearby(latitude, longitude, radiusKm, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content) + pageMeta(page))
+    }
+
+    // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see MarketplaceService.
+    // myNeighborhood's own doc comment.
+    @GetMapping("/listings/my-neighborhood")
+    fun myNeighborhood(
+        @RequestParam(required = false) category: String?,
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = marketplaceService.myNeighborhood(currentUser.userId, category, pageable)
         return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content) + pageMeta(page))
     }
 
@@ -192,4 +205,8 @@ class MarketplaceController(private val marketplaceService: MarketplaceService, 
     @ExceptionHandler(InvalidCoordinatesException::class)
     fun handleInvalidCoordinates(ex: InvalidCoordinatesException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_COORDINATES", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(NeighborhoodNotSetException::class)
+    fun handleNeighborhoodNotSet(ex: NeighborhoodNotSetException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("NEIGHBORHOOD_NOT_SET", ex.message ?: "Bad request"))
 }

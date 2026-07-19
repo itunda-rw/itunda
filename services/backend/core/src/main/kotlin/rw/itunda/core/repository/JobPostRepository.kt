@@ -14,4 +14,14 @@ interface JobPostRepository : JpaRepository<JobPost, String> {
     // Real proximity "near me" browse -- same bounded-candidate-set-then-Haversine-in-app
     // shape ListingRepository/CommunityPostRepository's own notes already established.
     fun findByStatusAndLatitudeIsNotNullAndLongitudeIsNotNull(status: JobPostStatus): List<JobPost>
+
+    // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see JobPostService.
+    // myNeighborhood and User.neighborhood's own doc comments.
+    fun findByStatusAndNeighborhoodOrderByCreatedAtDesc(status: JobPostStatus, neighborhood: String, pageable: Pageable): Page<JobPost>
+    fun findByStatusAndNeighborhoodAndCategoryOrderByCreatedAtDesc(
+        status: JobPostStatus,
+        neighborhood: String,
+        category: String,
+        pageable: Pageable,
+    ): Page<JobPost>
 }

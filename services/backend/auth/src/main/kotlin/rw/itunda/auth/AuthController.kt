@@ -73,6 +73,20 @@ class AuthController(private val authService: AuthService) {
     ): ResponseEntity<Map<String, Any>> =
         ResponseEntity.ok(mapOf("success" to true, "user" to authService.confirmEmailVerification(currentUser.userId, request.token)))
 
+    // Real hyperlocal neighborhood (2026-07-20) -- see AuthService.setNeighborhood's own
+    // doc comment.
+    @PostMapping("/profile/neighborhood")
+    fun setNeighborhood(
+        @RequestBody request: SetNeighborhoodRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "user" to authService.setNeighborhood(currentUser.userId, request.latitude, request.longitude),
+            ),
+        )
+
     @ExceptionHandler(PhoneAlreadyRegisteredException::class)
     fun handleConflict(ex: PhoneAlreadyRegisteredException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("PHONE_ALREADY_REGISTERED", ex.message ?: "Conflict"))
@@ -108,4 +122,12 @@ class AuthController(private val authService: AuthService) {
     @ExceptionHandler(InvalidVerificationTokenException::class)
     fun handleInvalidVerificationToken(ex: InvalidVerificationTokenException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_VERIFICATION_TOKEN", ex.message ?: "Invalid or expired token"))
+
+    @ExceptionHandler(InvalidCoordinatesException::class)
+    fun handleInvalidCoordinates(ex: InvalidCoordinatesException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_COORDINATES", ex.message ?: "Invalid coordinates"))
+
+    @ExceptionHandler(NeighborhoodNotResolvedException::class)
+    fun handleNeighborhoodNotResolved(ex: NeighborhoodNotResolvedException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("NEIGHBORHOOD_NOT_RESOLVED", ex.message ?: "Couldn't determine a neighborhood"))
 }

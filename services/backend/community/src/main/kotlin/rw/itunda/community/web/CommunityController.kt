@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.community.CommunityNeighborhoodNotSetException
 import rw.itunda.community.CommunityPostNotFoundException
 import rw.itunda.community.CommunityService
 import rw.itunda.community.InvalidCommunityCommentException
@@ -71,6 +72,18 @@ class CommunityController(private val communityService: CommunityService) {
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
         val page = communityService.nearby(latitude, longitude, radiusKm, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content) + pageMeta(page))
+    }
+
+    // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see CommunityService.
+    // myNeighborhood's own doc comment.
+    @GetMapping("/posts/my-neighborhood")
+    fun myNeighborhood(
+        @RequestParam(required = false) category: String?,
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = communityService.myNeighborhood(currentUser.userId, category, pageable)
         return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content) + pageMeta(page))
     }
 
@@ -151,4 +164,8 @@ class CommunityController(private val communityService: CommunityService) {
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =
         ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
+
+    @ExceptionHandler(CommunityNeighborhoodNotSetException::class)
+    fun handleNeighborhoodNotSet(ex: CommunityNeighborhoodNotSetException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("NEIGHBORHOOD_NOT_SET", ex.message ?: "Bad request"))
 }

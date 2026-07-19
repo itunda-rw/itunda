@@ -15,7 +15,10 @@ import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.JobPayType
 import rw.itunda.core.domain.JobPost
 import rw.itunda.core.domain.JobPostStatus
+import rw.itunda.core.domain.User
+import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.repository.JobPostRepository
+import rw.itunda.core.repository.UserRepository
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
 import java.math.BigDecimal
@@ -28,7 +31,9 @@ class JobPostServiceTest : BehaviorSpec({
         val jobPostRepository = mockk<JobPostRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
-        val service = JobPostService(jobPostRepository, rateLimiter, messagingService)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val service = JobPostService(jobPostRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
 
         When("posting with valid fields") {
             val savedSlot = slot<JobPost>()
@@ -113,7 +118,9 @@ class JobPostServiceTest : BehaviorSpec({
         val jobPostRepository = mockk<JobPostRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
-        val service = JobPostService(jobPostRepository, rateLimiter, messagingService)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val service = JobPostService(jobPostRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
         val post = JobPost(
             id = "job_post_1", posterId = "poster_1", category = "delivery", title = "T", description = "D",
             payType = JobPayType.FIXED, payAmount = BigDecimal("5000"),
@@ -218,7 +225,9 @@ class JobPostServiceTest : BehaviorSpec({
         val jobPostRepository = mockk<JobPostRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
-        val service = JobPostService(jobPostRepository, rateLimiter, messagingService)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val service = JobPostService(jobPostRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
 
         When("no category filter is given") {
             val page = PageImpl(listOf<JobPost>())
@@ -247,7 +256,9 @@ class JobPostServiceTest : BehaviorSpec({
         val jobPostRepository = mockk<JobPostRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val messagingService = mockk<MessagingService>()
-        val service = JobPostService(jobPostRepository, rateLimiter, messagingService)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val service = JobPostService(jobPostRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
 
         val near = JobPost(
             id = "job_near", posterId = "a", category = "cleaning", title = "T", description = "D",
@@ -274,6 +285,42 @@ class JobPostServiceTest : BehaviorSpec({
                     service.nearby(-1.9441, 30.0619, 0.0, PageRequest.of(0, 20))
                     error("expected InvalidJobCoordinatesException")
                 } catch (e: InvalidJobCoordinatesException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real caller browsing their own real neighborhood") {
+        val jobPostRepository = mockk<JobPostRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val messagingService = mockk<MessagingService>()
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val service = JobPostService(jobPostRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
+
+        When("the caller has a real neighborhood set") {
+            val caller = User(id = "user_1", phoneNumber = "+250780000001", firstName = "A", lastName = "B", passwordHash = "x", neighborhood = "Kimironko")
+            val expectedPage = PageImpl(listOf(mockk<JobPost>()))
+            every { userRepository.findById("user_1") } returns Optional.of(caller)
+            every { jobPostRepository.findByStatusAndNeighborhoodOrderByCreatedAtDesc(JobPostStatus.OPEN, "Kimironko", any()) } returns expectedPage
+
+            val page = service.myNeighborhood("user_1", null, PageRequest.of(0, 20))
+
+            Then("it real-filters to exactly that neighborhood") {
+                page shouldBe expectedPage
+            }
+        }
+
+        When("the caller hasn't set a real neighborhood yet") {
+            val caller = User(id = "user_1", phoneNumber = "+250780000001", firstName = "A", lastName = "B", passwordHash = "x")
+            every { userRepository.findById("user_1") } returns Optional.of(caller)
+
+            Then("it throws JobsNeighborhoodNotSetException rather than silently returning an empty page") {
+                try {
+                    service.myNeighborhood("user_1", null, PageRequest.of(0, 20))
+                    error("expected JobsNeighborhoodNotSetException")
+                } catch (e: JobsNeighborhoodNotSetException) {
                     // expected
                 }
             }

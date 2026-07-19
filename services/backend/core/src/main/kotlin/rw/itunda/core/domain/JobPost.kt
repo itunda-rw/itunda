@@ -70,6 +70,11 @@ class JobPost(
 
     @Column(nullable = true)
     var longitude: Double? = null,
+
+    // Real hyperlocal neighborhood (2026-07-20) -- see Listing.neighborhood's own doc
+    // comment for the full account; identical cached-at-creation shape here.
+    @Column(nullable = true, length = 120)
+    var neighborhood: String? = null,
 ) {
     protected constructor() : this(
         id = "", posterId = "", category = "", title = "", description = "",

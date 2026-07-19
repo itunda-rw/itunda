@@ -12,6 +12,7 @@ import rw.itunda.core.domain.CommunityPost
 import rw.itunda.core.domain.CommunityPostStatus
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.geo.GeoUtils
+import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.repository.CommunityCommentRepository
 import rw.itunda.core.repository.CommunityLikeRepository
 import rw.itunda.core.repository.CommunityPostRepository
@@ -26,6 +27,7 @@ class CommunityPostNotOwnedException(message: String) : RuntimeException(message
 class InvalidCommunityPostException(message: String) : RuntimeException(message)
 class InvalidCommunityCommentException(message: String) : RuntimeException(message)
 class InvalidCommunityCoordinatesException(message: String) : RuntimeException(message)
+class CommunityNeighborhoodNotSetException(message: String) : RuntimeException(message)
 
 data class CommunityCategory(val id: String, val label: String)
 
@@ -55,6 +57,7 @@ class CommunityService(
     private val userRepository: UserRepository,
     private val notificationRepository: NotificationRepository,
     private val rateLimiter: RateLimiter,
+    private val nominatimGeocodingClient: NominatimGeocodingClient,
 ) {
     companion object {
         val CATEGORIES = listOf(
@@ -108,10 +111,21 @@ class CommunityService(
         // already established for user-generated post creation.
         rateLimiter.checkLimit("community:post:$authorId", limit = 10, window = Duration.ofHours(1))
 
+        // Real hyperlocal neighborhood (2026-07-20) -- cached once here from a real
+        // reverse-geocode, same discipline MarketplaceService.createListing already
+        // established. Best-effort: null when unconfigured/unreachable/no match, never
+        // blocks the post itself from being created.
+        val neighborhood = if (latitude != null && longitude != null) {
+            nominatimGeocodingClient.reverseGeocode(latitude, longitude)
+        } else {
+            null
+        }
+
         return postRepository.save(
             CommunityPost(
                 id = "community_post_${UUID.randomUUID()}", authorId = authorId, category = category,
                 title = trimmedTitle, body = trimmedBody, latitude = latitude, longitude = longitude,
+                neighborhood = neighborhood,
             ),
         )
     }
@@ -125,6 +139,19 @@ class CommunityService(
 
     fun getMyPosts(authorId: String, pageable: Pageable): Page<CommunityPost> =
         postRepository.findByAuthorIdOrderByCreatedAtDesc(authorId, pageable)
+
+    // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see MarketplaceService.
+    // myNeighborhood's own doc comment for the full account; identical shape here.
+    fun myNeighborhood(callerUserId: String, category: String?, pageable: Pageable): Page<CommunityPost> {
+        val caller = userRepository.findById(callerUserId).orElseThrow { CommunityPostNotFoundException("User not found") }
+        val neighborhood = caller.neighborhood
+            ?: throw CommunityNeighborhoodNotSetException("Set your neighborhood first via POST /api/v1/auth/profile/neighborhood")
+        return if (category.isNullOrBlank()) {
+            postRepository.findByStatusAndNeighborhoodOrderByCreatedAtDesc(CommunityPostStatus.ACTIVE, neighborhood, pageable)
+        } else {
+            postRepository.findByStatusAndNeighborhoodAndCategoryOrderByCreatedAtDesc(CommunityPostStatus.ACTIVE, neighborhood, category, pageable)
+        }
+    }
 
     // Real opt-in "near me" browse -- same bounded-candidate-then-Haversine shape
     // MarketplaceService.nearby's own v1 (before its later OSRM upgrade) already used.

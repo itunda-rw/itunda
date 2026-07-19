@@ -11,7 +11,9 @@ import rw.itunda.core.domain.JobPayType
 import rw.itunda.core.domain.JobPost
 import rw.itunda.core.domain.JobPostStatus
 import rw.itunda.core.geo.GeoUtils
+import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.repository.JobPostRepository
+import rw.itunda.core.repository.UserRepository
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
 import java.math.BigDecimal
@@ -22,6 +24,7 @@ class InvalidJobPostException(message: String) : RuntimeException(message)
 class JobPostNotOpenException(message: String) : RuntimeException(message)
 class OwnJobPostException(message: String) : RuntimeException(message)
 class InvalidJobCoordinatesException(message: String) : RuntimeException(message)
+class JobsNeighborhoodNotSetException(message: String) : RuntimeException(message)
 
 data class JobCategory(val id: String, val label: String)
 
@@ -45,6 +48,8 @@ class JobPostService(
     private val jobPostRepository: JobPostRepository,
     private val rateLimiter: RateLimiter,
     private val messagingService: MessagingService,
+    private val nominatimGeocodingClient: NominatimGeocodingClient,
+    private val userRepository: UserRepository,
 ) {
     companion object {
         val CATEGORIES = listOf(
@@ -101,11 +106,19 @@ class JobPostService(
         // CommunityService.createPost already established.
         rateLimiter.checkLimit("jobs:post:$posterId", limit = 10, window = Duration.ofHours(1))
 
+        // Real hyperlocal neighborhood (2026-07-20) -- see MarketplaceService.
+        // createListing's own doc comment for the full account; identical here.
+        val neighborhood = if (latitude != null && longitude != null) {
+            nominatimGeocodingClient.reverseGeocode(latitude, longitude)
+        } else {
+            null
+        }
+
         return jobPostRepository.save(
             JobPost(
                 id = "job_post_${java.util.UUID.randomUUID()}", posterId = posterId, category = category,
                 title = trimmedTitle, description = trimmedDescription, payType = payType, payAmount = payAmount,
-                latitude = latitude, longitude = longitude,
+                latitude = latitude, longitude = longitude, neighborhood = neighborhood,
             ),
         )
     }
@@ -119,6 +132,19 @@ class JobPostService(
 
     fun getMyPosts(posterId: String, pageable: Pageable): Page<JobPost> =
         jobPostRepository.findByPosterIdOrderByCreatedAtDesc(posterId, pageable)
+
+    // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see MarketplaceService.
+    // myNeighborhood's own doc comment for the full account; identical shape here.
+    fun myNeighborhood(callerUserId: String, category: String?, pageable: Pageable): Page<JobPost> {
+        val caller = userRepository.findById(callerUserId).orElseThrow { JobPostNotFoundException("User not found") }
+        val neighborhood = caller.neighborhood
+            ?: throw JobsNeighborhoodNotSetException("Set your neighborhood first via POST /api/v1/auth/profile/neighborhood")
+        return if (category.isNullOrBlank()) {
+            jobPostRepository.findByStatusAndNeighborhoodOrderByCreatedAtDesc(JobPostStatus.OPEN, neighborhood, pageable)
+        } else {
+            jobPostRepository.findByStatusAndNeighborhoodAndCategoryOrderByCreatedAtDesc(JobPostStatus.OPEN, neighborhood, category, pageable)
+        }
+    }
 
     // Real opt-in "near me" browse -- same shape MarketplaceService.nearby's own v1 (and
     // CommunityService.nearby) already established.

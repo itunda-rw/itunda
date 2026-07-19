@@ -19,4 +19,14 @@ interface ListingRepository : JpaRepository<Listing, String> {
     // application code via GeoUtils.haversineKm over this bounded candidate set -- fine
     // at current listing volumes, a named follow-up once volume grows.
     fun findByStatusAndLatitudeIsNotNullAndLongitudeIsNotNull(status: ListingStatus): List<Listing>
+
+    // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see MarketplaceService.
+    // myNeighborhood and User.neighborhood's own doc comments.
+    fun findByStatusAndNeighborhoodOrderByCreatedAtDesc(status: ListingStatus, neighborhood: String, pageable: Pageable): Page<Listing>
+    fun findByStatusAndNeighborhoodAndCategoryOrderByCreatedAtDesc(
+        status: ListingStatus,
+        neighborhood: String,
+        category: String,
+        pageable: Pageable,
+    ): Page<Listing>
 }

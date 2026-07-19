@@ -31,6 +31,7 @@ import rw.itunda.realestate.PropertyOfferAlreadyResolvedException
 import rw.itunda.realestate.PropertyOfferNotFoundException
 import rw.itunda.realestate.PropertyOfferResponseAction
 import rw.itunda.realestate.PropertyPriceOfferService
+import rw.itunda.realestate.RealEstateNeighborhoodNotSetException
 import java.math.BigDecimal
 
 data class CreatePropertyListingRequest(
@@ -93,6 +94,17 @@ class PropertyListingController(
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
         val page = propertyListingService.nearby(latitude, longitude, radiusKm, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content) + pageMeta(page))
+    }
+
+    // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see
+    // PropertyListingService.myNeighborhood's own doc comment.
+    @GetMapping("/listings/my-neighborhood")
+    fun myNeighborhood(
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = propertyListingService.myNeighborhood(currentUser.userId, pageable)
         return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content) + pageMeta(page))
     }
 
@@ -199,4 +211,8 @@ class PropertyListingController(
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =
         ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
+
+    @ExceptionHandler(RealEstateNeighborhoodNotSetException::class)
+    fun handleNeighborhoodNotSet(ex: RealEstateNeighborhoodNotSetException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("NEIGHBORHOOD_NOT_SET", ex.message ?: "Bad request"))
 }

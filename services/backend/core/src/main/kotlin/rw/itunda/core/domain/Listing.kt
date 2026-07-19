@@ -62,6 +62,15 @@ class Listing(
 
     @Column(nullable = true)
     var longitude: Double? = null,
+
+    // Real hyperlocal neighborhood (2026-07-20) -- cached once at creation time from a
+    // real reverse-geocode of latitude/longitude (see MarketplaceService.createListing
+    // and NominatimGeocodingClient.reverseGeocode), same "cache, don't recompute at read
+    // time" discipline CommunityPost.likeCount/commentCount already established. Null
+    // when no coordinates were given or geocoding is unconfigured/unreachable -- an
+    // honest fallback, never a fabricated neighborhood.
+    @Column(nullable = true, length = 120)
+    var neighborhood: String? = null,
 ) {
     protected constructor() : this(
         id = "", sellerId = "", title = "", description = "", price = BigDecimal.ZERO, category = "",

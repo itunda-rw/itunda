@@ -13,6 +13,7 @@ import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.repository.EmailVerificationTokenRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
@@ -47,9 +48,10 @@ class AuthServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>()
         val emailVerificationTokenRepository = mockk<EmailVerificationTokenRepository>()
         val notificationRepository = mockk<NotificationRepository>()
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val service = AuthService(
             userRepository, walletRepository, jwtService, tokenBlocklistService, rateLimiter,
-            emailVerificationTokenRepository, notificationRepository,
+            emailVerificationTokenRepository, notificationRepository, nominatimGeocodingClient,
         )
 
         When("registering a brand-new phone number") {
@@ -375,6 +377,46 @@ class AuthServiceTest : BehaviorSpec({
                 verify(exactly = 1) { tokenBlocklistService.blacklist(decoded.jti, decoded.expiresAt) }
                 jwtService.verify(response.accessToken)!!.userId shouldBe "user_5"
                 response.refreshToken shouldNotBe refreshToken
+            }
+        }
+
+        When("setting a real neighborhood from a real coordinate that reverse-geocodes successfully") {
+            val user = User(id = "user_6", phoneNumber = "+250788000008", firstName = "A", lastName = "B", passwordHash = "x")
+            every { userRepository.findById("user_6") } returns Optional.of(user)
+            every { nominatimGeocodingClient.reverseGeocode(-1.9536, 30.0605) } returns "Nyarugenge"
+            every { userRepository.save(any()) } answers { firstArg() }
+
+            val result = service.setNeighborhood("user_6", -1.9536, 30.0605)
+
+            Then("the real neighborhood is persisted and returned") {
+                result.neighborhood shouldBe "Nyarugenge"
+            }
+        }
+
+        When("setting a neighborhood but reverse geocoding can't resolve one") {
+            every { userRepository.findById("user_6") } returns Optional.of(
+                User(id = "user_6", phoneNumber = "+250788000008", firstName = "A", lastName = "B", passwordHash = "x"),
+            )
+            every { nominatimGeocodingClient.reverseGeocode(0.0, 0.0) } returns null
+
+            Then("it throws NeighborhoodNotResolvedException -- an honest failure, not a silent no-op") {
+                try {
+                    service.setNeighborhood("user_6", 0.0, 0.0)
+                    error("expected NeighborhoodNotResolvedException")
+                } catch (e: NeighborhoodNotResolvedException) {
+                    // expected
+                }
+            }
+        }
+
+        When("setting a neighborhood with an invalid coordinate") {
+            Then("it throws InvalidCoordinatesException") {
+                try {
+                    service.setNeighborhood("user_6", 200.0, 30.0)
+                    error("expected InvalidCoordinatesException")
+                } catch (e: InvalidCoordinatesException) {
+                    // expected
+                }
             }
         }
     }

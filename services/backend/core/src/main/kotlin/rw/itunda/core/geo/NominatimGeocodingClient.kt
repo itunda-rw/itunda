@@ -135,4 +135,41 @@ class NominatimGeocodingClient(
             emptyList()
         }
     }
+
+    /**
+     * Real reverse geocoding: a coordinate in, the real neighborhood-level place name out
+     * (or null if unconfigured/unreachable/no match) -- closes the "no real hyperlocal
+     * auto-filtering by a user's actual neighborhood" gap Marketplace/Community/Jobs/Real
+     * Estate's own doc comments all name, without inventing a fake stand-in: this reuses
+     * the exact same live Rwanda-only Nominatim deployment `search`/`geocode` already do.
+     * Prefers `address.suburb` (confirmed live to return real Kigali sector-level names
+     * like "Nyarugenge" against this deployment), falling back through `neighbourhood`/
+     * `quarter`/`city_district` for areas OSM tagged differently -- never a fabricated
+     * neighborhood name.
+     */
+    fun reverseGeocode(latitude: Double, longitude: Double): String? {
+        val client = restClient ?: return null
+        return try {
+            @Suppress("UNCHECKED_CAST")
+            val response = client.get()
+                .uri { builder ->
+                    builder.path("/reverse")
+                        .queryParam("lat", latitude.toString())
+                        .queryParam("lon", longitude.toString())
+                        .queryParam("format", "json")
+                        .build()
+                }
+                .retrieve()
+                .body(Map::class.java) as Map<String, Any?>?
+            @Suppress("UNCHECKED_CAST")
+            val address = response?.get("address") as? Map<String, Any?>
+            (address?.get("suburb") as? String)
+                ?: (address?.get("neighbourhood") as? String)
+                ?: (address?.get("quarter") as? String)
+                ?: (address?.get("city_district") as? String)
+        } catch (e: RestClientException) {
+            logger.warn("Nominatim reverse-geocode request failed: {}", e.message)
+            null
+        }
+    }
 }
