@@ -1,5 +1,50 @@
 import SwiftUI
+import CoreLocation
 import CoreDesignSystem
+
+/// Real device-location fetch, shared by NewListingForm's "share my location" toggle and
+/// ListingCard's "directions to this seller" -- same runtime-permission-gated
+/// CLLocationManager technique MapScreenView.swift's own LocationFetcher already
+/// established.
+private final class HoodLocationFetcher: NSObject, ObservableObject, CLLocationManagerDelegate {
+    @Published var coordinate: CLLocationCoordinate2D?
+    @Published var errorMessage: String?
+    private let manager = CLLocationManager()
+    var onLocation: ((CLLocationCoordinate2D) -> Void)?
+
+    override init() {
+        super.init()
+        manager.delegate = self
+    }
+
+    func requestLocation() {
+        errorMessage = nil
+        let status = manager.authorizationStatus
+        if status == .notDetermined {
+            manager.requestWhenInUseAuthorization()
+        } else if status == .denied || status == .restricted {
+            errorMessage = "Location permission was denied."
+        } else {
+            manager.requestLocation()
+        }
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {
+            manager.requestLocation()
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let coordinate = locations.last?.coordinate else { return }
+        self.coordinate = coordinate
+        onLocation?(coordinate)
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        errorMessage = "Could not access your real location right now."
+    }
+}
 
 /// Real 당근마켓 (Danggeun/Karrot Market)-style neighborhood marketplace (2026-07-18) --
 /// iOS mirror of Android's HoodTab (SuperAppTabs.kt). See NetworkClient.swift's
@@ -128,6 +173,13 @@ private struct NewListingForm: View {
     @State private var error: String?
     @State private var submitting = false
 
+    // Real optional seller location (2026-07-19) -- powers real proximity search and
+    // "Directions to this seller"; a listing without it simply doesn't appear in either,
+    // an honest opt-in, never assumed.
+    @State private var shareLocation = false
+    @State private var myLocation: CLLocationCoordinate2D?
+    @StateObject private var locationFetcher = HoodLocationFetcher()
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("List an item").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
@@ -136,6 +188,21 @@ private struct NewListingForm: View {
             HStack {
                 TextField("Price (RWF)", text: $price).keyboardType(.numberPad).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
                 TextField("Category", text: $category).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
+            }
+            Button(action: {
+                if shareLocation { shareLocation = false } else { locationFetcher.requestLocation() }
+            }) {
+                Text(
+                    shareLocation
+                        ? "📍 Real location shared -- buyers can see distance & get directions"
+                        : "📍 Share my real location (optional)"
+                )
+                .font(.caption)
+                .foregroundColor(shareLocation ? IDS.Colors.brand : IDS.Colors.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 14).padding(.vertical, 12)
+                .background(IDS.Colors.chipBackground)
+                .cornerRadius(12)
             }
             if let error {
                 Text(error).font(.caption).foregroundColor(.red)
@@ -156,6 +223,15 @@ private struct NewListingForm: View {
         .padding(20)
         .background(IDS.Colors.card)
         .cornerRadius(IDS.Layout.cardCornerRadius)
+        .onAppear {
+            locationFetcher.onLocation = { coordinate in
+                myLocation = coordinate
+                shareLocation = true
+            }
+        }
+        .onChange(of: locationFetcher.errorMessage) { newValue in
+            if let newValue { error = newValue }
+        }
     }
 
     private func submit() async {
@@ -167,7 +243,11 @@ private struct NewListingForm: View {
         error = nil
         defer { submitting = false }
         do {
-            _ = try await NetworkClient.shared.createListing(title: title, description: description, price: priceValue, category: category)
+            let loc = shareLocation ? myLocation : nil
+            _ = try await NetworkClient.shared.createListing(
+                title: title, description: description, price: priceValue, category: category,
+                latitude: loc?.latitude, longitude: loc?.longitude,
+            )
             onCreated()
         } catch let NetworkError.httpError(statusCode) {
             error = TalkScreen.errorMessage(statusCode)
@@ -188,6 +268,13 @@ private struct ListingCard: View {
     @State private var error: String?
     @State private var offering = false
     @State private var offerAmount = ""
+
+    // Real "directions to this seller" (2026-07-19, item 8 on the Maps "100%" roadmap) --
+    // reuses itunda's own self-hosted OSRM directions, same RouteMiniMap component Eats
+    // orders use.
+    @State private var myLocation: CLLocationCoordinate2D?
+    @State private var showRoute = false
+    @StateObject private var locationFetcher = HoodLocationFetcher()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -248,10 +335,32 @@ private struct ListingCard: View {
                     actionButton("Make an offer", filled: true) { offering = true }
                 }
             }
+            if !isMine, listing.status == "ACTIVE", let toLat = listing.latitude, let toLng = listing.longitude {
+                Button(action: {
+                    if showRoute { showRoute = false } else if myLocation != nil { showRoute = true } else { locationFetcher.requestLocation() }
+                }) {
+                    Text(showRoute ? "Hide directions" : "🚗 Directions to this seller")
+                        .font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                        .padding(.horizontal, 16).padding(.vertical, 10)
+                        .background(IDS.Colors.chipBackground).cornerRadius(12)
+                }
+                if showRoute, let myLocation {
+                    RouteMiniMap(fromLat: myLocation.latitude, fromLng: myLocation.longitude, toLat: toLat, toLng: toLng, fromLabel: "You", toLabel: listing.title)
+                }
+            }
         }
         .padding(18)
         .background(IDS.Colors.card)
         .cornerRadius(IDS.Layout.cardCornerRadius)
+        .onAppear {
+            locationFetcher.onLocation = { coordinate in
+                myLocation = coordinate
+                showRoute = true
+            }
+        }
+        .onChange(of: locationFetcher.errorMessage) { newValue in
+            if let newValue { error = newValue }
+        }
     }
 
     private func actionButton(_ label: String, filled: Bool, action: @escaping () async -> Void) -> some View {

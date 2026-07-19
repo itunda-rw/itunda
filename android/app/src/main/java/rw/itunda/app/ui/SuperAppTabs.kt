@@ -1,6 +1,10 @@
 package rw.itunda.app.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -53,9 +57,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -1174,6 +1182,39 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit) {
     }
 }
 
+// Real device-location fetch, shared by NewListingForm's "share my location" toggle and
+// ListingCard's "directions to this seller" -- same runtime-permission-gated
+// FusedLocationProviderClient technique MapScreen.kt already established.
+@Composable
+private fun rememberRealLocationRequester(
+    onLocating: (Boolean) -> Unit,
+    onSuccess: (Double, Double) -> Unit,
+    onError: (String) -> Unit,
+): () -> Unit {
+    val context = LocalContext.current
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+    fun fetch() {
+        onLocating(true)
+        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
+            .addOnSuccessListener { location ->
+                onLocating(false)
+                if (location != null) onSuccess(location.latitude, location.longitude)
+                else onError("Could not access your real location right now.")
+            }
+            .addOnFailureListener {
+                onLocating(false)
+                onError("Could not access your real location right now.")
+            }
+    }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) fetch() else onError("Location permission was denied.")
+    }
+    return {
+        val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (hasPermission) fetch() else launcher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+    }
+}
+
 @Composable
 private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
     var title by remember { mutableStateOf("") }
@@ -1184,6 +1225,18 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
     var submitting by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
+    // Real optional seller location (2026-07-19) -- powers real proximity search and
+    // "Directions to this seller"; a listing without it simply doesn't appear in either,
+    // an honest opt-in, never assumed.
+    var shareLocation by remember { mutableStateOf(false) }
+    var myLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var locating by remember { mutableStateOf(false) }
+    val requestLocation = rememberRealLocationRequester(
+        onLocating = { locating = it },
+        onSuccess = { lat, lng -> myLocation = lat to lng; shareLocation = true },
+        onError = { error = it },
+    )
+
     Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("List an item", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
@@ -1192,6 +1245,22 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(value = price, onValueChange = { price = it }, placeholder = { Text("Price (RWF)") }, singleLine = true, modifier = Modifier.weight(1f))
                 OutlinedTextField(value = category, onValueChange = { category = it }, placeholder = { Text("Category") }, singleLine = true, modifier = Modifier.weight(1f))
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(TossCardSoft)
+                    .clickable(enabled = !locating) { if (shareLocation) shareLocation = false else requestLocation() }
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+            ) {
+                Text(
+                    if (locating) "Finding your real location…"
+                    else if (shareLocation) "📍 Real location shared -- buyers can see distance & get directions"
+                    else "📍 Share my real location (optional)",
+                    fontSize = 13.sp,
+                    color = if (shareLocation) TossBlue else TossSecondary,
+                )
             }
             error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1211,7 +1280,10 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
                             error = null
                             coroutineScope.launch {
                                 try {
-                                    val res = NetworkClient.apiService.createListing(CreateListingRequest(title, description, priceValue, category))
+                                    val loc = if (shareLocation) myLocation else null
+                                    val res = NetworkClient.apiService.createListing(
+                                        CreateListingRequest(title, description, priceValue, category, loc?.first, loc?.second),
+                                    )
                                     if (res.success) onCreated()
                                 } catch (e: HttpException) {
                                     error = superAppErrorMessage(e)
@@ -1239,6 +1311,18 @@ private fun ListingCard(
     var offering by remember { mutableStateOf(false) }
     var offerAmount by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
+
+    // Real "directions to this seller" (2026-07-19, item 8 on the Maps "100%" roadmap) --
+    // reuses itunda's own self-hosted OSRM directions, same RouteMiniMap component Eats
+    // orders use below.
+    var myLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var showRoute by remember { mutableStateOf(false) }
+    var locating by remember { mutableStateOf(false) }
+    val requestLocation = rememberRealLocationRequester(
+        onLocating = { locating = it },
+        onSuccess = { lat, lng -> myLocation = lat to lng; showRoute = true },
+        onError = { error = it },
+    )
 
     Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -1316,6 +1400,22 @@ private fun ListingCard(
                     }
                     ListingActionButton("Make an offer", busy, filled = true) { offering = true }
                 }
+            }
+            if (!isMine && listing.status == "ACTIVE" && listing.latitude != null && listing.longitude != null) {
+                ListingActionButton(
+                    if (locating) "Finding your real location…" else if (showRoute) "Hide directions" else "🚗 Directions to this seller",
+                    locating,
+                ) {
+                    if (showRoute) showRoute = false else if (myLocation != null) showRoute = true else requestLocation()
+                }
+            }
+            val loc = myLocation
+            if (showRoute && loc != null && listing.latitude != null && listing.longitude != null) {
+                RouteMiniMap(
+                    fromLat = loc.first, fromLng = loc.second,
+                    toLat = listing.latitude, toLng = listing.longitude,
+                    fromLabel = "You", toLabel = listing.title,
+                )
             }
         }
     }
@@ -2032,7 +2132,7 @@ private fun OrderFoodContent() {
         }
         if (view == OrderFoodView.ORDERS) {
             item {
-                MyEatsOrdersView(onReorder = ::handleReorder, reorderingId = reorderingId)
+                MyEatsOrdersView(onReorder = ::handleReorder, reorderingId = reorderingId, restaurants = allRestaurants)
                 val reorderErr = reorderError
                 if (reorderErr != null) {
                     Spacer(Modifier.height(8.dp))
@@ -2587,7 +2687,10 @@ private fun EatsOrderConfirmationView(order: EatsOrderDto, onDone: () -> Unit) {
 }
 
 @Composable
-private fun EatsOrderRow(order: EatsOrderDto, action: (@Composable () -> Unit)? = null) {
+private fun EatsOrderRow(order: EatsOrderDto, restaurant: ShoppingMerchantDto? = null, action: (@Composable () -> Unit)? = null) {
+    var showRoute by remember { mutableStateOf(false) }
+    val canShowRoute = restaurant?.latitude != null && restaurant.longitude != null &&
+        order.deliveryLatitude != null && order.deliveryLongitude != null
     Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
@@ -2609,13 +2712,27 @@ private fun EatsOrderRow(order: EatsOrderDto, action: (@Composable () -> Unit)? 
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                 )
             }
+            // Real "view delivery route" (2026-07-19, item 8 on the Maps "100%" roadmap)
+            // -- reuses itunda's own self-hosted OSRM directions via RouteMiniMap.
+            if (canShowRoute) {
+                ListingActionButton(if (showRoute) "Hide route" else "🚗 View real delivery route", false) { showRoute = !showRoute }
+            }
+            if (showRoute && restaurant?.latitude != null && restaurant.longitude != null &&
+                order.deliveryLatitude != null && order.deliveryLongitude != null
+            ) {
+                RouteMiniMap(
+                    fromLat = restaurant.latitude, fromLng = restaurant.longitude,
+                    toLat = order.deliveryLatitude, toLng = order.deliveryLongitude,
+                    fromLabel = restaurant.businessName, toLabel = "Delivery address",
+                )
+            }
             action?.invoke()
         }
     }
 }
 
 @Composable
-private fun MyEatsOrdersView(onReorder: (EatsOrderDto) -> Unit, reorderingId: String?) {
+private fun MyEatsOrdersView(onReorder: (EatsOrderDto) -> Unit, reorderingId: String?, restaurants: List<ShoppingMerchantDto>?) {
     var orders by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var cancellingId by remember { mutableStateOf<String?>(null) }
@@ -2669,7 +2786,7 @@ private fun MyEatsOrdersView(onReorder: (EatsOrderDto) -> Unit, reorderingId: St
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 orders!!.forEach { o ->
-                    EatsOrderRow(o) {
+                    EatsOrderRow(o, restaurant = restaurants?.find { it.merchantId == o.restaurantId }) {
                         if (o.status == "PLACED") {
                             Box(
                                 modifier = Modifier

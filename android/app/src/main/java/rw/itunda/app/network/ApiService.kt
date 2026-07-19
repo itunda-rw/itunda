@@ -322,9 +322,20 @@ data class ListingDto(
     val category: String,
     val status: String,
     val createdAt: String,
+    // Real optional seller-set location (2026-07-18 backend) -- backs real proximity
+    // search and, 2026-07-19, "Directions to this seller".
+    val latitude: Double? = null,
+    val longitude: Double? = null,
 )
 
-data class CreateListingRequest(val title: String, val description: String, val price: Double, val category: String)
+data class CreateListingRequest(
+    val title: String,
+    val description: String,
+    val price: Double,
+    val category: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+)
 data class ListingResponse(val success: Boolean, val listing: ListingDto)
 data class ListingsResponse(val success: Boolean, val listings: List<ListingDto>)
 

@@ -571,6 +571,10 @@ struct ListingDto: Decodable, Identifiable {
     let category: String
     let status: String
     let createdAt: String
+    // Real optional seller-set location (2026-07-18 backend) -- backs real proximity
+    // search and, 2026-07-19, "Directions to this seller".
+    let latitude: Double?
+    let longitude: Double?
 }
 
 struct CreateListingRequest: Encodable {
@@ -578,6 +582,8 @@ struct CreateListingRequest: Encodable {
     let description: String
     let price: Double
     let category: String
+    let latitude: Double?
+    let longitude: Double?
 }
 
 struct ListingResponse: Decodable { let success: Bool; let listing: ListingDto }
@@ -905,8 +911,8 @@ extension NetworkClient {
         }
     }
 
-    func createListing(title: String, description: String, price: Double, category: String) async throws -> ListingResponse {
-        try await authenticatedPost("api/v1/marketplace/listings", body: CreateListingRequest(title: title, description: description, price: price, category: category))
+    func createListing(title: String, description: String, price: Double, category: String, latitude: Double? = nil, longitude: Double? = nil) async throws -> ListingResponse {
+        try await authenticatedPost("api/v1/marketplace/listings", body: CreateListingRequest(title: title, description: description, price: price, category: category, latitude: latitude, longitude: longitude))
     }
 
     func browseListings(category: String? = nil) async throws -> ListingsResponse {

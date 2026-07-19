@@ -173,7 +173,7 @@ private struct OrderFoodContent: View {
                 .pickerStyle(.segmented)
 
                 if view == .orders {
-                    MyEatsOrdersView(onReorder: { order in Task { await handleReorder(order) } }, reorderingId: reorderingId)
+                    MyEatsOrdersView(onReorder: { order in Task { await handleReorder(order) } }, reorderingId: reorderingId, restaurants: allRestaurants)
                     if let reorderError {
                         Text(reorderError).foregroundColor(.red).font(.caption)
                     }
@@ -740,7 +740,15 @@ private struct EatsOrderConfirmationView: View {
 
 private struct EatsOrderRow<Action: View>: View {
     let order: EatsOrderDto
+    var restaurant: ShoppingMerchantDto? = nil
     @ViewBuilder let action: () -> Action
+
+    @State private var showRoute = false
+
+    private var canShowRoute: Bool {
+        restaurant?.latitude != nil && restaurant?.longitude != nil &&
+            order.deliveryLatitude != nil && order.deliveryLongitude != nil
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -761,6 +769,20 @@ private struct EatsOrderRow<Action: View>: View {
                     .background(IDS.Colors.chipBackground)
                     .cornerRadius(8)
             }
+            // Real "view delivery route" (2026-07-19, item 8 on the Maps "100%" roadmap)
+            // -- reuses itunda's own self-hosted OSRM directions via RouteMiniMap.
+            if canShowRoute {
+                Button(action: { showRoute.toggle() }) {
+                    Text(showRoute ? "Hide route" : "🚗 View real delivery route")
+                        .font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                        .padding(.horizontal, 16).padding(.vertical, 10)
+                        .background(IDS.Colors.chipBackground).cornerRadius(12)
+                }
+            }
+            if showRoute, let restaurant, let fromLat = restaurant.latitude, let fromLng = restaurant.longitude,
+               let toLat = order.deliveryLatitude, let toLng = order.deliveryLongitude {
+                RouteMiniMap(fromLat: fromLat, fromLng: fromLng, toLat: toLat, toLng: toLng, fromLabel: restaurant.businessName, toLabel: "Delivery address")
+            }
             action()
         }
         .padding(18)
@@ -770,8 +792,9 @@ private struct EatsOrderRow<Action: View>: View {
 }
 
 extension EatsOrderRow where Action == EmptyView {
-    init(order: EatsOrderDto) {
+    init(order: EatsOrderDto, restaurant: ShoppingMerchantDto? = nil) {
         self.order = order
+        self.restaurant = restaurant
         self.action = { EmptyView() }
     }
 }
@@ -779,6 +802,7 @@ extension EatsOrderRow where Action == EmptyView {
 private struct MyEatsOrdersView: View {
     let onReorder: (EatsOrderDto) -> Void
     let reorderingId: String?
+    let restaurants: [ShoppingMerchantDto]?
 
     @State private var orders: [EatsOrderDto]?
     @State private var error: String?
@@ -802,7 +826,7 @@ private struct MyEatsOrdersView: View {
             } else {
                 VStack(spacing: 10) {
                     ForEach(orders!) { order in
-                        EatsOrderRow(order: order) {
+                        EatsOrderRow(order: order, restaurant: restaurants?.first(where: { $0.merchantId == order.restaurantId })) {
                             if order.status == "PLACED" {
                                 Button(action: { Task { await cancel(order.id) } }) {
                                     Text(cancellingId == order.id ? "Cancelling…" : "Cancel order")
