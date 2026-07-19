@@ -70,7 +70,8 @@ struct HoodScreen: View {
                             listing: listing,
                             isMine: view == .mine || listing.sellerId == currentUserId,
                             onChanged: { Task { await load() } },
-                            onMessageSeller: { id in Task { await messageSeller(id) } }
+                            onMessageSeller: { id in Task { await messageSeller(id) } },
+                            onMakeOffer: { id, amount in Task { await makeOffer(id, amount) } }
                         )
                     }
                 }
@@ -102,6 +103,16 @@ struct HoodScreen: View {
             onSwitchToTalk()
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func makeOffer(_ listingId: String, _ amount: Double) async {
+        do {
+            let res = try await NetworkClient.shared.makeOffer(listingId: listingId, amount: amount)
+            pendingConversationId = res.offer.conversationId
+            onSwitchToTalk()
+        } catch {
+            self.error = "Couldn't send this offer. Check your connection and try again."
         }
     }
 }
@@ -171,9 +182,12 @@ private struct ListingCard: View {
     let isMine: Bool
     let onChanged: () -> Void
     let onMessageSeller: (String) -> Void
+    let onMakeOffer: (String, Double) -> Void
 
     @State private var busy = false
     @State private var error: String?
+    @State private var offering = false
+    @State private var offerAmount = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -199,6 +213,26 @@ private struct ListingCard: View {
             if let error {
                 Text(error).font(.caption).foregroundColor(.red)
             }
+            if offering {
+                HStack(spacing: 10) {
+                    TextField("Your offer (RWF)", text: $offerAmount)
+                        .keyboardType(.numberPad)
+                        .padding(10)
+                        .background(IDS.Colors.chipBackground)
+                        .cornerRadius(10)
+                    Button(action: {
+                        guard let amount = Double(offerAmount) else { return }
+                        offering = false
+                        offerAmount = ""
+                        onMakeOffer(listing.id, amount)
+                    }) {
+                        Text("Send").font(.subheadline).bold().foregroundColor(.white)
+                            .padding(.horizontal, 16).padding(.vertical, 10)
+                            .background(IDS.Colors.brand).cornerRadius(12)
+                    }
+                    .disabled(Double(offerAmount) == nil)
+                }
+            }
             HStack(spacing: 10) {
                 if isMine {
                     if listing.status == "ACTIVE" {
@@ -207,10 +241,11 @@ private struct ListingCard: View {
                     if listing.status != "REMOVED" {
                         actionButton("Remove", filled: false) { await remove() }
                     }
-                } else if listing.status == "ACTIVE" {
-                    actionButton(busy ? "Starting…" : "Message seller", filled: true) {
+                } else if listing.status == "ACTIVE" && !offering {
+                    actionButton(busy ? "Starting…" : "Message seller", filled: false) {
                         onMessageSeller(listing.id)
                     }
+                    actionButton("Make an offer", filled: true) { offering = true }
                 }
             }
         }

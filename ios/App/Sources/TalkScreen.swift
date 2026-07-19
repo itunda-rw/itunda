@@ -685,6 +685,7 @@ private struct ChatThreadScreen: View {
     let onBack: () -> Void
 
     @State private var messages: [MessageDto]?
+    @State private var offersByMessageId: [String: PriceOfferDto] = [:]
     @State private var draft = ""
     @State private var sending = false
     @State private var error: String?
@@ -726,7 +727,9 @@ private struct ChatThreadScreen: View {
                             ForEach(messages) { message in
                                 MessageBubble(
                                     message: message, isMine: message.senderId == currentUserId, currentUserId: currentUserId,
+                                    offer: offersByMessageId[message.id],
                                     onToggleReaction: { emoji in Task { await toggleReaction(message.id, emoji) } },
+                                    onRespondToOffer: { offerId, action, counterAmount in Task { await respondToOffer(offerId, action, counterAmount) } },
                                 )
                                 .id(message.id)
                             }
@@ -815,6 +818,9 @@ private struct ChatThreadScreen: View {
                         if !(messages ?? []).contains(where: { $0.id == pushedMessage.id }) {
                             messages = (messages ?? []) + [pushedMessage]
                         }
+                        // A pushed message might be a real offer/counter/accept/reject --
+                        // refresh so it renders as an offer bubble immediately.
+                        await loadOffers()
                     }
                 case .presenceChange(let userId, let online) where userId == conversation.otherUserId:
                     Task { @MainActor in otherOnline = online }
@@ -850,6 +856,26 @@ private struct ChatThreadScreen: View {
             // Keep showing the last-known messages rather than blanking the thread on
             // a transient poll failure.
         }
+        await loadOffers()
+    }
+
+    private func loadOffers() async {
+        do {
+            let res = try await NetworkClient.shared.getOffersForConversation(conversationId: conversation.conversationId)
+            offersByMessageId = Dictionary(uniqueKeysWithValues: res.offers.map { ($0.messageId, $0) })
+        } catch {
+            // Real, non-critical -- a failed offer-history fetch just means offer
+            // messages render as plain text this pass; never blocks the thread.
+        }
+    }
+
+    private func respondToOffer(_ offerId: String, _ action: String, _ counterAmount: Double?) async {
+        do {
+            _ = try await NetworkClient.shared.respondToOffer(offerId: offerId, action: action, counterAmount: counterAmount)
+            await refresh()
+        } catch {
+            self.error = "Couldn't respond to this offer. Check your connection and try again."
+        }
     }
 
     private func toggleReaction(_ messageId: String, _ emoji: String) async {
@@ -879,23 +905,99 @@ private struct ChatThreadScreen: View {
     }
 }
 
+// Real 당근-style offer bubble (2026-07-19) -- see PriceOfferService's own doc comment.
+// Renders inline wherever a message carries a real offer, replacing the plain-text
+// bubble with amount + status + real Accept/Decline/Counter actions (only shown to
+// whichever participant did NOT propose the current pending amount).
+private struct OfferBubble: View {
+    let offer: PriceOfferDto
+    let isMine: Bool
+    let currentUserId: String?
+    let onRespond: (String, String, Double?) -> Void
+
+    @State private var countering = false
+    @State private var counterAmount = ""
+
+    private var canRespond: Bool { offer.status == "PENDING" && currentUserId != nil && currentUserId != offer.proposedByUserId }
+    private var statusLabel: String {
+        switch offer.status {
+        case "PENDING": return "Pending"
+        case "ACCEPTED": return "Accepted"
+        case "REJECTED": return "Declined"
+        case "COUNTERED": return "Countered"
+        default: return offer.status
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("💰 \(Int(offer.amount)) RWF").font(.subheadline).bold().foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
+            Text(statusLabel).font(.caption).foregroundColor(isMine ? .white.opacity(0.85) : IDS.Colors.textSecondary)
+            if canRespond && !countering {
+                HStack(spacing: 6) {
+                    offerActionButton("Accept") { onRespond(offer.id, "ACCEPT", nil) }
+                    offerActionButton("Decline") { onRespond(offer.id, "REJECT", nil) }
+                    offerActionButton("Counter") { countering = true }
+                }
+            }
+            if canRespond && countering {
+                HStack(spacing: 6) {
+                    TextField("Counter (RWF)", text: $counterAmount)
+                        .keyboardType(.numberPad)
+                        .font(.caption)
+                        .padding(6)
+                        .background(IDS.Colors.card)
+                        .cornerRadius(8)
+                        .frame(width: 100)
+                    offerActionButton("Send") {
+                        guard let amount = Double(counterAmount) else { return }
+                        countering = false
+                        counterAmount = ""
+                        onRespond(offer.id, "COUNTER", amount)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(isMine ? IDS.Colors.brand : IDS.Colors.chipBackground)
+        .cornerRadius(16)
+    }
+
+    private func offerActionButton(_ label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label).font(.caption2).bold().foregroundColor(IDS.Colors.textPrimary)
+                .padding(.horizontal, 10).padding(.vertical, 6)
+                .background(IDS.Colors.card)
+                .cornerRadius(10)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 private struct MessageBubble: View {
     let message: MessageDto
     let isMine: Bool
     let currentUserId: String?
+    let offer: PriceOfferDto?
     let onToggleReaction: (String) -> Void
+    let onRespondToOffer: (String, String, Double?) -> Void
 
     var body: some View {
         VStack(alignment: isMine ? .trailing : .leading, spacing: 2) {
             HStack {
                 if isMine { Spacer() }
-                Text(message.body)
-                    .font(.subheadline)
-                    .foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(isMine ? IDS.Colors.brand : IDS.Colors.chipBackground)
-                    .cornerRadius(16)
+                if let offer {
+                    OfferBubble(offer: offer, isMine: isMine, currentUserId: currentUserId, onRespond: onRespondToOffer)
+                } else {
+                    Text(message.body)
+                        .font(.subheadline)
+                        .foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(isMine ? IDS.Colors.brand : IDS.Colors.chipBackground)
+                        .cornerRadius(16)
+                }
                 if !isMine { Spacer() }
             }
             MessageReactionsRow(reactions: message.reactions, currentUserId: currentUserId, isMine: isMine, onToggle: onToggleReaction)

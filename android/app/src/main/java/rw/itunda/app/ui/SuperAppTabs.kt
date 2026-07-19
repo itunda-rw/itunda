@@ -77,6 +77,7 @@ import rw.itunda.app.network.SendGroupMessageRequest
 import rw.itunda.app.network.SubmitEatsReviewRequest
 import rw.itunda.app.network.EatsOrderItemRequest
 import rw.itunda.app.network.ListingDto
+import rw.itunda.app.network.MakeOfferRequest
 import rw.itunda.app.network.MerchantProductDto
 import rw.itunda.app.network.MessageDto
 import rw.itunda.app.network.NetworkClient
@@ -84,7 +85,9 @@ import rw.itunda.app.network.OrderDto
 import rw.itunda.app.network.OrderItemRequest
 import rw.itunda.app.network.PlaceEatsOrderRequest
 import rw.itunda.app.network.PlaceOrderRequest
+import rw.itunda.app.network.PriceOfferDto
 import rw.itunda.app.network.ReactionGroupDto
+import rw.itunda.app.network.RespondToOfferRequest
 import rw.itunda.app.network.RiderDto
 import rw.itunda.app.network.SendMessageRequest
 import rw.itunda.app.network.SetRiderAvailabilityRequest
@@ -704,6 +707,7 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
     // (TransferStep/SavingsFlowStep/showSettings/etc).
     BackHandler(onBack = onBack)
     var messages by remember { mutableStateOf<List<MessageDto>?>(null) }
+    var offersByMessageId by remember { mutableStateOf<Map<String, PriceOfferDto>>(emptyMap()) }
     var draft by remember { mutableStateOf("") }
     var sending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -723,6 +727,16 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
         } catch (e: Exception) { /* real, non-critical -- only backs the header subtitle */ }
     }
 
+    suspend fun loadOffers() {
+        try {
+            val res = NetworkClient.apiService.getOffersForConversation(conversation.conversationId)
+            if (res.success) offersByMessageId = res.offers.associateBy { it.messageId }
+        } catch (_: Exception) {
+            // Real, non-critical -- a failed offer-history fetch just means offer
+            // messages render as plain text this pass; never blocks the thread.
+        }
+    }
+
     suspend fun refresh() {
         try {
             val res = NetworkClient.apiService.getMessages(conversation.conversationId)
@@ -731,6 +745,7 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
             // Keep showing the last-known messages rather than blanking the thread
             // on a transient poll failure.
         }
+        loadOffers()
     }
 
     // Real poll, kept as an always-correct fallback delivery path alongside the real
@@ -756,6 +771,9 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
                         if (current.none { it.id == push.message.id }) {
                             messages = current + push.message
                         }
+                        // A pushed message might be a real offer/counter/accept/reject --
+                        // refresh so it renders as an offer bubble immediately.
+                        loadOffers()
                     }
                 }
                 push is MessagingSocketPush.PresenceChange && push.userId == conversation.otherUserId -> {
@@ -813,6 +831,7 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
                         m,
                         isMine = m.senderId == currentUserId,
                         currentUserId = currentUserId,
+                        offer = offersByMessageId[m.id],
                         onToggleReaction = { emoji ->
                             coroutineScope.launch {
                                 try {
@@ -820,6 +839,19 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
                                     if (res.success) messages = messages?.map { if (it.id == m.id) it.copy(reactions = res.reactions) else it }
                                 } catch (_: Exception) {
                                     // Best-effort -- a failed toggle just leaves the badge as it was.
+                                }
+                            }
+                        },
+                        onRespondToOffer = { offerId, action, counterAmount ->
+                            coroutineScope.launch {
+                                try {
+                                    NetworkClient.apiService.respondToOffer(offerId, RespondToOfferRequest(action, counterAmount))
+                                    loadOffers()
+                                    refresh()
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } catch (_: IOException) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
                                 }
                             }
                         },
@@ -935,17 +967,88 @@ private fun MessageReactionsRow(reactions: List<ReactionGroupDto>, currentUserId
     }
 }
 
+// Real 당근-style offer bubble (2026-07-19) -- see PriceOfferService's own doc comment.
+// Renders inline wherever a message carries a real offer, replacing the plain-text
+// bubble with amount + status + real Accept/Decline/Counter actions (only shown to
+// whichever participant did NOT propose the current pending amount).
 @Composable
-private fun MessageBubble(message: MessageDto, isMine: Boolean, currentUserId: String?, onToggleReaction: (String) -> Unit) {
+private fun OfferBubble(offer: PriceOfferDto, isMine: Boolean, currentUserId: String?, onRespond: (String, String, Double?) -> Unit) {
+    var countering by remember { mutableStateOf(false) }
+    var counterAmount by remember { mutableStateOf("") }
+    val canRespond = offer.status == "PENDING" && currentUserId != null && currentUserId != offer.proposedByUserId
+    val statusLabel = when (offer.status) {
+        "PENDING" -> "Pending"; "ACCEPTED" -> "Accepted"; "REJECTED" -> "Declined"; "COUNTERED" -> "Countered"
+        else -> offer.status
+    }
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (isMine) TossBlue else TossCardSoft)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("💰 %,.0f RWF".format(offer.amount), color = if (isMine) Color.White else TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text(statusLabel, color = if (isMine) Color.White.copy(alpha = 0.85f) else TossSecondary, fontSize = 12.sp)
+            if (canRespond && !countering) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OfferActionButton("Accept") { onRespond(offer.id, "ACCEPT", null) }
+                    OfferActionButton("Decline") { onRespond(offer.id, "REJECT", null) }
+                    OfferActionButton("Counter") { countering = true }
+                }
+            }
+            if (canRespond && countering) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = counterAmount,
+                        onValueChange = { counterAmount = it },
+                        placeholder = { Text("Counter (RWF)", fontSize = 11.sp) },
+                        singleLine = true,
+                        modifier = Modifier.width(120.dp),
+                    )
+                    OfferActionButton("Send") {
+                        val amount = counterAmount.toDoubleOrNull() ?: return@OfferActionButton
+                        countering = false
+                        counterAmount = ""
+                        onRespond(offer.id, "COUNTER", amount)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OfferActionButton(label: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(TossCard)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+    ) {
+        Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = TossText)
+    }
+}
+
+@Composable
+private fun MessageBubble(
+    message: MessageDto, isMine: Boolean, currentUserId: String?, offer: PriceOfferDto?,
+    onToggleReaction: (String) -> Unit, onRespondToOffer: (String, String, Double?) -> Unit,
+) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(if (isMine) TossBlue else TossCardSoft)
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-            ) {
-                Text(message.body, color = if (isMine) Color.White else TossText, fontSize = 14.sp)
+            if (offer != null) {
+                OfferBubble(offer, isMine, currentUserId, onRespondToOffer)
+            } else {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(if (isMine) TossBlue else TossCardSoft)
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                ) {
+                    Text(message.body, color = if (isMine) Color.White else TossText, fontSize = 14.sp)
+                }
             }
         }
         MessageReactionsRow(message.reactions, currentUserId, isMine, onToggleReaction)
@@ -1045,6 +1148,18 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit) {
                             }
                         }
                     },
+                    onMakeOffer = { id, amount ->
+                        coroutineScope.launch {
+                            try {
+                                val res = NetworkClient.apiService.makeOffer(id, MakeOfferRequest(amount))
+                                if (res.success) onMessageSeller(res.offer.conversationId)
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
+                            }
+                        }
+                    },
                 )
             }
         }
@@ -1108,9 +1223,13 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
 }
 
 @Composable
-private fun ListingCard(listing: ListingDto, isMine: Boolean, onChanged: () -> Unit, onMessageSeller: (String) -> Unit) {
+private fun ListingCard(
+    listing: ListingDto, isMine: Boolean, onChanged: () -> Unit, onMessageSeller: (String) -> Unit, onMakeOffer: (String, Double) -> Unit,
+) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var offering by remember { mutableStateOf(false) }
+    var offerAmount by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
 
     Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
@@ -1132,6 +1251,23 @@ private fun ListingCard(listing: ListingDto, isMine: Boolean, onChanged: () -> U
             }
             Text(listing.description, color = TossSecondary, fontSize = 13.sp)
             error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+            if (offering) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = offerAmount,
+                        onValueChange = { offerAmount = it },
+                        placeholder = { Text("Your offer (RWF)") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    ListingActionButton("Send", busy || offerAmount.toDoubleOrNull() == null, filled = true) {
+                        val amount = offerAmount.toDoubleOrNull() ?: return@ListingActionButton
+                        offering = false
+                        offerAmount = ""
+                        onMakeOffer(listing.id, amount)
+                    }
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (isMine) {
                     if (listing.status == "ACTIVE") {
@@ -1164,12 +1300,13 @@ private fun ListingCard(listing: ListingDto, isMine: Boolean, onChanged: () -> U
                             }
                         }
                     }
-                } else if (listing.status == "ACTIVE") {
-                    ListingActionButton(if (busy) "Starting…" else "Message seller", busy, filled = true) {
+                } else if (listing.status == "ACTIVE" && !offering) {
+                    ListingActionButton(if (busy) "Starting…" else "Message seller", busy) {
                         busy = true
                         onMessageSeller(listing.id)
                         busy = false
                     }
+                    ListingActionButton("Make an offer", busy, filled = true) { offering = true }
                 }
             }
         }

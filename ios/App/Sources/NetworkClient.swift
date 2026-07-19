@@ -584,6 +584,27 @@ struct ListingResponse: Decodable { let success: Bool; let listing: ListingDto }
 struct ListingsResponse: Decodable { let success: Bool; let listings: [ListingDto] }
 struct ContactSellerResponse: Decodable { let success: Bool; let conversation: ConversationDto }
 
+// Real 당근-style price-offer negotiation (2026-07-19) -- see PriceOfferService's own
+// doc comment. Each offer/counter/accept/reject is a real message in the same real
+// conversation contactSeller establishes, rendered inline as an offer bubble.
+struct PriceOfferDto: Decodable, Identifiable {
+    let id: String
+    let listingId: String
+    let messageId: String
+    let conversationId: String
+    let buyerId: String
+    let sellerId: String
+    let proposedByUserId: String
+    let amount: Double
+    let status: String
+    let createdAt: String
+    let respondedAt: String?
+}
+struct MakeOfferRequest: Encodable { let amount: Double }
+struct RespondToOfferRequest: Encodable { let action: String; let counterAmount: Double? }
+struct PriceOfferResponse: Decodable { let success: Bool; let offer: PriceOfferDto }
+struct PriceOffersResponse: Decodable { let success: Bool; let offers: [PriceOfferDto] }
+
 struct ShoppingMerchantDto: Decodable, Identifiable {
     let merchantId: String
     let businessName: String
@@ -876,6 +897,19 @@ extension NetworkClient {
 
     func contactSeller(listingId: String) async throws -> ContactSellerResponse {
         try await authenticatedPost("api/v1/marketplace/listings/\(listingId)/contact-seller", body: EmptyBody())
+    }
+
+    // Real 당근-style price-offer negotiation (2026-07-19) -- see PriceOfferService.
+    func makeOffer(listingId: String, amount: Double) async throws -> PriceOfferResponse {
+        try await authenticatedPost("api/v1/marketplace/listings/\(listingId)/offers", body: MakeOfferRequest(amount: amount))
+    }
+
+    func respondToOffer(offerId: String, action: String, counterAmount: Double? = nil) async throws -> PriceOfferResponse {
+        try await authenticatedPost("api/v1/marketplace/offers/\(offerId)/respond", body: RespondToOfferRequest(action: action, counterAmount: counterAmount))
+    }
+
+    func getOffersForConversation(conversationId: String) async throws -> PriceOffersResponse {
+        try await get("api/v1/marketplace/conversations/\(conversationId)/offers")
     }
 
     // Real category/search filter (2026-07-19) -- both optional and combinable. See

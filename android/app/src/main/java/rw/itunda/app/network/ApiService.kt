@@ -327,6 +327,27 @@ data class ListingDto(
 data class CreateListingRequest(val title: String, val description: String, val price: Double, val category: String)
 data class ListingResponse(val success: Boolean, val listing: ListingDto)
 data class ListingsResponse(val success: Boolean, val listings: List<ListingDto>)
+
+// Real 당근-style price-offer negotiation (2026-07-19) -- see PriceOfferService's own
+// doc comment. Each offer/counter/accept/reject is a real message in the same real
+// conversation contactSeller establishes, rendered inline as an offer bubble.
+data class PriceOfferDto(
+    val id: String,
+    val listingId: String,
+    val messageId: String,
+    val conversationId: String,
+    val buyerId: String,
+    val sellerId: String,
+    val proposedByUserId: String,
+    val amount: Double,
+    val status: String,
+    val createdAt: String,
+    val respondedAt: String?,
+)
+data class MakeOfferRequest(val amount: Double)
+data class RespondToOfferRequest(val action: String, val counterAmount: Double? = null)
+data class PriceOfferResponse(val success: Boolean, val offer: PriceOfferDto)
+data class PriceOffersResponse(val success: Boolean, val offers: List<PriceOfferDto>)
 data class ContactSellerResponse(val success: Boolean, val conversation: ConversationDto)
 
 // Mirrors services/backend/commerce's real DTOs exactly (2026-07-18) -- backs the new
@@ -566,6 +587,16 @@ interface ApiService {
 
     @POST("api/v1/marketplace/listings/{id}/contact-seller")
     suspend fun contactSeller(@Path("id") listingId: String): ContactSellerResponse
+
+    // Real 당근-style price-offer negotiation (2026-07-19) -- see PriceOfferService.
+    @POST("api/v1/marketplace/listings/{id}/offers")
+    suspend fun makeOffer(@Path("id") listingId: String, @Body request: MakeOfferRequest): PriceOfferResponse
+
+    @POST("api/v1/marketplace/offers/{id}/respond")
+    suspend fun respondToOffer(@Path("id") offerId: String, @Body request: RespondToOfferRequest): PriceOfferResponse
+
+    @GET("api/v1/marketplace/conversations/{id}/offers")
+    suspend fun getOffersForConversation(@Path("id") conversationId: String): PriceOffersResponse
 
     // Real per-merchant public product browse (2026-07-18) -- see
     // rw.itunda.merchant.web.ShoppingController.getMerchantProducts.
