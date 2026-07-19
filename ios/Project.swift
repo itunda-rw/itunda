@@ -174,6 +174,35 @@ allTargets.append(
     )
 )
 
+// Real standalone delivery-rider app (2026-07-20) -- a rider's own app, separate
+// installable target/bundle id (rw.itunda.rider), matching how Coupang Eats' rider
+// app is a distinct product from the consumer app rather than a mode inside it.
+// Same Tuist project/workspace as ItundaApp (simplest path to a second real .app
+// product without standing up a second Tuist project), but does NOT depend on
+// ItundaApp or pull in any Podfile entry -- CocoaPods integration is per-target and
+// the Podfile below has no `target 'ItundaRiderApp'` block, so this target gets
+// none of ItundaApp's RN/Saronite/MapLibre pods. Only depends on CoreDesignSystem
+// for shared visual tokens, mirroring Android's own :riderapp -> :core:designsystem
+// dependency choice exactly.
+allTargets.append(
+    Target(
+        name: "ItundaRiderApp",
+        platform: .iOS,
+        product: .app,
+        bundleId: "rw.itunda.rider",
+        infoPlist: .extendingDefault(with: [
+            "NSAppTransportSecurity": [
+                "NSAllowsArbitraryLoads": true,
+            ],
+            "NSLocationWhenInUseUsageDescription": "Itunda Rider uses your real location so buyers can see you're on the way and to rank nearby deliveries.",
+        ]),
+        sources: ["RiderApp/Sources/**"],
+        dependencies: [
+            .target(name: "CoreDesignSystem"),
+        ]
+    )
+)
+
 // Added 2026-07-11 to actually check accessibility focus order (docs/
 // ACCESSIBILITY.md's one remaining open item) against the app's real accessibility
 // tree via XCUITest -- the same underlying tree VoiceOver reads -- rather than
