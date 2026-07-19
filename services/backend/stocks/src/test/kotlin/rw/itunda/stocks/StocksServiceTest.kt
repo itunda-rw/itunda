@@ -40,16 +40,21 @@ class StocksServiceTest : BehaviorSpec({
 
             service.buyStock("user_1", "s1", BigDecimal("10"))
 
-            Then("it creates a new holding at the stock's current price (600 RWF for BOK)") {
+            // Real deterministic daily simulation (2026-07-19): BOK's live price
+            // fluctuates +/-3% day to day, so this asserts against StockCatalog's own
+            // live price rather than a hardcoded number that would drift out of sync.
+            val bokPrice = StockCatalog.find("s1")!!.price
+
+            Then("it creates a new holding at the stock's real current price") {
                 holdingSlot.first().shares shouldBe BigDecimal("10")
-                holdingSlot.first().avgPrice shouldBe BigDecimal("600.0000")
+                holdingSlot.first().avgPrice shouldBe bokPrice.setScale(4)
             }
         }
 
         When("buying more shares of a stock the user already holds at a different price") {
-            // 10 shares @ 600 already held; stock's current price is also 600 in the
-            // catalog, so buying 10 more at the same price should leave avgPrice
-            // unchanged -- a real weighted-average recompute, not just addition.
+            // 10 shares @ 500 already held; buying 10 more at the stock's real live
+            // price is a real weighted-average recompute, not just the latest price.
+            val bokPrice = StockCatalog.find("s1")!!.price
             val existing = Holding(id = "hold_1", userId = "user_1", walletId = "wallet_inv", stockId = "s1", shares = BigDecimal("10"), avgPrice = BigDecimal("500"))
             every { holdingRepository.findByUserIdAndStockId("user_1", "s1") } returns existing
             every { holdingRepository.save(any()) } answers { firstArg() }
@@ -57,8 +62,9 @@ class StocksServiceTest : BehaviorSpec({
             service.buyStock("user_1", "s1", BigDecimal("10"))
 
             Then("avgPrice is a real weighted average of the old and new cost basis, not just the latest price") {
-                // (10*500 + 10*600) / 20 = 550
-                existing.avgPrice shouldBe BigDecimal("550.0000")
+                val expected = BigDecimal("10").multiply(BigDecimal("500")).add(BigDecimal("10").multiply(bokPrice))
+                    .divide(BigDecimal("20"), 4, java.math.RoundingMode.HALF_UP)
+                existing.avgPrice shouldBe expected
                 existing.shares shouldBe BigDecimal("20")
             }
         }
