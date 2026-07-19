@@ -45,6 +45,16 @@ class StocksController(private val stocksService: StocksService, private val ide
     fun getPortfolio(@AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true, "portfolio" to stocksService.getPortfolio(currentUser.userId)))
 
+    // Real portfolio value chart (2026-07-19) -- see StocksService.getPortfolioHistory's
+    // own doc comment for the honest scoping (current holdings applied to real
+    // historical prices, not a true historical share-count reconstruction).
+    @GetMapping("/portfolio/history")
+    fun getPortfolioHistory(
+        @RequestParam(defaultValue = "30") days: Int,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "history" to stocksService.getPortfolioHistory(currentUser.userId, days)))
+
     @PostMapping("/buy")
     fun buy(
         @RequestBody request: TradeStockRequest,

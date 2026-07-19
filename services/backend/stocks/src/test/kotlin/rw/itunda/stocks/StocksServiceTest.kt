@@ -237,6 +237,48 @@ class StocksServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("a real user with a real current stock position, checking their portfolio's value chart") {
+        val walletRepository = mockk<WalletRepository>()
+        val holdingRepository = mockk<HoldingRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val stockWatchlistRepository = mockk<StockWatchlistRepository>(relaxed = true)
+        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository)
+
+        val holding = Holding(id = "hold_1", userId = "user_1", walletId = "wallet_inv", stockId = "s1", shares = BigDecimal("10"), avgPrice = BigDecimal("500"))
+        every { holdingRepository.findByUserId("user_1") } returns listOf(holding)
+
+        When("requesting a real 7-day window") {
+            val history = service.getPortfolioHistory("user_1", 7)
+
+            Then("it returns 7 real points, and the most recent one exactly matches shares times today's live price") {
+                history.size shouldBe 7
+                val todayPrice = StockCatalog.find("s1")!!.price
+                history.last().value shouldBe BigDecimal("10").multiply(todayPrice)
+            }
+        }
+
+        When("the real user holds nothing at all") {
+            every { holdingRepository.findByUserId("user_2") } returns emptyList()
+
+            val history = service.getPortfolioHistory("user_2", 7)
+
+            Then("every real point is honestly zero, not a fabricated value") {
+                history.all { it.value == BigDecimal.ZERO } shouldBe true
+            }
+        }
+
+        When("requesting an invalid range") {
+            Then("it throws InvalidPriceHistoryRangeException") {
+                try {
+                    service.getPortfolioHistory("user_1", 0)
+                    error("expected InvalidPriceHistoryRangeException")
+                } catch (e: InvalidPriceHistoryRangeException) {
+                    // expected
+                }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

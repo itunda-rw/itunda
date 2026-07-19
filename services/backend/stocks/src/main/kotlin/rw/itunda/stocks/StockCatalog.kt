@@ -64,6 +64,11 @@ object StockCatalog {
         }
     }
 
+    // Public single-point form of the same deterministic simulation, backing
+    // StocksService.getPortfolioHistory's current-holdings-at-a-past-price computation.
+    fun priceOn(idOrSymbol: String, date: LocalDate): BigDecimal? =
+        definitions.find { it.id == idOrSymbol || it.symbol == idOrSymbol }?.let { priceOn(it, date) }
+
     private fun priceOn(def: StockDef, date: LocalDate): BigDecimal =
         def.basePrice.multiply(BigDecimal.ONE.add(dailyReturn(def.symbol, date))).setScale(2, RoundingMode.HALF_UP)
 

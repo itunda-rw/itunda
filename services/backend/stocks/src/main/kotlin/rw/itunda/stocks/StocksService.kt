@@ -15,12 +15,15 @@ import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 
 class StockNotFoundException(message: String) : RuntimeException(message)
 class NoWalletException(message: String) : RuntimeException(message)
 class NotEnoughSharesException(message: String) : RuntimeException(message)
 class InvalidPriceHistoryRangeException(message: String) : RuntimeException(message)
+
+data class PortfolioValuePoint(val date: LocalDate, val value: BigDecimal)
 
 /** Port of backend/src/controllers/stock.controller.ts. */
 @Service
@@ -147,4 +150,30 @@ class StocksService(
     // watched stock here is not an N+1, there's no database on the other end of it.
     fun getWatchlist(userId: String): List<Stock> =
         stockWatchlistRepository.findByUserIdOrderByCreatedAtDesc(userId).mapNotNull { StockCatalog.find(it.stockId) }
+
+    // Real portfolio value chart (2026-07-19), backing the "watch your portfolio move"
+    // moment at the account level, not just per-stock. Honestly, explicitly scoped:
+    // this applies the user's CURRENT share counts to real historical prices ("what
+    // would my current position be worth on each of the last N days"), not a true
+    // historical reconstruction of what was actually held on each day -- this backend
+    // only stores a single rolled-up (shares, avgPrice) per holding, not a per-lot
+    // purchase-date ledger, so it genuinely can't know how many shares existed on a past
+    // date before the most recent buy/sell. Same honest-approximation discipline the
+    // Overview row's own "cost basis, not live market value" already established --
+    // named clearly here rather than silently presented as a real historical return.
+    fun getPortfolioHistory(userId: String, days: Int): List<PortfolioValuePoint> {
+        if (days < 1 || days > 365) {
+            throw InvalidPriceHistoryRangeException("days must be between 1 and 365")
+        }
+        val holdings = holdingRepository.findByUserId(userId).filter { it.shares > BigDecimal.ZERO }
+        val today = LocalDate.now()
+        return (days - 1 downTo 0).map { offset ->
+            val date = today.minusDays(offset.toLong())
+            val value = holdings.fold(BigDecimal.ZERO) { acc, holding ->
+                val priceOnDate = StockCatalog.priceOn(holding.stockId, date) ?: BigDecimal.ZERO
+                acc.add(holding.shares.multiply(priceOnDate))
+            }
+            PortfolioValuePoint(date, value)
+        }
+    }
 }
