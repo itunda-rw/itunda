@@ -203,6 +203,28 @@ allTargets.append(
     )
 )
 
+// Real standalone merchant/POS app (2026-07-20) -- a shop owner's own app, the
+// second slice of the "dedicated app per role" effort (rider app already done).
+// Same rationale as ItundaRiderApp: same workspace, no dependency on ItundaApp, no
+// Podfile entry (so none of its RN/Saronite/MapLibre pods), only CoreDesignSystem.
+allTargets.append(
+    Target(
+        name: "ItundaMerchantApp",
+        platform: .iOS,
+        product: .app,
+        bundleId: "rw.itunda.merchant",
+        infoPlist: .extendingDefault(with: [
+            "NSAppTransportSecurity": [
+                "NSAllowsArbitraryLoads": true,
+            ],
+        ]),
+        sources: ["MerchantApp/Sources/**"],
+        dependencies: [
+            .target(name: "CoreDesignSystem"),
+        ]
+    )
+)
+
 // Added 2026-07-11 to actually check accessibility focus order (docs/
 // ACCESSIBILITY.md's one remaining open item) against the app's real accessibility
 // tree via XCUITest -- the same underlying tree VoiceOver reads -- rather than
