@@ -22,6 +22,7 @@ import {
   makeOffer, markListingSold, removeListing, respondToOffer, type Listing, type PriceOffer,
 } from './lib/marketplace';
 import { fetchProfile, setNeighborhood } from './lib/neighborhood';
+import { claimGift, fetchGiftsForConversation, sendGiftInConversation, type Gift, type GiftStatus } from './lib/gift';
 import {
   addCommunityComment, createCommunityPost, fetchCommunityCategories, fetchCommunityComments, fetchCommunityPost,
   fetchCommunityPosts, fetchCommunityPostsMyNeighborhood, fetchMyCommunityPosts, removeCommunityPost, toggleCommunityLike,
@@ -1084,12 +1085,57 @@ function OfferBubble({
   );
 }
 
+// Real KakaoTalk-style gift bubble -- renders inline wherever a message carries a real
+// gift (see GiftService's own doc comment), with a real Claim button shown only to the
+// recipient of a still-PENDING, not-yet-expired gift.
+function GiftBubble({
+  gift, isMine, currentUserId, onClaim,
+}: {
+  gift: Gift; isMine: boolean; currentUserId: string | undefined; onClaim: (giftId: string) => void;
+}) {
+  const canClaim = gift.status === 'PENDING' && currentUserId === gift.recipientId && new Date(gift.expiresAt).getTime() > Date.now();
+  const statusLabel: Record<GiftStatus, string> = {
+    PENDING: isMine ? 'Waiting to be opened' : 'Tap to open',
+    CLAIMED: 'Opened',
+    EXPIRED: 'Expired — refunded',
+  };
+
+  return (
+    <div
+      style={{
+        maxWidth: '75%', padding: '14px 16px', borderRadius: '16px', fontSize: '14px',
+        backgroundColor: isMine ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+        color: isMine ? 'var(--toss-white)' : 'var(--toss-grey-900)',
+        display: 'flex', flexDirection: 'column', gap: '6px',
+      }}
+    >
+      <p style={{ fontWeight: 700, fontSize: '16px' }}>🎁 {gift.amount.toLocaleString()} RWF</p>
+      {gift.note && <p style={{ fontStyle: 'italic', opacity: 0.9 }}>&ldquo;{gift.note}&rdquo;</p>}
+      <p style={{ fontSize: '12px', opacity: 0.8 }}>{statusLabel[gift.status]}</p>
+      {canClaim && (
+        <button
+          className="toss-btn toss-btn-secondary"
+          style={{ fontSize: '12px', padding: '6px 10px', alignSelf: 'flex-start' }}
+          onClick={() => onClaim(gift.id)}
+        >
+          Open gift
+        </button>
+      )}
+    </div>
+  );
+}
+
 function ConversationThread({ conversation, onBack }: { conversation: ConversationSummary; onBack: () => void }) {
   const [messages, setMessages] = useState<Message[] | null>(null);
   const [offersByMessageId, setOffersByMessageId] = useState<Record<string, OfferBubbleData>>({});
+  const [giftsByMessageId, setGiftsByMessageId] = useState<Record<string, Gift>>({});
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [giftComposerOpen, setGiftComposerOpen] = useState(false);
+  const [giftAmount, setGiftAmount] = useState('');
+  const [giftNote, setGiftNote] = useState('');
+  const [sendingGift, setSendingGift] = useState(false);
   const [otherOnline, setOtherOnline] = useState<boolean | null>(null);
   const [otherTyping, setOtherTyping] = useState(false);
   const currentUser = getStoredUser();
@@ -1118,11 +1164,46 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     });
   };
 
+  const loadGifts = () => {
+    fetchGiftsForConversation(conversation.conversationId)
+      .then((gifts) => setGiftsByMessageId(Object.fromEntries(gifts.map((g) => [g.messageId, g]))))
+      .catch(() => {});
+  };
+
   const load = () => {
     fetchMessages(conversation.conversationId)
       .then(setMessages)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this conversation.'));
     loadOffers();
+    loadGifts();
+  };
+
+  const handleSendGift = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amount = Number(giftAmount);
+    if (!amount || amount <= 0) return;
+    setSendingGift(true);
+    setError(null);
+    try {
+      await sendGiftInConversation(conversation.conversationId, amount, giftNote);
+      setGiftAmount('');
+      setGiftNote('');
+      setGiftComposerOpen(false);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send this gift.');
+    } finally {
+      setSendingGift(false);
+    }
+  };
+
+  const handleClaimGift = async (giftId: string) => {
+    try {
+      await claimGift(giftId);
+      loadGifts();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not open this gift.');
+    }
   };
 
   const handleRespondToOffer = async (offerId: string, action: 'ACCEPT' | 'REJECT' | 'COUNTER', counterAmount?: number) => {
@@ -1256,9 +1337,12 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         {messages?.map((m) => {
           const isMine = m.senderId === currentUser?.id;
           const offer = offersByMessageId[m.id];
+          const gift = giftsByMessageId[m.id];
           return (
             <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
-              {offer ? (
+              {gift ? (
+                <GiftBubble gift={gift} isMine={isMine} currentUserId={currentUser?.id} onClaim={handleClaimGift} />
+              ) : offer ? (
                 <OfferBubble offer={offer} isMine={isMine} currentUserId={currentUser?.id} onRespond={handleRespondToOffer} />
               ) : (
                 <div
@@ -1296,7 +1380,60 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>
       )}
 
+      {giftComposerOpen && (
+        <form
+          onSubmit={handleSendGift}
+          style={{
+            display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px',
+            borderRadius: '12px', border: '1px solid var(--toss-grey-200)', marginBottom: '10px',
+          }}
+        >
+          <p style={{ fontSize: '13px', fontWeight: 700 }}>🎁 Send a gift</p>
+          <input
+            type="number"
+            value={giftAmount}
+            onChange={(e) => setGiftAmount(e.target.value)}
+            placeholder="Amount (RWF)"
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <input
+            type="text"
+            value={giftNote}
+            onChange={(e) => setGiftNote(e.target.value)}
+            placeholder="Add a note (optional)"
+            maxLength={200}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="submit"
+              className="toss-btn toss-btn-primary"
+              disabled={sendingGift || !giftAmount || Number(giftAmount) <= 0}
+              style={{ flex: 1, padding: '10px' }}
+            >
+              Send gift
+            </button>
+            <button
+              type="button"
+              className="toss-btn toss-btn-secondary"
+              style={{ padding: '10px 16px' }}
+              onClick={() => setGiftComposerOpen(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
       <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px' }}>
+        <button
+          type="button"
+          aria-label="Send a gift"
+          onClick={() => setGiftComposerOpen((v) => !v)}
+          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '18px' }}
+        >
+          🎁
+        </button>
         <input
           type="text"
           value={draft}
