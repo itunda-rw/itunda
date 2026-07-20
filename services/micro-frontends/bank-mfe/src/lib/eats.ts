@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 import type { ShoppingMerchant } from './shopping';
 
 // Real Coupang Eats-style food delivery (rw.itunda.eats, 2026-07-18) -- restaurant
@@ -88,7 +89,7 @@ export const placeEatsOrder = (
 ) =>
   apiFetch<{ success: boolean; order: EatsOrder; items: EatsOrderItem[] }>('/api/v1/eats/orders', {
     method: 'POST',
-    headers: { 'Idempotency-Key': crypto.randomUUID() },
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ restaurantId, items, deliveryAddress, deliveryLatitude, deliveryLongitude, deliveryNotes }),
   });
 

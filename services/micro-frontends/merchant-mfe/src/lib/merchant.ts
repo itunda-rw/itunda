@@ -1,4 +1,5 @@
 import { apiFetch, ApiError } from './api';
+import { randomUUID } from './uuid';
 
 // Field shapes match services/backend's real domain entities exactly (Merchant,
 // PaymentIntent) -- see MerchantController.kt, the source of truth this talks to.
@@ -158,7 +159,7 @@ export const chargeCard = (
 ) =>
   apiFetch<{ success: boolean } & CardChargeResult>('/api/v1/merchant/card/charge', {
     method: 'POST',
-    headers: { 'Idempotency-Key': crypto.randomUUID() },
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ amount, description, cardNumber, expiryMonth, expiryYear, cvc }),
   });
 
@@ -219,7 +220,7 @@ export const removePayrollEmployee = (employeeId: string) =>
 export const runPayroll = () =>
   apiFetch<{ success: boolean } & PayrollRunResult>('/api/v1/merchant/payroll/run', {
     method: 'POST',
-    headers: { 'Idempotency-Key': crypto.randomUUID() },
+    headers: { 'Idempotency-Key': randomUUID() },
   });
 
 export const getPayrollHistory = () =>

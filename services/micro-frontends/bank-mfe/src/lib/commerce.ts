@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Real Coupang-style multi-item commerce (rw.itunda.commerce, 2026-07-18) -- merchant
 // browsing reuses the existing shopping catalog endpoint (see ShopView's own comment in
@@ -45,7 +46,7 @@ export interface CommerceOrder {
 export const placeOrder = (merchantId: string, items: { productId: string; quantity: number }[], deliveryAddress: string) =>
   apiFetch<{ success: boolean; order: CommerceOrder; items: CommerceOrderItem[] }>('/api/v1/orders', {
     method: 'POST',
-    headers: { 'Idempotency-Key': crypto.randomUUID() },
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ merchantId, items, deliveryAddress }),
   });
 

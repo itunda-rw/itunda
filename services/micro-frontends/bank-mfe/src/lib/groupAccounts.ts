@@ -3,6 +3,7 @@
 // creator holds withdrawal authority, invited members can view/deposit only).
 
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 export interface GroupAccount {
   id: string;
@@ -47,13 +48,13 @@ export const inviteGroupAccountMember = (id: string, phoneNumber: string) =>
 export const depositToGroupAccount = (id: string, amount: number) =>
   apiFetch<{ success: boolean; message: string } & GroupAccountDetail>(`/api/v1/group-accounts/${id}/deposit`, {
     method: 'POST',
-    headers: { 'Idempotency-Key': crypto.randomUUID() },
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ amount }),
   });
 
 export const withdrawFromGroupAccount = (id: string, amount: number) =>
   apiFetch<{ success: boolean; message: string } & GroupAccountDetail>(`/api/v1/group-accounts/${id}/withdraw`, {
     method: 'POST',
-    headers: { 'Idempotency-Key': crypto.randomUUID() },
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ amount }),
   });

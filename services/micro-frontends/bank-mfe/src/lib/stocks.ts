@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Real Toss Securities-style stock investing (rw.itunda.stocks) -- this is the FIRST
 // bank-mfe UI this feature has ever had on any client (Android/iOS never got one
@@ -60,14 +61,14 @@ export const fetchPortfolioHistory = (days = 30) =>
 export const buyStock = (stockId: string, shares: number) =>
   apiFetch<{ success: boolean; message: string; transaction: unknown }>('/api/v1/stocks/buy', {
     method: 'POST',
-    headers: { 'Idempotency-Key': crypto.randomUUID() },
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ stockId, shares }),
   });
 
 export const sellStock = (stockId: string, shares: number) =>
   apiFetch<{ success: boolean; message: string; transaction: unknown }>('/api/v1/stocks/sell', {
     method: 'POST',
-    headers: { 'Idempotency-Key': crypto.randomUUID() },
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ stockId, shares }),
   });
 

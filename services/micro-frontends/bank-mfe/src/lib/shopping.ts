@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Real "browse partner merchants, earn cashback" catalog (Toss Shopping parity) -- see
 // ShoppingCashbackService.kt's own doc comment. First real UI touchpoint for this
@@ -55,5 +56,5 @@ export interface CollectPaymentResult {
 export const collectPayment = (intentId: string) =>
   apiFetch<{ success: boolean } & CollectPaymentResult>(`/api/v1/merchant/collect/${intentId}`, {
     method: 'POST',
-    headers: { 'Idempotency-Key': crypto.randomUUID() },
+    headers: { 'Idempotency-Key': randomUUID() },
   });

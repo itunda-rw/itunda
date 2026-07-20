@@ -4,6 +4,7 @@
 // 2026-07-20 -- but until now neither had ANY UI touchpoint anywhere in bank-mfe.
 
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 export interface SavingsGoal {
   id: string;
@@ -45,7 +46,7 @@ export const createGoal = (name: string, targetAmount: number, monthlyContributi
 export const depositToGoal = (goalId: string, amount: number, fromWalletId?: string) =>
   apiFetch<{ success: boolean; message: string; goal: SavingsGoal }>('/api/v1/savings/deposit', {
     method: 'POST',
-    headers: { 'Idempotency-Key': crypto.randomUUID() },
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ goalId, amount, fromWalletId }),
   });
 
@@ -55,5 +56,5 @@ export const fetchInterestJar = () =>
 export const claimInterest = () =>
   apiFetch<{ success: boolean; message: string; claimed: number; newBalance: number }>('/api/v1/savings/interest-jar/claim', {
     method: 'POST',
-    headers: { 'Idempotency-Key': crypto.randomUUID() },
+    headers: { 'Idempotency-Key': randomUUID() },
   });

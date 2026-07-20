@@ -6,13 +6,14 @@
 // browser that logged in before."
 
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 const DEVICE_ID_KEY = 'itunda_bank_device_id';
 
 export function getOrCreateDeviceId(): string {
   let id = localStorage.getItem(DEVICE_ID_KEY);
   if (!id) {
-    id = crypto.randomUUID();
+    id = randomUUID();
     localStorage.setItem(DEVICE_ID_KEY, id);
   }
   return id;

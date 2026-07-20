@@ -5,6 +5,7 @@
 // touchpoint anywhere in bank-mfe until now.
 
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 import type { CollectPaymentResult } from './shopping';
 
 export interface FacePayEnrollment {
@@ -27,5 +28,5 @@ export const revokeFacePay = () =>
 export const collectWithFacePay = (intentId: string) =>
   apiFetch<{ success: boolean } & CollectPaymentResult>(`/api/v1/facepay/collect/${intentId}`, {
     method: 'POST',
-    headers: { 'Idempotency-Key': crypto.randomUUID() },
+    headers: { 'Idempotency-Key': randomUUID() },
   });

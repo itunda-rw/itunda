@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 import type { Transaction } from './wallet';
 
 // Real direct itunda-to-itunda push-transfer (rw.itunda.p2p, 2026-07-20) -- see
@@ -10,6 +11,6 @@ import type { Transaction } from './wallet';
 export const sendDirect = (recipient: string, amount: number, description: string) =>
   apiFetch<{ success: boolean; message: string; transaction: Transaction; newBalance: number }>('/api/v1/p2p/send', {
     method: 'POST',
-    headers: { 'Idempotency-Key': crypto.randomUUID() },
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ recipient, amount, description }),
   });

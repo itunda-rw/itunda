@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Real KakaoTalk-style "선물하기" money gift (rw.itunda.gift, 2026-07-20) -- see
 // GiftService's own doc comment. Money leaves the sender's wallet into a real escrow
@@ -30,14 +31,14 @@ export interface Gift {
 export const sendGiftInConversation = (conversationId: string, amount: number, note?: string) =>
   apiFetch<{ success: boolean; gift: Gift }>(`/api/v1/gifts/conversations/${conversationId}`, {
     method: 'POST',
-    headers: { 'Idempotency-Key': crypto.randomUUID() },
+    headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ amount, note: note?.trim() || null }),
   }).then((r) => r.gift);
 
 export const claimGift = (giftId: string) =>
   apiFetch<{ success: boolean; gift: Gift }>(`/api/v1/gifts/${giftId}/claim`, {
     method: 'POST',
-    headers: { 'Idempotency-Key': crypto.randomUUID() },
+    headers: { 'Idempotency-Key': randomUUID() },
   }).then((r) => r.gift);
 
 // Real per-thread gift history -- fetched alongside a conversation's messages so the
