@@ -66,7 +66,12 @@ class ProductReviewService(
                 productId = orderItem.productId,
                 merchantId = order.merchantId,
                 rating = rating,
-                comment = comment?.trim()?.ifBlank { null },
+                // Real bound, matching GiftService.sendGift's own `note?.trim()?.take(200)`
+                // convention -- the `comment` column is VARCHAR(1000) under this DB's real
+                // STRICT_TRANS_TABLES mode, which throws a raw DataIntegrityViolationException
+                // (an unhandled 500, not a clean 400) on an over-length insert rather than
+                // silently truncating. Bounding client-side input here is the honest fix.
+                comment = comment?.trim()?.take(1000)?.ifBlank { null },
             ),
         )
     }
