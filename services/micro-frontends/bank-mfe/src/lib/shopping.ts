@@ -12,15 +12,32 @@ export interface ShoppingMerchant {
   cashbackRate: string;
   latitude?: number | null;
   longitude?: number | null;
+  // Real browse-card enrichment (2026-07-21) -- closes docs/DESIGN_REFERENCES.md's Eats
+  // recommendations #1/#2. photoUrl/minOrderAmount are real, merchant-set (null when
+  // unset); rating/reviewCount are real, batch-aggregated from EatsReview. distanceKm/
+  // deliveryTimeMinutes are only present when the caller supplied its own real
+  // buyerLat/buyerLng -- deliveryTimeMinutes is a real, clearly-an-ESTIMATE derived from
+  // that distance (see ShoppingController.estimateDeliveryMinutes's own doc comment on
+  // the backend), never a fabricated/measured number.
+  photoUrl?: string | null;
+  minOrderAmount?: number | null;
+  rating?: number | null;
+  reviewCount?: number;
+  distanceKm?: number | null;
+  deliveryTimeMinutes?: number | null;
 }
 
 // Real category/search filter (2026-07-21) -- both optional and combinable, mirroring
 // Eats' fetchRestaurants (lib/eats.ts) exactly, since both hit the same
 // ShoppingController.getEligibleMerchants endpoint on the backend.
-export const fetchShoppingCatalog = (category?: string, q?: string) => {
+export const fetchShoppingCatalog = (category?: string, q?: string, buyerLat?: number, buyerLng?: number) => {
   const params = new URLSearchParams();
   if (category) params.set('category', category);
   if (q) params.set('q', q);
+  if (buyerLat != null && buyerLng != null) {
+    params.set('buyerLat', String(buyerLat));
+    params.set('buyerLng', String(buyerLng));
+  }
   params.set('size', '100');
   const qs = params.toString();
   return apiFetch<{ success: boolean; merchants: ShoppingMerchant[] }>(`/api/v1/shopping/merchants${qs ? `?${qs}` : ''}`).then(

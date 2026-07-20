@@ -3856,6 +3856,38 @@ function AddressAutocomplete({
   );
 }
 
+// Real per-configuration cart line (2026-07-21) -- closes docs/DESIGN_REFERENCES.md's
+// Eats recommendation #6: a cart previously could not hold two configurations of the
+// same item at all (keyed by raw product id only). `choiceIds` is empty for any item
+// with no option groups -- the pre-existing, unaffected case. Two lines for the same
+// productId with DIFFERENT choiceIds are genuinely distinct cart entries (e.g. a
+// Regular and a Large of the same burger, side by side).
+interface EatsCartLine { productId: string; quantity: number; choiceIds: string[] }
+
+function eatsCartKey(productId: string, choiceIds: string[]): string {
+  return choiceIds.length === 0 ? productId : `${productId}::${[...choiceIds].sort().join(',')}`;
+}
+
+// Real, human-readable summary of a resolved cart line's selected options -- mirrors
+// the backend's own EatsOrderService.buildSelectedOptionsJson, but purely for display;
+// pricing always comes from the real menu item + real choice deltas, never this string.
+function eatsOptionsSummary(item: MenuItem, choiceIds: string[]): string {
+  if (choiceIds.length === 0) return '';
+  const names = (item.optionGroups ?? [])
+    .flatMap((g) => g.choices)
+    .filter((c) => choiceIds.includes(c.id))
+    .map((c) => c.name);
+  return names.length ? ` (${names.join(', ')})` : '';
+}
+
+function eatsLineUnitPrice(item: MenuItem, choiceIds: string[]): number {
+  const delta = (item.optionGroups ?? [])
+    .flatMap((g) => g.choices)
+    .filter((c) => choiceIds.includes(c.id))
+    .reduce((sum, c) => sum + c.priceDelta, 0);
+  return item.price + delta;
+}
+
 function MenuView({
   restaurant, onBack, onOrderPlaced, initialCart,
 }: {
@@ -3863,7 +3895,16 @@ function MenuView({
 }) {
   const [menu, setMenu] = useState<{ businessName: string; products: MenuItem[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [cart, setCart] = useState<Record<string, number>>(initialCart ?? {});
+  const [cart, setCart] = useState<Record<string, EatsCartLine>>(
+    () => Object.fromEntries(Object.entries(initialCart ?? {}).map(([productId, quantity]) => [productId, { productId, quantity, choiceIds: [] }])),
+  );
+  // Real menu-options selection UI (2026-07-21, v1: required single-select only) -- see
+  // MenuOptionGroup.kt's own doc comment on the backend for the full account. Only one
+  // item's option panel is expanded at a time, matching this file's own established
+  // "inline-card-replaces-trigger" convention (no modal-overlay pattern exists anywhere
+  // in this codebase).
+  const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+  const [pendingChoices, setPendingChoices] = useState<Record<string, string>>({});
   const [address, setAddress] = useState('');
   const [addressCoords, setAddressCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [deliveryNotes, setDeliveryNotes] = useState('');
@@ -3873,15 +3914,58 @@ function MenuView({
   const load = () => {
     setError(null);
     fetchMenu(restaurant.merchantId)
-      .then((r) => setMenu({ businessName: r.merchant.businessName, products: r.products }))
+      .then((r) => {
+        setMenu({ businessName: r.merchant.businessName, products: r.products });
+        // Real reorder-cart sanitization (2026-07-21) -- a reordered past order's cart is
+        // rebuilt from plain product ids with no option selections (see OrderFoodView's
+        // handleReorder, unchanged). If a product now genuinely requires an option
+        // selection, that bare line can never check out -- drop it rather than let
+        // checkout silently fail, same "discontinued item silently dropped" precedent
+        // handleReorder itself already established for a menu item that's gone entirely.
+        setCart((prev) => {
+          const next = { ...prev };
+          for (const [key, line] of Object.entries(prev)) {
+            const product = r.products.find((p) => p.id === line.productId);
+            if (product && (product.optionGroups?.length ?? 0) > 0 && line.choiceIds.length === 0) {
+              delete next[key];
+            }
+          }
+          return next;
+        });
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this menu.'));
   };
 
   useEffect(load, [restaurant.merchantId]);
 
-  const cartItems = Object.entries(cart).filter(([, qty]) => qty > 0);
-  const cartCount = cartItems.reduce((sum, [, qty]) => sum + qty, 0);
-  const setQty = (id: string, qty: number) => setCart((c) => ({ ...c, [id]: Math.max(0, qty) }));
+  const cartItems = Object.entries(cart).filter(([, line]) => line.quantity > 0);
+  const cartCount = cartItems.reduce((sum, [, line]) => sum + line.quantity, 0);
+
+  // For a no-option item only -- the original single-stepper interaction, completely
+  // unchanged for the overwhelming majority of menu items that have no option groups.
+  const setSimpleQty = (productId: string, qty: number) => {
+    const key = eatsCartKey(productId, []);
+    setCart((c) => ({ ...c, [key]: { productId, quantity: Math.max(0, qty), choiceIds: [] } }));
+  };
+
+  const setLineQty = (key: string, line: EatsCartLine, qty: number) => {
+    setCart((c) => ({ ...c, [key]: { ...line, quantity: Math.max(0, qty) } }));
+  };
+
+  const toggleExpand = (productId: string) => {
+    setPendingChoices({});
+    setExpandedProductId((current) => (current === productId ? null : productId));
+  };
+
+  const addConfiguredToCart = (item: MenuItem) => {
+    const groups = item.optionGroups ?? [];
+    const choiceIds = groups.map((g) => pendingChoices[g.id]).filter((id): id is string => Boolean(id));
+    if (choiceIds.length !== groups.length) return; // one real required choice per group, enforced client-side too
+    const key = eatsCartKey(item.id, choiceIds);
+    setCart((c) => ({ ...c, [key]: { productId: item.id, quantity: (c[key]?.quantity ?? 0) + 1, choiceIds } }));
+    setPendingChoices({});
+    setExpandedProductId(null);
+  };
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -3889,7 +3973,10 @@ function MenuView({
     setPlacing(true);
     setError(null);
     try {
-      const items = cartItems.map(([menuItemId, quantity]) => ({ menuItemId, quantity }));
+      const items = cartItems.map(([, line]) => ({
+        menuItemId: line.productId, quantity: line.quantity,
+        selectedChoiceIds: line.choiceIds.length ? line.choiceIds : undefined,
+      }));
       const result = await placeEatsOrder(
         restaurant.merchantId, items, address.trim(), addressCoords?.latitude, addressCoords?.longitude,
         deliveryNotes.trim() || undefined,
@@ -3925,13 +4012,14 @@ function MenuView({
           <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Checkout</h3>
         </div>
         <form onSubmit={handlePlaceOrder} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {cartItems.map(([id, qty]) => {
-            const item = menu.products.find((p) => p.id === id);
+          {cartItems.map(([key, line]) => {
+            const item = menu.products.find((p) => p.id === line.productId);
             if (!item) return null;
+            const unitPrice = eatsLineUnitPrice(item, line.choiceIds);
             return (
-              <div key={id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                <span>{item.name} x{qty}</span>
-                <span>{(item.price * qty).toLocaleString()} RWF</span>
+              <div key={key} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                <span>{item.name}{eatsOptionsSummary(item, line.choiceIds)} x{line.quantity}</span>
+                <span>{(unitPrice * line.quantity).toLocaleString()} RWF</span>
               </div>
             );
           })}
@@ -3974,19 +4062,90 @@ function MenuView({
         <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No menu items yet.</p></div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: cartCount > 0 ? '80px' : 0 }}>
-          {menu.products.map((item) => (
-            <div key={item.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <p style={{ fontSize: '15px', fontWeight: 700 }}>{item.name}</p>
-                <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{item.price.toLocaleString()} RWF</p>
+          {menu.products.map((item) => {
+            const groups = item.optionGroups ?? [];
+            const hasOptions = groups.length > 0;
+            const simpleKey = eatsCartKey(item.id, []);
+            const simpleQty = hasOptions ? 0 : (cart[simpleKey]?.quantity ?? 0);
+            const isExpanded = expandedProductId === item.id;
+            const allGroupsChosen = groups.every((g) => Boolean(pendingChoices[g.id]));
+            return (
+              <div key={item.id} className="toss-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ fontSize: '15px', fontWeight: 700 }}>{item.name}</p>
+                    <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+                      {item.price.toLocaleString()} RWF{hasOptions ? ' · options required' : ''}
+                    </p>
+                  </div>
+                  {hasOptions ? (
+                    <button onClick={() => toggleExpand(item.id)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }}>
+                      {isExpanded ? 'Close' : 'Choose options'}
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <button onClick={() => setSimpleQty(item.id, simpleQty - 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>−</button>
+                      <span style={{ minWidth: '16px', textAlign: 'center', fontWeight: 700 }}>{simpleQty}</span>
+                      <button onClick={() => setSimpleQty(item.id, simpleQty + 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>+</button>
+                    </div>
+                  )}
+                </div>
+                {hasOptions && isExpanded && (
+                  <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--toss-grey-200)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {groups.map((group) => (
+                      <div key={group.id}>
+                        <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+                          {group.name} <span style={{ color: 'var(--toss-grey-400)', fontWeight: 400 }}>· choose 1</span>
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {group.choices.map((choice) => (
+                            <label key={choice.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+                              <input
+                                type="radio"
+                                name={`eats-option-group-${group.id}`}
+                                checked={pendingChoices[group.id] === choice.id}
+                                onChange={() => setPendingChoices((p) => ({ ...p, [group.id]: choice.id }))}
+                              />
+                              {choice.name}{choice.priceDelta > 0 ? ` (+${choice.priceDelta.toLocaleString()} RWF)` : ''}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      className="toss-btn toss-btn-primary"
+                      disabled={!allGroupsChosen}
+                      onClick={() => addConfiguredToCart(item)}
+                    >
+                      Add to cart
+                    </button>
+                  </div>
+                )}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <button onClick={() => setQty(item.id, (cart[item.id] ?? 0) - 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>−</button>
-                <span style={{ minWidth: '16px', textAlign: 'center', fontWeight: 700 }}>{cart[item.id] ?? 0}</span>
-                <button onClick={() => setQty(item.id, (cart[item.id] ?? 0) + 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>+</button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
+        </div>
+      )}
+      {cartCount > 0 && (
+        <div className="toss-card" style={{ marginBottom: '80px', marginTop: '-2px' }}>
+          <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '10px' }}>Your cart</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {cartItems.map(([key, line]) => {
+              const item = menu.products.find((p) => p.id === line.productId);
+              if (!item) return null;
+              return (
+                <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '13px' }}>{item.name}{eatsOptionsSummary(item, line.choiceIds)}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button onClick={() => setLineQty(key, line, line.quantity - 1)} className="toss-btn toss-btn-secondary" style={{ padding: '4px 10px' }}>−</button>
+                    <span style={{ minWidth: '14px', textAlign: 'center', fontWeight: 700, fontSize: '13px' }}>{line.quantity}</span>
+                    <button onClick={() => setLineQty(key, line, line.quantity + 1)} className="toss-btn toss-btn-secondary" style={{ padding: '4px 10px' }}>+</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
       {cartCount > 0 && (
@@ -4326,12 +4485,35 @@ function OrderFoodView() {
               className="toss-card"
               style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', textAlign: 'left', width: '100%', cursor: 'pointer' }}
             >
-              <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Utensils size={20} color="var(--toss-blue)" />
-              </div>
+              {r.photoUrl ? (
+                <img
+                  src={r.photoUrl} alt=""
+                  style={{ width: '44px', height: '44px', borderRadius: '12px', objectFit: 'cover', flexShrink: 0, backgroundColor: 'var(--toss-blue-light)' }}
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              ) : (
+                <div style={{ width: '44px', height: '44px', borderRadius: '22px', backgroundColor: 'var(--toss-blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Utensils size={20} color="var(--toss-blue)" />
+                </div>
+              )}
               <div style={{ flex: 1 }}>
                 <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{r.businessName}</p>
-                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{r.category ? `${r.category} · Real menu, real delivery` : 'Real menu, real delivery'}</p>
+                {/* Real browse-card enrichment (2026-07-21) -- rating/reviewCount/distance/
+                    delivery-time estimate/min order, closing docs/DESIGN_REFERENCES.md's
+                    Eats recommendations #1/#2. Every clause is conditionally rendered on
+                    real data being present -- never a fabricated placeholder. */}
+                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                  {r.category && <span>{r.category}</span>}
+                  {r.rating != null && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                      <Star size={11} color="#F5A623" fill="#F5A623" /> {r.rating.toFixed(1)} ({r.reviewCount})
+                    </span>
+                  )}
+                  {r.distanceKm != null && <span>· {r.distanceKm.toFixed(1)} km</span>}
+                  {r.deliveryTimeMinutes != null && <span>· ~{r.deliveryTimeMinutes} min</span>}
+                  {r.minOrderAmount != null && <span>· Min {r.minOrderAmount.toLocaleString()} RWF</span>}
+                  {!r.category && r.rating == null && r.distanceKm == null && <span>Real menu, real delivery</span>}
+                </p>
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); toggleFavorite(r.merchantId); }}
