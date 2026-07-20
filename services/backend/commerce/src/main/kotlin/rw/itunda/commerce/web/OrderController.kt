@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.MissingRequestHeaderException
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -25,6 +26,7 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.commerce.BuyerNoWalletException
 import rw.itunda.commerce.EmptyOrderException
+import rw.itunda.commerce.FavoriteProductNotFoundException
 import rw.itunda.commerce.InvalidDeliveryAddressException
 import rw.itunda.commerce.InvalidOrderStatusTransitionException
 import rw.itunda.commerce.InvalidProductRatingException
@@ -37,6 +39,7 @@ import rw.itunda.commerce.OrderNotFoundException
 import rw.itunda.commerce.OrderProductNotFoundException
 import rw.itunda.commerce.OrderService
 import rw.itunda.commerce.ProductAlreadyReviewedException
+import rw.itunda.commerce.ProductFavoriteService
 import rw.itunda.commerce.ProductNotYetDeliveredException
 import rw.itunda.commerce.ProductReviewService
 import rw.itunda.commerce.SelfOrderException
@@ -54,6 +57,7 @@ class OrderController(
     private val orderService: OrderService,
     private val idempotencyService: IdempotencyService,
     private val productReviewService: ProductReviewService,
+    private val productFavoriteService: ProductFavoriteService,
 ) {
     @PostMapping
     fun placeOrder(
@@ -145,6 +149,39 @@ class OrderController(
         val summary = productReviewService.getProductRating(productId)
         return ResponseEntity.ok(mapOf("success" to true, "average" to summary.average, "count" to summary.count))
     }
+
+    // Real product wishlist (2026-07-20) -- see ProductFavoriteService's own doc
+    // comment. Mirrors EatsController's own favorite-restaurant endpoints field-for-field.
+    @PostMapping("/products/{productId}/favorite")
+    fun addFavorite(
+        @PathVariable productId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val favorite = productFavoriteService.addFavorite(currentUser.userId, productId)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "favorite" to favorite))
+    }
+
+    @DeleteMapping("/products/{productId}/favorite")
+    fun removeFavorite(
+        @PathVariable productId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Boolean>> {
+        productFavoriteService.removeFavorite(currentUser.userId, productId)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    @GetMapping("/products/favorites")
+    fun getMyFavorites(
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = productFavoriteService.getMyFavorites(currentUser.userId, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "favorites" to page.content) + pageMeta(page))
+    }
+
+    @ExceptionHandler(FavoriteProductNotFoundException::class)
+    fun handleFavoriteProductNotFound(ex: FavoriteProductNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("PRODUCT_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(OrderItemNotFoundException::class)
     fun handleOrderItemNotFound(ex: OrderItemNotFoundException) =
