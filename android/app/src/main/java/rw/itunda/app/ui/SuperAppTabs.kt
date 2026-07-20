@@ -697,19 +697,29 @@ private fun GroupMessageBubble(
 }
 
 @Composable
+// Real structural fix, 2026-07-21: this row used to be shaped like this app's own
+// banking/dashboard cards (rounded, backgrounded, individually spaced) -- the wrong
+// reference for a chat list. A messaging list is scanned quickly and often, at real
+// volume, unlike a dashboard someone glances at occasionally -- KakaoTalk's own real,
+// sourced friend-list-row spec (48px rounded-square avatar/12px radius, 16px/14px
+// text, 64dp fixed row height, 16dp horizontal padding) optimizes specifically for
+// that fast, repeated scanning, which this app's chat list needs just as much as the
+// real KakaoTalk does. Brand color is deliberately NOT changed to match (unread
+// badge stays itunda's own blue, not Kakao yellow) -- a real, connected ecosystem
+// like Kakao's own keeps one consistent brand color across every surface; only the
+// row's real, sourced *structure* is worth borrowing here, not its color.
 private fun ConversationRow(conversation: ConversationSummaryDto, online: Boolean, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
-            .background(TossCard)
+            .height(64.dp)
             .clickable(onClick = onClick)
-            .padding(18.dp),
+            .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.BottomEnd) {
-            Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(TossCardSoft), contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.Send, contentDescription = null, modifier = Modifier.size(18.dp), tint = TossBlue)
+        Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.BottomEnd) {
+            Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(TossCardSoft), contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.Send, contentDescription = null, modifier = Modifier.size(20.dp), tint = TossBlue)
             }
             if (online) {
                 Box(
@@ -723,10 +733,11 @@ private fun ConversationRow(conversation: ConversationSummaryDto, online: Boolea
                 )
             }
         }
-        Spacer(modifier = Modifier.width(14.dp))
+        Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(conversation.otherUserName, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Text(conversation.lastMessagePreview ?: "No messages yet", color = TossSecondary, fontSize = 12.sp, maxLines = 1)
+            Text(conversation.otherUserName, color = TossText, fontWeight = FontWeight.Medium, fontSize = 16.sp)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(conversation.lastMessagePreview ?: "No messages yet", color = TossSecondary, fontSize = 14.sp, maxLines = 1)
         }
         if (conversation.unreadCount > 0) {
             Box(modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(TossBlue).padding(horizontal = 8.dp, vertical = 3.dp)) {
@@ -734,7 +745,6 @@ private fun ConversationRow(conversation: ConversationSummaryDto, online: Boolea
             }
         }
     }
-    Spacer(modifier = Modifier.height(4.dp))
 }
 
 @Composable
