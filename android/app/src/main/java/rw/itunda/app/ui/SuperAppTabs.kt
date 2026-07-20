@@ -3,6 +3,12 @@ package rw.itunda.app.ui
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -57,9 +63,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -165,6 +173,39 @@ internal fun superAppErrorMessage(e: HttpException): String = when (e.code()) {
     422 -> "Insufficient funds for this order."
     429 -> "Too many attempts -- please wait a moment and try again."
     else -> "Something went wrong. Please try again."
+}
+
+// Real shared shimmer skeleton (2026-07-21) -- closes the design-reference doc's
+// "shaped skeleton placeholder, not a spinner or bare 'Loading…' text" recommendation
+// (Seed Design's own named Content Placeholder/Skeleton components). Replaces both the
+// bare "Loading…" text that existed in a few detail views and the plain static blank
+// Card block every browse list already used -- one real animated shimmer instead of
+// two weaker, duplicated placeholders. Mirrors bank-mfe's own `.skeleton` CSS shimmer
+// (index.css) so all three clients now share the same loading-state visual language.
+@Composable
+private fun SkeletonBlock(height: Dp = 120.dp, modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "skeleton")
+    val offset by transition.animateFloat(
+        initialValue = -1f,
+        targetValue = 2f,
+        animationSpec = infiniteRepeatable(animation = tween(1000, easing = LinearEasing), repeatMode = RepeatMode.Restart),
+        label = "skeletonOffset",
+    )
+    Card(
+        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
+        modifier = modifier.fillMaxWidth().height(height),
+        colors = CardDefaults.cardColors(containerColor = TossCardSoft),
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize().background(
+                Brush.linearGradient(
+                    colors = listOf(TossCardSoft, TossCard, TossCardSoft),
+                    start = androidx.compose.ui.geometry.Offset(offset * 600f, 0f),
+                    end = androidx.compose.ui.geometry.Offset(offset * 600f + 400f, 400f),
+                ),
+            ),
+        )
+    }
 }
 
 @Composable
@@ -426,7 +467,7 @@ private fun DirectMessagesList(
         if (error != null) {
             item { ErrorCard(error, onRetry = onRetry) }
         } else if (conversations == null) {
-            item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+            item { SkeletonBlock() }
         } else if (conversations.isEmpty()) {
             item { Text("No conversations yet.", color = TossSecondary, fontSize = 14.sp) }
         } else {
@@ -512,7 +553,7 @@ private fun GroupsList(
         if (error != null) {
             item { ErrorCard(error, onRetry = onRetry) }
         } else if (groups == null) {
-            item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+            item { SkeletonBlock() }
         } else if (groups.isEmpty()) {
             item { Text("No groups yet.", color = TossSecondary, fontSize = 14.sp) }
         } else {
@@ -636,7 +677,7 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
         LazyColumn(state = listState, modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             val msgs = messages
             if (msgs == null) {
-                item { Text("Loading…", color = TossSecondary, fontSize = 13.sp) }
+                item { SkeletonBlock(height = 72.dp) }
             } else if (msgs.isEmpty()) {
                 item { Text("Say hello — no messages yet.", color = TossSecondary, fontSize = 13.sp) }
             } else {
@@ -944,7 +985,7 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
         LazyColumn(state = listState, modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             val msgs = messages
             if (msgs == null) {
-                item { Text("Loading…", color = TossSecondary, fontSize = 13.sp) }
+                item { SkeletonBlock(height = 72.dp) }
             } else if (msgs.isEmpty()) {
                 item { Text("Say hello — no messages yet.", color = TossSecondary, fontSize = 13.sp) }
             } else {
@@ -1517,7 +1558,7 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
         if (error != null) {
             item { ErrorCard(error!!, onRetry = ::load) }
         } else if (listings == null) {
-            item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+            item { SkeletonBlock() }
         } else if (listings!!.isEmpty() && (view != HoodView.NEIGHBORHOOD || neighborhoodName != null)) {
             item {
                 Text(
@@ -1975,7 +2016,7 @@ private fun CommunityContent() {
         if (error != null) {
             item { ErrorCard(error!!, onRetry = ::load) }
         } else if (posts == null) {
-            item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+            item { SkeletonBlock() }
         } else if (posts!!.isEmpty() && (view != CommunityView.NEIGHBORHOOD || neighborhoodName != null)) {
             item {
                 Text(
@@ -2335,7 +2376,7 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
         if (error != null) {
             item { ErrorCard(error!!, onRetry = ::load) }
         } else if (posts == null) {
-            item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+            item { SkeletonBlock() }
         } else if (posts!!.isEmpty() && (view != JobsView.NEIGHBORHOOD || neighborhoodName != null)) {
             item {
                 Text(
@@ -2661,7 +2702,7 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
         if (error != null) {
             item { ErrorCard(error!!, onRetry = ::load) }
         } else if (listings == null) {
-            item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+            item { SkeletonBlock() }
         } else if (listings!!.isEmpty() && (view != PropertyView.NEIGHBORHOOD || neighborhoodName != null)) {
             item {
                 Text(
@@ -3083,7 +3124,7 @@ private fun CommerceShopContent() {
             if (error != null) {
                 item { ErrorCard(error!!, onRetry = ::loadMerchants) }
             } else if (merchants == null) {
-                item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+                item { SkeletonBlock() }
             } else if (merchants!!.isEmpty()) {
                 item {
                     Text(
@@ -3160,7 +3201,7 @@ private fun MerchantDetailView(
         BackTopBar(merchant.businessName, onBack)
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
             if (products == null) {
-                item { Text("Loading…", color = TossSecondary, fontSize = 13.sp) }
+                item { SkeletonBlock(height = 72.dp) }
             } else if (products.isEmpty()) {
                 item { Text("No products yet.", color = TossSecondary, fontSize = 13.sp) }
             } else {
@@ -3395,7 +3436,7 @@ private fun MyCommerceOrdersView() {
         if (error != null) {
             ErrorCard(error!!, onRetry = ::load)
         } else if (orders == null) {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {}
+            SkeletonBlock()
         } else if (orders!!.isEmpty()) {
             Text("No orders yet.", color = TossSecondary, fontSize = 14.sp)
         } else {
@@ -3878,7 +3919,7 @@ private fun OrderFoodContent() {
             if (error != null) {
                 item { ErrorCard(error!!, onRetry = ::loadRestaurants) }
             } else if (restaurants == null) {
-                item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+                item { SkeletonBlock() }
             } else if (restaurants!!.isEmpty()) {
                 item {
                     Text(
@@ -3974,7 +4015,7 @@ private fun FavoriteRestaurantsView(onOpen: (FavoriteRestaurantDto) -> Unit, onC
 
     when {
         error != null -> ErrorCard(error!!, onRetry = ::load)
-        favorites == null -> Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {}
+        favorites == null -> SkeletonBlock()
         favorites!!.isEmpty() -> Text("No favorite restaurants yet. Tap the heart on a restaurant to save it here.", color = TossSecondary, fontSize = 14.sp)
         else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             favorites!!.forEach { f ->
@@ -4160,7 +4201,7 @@ private fun RestaurantMenuView(
         RestaurantRatingBadge(restaurant.merchantId)
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
             if (menu == null) {
-                item { Text("Loading…", color = TossSecondary, fontSize = 13.sp) }
+                item { SkeletonBlock(height = 72.dp) }
             } else if (menu.isEmpty()) {
                 item { Text("No menu items yet.", color = TossSecondary, fontSize = 13.sp) }
             } else {
@@ -4478,7 +4519,7 @@ private fun MyEatsOrdersView(onReorder: (EatsOrderDto) -> Unit, reorderingId: St
         if (error != null) {
             ErrorCard(error!!, onRetry = ::load)
         } else if (orders == null) {
-            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {}
+            SkeletonBlock()
         } else if (orders!!.isEmpty()) {
             Text("No orders yet.", color = TossSecondary, fontSize = 14.sp)
         } else {
@@ -4586,7 +4627,7 @@ private fun DeliverContent() {
     }
 
     if (!loadedRider) {
-        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {}
+        SkeletonBlock()
         return
     }
 
