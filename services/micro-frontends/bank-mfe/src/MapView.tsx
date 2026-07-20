@@ -15,6 +15,7 @@ import {
   type PlaceSearchResult,
   type NearbyPlace,
   type MapBookmark,
+  type RouteStep,
 } from './lib/maps';
 import { fetchShoppingCatalog, type ShoppingMerchant } from './lib/shopping';
 import { ApiError } from './lib/api';
@@ -159,7 +160,8 @@ export default function MapView() {
   const [searchResults, setSearchResults] = useState<PlaceSearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<PlaceSearchResult | null>(null);
-  const [route, setRoute] = useState<{ distanceKm: number; durationMinutes: number } | null>(null);
+  const [route, setRoute] = useState<{ distanceKm: number; durationMinutes: number; steps: RouteStep[] } | null>(null);
+  const [showSteps, setShowSteps] = useState(false);
   const [routing, setRouting] = useState(false);
   const [locating, setLocating] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -362,7 +364,8 @@ export default function MapView() {
     setError(null);
     try {
       const result = await getDirections(origin[0], origin[1], selectedPlace.latitude, selectedPlace.longitude);
-      setRoute({ distanceKm: result.distanceKm, durationMinutes: result.durationMinutes });
+      setRoute({ distanceKm: result.distanceKm, durationMinutes: result.durationMinutes, steps: result.steps });
+      setShowSteps(false);
       const source = map.getSource('route') as maplibregl.GeoJSONSource | undefined;
       source?.setData({
         type: 'FeatureCollection',
@@ -492,9 +495,32 @@ export default function MapView() {
             </button>
           </div>
           {route ? (
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>
-              🚗 {route.distanceKm.toFixed(1)} km · {Math.round(route.durationMinutes)} min by real road, via itunda's own self-hosted OSRM
-            </p>
+            <div>
+              <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>
+                🚗 {route.distanceKm.toFixed(1)} km · {Math.round(route.durationMinutes)} min by real road, via itunda's own self-hosted OSRM
+              </p>
+              {route.steps.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowSteps((s) => !s)}
+                  style={{ fontSize: '12px', color: 'var(--toss-blue)', fontWeight: 700, marginTop: '4px' }}
+                >
+                  {showSteps ? 'Hide turn-by-turn directions' : `Show turn-by-turn directions (${route.steps.length} steps)`}
+                </button>
+              )}
+              {showSteps && (
+                <ol style={{ margin: '8px 0 0', paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {route.steps.map((step, i) => (
+                    <li key={i} style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>
+                      {step.instruction}
+                      {step.distanceMeters >= 10 && (
+                        <span style={{ color: 'var(--toss-grey-500)' }}> ({Math.round(step.distanceMeters)} m)</span>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
           ) : (
             <button className="toss-btn toss-btn-primary" disabled={routing} onClick={handleGetDirections}>
               {routing ? 'Finding real route…' : 'Directions'}

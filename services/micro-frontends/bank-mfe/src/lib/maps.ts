@@ -37,12 +37,21 @@ export const searchPlaces = (query: string) =>
     (r) => r.results,
   );
 
+export interface RouteStep {
+  instruction: string;
+  distanceMeters: number;
+  streetName: string | null;
+}
+
 export interface RouteResult {
   distanceKm: number;
   durationMinutes: number;
   // Real road-following geometry, [lat, lng] pairs in itunda's own coordinate
   // convention (MapsController already flips OSRM's [lng, lat] GeoJSON order back).
   geometry: [number, number][];
+  // Real turn-by-turn instructions (2026-07-20), sourced from OSRM's own documented
+  // maneuver vocabulary -- see OsrmRoutingClient.maneuverInstruction's own doc comment.
+  steps: RouteStep[];
 }
 
 export const getDirections = (fromLat: number, fromLng: number, toLat: number, toLng: number) =>

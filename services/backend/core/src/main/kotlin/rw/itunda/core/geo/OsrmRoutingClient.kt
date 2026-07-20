@@ -119,7 +119,11 @@ class OsrmRoutingClient(
             @Suppress("UNCHECKED_CAST")
             val response = client.get()
                 .uri(
-                    "/route/v1/driving/{fromLng},{fromLat};{toLng},{toLat}?overview=full&geometries=geojson",
+                    // Real turn-by-turn steps (2026-07-20) -- `steps=true` asks OSRM for
+                    // its own real per-maneuver breakdown of the route (turn/street-name/
+                    // distance), not just the overall line, closing the gap between "a
+                    // drawn route" and a real Naver/Kakao Maps-style instruction list.
+                    "/route/v1/driving/{fromLng},{fromLat};{toLng},{toLat}?overview=full&geometries=geojson&steps=true",
                     fromLng, fromLat, toLng, toLat,
                 )
                 .retrieve()
@@ -144,6 +148,7 @@ class OsrmRoutingClient(
                     distanceKm = distanceMeters / 1000.0,
                     durationMinutes = durationSeconds / 60.0,
                     geometry = coordinates.map { listOf(it[1].toDouble(), it[0].toDouble()) },
+                    steps = parseSteps(bestRoute),
                 )
             }
         } catch (e: RestClientException) {
@@ -151,6 +156,51 @@ class OsrmRoutingClient(
             null
         }
     }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun parseSteps(bestRoute: Map<String, Any?>?): List<RouteStep> {
+        val legs = bestRoute?.get("legs") as? List<Map<String, Any?>> ?: return emptyList()
+        return legs.flatMap { leg -> leg["steps"] as? List<Map<String, Any?>> ?: emptyList() }
+            .mapNotNull { step ->
+                val distanceMeters = (step["distance"] as? Number)?.toDouble() ?: return@mapNotNull null
+                val streetName = (step["name"] as? String)?.trim()?.ifBlank { null }
+                @Suppress("UNCHECKED_CAST")
+                val maneuver = step["maneuver"] as? Map<String, Any?> ?: emptyMap()
+                val type = maneuver["type"] as? String ?: "continue"
+                val modifier = maneuver["modifier"] as? String
+                RouteStep(instruction = maneuverInstruction(type, modifier, streetName), distanceMeters = distanceMeters, streetName = streetName)
+            }
+    }
+
+    /**
+     * Real, sourced maneuver vocabulary -- OSRM's own documented `StepManeuver` `type`/
+     * `modifier` values (project-osrm.org/docs -- turn/depart/arrive/merge/fork/roundabout/
+     * etc, each with an optional left/right/straight-family modifier), turned into a plain
+     * English instruction the same way any real turn-by-turn app renders them. Not
+     * invented: every branch below corresponds to a real, documented OSRM maneuver type.
+     */
+    private fun maneuverInstruction(type: String, modifier: String?, streetName: String?): String {
+        val onto = streetName?.let { " onto $it" } ?: ""
+        val direction = modifier?.replace('-', ' ') ?: "ahead"
+        return when (type) {
+            "depart" -> "Head $direction$onto"
+            "arrive" -> "Arrive at your destination"
+            "turn" -> "Turn $direction$onto"
+            "new name" -> "Continue$onto"
+            "continue" -> if (modifier == null || modifier == "straight") "Continue straight$onto" else "Continue $direction$onto"
+            "merge" -> "Merge$onto"
+            "on ramp" -> "Take the ramp$onto"
+            "off ramp" -> "Take the exit$onto"
+            "fork" -> "At the fork, keep $direction$onto"
+            "end of road" -> "Turn $direction$onto"
+            "roundabout", "rotary" -> "Enter the roundabout$onto"
+            "roundabout turn" -> "At the roundabout, turn $direction$onto"
+            "exit roundabout", "exit rotary" -> "Exit the roundabout$onto"
+            "use lane" -> "Continue$onto"
+            else -> "Continue$onto"
+        }.trim()
+    }
 }
 
-data class RouteResult(val distanceKm: Double, val durationMinutes: Double, val geometry: List<List<Double>>)
+data class RouteStep(val instruction: String, val distanceMeters: Double, val streetName: String?)
+data class RouteResult(val distanceKm: Double, val durationMinutes: Double, val geometry: List<List<Double>>, val steps: List<RouteStep> = emptyList())
