@@ -14,7 +14,7 @@
 // reconciliation passes. This does not attempt spacing/elevation/typography --
 // those either aren't confirmed sourced from a real place (spacing/elevation)
 // or involve real per-platform hand-tuning this pass deliberately didn't
-// override (typography -- see TdsTypography.kt/TdsTheme.swift's own comments).
+// override (typography -- see IdsTypography.kt/IdsTheme.swift's own comments).
 
 const fs = require('fs');
 const path = require('path');
@@ -41,7 +41,7 @@ function replaceMarked(filePath, generatedBody) {
   console.log(`Updated ${path.relative(process.cwd(), filePath)}`);
 }
 
-// --- Android: TdsColors.kt ---
+// --- Android: IdsColors.kt ---
 function generateKotlin() {
   const lines = [];
   for (const family of ['grey', 'blue', 'red']) {
@@ -56,7 +56,7 @@ function generateKotlin() {
   return lines.join('\n') + '\n';
 }
 
-// --- iOS: TdsTheme.swift ---
+// --- iOS: IdsTheme.swift ---
 function generateSwift() {
   const lines = [];
   for (const family of ['grey', 'blue', 'red']) {
@@ -73,10 +73,10 @@ function generateSwift() {
 
 const androidFile = path.join(
   __dirname, '..', '..', 'android', 'core', 'designsystem', 'src', 'main', 'java',
-  'rw', 'itunda', 'core', 'designsystem', 'theme', 'TdsColors.kt',
+  'rw', 'itunda', 'core', 'designsystem', 'theme', 'IdsColors.kt',
 );
 const iosFile = path.join(
-  __dirname, '..', '..', 'ios', 'Core', 'DesignSystem', 'Sources', 'Theme', 'TdsTheme.swift',
+  __dirname, '..', '..', 'ios', 'Core', 'DesignSystem', 'Sources', 'Theme', 'IdsTheme.swift',
 );
 
 replaceMarked(androidFile, generateKotlin());
