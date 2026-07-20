@@ -837,6 +837,10 @@ let mapNearbyCategories: [MapPlaceCategory] = [
     MapPlaceCategory(id: "SCHOOL", label: "Schools"),
 ]
 
+// imageUrl/originalPrice/discountPercent added 2026-07-21, closing
+// docs/DESIGN_REFERENCES.md Section 5 recommendation #4 -- see backend
+// MerchantProduct.kt's own doc comment for the full account (merchant-supplied external
+// URL, no upload/storage layer; discountPercent is server-computed, never client-set).
 struct MerchantProductDto: Decodable, Identifiable {
     let id: String
     let merchantId: String
@@ -844,6 +848,9 @@ struct MerchantProductDto: Decodable, Identifiable {
     let price: Double
     let active: Bool
     let createdAt: String
+    let imageUrl: String?
+    let originalPrice: Double?
+    let discountPercent: Int?
 }
 struct MerchantSummaryDto: Decodable { let id: String; let businessName: String }
 struct MerchantProductsResponse: Decodable { let success: Bool; let merchant: MerchantSummaryDto; let products: [MerchantProductDto] }

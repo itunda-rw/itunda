@@ -2251,7 +2251,7 @@ SPEC CHECKSUMS:
   BrickModule: 184dbb7197b76cf3f236e28223ecdf5e82aa5caa
   FBLazyVector: c12d2108050e27952983d565a232f6f7b1ad5e69
   GraniteBrownfield: de74ba55d3afafb0f1aa57af1bab55456f3dbd7d
-  hermes-engine: b404f8e5f129baaf91a56563a25675d63d8a4506
+  hermes-engine: e424939e0a7cce042ed6520e4a986bf2a4283202
   MapLibre: 96726270455ffd183688cf0bd2a3881b0212a57e
   RCTDeprecation: 3280799c14232a56e5a44f92981a8ee33bc69fd9
   RCTRequired: 9854a51b0f65ccf43ea0b744df4d70fce339db32
@@ -2261,7 +2261,7 @@ SPEC CHECKSUMS:
   React: 7ef36630d07638043a134a7dd2ec17e0be10fc3c
   React-callinvoker: af4e8fe1d60ab63dd8d74c2a68988064c2848954
   React-Core: c609976c034ba9556bef9850a571a71bd458d73f
-  React-Core-prebuilt: af875d11dff0ebc73d16c499dc40e0b3962c25ab
+  React-Core-prebuilt: 8d6851a02abf6e5ba269106dae9ec68b82635914
   React-CoreModules: 0ea85f3b3f4b8cbfb3afacd2ed85458fb878517a
   React-cxxreact: 6752bab77c0599d6136e2b8b9b64b4a7d316d401
   React-debug: 38389b86e3570558ec73dd4cbc0cd2f2eec47a51
@@ -2323,7 +2323,7 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: 6b7e8d8d974ed13fb66698d82c30c5e70c1f7d3a
   ReactCodegen: 1ee58ad05130798b6abbb261d8ad683a6e5bce03
   ReactCommon: 92b53b0bd7f7d86154dc9f512c1ea5dee717cc72
-  ReactNativeDependencies: 212449ee3482db263295539913b3328fe10f6eba
+  ReactNativeDependencies: 358db11365ad360570868684d43dcc855defd5a5
   RNScreens: 14243fa0d9842ffa7f8bb2d00b6c3cfd3ca817e8
   RNSVG: 507bf2685de6b3d49449efd4aae7e7471bb9c433
   Yoga: 772166513f9cd2d61a6251d0dacbbfaa5b537479
