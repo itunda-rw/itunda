@@ -1,0 +1,28 @@
+plugins {
+    kotlin("jvm")
+    kotlin("plugin.spring")
+    id("io.spring.dependency-management")
+}
+
+dependencyManagement {
+    imports {
+        mavenBom("org.springframework.boot:spring-boot-dependencies:3.3.4")
+    }
+}
+
+dependencies {
+    implementation(project(":core"))
+    // For RateLimiter -- real anti-spam limit on split-bill creation/payment, same
+    // convention as every other money-moving/content-creation endpoint in this codebase.
+    implementation(project(":auth"))
+    // For GroupMessagingService -- a split bill is created inside and posts real chat
+    // messages into an existing group conversation, reusing that primitive rather than
+    // inventing a second group/thread concept (see SplitBill.kt's own doc comment).
+    implementation(project(":messaging"))
+    implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.security:spring-security-core")
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("io.kotest:kotest-runner-junit5:5.9.1")
+    testImplementation("io.kotest:kotest-assertions-core:5.9.1")
+    testImplementation("io.mockk:mockk:1.13.12")
+}

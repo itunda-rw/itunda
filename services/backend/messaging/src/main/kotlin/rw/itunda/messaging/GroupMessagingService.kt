@@ -157,6 +157,13 @@ class GroupMessagingService(
         return group
     }
 
+    /** Public wrapper over [requireMember] -- same reasoning as
+     * `MessagingService.getConversationForParticipant`: lets a feature built on top of
+     * an already-open group (e.g. `rw.itunda.splitbill.SplitBillService`, a real
+     * chat-embedded split-bill) resolve/authorize "is this caller a real member of this
+     * group" without duplicating this same IDOR check. */
+    fun getGroupForMember(userId: String, groupId: String): GroupConversation = requireMember(userId, groupId)
+
     @Transactional
     fun sendMessage(userId: String, groupId: String, body: String): GroupMessage {
         val trimmed = body.trim()

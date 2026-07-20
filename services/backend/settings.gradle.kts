@@ -32,5 +32,6 @@ include(
     ":eats",
     ":maps",
     ":gift",
+    ":splitbill",
     ":app"
 )
