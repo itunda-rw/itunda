@@ -3846,8 +3846,14 @@ private fun OrderFoodContent() {
                         Spacer(modifier = Modifier.width(14.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(m.businessName, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            // Real fix, 2026-07-21: every restaurant card showed the exact same
+                            // generic "Real menu, real delivery" filler regardless of which
+                            // restaurant it was -- not real per-restaurant info a user could
+                            // actually scan and compare, unlike a real Coupang Eats/Baemin card.
+                            // ShoppingMerchantDto already carries a real cashbackRate; it just
+                            // wasn't shown here.
                             Text(
-                                if (m.category != null) "${m.category} · Real menu, real delivery" else "Real menu, real delivery",
+                                listOfNotNull(m.category, "${m.cashbackRate} cashback").joinToString(" · "),
                                 color = TossSecondary,
                                 fontSize = 12.sp,
                             )
