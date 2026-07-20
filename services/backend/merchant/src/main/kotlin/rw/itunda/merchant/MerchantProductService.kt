@@ -7,11 +7,16 @@ import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import java.math.BigDecimal
+import java.math.RoundingMode
+import java.net.URI
+import java.net.URISyntaxException
 import java.time.Duration
 import java.util.UUID
 
 class InvalidProductPriceException(message: String) : RuntimeException(message)
 class MerchantProductNotFoundException(message: String) : RuntimeException(message)
+class InvalidProductImageUrlException(message: String) : RuntimeException(message)
+class InvalidProductDiscountException(message: String) : RuntimeException(message)
 
 /**
  * A real merchant product catalog -- the register-software half of the "Toss Place"
@@ -30,8 +35,52 @@ class MerchantProductService(
         merchantRepository.findByOwnerUserId(ownerUserId)
             ?: throw MerchantNotFoundException("This account is not registered as a merchant")
 
+    // Real, minimal image-URL validation (2026-07-21) -- this backend has no
+    // file-upload/storage layer anywhere (confirmed by repo-wide search before adding
+    // this field), so a merchant provides a real, already-publicly-hosted image URL
+    // rather than uploading a file. This is an honest "bring your own URL" v1, not a
+    // fake upload pipeline dressed up to look real. Blank/absent is allowed (no image is
+    // a valid, real state); a non-blank value must at least parse as a real http(s) URL.
+    private fun validateImageUrl(imageUrl: String?): String? {
+        val trimmed = imageUrl?.trim()?.ifBlank { null } ?: return null
+        if (trimmed.length > 2048) {
+            throw InvalidProductImageUrlException("Image URL is too long")
+        }
+        val uri = try {
+            URI(trimmed)
+        } catch (e: URISyntaxException) {
+            throw InvalidProductImageUrlException("Image URL is not a valid URL")
+        }
+        if (uri.scheme != "http" && uri.scheme != "https") {
+            throw InvalidProductImageUrlException("Image URL must start with http:// or https://")
+        }
+        return trimmed
+    }
+
+    // Real discount-percent computation (2026-07-21) -- deliberately never accepted
+    // directly from the client (see MerchantProduct.kt's own doc comment for why):
+    // computed here, server-side, from price/originalPrice at write time so it can never
+    // drift from the two real numbers it's derived from. Null originalPrice means "no
+    // discount," a real, valid state, not an error.
+    private fun computeDiscountPercent(price: BigDecimal, originalPrice: BigDecimal?): Int? {
+        if (originalPrice == null) return null
+        if (originalPrice <= price) {
+            throw InvalidProductDiscountException("Original price must be greater than the current price")
+        }
+        return originalPrice.subtract(price)
+            .multiply(BigDecimal(100))
+            .divide(originalPrice, 0, RoundingMode.HALF_UP)
+            .toInt()
+    }
+
     @Transactional
-    fun addProduct(ownerUserId: String, name: String, price: BigDecimal): MerchantProduct {
+    fun addProduct(
+        ownerUserId: String,
+        name: String,
+        price: BigDecimal,
+        imageUrl: String? = null,
+        originalPrice: BigDecimal? = null,
+    ): MerchantProduct {
         // Real anti-spam limit -- found missing in a 2026-07-19 security sweep. Not
         // money-moving (deliberately no Idempotency-Key, per the controller's own doc
         // comment), but that decision left free, unbounded product-row creation once a
@@ -41,11 +90,16 @@ class MerchantProductService(
         if (price <= BigDecimal.ZERO) {
             throw InvalidProductPriceException("Price must be greater than zero")
         }
+        val validatedImageUrl = validateImageUrl(imageUrl)
+        val discountPercent = computeDiscountPercent(price, originalPrice)
         val product = MerchantProduct(
             id = "merchant_product_${UUID.randomUUID()}",
             merchantId = merchant.id,
             name = name,
             price = price,
+            imageUrl = validatedImageUrl,
+            originalPrice = originalPrice,
+            discountPercent = discountPercent,
         )
         return merchantProductRepository.save(product)
     }
@@ -56,11 +110,20 @@ class MerchantProductService(
     }
 
     @Transactional
-    fun updateProduct(ownerUserId: String, productId: String, name: String, price: BigDecimal): MerchantProduct {
+    fun updateProduct(
+        ownerUserId: String,
+        productId: String,
+        name: String,
+        price: BigDecimal,
+        imageUrl: String? = null,
+        originalPrice: BigDecimal? = null,
+    ): MerchantProduct {
         val merchant = getMyMerchant(ownerUserId)
         if (price <= BigDecimal.ZERO) {
             throw InvalidProductPriceException("Price must be greater than zero")
         }
+        val validatedImageUrl = validateImageUrl(imageUrl)
+        val discountPercent = computeDiscountPercent(price, originalPrice)
         val product = merchantProductRepository.findById(productId)
             .orElseThrow { MerchantProductNotFoundException("Product not found") }
         if (product.merchantId != merchant.id) {
@@ -68,6 +131,9 @@ class MerchantProductService(
         }
         product.name = name
         product.price = price
+        product.imageUrl = validatedImageUrl
+        product.originalPrice = originalPrice
+        product.discountPercent = discountPercent
         return merchantProductRepository.save(product)
     }
 

@@ -21,6 +21,12 @@ data class FavoriteProduct(
     val price: BigDecimal,
     val businessName: String,
     val favoritedAt: Instant,
+    // imageUrl/originalPrice/discountPercent added 2026-07-21 -- see
+    // MerchantProduct.kt's own doc comment. The wishlist card needs the same real
+    // product-card fields the catalog/search views already carry.
+    val imageUrl: String? = null,
+    val originalPrice: BigDecimal? = null,
+    val discountPercent: Int? = null,
 )
 
 /**
@@ -71,6 +77,9 @@ class ProductFavoriteService(
                 price = product?.price ?: BigDecimal.ZERO,
                 businessName = product?.let { merchantsById[it.merchantId]?.businessName } ?: "Merchant no longer available",
                 favoritedAt = favorite.createdAt,
+                imageUrl = product?.imageUrl,
+                originalPrice = product?.originalPrice,
+                discountPercent = product?.discountPercent,
             )
         }
     }

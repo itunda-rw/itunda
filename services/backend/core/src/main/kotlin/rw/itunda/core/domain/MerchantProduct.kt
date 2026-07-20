@@ -15,6 +15,19 @@ import java.time.Instant
  * the exact same real `POST /qr/generate`/`POST /card/charge` collection flows
  * MerchantService already proved out for QR Pay, just checking out a cart total instead
  * of a single typed-in amount. See rw.itunda.merchant.MerchantProductService.
+ *
+ * **Real product images + discount pricing added 2026-07-21**, closing
+ * `docs/DESIGN_REFERENCES.md` Section 5's #4 recommendation (Coupang/Baymard-sourced: a
+ * real product card needs an image and a current/original price pair, not just a bare
+ * price). `imageUrl` is deliberately a merchant-supplied external URL, not an uploaded
+ * file -- this backend has no file-upload/storage layer anywhere (confirmed by repo-wide
+ * search before building), so "bring your own publicly-hosted image URL" is the honest
+ * v1 scope, not a fake upload pipeline. `originalPrice` is merchant-entered (must be
+ * strictly greater than `price` -- see `MerchantProductService`'s validation);
+ * `discountPercent` is deliberately NOT client-supplied -- it's computed server-side from
+ * `price`/`originalPrice` at write time and stored, so it can never drift from the two
+ * prices it's derived from (the same "never trust the client with a derived number"
+ * discipline `OrderService` already applies to price resolution at checkout).
  */
 @Entity
 @Table(name = "merchant_products")
@@ -34,6 +47,15 @@ class MerchantProduct(
 
     @Column(nullable = false)
     var active: Boolean = true,
+
+    @Column(name = "image_url", length = 2048)
+    var imageUrl: String? = null,
+
+    @Column(name = "original_price", precision = 18, scale = 2)
+    var originalPrice: BigDecimal? = null,
+
+    @Column(name = "discount_percent")
+    var discountPercent: Int? = null,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
