@@ -3987,6 +3987,31 @@ private fun OrderFoodContent() {
                                 color = TossSecondary,
                                 fontSize = 12.sp,
                             )
+                            // Real browse-card enrichment (2026-07-21) -- closes
+                            // docs/DESIGN_REFERENCES.md's Eats recommendations #1/#2: rating
+                            // previously sat one tap deeper inside RestaurantMenuView only,
+                            // and there was no distance/delivery-time/min-order signal on the
+                            // browse card at all. Every clause conditionally rendered on real
+                            // data being present -- never a fabricated placeholder.
+                            if (m.rating != null || m.distanceKm != null || m.minOrderAmount != null) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (m.rating != null) {
+                                        Icon(Icons.Outlined.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(12.dp))
+                                        Spacer(modifier = Modifier.width(2.dp))
+                                        Text("%.1f (%d)".format(m.rating, m.reviewCount), color = TossSecondary, fontSize = 12.sp)
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                    }
+                                    Text(
+                                        listOfNotNull(
+                                            m.distanceKm?.let { "%.1f km".format(it) },
+                                            m.deliveryTimeMinutes?.let { "~$it min" },
+                                            m.minOrderAmount?.let { "Min ${it.toLong()} RWF" },
+                                        ).joinToString(" · "),
+                                        color = TossSecondary,
+                                        fontSize = 12.sp,
+                                    )
+                                }
+                            }
                         }
                         val isFavorite = m.merchantId in favoriteIds
                         Icon(
