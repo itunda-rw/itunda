@@ -11,20 +11,29 @@ import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import rw.itunda.app.network.NetworkClient
 import rw.itunda.app.network.NotificationDto
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.identity.NIDABiometricAuth
 
 /**
  * Real account settings screen, matching the real Toss reference screenshots
@@ -89,6 +98,48 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                 }
                 androidx.compose.material3.Divider(color = Ids.colors.divider)
                 Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Real biometric app-lock toggle (2026-07-21) -- see AppLockScreen.kt's own
+            // doc comment. Only shown when the device actually has biometrics
+            // enrolled; a tappable row that goes nowhere is worse than not showing it,
+            // same discipline this screen's own header comment already established
+            // for the "보안" rows this app deliberately doesn't fake.
+            item {
+                val activity = LocalContext.current as androidx.fragment.app.FragmentActivity
+                val biometricAvailable = remember { NIDABiometricAuth(activity).isAvailable() }
+                if (biometricAvailable) {
+                    val tokenStore = remember { NetworkClient.currentTokenStore() }
+                    var appLockEnabled by remember { mutableStateOf(tokenStore.isAppLockEnabled()) }
+                    Text("Security", color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            modifier = Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.chip),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(Icons.Outlined.Fingerprint, contentDescription = null, tint = Ids.colors.textPrimary)
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Unlock with biometrics", color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Require Face/Fingerprint to open Itunda", color = Ids.colors.textTertiary, fontSize = 13.sp)
+                        }
+                        Switch(
+                            checked = appLockEnabled,
+                            onCheckedChange = {
+                                appLockEnabled = it
+                                tokenStore.setAppLockEnabled(it)
+                            },
+                            colors = SwitchDefaults.colors(checkedTrackColor = Ids.colors.brand),
+                        )
+                    }
+                    androidx.compose.material3.Divider(color = Ids.colors.divider)
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
 
             item {

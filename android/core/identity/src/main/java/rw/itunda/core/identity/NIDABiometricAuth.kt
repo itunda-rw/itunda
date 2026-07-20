@@ -26,6 +26,15 @@ import androidx.fragment.app.FragmentActivity
  */
 class NIDABiometricAuth(private val requireActivity: FragmentActivity) {
 
+    /**
+     * Real device-capability check (2026-07-21) -- lets a caller (e.g. the app-launch
+     * unlock gate in AppLockScreen.kt) decide whether to even offer a biometric prompt,
+     * without leaking [BiometricManager] itself outside this module's API surface.
+     */
+    fun isAvailable(): Boolean =
+        BiometricManager.from(requireActivity).canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) ==
+            BiometricManager.BIOMETRIC_SUCCESS
+
     fun authenticateUser(nidNumber: String, onAuthResult: (Boolean, String?) -> Unit) {
         showPrompt(
             subtitle = "Verify identity for NID: $nidNumber",

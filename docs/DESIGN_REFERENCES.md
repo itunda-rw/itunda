@@ -593,3 +593,117 @@ Before building any of the individual recommendations above, it is worth a short
 to define these as first-class shared components — the same discipline that keeps itunda's brand
 color unified should extend to these interaction primitives, so six product surfaces continue to
 feel like one app rather than six.
+
+---
+
+## 8. Sign-up simplicity & user-segment design
+
+**Added:** 2026-07-21. Three parallel research threads into Toss (Viva Republica): 회원가입
+(sign-up) simplification specifically, general interaction-simplicity philosophy, and
+segment-specific products for seniors/teens/foreign residents. Cross-referenced against a full
+current-state inventory of itunda's own registration/login/accessibility code (all 3 clients +
+backend) so every recommendation below cites a real file, not a hypothetical.
+
+### References
+
+| Topic | Source | Pattern |
+|---|---|---|
+| Sign-up field-entry redesign | toss.tech/article/toss-signup-process | Fields auto-append *below* the one just filled (reverse-stacked scroll) rather than splitting across pages; usability testing found users fixate on the active cursor field and don't notice the reversed order (the article likens this to the "invisible gorilla" selective-attention effect); a separate top-to-bottom flow exists for VoiceOver users specifically |
+| Sign-up conversion experiments | toss.tech/article/signup | Four sequential, named A/B experiments as the user base skewed older: cutting permission prompts (negligible), removing the intro screen (negligible), optimizing for large system text + a mandatory confirm button (negligible), and — the one that actually worked — adding *contextual explanation of why a step is needed*, specifically on Android where iOS already had it and Android didn't |
+| Login credential | toss.im/tossfeed/article/toss-overseas-identity-verification | Toss's real login credential is a 6-digit PIN or Face ID, not a conventional alphanumeric password; overseas/no-Korean-carrier users get a separate passport+NFC-based path instead of carrier-SMS real-name verification |
+| Toss product principles (official) | toss.im/tossfeed/article/tossproductprinciples | Named principles: **Clear Action**, **One Thing** (one core message per screen), **Easy to Answer** (any on-screen question answerable within 3 seconds or the product recommends one), **No More Loading**, **Minimum Features**, **Value First** |
+| Insurance-claim redesign case study | toss.tech/article/insurance-claim-process | Reframing an ambiguous open question ("get help, or do it yourself?") into a concrete yes/no question ("do you have the documents?") cut abandonment at that step by 60% and drop-off between screens by 50% — a direct, quantified application of "Easy to Answer" |
+| UX research team & methodology | toss.im/tossfeed/article/user-research-team-interview, toss.tech/article/26109 | Dedicated User Research function (interviews/FGI/UT/diary studies/journey maps, standing UT room, same-day recruiting); documented rule from a real case study — "for daily-use services, wait at least a month before reading user opinion" — after a new feature's sentiment normalized post-launch |
+| Push-notification de-targeting | toss.tech/article/data-analyst-ab-test | Real 2-month, 3-variant, 6%-of-users A/B test: auto-dropping a user from a notification category after N consecutive non-responses raised CTR ~4-4.5pp with no meaningful drop in app-opens/usage/revenue — fatigue traced to *irrelevant* volume, not frequency itself |
+| Design system rethink | toss.tech/article/rethinking-design-system | Toss's own design system became too rigid, causing teams to fork components locally around it; fixed by offering both a **Flat** (simple) and **Compound** (composable) version of the same component — cited elsewhere in this doc (Section 7) as already influencing itunda's own `TdsButton` work |
+| Youth/teen products | toss.im/teens/uss-card, toss.im/tossfeed/article/how-teens-get-toss, newsis.com 2025-08-06 | Three-tier real product line: **Youth Home** (7-13, deliberately feature-subtracted, not the adult app minus a lock), **USS/Youth Card** (7-16, prepaid-only, ₩500k balance/txn caps, blacklisted merchant categories, instant parent-freeze), and full self-service banking for 14+ using **passport-based identity verification instead of a resident-registration number** |
+| Senior usability research | toss.tech/article/senior-usability-research | In-person testing with 50+ users found: non-button clickable elements (text/arrows) go unrecognized; labeled "example" placeholder images get mistaken for real personal data; users fixate on mimicking an animated intro character during face-liveness setup instead of following the actual instruction; question-phrased microcopy reads as ambiguous vs. imperative phrasing; no instinctive scrolling, missing off-screen content entirely |
+| Accessibility tooling | toss.im/tossfeed/article/ally | In-house automated a11y linter ("Ally," ~100 errors/hour caught pre-launch) built directly from feedback gathered from blind users; font scaling inherits all native OS steps (9 iOS / 12 Android) rather than a typical 3-step in-app toggle |
+| Foreign-resident onboarding | khan.co.kr 2022-05-02, korean-culture.org | First Korean internet-bank to offer non-face-to-face account opening for foreign residents via ARC/residency card cross-checked against government MyData; unsecured personal loans explicitly excluded for this segment; 10-language in-app support (full flow translation, not just labels) |
+
+### itunda's current state (verified, not assumed)
+
+- **Registration is already fairly minimal**: `RegisterRequest` (`services/backend/auth/src/main/kotlin/rw/itunda/auth/AuthDtos.kt:5-20`) requires only `phoneNumber`/`firstName`/`lastName`/`password`; `email` and `referralCode` are optional. No KYC is required at registration — `User.kycVerified` starts `false` and identity verification is a fully separate, later, opt-in module (`IdentityController.kt`). This already matches Toss's own "defer identity verification, don't gate signup on it" pattern — a genuine existing strength, not a gap.
+- **No phone verification exists at all** — any phone number is accepted with zero proof of possession. No SMS/OTP flow exists anywhere in the backend (confirmed by repo-wide grep).
+- **Login is conventional phone+password only** (`AuthDtos.kt:22`, bcrypt-compared in `AuthService.login`). itunda already has a real biometric primitive (`NIDABiometricAuth.kt`/`.swift`) but it's used exclusively as a transaction step-up gate before confirming a transfer (`ItundaAppScreen.kt:215,252-254`) — never at login/app-launch. FacePay is similarly collection-only (merchant payment), never login.
+- **No passport/alternative-ID path exists** — `IdentityService.submit` explicitly returns `UNSUPPORTED_DOCUMENT_TYPE` for anything but `NATIONAL_ID`/`BUSINESS_TIN` (`IdentityServiceTest.kt:82-83`), meaning a foreign resident of Rwanda (Congolese, Burundian, Ugandan, Kenyan, or expat) has no supported KYC path at all today.
+- **No accessibility features exist anywhere** — no font-scaling override, no simplified/senior mode, no multi-language support in any of the 3 clients. `User` has no age/date-of-birth field, and there is no age-gated product anywhere (confirmed by repo-wide grep).
+- **bank-mfe has no registration UI at all** — `LoginPage.tsx` is login-only; there's no sign-up page on that client, an itunda-internal gap unrelated to Toss.
+
+### Recommendations (ranked)
+
+1. **[sourced]** Add a real, honest phone-verification step at registration, delivered the same
+   way itunda's existing email verification already is (in-app `Notification`, since no SMTP/SMS
+   relay exists — see `AuthService.kt:240-244`'s own comment). This is the single most
+   Toss-aligned, currently-real gap: Toss's whole real-name-verification model is built on proven
+   phone possession; itunda currently accepts any unverified number. Mirror
+   `requestEmailVerification`/`confirmEmailVerification` (`AuthService.kt:245-282`) field-for-field
+   for phone, rather than inventing a new pattern.
+   *Target: `AuthService.kt:245-282` (pattern to mirror), new `requestPhoneVerification`/
+   `confirmPhoneVerification`, `AuthController.kt`, all 3 clients' registration screens*
+
+2. **[sourced]** Reuse itunda's own existing biometric primitive as a login/app-launch quick-unlock,
+   not just a transaction step-up gate. Toss's real login credential is a 6-digit PIN or Face ID,
+   never a conventional password — itunda already built the exact crypto/Keystore plumbing this
+   needs (`NIDABiometricAuth.kt`/`.swift`) and already uses it for transfers; extending it to gate
+   app-launch/resume (on top of an already-issued session token, not a full re-login) is almost
+   pure reuse, no new external dependency, no schema change.
+   *Target: `NIDABiometricAuth.kt`/`.swift` (existing), new call site at app launch/foreground in
+   `ItundaAppScreen.kt`/`ContentView.swift`, a settings toggle to enable/disable*
+
+3. **[sourced]** Add a passport-based identity-verification path for foreign residents, mirroring
+   Toss's identical pattern for both foreign residents and 14+ teens (one alternative-identity
+   mechanism, reused for two segments, not two separate builds). itunda's `IdentityService`
+   explicitly rejects `PASSPORT` today; Rwanda has significant cross-border residency (Congolese,
+   Burundian, Ugandan, Kenyan) with no NIDA number to submit. This also unblocks the "no consumer
+   KYC UI exists in the main app at all" gap found during this pass, since building the first real
+   consumer-facing identity-verification screen would need to happen either way.
+   *Target: `IdentityService.kt`, `DemoNidaVerificationService.kt` (new demo passport-verification
+   path, same "structural validation + simulated match, honestly labeled" convention already used
+   for National ID), first consumer KYC UI on all 3 clients*
+
+4. **[sourced]** Apply "Easy to Answer" (Toss's own principle, quantified 60%/50% drop-off
+   reduction in a real case study) to itunda's own highest-friction moment found this pass: KYC
+   submission has no consumer UI at all, so there's no current screen to audit — but the principle
+   should shape whatever screen recommendation 3 above produces: prefer a concrete yes/no framing
+   ("do you have your ID or passport with you?") over an open question, and test the imperative-
+   vs-question microcopy distinction the senior-usability research also independently confirms.
+
+5. **[sourced]** Inherit full native OS font-scaling rather than building (or not building) any
+   in-app text-size toggle. Currently zero font-scaling override exists in any client — meaning
+   itunda's SwiftUI/Compose text should already inherit the OS setting by default unless something
+   is explicitly overriding it; this recommendation is really "audit for accidental fixed-size
+   text and fix it," not "build a new feature," matching Toss's own finding that full OS-native
+   scaling beats a limited in-app toggle.
+   *Target: audit `sp`/fixed-size `Text()` calls across `SuperAppTabs.kt` and SwiftUI `.font()`
+   modifiers for hardcoded sizes that don't respond to system text-size settings*
+
+6. **[partially-sourced]** Consider a teen/youth product tier — the biggest lift of any
+   recommendation here, requiring a new `User.dateOfBirth`/age field (doesn't exist today),
+   parental-consent/linking design, and spend-cap enforcement, none of which itunda has any
+   foundation for yet. Toss's own three-tier structure (Youth Home for 7-13, USS Card for 7-16,
+   passport-based self-service for 14+) is real and sourced, but porting it is a multi-session
+   effort, not a single closable gap — flagged as a real opportunity, not a next action.
+
+7. **[inferred, itunda-internal]** Build a real registration UI for bank-mfe. Unrelated to Toss
+   research directly, but a glaring itunda-internal inconsistency found during this pass — the web
+   client has no sign-up page at all, unlike Android/iOS.
+   *Target: new `services/micro-frontends/bank-mfe/src/RegisterPage.tsx`, mirroring `LoginScreen.kt`/
+   `.swift`'s existing field set*
+
+### Unresolved / worth a follow-up
+
+- No sourced "sign-up in under X minutes" marketing claim was found for Toss anywhere, official or
+  press — any such claim should be treated as unconfirmed rather than cited.
+- Whether Toss's 2022-announced auto-detected 50+ senior mode still exists/matches its original
+  description in 2026 was not confirmed either way by any later source.
+- Toss's exact current (2026) sign-up screen-by-screen flow wasn't verified against a live, dated
+  screenshot — the sourced articles describe design decisions and a flow skeleton, not exact
+  current field/screen counts.
+- A "skip for now" pattern deferring optional fields at Toss sign-up could not be confirmed either
+  way; one low-quality source claimed referral codes can't be added post-signup (the opposite of
+  deferral) but wasn't independently verified.
+- No dedicated Toss UX-research case study for the foreign-resident segment was found (unlike
+  seniors) — unclear whether Toss has run equivalent usability studies for that segment at all.
+- Competitor senior-mode comparison (KB/Shinhan/Hana/Woori) rests on a single third-party teardown,
+  not independently cross-verified bank-by-bank.

@@ -47,9 +47,19 @@ class TokenStore(context: Context) {
     fun getUserId(): String? = prefs.getString(KEY_USER_ID, null)
     fun hasSession(): Boolean = getAccessToken() != null
 
+    // Real app-launch biometric unlock gate (2026-07-21) -- see AppLockScreen.kt's own
+    // doc comment. Default-on (matching Toss's own default PIN/Face-ID-gated launch,
+    // per docs/DESIGN_REFERENCES.md Section 8) whenever the device actually has
+    // biometrics enrolled; a user can opt out from Settings.
+    fun isAppLockEnabled(): Boolean = prefs.getBoolean(KEY_APP_LOCK_ENABLED, true)
+    fun setAppLockEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_APP_LOCK_ENABLED, enabled).apply()
+    }
+
     private companion object {
         const val KEY_USER_ID = "user_id"
         const val KEY_ACCESS_TOKEN = "access_token"
         const val KEY_REFRESH_TOKEN = "refresh_token"
+        const val KEY_APP_LOCK_ENABLED = "app_lock_enabled"
     }
 }
