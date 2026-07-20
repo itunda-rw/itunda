@@ -5,6 +5,10 @@ import { randomUUID } from './uuid';
 // browsing reuses the existing shopping catalog endpoint (see ShopView's own comment in
 // BankDashboard.tsx); only order placement/tracking is genuinely new here.
 
+// imageUrl/originalPrice/discountPercent added 2026-07-21, closing
+// docs/DESIGN_REFERENCES.md Section 5 recommendation #4 -- see backend
+// MerchantProduct.kt's own doc comment for the full account (merchant-supplied external
+// URL, no upload/storage layer; discountPercent is server-computed, never client-set).
 export interface CommerceProduct {
   id: string;
   merchantId: string;
@@ -12,6 +16,9 @@ export interface CommerceProduct {
   price: number;
   active: boolean;
   createdAt: string;
+  imageUrl?: string | null;
+  originalPrice?: number | null;
+  discountPercent?: number | null;
 }
 
 export const fetchMerchantProducts = (merchantId: string) =>
@@ -110,6 +117,9 @@ export interface FavoriteProduct {
   price: number;
   businessName: string;
   favoritedAt: string;
+  imageUrl?: string | null;
+  originalPrice?: number | null;
+  discountPercent?: number | null;
 }
 
 export const addProductFavorite = (productId: string) =>
