@@ -691,6 +691,54 @@ backend) so every recommendation below cites a real file, not a hypothetical.
    *Target: new `services/micro-frontends/bank-mfe/src/RegisterPage.tsx`, mirroring `LoginScreen.kt`/
    `.swift`'s existing field set*
 
+### "One thing, one page" — a deeper look
+
+**Added:** 2026-07-21, a follow-up pass specifically on this one principle (user asked to go
+deeper than the one-line summary above).
+
+- **[sourced]** The canonical statement (toss.im/tossfeed/article/tossproductprinciples, principle
+  #8 of 10) is genuinely just one sentence — *"each page should deliver a single, clear core
+  message, refined to its essentials"* — with no elaboration or named screens at that URL. The real
+  depth lives in separate toss.tech engineering articles, not the principles page itself.
+- **[sourced]** Toss's own real-name signup redesign (`toss.tech/article/toss-signup-process`,
+  already cited above) treated this principle as a hard constraint, not a suggestion: the designer
+  explicitly rejected splitting the form across multiple "next"-tap screens as "burdensome," and
+  rejected cramming every field onto one static screen as a "One Thing" violation — landing instead
+  on the reverse-stacking single-scroll pattern already described in Section 8's main findings.
+- **[sourced]** Toss's own **"Flow" architecture** (`tosspayments.com/blog/articles/engineering-note-1`)
+  enforces this at the *code* level, not just as a visual-design guideline: because every screen is
+  scoped to one action, a real multi-step funnel (e.g., escrow → SMS verify → password → confirm)
+  becomes a composed chain of small "Flows," each independently tracking how many of its own steps
+  deep it is (`pageCount`) so a real back-press unwinds exactly that many screens — a single shared
+  browser-history stack can't do this once screens are broken down this finely. Named cost: chaining
+  flows causes a visible flash back to each sub-flow's entry point.
+- **[sourced] The exception case, and how Toss actually resolved it**: Toss's own "내 문서함"
+  (My Documents) feature — one screen combining certificate issuance, bill payment, and
+  notifications — was diagnosed as a "One Thing" violation (`toss.tech/article/mydoc`,
+  *"화면 내에서 우선순위 정리가 되지 않았던 것"* — priorities weren't organized within the screen).
+  Toss's fix was **not** to carve out an exception for "complex" screens — it was to eliminate the
+  multi-purpose screen entirely, redistributing each function to a contextually appropriate spot
+  elsewhere in the app. No case was found anywhere of Toss defending a genuinely multi-action screen
+  as a legitimate exception — a violation is treated as a bug to restructure, full stop.
+- **[unconfirmed]** No TDS (Toss Design System) documentation was found that codifies this as a
+  component-level rule (e.g., "max one `fill`-variant primary button per screen") — the discipline
+  appears to live entirely in product principles + the Flow architecture, not an enforced API
+  constraint.
+
+8. **[sourced]** Adopt "one thing per page" as an explicit, written itunda IDS principle — it
+   doesn't exist as a stated rule anywhere in this repo today, only as an emergent pattern in some
+   screens. itunda already has one real, structural precedent to build the written rule around:
+   `TransferStep` (`ItundaAppScreen.kt` — a sealed `Recipient`/`Amount` step model with its own
+   `BackHandler` unwinding exactly one step at a time) is itunda's own miniature version of Toss's
+   Flow architecture, already proven for Transfer. The actionable move is applying that same
+   sealed-step-plus-explicit-back-handling shape consistently to itunda's *other* multi-step
+   money/identity flows (Savings goal creation, Gift sending, and whatever KYC UI results from
+   recommendation 3 above) rather than each screen inventing its own ad hoc step tracking — and,
+   per the My Documents case above, treating any future screen that accretes two unrelated actions
+   as a bug to decompose, not a tradeoff to accept.
+   *Target: new short principle in itunda's own IDS documentation; `TransferStep` in
+   `ItundaAppScreen.kt` as the pattern to replicate, not reinvent, elsewhere*
+
 ### Unresolved / worth a follow-up
 
 - No sourced "sign-up in under X minutes" marketing claim was found for Toss anywhere, official or
@@ -707,3 +755,93 @@ backend) so every recommendation below cites a real file, not a hypothetical.
   seniors) — unclear whether Toss has run equivalent usability studies for that segment at all.
 - Competitor senior-mode comparison (KB/Shinhan/Hana/Woori) rests on a single third-party teardown,
   not independently cross-verified bank-by-bank.
+- No before/after drop-off metrics were found for the signup redesign specifically (unlike the
+  insurance-claim case, which has real 60%/50% figures) — the reverse-stacking pattern is real and
+  sourced, but its actual conversion impact isn't quantified anywhere found.
+- No public TDS documentation confirms a component-level "one primary button per screen" rule —
+  the one-thing-per-page discipline appears to live in product principles and the Flow architecture
+  only, not an enforced design-system API constraint.
+- One secondary source (disquiet.io) discussing Toss's one-page-one-thing philosophy returned an
+  HTTP 403 on direct fetch and could only be seen via a search snippet — excluded from findings
+  above as unverifiable; worth a retry via a different fetch method if more depth is needed later.
+
+---
+
+## 9. Graphics: illustration, iconography, color, and motion
+
+**Added:** 2026-07-21, following the sign-up/simplicity research above. This area is genuinely
+thinner in Toss's own public documentation than their UX-process writing — most claims below trace
+to 2-3 Toss Feed/Toss Tech articles rather than a dense body of material, flagged honestly rather
+than padded.
+
+### References
+
+| Topic | Source | Pattern |
+|---|---|---|
+| Icon system | developers-apps-in-toss.toss.im/design/resources.html | Icons used at 24-40px; explicit rule to **never combine multiple icons side by side** ("use only one at a time"); 7,000+ icons/emoji available via AppBuilder/Figma; decorative icons marked non-readable for screen readers |
+| Illustration style rules | developers-apps-in-toss.toss.im/design/resources.html | Explicit target aesthetic: "simple, clear, clean digital graphic style" — hand-drawn look, "lyrical/sentimental" painting styles, and cartoonish expression are all explicitly ruled out as feeling out of place; graphics must read correctly in both dark and light mode using mid-tone colors |
+| Illustration's product role | toss.im/tossfeed/article/graphicdesign-team-interview | Graphics evolved from "seasoning" to a core problem-solving tool; a 3,600-emoji custom set ("Toss Graphic Universe") built around deliberately non-clichéd, original metaphors rather than stock financial iconography; named designers for systemic coherence, content graphics, and 3D/hero visuals |
+| Illustration at friction points | toss.im/tossfeed/article/why-motion-in-finance | Cute/friendly animation deliberately frames uncomfortable moments (network errors, terms-agreement screens) as "less daunting"; confetti-style animation celebrates positive moments (credit score up, payday) — a documented, named tie to a peak-end-style softening effect |
+| Brand color, re-examined | toss.tech/article/43061 | Toss's own internal research found users did **not** spontaneously recall the brand as "blue" alone; what people actually retained was the combination of white background + blue logo + the square app-icon frame + bold black type — Toss reoriented brand strategy around that three-part signature, not the color alone |
+| Motion/interaction principles | toss.tech/article/interaction, toss.im/tossfeed/article/why-motion-in-finance | Five stated design principles: express with one movement instead of many words; emotional softening; resource-efficient 3D-to-Lottie layering; richer 3D reserved for web/social; interactive/manipulable 3D objects. A shared cross-platform motion library ("Rally") standardizes easing tokens. Interactions are justified internally with metrics, not aesthetics — a redesigned loan-approval loading screen (previously static) measurably improved engagement once made interactive |
+| Tossface (custom emoji font) | toss.im/tossface | Six explicit rules: simplest form for small-size legibility, uniform sizing across all 3,600 glyphs, one unified color palette, all directional emoji face right, all perspective objects use a fixed 45° angle, all 3D objects share one viewing height |
+| First graphic designer's own account | toss.tech/article/1st-graphic-designer | Toss's first graphic designer describes reversing an early "remove all rounded corners" rule, prioritizing one polished, on-brand icon set over broad coverage rather than chasing completeness |
+
+### itunda's current state (verified, not assumed)
+
+- **Zero illustrations exist anywhere in itunda.** Every empty state found across this session's
+  own work (Marketplace, Shop, Eats, Talk, Community, Jobs, Property) is bare text — `Text("No
+  listings yet.")`, `Text("No merchants registered yet.")`, `Text("No saved listings yet -- tap ♡
+  ...")`, and so on. This is the single largest, currently-zero-effort gap in this section: Toss
+  uses custom illustration/emoji specifically at exactly these moments (empty states, errors,
+  onboarding) to communicate faster than text and soften friction — itunda has never done this
+  once, anywhere, on any client.
+- Icon usage is otherwise reasonably disciplined already (Material/SF Symbols icons used singly per
+  row/button across the codebase, not stacked) — no confirmed violation of the "one icon at a time"
+  rule was found, though this wasn't exhaustively audited.
+- itunda's own single-blue-brand decision (Section 0 of this document) already independently
+  arrived at a "one consistent color across the whole app" position — Toss's own brand-research
+  finding above (users recall the *signature*, not the color alone) is a real, sourced reason to
+  extend that thinking to itunda's white-background + blue-accent + wordmark combination as the
+  actual recognizable signature, not the blue alone.
+
+### Recommendations (ranked)
+
+1. **[sourced]** Build a real shared empty-state component and use it everywhere itunda currently
+   shows bare text. This is the highest-leverage, lowest-risk recommendation in this section: no
+   backend change, no new dependency, closes a gap that exists identically across every surface.
+   Scoped honestly: this should be a simple icon-in-a-soft-circle + title + subtitle composition
+   using itunda's own existing icon set and color tokens (`Ids.colors.chip`/`brand`), matching
+   Toss's own documented style rule ("simple, clear, clean... not cartoonish, not hand-drawn") —
+   **not** an attempt at Toss's full custom-character illustration work, which is genuine
+   in-house-illustrator asset production this doesn't have the input to match honestly.
+   *Target: one shared `EmptyState` composable/View/component per platform, replacing the bare
+   `Text(...)` empty-state calls across `SuperAppTabs.kt`, `HoodScreen.swift`/equivalent iOS
+   screens, and `BankDashboard.tsx`*
+
+2. **[sourced]** Apply the same friction-softening idea to itunda's error states, not just empty
+   states — Toss's own documented reasoning (cute framing makes network errors/terms screens "less
+   daunting") applies directly to itunda's existing `ErrorCard`/inline error rows, which are
+   currently plain red text with a "Retry" link. A shared visual treatment (same icon-based
+   language as the empty-state component, not full custom illustration) would apply this principle
+   without a second, disconnected design language.
+   *Target: `ErrorCard` (`SuperAppTabs.kt`) and its iOS/bank-mfe equivalents*
+
+3. **[partially-sourced]** Consider itunda's own equivalent of a Tossface-style rule set for any
+   future custom iconography/emoji work — Toss's six explicit consistency rules (uniform sizing,
+   one palette, fixed viewing angles) are a real, reusable checklist if itunda ever commissions
+   custom icon/illustration assets, even though itunda has no such assets today. Lower priority
+   than items 1-2 since it has no current call site — a checklist for *when* this work happens,
+   not a thing to build now.
+
+### Unresolved / worth a follow-up
+
+- No official TDS icon naming convention or full size-grid specification was found beyond the
+  24-40px screen-use rule.
+- No official documented hex/token values for "Toss blue," or a stated single-brand-color rationale
+  in Toss's own words — the "blue signals trust for a finance brand" reasoning found only in
+  secondary marketing-blog commentary, not confirmed as Toss's own stated reasoning.
+- This area's overall thinness is itself worth noting for any future research pass: illustration
+  and motion design are documented far more sparsely in Toss's public engineering/product writing
+  than their UX-research process is — a follow-up pass would likely need to rely more heavily on
+  direct screenshot/app teardown analysis than on primary-source blog articles.

@@ -38,8 +38,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.AddReaction
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
+import androidx.compose.material.icons.automirrored.outlined.Comment
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Inbox
+import androidx.compose.material.icons.outlined.RateReview
+import androidx.compose.material.icons.outlined.Restaurant
+import androidx.compose.material.icons.outlined.RestaurantMenu
 import androidx.compose.material.icons.outlined.Send
+import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Storefront
@@ -205,6 +213,31 @@ private fun SkeletonBlock(height: Dp = 120.dp, modifier: Modifier = Modifier) {
                 ),
             ),
         )
+    }
+}
+
+// Real shared empty-state component (2026-07-21) -- closes the design-reference doc's
+// "itunda has zero illustrations anywhere, every empty state is bare text" gap
+// (docs/DESIGN_REFERENCES.md Section 9). Deliberately a simple icon-in-a-soft-circle
+// composition using itunda's own existing icon set and color tokens, matching Toss's
+// own documented illustration-style rule ("simple, clear, clean... not cartoonish, not
+// hand-drawn") -- not an attempt at Toss's full custom-character illustration work,
+// which is real in-house-illustrator asset production this doesn't have the input to
+// match honestly.
+@Composable
+private fun EmptyState(message: String, icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Outlined.Inbox) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(
+            modifier = Modifier.size(56.dp).clip(CircleShape).background(TossCardSoft),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = TossSecondary)
+        }
+        Text(message, color = TossSecondary, fontSize = 14.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }
 
@@ -469,7 +502,7 @@ private fun DirectMessagesList(
         } else if (conversations == null) {
             item { SkeletonBlock() }
         } else if (conversations.isEmpty()) {
-            item { Text("No conversations yet.", color = TossSecondary, fontSize = 14.sp) }
+            item { EmptyState("No conversations yet.", icon = Icons.Outlined.ChatBubbleOutline) }
         } else {
             items(conversations, key = { it.conversationId }) { c -> ConversationRow(c, online = presence[c.otherUserId] == true, onClick = { onOpen(c.conversationId) }) }
         }
@@ -555,7 +588,7 @@ private fun GroupsList(
         } else if (groups == null) {
             item { SkeletonBlock() }
         } else if (groups.isEmpty()) {
-            item { Text("No groups yet.", color = TossSecondary, fontSize = 14.sp) }
+            item { EmptyState("No groups yet.", icon = Icons.Outlined.ChatBubbleOutline) }
         } else {
             items(groups, key = { it.groupId }) { g -> GroupRow(g, onClick = { onOpen(g.groupId) }) }
         }
@@ -1561,13 +1594,13 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
             item { SkeletonBlock() }
         } else if (listings!!.isEmpty() && (view != HoodView.NEIGHBORHOOD || neighborhoodName != null)) {
             item {
-                Text(
+                EmptyState(
                     when (view) {
                         HoodView.BROWSE -> "No listings yet."
                         HoodView.NEIGHBORHOOD -> "No listings in your neighborhood yet."
                         HoodView.MINE -> "You haven't listed anything yet."
                     },
-                    color = TossSecondary, fontSize = 14.sp,
+                    icon = Icons.Outlined.ShoppingBag,
                 )
             }
         } else if (listings!!.isNotEmpty()) {
@@ -2206,7 +2239,7 @@ private fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
             if (comments == null) {
                 item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(80.dp)) {} }
             } else if (comments!!.isEmpty()) {
-                item { Text("No comments yet -- be the first to reply.", color = TossSecondary, fontSize = 13.sp) }
+                item { EmptyState("No comments yet -- be the first to reply.", icon = Icons.AutoMirrored.Outlined.Comment) }
             } else {
                 items(comments!!, key = { it.comment.id }) { c ->
                     Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = TossCardSoft), modifier = Modifier.fillMaxWidth()) {
@@ -3127,10 +3160,9 @@ private fun CommerceShopContent() {
                 item { SkeletonBlock() }
             } else if (merchants!!.isEmpty()) {
                 item {
-                    Text(
+                    EmptyState(
                         if (selectedCategory != null || searchInput.isNotBlank()) "No merchants match your search." else "No stores registered yet.",
-                        color = TossSecondary,
-                        fontSize = 14.sp,
+                        icon = Icons.Outlined.Storefront,
                     )
                 }
             } else {
@@ -3203,7 +3235,7 @@ private fun MerchantDetailView(
             if (products == null) {
                 item { SkeletonBlock(height = 72.dp) }
             } else if (products.isEmpty()) {
-                item { Text("No products yet.", color = TossSecondary, fontSize = 13.sp) }
+                item { EmptyState("No products yet.", icon = Icons.Outlined.ShoppingBag) }
             } else {
                 items(products, key = { it.id }) { p ->
                     val qty = qtyFor(p.id)
@@ -3438,7 +3470,7 @@ private fun MyCommerceOrdersView() {
         } else if (orders == null) {
             SkeletonBlock()
         } else if (orders!!.isEmpty()) {
-            Text("No orders yet.", color = TossSecondary, fontSize = 14.sp)
+            EmptyState("No orders yet.", icon = Icons.AutoMirrored.Outlined.ReceiptLong)
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 orders!!.forEach { o ->
@@ -3513,7 +3545,7 @@ private fun ProductRatingBadge(productId: String) {
                 if (list == null) {
                     Text("Loading reviews…", color = TossSecondary, fontSize = 12.sp)
                 } else if (list.isEmpty()) {
-                    Text("No written reviews yet.", color = TossSecondary, fontSize = 12.sp)
+                    EmptyState("No written reviews yet.", icon = Icons.Outlined.RateReview)
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(top = 4.dp)) {
                         list.forEach { rv ->
@@ -3922,10 +3954,9 @@ private fun OrderFoodContent() {
                 item { SkeletonBlock() }
             } else if (restaurants!!.isEmpty()) {
                 item {
-                    Text(
+                    EmptyState(
                         if (selectedCategory != null || searchInput.isNotBlank()) "No restaurants match your search." else "No restaurants registered yet.",
-                        color = TossSecondary,
-                        fontSize = 14.sp,
+                        icon = Icons.Outlined.Restaurant,
                     )
                 }
             } else {
@@ -4016,7 +4047,7 @@ private fun FavoriteRestaurantsView(onOpen: (FavoriteRestaurantDto) -> Unit, onC
     when {
         error != null -> ErrorCard(error!!, onRetry = ::load)
         favorites == null -> SkeletonBlock()
-        favorites!!.isEmpty() -> Text("No favorite restaurants yet. Tap the heart on a restaurant to save it here.", color = TossSecondary, fontSize = 14.sp)
+        favorites!!.isEmpty() -> EmptyState("No favorite restaurants yet. Tap the heart on a restaurant to save it here.", icon = Icons.Outlined.FavoriteBorder)
         else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             favorites!!.forEach { f ->
                 Row(
@@ -4203,7 +4234,7 @@ private fun RestaurantMenuView(
             if (menu == null) {
                 item { SkeletonBlock(height = 72.dp) }
             } else if (menu.isEmpty()) {
-                item { Text("No menu items yet.", color = TossSecondary, fontSize = 13.sp) }
+                item { EmptyState("No menu items yet.", icon = Icons.Outlined.RestaurantMenu) }
             } else {
                 items(menu, key = { it.id }) { p ->
                     val qty = cart[p.id] ?: 0
@@ -4521,7 +4552,7 @@ private fun MyEatsOrdersView(onReorder: (EatsOrderDto) -> Unit, reorderingId: St
         } else if (orders == null) {
             SkeletonBlock()
         } else if (orders!!.isEmpty()) {
-            Text("No orders yet.", color = TossSecondary, fontSize = 14.sp)
+            EmptyState("No orders yet.", icon = Icons.AutoMirrored.Outlined.ReceiptLong)
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 orders!!.forEach { o ->
@@ -4743,7 +4774,7 @@ private fun DeliverContent() {
             if (available == null) {
                 item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(100.dp)) {} }
             } else if (available!!.isEmpty()) {
-                item { Text("No deliveries waiting right now.", color = TossSecondary, fontSize = 13.sp) }
+                item { EmptyState("No deliveries waiting right now.", icon = Icons.AutoMirrored.Outlined.ReceiptLong) }
             } else {
                 items(available!!, key = { it.id }) { o ->
                     EatsOrderRow(o) {
