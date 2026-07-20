@@ -247,6 +247,7 @@ private struct MerchantDetailView: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(product.name).font(IDS.Typography.bodyMedium).foregroundColor(IDS.Colors.textPrimary)
                                     Text("\(Int(product.price)) RWF").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
+                                    ProductRatingBadge(productId: product.id)
                                 }
                                 Spacer()
                                 HStack(spacing: 12) {
@@ -509,6 +510,8 @@ private struct MyCommerceOrdersView: View {
                                         .background(Color.red).cornerRadius(12)
                                 }
                                 .disabled(cancellingId == order.id)
+                            } else if order.status == "DELIVERED" {
+                                OrderItemReviews(order: order)
                             }
                         }
                     }
@@ -545,6 +548,148 @@ private struct MyCommerceOrdersView: View {
             error = TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+}
+
+// Real post-delivery product reviews (2026-07-20), mirroring EatsScreen's own
+// RestaurantRatingBadge/ReviewOrderCard pattern -- see ProductReviewService's own doc
+// comment for the full backend account. One real review per real delivered line item.
+// StarRatingRow is duplicated here rather than shared, matching EatsScreen.swift's own
+// `private` (file-scoped) declaration -- each screen file in this codebase is self-contained.
+private struct StarRatingRow: View {
+    let value: Int
+    let onChange: (Int) -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(1...5, id: \.self) { n in
+                Button(action: { onChange(n) }) {
+                    Image(systemName: n <= value ? "star.fill" : "star")
+                        .foregroundColor(n <= value ? .yellow : IDS.Colors.textTertiary)
+                }
+            }
+        }
+    }
+}
+
+private struct ProductRatingBadge: View {
+    let productId: String
+    @State private var rating: ProductRatingResponse?
+
+    var body: some View {
+        Group {
+            if let rating, rating.count > 0 {
+                HStack(spacing: 4) {
+                    Image(systemName: "star.fill").font(.caption2).foregroundColor(.yellow)
+                    Text(String(format: "%.1f (%d)", rating.average ?? 0.0, rating.count))
+                        .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                }
+            }
+        }
+        .task {
+            do {
+                rating = try await NetworkClient.shared.getProductRating(productId)
+            } catch {
+                // Real, non-critical -- a rating fetch failure shouldn't block browsing the catalog.
+            }
+        }
+    }
+}
+
+private struct ProductReviewRow: View {
+    let item: OrderItemDto
+
+    @State private var open = false
+    @State private var done = false
+    @State private var rating = 0
+    @State private var comment = ""
+    @State private var submitting = false
+    @State private var error: String?
+
+    var body: some View {
+        if done {
+            Text("\(item.productName): thanks for your review!").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+        } else if !open {
+            Button(action: { open = true }) {
+                Text("Rate \(item.productName)").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                    .padding(.horizontal, 16).padding(.vertical, 10)
+                    .background(IDS.Colors.chipBackground).cornerRadius(12)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(item.productName).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                StarRatingRow(value: rating) { rating = $0 }
+                TextField("How was it? (optional)", text: $comment)
+                    .padding(10).background(IDS.Colors.chipBackground).cornerRadius(10)
+                if let error {
+                    Text(error).font(.caption).foregroundColor(.red)
+                }
+                HStack(spacing: 10) {
+                    Button(action: { open = false }) {
+                        Text("Cancel").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(IDS.Colors.chipBackground).cornerRadius(12)
+                    }
+                    Button(action: { Task { await submit() } }) {
+                        Text(submitting ? "Submitting…" : "Submit review").font(.subheadline).bold().foregroundColor(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(submitting ? IDS.Colors.textTertiary : IDS.Colors.brand).cornerRadius(12)
+                    }
+                    .disabled(submitting)
+                }
+            }
+        }
+    }
+
+    private func submit() async {
+        guard rating > 0 else {
+            error = "Pick a star rating."
+            return
+        }
+        submitting = true
+        error = nil
+        defer { submitting = false }
+        do {
+            _ = try await NetworkClient.shared.submitProductReview(
+                orderItemId: item.id,
+                rating: rating,
+                comment: comment.trimmingCharacters(in: .whitespaces).isEmpty ? nil : comment
+            )
+            done = true
+        } catch let NetworkError.httpError(statusCode) {
+            // A 409 here is the real PRODUCT_ALREADY_REVIEWED case in practice -- this
+            // row only ever renders for a real DELIVERED order.
+            if statusCode == 409 {
+                done = true
+            } else {
+                error = TalkScreen.errorMessage(statusCode)
+            }
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+}
+
+private struct OrderItemReviews: View {
+    let order: OrderDto
+    @State private var items: [OrderItemDto]?
+
+    var body: some View {
+        Group {
+            if let items, !items.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(items) { item in ProductReviewRow(item: item) }
+                }
+            }
+        }
+        .task {
+            do {
+                let res = try await NetworkClient.shared.getOrder(order.id)
+                items = res.items
+            } catch {
+                // Real, non-critical -- if item fetch fails, the order row itself still renders fine.
+            }
         }
     }
 }

@@ -871,6 +871,25 @@ struct OrderItemDto: Decodable, Identifiable { let id: String; let orderId: Stri
 struct OrderDetailResponse: Decodable { let success: Bool; let order: OrderDto; let items: [OrderItemDto] }
 struct OrdersResponse: Decodable { let success: Bool; let orders: [OrderDto] }
 
+// Real post-delivery product reviews (2026-07-20) -- see ProductReviewService's own doc
+// comment, mirroring SubmitEatsReviewRequest/EatsReviewDto below but keyed to one order
+// line item rather than the whole order (a Commerce order can carry several different
+// products from one merchant, and real Coupang reviews are per-product).
+struct SubmitProductReviewRequest: Encodable { let rating: Int; let comment: String? }
+struct ProductReviewDto: Decodable {
+    let id: String
+    let orderItemId: String
+    let orderId: String
+    let buyerId: String
+    let productId: String
+    let merchantId: String
+    let rating: Int
+    let comment: String?
+    let createdAt: String
+}
+struct ProductReviewResponse: Decodable { let success: Bool; let review: ProductReviewDto }
+struct ProductRatingResponse: Decodable { let success: Bool; let average: Double?; let count: Int }
+
 /// Mirrors services/backend/eats's real DTOs exactly (2026-07-18) -- restaurant/menu
 /// browsing reuses ShoppingMerchantDto/MerchantProductDto above (a restaurant IS a
 /// Merchant, a menu item IS a MerchantProduct -- see rw.itunda.eats.EatsOrderService's
@@ -1382,10 +1401,21 @@ extension NetworkClient {
 
     func getMyOrders() async throws -> OrdersResponse { try await get("api/v1/orders/my-orders") }
 
+    func getOrder(_ orderId: String) async throws -> OrderDetailResponse { try await get("api/v1/orders/\(orderId)") }
+
     /// Real cancellation + refund (2026-07-18) -- buyer or seller, PLACED orders only.
     /// See rw.itunda.commerce.OrderService.cancelOrder's own doc comment.
     func cancelOrder(_ orderId: String) async throws -> OrderDetailResponse {
         try await authenticatedPost("api/v1/orders/\(orderId)/cancel", body: EmptyBody())
+    }
+
+    /// Real post-delivery product reviews (2026-07-20) -- see OrderController.submitProductReview.
+    func submitProductReview(orderItemId: String, rating: Int, comment: String?) async throws -> ProductReviewResponse {
+        try await authenticatedPost("api/v1/orders/items/\(orderItemId)/review", body: SubmitProductReviewRequest(rating: rating, comment: comment))
+    }
+
+    func getProductRating(_ productId: String) async throws -> ProductRatingResponse {
+        try await get("api/v1/orders/products/\(productId)/rating")
     }
 
     // Real Coupang Eats-style food delivery (2026-07-18) -- see rw.itunda.eats.web.EatsController.
