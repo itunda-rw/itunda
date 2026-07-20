@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowUpRight, Bike, Heart, LogOut, MessageCircle, Plus, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { fetchTransactions, fetchWallets, type Transaction, type Wallet } from './lib/wallet';
+import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
 import { sendDirect } from './lib/p2p';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
 import { collectPayment, fetchShoppingCatalog, type CollectPaymentResult, type ShoppingMerchant } from './lib/shopping';
@@ -52,7 +53,7 @@ import {
 import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'MAP';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'MAP' | 'DEVICES';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
@@ -95,6 +96,55 @@ function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; on
 // there's no rail decision to quote) -- the review screen below is a client-side
 // confirmation only, same inline-card-replaces-trigger convention every other flow in
 // this file already uses, not a modal overlay.
+// Real device binding step-up (2026-07-20) -- shown wherever a money-moving call
+// real-403s with DEVICE_NOT_VERIFIED. Re-proves password ownership on THIS device
+// (resolved server-side from the caller's own JWT, never a client-supplied id) and
+// marks it trusted, matching the same real re-verification Toss requires before a
+// new device can move money. See lib/device.ts's own doc comment for the full account.
+function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () => void; onCancel: () => void }) {
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      await verifyDevice(password);
+      onVerified();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not verify this device.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleVerify} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>🔒 Verify this device</p>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+        This is a new device for your account. Re-enter your password to allow it to send money, then try again.
+      </p>
+      <input
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        placeholder="Password"
+        required
+        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+      />
+      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onCancel} disabled={busy}>Cancel</button>
+        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>
+          {busy ? 'Verifying…' : 'Verify device'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
@@ -102,6 +152,10 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
   const [result, setResult] = useState<{ message: string; newBalance: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Real device binding (2026-07-20) -- a real 403 DEVICE_NOT_VERIFIED (this device
+  // hasn't been step-up-verified yet) gets its own real prompt, not just a generic
+  // error string, since the user has a real, actionable next step.
+  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
 
   const handleReview = (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,15 +165,19 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
 
   const handleConfirm = async () => {
     setError(null);
+    setNeedsDeviceVerification(false);
     setBusy(true);
     try {
       const res = await sendDirect(recipient.trim(), Number(amount), '');
       setResult({ message: res.message, newBalance: res.newBalance });
     } catch (err) {
-      // A real, honest error surfaces here as-is -- e.g. a recipient that doesn't match
-      // any real itunda account real-404s rather than silently doing nothing.
-      setError(err instanceof ApiError ? err.message : 'Could not complete this transfer.');
-      setReviewing(false);
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        setNeedsDeviceVerification(true);
+      } else {
+        // A real, honest error surfaces here as-is -- e.g. a recipient that doesn't
+        // match any real itunda account real-404s rather than silently doing nothing.
+        setError(err instanceof ApiError ? err.message : 'Could not complete this transfer.');
+      }
     } finally {
       setBusy(false);
     }
@@ -146,13 +204,19 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
           <span>To {recipient}</span>
           <span style={{ fontWeight: 700 }}>Amount: {Number(amount).toLocaleString()} RWF</span>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onClose} disabled={busy}>Cancel</button>
-          <button type="button" className="toss-btn toss-btn-primary" style={{ flex: 1 }} onClick={handleConfirm} disabled={busy}>
-            {busy ? 'Sending…' : 'Confirm'}
-          </button>
-        </div>
-        {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+        {needsDeviceVerification ? (
+          <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={onClose} />
+        ) : (
+          <>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onClose} disabled={busy}>Cancel</button>
+              <button type="button" className="toss-btn toss-btn-primary" style={{ flex: 1 }} onClick={handleConfirm} disabled={busy}>
+                {busy ? 'Sending…' : 'Confirm'}
+              </button>
+            </div>
+            {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+          </>
+        )}
       </div>
     );
   }
@@ -5081,6 +5145,77 @@ function ShopView() {
   );
 }
 
+// Real device management (2026-07-20) -- the same self-service "your devices" control
+// Toss's own security settings page offers. See lib/device.ts's own doc comment.
+function DevicesView() {
+  const [devices, setDevices] = useState<TrustedDevice[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+  const myDeviceId = getOrCreateDeviceId();
+
+  const load = () => {
+    setError(null);
+    fetchMyDevices().then(setDevices).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your devices.'));
+  };
+  useEffect(load, []);
+
+  const handleRevoke = async (deviceId: string) => {
+    setRevokingId(deviceId);
+    setError(null);
+    try {
+      await revokeDevice(deviceId);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not remove this device.');
+    } finally {
+      setRevokingId(null);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="toss-card">
+        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+      </div>
+    );
+  }
+  if (devices === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', padding: '0 4px' }}>
+        Devices that have signed in to your account. A device must be verified before it can send money.
+      </p>
+      {devices.length === 0 ? (
+        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No devices recorded yet.</p></div>
+      ) : (
+        devices.map((d) => (
+          <div key={d.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
+                {d.deviceName ?? 'Unknown device'} {d.deviceId === myDeviceId && <span style={{ color: 'var(--toss-blue)' }}>(this device)</span>}
+              </p>
+              <p style={{ fontSize: '12px', color: d.trusted ? 'var(--toss-green)' : '#E53935' }}>
+                {d.trusted ? '✓ Verified — can send money' : '⚠ Not verified — sign-in only'}
+              </p>
+              <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>Last seen {new Date(d.lastSeenAt).toLocaleString()}</p>
+            </div>
+            <button
+              className="toss-btn toss-btn-danger"
+              disabled={revokingId === d.deviceId}
+              onClick={() => handleRevoke(d.deviceId)}
+              style={{ padding: '8px 12px', fontSize: '12px' }}
+            >
+              {revokingId === d.deviceId ? 'Removing…' : 'Remove'}
+            </button>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
 export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>('HOME');
   const [pendingConversationId, setPendingConversationId] = useState<string | null>(null);
@@ -5112,6 +5247,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'MAP', label: 'Map' },
     { id: 'CERTIFICATE', label: 'Certificate' },
     { id: 'SHOPPING', label: 'Shopping' },
+    { id: 'DEVICES', label: 'Devices' },
   ];
 
   return (
@@ -5164,6 +5300,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'MAP' && <MapView />}
       {tab === 'CERTIFICATE' && <CertificateView />}
       {tab === 'SHOPPING' && <ShoppingView />}
+      {tab === 'DEVICES' && <DevicesView />}
     </div>
   );
 }
