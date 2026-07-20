@@ -68,8 +68,14 @@ class EatsReviewService(
             EatsReview(
                 id = "eats_review_${UUID.randomUUID()}", orderId = orderId, buyerId = buyerId,
                 restaurantId = order.restaurantId, riderId = riderId,
-                restaurantRating = restaurantRating, restaurantComment = restaurantComment?.trim()?.ifBlank { null },
-                riderRating = riderRating, riderComment = riderComment?.trim()?.ifBlank { null },
+                // Real bound, matching GiftService.sendGift's `note?.trim()?.take(200)` and
+                // ProductReviewService.submitReview's own identical fix (2026-07-20) --
+                // both comment columns are VARCHAR(1000) under this DB's real
+                // STRICT_TRANS_TABLES mode, which throws a raw
+                // DataIntegrityViolationException (an unhandled 500, not a clean 400) on an
+                // over-length insert rather than silently truncating.
+                restaurantRating = restaurantRating, restaurantComment = restaurantComment?.trim()?.take(1000)?.ifBlank { null },
+                riderRating = riderRating, riderComment = riderComment?.trim()?.take(1000)?.ifBlank { null },
             ),
         )
     }

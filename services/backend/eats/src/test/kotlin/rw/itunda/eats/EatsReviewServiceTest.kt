@@ -46,6 +46,21 @@ class EatsReviewServiceTest : BehaviorSpec({
             }
         }
 
+        When("submitting comments longer than the real 1000-char DB column bound") {
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(deliveredOrder)
+            every { eatsReviewRepository.findByOrderId("eats_order_1") } returns null
+            val savedSlot = slot<EatsReview>()
+            every { eatsReviewRepository.save(capture(savedSlot)) } answers { firstArg() }
+            val longComment = "x".repeat(1500)
+
+            val review = service.submitReview("buyer_1", "eats_order_1", 5, longComment, 4, longComment)
+
+            Then("it truncates both comments to 1000 chars rather than risking a raw DB insert failure") {
+                review.restaurantComment?.length shouldBe 1000
+                review.riderComment?.length shouldBe 1000
+            }
+        }
+
         When("submitting a rating outside 1-5") {
             Then("it throws InvalidEatsRatingException before even looking up the order") {
                 try {
