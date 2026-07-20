@@ -149,159 +149,264 @@ struct MapScreenView: View {
     @State private var bookmarking = false
     @StateObject private var locationFetcher = LocationFetcher()
 
+    // Real draggable peek/half/full bottom sheet (2026-07-21) -- see
+    // docs/DESIGN_REFERENCES.md section 1, recommendation 1. SwiftUI has no built-in
+    // "persistent, non-modal, 3-detent" sheet primitive (`.sheet` +
+    // `.presentationDetents` only applies to a *presented* sheet, not an
+    // always-visible panel docked over content already on screen) -- hand-rolled here
+    // via a plain `DragGesture` + an absolute Y offset, snapping to the nearest of
+    // three real anchors on release, mirroring the same anchor-based approach
+    // Android's `MapScreen.kt` uses via `AnchoredDraggableState`. `nil` until the
+    // first `GeometryReader` pass supplies a real screen height to anchor against.
+    @State private var sheetY: CGFloat?
+    @State private var sheetSettledY: CGFloat = 0
+
     private func isBookmarked(_ place: PlaceSearchResultDto) -> Bool {
         bookmarks.contains { $0.latitude == place.latitude && $0.longitude == place.longitude }
     }
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                HStack(spacing: 8) {
-                    TextField("Search a real place in Rwanda", text: $query)
-                        .padding(10)
-                        .background(IDS.Colors.chipBackground)
-                        .cornerRadius(10)
-                    Button(action: { Task { await search() } }) {
-                        Text(searching ? "…" : "Search").font(.subheadline).bold().foregroundColor(.white)
-                            .padding(.horizontal, 14).padding(.vertical, 10)
-                            .background(IDS.Colors.brand).cornerRadius(10)
-                    }
-                    .disabled(searching || query.trimmingCharacters(in: .whitespaces).isEmpty)
-                    Button(action: { locationFetcher.requestLocation() }) {
-                        Image(systemName: "location.fill").foregroundColor(IDS.Colors.brand)
-                    }
-                }
-                .padding(.horizontal, IDS.Layout.screenHorizontal)
-                .padding(.top, 8)
+            // Real full-bleed map with floating overlays (2026-07-21) -- brings iOS to
+            // parity with Android's own `MapScreen.kt` restructure (commit 48ad768):
+            // was a plain `VStack` stacking search -> chips -> results -> map ->
+            // details/bookmarks in normal document flow, which could squeeze the map
+            // to a sliver once a place was selected. Real Naver Map/Kakao Map always
+            // keep the map full-screen and float search/details panels on top of it.
+            GeometryReader { geo in
+                // Real anchors for the draggable sheet below (peek/half/full), mirroring
+                // Android's own `MapScreen.kt` anchors exactly (same real fractions/gap).
+                let peekHeight: CGFloat = 150
+                let fullTopGap: CGFloat = 100
+                let peekAnchorY = geo.size.height - peekHeight
+                let halfAnchorY = geo.size.height * 0.55
+                let fullAnchorY = fullTopGap
+                let currentSheetY = sheetY ?? peekAnchorY
 
-                // Real category-chip "nearby places" search (Naver/Kakao's own
-                // convention) -- mirrors bank-mfe's MapView.tsx / Android's MapScreen.kt
-                // chip row exactly.
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(mapNearbyCategories) { category in
-                            let active = activeCategory == category.id
-                            Button(action: { Task { await searchNearbyCategory(category.id) } }) {
-                                Text(active && categoryLoading ? "…" : category.label)
-                                    .font(.caption).bold()
-                                    .foregroundColor(active ? .white : IDS.Colors.textPrimary)
-                                    .padding(.horizontal, 12).padding(.vertical, 6)
-                                    .background(active ? Color(red: 0.545, green: 0.361, blue: 0.965) : Color.clear)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 999)
-                                            .stroke(active ? Color(red: 0.545, green: 0.361, blue: 0.965) : IDS.Colors.textSecondary.opacity(0.3), lineWidth: 1)
-                                    )
-                                    .cornerRadius(999)
+                ZStack(alignment: .top) {
+                    MapLibreMapRepresentable(
+                        merchants: merchants, myLocation: locationFetcher.coordinate, destination: selectedPlace,
+                        routeGeometry: route?.geometry, nearbyPlaces: categoryResults,
+                    )
+                        .ignoresSafeArea()
+
+                    // Floating top panel -- search bar, category chips, search
+                    // results, errors -- docks to the map's top edge rather than
+                    // pushing it down.
+                    VStack(spacing: 0) {
+                        HStack(spacing: 8) {
+                            TextField("Search a real place in Rwanda", text: $query)
+                                .padding(10)
+                                .background(IDS.Colors.chipBackground)
+                                .cornerRadius(10)
+                            Button(action: { Task { await search() } }) {
+                                Text(searching ? "…" : "Search").font(.subheadline).bold().foregroundColor(.white)
+                                    .padding(.horizontal, 14).padding(.vertical, 10)
+                                    .background(IDS.Colors.brand).cornerRadius(10)
                             }
-                            .disabled(categoryLoading && !active)
+                            .disabled(searching || query.trimmingCharacters(in: .whitespaces).isEmpty)
+                            Button(action: { locationFetcher.requestLocation() }) {
+                                Image(systemName: "location.fill").foregroundColor(IDS.Colors.brand)
+                            }
                         }
-                    }
-                    .padding(.horizontal, IDS.Layout.screenHorizontal)
-                }
-                .padding(.top, 8)
+                        .padding(.horizontal, IDS.Layout.screenHorizontal)
+                        .padding(.top, 8)
 
-                if let activeCategory, let categoryResults {
-                    let label = mapNearbyCategories.first { $0.id == activeCategory }?.label.lowercased() ?? ""
-                    Text(categoryResults.isEmpty ? "No real matches found nearby for that category." : "\(categoryResults.count) real \(label) found nearby, closest first.")
-                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                        .padding(.horizontal, IDS.Layout.screenHorizontal).padding(.top, 4)
-                }
-
-                if let results = searchResults {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 2) {
-                            if results.isEmpty {
-                                Text("No real places found for that search.").font(.caption).foregroundColor(IDS.Colors.textSecondary).padding(8)
-                            } else {
-                                ForEach(Array(results.enumerated()), id: \.offset) { _, place in
-                                    Text(place.displayName)
-                                        .font(.caption)
-                                        .foregroundColor(IDS.Colors.textPrimary)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(10)
-                                        .onTapGesture { selectPlace(place) }
+                        // Real category-chip "nearby places" search (Naver/Kakao's own
+                        // convention) -- mirrors bank-mfe's MapView.tsx / Android's
+                        // MapScreen.kt chip row exactly.
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 6) {
+                                ForEach(mapNearbyCategories) { category in
+                                    let active = activeCategory == category.id
+                                    Button(action: { Task { await searchNearbyCategory(category.id) } }) {
+                                        Text(active && categoryLoading ? "…" : category.label)
+                                            .font(.caption).bold()
+                                            .foregroundColor(active ? .white : IDS.Colors.textPrimary)
+                                            .padding(.horizontal, 12).padding(.vertical, 6)
+                                            .background(active ? Color(red: 0.545, green: 0.361, blue: 0.965) : Color.clear)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 999)
+                                                    .stroke(active ? Color(red: 0.545, green: 0.361, blue: 0.965) : IDS.Colors.textSecondary.opacity(0.3), lineWidth: 1)
+                                            )
+                                            .cornerRadius(999)
+                                    }
+                                    .disabled(categoryLoading && !active)
                                 }
                             }
+                            .padding(.horizontal, IDS.Layout.screenHorizontal)
+                        }
+                        .padding(.top, 8)
+
+                        if let results = searchResults {
+                            ScrollView {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    if results.isEmpty {
+                                        Text("No real places found for that search.").font(.caption).foregroundColor(IDS.Colors.textSecondary).padding(8)
+                                    } else {
+                                        ForEach(Array(results.enumerated()), id: \.offset) { _, place in
+                                            Text(place.displayName)
+                                                .font(.caption)
+                                                .foregroundColor(IDS.Colors.textPrimary)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                                .padding(10)
+                                                .onTapGesture { selectPlace(place) }
+                                        }
+                                    }
+                                }
+                            }
+                            .frame(maxHeight: 160)
+                            .padding(.horizontal, IDS.Layout.screenHorizontal)
+                            .background(IDS.Colors.card)
+                        }
+
+                        if let error {
+                            Text(error).font(.caption).foregroundColor(.red).padding(.horizontal, IDS.Layout.screenHorizontal).padding(.top, 4)
                         }
                     }
-                    .frame(maxHeight: 160)
-                    .padding(.horizontal, IDS.Layout.screenHorizontal)
-                }
+                    .background(IDS.Colors.background)
 
-                if let error {
-                    Text(error).font(.caption).foregroundColor(.red).padding(.horizontal, IDS.Layout.screenHorizontal)
-                }
+                    // Real draggable peek/half/full bottom sheet (2026-07-21) -- a
+                    // persistent, non-modal panel docked over the map. `DragGesture`
+                    // updates `sheetY` live; on release it snaps to whichever of the
+                    // three real anchors above is closest, the same anchor-based model
+                    // Android's `MapScreen.kt` implements via `AnchoredDraggableState`.
+                    VStack(spacing: 0) {
+                        Capsule()
+                            .fill(IDS.Colors.textSecondary.opacity(0.4))
+                            .frame(width: 36, height: 4)
+                            .padding(.top, 10)
+                            .padding(.bottom, 6)
 
-                MapLibreMapRepresentable(
-                    merchants: merchants, myLocation: locationFetcher.coordinate, destination: selectedPlace,
-                    routeGeometry: route?.geometry, nearbyPlaces: categoryResults,
-                )
-                    .ignoresSafeArea(edges: .bottom)
-
-                if selectedPlace == nil && !bookmarks.isEmpty {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("★ Your saved places").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
-                                .padding(.horizontal, 8).padding(.top, 4)
-                            ForEach(bookmarks) { bookmark in
-                                Text(bookmark.displayName)
-                                    .font(.caption).foregroundColor(IDS.Colors.textPrimary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(10)
-                                    .onTapGesture {
-                                        selectPlace(PlaceSearchResultDto(displayName: bookmark.displayName, latitude: bookmark.latitude, longitude: bookmark.longitude))
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 8) {
+                                if let place = selectedPlace {
+                                    HStack(alignment: .top) {
+                                        Text(place.displayName).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                        Spacer()
+                                        Button(action: { Task { await toggleBookmark(place) } }) {
+                                            Text(isBookmarked(place) ? "★" : "☆")
+                                                .font(.title3)
+                                                .foregroundColor(isBookmarked(place) ? Color(red: 0.961, green: 0.651, blue: 0.137) : IDS.Colors.textSecondary)
+                                        }
+                                        .disabled(bookmarking)
                                     }
-                            }
-                        }
-                    }
-                    .frame(maxHeight: 160)
-                    .padding(.horizontal, IDS.Layout.screenHorizontal)
-                }
-
-                if let place = selectedPlace {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(alignment: .top) {
-                            Text(place.displayName).font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
-                            Spacer()
-                            Button(action: { Task { await toggleBookmark(place) } }) {
-                                Text(isBookmarked(place) ? "★" : "☆")
-                                    .font(.title3)
-                                    .foregroundColor(isBookmarked(place) ? Color(red: 0.961, green: 0.651, blue: 0.137) : IDS.Colors.textSecondary)
-                            }
-                            .disabled(bookmarking)
-                        }
-                        if let route {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("🚗 \(String(format: "%.1f", route.distanceKm)) km · \(Int(route.durationMinutes)) min by real road, via itunda's own self-hosted OSRM")
-                                    .font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                                if !route.steps.isEmpty {
-                                    Button(action: { showSteps.toggle() }) {
-                                        Text(showSteps ? "Hide turn-by-turn directions" : "Show turn-by-turn directions (\(route.steps.count) steps)")
-                                            .font(.caption2).bold().foregroundColor(IDS.Colors.brand)
-                                    }
-                                    if showSteps {
+                                    if let route {
                                         VStack(alignment: .leading, spacing: 4) {
-                                            ForEach(Array(route.steps.enumerated()), id: \.offset) { i, step in
-                                                Text("\(i + 1). \(step.instruction)" + (step.distanceMeters >= 10 ? " (\(Int(step.distanceMeters)) m)" : ""))
-                                                    .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                            Text("🚗 \(String(format: "%.1f", route.distanceKm)) km · \(Int(route.durationMinutes)) min by real road, via itunda's own self-hosted OSRM")
+                                                .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                            if !route.steps.isEmpty {
+                                                Button(action: { showSteps.toggle() }) {
+                                                    Text(showSteps ? "Hide turn-by-turn directions" : "Show turn-by-turn directions (\(route.steps.count) steps)")
+                                                        .font(.caption2).bold().foregroundColor(IDS.Colors.brand)
+                                                }
+                                                if showSteps {
+                                                    VStack(alignment: .leading, spacing: 4) {
+                                                        ForEach(Array(route.steps.enumerated()), id: \.offset) { i, step in
+                                                            Text("\(i + 1). \(step.instruction)" + (step.distanceMeters >= 10 ? " (\(Int(step.distanceMeters)) m)" : ""))
+                                                                .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                                        }
+                                                    }
+                                                    .padding(.top, 4)
+                                                }
                                             }
                                         }
-                                        .padding(.top, 4)
+                                    } else {
+                                        Button(action: { Task { await getDirections() } }) {
+                                            Text(routing ? "Finding real route…" : "Directions")
+                                                .font(.subheadline).bold().foregroundColor(.white)
+                                                .frame(maxWidth: .infinity).padding(.vertical, 10)
+                                                .background(IDS.Colors.brand).cornerRadius(12)
+                                        }
+                                        .disabled(routing)
+                                    }
+                                } else {
+                                    // Real default "around me" state (2026-07-21) --
+                                    // Naver Map's own Smart Around sheet keeps a
+                                    // non-modal panel permanently docked with real
+                                    // curated content even before any search, rather
+                                    // than only appearing once a place is selected.
+                                    // itunda has no editorial "today's pick" feed to
+                                    // curate, so this surfaces real data it already
+                                    // has: the active category's real results, a real
+                                    // merchant count, and real saved places.
+                                    Text("Around you").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                    if let activeCategory, let categoryResults {
+                                        let label = mapNearbyCategories.first { $0.id == activeCategory }?.label.lowercased() ?? "places"
+                                        if categoryResults.isEmpty {
+                                            Text("No real matches found nearby for \(label).").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                        } else {
+                                            ForEach(Array(categoryResults.enumerated()), id: \.offset) { _, place in
+                                                Text("\(place.displayName) · \(String(format: "%.1f", place.distanceKm)) km")
+                                                    .font(.caption)
+                                                    .foregroundColor(IDS.Colors.textPrimary)
+                                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                                    .padding(.vertical, 6)
+                                                    .onTapGesture {
+                                                        selectPlace(PlaceSearchResultDto(displayName: place.displayName, latitude: place.latitude, longitude: place.longitude))
+                                                    }
+                                            }
+                                        }
+                                    } else {
+                                        Text(merchants.isEmpty
+                                            ? "Search a real place or pick a category above to explore Rwanda."
+                                            : "\(merchants.count) real merchant\(merchants.count == 1 ? "" : "s") on the map. Search a place or pick a category above to explore.")
+                                            .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                    }
+
+                                    Text("★ Your saved places").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary).padding(.top, 8)
+                                    if bookmarks.isEmpty {
+                                        Text("No saved places yet -- tap ☆ on a place to save it.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                    } else {
+                                        ForEach(bookmarks) { bookmark in
+                                            Text(bookmark.displayName)
+                                                .font(.caption).foregroundColor(IDS.Colors.textPrimary)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                                .padding(.vertical, 6)
+                                                .onTapGesture {
+                                                    selectPlace(PlaceSearchResultDto(displayName: bookmark.displayName, latitude: bookmark.latitude, longitude: bookmark.longitude))
+                                                }
+                                        }
                                     }
                                 }
                             }
-                        } else {
-                            Button(action: { Task { await getDirections() } }) {
-                                Text(routing ? "Finding real route…" : "Directions")
-                                    .font(.subheadline).bold().foregroundColor(.white)
-                                    .frame(maxWidth: .infinity).padding(.vertical, 10)
-                                    .background(IDS.Colors.brand).cornerRadius(12)
-                            }
-                            .disabled(routing)
+                            .padding(.horizontal, IDS.Layout.screenHorizontal)
+                            .padding(.bottom, 24)
                         }
                     }
-                    .padding(IDS.Layout.screenHorizontal)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: geo.size.height, alignment: .top)
                     .background(IDS.Colors.card)
+                    .cornerRadius(20)
+                    .offset(y: currentSheetY)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                let proposed = sheetSettledY + value.translation.height
+                                sheetY = min(peekAnchorY, max(fullAnchorY, proposed))
+                            }
+                            .onEnded { value in
+                                let proposed = sheetSettledY + value.translation.height
+                                let candidates = [fullAnchorY, halfAnchorY, peekAnchorY]
+                                let nearest = candidates.min(by: { abs($0 - proposed) < abs($1 - proposed) }) ?? peekAnchorY
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { sheetY = nearest }
+                                sheetSettledY = nearest
+                            },
+                    )
+                    .onAppear {
+                        if sheetY == nil {
+                            sheetY = peekAnchorY
+                            sheetSettledY = peekAnchorY
+                        }
+                    }
+                    // A newly-selected place should be immediately visible without a
+                    // manual drag -- expands to Half; clearing the selection relaxes
+                    // back to Peek instead of staying pinned open over an empty card.
+                    .onChange(of: selectedPlace?.displayName) { _ in
+                        let target = selectedPlace != nil ? halfAnchorY : peekAnchorY
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { sheetY = target }
+                        sheetSettledY = target
+                    }
                 }
             }
             .navigationTitle("Map")

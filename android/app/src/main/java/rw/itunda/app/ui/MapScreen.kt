@@ -4,24 +4,34 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.AnchoredDraggableState
+import androidx.compose.foundation.gestures.DraggableAnchors
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.anchoredDraggable
+import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.MyLocation
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -39,8 +49,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -71,6 +83,7 @@ import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
+import kotlin.math.roundToInt
 import retrofit2.HttpException
 import rw.itunda.app.network.AddMapBookmarkRequest
 import rw.itunda.app.network.MAP_NEARBY_CATEGORIES
@@ -107,6 +120,16 @@ private const val ROUTE_SOURCE_ID = "route"
 private const val ROUTE_LAYER_ID = "route-line"
 private const val NEARBY_SOURCE_ID = "nearby-places"
 private const val NEARBY_LAYER_ID = "nearby-places-circle"
+
+// Real 3-state (peek/half/full) draggable bottom sheet (2026-07-21) -- replaces the
+// static Card that only ever appeared/vanished at whatever height its content
+// dictated. Mirrors the exact real engineering gap both Apple's own
+// UISheetPresentationController (offers `.medium()`/`.large()` detents out of the box)
+// and Google Maps' own documented need for teams to hand-build a custom
+// BottomSheetBehavior extension (Compose's stock BottomSheetScaffold only gives 2
+// states) confirm is genuine, nontrivial work -- see docs/DESIGN_REFERENCES.md
+// section 1, recommendation 1.
+private enum class MapSheetValue { Peek, Half, Full }
 
 // A real, minimal MapLibre style over itunda's own self-hosted vector tiles -- mirrors
 // bank-mfe's MapView.tsx MAP_STYLE constant exactly (same source, same layer set, no
@@ -183,6 +206,7 @@ private val MAP_STYLE_JSON = """
  * real turn-by-turn-capable directions drawing the actual road-following route via
  * itunda's self-hosted OSRM, not a straight line.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MapScreen(onBack: () -> Unit) {
     val context = LocalContext.current
@@ -210,6 +234,26 @@ fun MapScreen(onBack: () -> Unit) {
     var categoryResults by remember { mutableStateOf<List<NearbyPlaceDto>?>(null) }
     var bookmarks by remember { mutableStateOf<List<MapBookmarkDto>>(emptyList()) }
     var bookmarking by remember { mutableStateOf(false) }
+
+    // Real draggable bottom-sheet state (peek/half/full) -- see `MapSheetValue`'s own
+    // doc comment. `density` is needed both here (for the velocity threshold, in real
+    // pixels) and again below once `BoxWithConstraints` supplies the real measured
+    // screen height to compute the sheet's anchors.
+    val density = LocalDensity.current
+    val sheetState = remember {
+        AnchoredDraggableState(
+            initialValue = MapSheetValue.Peek,
+            positionalThreshold = { distance: Float -> distance * 0.5f },
+            velocityThreshold = { with(density) { 125.dp.toPx() } },
+            animationSpec = tween(),
+        )
+    }
+    // A newly-selected place should be immediately visible without requiring a manual
+    // drag -- expands to Half; clearing the selection (e.g. a fresh search) relaxes
+    // back to Peek rather than staying pinned open over an empty card.
+    LaunchedEffect(selectedPlace) {
+        if (selectedPlace != null) sheetState.animateTo(MapSheetValue.Half) else sheetState.animateTo(MapSheetValue.Peek)
+    }
 
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
@@ -456,7 +500,25 @@ fun MapScreen(onBack: () -> Unit) {
         // Was previously a plain Column stacking search -> chips -> map -> details/bookmarks
         // in sequence, which could squeeze the map to a sliver or push bookmarks off-screen
         // entirely once a place was selected -- a real bug, not just a cosmetic mismatch.
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(padding)) {
+            // Real anchors for the draggable sheet below, computed from this
+            // composable's own real measured height -- Peek shows just enough for a
+            // drag handle + one summary line, Half covers roughly the lower half of the
+            // map (enough to read a place's directions/steps without losing the whole
+            // map), Full leaves a real gap at the top so the search bar/category chips
+            // (which float above the sheet in z-order) always stay reachable.
+            val fullHeightPx = with(density) { maxHeight.toPx() }
+            val peekHeightPx = with(density) { 128.dp.toPx() }
+            val fullTopGapPx = with(density) { 96.dp.toPx() }
+            val sheetAnchors = remember(fullHeightPx) {
+                DraggableAnchors {
+                    MapSheetValue.Peek at (fullHeightPx - peekHeightPx)
+                    MapSheetValue.Half at (fullHeightPx * 0.55f)
+                    MapSheetValue.Full at fullTopGapPx
+                }
+            }
+            LaunchedEffect(sheetAnchors) { sheetState.updateAnchors(sheetAnchors) }
+
             AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
 
             Column(
@@ -575,118 +637,184 @@ fun MapScreen(onBack: () -> Unit) {
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp)) }
             } // end floating top panel
 
-            // Floating bottom panel -- selected-place details or saved bookmarks dock to the
-            // bottom edge over the map (Naver/Kakao Maps' own real convention), instead of
-            // pushing the map up or overflowing off-screen the way the old Column layout could.
-            Column(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
-
-            selectedPlace?.let { place ->
-                Card(
-                    shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-                    colors = CardDefaults.cardColors(containerColor = TossCard),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            // Real draggable peek/half/full bottom sheet (2026-07-21) -- a persistent,
+            // non-modal panel docked over the map that the user can drag between three
+            // real states, instead of a static Card that only ever appeared/vanished at
+            // whatever height its content happened to need. Height is fixed to this
+            // screen's own full measured height (`maxHeight`) and slid down via a real
+            // pixel offset driven by `sheetState` -- only the bottom `peekHeightPx` of
+            // it is visible at rest, matching Naver Map's Smart Around sheet.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .fillMaxWidth()
+                    .height(maxHeight)
+                    .offset { IntOffset(0, sheetState.requireOffset().roundToInt()) }
+                    .anchoredDraggable(sheetState, Orientation.Vertical),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(TossCard, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
                 ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(verticalAlignment = Alignment.Top) {
-                            Text(
-                                place.displayName,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = TossText,
-                                modifier = Modifier.weight(1f),
-                            )
-                            Text(
-                                if (isBookmarked(place)) "★" else "☆",
-                                fontSize = 18.sp,
-                                color = if (isBookmarked(place)) androidx.compose.ui.graphics.Color(0xFFF5A623) else TossSecondary,
-                                modifier = Modifier.clickable(enabled = !bookmarking) { toggleBookmark(place) },
-                            )
-                        }
-                        val currentRoute = route
-                        if (currentRoute != null) {
-                            Column {
+                    // Drag handle -- the real Naver Map/Kakao Map/iOS sheet convention
+                    // signaling draggability at a glance, since nothing else about a
+                    // docked (non-modal) panel otherwise implies it can be dragged.
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .padding(top = 10.dp, bottom = 6.dp)
+                            .width(36.dp)
+                            .height(4.dp)
+                            .background(TossSecondary.copy(alpha = 0.4f), RoundedCornerShape(2.dp)),
+                    )
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        val place = selectedPlace
+                        if (place != null) {
+                            Row(verticalAlignment = Alignment.Top) {
                                 Text(
-                                    "🚗 ${"%.1f".format(currentRoute.route.distanceKm)} km · ${currentRoute.route.durationMinutes.toInt()} min by real road, via itunda's own self-hosted OSRM",
-                                    fontSize = 13.sp, color = TossSecondary,
+                                    place.displayName,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    color = TossText,
+                                    modifier = Modifier.weight(1f),
                                 )
-                                if (currentRoute.route.steps.isNotEmpty()) {
-                                    Text(
-                                        if (showSteps) "Hide turn-by-turn directions" else "Show turn-by-turn directions (${currentRoute.route.steps.size} steps)",
-                                        fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TossBlue,
-                                        modifier = Modifier.padding(top = 4.dp).clickable { showSteps = !showSteps },
-                                    )
-                                }
-                                if (showSteps) {
-                                    Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        currentRoute.route.steps.forEachIndexed { i, step ->
-                                            Text(
-                                                "${i + 1}. ${step.instruction}" + if (step.distanceMeters >= 10) " (${step.distanceMeters.toInt()} m)" else "",
-                                                fontSize = 12.sp, color = TossSecondary,
-                                            )
-                                        }
-                                    }
-                                }
+                                Text(
+                                    if (isBookmarked(place)) "★" else "☆",
+                                    fontSize = 20.sp,
+                                    color = if (isBookmarked(place)) androidx.compose.ui.graphics.Color(0xFFF5A623) else TossSecondary,
+                                    modifier = Modifier.clickable(enabled = !bookmarking) { toggleBookmark(place) },
+                                )
                             }
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .background(TossBlue, RoundedCornerShape(12.dp))
-                                    .clickable(enabled = !routing) {
-                                        coroutineScope.launch {
-                                            routing = true
-                                            error = null
-                                            try {
-                                                val origin = myLocation ?: (RWANDA_CENTER_LAT to RWANDA_CENTER_LNG)
-                                                route = NetworkClient.apiService.getDirections(origin.first, origin.second, place.latitude, place.longitude)
-                                                showSteps = false
-                                            } catch (e: HttpException) {
-                                                error = superAppErrorMessage(e)
-                                            } catch (e: Exception) {
-                                                error = "Couldn't reach itunda. Check your connection and try again."
-                                            } finally {
-                                                routing = false
+                            val currentRoute = route
+                            if (currentRoute != null) {
+                                Column {
+                                    Text(
+                                        "🚗 ${"%.1f".format(currentRoute.route.distanceKm)} km · ${currentRoute.route.durationMinutes.toInt()} min by real road, via itunda's own self-hosted OSRM",
+                                        fontSize = 13.sp, color = TossSecondary,
+                                    )
+                                    if (currentRoute.route.steps.isNotEmpty()) {
+                                        Text(
+                                            if (showSteps) "Hide turn-by-turn directions" else "Show turn-by-turn directions (${currentRoute.route.steps.size} steps)",
+                                            fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TossBlue,
+                                            modifier = Modifier.padding(top = 4.dp).clickable { showSteps = !showSteps },
+                                        )
+                                    }
+                                    if (showSteps) {
+                                        Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            currentRoute.route.steps.forEachIndexed { i, step ->
+                                                Text(
+                                                    "${i + 1}. ${step.instruction}" + if (step.distanceMeters >= 10) " (${step.distanceMeters.toInt()} m)" else "",
+                                                    fontSize = 12.sp, color = TossSecondary,
+                                                )
                                             }
                                         }
                                     }
-                                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                            ) { Text(if (routing) "Finding real route…" else "Directions", color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp) }
-                        }
-                    }
-                }
-            }
-
-            if (selectedPlace == null && bookmarks.isNotEmpty()) {
-                Card(
-                    shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
-                    colors = CardDefaults.cardColors(containerColor = TossCard),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                ) {
-                    Column(modifier = Modifier.padding(8.dp)) {
-                        Text(
-                            "★ Your saved places",
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                            fontSize = 12.sp,
-                            color = TossSecondary,
-                            modifier = Modifier.padding(8.dp, 4.dp),
-                        )
-                        bookmarks.forEach { bookmark ->
-                            Text(
-                                bookmark.displayName,
-                                fontSize = 13.sp,
-                                color = TossText,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        selectedPlace = PlaceSearchResultDto(bookmark.displayName, bookmark.latitude, bookmark.longitude)
-                                        route = null
+                                }
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .background(TossBlue, RoundedCornerShape(12.dp))
+                                        .clickable(enabled = !routing) {
+                                            coroutineScope.launch {
+                                                routing = true
+                                                error = null
+                                                try {
+                                                    val origin = myLocation ?: (RWANDA_CENTER_LAT to RWANDA_CENTER_LNG)
+                                                    route = NetworkClient.apiService.getDirections(origin.first, origin.second, place.latitude, place.longitude)
+                                                    showSteps = false
+                                                } catch (e: HttpException) {
+                                                    error = superAppErrorMessage(e)
+                                                } catch (e: Exception) {
+                                                    error = "Couldn't reach itunda. Check your connection and try again."
+                                                } finally {
+                                                    routing = false
+                                                }
+                                            }
+                                        }
+                                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                                ) { Text(if (routing) "Finding real route…" else "Directions", color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp) }
+                            }
+                            // A little breathing room below so the drag-to-Full state
+                            // doesn't cut the last line off against the screen edge.
+                            Box(modifier = Modifier.height(24.dp))
+                        } else {
+                            // Real default "around me" state (2026-07-21) -- Naver Map's
+                            // own Smart Around sheet keeps a non-modal panel permanently
+                            // docked with real curated content even before any search,
+                            // rather than only ever appearing once a place is selected.
+                            // itunda has no editorial "today's pick"/"worth visiting"
+                            // content to curate, so this surfaces real data it already
+                            // has instead: the active category's real results (if any),
+                            // a real merchant count, and real saved places -- honest
+                            // functional content, not a fabricated curated feed.
+                            Text("Around you", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TossText)
+                            if (activeCategory != null && categoryResults != null) {
+                                val label = MAP_NEARBY_CATEGORIES.firstOrNull { it.id == activeCategory }?.label?.lowercase() ?: "places"
+                                if (categoryResults!!.isEmpty()) {
+                                    Text("No real matches found nearby for $label.", color = TossSecondary, fontSize = 13.sp)
+                                } else {
+                                    categoryResults!!.forEach { nearby ->
+                                        Text(
+                                            "${nearby.displayName} · ${"%.1f".format(nearby.distanceKm)} km",
+                                            fontSize = 13.sp,
+                                            color = TossText,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable {
+                                                    selectedPlace = PlaceSearchResultDto(nearby.displayName, nearby.latitude, nearby.longitude)
+                                                    route = null
+                                                }
+                                                .padding(vertical = 6.dp),
+                                        )
                                     }
-                                    .padding(10.dp),
+                                }
+                            } else {
+                                Text(
+                                    if (merchants.isEmpty()) "Search a real place or pick a category above to explore Rwanda."
+                                    else "${merchants.size} real merchant${if (merchants.size == 1) "" else "s"} on the map. Search a place or pick a category above to explore.",
+                                    color = TossSecondary,
+                                    fontSize = 13.sp,
+                                )
+                            }
+
+                            Text(
+                                "★ Your saved places",
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = TossSecondary,
+                                modifier = Modifier.padding(top = 8.dp),
                             )
+                            if (bookmarks.isEmpty()) {
+                                Text("No saved places yet -- tap ☆ on a place to save it.", fontSize = 12.sp, color = TossSecondary)
+                            } else {
+                                bookmarks.forEach { bookmark ->
+                                    Text(
+                                        bookmark.displayName,
+                                        fontSize = 13.sp,
+                                        color = TossText,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                selectedPlace = PlaceSearchResultDto(bookmark.displayName, bookmark.latitude, bookmark.longitude)
+                                                route = null
+                                            }
+                                            .padding(vertical = 6.dp),
+                                    )
+                                }
+                            }
+                            Box(modifier = Modifier.height(24.dp))
                         }
                     }
                 }
             }
-            } // end floating bottom panel
-        } // end full-bleed map Box
+        } // end full-bleed map BoxWithConstraints
     }
 }
