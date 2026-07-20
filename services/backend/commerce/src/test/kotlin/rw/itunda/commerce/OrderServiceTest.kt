@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.LedgerEntry
@@ -23,6 +24,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.OrderItemRepository
 import rw.itunda.core.repository.OrderRepository
 import rw.itunda.core.repository.TransactionRepository
@@ -52,9 +54,15 @@ class OrderServiceTest : BehaviorSpec({
         every { transactionRepository.save(any()) } answers { firstArg() }
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        // Real buyer order-status notifications (2026-07-20) -- explicit stub, same
+        // known "relaxed mockk can't correctly infer JpaRepository's generic save()
+        // signature" gotcha this project's own tests already document repeatedly.
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             walletRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
+            notificationRepository,
         )
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
@@ -169,9 +177,15 @@ class OrderServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        // Real buyer order-status notifications (2026-07-20) -- explicit stub, same
+        // known "relaxed mockk can't correctly infer JpaRepository's generic save()
+        // signature" gotcha this project's own tests already document repeatedly.
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             walletRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
+            notificationRepository,
         )
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val order = Order(
@@ -188,6 +202,10 @@ class OrderServiceTest : BehaviorSpec({
 
             Then("it advances exactly one step") {
                 result.status shouldBe OrderStatus.PACKED
+            }
+
+            Then("it real-notifies the buyer, not the seller") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_1" && it.type == "COMMERCE_ORDER_UPDATE" }) }
             }
         }
 
@@ -267,6 +285,28 @@ class OrderServiceTest : BehaviorSpec({
                 legs.first { it.accountId == "wallet_buyer" }.direction shouldBe LedgerDirection.CREDIT
                 legs.first { it.accountId == "wallet_merchant" }.direction shouldBe LedgerDirection.DEBIT
                 legs.first { it.accountId == "fee_revenue" }.direction shouldBe LedgerDirection.DEBIT
+            }
+
+            Then("it does NOT notify the buyer about their own action") {
+                verify(exactly = 0) { notificationRepository.save(any()) }
+            }
+        }
+
+        When("the real seller cancels a real PLACED order") {
+            every { orderRepository.findById("order_1") } returns Optional.of(order)
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+            val originalEntries = listOf(
+                LedgerEntry(id = "le_1", transactionId = "ledgertxn_1", accountId = "wallet_buyer", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.DEBIT, amount = BigDecimal("6000"), currency = "RWF", balanceAfter = BigDecimal("94000"), memo = "Order - Kigali Store"),
+                LedgerEntry(id = "le_2", transactionId = "ledgertxn_1", accountId = "wallet_merchant", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.CREDIT, amount = BigDecimal("5910.00"), currency = "RWF", balanceAfter = BigDecimal("5910.00"), memo = "Order collection - Kigali Store"),
+            )
+            every { ledgerEntryRepository.findByTransactionId("ledgertxn_1") } returns originalEntries
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("refund_txn_2", emptyList())
+            every { orderRepository.save(any()) } answers { firstArg() }
+
+            service.cancelOrder("seller_1", "order_1")
+
+            Then("it real-notifies the buyer, since the SELLER was the one who cancelled") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_1" && it.type == "COMMERCE_ORDER_UPDATE" }) }
             }
         }
 

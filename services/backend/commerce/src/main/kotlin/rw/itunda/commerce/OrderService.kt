@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Order
 import rw.itunda.core.domain.OrderItem
 import rw.itunda.core.domain.OrderStatus
@@ -19,6 +20,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.OrderItemRepository
 import rw.itunda.core.repository.OrderRepository
 import rw.itunda.core.repository.TransactionRepository
@@ -75,6 +77,7 @@ class OrderService(
     private val transactionRepository: TransactionRepository,
     private val fraudRuleEngine: FraudRuleEngine,
     private val ledgerEntryRepository: LedgerEntryRepository,
+    private val notificationRepository: NotificationRepository,
 ) {
     // Same real Toss Payments fee-schedule reasoning MerchantService.feeRate's own
     // comment gives -- one flat rate in the middle of Toss's published 0.8%-1.8% range,
@@ -227,7 +230,14 @@ class OrderService(
         }
         order.status = newStatus
         order.updatedAt = Instant.now()
-        return orderRepository.save(order)
+        val saved = orderRepository.save(order)
+        when (newStatus) {
+            OrderStatus.PACKED -> notifyBuyer(saved, "Order packed", "${merchant.businessName} has packed your order.")
+            OrderStatus.SHIPPED -> notifyBuyer(saved, "Order shipped", "${merchant.businessName} has shipped your order.")
+            OrderStatus.DELIVERED -> notifyBuyer(saved, "Order delivered", "Your order from ${merchant.businessName} has been delivered.")
+            else -> {}
+        }
+        return saved
     }
 
     /**
@@ -270,6 +280,27 @@ class OrderService(
         order.status = OrderStatus.CANCELLED
         order.refundTransactionId = refund.transactionId
         order.updatedAt = Instant.now()
-        return orderRepository.save(order)
+        val saved = orderRepository.save(order)
+        // Only notify when the SELLER cancelled -- a buyer who cancelled their own
+        // order already knows, same "don't notify someone about their own action"
+        // discipline this exact pattern already established for Eats the same day.
+        if (isSeller) {
+            notifyBuyer(saved, "Order cancelled", "${merchant?.businessName ?: "The seller"} cancelled your order. Your payment has been refunded.")
+        }
+        return saved
+    }
+
+    // Real buyer order-status notifications (2026-07-20) -- the real "your order was
+    // packed/shipped/delivered" moments every real Coupang/Toss Shopping/Naver
+    // Shopping-style app sends, mirroring the identical gap closed for Eats the same
+    // day (see EatsOrderService.notifyBuyer's own doc comment for the full account).
+    private fun notifyBuyer(order: Order, title: String, body: String) {
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = order.buyerId, type = "COMMERCE_ORDER_UPDATE",
+                title = title, body = body, isRead = false, createdAt = Instant.now(),
+                dataJson = "{\"orderId\":\"${order.id}\"}",
+            ),
+        )
     }
 }
