@@ -105,6 +105,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import rw.itunda.core.designsystem.components.TdsButton
+import rw.itunda.core.designsystem.components.TdsButtonSize
+import rw.itunda.core.designsystem.components.TdsButtonVariant
+import rw.itunda.core.designsystem.components.TdsIconButton
 import rw.itunda.core.designsystem.theme.TdsTheme
 import rw.itunda.core.designsystem.theme.Tds
 
@@ -640,38 +644,8 @@ private fun HomeTopBar() {
         ) {
             Text("Search", color = TossSecondary, fontSize = 15.sp)
         }
-        TopIconButton(Icons.Outlined.QrCodeScanner, contentDescription = "Scan QR code")
-        TopIconButton(Icons.Outlined.Notifications, contentDescription = "Notifications")
-    }
-}
-
-// Fixed (2026-07-11): this shared icon-only button had no way to tell a screen reader
-// what any given instance actually does -- contentDescription was hardcoded null
-// regardless of which icon was passed in. A required contentDescription param means a
-// new call site can't silently reintroduce the bug the way an optional/defaulted
-// param could.
-//
-// Touch target bumped 44dp -> 48dp (2026-07-11): 44dp cleared WCAG's 44px baseline
-// but sat below Material Design's own 48dp recommendation, flagged as an open gap in
-// docs/ACCESSIBILITY.md. Every call site sits in a Row with a flexible weight(1f)
-// sibling or SpaceBetween arrangement, so the extra 4dp per button is absorbed by
-// that flexible space rather than causing overflow -- checked each of the 3 call
-// sites' surrounding layout before changing this shared component.
-@Composable
-internal fun TopIconButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit = {},
-) {
-    Box(
-        modifier = Modifier
-            .size(Tds.layout.minTouchTarget)
-            .clip(CircleShape)
-            .background(TossCardSoft)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(20.dp), tint = TossText)
+        TdsIconButton(Icons.Outlined.QrCodeScanner, contentDescription = "Scan QR code", onClick = {})
+        TdsIconButton(Icons.Outlined.Notifications, contentDescription = "Notifications", onClick = {})
     }
 }
 
@@ -690,8 +664,8 @@ private fun WalletHeroCard(balanceText: String, onSend: () -> Unit) {
             Text("Wallet", fontSize = 14.sp, color = TossSecondary)
             Text(balanceText, fontSize = 34.sp, color = TossText, fontWeight = FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                PrimaryAction("Add money", Modifier.weight(1f), false) {}
-                PrimaryAction("Send", Modifier.weight(1f), true, onSend)
+                TdsButton("Add money", onClick = {}, modifier = Modifier.weight(1f), variant = TdsButtonVariant.Tinted, size = TdsButtonSize.Medium)
+                TdsButton("Send", onClick = onSend, modifier = Modifier.weight(1f), variant = TdsButtonVariant.Filled, size = TdsButtonSize.Medium)
             }
             Divider(color = TossLine)
             WalletMiniRow("RWF 613", "Bravo Korea parking", "Send")
@@ -704,20 +678,6 @@ private fun WalletHeroCard(balanceText: String, onSend: () -> Unit) {
                 fontWeight = FontWeight.Medium
             )
         }
-    }
-}
-
-@Composable
-private fun PrimaryAction(title: String, modifier: Modifier = Modifier, filled: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(if (filled) TossBlue else Color(0xFF1F3053))
-            .clickable(onClick = onClick)
-            .padding(vertical = 14.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(title, color = TossText, fontWeight = FontWeight.Bold, fontSize = 18.sp)
     }
 }
 
@@ -744,20 +704,7 @@ private fun WalletMiniRow(amount: String, subtitle: String, action: String) {
             Text(amount, color = TossText, fontWeight = FontWeight.Bold, fontSize = 18.sp)
             Text(subtitle, color = TossSecondary, fontSize = 14.sp)
         }
-        SmallBlueButton(action)
-    }
-}
-
-@Composable
-internal fun SmallBlueButton(label: String) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF223554))
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(label, color = TossBlue, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        TdsButton(action, onClick = {}, variant = TdsButtonVariant.Tinted, size = TdsButtonSize.Small)
     }
 }
 
@@ -804,7 +751,7 @@ private fun ShellSection(title: String, rows: List<ShellRow>) {
                         // Was showing row.third (the action label, e.g. "3 new"
                         // or "Claim") crammed into a 42dp icon box -- a real bug,
                         // not a placeholder; it also rendered a second time below
-                        // via SmallBlueButton whenever longer than one character.
+                        // via the row's own action button whenever longer than one character.
                         // Then briefly row.first's initial as a stopgap, then a
                         // real icon but on a flat muted TossChip background --
                         // real Toss's card-list icon badges (송금/자산 reference
@@ -822,7 +769,7 @@ private fun ShellSection(title: String, rows: List<ShellRow>) {
                     if (row.action == ">") {
                         Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TossTertiary)
                     } else if (row.action.isNotBlank()) {
-                        SmallBlueButton(row.action)
+                        TdsButton(row.action, onClick = {}, variant = TdsButtonVariant.Tinted, size = TdsButtonSize.Small)
                     }
                 }
                 if (index != rows.lastIndex) {
@@ -1253,7 +1200,7 @@ private fun BenefitsVisitCard() {
                     }
                     Spacer(modifier = Modifier.width(14.dp))
                     Text(title, modifier = Modifier.weight(1f), color = TossText, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                    SmallBlueButton("Visit")
+                    TdsButton("Visit", onClick = {}, variant = TdsButtonVariant.Tinted, size = TdsButtonSize.Small)
                 }
             }
         }
@@ -1287,7 +1234,7 @@ private fun CashbackChanceCard() {
                     Text("RWF 5,000", color = TossText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                     Text("BK account -> TUYIZERE Eric", color = TossSecondary)
                 }
-                SmallBlueButton("Get back")
+                TdsButton("Get back", onClick = {}, variant = TdsButtonVariant.Tinted, size = TdsButtonSize.Small)
             }
         }
     }
@@ -1361,7 +1308,7 @@ private fun PayFeatureCard() {
                     Text("itunda pay", color = TossSecondary)
                     Text("30% rewards at partner stores", color = TossBlue, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 }
-                SmallBlueButton("Find store")
+                TdsButton("Find store", onClick = {}, variant = TdsButtonVariant.Tinted, size = TdsButtonSize.Small)
             }
             Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(TossCardSoft).padding(18.dp)) {
                 Text("Apply pay money and points automatically", color = TossSecondary, fontSize = 16.sp)
@@ -1375,7 +1322,7 @@ private fun PayFeatureCard() {
                     Text("How to pay online", color = TossText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     Text("Use Itunda Pay on e-commerce and partner stores", color = TossSecondary)
                 }
-                SmallBlueButton("See")
+                TdsButton("See", onClick = {}, variant = TdsButtonVariant.Tinted, size = TdsButtonSize.Small)
             }
         }
     }
@@ -1391,7 +1338,7 @@ private fun AllTopBar(onOpenSettings: () -> Unit = {}) {
         Text("TUYIZERE ERIC", color = TossText, fontWeight = FontWeight.Bold, fontSize = 26.sp)
         // Real Settings screen (2026-07-12, see SettingsScreen.kt) -- previously
         // wired directly to logout with no screen behind it at all.
-        TopIconButton(Icons.Outlined.Settings, contentDescription = "Settings", onClick = onOpenSettings)
+        TdsIconButton(Icons.Outlined.Settings, contentDescription = "Settings", onClick = onOpenSettings)
     }
 }
 
