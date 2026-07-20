@@ -50,9 +50,13 @@ class AuthServiceTest : BehaviorSpec({
         val emailVerificationTokenRepository = mockk<EmailVerificationTokenRepository>()
         val notificationRepository = mockk<NotificationRepository>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
+        // Real device binding (2026-07-20) -- relaxed since these tests aren't about
+        // device binding itself, just registration/login/profile behavior; DeviceServiceTest
+        // covers the real device-recording/verification logic directly.
+        val deviceService = mockk<DeviceService>(relaxed = true)
         val service = AuthService(
             userRepository, walletRepository, jwtService, tokenBlocklistService, rateLimiter,
-            emailVerificationTokenRepository, notificationRepository, nominatimGeocodingClient,
+            emailVerificationTokenRepository, notificationRepository, nominatimGeocodingClient, deviceService,
         )
 
         When("registering a brand-new phone number") {

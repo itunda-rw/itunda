@@ -36,6 +36,7 @@ class AuthService(
     private val emailVerificationTokenRepository: EmailVerificationTokenRepository,
     private val notificationRepository: NotificationRepository,
     private val nominatimGeocodingClient: NominatimGeocodingClient,
+    private val deviceService: DeviceService,
 ) {
     private val passwordEncoder = BCryptPasswordEncoder()
 
@@ -96,7 +97,11 @@ class AuthService(
             ),
         )
 
-        return issueAuthResponse(user, "Registration successful")
+        // Real device binding (2026-07-20) -- the device used to register already
+        // proved password ownership in this same request, so it's auto-trusted rather
+        // than needing a separate step-up immediately after signing up.
+        deviceService.recordRegistrationDevice(user.id, request.deviceId, request.deviceName)
+        return issueAuthResponse(user, "Registration successful", request.deviceId)
     }
 
     fun login(request: LoginRequest): AuthResponse {
@@ -110,7 +115,12 @@ class AuthService(
         if (!passwordEncoder.matches(request.password, user.passwordHash)) {
             throw InvalidCredentialsException("Invalid phone number or password")
         }
-        return issueAuthResponse(user, "Login successful")
+        // Real device binding (2026-07-20) -- login still succeeds from an unrecognized
+        // device (matches real bank UX: you can sign in and look around), it's just
+        // recorded as untrusted until a real step-up re-verification -- see
+        // DeviceVerificationFilter for where that's actually enforced.
+        deviceService.recordLoginDevice(user.id, request.deviceId, request.deviceName)
+        return issueAuthResponse(user, "Login successful", request.deviceId)
     }
 
     fun getProfile(userId: String): PublicUser {
@@ -145,7 +155,10 @@ class AuthService(
         val user = userRepository.findById(decoded.userId).orElseThrow { InvalidRefreshTokenException("User not found") }
 
         tokenBlocklistService.blacklist(decoded.jti, decoded.expiresAt)
-        return issueAuthResponse(user, "Token refreshed")
+        // Real device binding (2026-07-20): the real deviceId claim from the presented
+        // refresh token carries forward onto the freshly-minted pair, so a client never
+        // needs to resend it on every refresh cycle.
+        return issueAuthResponse(user, "Token refreshed", decoded.deviceId)
     }
 
     // Real, buildable half of task_profile (2026-07-17): a URL, not a binary upload --
@@ -245,11 +258,11 @@ class AuthService(
         return user.toPublic()
     }
 
-    private fun issueAuthResponse(user: User, message: String) = AuthResponse(
+    private fun issueAuthResponse(user: User, message: String, deviceId: String? = null) = AuthResponse(
         message = message,
         user = user.toPublic(),
-        accessToken = jwtService.issueAccessToken(user.id, user.phoneNumber, user.role),
-        refreshToken = jwtService.issueRefreshToken(user.id),
+        accessToken = jwtService.issueAccessToken(user.id, user.phoneNumber, user.role, deviceId),
+        refreshToken = jwtService.issueRefreshToken(user.id, deviceId),
     )
 
     private fun generateAccountNumber(): String = (2024100000L + (Math.random() * 900000).toLong()).toString()

@@ -11,9 +11,15 @@ data class RegisterRequest(
     // An existing user's referral_code, optional. Resolved to that user's id and stored
     // as the new user's referredByUserId -- see AuthService.register.
     val referralCode: String? = null,
+    // Real device binding (2026-07-20) -- see TrustedDevice's own doc comment. A real,
+    // stable, client-generated identifier (a UUID persisted in local storage/Keychain/
+    // SharedPreferences), optional so older, not-yet-updated clients keep working
+    // exactly as before (see DeviceVerificationFilter's own doc comment on the rollout).
+    val deviceId: String? = null,
+    val deviceName: String? = null,
 )
 
-data class LoginRequest(val phoneNumber: String, val password: String)
+data class LoginRequest(val phoneNumber: String, val password: String, val deviceId: String? = null, val deviceName: String? = null)
 
 data class RefreshRequest(val refreshToken: String)
 
@@ -55,3 +61,7 @@ data class ConfirmEmailVerificationRequest(val token: String)
 // A coordinate in, never a self-declared free-text neighborhood name -- AuthService
 // reverse-geocodes it through itunda's own self-hosted Nominatim.
 data class SetNeighborhoodRequest(val latitude: Double, val longitude: Double)
+
+// Real device binding (2026-07-20) -- see TrustedDevice's own doc comment. Re-proves
+// password ownership on the caller's own current device (resolved from their JWT).
+data class VerifyDeviceRequest(val password: String)

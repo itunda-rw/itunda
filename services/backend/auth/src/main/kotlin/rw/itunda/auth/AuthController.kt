@@ -3,8 +3,10 @@ package rw.itunda.auth
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.PutMapping
@@ -16,7 +18,7 @@ import rw.itunda.core.web.ApiError
 
 @RestController
 @RequestMapping("/api/v1/auth")
-class AuthController(private val authService: AuthService) {
+class AuthController(private val authService: AuthService, private val deviceService: DeviceService) {
 
     @PostMapping("/register")
     fun register(@RequestBody request: RegisterRequest): ResponseEntity<AuthResponse> =
@@ -86,6 +88,43 @@ class AuthController(private val authService: AuthService) {
                 "user" to authService.setNeighborhood(currentUser.userId, request.latitude, request.longitude),
             ),
         )
+
+    // Real device binding (2026-07-20) -- see TrustedDevice's own doc comment. Real
+    // Toss-style device management: list every real device this account has ever
+    // signed in from, which ones are trusted (can move money) vs merely seen.
+    @GetMapping("/devices")
+    fun getMyDevices(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "devices" to deviceService.getMyDevices(currentUser.userId)))
+
+    // Real step-up re-verification for the CURRENT device (resolved from the caller's
+    // own JWT, never a client-supplied id) -- re-proves password ownership, then marks
+    // it trusted so it can move money going forward. See DeviceVerificationFilter for
+    // where an unverified device is actually blocked.
+    @PostMapping("/devices/verify")
+    fun verifyDevice(
+        @RequestBody request: VerifyDeviceRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "device" to deviceService.verifyDevice(currentUser.userId, currentUser.deviceId, request.password)))
+
+    // Real "forget this device" -- self-service device management, same real control
+    // Toss's own security settings page offers.
+    @DeleteMapping("/devices/{deviceId}")
+    fun revokeDevice(
+        @PathVariable deviceId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Boolean>> {
+        deviceService.revokeDevice(currentUser.userId, deviceId)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    @ExceptionHandler(DeviceNotFoundException::class)
+    fun handleDeviceNotFound(ex: DeviceNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("DEVICE_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(InvalidDeviceVerificationException::class)
+    fun handleInvalidDeviceVerification(ex: InvalidDeviceVerificationException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_DEVICE_VERIFICATION", ex.message ?: "Bad request"))
 
     @ExceptionHandler(PhoneAlreadyRegisteredException::class)
     fun handleConflict(ex: PhoneAlreadyRegisteredException) =

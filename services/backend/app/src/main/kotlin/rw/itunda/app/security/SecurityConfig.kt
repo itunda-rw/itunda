@@ -23,6 +23,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @Configuration
 class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
+    private val deviceVerificationFilter: DeviceVerificationFilter,
     // No CORS config existed anywhere in this backend until ops-mfe (2026-07-16) --
     // bank-mfe/kyc-mfe never actually called it from a browser (mocked fetch only), so
     // the gap was never hit. Origins are the micro-frontends' Vite dev ports; override
@@ -122,6 +123,10 @@ class SecurityConfig(
                 it.accessDeniedHandler(AccessDeniedHandler { _, response, _ -> response.sendError(HttpStatus.FORBIDDEN.value()) })
             }
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
+            // Real device binding (2026-07-20) -- must run after JWT auth (needs the
+            // CurrentUser principal it sets) but before the request reaches any
+            // money-moving controller. See DeviceVerificationFilter's own doc comment.
+            .addFilterAfter(deviceVerificationFilter, JwtAuthenticationFilter::class.java)
         return http.build()
     }
 }

@@ -37,7 +37,7 @@ class JwtAuthenticationFilter(
                 // ROLE_ prefix is Spring Security's own convention for hasRole("ADMIN") to
                 // match against -- see SecurityConfig's /api/v1/system/** rule.
                 val authorities = listOf(SimpleGrantedAuthority("ROLE_${decoded.role}"))
-                val authentication = UsernamePasswordAuthenticationToken(CurrentUser(decoded.userId, decoded.role), null, authorities)
+                val authentication = UsernamePasswordAuthenticationToken(CurrentUser(decoded.userId, decoded.role, decoded.deviceId), null, authorities)
                 SecurityContextHolder.getContext().authentication = authentication
             }
         }
