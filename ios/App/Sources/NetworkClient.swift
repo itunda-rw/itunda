@@ -808,7 +808,8 @@ struct ShoppingMerchantsResponse: Decodable { let success: Bool; let merchants: 
 // onto itunda's already-deployed self-hosted Nominatim/OSRM.
 struct PlaceSearchResultDto: Decodable { let displayName: String; let latitude: Double; let longitude: Double }
 struct MapsSearchResponse: Decodable { let success: Bool; let results: [PlaceSearchResultDto] }
-struct RouteResultDto: Decodable { let distanceKm: Double; let durationMinutes: Double; let geometry: [[Double]] }
+struct RouteStepDto: Decodable { let instruction: String; let distanceMeters: Double; let streetName: String? }
+struct RouteResultDto: Decodable { let distanceKm: Double; let durationMinutes: Double; let geometry: [[Double]]; let steps: [RouteStepDto] }
 struct MapsDirectionsResponse: Decodable { let success: Bool; let route: RouteResultDto }
 struct MerchantCategoriesResponse: Decodable { let success: Bool; let categories: [String] }
 

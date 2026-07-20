@@ -497,7 +497,8 @@ data class ShoppingMerchantsResponse(val success: Boolean, val merchants: List<S
 // onto itunda's already-deployed self-hosted Nominatim/OSRM.
 data class PlaceSearchResultDto(val displayName: String, val latitude: Double, val longitude: Double)
 data class MapsSearchResponse(val success: Boolean, val results: List<PlaceSearchResultDto>)
-data class RouteResultDto(val distanceKm: Double, val durationMinutes: Double, val geometry: List<List<Double>>)
+data class RouteStepDto(val instruction: String, val distanceMeters: Double, val streetName: String?)
+data class RouteResultDto(val distanceKm: Double, val durationMinutes: Double, val geometry: List<List<Double>>, val steps: List<RouteStepDto> = emptyList())
 data class MapsDirectionsResponse(val success: Boolean, val route: RouteResultDto)
 data class MerchantCategoriesResponse(val success: Boolean, val categories: List<String>)
 

@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -190,6 +191,7 @@ fun MapScreen(onBack: () -> Unit) {
     var searching by remember { mutableStateOf(false) }
     var selectedPlace by remember { mutableStateOf<PlaceSearchResultDto?>(null) }
     var route by remember { mutableStateOf<MapsDirectionsResponse?>(null) }
+    var showSteps by remember { mutableStateOf(false) }
     var routing by remember { mutableStateOf(false) }
     var locating by remember { mutableStateOf(false) }
     var myLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) } // lat, lng
@@ -538,6 +540,7 @@ fun MapScreen(onBack: () -> Unit) {
                                         selectedPlace = place
                                         searchResults = null
                                         route = null
+                                        showSteps = false
                                     }
                                     .padding(10.dp),
                             )
@@ -574,10 +577,29 @@ fun MapScreen(onBack: () -> Unit) {
                         }
                         val currentRoute = route
                         if (currentRoute != null) {
-                            Text(
-                                "🚗 ${"%.1f".format(currentRoute.route.distanceKm)} km · ${currentRoute.route.durationMinutes.toInt()} min by real road, via itunda's own self-hosted OSRM",
-                                fontSize = 13.sp, color = TossSecondary,
-                            )
+                            Column {
+                                Text(
+                                    "🚗 ${"%.1f".format(currentRoute.route.distanceKm)} km · ${currentRoute.route.durationMinutes.toInt()} min by real road, via itunda's own self-hosted OSRM",
+                                    fontSize = 13.sp, color = TossSecondary,
+                                )
+                                if (currentRoute.route.steps.isNotEmpty()) {
+                                    Text(
+                                        if (showSteps) "Hide turn-by-turn directions" else "Show turn-by-turn directions (${currentRoute.route.steps.size} steps)",
+                                        fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TossBlue,
+                                        modifier = Modifier.padding(top = 4.dp).clickable { showSteps = !showSteps },
+                                    )
+                                }
+                                if (showSteps) {
+                                    Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        currentRoute.route.steps.forEachIndexed { i, step ->
+                                            Text(
+                                                "${i + 1}. ${step.instruction}" + if (step.distanceMeters >= 10) " (${step.distanceMeters.toInt()} m)" else "",
+                                                fontSize = 12.sp, color = TossSecondary,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         } else {
                             Box(
                                 modifier = Modifier
@@ -589,6 +611,7 @@ fun MapScreen(onBack: () -> Unit) {
                                             try {
                                                 val origin = myLocation ?: (RWANDA_CENTER_LAT to RWANDA_CENTER_LNG)
                                                 route = NetworkClient.apiService.getDirections(origin.first, origin.second, place.latitude, place.longitude)
+                                                showSteps = false
                                             } catch (e: HttpException) {
                                                 error = superAppErrorMessage(e)
                                             } catch (e: Exception) {

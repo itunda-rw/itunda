@@ -139,6 +139,7 @@ struct MapScreenView: View {
     @State private var searching = false
     @State private var selectedPlace: PlaceSearchResultDto?
     @State private var route: RouteResultDto?
+    @State private var showSteps = false
     @State private var routing = false
     @State private var error: String?
     @State private var activeCategory: String?
@@ -270,8 +271,25 @@ struct MapScreenView: View {
                             .disabled(bookmarking)
                         }
                         if let route {
-                            Text("🚗 \(String(format: "%.1f", route.distanceKm)) km · \(Int(route.durationMinutes)) min by real road, via itunda's own self-hosted OSRM")
-                                .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("🚗 \(String(format: "%.1f", route.distanceKm)) km · \(Int(route.durationMinutes)) min by real road, via itunda's own self-hosted OSRM")
+                                    .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                if !route.steps.isEmpty {
+                                    Button(action: { showSteps.toggle() }) {
+                                        Text(showSteps ? "Hide turn-by-turn directions" : "Show turn-by-turn directions (\(route.steps.count) steps)")
+                                            .font(.caption2).bold().foregroundColor(IDS.Colors.brand)
+                                    }
+                                    if showSteps {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            ForEach(Array(route.steps.enumerated()), id: \.offset) { i, step in
+                                                Text("\(i + 1). \(step.instruction)" + (step.distanceMeters >= 10 ? " (\(Int(step.distanceMeters)) m)" : ""))
+                                                    .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                            }
+                                        }
+                                        .padding(.top, 4)
+                                    }
+                                }
+                            }
                         } else {
                             Button(action: { Task { await getDirections() } }) {
                                 Text(routing ? "Finding real route…" : "Directions")
@@ -334,6 +352,7 @@ struct MapScreenView: View {
         selectedPlace = place
         searchResults = nil
         route = nil
+        showSteps = false
     }
 
     private func getDirections() async {
@@ -346,6 +365,7 @@ struct MapScreenView: View {
             route = try await NetworkClient.shared.getDirections(
                 fromLat: origin.latitude, fromLng: origin.longitude, toLat: place.latitude, toLng: place.longitude,
             ).route
+            showSteps = false
         } catch {
             self.error = "Could not find directions to this place."
         }
