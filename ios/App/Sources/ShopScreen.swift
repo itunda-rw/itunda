@@ -576,14 +576,35 @@ private struct StarRatingRow: View {
 private struct ProductRatingBadge: View {
     let productId: String
     @State private var rating: ProductRatingResponse?
+    @State private var open = false
+    @State private var reviews: [ProductReviewDto]?
 
     var body: some View {
         Group {
             if let rating, rating.count > 0 {
-                HStack(spacing: 4) {
-                    Image(systemName: "star.fill").font(.caption2).foregroundColor(.yellow)
-                    Text(String(format: "%.1f (%d)", rating.average ?? 0.0, rating.count))
-                        .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Button(action: toggle) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "star.fill").font(.caption2).foregroundColor(.yellow)
+                            Text(String(format: "%.1f (%d)", rating.average ?? 0.0, rating.count))
+                                .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                    }
+                    if open {
+                        if let reviews {
+                            if reviews.isEmpty {
+                                Text("No written reviews yet.").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                            } else {
+                                ForEach(reviews, id: \.id) { r in
+                                    let stars = String(repeating: "★", count: r.rating) + String(repeating: "☆", count: 5 - r.rating)
+                                    Text(r.comment.map { "\(stars) — \($0)" } ?? stars)
+                                        .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                }
+                            }
+                        } else {
+                            Text("Loading reviews…").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                    }
                 }
             }
         }
@@ -592,6 +613,18 @@ private struct ProductRatingBadge: View {
                 rating = try await NetworkClient.shared.getProductRating(productId)
             } catch {
                 // Real, non-critical -- a rating fetch failure shouldn't block browsing the catalog.
+            }
+        }
+    }
+
+    private func toggle() {
+        open.toggle()
+        guard open, reviews == nil else { return }
+        Task {
+            do {
+                reviews = try await NetworkClient.shared.getProductReviews(productId).reviews
+            } catch {
+                reviews = []
             }
         }
     }

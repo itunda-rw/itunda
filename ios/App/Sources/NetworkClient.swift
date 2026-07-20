@@ -888,6 +888,7 @@ struct ProductReviewDto: Decodable {
     let createdAt: String
 }
 struct ProductReviewResponse: Decodable { let success: Bool; let review: ProductReviewDto }
+struct ProductReviewsResponse: Decodable { let success: Bool; let reviews: [ProductReviewDto] }
 struct ProductRatingResponse: Decodable { let success: Bool; let average: Double?; let count: Int }
 
 /// Mirrors services/backend/eats's real DTOs exactly (2026-07-18) -- restaurant/menu
@@ -1416,6 +1417,10 @@ extension NetworkClient {
 
     func getProductRating(_ productId: String) async throws -> ProductRatingResponse {
         try await get("api/v1/orders/products/\(productId)/rating")
+    }
+
+    func getProductReviews(_ productId: String) async throws -> ProductReviewsResponse {
+        try await get("api/v1/orders/products/\(productId)/reviews")
     }
 
     // Real Coupang Eats-style food delivery (2026-07-18) -- see rw.itunda.eats.web.EatsController.

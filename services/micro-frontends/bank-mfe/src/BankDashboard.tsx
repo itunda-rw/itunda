@@ -46,8 +46,8 @@ import {
 } from './lib/eats';
 import {
   advanceOrderStatus, cancelOrder, fetchMerchantOrders, fetchMerchantProducts, fetchMyOrders, fetchOrderDetail,
-  fetchProductRating, placeOrder, submitProductReview,
-  type CommerceOrder, type CommerceOrderItem, type CommerceOrderStatus, type CommerceProduct,
+  fetchProductRating, fetchProductReviews, placeOrder, submitProductReview,
+  type CommerceOrder, type CommerceOrderItem, type CommerceOrderStatus, type CommerceProduct, type ProductReview,
 } from './lib/commerce';
 import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
@@ -4442,6 +4442,8 @@ function CommerceOrderCard({ order, action }: { order: CommerceOrder; action?: R
 // comment for the full backend account. One real review per real delivered line item.
 function ProductRatingBadge({ productId }: { productId: string }) {
   const [rating, setRating] = useState<{ average: number | null; count: number } | null>(null);
+  const [open, setOpen] = useState(false);
+  const [reviews, setReviews] = useState<ProductReview[] | null>(null);
 
   useEffect(() => {
     fetchProductRating(productId).then(setRating).catch(() => {
@@ -4449,12 +4451,42 @@ function ProductRatingBadge({ productId }: { productId: string }) {
     });
   }, [productId]);
 
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (next && reviews === null) {
+      fetchProductReviews(productId).then(setReviews).catch(() => setReviews([]));
+    }
+  };
+
   if (!rating || rating.count === 0) return null;
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--toss-grey-700)' }}>
-      <Star size={13} color="#F5A623" fill="#F5A623" />
-      {rating.average?.toFixed(1)} ({rating.count})
-    </span>
+    <div>
+      <button
+        type="button"
+        onClick={toggle}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--toss-grey-700)', padding: 0 }}
+      >
+        <Star size={13} color="#F5A623" fill="#F5A623" />
+        {rating.average?.toFixed(1)} ({rating.count})
+      </button>
+      {open && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+          {reviews === null ? (
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Loading reviews…</p>
+          ) : reviews.length === 0 ? (
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No written reviews yet.</p>
+          ) : (
+            reviews.map((r) => (
+              <div key={r.id} style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>
+                <span style={{ color: '#F5A623' }}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
+                {r.comment && <span> — {r.comment}</span>}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

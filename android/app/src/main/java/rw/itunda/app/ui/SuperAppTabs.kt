@@ -110,6 +110,7 @@ import rw.itunda.app.network.OrderItemRequest
 import rw.itunda.app.network.PlaceEatsOrderRequest
 import rw.itunda.app.network.PlaceOrderRequest
 import rw.itunda.app.network.ProductRatingResponse
+import rw.itunda.app.network.ProductReviewDto
 import rw.itunda.app.network.SubmitProductReviewRequest
 import rw.itunda.app.network.MakePropertyOfferRequest
 import rw.itunda.app.network.PriceOfferDto
@@ -3318,6 +3319,10 @@ private fun MyCommerceOrdersView() {
 @Composable
 private fun ProductRatingBadge(productId: String) {
     var rating by remember { mutableStateOf<ProductRatingResponse?>(null) }
+    var open by remember { mutableStateOf(false) }
+    var reviews by remember { mutableStateOf<List<ProductReviewDto>?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
     LaunchedEffect(productId) {
         try {
             rating = NetworkClient.apiService.getProductRating(productId)
@@ -3327,10 +3332,46 @@ private fun ProductRatingBadge(productId: String) {
     }
     val r = rating
     if (r != null && r.count > 0) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(13.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("%.1f (%d)".format(r.average ?: 0.0, r.count), color = TossSecondary, fontSize = 12.sp)
+        Column {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable {
+                    val next = !open
+                    open = next
+                    if (next && reviews == null) {
+                        coroutineScope.launch {
+                            try {
+                                reviews = NetworkClient.apiService.getProductReviews(productId).reviews
+                            } catch (e: Exception) {
+                                reviews = emptyList()
+                            }
+                        }
+                    }
+                },
+            ) {
+                Icon(Icons.Outlined.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(13.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("%.1f (%d)".format(r.average ?: 0.0, r.count), color = TossSecondary, fontSize = 12.sp)
+            }
+            if (open) {
+                val list = reviews
+                if (list == null) {
+                    Text("Loading reviews…", color = TossSecondary, fontSize = 12.sp)
+                } else if (list.isEmpty()) {
+                    Text("No written reviews yet.", color = TossSecondary, fontSize = 12.sp)
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(top = 4.dp)) {
+                        list.forEach { rv ->
+                            val stars = "★".repeat(rv.rating) + "☆".repeat(5 - rv.rating)
+                            Text(
+                                if (rv.comment.isNullOrBlank()) stars else "$stars — ${rv.comment}",
+                                color = TossSecondary,
+                                fontSize = 12.sp,
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

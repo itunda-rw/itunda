@@ -570,6 +570,7 @@ data class ProductReviewDto(
     val createdAt: String,
 )
 data class ProductReviewResponse(val success: Boolean, val review: ProductReviewDto)
+data class ProductReviewsResponse(val success: Boolean, val reviews: List<ProductReviewDto>)
 data class ProductRatingResponse(val success: Boolean, val average: Double?, val count: Long)
 
 // Mirrors services/backend/eats's real DTOs exactly (2026-07-18) -- backs the Eats mode
@@ -986,6 +987,9 @@ interface ApiService {
 
     @GET("api/v1/orders/products/{id}/rating")
     suspend fun getProductRating(@Path("id") productId: String): ProductRatingResponse
+
+    @GET("api/v1/orders/products/{id}/reviews")
+    suspend fun getProductReviews(@Path("id") productId: String): ProductReviewsResponse
 
     // Real Coupang Eats-style food delivery (2026-07-18) -- see rw.itunda.eats.web.EatsController.
     @POST("api/v1/eats/orders")
