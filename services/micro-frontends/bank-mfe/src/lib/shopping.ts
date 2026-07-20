@@ -14,8 +14,25 @@ export interface ShoppingMerchant {
   longitude?: number | null;
 }
 
-export const fetchShoppingCatalog = () =>
-  apiFetch<{ success: boolean; merchants: ShoppingMerchant[] }>('/api/v1/shopping/merchants').then((r) => r.merchants);
+// Real category/search filter (2026-07-21) -- both optional and combinable, mirroring
+// Eats' fetchRestaurants (lib/eats.ts) exactly, since both hit the same
+// ShoppingController.getEligibleMerchants endpoint on the backend.
+export const fetchShoppingCatalog = (category?: string, q?: string) => {
+  const params = new URLSearchParams();
+  if (category) params.set('category', category);
+  if (q) params.set('q', q);
+  params.set('size', '100');
+  const qs = params.toString();
+  return apiFetch<{ success: boolean; merchants: ShoppingMerchant[] }>(`/api/v1/shopping/merchants${qs ? `?${qs}` : ''}`).then(
+    (r) => r.merchants,
+  );
+};
+
+// Real distinct category list, derived from real merchant data -- see
+// MerchantRepository.findDistinctCategories's own doc comment. Same endpoint Eats'
+// fetchRestaurantCategories (lib/eats.ts) already uses.
+export const fetchMerchantCategories = () =>
+  apiFetch<{ success: boolean; categories: string[] }>('/api/v1/shopping/merchants/categories').then((r) => r.categories);
 
 export interface ProductSearchResult {
   id: string;

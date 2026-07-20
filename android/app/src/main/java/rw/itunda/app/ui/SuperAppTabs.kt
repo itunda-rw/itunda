@@ -187,6 +187,53 @@ private fun TabHeader(title: String) {
     Text(title, color = TossText, fontSize = 28.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(vertical = 8.dp))
 }
 
+// Real shared browse-header component (2026-07-21) -- extracted from Eats'
+// OrderFoodContent (the only place this pattern previously existed) so Shop's
+// merchant browse can reuse the identical search+chips interaction instead of a
+// second bespoke implementation. Callers own their own debounce/state; this just
+// renders the field + optional chip row.
+@Composable
+private fun SearchAndCategoryChips(
+    searchInput: String,
+    onSearchChange: (String) -> Unit,
+    placeholder: String,
+    categories: List<String>,
+    selectedCategory: String?,
+    onSelectCategory: (String?) -> Unit,
+) {
+    Column {
+        OutlinedTextField(
+            value = searchInput,
+            onValueChange = onSearchChange,
+            placeholder = { Text(placeholder) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (categories.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(Ids.layout.cardGap))
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf<String?>(null).plus(categories).forEach { c ->
+                    val selected = c == selectedCategory
+                    Text(
+                        c ?: "All",
+                        color = if (selected) Color.White else TossSecondary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(if (selected) TossBlue else TossCardSoft)
+                            .clickable { onSelectCategory(c) }
+                            .padding(horizontal = 14.dp, vertical = 6.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
 // ============================== TALK (Messaging) ==============================
 
 private enum class TalkView { DIRECT, GROUPS }
@@ -2903,6 +2950,9 @@ private data class CommerceCheckoutResult(val merchantId: String, val businessNa
 private fun CommerceShopContent() {
     var view by remember { mutableStateOf(CommerceView.BROWSE) }
     var merchants by remember { mutableStateOf<List<ShoppingMerchantDto>?>(null) }
+    var categories by remember { mutableStateOf<List<String>>(emptyList()) }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var searchInput by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var selectedMerchant by remember { mutableStateOf<ShoppingMerchantDto?>(null) }
     var products by remember { mutableStateOf<List<MerchantProductDto>?>(null) }
@@ -2914,7 +2964,7 @@ private fun CommerceShopContent() {
     fun loadMerchants() {
         coroutineScope.launch {
             try {
-                val res = NetworkClient.apiService.getShoppingMerchants()
+                val res = NetworkClient.apiService.getShoppingMerchants(selectedCategory, searchInput.trim().ifBlank { null })
                 if (res.success) merchants = res.merchants
                 error = null
             } catch (e: HttpException) {
@@ -2924,7 +2974,19 @@ private fun CommerceShopContent() {
             }
         }
     }
-    LaunchedEffect(Unit) { loadMerchants() }
+    LaunchedEffect(Unit) {
+        loadMerchants()
+        try {
+            val catRes = NetworkClient.apiService.getMerchantCategories()
+            if (catRes.success) categories = catRes.categories
+        } catch (e: Exception) { /* non-critical, only backs the category chip row */ }
+    }
+    // Same debounced category/search filter as Eats' OrderFoodContent -- see
+    // SearchAndCategoryChips's own doc comment for why this is now shared.
+    LaunchedEffect(selectedCategory, searchInput) {
+        delay(300)
+        loadMerchants()
+    }
 
     fun openMerchant(m: ShoppingMerchantDto) {
         selectedMerchant = m
@@ -3007,33 +3069,51 @@ private fun CommerceShopContent() {
         }
         if (view == CommerceView.ORDERS) {
             item { MyCommerceOrdersView() }
-        } else if (error != null) {
-            item { ErrorCard(error!!, onRetry = ::loadMerchants) }
-        } else if (merchants == null) {
-            item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
-        } else if (merchants!!.isEmpty()) {
-            item { Text("No stores registered yet.", color = TossSecondary, fontSize = 14.sp) }
         } else {
-            items(merchants!!, key = { it.merchantId }) { m ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
-                        .background(TossCard)
-                        .clickable { openMerchant(m) }
-                        .padding(18.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(TossCardSoft), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.Storefront, contentDescription = null, modifier = Modifier.size(20.dp), tint = TossBlue)
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(m.businessName, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text("${m.cashbackRate} cashback on QR/code payments", color = TossSecondary, fontSize = 12.sp)
-                    }
+            item {
+                SearchAndCategoryChips(
+                    searchInput = searchInput,
+                    onSearchChange = { searchInput = it },
+                    placeholder = "Search merchants",
+                    categories = categories,
+                    selectedCategory = selectedCategory,
+                    onSelectCategory = { c -> selectedCategory = if (c == selectedCategory) null else c },
+                )
+            }
+            if (error != null) {
+                item { ErrorCard(error!!, onRetry = ::loadMerchants) }
+            } else if (merchants == null) {
+                item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+            } else if (merchants!!.isEmpty()) {
+                item {
+                    Text(
+                        if (selectedCategory != null || searchInput.isNotBlank()) "No merchants match your search." else "No stores registered yet.",
+                        color = TossSecondary,
+                        fontSize = 14.sp,
+                    )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
+            } else {
+                items(merchants!!, key = { it.merchantId }) { m ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
+                            .background(TossCard)
+                            .clickable { openMerchant(m) }
+                            .padding(18.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(TossCardSoft), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Outlined.Storefront, contentDescription = null, modifier = Modifier.size(20.dp), tint = TossBlue)
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(m.businessName, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text("${m.cashbackRate} cashback on QR/code payments", color = TossSecondary, fontSize = 12.sp)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
             }
         }
         if (view == CommerceView.BROWSE && totalItems > 0) {
@@ -3786,36 +3866,14 @@ private fun OrderFoodContent() {
             }
         } else {
             item {
-                OutlinedTextField(
-                    value = searchInput,
-                    onValueChange = { searchInput = it },
-                    placeholder = { Text("Search restaurants") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                SearchAndCategoryChips(
+                    searchInput = searchInput,
+                    onSearchChange = { searchInput = it },
+                    placeholder = "Search restaurants",
+                    categories = categories,
+                    selectedCategory = selectedCategory,
+                    onSelectCategory = { c -> selectedCategory = if (c == selectedCategory) null else c },
                 )
-            }
-            if (categories.isNotEmpty()) {
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        listOf<String?>(null).plus(categories).forEach { c ->
-                            val selected = c == selectedCategory
-                            Text(
-                                c ?: "All",
-                                color = if (selected) Color.White else TossSecondary,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(if (selected) TossBlue else TossCardSoft)
-                                    .clickable { selectedCategory = if (c == selectedCategory) null else c }
-                                    .padding(horizontal = 14.dp, vertical = 6.dp),
-                            )
-                        }
-                    }
-                }
             }
             if (error != null) {
                 item { ErrorCard(error!!, onRetry = ::loadRestaurants) }

@@ -187,30 +187,14 @@ private struct OrderFoodContent: View {
                         onChanged: { Task { await loadFavoriteIds() } }
                     )
                 } else {
-                    TextField("Search restaurants", text: Binding(
-                        get: { searchInput },
-                        set: { searchInput = $0; scheduleFilterReload() }
-                    ))
-                    .padding(12)
-                    .background(IDS.Colors.chipBackground)
-                    .cornerRadius(12)
-
-                    if !categories.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(([nil] as [String?]) + categories.map { Optional($0) }, id: \.self) { c in
-                                    Button(action: { selectCategory(c) }) {
-                                        Text(c ?? "All")
-                                            .font(.caption).bold()
-                                            .foregroundColor(selectedCategory == c ? .white : IDS.Colors.textSecondary)
-                                            .padding(.horizontal, 14).padding(.vertical, 6)
-                                            .background(selectedCategory == c ? IDS.Colors.brand : IDS.Colors.chipBackground)
-                                            .cornerRadius(16)
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    SearchAndCategoryChips(
+                        searchText: searchInput,
+                        onSearchChange: { searchInput = $0; scheduleFilterReload() },
+                        placeholder: "Search restaurants",
+                        categories: categories,
+                        selectedCategory: selectedCategory,
+                        onSelectCategory: selectCategory
+                    )
 
                     if let error {
                         VStack(alignment: .leading, spacing: 10) {

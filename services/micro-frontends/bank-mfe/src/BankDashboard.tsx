@@ -12,7 +12,7 @@ import {
 import { collectWithFacePay, enrollFacePay, fetchFacePayStatus, revokeFacePay } from './lib/facepay';
 import { sendDirect } from './lib/p2p';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
-import { collectPayment, fetchShoppingCatalog, searchProducts, type CollectPaymentResult, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
+import { collectPayment, fetchMerchantCategories, fetchShoppingCatalog, searchProducts, type CollectPaymentResult, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
 import {
   buyStock, fetchPortfolio, fetchPortfolioHistory, fetchStockHistory, fetchStocks, fetchWatchlist,
   sellStock, unwatchStock, watchStock,
@@ -3974,6 +3974,67 @@ function MyEatsOrdersView({ onReorder, reorderingId, restaurants }: { onReorder:
   );
 }
 
+// Real shared browse-header component (2026-07-21) -- extracted from Eats'
+// OrderFoodView (the only place this pattern previously existed) so Shop's
+// merchant browse can reuse the identical search+chips interaction instead of a
+// second bespoke implementation. Callers own their own debounce/state; this just
+// renders the field + optional chip row.
+function SearchAndCategoryChips({
+  searchInput,
+  onSearchChange,
+  placeholder,
+  categories,
+  selectedCategory,
+  onSelectCategory,
+}: {
+  searchInput: string;
+  onSearchChange: (value: string) => void;
+  placeholder: string;
+  categories: string[];
+  selectedCategory: string | null;
+  onSelectCategory: (category: string | null) => void;
+}) {
+  return (
+    <>
+      <input
+        type="text"
+        value={searchInput}
+        onChange={(e) => onSearchChange(e.target.value)}
+        placeholder={placeholder}
+        className="toss-card"
+        style={{ width: '100%', padding: '12px 16px', fontSize: '14px', marginBottom: '10px', border: 'none' }}
+      />
+      {categories.length > 0 && (
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '14px' }}>
+          <button
+            onClick={() => onSelectCategory(null)}
+            style={{
+              flexShrink: 0, padding: '6px 14px', borderRadius: '16px', fontSize: '12px', fontWeight: 700,
+              color: selectedCategory === null ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+              backgroundColor: selectedCategory === null ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+            }}
+          >
+            All
+          </button>
+          {categories.map((c) => (
+            <button
+              key={c}
+              onClick={() => onSelectCategory(c === selectedCategory ? null : c)}
+              style={{
+                flexShrink: 0, padding: '6px 14px', borderRadius: '16px', fontSize: '12px', fontWeight: 700,
+                color: selectedCategory === c ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+                backgroundColor: selectedCategory === c ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+              }}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 function OrderFoodView() {
   const [view, setView] = useState<'BROWSE' | 'FAVORITES' | 'ORDERS'>('BROWSE');
   const [restaurants, setRestaurants] = useState<ShoppingMerchant[] | null>(null);
@@ -4131,41 +4192,14 @@ function OrderFoodView() {
         />
       ) : (
         <>
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+          <SearchAndCategoryChips
+            searchInput={searchInput}
+            onSearchChange={setSearchInput}
             placeholder="Search restaurants"
-            className="toss-card"
-            style={{ width: '100%', padding: '12px 16px', fontSize: '14px', marginBottom: '10px', border: 'none' }}
+            categories={categories}
+            selectedCategory={selectedCategory}
+            onSelectCategory={setSelectedCategory}
           />
-          {categories.length > 0 && (
-            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginBottom: '14px' }}>
-              <button
-                onClick={() => setSelectedCategory(null)}
-                style={{
-                  flexShrink: 0, padding: '6px 14px', borderRadius: '16px', fontSize: '12px', fontWeight: 700,
-                  color: selectedCategory === null ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-                  backgroundColor: selectedCategory === null ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
-                }}
-              >
-                All
-              </button>
-              {categories.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setSelectedCategory(c === selectedCategory ? null : c)}
-                  style={{
-                    flexShrink: 0, padding: '6px 14px', borderRadius: '16px', fontSize: '12px', fontWeight: 700,
-                    color: selectedCategory === c ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-                    backgroundColor: selectedCategory === c ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
-                  }}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-          )}
           {error ? (
             <div className="toss-card">
               <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
@@ -5208,6 +5242,10 @@ function WishlistView({ onOpenMerchant }: { onOpenMerchant: (merchant: ShoppingM
 function ShopView() {
   const [view, setView] = useState<'BROWSE' | 'ORDERS' | 'WISHLIST'>('BROWSE');
   const [merchants, setMerchants] = useState<ShoppingMerchant[] | null>(null);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [merchantSearchInput, setMerchantSearchInput] = useState('');
+  const [debouncedMerchantSearch, setDebouncedMerchantSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<ShoppingMerchant | null>(null);
   const [cart, setCart] = useState<CommerceCart>({});
@@ -5223,10 +5261,23 @@ function ShopView() {
   // merchant directory rather than inventing a second one.
   const load = () => {
     setError(null);
-    fetchShoppingCatalog().then(setMerchants).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load merchants.'));
+    fetchShoppingCatalog(selectedCategory ?? undefined, debouncedMerchantSearch || undefined)
+      .then(setMerchants)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load merchants.'));
   };
 
-  useEffect(load, []);
+  useEffect(() => {
+    fetchMerchantCategories().then(setCategories).catch(() => {});
+  }, []);
+
+  // Real category/name filter for the merchant list (2026-07-21), debounced the same
+  // way OrderFoodView's restaurant search already is -- see SearchAndCategoryChips.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedMerchantSearch(merchantSearchInput.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [merchantSearchInput]);
+
+  useEffect(load, [selectedCategory, debouncedMerchantSearch]);
 
   // Real cross-merchant product search (2026-07-20) -- see lib/shopping.ts's own doc
   // comment. Opening a result reuses ProductCatalogView as-is: it only ever reads
@@ -5355,6 +5406,17 @@ function ShopView() {
         </form>
       )}
 
+      {view === 'BROWSE' && searchResults === null && (
+        <SearchAndCategoryChips
+          searchInput={merchantSearchInput}
+          onSearchChange={setMerchantSearchInput}
+          placeholder="Search merchants"
+          categories={categories}
+          selectedCategory={selectedCategory}
+          onSelectCategory={setSelectedCategory}
+        />
+      )}
+
       {view === 'ORDERS' ? (
         <MyCommerceOrdersView />
       ) : view === 'WISHLIST' ? (
@@ -5388,7 +5450,11 @@ function ShopView() {
       ) : merchants === null ? (
         <div className="toss-card skeleton" style={{ height: '220px' }} />
       ) : merchants.length === 0 ? (
-        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No merchants registered yet.</p></div>
+        <div className="toss-card">
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+            {selectedCategory || debouncedMerchantSearch ? 'No merchants match your search.' : 'No merchants registered yet.'}
+          </p>
+        </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: totalItems > 0 ? '80px' : 0 }}>
           {merchants.map((m) => (

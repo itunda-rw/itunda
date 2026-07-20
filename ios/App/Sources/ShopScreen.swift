@@ -58,6 +58,10 @@ private struct CommerceCheckoutResult: Identifiable {
 private struct CommerceShopContent: View {
     @State private var view: CommerceView = .browse
     @State private var merchants: [ShoppingMerchantDto]?
+    @State private var categories: [String] = []
+    @State private var selectedCategory: String?
+    @State private var searchInput: String = ""
+    @State private var filterTask: Task<Void, Never>?
     @State private var error: String?
     @State private var selectedMerchant: ShoppingMerchantDto?
     @State private var products: [MerchantProductDto]?
@@ -100,7 +104,28 @@ private struct CommerceShopContent: View {
                 browseBody
             }
         }
-        .task { if merchants == nil { await loadMerchants() } }
+        .task {
+            if merchants == nil { await loadMerchants() }
+            if categories.isEmpty {
+                do { categories = try await NetworkClient.shared.getMerchantCategories().categories } catch {}
+            }
+        }
+    }
+
+    // Same debounced category/search filter as Eats' OrderFoodContent -- see
+    // SearchAndCategoryChips's own doc comment for why this is now shared.
+    private func scheduleFilterReload() {
+        filterTask?.cancel()
+        filterTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
+            await loadMerchants()
+        }
+    }
+
+    private func selectCategory(_ category: String?) {
+        selectedCategory = (category == selectedCategory) ? nil : category
+        scheduleFilterReload()
     }
 
     private var browseBody: some View {
@@ -117,20 +142,31 @@ private struct CommerceShopContent: View {
 
                     if view == .orders {
                         MyCommerceOrdersView()
-                    } else if let error {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text(error).foregroundColor(.red).font(.subheadline)
-                            Button("Retry") { Task { await loadMerchants() } }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(20)
-                        .background(IDS.Colors.card)
-                        .cornerRadius(IDS.Layout.cardCornerRadius)
-                    } else if merchants == nil {
-                        ProgressView().frame(maxWidth: .infinity, minHeight: 120)
-                    } else if merchants!.isEmpty {
-                        Text("No stores registered yet.").foregroundColor(IDS.Colors.textSecondary)
                     } else {
+                        SearchAndCategoryChips(
+                            searchText: searchInput,
+                            onSearchChange: { searchInput = $0; scheduleFilterReload() },
+                            placeholder: "Search merchants",
+                            categories: categories,
+                            selectedCategory: selectedCategory,
+                            onSelectCategory: selectCategory
+                        )
+
+                        if let error {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text(error).foregroundColor(.red).font(.subheadline)
+                                Button("Retry") { Task { await loadMerchants() } }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(20)
+                            .background(IDS.Colors.card)
+                            .cornerRadius(IDS.Layout.cardCornerRadius)
+                        } else if merchants == nil {
+                            ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                        } else if merchants!.isEmpty {
+                            Text(selectedCategory != nil || !searchInput.trimmingCharacters(in: .whitespaces).isEmpty ? "No merchants match your search." : "No stores registered yet.")
+                                .foregroundColor(IDS.Colors.textSecondary)
+                        } else {
                         ForEach(merchants!) { merchant in
                             Button(action: { Task { await openMerchant(merchant) } }) {
                                 HStack(spacing: 14) {
@@ -154,6 +190,7 @@ private struct CommerceShopContent: View {
                             .buttonStyle(.plain)
                         }
                     }
+                    }
                 }
                 .padding(.horizontal, IDS.Layout.screenHorizontal)
                 .padding(.top, IDS.Layout.screenTop)
@@ -168,7 +205,8 @@ private struct CommerceShopContent: View {
 
     private func loadMerchants() async {
         do {
-            let res = try await NetworkClient.shared.getShoppingMerchants()
+            let q = searchInput.trimmingCharacters(in: .whitespaces)
+            let res = try await NetworkClient.shared.getShoppingMerchants(category: selectedCategory, q: q.isEmpty ? nil : q)
             merchants = res.merchants
             error = nil
         } catch {
