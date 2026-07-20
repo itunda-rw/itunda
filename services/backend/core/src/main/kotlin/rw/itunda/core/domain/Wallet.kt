@@ -9,7 +9,11 @@ import jakarta.persistence.Table
 import java.math.BigDecimal
 import java.time.Instant
 
-enum class WalletType { MAIN, SAVINGS, INVESTMENT, LOAN }
+// GROUP added 2026-07-20 for the real 모임통장/group-account equivalent -- see
+// GroupAccount.kt's doc comment. Deliberately not queried via findByUserIdAndType the
+// way MAIN/SAVINGS are: a user can own or belong to many group accounts, so each has
+// its own dedicated Wallet row resolved by GroupAccount.walletId instead.
+enum class WalletType { MAIN, SAVINGS, INVESTMENT, LOAN, GROUP }
 
 /** Mirrors backend/src/types/index.ts Wallet. Money is BigDecimal, not float, on purpose. */
 @Entity

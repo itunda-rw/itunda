@@ -1,0 +1,201 @@
+package rw.itunda.savings
+
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.GroupAccount
+import rw.itunda.core.domain.GroupAccountMember
+import rw.itunda.core.domain.LedgerAccountType
+import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
+import rw.itunda.core.domain.Wallet
+import rw.itunda.core.domain.WalletType
+import rw.itunda.core.ledger.InsufficientFundsException
+import rw.itunda.core.ledger.LedgerLeg
+import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.repository.GroupAccountMemberRepository
+import rw.itunda.core.repository.GroupAccountRepository
+import rw.itunda.core.repository.NotificationRepository
+import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.repository.WalletRepository
+import java.math.BigDecimal
+import java.time.Duration
+import java.time.Instant
+import java.util.UUID
+
+private const val MAX_MEMBERS = 100
+
+class GroupAccountNotFoundException(message: String) : RuntimeException(message)
+class GroupAccountNotOwnerException(message: String) : RuntimeException(message)
+class GroupAccountNotMemberException(message: String) : RuntimeException(message)
+class GroupAccountRecipientNotFoundException(message: String) : RuntimeException(message)
+class GroupAccountAlreadyMemberException(message: String) : RuntimeException(message)
+class GroupAccountFullException(message: String) : RuntimeException(message)
+class GroupAccountNoWalletException(message: String) : RuntimeException(message)
+
+data class GroupAccountView(val account: GroupAccount, val balance: BigDecimal, val members: List<GroupAccountMemberView>)
+data class GroupAccountMemberView(val userId: String, val firstName: String, val lastName: String, val isOwner: Boolean, val joinedAt: Instant)
+
+/**
+ * Real Kakao Bank 모임통장 (group/shared account) -- see GroupAccount.kt's own doc
+ * comment for the real, sourced mechanics this mirrors: the creator holds real
+ * withdrawal authority, invited members can view and deposit but not withdraw, capped
+ * at a real 100 members (사용자당 최대 100개 모임, 모임당 최대 100명, per Kakao Bank's
+ * own published product page). Reuses the exact real recipient-resolution shape
+ * P2pService.sendDirect established (findByPhoneNumber, real 404 on no match) and the
+ * exact real ledger-movement shape every other money-moving feature in this backend
+ * already uses -- no new balance concept, just a real Wallet(type=GROUP).
+ */
+@Service
+class GroupAccountService(
+    private val groupAccountRepository: GroupAccountRepository,
+    private val groupAccountMemberRepository: GroupAccountMemberRepository,
+    private val walletRepository: WalletRepository,
+    private val userRepository: UserRepository,
+    private val notificationRepository: NotificationRepository,
+    private val ledgerService: LedgerService,
+    private val rateLimiter: RateLimiter,
+) {
+    private fun generateAccountNumber(): String = (2024100000L + (Math.random() * 900000).toLong()).toString()
+
+    @Transactional
+    fun createGroupAccount(ownerId: String, name: String): GroupAccount {
+        // Real anti-spam limit, added from day one this time (not as a later fix) --
+        // this is a real free-row-creation endpoint, the exact class of gap the
+        // 2026-07-19 sweep found across P2P/Savings/Marketplace/etc.
+        rateLimiter.checkLimit("group-account:create:$ownerId", limit = 10, window = Duration.ofHours(1))
+        val owner = userRepository.findById(ownerId).orElseThrow { GroupAccountNotFoundException("Account not found") }
+
+        val wallet = walletRepository.save(
+            Wallet(
+                id = "wallet_${UUID.randomUUID()}",
+                userId = ownerId,
+                accountNumber = generateAccountNumber(),
+                accountName = "$name (Group Account)",
+                type = WalletType.GROUP,
+                balance = BigDecimal.ZERO,
+                availableBalance = BigDecimal.ZERO,
+            ),
+        )
+        val account = groupAccountRepository.save(
+            GroupAccount(id = "grp_${UUID.randomUUID()}", name = name, ownerId = ownerId, walletId = wallet.id),
+        )
+        groupAccountMemberRepository.save(
+            GroupAccountMember(id = "grpmem_${UUID.randomUUID()}", groupAccountId = account.id, userId = ownerId),
+        )
+        return account
+    }
+
+    fun getMyGroupAccounts(userId: String): List<GroupAccount> {
+        val groupAccountIds = groupAccountMemberRepository.findByUserId(userId).map { it.groupAccountId }
+        return groupAccountRepository.findAllByIdIn(groupAccountIds)
+    }
+
+    fun getGroupAccount(userId: String, groupAccountId: String): GroupAccountView {
+        val account = groupAccountRepository.findById(groupAccountId).orElseThrow { GroupAccountNotFoundException("Group account not found") }
+        groupAccountMemberRepository.findByGroupAccountIdAndUserId(groupAccountId, userId)
+            ?: throw GroupAccountNotMemberException("You are not a member of this group account")
+        val wallet = walletRepository.findById(account.walletId).orElseThrow { GroupAccountNoWalletException("Wallet not found") }
+
+        val members = groupAccountMemberRepository.findByGroupAccountId(groupAccountId)
+        // Batch-resolved, same no-N+1 discipline as ProductFavoriteService.getMyFavorites.
+        val users = userRepository.findAllById(members.map { it.userId }).associateBy { it.id }
+        val memberViews = members.map { m ->
+            val u = users[m.userId]
+            GroupAccountMemberView(userId = m.userId, firstName = u?.firstName ?: "", lastName = u?.lastName ?: "", isOwner = m.userId == account.ownerId, joinedAt = m.joinedAt)
+        }
+        return GroupAccountView(account = account, balance = wallet.balance, members = memberViews)
+    }
+
+    @Transactional
+    fun inviteMember(ownerId: String, groupAccountId: String, phoneNumber: String): GroupAccountMemberView {
+        val account = groupAccountRepository.findById(groupAccountId).orElseThrow { GroupAccountNotFoundException("Group account not found") }
+        if (account.ownerId != ownerId) throw GroupAccountNotOwnerException("Only the group account's organizer can invite members")
+
+        val invitee = userRepository.findByPhoneNumber(phoneNumber.trim())
+            ?: throw GroupAccountRecipientNotFoundException("No itunda account found for this phone number")
+        if (groupAccountMemberRepository.findByGroupAccountIdAndUserId(groupAccountId, invitee.id) != null) {
+            throw GroupAccountAlreadyMemberException("This person is already a member")
+        }
+        // Real cap, matching Kakao Bank's own published limit (100 members per group).
+        if (groupAccountMemberRepository.countByGroupAccountId(groupAccountId) >= MAX_MEMBERS) {
+            throw GroupAccountFullException("This group account has reached its real ${MAX_MEMBERS}-member limit")
+        }
+
+        val member = groupAccountMemberRepository.save(
+            GroupAccountMember(id = "grpmem_${UUID.randomUUID()}", groupAccountId = groupAccountId, userId = invitee.id),
+        )
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = invitee.id, type = "GROUP_ACCOUNT_INVITE",
+                title = "Added to \"${account.name}\"", body = "You can now view and deposit to this group account.",
+                isRead = false, createdAt = Instant.now(), dataJson = "{\"groupAccountId\":\"${account.id}\"}",
+            ),
+        )
+        return GroupAccountMemberView(userId = invitee.id, firstName = invitee.firstName, lastName = invitee.lastName, isOwner = false, joinedAt = member.joinedAt)
+    }
+
+    @Transactional
+    fun deposit(userId: String, groupAccountId: String, amount: BigDecimal): GroupAccountView {
+        require(amount > BigDecimal.ZERO) { "Amount must be greater than zero" }
+        val account = groupAccountRepository.findById(groupAccountId).orElseThrow { GroupAccountNotFoundException("Group account not found") }
+        groupAccountMemberRepository.findByGroupAccountIdAndUserId(groupAccountId, userId)
+            ?: throw GroupAccountNotMemberException("You are not a member of this group account")
+
+        val sourceWallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
+            ?: throw GroupAccountNoWalletException("No wallet found for this account")
+        val groupWallet = walletRepository.findById(account.walletId).orElseThrow { GroupAccountNoWalletException("Wallet not found") }
+
+        ledgerService.postLedgerTransaction(
+            sourceWallet.currency,
+            listOf(
+                LedgerLeg(sourceWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Deposit to \"${account.name}\""),
+                LedgerLeg(groupWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Deposit to \"${account.name}\""),
+            ),
+        )
+        notifyOtherMembers(account, actorId = userId, title = "New deposit to \"${account.name}\"", body = "${amount.toPlainString()} RWF was added by a member.")
+        return getGroupAccount(userId, groupAccountId)
+    }
+
+    @Transactional
+    fun withdraw(ownerId: String, groupAccountId: String, amount: BigDecimal): GroupAccountView {
+        require(amount > BigDecimal.ZERO) { "Amount must be greater than zero" }
+        val account = groupAccountRepository.findById(groupAccountId).orElseThrow { GroupAccountNotFoundException("Group account not found") }
+        // Real Kakao Bank behavior: withdrawal/settlement authority belongs to the
+        // organizer only, unlike deposit which any real member can do.
+        if (account.ownerId != ownerId) throw GroupAccountNotOwnerException("Only the group account's organizer can withdraw")
+
+        val groupWallet = walletRepository.findById(account.walletId).orElseThrow { GroupAccountNoWalletException("Wallet not found") }
+        val ownerWallet = walletRepository.findByUserIdAndType(ownerId, WalletType.MAIN)
+            ?: throw GroupAccountNoWalletException("No wallet found for this account")
+        if (groupWallet.availableBalance < amount) {
+            throw InsufficientFundsException("Insufficient available balance in this group account")
+        }
+
+        ledgerService.postLedgerTransaction(
+            groupWallet.currency,
+            listOf(
+                LedgerLeg(groupWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Withdrawal from \"${account.name}\""),
+                LedgerLeg(ownerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Withdrawal from \"${account.name}\""),
+            ),
+        )
+        notifyOtherMembers(account, actorId = ownerId, title = "Withdrawal from \"${account.name}\"", body = "${amount.toPlainString()} RWF was withdrawn by the organizer.")
+        return getGroupAccount(ownerId, groupAccountId)
+    }
+
+    // Real transparency, matching Kakao Bank's own real-time shared-activity feed --
+    // never notifies the actor about their own action, same rule established elsewhere
+    // in this codebase (Eats/Commerce buyer notifications).
+    private fun notifyOtherMembers(account: GroupAccount, actorId: String, title: String, body: String) {
+        val otherMemberIds = groupAccountMemberRepository.findByGroupAccountId(account.id).map { it.userId }.filter { it != actorId }
+        for (memberId in otherMemberIds) {
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = memberId, type = "GROUP_ACCOUNT_ACTIVITY",
+                    title = title, body = body, isRead = false, createdAt = Instant.now(),
+                    dataJson = "{\"groupAccountId\":\"${account.id}\"}",
+                ),
+            )
+        }
+    }
+}

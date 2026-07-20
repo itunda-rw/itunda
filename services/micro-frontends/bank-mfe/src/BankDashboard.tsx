@@ -5,6 +5,10 @@ import { getStoredUser, logout, ApiError } from './lib/api';
 import { fetchTransactions, fetchWallets, type Transaction, type Wallet } from './lib/wallet';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
 import { claimInterest, createGoal, depositToGoal, fetchGoals, fetchInterestJar, type InterestJar, type SavingsGoal } from './lib/savings';
+import {
+  createGroupAccount, depositToGroupAccount, fetchGroupAccount, fetchMyGroupAccounts, inviteGroupAccountMember, withdrawFromGroupAccount,
+  type GroupAccount, type GroupAccountDetail,
+} from './lib/groupAccounts';
 import { collectWithFacePay, enrollFacePay, fetchFacePayStatus, revokeFacePay } from './lib/facepay';
 import { sendDirect } from './lib/p2p';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
@@ -5642,6 +5646,242 @@ function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
   );
 }
 
+// Real Kakao Bank 모임통장 (group/shared account) -- see lib/groupAccounts.ts's doc
+// comment. Backend enforces real owner-only withdrawal/invite authority; this view's
+// job is just to reflect that honestly (buttons the caller can't actually use are
+// hidden, not disabled-with-no-explanation).
+function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void }) {
+  const [detail, setDetail] = useState<GroupAccountDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [amount, setAmount] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+  const myUserId = getStoredUser()?.id;
+
+  const load = () => {
+    setError(null);
+    fetchGroupAccount(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this group account.'));
+  };
+  useEffect(load, []);
+
+  const isOwner = detail?.groupAccount.ownerId === myUserId;
+
+  const handleDeposit = async () => {
+    setBusy(true);
+    setError(null);
+    setNeedsDeviceVerification(false);
+    try {
+      await depositToGroupAccount(id, Number(amount));
+      setAmount('');
+      load();
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') setNeedsDeviceVerification(true);
+      else setError(err instanceof ApiError ? err.message : 'Could not deposit.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    setBusy(true);
+    setError(null);
+    setNeedsDeviceVerification(false);
+    try {
+      await withdrawFromGroupAccount(id, Number(amount));
+      setAmount('');
+      load();
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') setNeedsDeviceVerification(true);
+      else setError(err instanceof ApiError ? err.message : 'Could not withdraw.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await inviteGroupAccountMember(id, phoneNumber.trim());
+      setPhoneNumber('');
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not invite this member.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (error && !detail) {
+    return (
+      <div className="toss-card">
+        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <button className="toss-btn toss-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
+      </div>
+    );
+  }
+  if (detail === null) return <div className="toss-card skeleton" style={{ height: '260px' }} />;
+
+  return (
+    <div>
+      <button className="toss-btn toss-btn-secondary" onClick={onBack} style={{ marginBottom: '12px' }}>← Back to group accounts</button>
+
+      <div className="toss-card" style={{ marginBottom: '16px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{detail.groupAccount.name}</p>
+        <p style={{ fontSize: '28px', fontWeight: 800, margin: '4px 0' }}>{detail.balance.toLocaleString()} RWF</p>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{detail.members.length} member{detail.members.length === 1 ? '' : 's'}</p>
+      </div>
+
+      <div className="toss-card" style={{ marginBottom: '16px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Members</h3>
+        {detail.members.map((m) => (
+          <div key={m.userId} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '13px' }}>
+            <span>{m.firstName} {m.lastName}{m.userId === myUserId ? ' (you)' : ''}</span>
+            {m.isOwner && <span style={{ color: 'var(--toss-blue)', fontWeight: 700 }}>Organizer</span>}
+          </div>
+        ))}
+      </div>
+
+      {needsDeviceVerification ? (
+        <div style={{ marginBottom: '16px' }}>
+          <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+        </div>
+      ) : (
+        <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 700 }}>{isOwner ? 'Deposit or withdraw' : 'Deposit'}</h3>
+          <input
+            type="number" min="1" required value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount (RWF)"
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button type="button" onClick={handleDeposit} className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy || !amount}>
+              {busy ? '…' : 'Deposit'}
+            </button>
+            {isOwner && (
+              // Real Kakao Bank behavior: only the organizer can withdraw/settle --
+              // this button is only rendered for the owner, not just disabled.
+              <button type="button" onClick={handleWithdraw} className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busy || !amount}>
+                {busy ? '…' : 'Withdraw'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isOwner && (
+        <form onSubmit={handleInvite} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Invite a member</h3>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input
+              type="tel" required value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Phone number"
+              style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            />
+            <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? '…' : 'Invite'}</button>
+          </div>
+        </form>
+      )}
+
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
+function CreateGroupAccountForm({ onCreated }: { onCreated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!open) {
+    return (
+      <button
+        className="toss-btn toss-btn-secondary"
+        style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+        onClick={() => setOpen(true)}
+      >
+        <Plus size={16} /> New group account
+      </button>
+    );
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await createGroupAccount(name);
+      setName('');
+      setOpen(false);
+      onCreated();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not create this group account.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+      <input
+        type="text" required placeholder="Group name (e.g. Roommates)" value={name} onChange={(e) => setName(e.target.value)}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      />
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
+      </div>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+    </form>
+  );
+}
+
+function GroupAccountsSection() {
+  const [accounts, setAccounts] = useState<GroupAccount[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchMyGroupAccounts().then(setAccounts).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your group accounts.'));
+  };
+  useEffect(load, []);
+
+  if (openId) {
+    return <GroupAccountDetailView id={openId} onBack={() => { setOpenId(null); load(); }} />;
+  }
+
+  return (
+    <div>
+      <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '4px 4px 10px' }}>Group accounts</h3>
+      <CreateGroupAccountForm onCreated={load} />
+      {error && (
+        <div className="toss-card" style={{ marginBottom: '16px' }}>
+          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        </div>
+      )}
+      {accounts === null ? (
+        <div className="toss-card skeleton" style={{ height: '64px' }} />
+      ) : accounts.length === 0 ? (
+        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No group accounts yet -- start one to save or split expenses with others.</p></div>
+      ) : (
+        accounts.map((a) => (
+          <button
+            key={a.id}
+            onClick={() => setOpenId(a.id)}
+            className="toss-card"
+            style={{ display: 'block', width: '100%', textAlign: 'left', marginBottom: '10px', border: 'none' }}
+          >
+            <p style={{ fontSize: '14px', fontWeight: 700 }}>{a.name}</p>
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Tap to view balance and members</p>
+          </button>
+        ))
+      )}
+    </div>
+  );
+}
+
 function SavingsView() {
   const [goals, setGoals] = useState<SavingsGoal[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -5668,6 +5908,9 @@ function SavingsView() {
       ) : (
         goals.map((g) => <GoalCard key={g.id} goal={g} onChanged={load} />)
       )}
+      <div style={{ marginTop: '24px' }}>
+        <GroupAccountsSection />
+      </div>
     </div>
   );
 }

@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.Contact
 import rw.itunda.core.domain.EmailVerificationToken
+import rw.itunda.core.domain.GroupAccount
+import rw.itunda.core.domain.GroupAccountMember
 import rw.itunda.core.domain.Holding
 import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.LedgerAccount
@@ -48,6 +50,17 @@ interface SavingsGoalRepository : JpaRepository<SavingsGoal, String> {
 }
 
 interface InterestJarRepository : JpaRepository<InterestJar, String>
+
+interface GroupAccountRepository : JpaRepository<GroupAccount, String> {
+    fun findAllByIdIn(ids: List<String>): List<GroupAccount>
+}
+
+interface GroupAccountMemberRepository : JpaRepository<GroupAccountMember, String> {
+    fun findByGroupAccountId(groupAccountId: String): List<GroupAccountMember>
+    fun findByUserId(userId: String): List<GroupAccountMember>
+    fun findByGroupAccountIdAndUserId(groupAccountId: String, userId: String): GroupAccountMember?
+    fun countByGroupAccountId(groupAccountId: String): Long
+}
 
 interface LedgerAccountRepository : JpaRepository<LedgerAccount, String> {
     // A real row lock (SELECT ... FOR UPDATE) — the concurrency control the Express/
