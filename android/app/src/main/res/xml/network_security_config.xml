@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Real, scoped trust for itunda's own self-hosted private-cloud TLS endpoint
+    (2026-07-21), deliberately NOT a blanket "trust all certs" override, which
+    would silently defeat TLS for every other host this app talks to. Only
+    14.35.102.46 (the private cloud's own public IP, self-signed since going
+    through a third-party CA was explicitly ruled out for this deployment) is
+    trusted, and only via this one specific certificate. Every other domain
+    still uses the real system trust store unchanged.
+-->
+<network-security-config>
+    <domain-config>
+        <domain includeSubdomains="false">14.35.102.46</domain>
+        <trust-anchors>
+            <certificates src="@raw/itunda_selfsigned" />
+        </trust-anchors>
+    </domain-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
