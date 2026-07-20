@@ -36,6 +36,8 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.EatsOrderItemRepository
 import rw.itunda.core.repository.EatsOrderRepository
 import rw.itunda.core.repository.LedgerEntryRepository
+import rw.itunda.core.repository.MenuOptionChoiceRepository
+import rw.itunda.core.repository.MenuOptionGroupRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -60,6 +62,14 @@ class EatsOrderServiceTest : BehaviorSpec({
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
         val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
+        // Real menu-options resolution (2026-07-21) -- relaxed + explicit empty-list
+        // stubs, matching this suite's own existing "no option groups defined" default
+        // for every pre-existing test (see MenuOptionGroup.kt's own doc comment: purely
+        // additive, a product with zero groups behaves exactly as before).
+        val menuOptionGroupRepository = mockk<MenuOptionGroupRepository>(relaxed = true)
+        every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
+        val menuOptionChoiceRepository = mockk<MenuOptionChoiceRepository>(relaxed = true)
+        every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         // Not relaxed for save() specifically -- same real mockk-generic-inference
@@ -82,7 +92,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
-            eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
         )
 
@@ -196,6 +206,88 @@ class EatsOrderServiceTest : BehaviorSpec({
                 } catch (e: InvalidEatsQuantityException) {
                     // expected
                 }
+            }
+        }
+
+        When("a real menu item has a real required 'Size' option group and the buyer selects a real priced choice") {
+            val group = rw.itunda.core.domain.MenuOptionGroup(id = "group_1", productId = "item_1", name = "Size")
+            val choices = listOf(
+                rw.itunda.core.domain.MenuOptionChoice(id = "choice_small", groupId = "group_1", name = "Small", priceDelta = BigDecimal.ZERO),
+                rw.itunda.core.domain.MenuOptionChoice(id = "choice_large", groupId = "group_1", name = "Large", priceDelta = BigDecimal("1000")),
+            )
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(listOf("item_1")) } returns listOf(group)
+            every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(listOf("group_1")) } returns choices
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_opt1", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            val detail = service.placeOrder(
+                "buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 2, listOf("choice_large"))), "addr",
+            )
+
+            Then("it real-prices the line at base+delta (3000+1000=4000 x 2 = 8000), never the bare base price") {
+                detail.order.itemsSubtotal shouldBe BigDecimal("8000")
+                detail.items.first().unitPrice shouldBe BigDecimal("4000")
+                detail.items.first().selectedOptionsJson shouldBe """[{"groupName":"Size","choiceName":"Large","priceDelta":1000}]"""
+            }
+        }
+
+        When("a real menu item has a real required option group and the buyer selects NOTHING for it") {
+            val group = rw.itunda.core.domain.MenuOptionGroup(id = "group_1", productId = "item_1", name = "Size")
+            val choices = listOf(rw.itunda.core.domain.MenuOptionChoice(id = "choice_small", groupId = "group_1", name = "Small", priceDelta = BigDecimal.ZERO))
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(listOf("item_1")) } returns listOf(group)
+            every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(listOf("group_1")) } returns choices
+
+            Then("it real-422s with MissingRequiredMenuOptionException -- never silently defaults to a choice the buyer didn't pick") {
+                try {
+                    service.placeOrder("buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 1)), "addr")
+                    error("expected MissingRequiredMenuOptionException")
+                } catch (e: MissingRequiredMenuOptionException) {
+                    // expected
+                }
+            }
+        }
+
+        When("a real menu item has a real required option group and the buyer selects a choice that belongs to a DIFFERENT group entirely") {
+            val group = rw.itunda.core.domain.MenuOptionGroup(id = "group_1", productId = "item_1", name = "Size")
+            val choices = listOf(rw.itunda.core.domain.MenuOptionChoice(id = "choice_small", groupId = "group_1", name = "Small", priceDelta = BigDecimal.ZERO))
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(listOf("item_1")) } returns listOf(group)
+            every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(listOf("group_1")) } returns choices
+
+            Then("it real-400s with InvalidMenuOptionSelectionException for a choice id that doesn't belong to this product at all") {
+                try {
+                    service.placeOrder("buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 1, listOf("choice_from_elsewhere"))), "addr")
+                    error("expected InvalidMenuOptionSelectionException")
+                } catch (e: InvalidMenuOptionSelectionException) {
+                    // expected
+                }
+            }
+        }
+
+        When("a menu item has NO option groups at all and the buyer sends no selections") {
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_opt2", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            val detail = service.placeOrder("buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 1)), "addr")
+
+            Then("it behaves exactly as before this feature existed -- purely additive, never a regression for pre-existing menu items") {
+                detail.items.first().unitPrice shouldBe BigDecimal("3000")
+                detail.items.first().selectedOptionsJson shouldBe null
             }
         }
 
@@ -376,6 +468,14 @@ class EatsOrderServiceTest : BehaviorSpec({
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
         val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
+        // Real menu-options resolution (2026-07-21) -- relaxed + explicit empty-list
+        // stubs, matching this suite's own existing "no option groups defined" default
+        // for every pre-existing test (see MenuOptionGroup.kt's own doc comment: purely
+        // additive, a product with zero groups behaves exactly as before).
+        val menuOptionGroupRepository = mockk<MenuOptionGroupRepository>(relaxed = true)
+        every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
+        val menuOptionChoiceRepository = mockk<MenuOptionChoiceRepository>(relaxed = true)
+        every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
@@ -394,7 +494,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
-            eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
@@ -651,6 +751,14 @@ class EatsOrderServiceTest : BehaviorSpec({
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
         val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
+        // Real menu-options resolution (2026-07-21) -- relaxed + explicit empty-list
+        // stubs, matching this suite's own existing "no option groups defined" default
+        // for every pre-existing test (see MenuOptionGroup.kt's own doc comment: purely
+        // additive, a product with zero groups behaves exactly as before).
+        val menuOptionGroupRepository = mockk<MenuOptionGroupRepository>(relaxed = true)
+        every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
+        val menuOptionChoiceRepository = mockk<MenuOptionChoiceRepository>(relaxed = true)
+        every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
@@ -669,7 +777,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
-            eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
@@ -795,6 +903,14 @@ class EatsOrderServiceTest : BehaviorSpec({
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
         val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
+        // Real menu-options resolution (2026-07-21) -- relaxed + explicit empty-list
+        // stubs, matching this suite's own existing "no option groups defined" default
+        // for every pre-existing test (see MenuOptionGroup.kt's own doc comment: purely
+        // additive, a product with zero groups behaves exactly as before).
+        val menuOptionGroupRepository = mockk<MenuOptionGroupRepository>(relaxed = true)
+        every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
+        val menuOptionChoiceRepository = mockk<MenuOptionChoiceRepository>(relaxed = true)
+        every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
@@ -811,7 +927,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
-            eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE, latitude = -1.9536, longitude = 30.0605)
@@ -867,6 +983,14 @@ class EatsOrderServiceTest : BehaviorSpec({
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
         val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
+        // Real menu-options resolution (2026-07-21) -- relaxed + explicit empty-list
+        // stubs, matching this suite's own existing "no option groups defined" default
+        // for every pre-existing test (see MenuOptionGroup.kt's own doc comment: purely
+        // additive, a product with zero groups behaves exactly as before).
+        val menuOptionGroupRepository = mockk<MenuOptionGroupRepository>(relaxed = true)
+        every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
+        val menuOptionChoiceRepository = mockk<MenuOptionChoiceRepository>(relaxed = true)
+        every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
@@ -883,7 +1007,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
-            eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE, latitude = -1.9536, longitude = 30.0605)
@@ -954,6 +1078,14 @@ class EatsOrderServiceTest : BehaviorSpec({
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
         val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
+        // Real menu-options resolution (2026-07-21) -- relaxed + explicit empty-list
+        // stubs, matching this suite's own existing "no option groups defined" default
+        // for every pre-existing test (see MenuOptionGroup.kt's own doc comment: purely
+        // additive, a product with zero groups behaves exactly as before).
+        val menuOptionGroupRepository = mockk<MenuOptionGroupRepository>(relaxed = true)
+        every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
+        val menuOptionChoiceRepository = mockk<MenuOptionChoiceRepository>(relaxed = true)
+        every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
@@ -972,7 +1104,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
-            eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
@@ -1052,6 +1184,14 @@ class EatsOrderServiceTest : BehaviorSpec({
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
         val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
+        // Real menu-options resolution (2026-07-21) -- relaxed + explicit empty-list
+        // stubs, matching this suite's own existing "no option groups defined" default
+        // for every pre-existing test (see MenuOptionGroup.kt's own doc comment: purely
+        // additive, a product with zero groups behaves exactly as before).
+        val menuOptionGroupRepository = mockk<MenuOptionGroupRepository>(relaxed = true)
+        every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
+        val menuOptionChoiceRepository = mockk<MenuOptionChoiceRepository>(relaxed = true)
+        every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
@@ -1068,7 +1208,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
-            eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
         )
         val riderWithLocation = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", currentLatitude = -1.95, currentLongitude = 30.06, locationUpdatedAt = java.time.Instant.parse("2026-07-19T12:00:00Z"))
@@ -1170,6 +1310,14 @@ class EatsOrderServiceTest : BehaviorSpec({
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
         val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
+        // Real menu-options resolution (2026-07-21) -- relaxed + explicit empty-list
+        // stubs, matching this suite's own existing "no option groups defined" default
+        // for every pre-existing test (see MenuOptionGroup.kt's own doc comment: purely
+        // additive, a product with zero groups behaves exactly as before).
+        val menuOptionGroupRepository = mockk<MenuOptionGroupRepository>(relaxed = true)
+        every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
+        val menuOptionChoiceRepository = mockk<MenuOptionChoiceRepository>(relaxed = true)
+        every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
@@ -1186,7 +1334,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
-            eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
         )
 
@@ -1226,6 +1374,14 @@ class EatsOrderServiceTest : BehaviorSpec({
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
         val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
+        // Real menu-options resolution (2026-07-21) -- relaxed + explicit empty-list
+        // stubs, matching this suite's own existing "no option groups defined" default
+        // for every pre-existing test (see MenuOptionGroup.kt's own doc comment: purely
+        // additive, a product with zero groups behaves exactly as before).
+        val menuOptionGroupRepository = mockk<MenuOptionGroupRepository>(relaxed = true)
+        every { menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
+        val menuOptionChoiceRepository = mockk<MenuOptionChoiceRepository>(relaxed = true)
+        every { menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(any()) } returns emptyList()
         val walletRepository = mockk<WalletRepository>()
         val ledgerService = mockk<LedgerService>()
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
@@ -1246,7 +1402,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
-            eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
+            eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
         )
 

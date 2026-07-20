@@ -18,6 +18,7 @@ import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
 
 data class AddProductRequest(val name: String, val price: BigDecimal)
+data class AddMenuOptionGroupRequest(val name: String, val choices: List<MenuOptionChoiceRequest>)
 
 // Real merchant product-catalog endpoints -- the register-software half of "Toss
 // Place" (see MerchantProductService's own doc comment). Not money-moving, so no
@@ -25,7 +26,10 @@ data class AddProductRequest(val name: String, val price: BigDecimal)
 // existing /qr/generate and /card/charge, unmodified.
 @RestController
 @RequestMapping("/api/v1/merchant/products")
-class MerchantProductController(private val merchantProductService: MerchantProductService) {
+class MerchantProductController(
+    private val merchantProductService: MerchantProductService,
+    private val menuOptionService: MenuOptionService,
+) {
 
     @PostMapping
     fun addProduct(
@@ -59,6 +63,45 @@ class MerchantProductController(private val merchantProductService: MerchantProd
         return ResponseEntity.ok(mapOf("success" to true, "product" to product))
     }
 
+    // Real menu-item option groups (2026-07-21, v1: required single-select only) -- see
+    // MenuOptionService.addOptionGroup's own doc comment for the full account.
+    @PostMapping("/{productId}/option-groups")
+    fun addOptionGroup(
+        @PathVariable productId: String,
+        @RequestBody request: AddMenuOptionGroupRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val view = menuOptionService.addOptionGroup(currentUser.userId, productId, request.name, request.choices)
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+            mapOf("success" to true, "optionGroup" to mapOf("id" to view.group.id, "name" to view.group.name, "choices" to view.choices)),
+        )
+    }
+
+    // Real public read (owner or buyer -- no ownership gate) -- also folded directly
+    // into ShoppingController.getMerchantProducts' own menu-browse payload so a buyer
+    // never needs a second round trip per item; this endpoint exists for the owner's own
+    // management UI and any direct lookup.
+    @GetMapping("/{productId}/option-groups")
+    fun getOptionGroups(@PathVariable productId: String): ResponseEntity<Map<String, Any?>> {
+        val views = menuOptionService.getOptionGroups(productId)
+        return ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "optionGroups" to views.map { mapOf("id" to it.group.id, "name" to it.group.name, "choices" to it.choices) },
+            ),
+        )
+    }
+
+    @DeleteMapping("/{productId}/option-groups/{groupId}")
+    fun removeOptionGroup(
+        @PathVariable productId: String,
+        @PathVariable groupId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        menuOptionService.removeOptionGroup(currentUser.userId, productId, groupId)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
     @ExceptionHandler(MerchantNotFoundException::class)
     fun handleMerchantNotFound(ex: MerchantNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_NOT_FOUND", ex.message ?: "Not found"))
@@ -70,6 +113,14 @@ class MerchantProductController(private val merchantProductService: MerchantProd
     @ExceptionHandler(MerchantProductNotFoundException::class)
     fun handleProductNotFound(ex: MerchantProductNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_PRODUCT_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(InvalidMenuOptionGroupException::class)
+    fun handleInvalidMenuOptionGroup(ex: InvalidMenuOptionGroupException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MENU_OPTION_GROUP", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(MenuOptionGroupNotFoundException::class)
+    fun handleMenuOptionGroupNotFound(ex: MenuOptionGroupNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MENU_OPTION_GROUP_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =

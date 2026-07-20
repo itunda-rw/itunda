@@ -34,6 +34,8 @@ class MerchantNotFoundException(message: String) : RuntimeException(message)
 class MerchantNoWalletException(message: String) : RuntimeException(message)
 class InvalidCoordinatesException(message: String) : RuntimeException(message)
 class InvalidCategoryException(message: String) : RuntimeException(message)
+class InvalidPhotoUrlException(message: String) : RuntimeException(message)
+class InvalidMinOrderAmountException(message: String) : RuntimeException(message)
 class PaymentIntentNotFoundException(message: String) : RuntimeException(message)
 class PaymentIntentNotPayableException(message: String) : RuntimeException(message)
 class SelfPaymentException(message: String) : RuntimeException(message)
@@ -144,6 +146,32 @@ class MerchantService(
         }
         val merchant = getMyMerchant(ownerUserId)
         merchant.category = trimmed
+        return merchantRepository.save(merchant)
+    }
+
+    // Real restaurant-card photo (2026-07-21) -- see Merchant.kt's own doc comment for
+    // why this is a merchant-set URL, not an upload/storage pipeline. Same trim + length
+    // bound discipline as setWebhookUrl.
+    @Transactional
+    fun setPhotoUrl(ownerUserId: String, photoUrl: String): Merchant {
+        val trimmed = photoUrl.trim()
+        if (trimmed.length > 500) {
+            throw InvalidPhotoUrlException("Photo URL must be 500 characters or fewer")
+        }
+        val merchant = getMyMerchant(ownerUserId)
+        merchant.photoUrl = trimmed.ifEmpty { null }
+        return merchantRepository.save(merchant)
+    }
+
+    // Real merchant-set minimum order amount (2026-07-21) -- nullable; passing null
+    // explicitly clears it back to "no minimum", same as an unset merchant.
+    @Transactional
+    fun setMinOrderAmount(ownerUserId: String, minOrderAmount: BigDecimal?): Merchant {
+        if (minOrderAmount != null && minOrderAmount < BigDecimal.ZERO) {
+            throw InvalidMinOrderAmountException("Minimum order amount cannot be negative")
+        }
+        val merchant = getMyMerchant(ownerUserId)
+        merchant.minOrderAmount = minOrderAmount
         return merchantRepository.save(merchant)
     }
 

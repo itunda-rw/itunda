@@ -29,6 +29,8 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.EatsOrderItemRepository
 import rw.itunda.core.repository.EatsOrderRepository
 import rw.itunda.core.repository.LedgerEntryRepository
+import rw.itunda.core.repository.MenuOptionChoiceRepository
+import rw.itunda.core.repository.MenuOptionGroupRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -57,8 +59,17 @@ class NotAssignedRiderException(message: String) : RuntimeException(message)
 class InvalidEatsCoordinatesException(message: String) : RuntimeException(message)
 class InvalidEatsDeliveryNotesException(message: String) : RuntimeException(message)
 class NoActiveOfferException(message: String) : RuntimeException(message)
+class MissingRequiredMenuOptionException(message: String) : RuntimeException(message)
+class InvalidMenuOptionSelectionException(message: String) : RuntimeException(message)
 
-data class EatsOrderItemRequest(val menuItemId: String, val quantity: Int)
+// Real menu-options selection (2026-07-21, v1: required single-select only) --
+// `selectedChoiceIds` is empty for the overwhelming majority of pre-existing menu items
+// that have no option groups defined, so this is purely additive: an unchanged client
+// sending no selections keeps working exactly as before for any product with zero
+// option groups, and only real-422s (MissingRequiredMenuOptionException) for a product
+// that genuinely has a required group and no selection for it. See
+// MenuOptionGroup.kt's own doc comment for the full account.
+data class EatsOrderItemRequest(val menuItemId: String, val quantity: Int, val selectedChoiceIds: List<String> = emptyList())
 data class EatsOrderDetail(val order: EatsOrder, val items: List<EatsOrderItem>)
 data class RiderLocationView(val latitude: Double, val longitude: Double, val updatedAt: Instant)
 
@@ -84,6 +95,8 @@ class EatsOrderService(
     private val riderRepository: RiderRepository,
     private val eatsOrderRepository: EatsOrderRepository,
     private val eatsOrderItemRepository: EatsOrderItemRepository,
+    private val menuOptionGroupRepository: MenuOptionGroupRepository,
+    private val menuOptionChoiceRepository: MenuOptionChoiceRepository,
     private val walletRepository: WalletRepository,
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
@@ -132,6 +145,19 @@ class EatsOrderService(
     private val perKmDeliveryRate = BigDecimal("250")
     private val minDeliveryFee = BigDecimal("1000")
     private val maxDeliveryFee = BigDecimal("5000")
+
+    // Real, human-readable receipt breakdown of a resolved menu item's selected options
+    // -- manual JSON string construction, same established convention as
+    // Notification.dataJson elsewhere in this codebase (no JSON library dependency
+    // needed for a handful of small, backend-controlled string fields). Never a second
+    // pricing source -- see the `Resolved` data class's own doc comment in placeOrder.
+    private fun buildSelectedOptionsJson(summaries: List<Triple<String, String, BigDecimal>>): String {
+        fun esc(s: String) = s.replace("\\", "\\\\").replace("\"", "\\\"")
+        val items = summaries.joinToString(",") { (groupName, choiceName, delta) ->
+            "{\"groupName\":\"${esc(groupName)}\",\"choiceName\":\"${esc(choiceName)}\",\"priceDelta\":$delta}"
+        }
+        return "[$items]"
+    }
 
     private fun computeDeliveryFee(distanceKm: Double?): Pair<BigDecimal, BigDecimal?> {
         if (distanceKm == null) return legacyFlatDeliveryFee to null
@@ -219,9 +245,26 @@ class EatsOrderService(
         val buyerWallet = walletRepository.findByUserIdAndType(buyerId, WalletType.MAIN)
             ?: throw EatsBuyerNoWalletException("No wallet found for this account")
 
+        // Real menu-options resolution (2026-07-21) -- batched up front for every
+        // distinct menu item in this order, not one pair of queries per line item (same
+        // N+1 discipline as ShoppingController.getMerchantProducts' own enrichment).
+        val distinctMenuItemIds = items.map { it.menuItemId }.distinct()
+        val groupsByProduct = if (distinctMenuItemIds.isNotEmpty()) {
+            menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(distinctMenuItemIds).groupBy { it.productId }
+        } else {
+            emptyMap()
+        }
+        val choicesByGroup = groupsByProduct.values.flatten().map { it.id }.let { groupIds ->
+            if (groupIds.isEmpty()) emptyMap() else menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(groupIds).groupBy { it.groupId }
+        }
+
         // Real prices read from the live menu row at checkout time -- never trusted from
         // the client, same price-tampering prevention as commerce's OrderService.
-        data class Resolved(val productId: String, val name: String, val unitPrice: BigDecimal, val quantity: Int)
+        // `unitPrice` below is the FINAL per-unit price (base + every selected choice's
+        // priceDelta) -- every downstream consumer (itemsSubtotal, receipts, refunds)
+        // keeps using unitPrice*quantity completely unchanged; selectedOptionsJson is
+        // purely an additional human-readable breakdown, never a second pricing source.
+        data class Resolved(val productId: String, val name: String, val unitPrice: BigDecimal, val quantity: Int, val selectedOptionsJson: String?)
         val resolved = items.map { req ->
             if (req.quantity <= 0) {
                 throw InvalidEatsQuantityException("Quantity must be at least 1")
@@ -231,7 +274,36 @@ class EatsOrderService(
             if (menuItem.merchantId != restaurantId || !menuItem.active) {
                 throw MenuItemNotFoundException("Menu item not found")
             }
-            Resolved(menuItem.id, menuItem.name, menuItem.price, req.quantity)
+
+            val groups = groupsByProduct[menuItem.id] ?: emptyList()
+            var optionsDelta = BigDecimal.ZERO
+            var selectedOptionsJson: String? = null
+            if (groups.isNotEmpty()) {
+                val selectedSet = req.selectedChoiceIds.toSet()
+                val allValidChoices = groups.flatMap { choicesByGroup[it.id] ?: emptyList() }
+                val allValidChoiceIds = allValidChoices.map { it.id }.toSet()
+                if (!allValidChoiceIds.containsAll(selectedSet)) {
+                    throw InvalidMenuOptionSelectionException("One or more selected options do not belong to ${menuItem.name}")
+                }
+                val choiceById = allValidChoices.associateBy { it.id }
+                val summaries = mutableListOf<Triple<String, String, BigDecimal>>()
+                for (group in groups) {
+                    val groupChoiceIds = (choicesByGroup[group.id] ?: emptyList()).map { it.id }.toSet()
+                    // Real Coupang Eats-style enforcement (v1: required, single-select
+                    // only) -- exactly one choice from EVERY group defined on this
+                    // product, real-422 otherwise. Never silently defaults to a choice
+                    // the buyer didn't actually pick.
+                    val selectedInGroup = selectedSet.intersect(groupChoiceIds)
+                    if (selectedInGroup.size != 1) {
+                        throw MissingRequiredMenuOptionException("Select exactly one option for '${group.name}' on ${menuItem.name}")
+                    }
+                    val chosen = choiceById.getValue(selectedInGroup.first())
+                    optionsDelta = optionsDelta.add(chosen.priceDelta)
+                    summaries.add(Triple(group.name, chosen.name, chosen.priceDelta))
+                }
+                selectedOptionsJson = buildSelectedOptionsJson(summaries)
+            }
+            Resolved(menuItem.id, menuItem.name, menuItem.price.add(optionsDelta), req.quantity, selectedOptionsJson)
         }
         val itemsSubtotal = resolved.fold(BigDecimal.ZERO) { acc, r -> acc + r.unitPrice.multiply(BigDecimal(r.quantity)) }
         val platformFee = itemsSubtotal.multiply(platformFeeRate).setScale(2, RoundingMode.HALF_UP)
@@ -304,6 +376,7 @@ class EatsOrderService(
             EatsOrderItem(
                 id = "eats_order_item_${UUID.randomUUID()}", orderId = order.id, productId = it.productId,
                 productName = it.name, unitPrice = it.unitPrice, quantity = it.quantity,
+                selectedOptionsJson = it.selectedOptionsJson,
             )
         }
         eatsOrderItemRepository.saveAll(orderItems)
