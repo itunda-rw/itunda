@@ -190,6 +190,14 @@ class EatsOrderService(
         if (trimmedAddress.isEmpty()) {
             throw InvalidEatsDeliveryAddressException("A delivery address is required")
         }
+        // Real bound, mirroring deliveryNotes' own already-correct length check just
+        // below rather than silently truncating -- unlike a review comment, truncating
+        // an address could genuinely misdirect a delivery, so reject-with-a-clean-error
+        // is the honest fix here (deliveryAddress is VARCHAR(500), and this DB's real
+        // STRICT_TRANS_TABLES mode throws a raw, unhandled 500 on an over-length insert).
+        if (trimmedAddress.length > 500) {
+            throw InvalidEatsDeliveryAddressException("Delivery address must be 500 characters or fewer")
+        }
         val trimmedNotes = deliveryNotes?.trim()?.ifBlank { null }
         if (trimmedNotes != null && trimmedNotes.length > 500) {
             throw InvalidEatsDeliveryNotesException("Delivery notes must be 500 characters or fewer")

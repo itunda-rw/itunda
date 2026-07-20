@@ -352,6 +352,17 @@ class EatsOrderServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        When("placing an order with a delivery address longer than the real 500-char DB column bound") {
+            Then("it throws InvalidEatsDeliveryAddressException rather than risking a raw DB insert failure") {
+                try {
+                    service.placeOrder("buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 1)), "x".repeat(501))
+                    error("expected InvalidEatsDeliveryAddressException")
+                } catch (e: InvalidEatsDeliveryAddressException) {
+                    // expected
+                }
+            }
+        }
     }
 
     Given("a real restaurant advancing a real placed order") {

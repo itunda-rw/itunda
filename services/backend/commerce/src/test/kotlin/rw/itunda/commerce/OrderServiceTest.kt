@@ -146,6 +146,17 @@ class OrderServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        When("placing an order with a delivery address longer than the real 500-char DB column bound") {
+            Then("it throws InvalidDeliveryAddressException rather than risking a raw DB insert failure") {
+                try {
+                    service.placeOrder("buyer_1", "merchant_1", listOf(OrderItemRequest("product_1", 1)), "x".repeat(501))
+                    error("expected InvalidDeliveryAddressException")
+                } catch (e: InvalidDeliveryAddressException) {
+                    // expected
+                }
+            }
+        }
     }
 
     Given("a real placed order") {

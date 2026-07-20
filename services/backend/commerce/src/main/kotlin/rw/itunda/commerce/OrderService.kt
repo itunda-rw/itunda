@@ -93,6 +93,15 @@ class OrderService(
         if (trimmedAddress.isEmpty()) {
             throw InvalidDeliveryAddressException("A delivery address is required")
         }
+        // Real bound -- found via the same sweep that caught ProductReviewService's own
+        // unbounded-comment gap (2026-07-20). deliveryAddress is VARCHAR(500), and this
+        // DB's real STRICT_TRANS_TABLES mode throws a raw, unhandled 500 on an
+        // over-length insert. Rejecting with a clean error rather than truncating --
+        // unlike a review comment, silently truncating an address could genuinely
+        // misdirect a real delivery.
+        if (trimmedAddress.length > 500) {
+            throw InvalidDeliveryAddressException("Delivery address must be 500 characters or fewer")
+        }
         val merchant = merchantRepository.findById(merchantId)
             .orElseThrow { MerchantNotFoundException("Merchant not found") }
         if (merchant.ownerUserId == buyerId) {
