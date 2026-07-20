@@ -361,6 +361,12 @@ data class CreateListingRequest(
 data class ListingResponse(val success: Boolean, val listing: ListingDto)
 data class ListingsResponse(val success: Boolean, val listings: List<ListingDto>)
 
+// Real Marketplace listing wishlist (2026-07-21 backend + bank-mfe, ported here) --
+// mirrors FavoriteRestaurantDto's exact shape; see ListingFavoriteService.kt's own doc
+// comment on the backend for why add/remove are both idempotent.
+data class FavoriteListingDto(val listingId: String, val title: String, val price: Double, val category: String, val favoritedAt: String)
+data class FavoriteListingsResponse(val success: Boolean, val favorites: List<FavoriteListingDto>)
+
 // Real 당근-style price-offer negotiation (2026-07-19) -- see PriceOfferService's own
 // doc comment. Each offer/counter/accept/reject is a real message in the same real
 // conversation contactSeller establishes, rendered inline as an offer bubble.
@@ -809,6 +815,18 @@ interface ApiService {
 
     @GET("api/v1/marketplace/conversations/{id}/offers")
     suspend fun getOffersForConversation(@Path("id") conversationId: String): PriceOffersResponse
+
+    // Real Marketplace listing wishlist (2026-07-21 backend + bank-mfe) -- ported here,
+    // closing the "Android/iOS don't have this yet" gap that row's own doc comment
+    // named. Mirrors addFavoriteRestaurant/removeFavoriteRestaurant exactly.
+    @POST("api/v1/marketplace/listings/{id}/favorite")
+    suspend fun addListingFavorite(@Path("id") listingId: String): AddFavoriteResponse
+
+    @DELETE("api/v1/marketplace/listings/{id}/favorite")
+    suspend fun removeListingFavorite(@Path("id") listingId: String): RemoveFavoriteResponse
+
+    @GET("api/v1/marketplace/listings/favorites")
+    suspend fun getMyFavoriteListings(): FavoriteListingsResponse
 
     // Real KakaoTalk-style gift send/claim (2026-07-20) -- see GiftService.
     @POST("api/v1/gifts/conversations/{id}")
