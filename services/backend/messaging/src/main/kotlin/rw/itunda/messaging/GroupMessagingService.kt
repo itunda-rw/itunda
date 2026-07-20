@@ -29,6 +29,8 @@ class GroupNeedsMoreMembersException(message: String) : RuntimeException(message
 class GroupMemberNotFoundException(message: String) : RuntimeException(message)
 class AlreadyGroupMemberException(message: String) : RuntimeException(message)
 class EmptyGroupMessageException(message: String) : RuntimeException(message)
+class GroupMessageTooLongException(message: String) : RuntimeException(message)
+class GroupNameTooLongException(message: String) : RuntimeException(message)
 class GroupMessageNotFoundException(message: String) : RuntimeException(message)
 class InvalidGroupReactionException(message: String) : RuntimeException(message)
 
@@ -80,6 +82,13 @@ class GroupMessagingService(
         if (trimmedName.isEmpty()) {
             throw GroupNameRequiredException("A group needs a name")
         }
+        // Real bound, matching `deliveryAddress`'s own fix on the Eats/Commerce rows
+        // the same day -- `name` is VARCHAR(100), and this DB's real
+        // STRICT_TRANS_TABLES mode throws a raw, unhandled 500 on an over-length
+        // insert rather than truncating.
+        if (trimmedName.length > 100) {
+            throw GroupNameTooLongException("Group name must be 100 characters or fewer")
+        }
         val distinctOtherMembers = memberUserIds.filter { it != creatorUserId }.distinct()
         if (distinctOtherMembers.isEmpty()) {
             throw GroupNeedsMoreMembersException("A group needs at least one other real member")
@@ -104,6 +113,13 @@ class GroupMessagingService(
         val trimmedName = name.trim()
         if (trimmedName.isEmpty()) {
             throw GroupNameRequiredException("A group needs a name")
+        }
+        // Real bound, matching `deliveryAddress`'s own fix on the Eats/Commerce rows
+        // the same day -- `name` is VARCHAR(100), and this DB's real
+        // STRICT_TRANS_TABLES mode throws a raw, unhandled 500 on an over-length
+        // insert rather than truncating.
+        if (trimmedName.length > 100) {
+            throw GroupNameTooLongException("Group name must be 100 characters or fewer")
         }
         // Real N+1 fix (2026-07-19 sweep): one batch findAllByPhoneNumberIn instead of
         // one findByPhoneNumber call per invited phone number, same convention as
@@ -146,6 +162,12 @@ class GroupMessagingService(
         val trimmed = body.trim()
         if (trimmed.isEmpty()) {
             throw EmptyGroupMessageException("Message body cannot be empty")
+        }
+        // Real bound, matching MessagingService.sendMessage's own identical fix the
+        // same day -- `body` is VARCHAR(2000), and this DB's real STRICT_TRANS_TABLES
+        // mode throws a raw, unhandled 500 on an over-length insert.
+        if (trimmed.length > 2000) {
+            throw GroupMessageTooLongException("Message body must be 2000 characters or fewer")
         }
         rateLimiter.checkLimit("messaging:group-send:$userId", limit = 30, window = Duration.ofMinutes(1))
 

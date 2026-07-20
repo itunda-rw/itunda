@@ -69,6 +69,17 @@ class GroupMessagingServiceTest : BehaviorSpec({
             }
         }
 
+        When("creating a group with a name longer than the real 100-char DB column bound") {
+            Then("it throws GroupNameTooLongException rather than risking a raw DB insert failure") {
+                try {
+                    service.createGroup("user_a", "x".repeat(101), listOf("user_b"))
+                    error("expected GroupNameTooLongException")
+                } catch (e: GroupNameTooLongException) {
+                    // expected
+                }
+            }
+        }
+
         When("creating a group with no other real members (just yourself)") {
             Then("it throws GroupNeedsMoreMembersException") {
                 try {
@@ -162,6 +173,17 @@ class GroupMessagingServiceTest : BehaviorSpec({
                 message.senderId shouldBe "user_a"
                 verify { realtimeMessagePublisher.publishNewGroupMessage("group_1", match { it.toSet() == setOf("user_b", "user_c") }, message) }
                 verify { notificationRepository.saveAll(match<List<rw.itunda.core.domain.Notification>> { it.size == 2 && it.map { n -> n.userId }.toSet() == setOf("user_b", "user_c") }) }
+            }
+        }
+
+        When("sending a group message longer than the real 2000-char DB column bound") {
+            Then("it throws GroupMessageTooLongException before even looking up the group") {
+                try {
+                    service.sendMessage("user_a", "group_1", "x".repeat(2001))
+                    error("expected GroupMessageTooLongException")
+                } catch (e: GroupMessageTooLongException) {
+                    // expected
+                }
             }
         }
 

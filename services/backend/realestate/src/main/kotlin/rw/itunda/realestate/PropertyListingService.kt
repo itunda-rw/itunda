@@ -93,6 +93,13 @@ class PropertyListingService(
         if (trimmedTitle.isEmpty() || trimmedDescription.isEmpty()) {
             throw InvalidPropertyListingException("Title and description are both required")
         }
+        // Real bound, matching `deliveryAddress`'s own fix on the Eats/Commerce rows
+        // the same day -- `title`/`description` are VARCHAR(200)/VARCHAR(2000), and
+        // this DB's real STRICT_TRANS_TABLES mode throws a raw, unhandled 500 on an
+        // over-length insert rather than truncating.
+        if (trimmedTitle.length > 200 || trimmedDescription.length > 2000) {
+            throw InvalidPropertyListingException("Title must be 200 characters or fewer, description 2000 or fewer")
+        }
         if (propertyType !in PROPERTY_TYPE_IDS) {
             throw InvalidPropertyListingException("Unknown property type")
         }

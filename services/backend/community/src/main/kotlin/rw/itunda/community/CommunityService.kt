@@ -98,6 +98,14 @@ class CommunityService(
         if (trimmedTitle.isEmpty() || trimmedBody.isEmpty()) {
             throw InvalidCommunityPostException("Title and body are both required")
         }
+        // Real bound, matching `deliveryAddress`'s own fix on the Eats/Commerce rows
+        // the same day (and this class's own `addComment` body check just below) --
+        // `title`/`body` are VARCHAR(200)/VARCHAR(4000), and this DB's real
+        // STRICT_TRANS_TABLES mode throws a raw, unhandled 500 on an over-length
+        // insert rather than truncating.
+        if (trimmedTitle.length > 200 || trimmedBody.length > 4000) {
+            throw InvalidCommunityPostException("Title must be 200 characters or fewer, body 4000 or fewer")
+        }
         if (category !in CATEGORY_IDS) {
             throw InvalidCommunityPostException("Unknown category")
         }

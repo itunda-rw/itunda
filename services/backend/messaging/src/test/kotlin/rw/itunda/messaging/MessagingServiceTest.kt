@@ -151,6 +151,17 @@ class MessagingServiceTest : BehaviorSpec({
             }
         }
 
+        When("sending a message longer than the real 2000-char DB column bound") {
+            Then("it throws MessageTooLongException rather than risking a raw DB insert failure") {
+                try {
+                    service.sendMessage("user_a", "conversation_1", "x".repeat(2001))
+                    error("expected MessageTooLongException")
+                } catch (e: MessageTooLongException) {
+                    // expected
+                }
+            }
+        }
+
         When("a non-participant tries to send a message into someone else's conversation") {
             val conversation = Conversation(id = "conversation_2", participantAId = "user_a", participantBId = "user_b")
             every { conversationRepository.findById("conversation_2") } returns Optional.of(conversation)

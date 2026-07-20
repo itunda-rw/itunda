@@ -22,7 +22,9 @@ import rw.itunda.messaging.EmptyGroupMessageException
 import rw.itunda.messaging.GroupMemberNotFoundException
 import rw.itunda.messaging.GroupMessageNotFoundException
 import rw.itunda.messaging.GroupMessagingService
+import rw.itunda.messaging.GroupMessageTooLongException
 import rw.itunda.messaging.GroupNameRequiredException
+import rw.itunda.messaging.GroupNameTooLongException
 import rw.itunda.messaging.GroupNeedsMoreMembersException
 import rw.itunda.messaging.GroupNotFoundException
 import rw.itunda.messaging.InvalidGroupReactionException
@@ -142,6 +144,10 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
     fun handleGroupNameRequired(ex: GroupNameRequiredException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("GROUP_NAME_REQUIRED", ex.message ?: "Bad request"))
 
+    @ExceptionHandler(GroupNameTooLongException::class)
+    fun handleGroupNameTooLong(ex: GroupNameTooLongException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("GROUP_NAME_TOO_LONG", ex.message ?: "Bad request"))
+
     @ExceptionHandler(GroupNeedsMoreMembersException::class)
     fun handleGroupNeedsMoreMembers(ex: GroupNeedsMoreMembersException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("GROUP_NEEDS_MORE_MEMBERS", ex.message ?: "Bad request"))
@@ -157,6 +163,10 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
     @ExceptionHandler(EmptyGroupMessageException::class)
     fun handleEmptyMessage(ex: EmptyGroupMessageException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("EMPTY_MESSAGE", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(GroupMessageTooLongException::class)
+    fun handleMessageTooLong(ex: GroupMessageTooLongException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("MESSAGE_TOO_LONG", ex.message ?: "Bad request"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =

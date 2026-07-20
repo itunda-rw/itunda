@@ -26,6 +26,7 @@ class RecipientRequiredException(message: String) : RuntimeException(message)
 class SelfConversationException(message: String) : RuntimeException(message)
 class ConversationNotFoundException(message: String) : RuntimeException(message)
 class EmptyMessageException(message: String) : RuntimeException(message)
+class MessageTooLongException(message: String) : RuntimeException(message)
 class MessageNotFoundException(message: String) : RuntimeException(message)
 class InvalidReactionException(message: String) : RuntimeException(message)
 
@@ -126,6 +127,13 @@ class MessagingService(
         val trimmed = body.trim()
         if (trimmed.isEmpty()) {
             throw EmptyMessageException("Message body cannot be empty")
+        }
+        // Real bound, matching `deliveryAddress`'s own fix on the Eats/Commerce rows
+        // the same day -- `body` is VARCHAR(2000), and this DB's real
+        // STRICT_TRANS_TABLES mode throws a raw, unhandled 500 on an over-length
+        // insert rather than truncating.
+        if (trimmed.length > 2000) {
+            throw MessageTooLongException("Message body must be 2000 characters or fewer")
         }
         // Real anti-spam rate limit -- a message-send endpoint with no bound is exactly
         // the kind of gap this session's own security review already found and fixed

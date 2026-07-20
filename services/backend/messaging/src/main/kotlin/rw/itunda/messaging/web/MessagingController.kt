@@ -21,6 +21,7 @@ import rw.itunda.messaging.ConversationNotFoundException
 import rw.itunda.messaging.EmptyMessageException
 import rw.itunda.messaging.InvalidReactionException
 import rw.itunda.messaging.MessageNotFoundException
+import rw.itunda.messaging.MessageTooLongException
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.RecipientNotFoundException
 import rw.itunda.messaging.RecipientRequiredException
@@ -134,6 +135,10 @@ class MessagingController(private val messagingService: MessagingService) {
     @ExceptionHandler(EmptyMessageException::class)
     fun handleEmptyMessage(ex: EmptyMessageException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("EMPTY_MESSAGE", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(MessageTooLongException::class)
+    fun handleMessageTooLong(ex: MessageTooLongException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("MESSAGE_TOO_LONG", ex.message ?: "Bad request"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =

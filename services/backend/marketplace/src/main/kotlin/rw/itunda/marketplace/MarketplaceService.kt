@@ -81,6 +81,13 @@ class MarketplaceService(
         if (trimmedTitle.isEmpty() || trimmedDescription.isEmpty() || trimmedCategory.isEmpty()) {
             throw InvalidListingException("Title, description, and category are all required")
         }
+        // Real bound, matching `deliveryAddress`'s own fix on the Eats/Commerce rows
+        // the same day -- `title`/`description` are VARCHAR(255)/VARCHAR(2000), and
+        // this DB's real STRICT_TRANS_TABLES mode throws a raw, unhandled 500 on an
+        // over-length insert rather than truncating.
+        if (trimmedTitle.length > 255 || trimmedDescription.length > 2000) {
+            throw InvalidListingException("Title must be 255 characters or fewer, description 2000 or fewer")
+        }
         if (price <= BigDecimal.ZERO) {
             throw InvalidListingException("Price must be greater than zero")
         }

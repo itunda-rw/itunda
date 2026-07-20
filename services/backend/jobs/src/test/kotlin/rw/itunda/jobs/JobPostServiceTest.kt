@@ -85,6 +85,17 @@ class JobPostServiceTest : BehaviorSpec({
             }
         }
 
+        When("posting with a title longer than the real 200-char DB column bound") {
+            Then("it throws InvalidJobPostException rather than risking a raw DB insert failure") {
+                try {
+                    service.createPost("poster_1", "delivery", "x".repeat(201), "Body", JobPayType.FIXED, BigDecimal("1000"))
+                    error("expected InvalidJobPostException")
+                } catch (e: InvalidJobPostException) {
+                    // expected
+                }
+            }
+        }
+
         When("posting with only one of latitude/longitude") {
             Then("it throws InvalidJobCoordinatesException") {
                 try {

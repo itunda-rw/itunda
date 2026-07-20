@@ -78,6 +78,17 @@ class CommunityServiceTest : BehaviorSpec({
             }
         }
 
+        When("posting with a title longer than the real 200-char DB column bound") {
+            Then("it throws InvalidCommunityPostException rather than risking a raw DB insert failure") {
+                try {
+                    service.createPost("author_1", "question", "x".repeat(201), "Body")
+                    error("expected InvalidCommunityPostException")
+                } catch (e: InvalidCommunityPostException) {
+                    // expected
+                }
+            }
+        }
+
         When("posting with only one of latitude/longitude") {
             Then("it throws InvalidCommunityCoordinatesException") {
                 try {

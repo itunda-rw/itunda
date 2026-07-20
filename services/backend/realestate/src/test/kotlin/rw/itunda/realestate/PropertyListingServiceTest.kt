@@ -75,6 +75,17 @@ class PropertyListingServiceTest : BehaviorSpec({
             }
         }
 
+        When("listing with a title longer than the real 200-char DB column bound") {
+            Then("it throws InvalidPropertyListingException rather than risking a raw DB insert failure") {
+                try {
+                    service.createListing("lister_1", PropertyListingType.SALE, "house", "x".repeat(201), "D", BigDecimal("1000"))
+                    error("expected InvalidPropertyListingException")
+                } catch (e: InvalidPropertyListingException) {
+                    // expected
+                }
+            }
+        }
+
         When("listing with negative bedrooms") {
             Then("it throws InvalidPropertyListingException") {
                 try {

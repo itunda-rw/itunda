@@ -68,6 +68,17 @@ class MarketplaceServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        When("creating a listing with a title longer than the real 255-char DB column bound") {
+            Then("it throws InvalidListingException rather than risking a raw DB insert failure") {
+                try {
+                    service.createListing("seller_1", "x".repeat(256), "desc", BigDecimal("100"), "sports")
+                    error("expected InvalidListingException")
+                } catch (e: InvalidListingException) {
+                    // expected
+                }
+            }
+        }
     }
 
     Given("an existing real listing") {
