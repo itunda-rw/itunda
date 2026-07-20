@@ -128,6 +128,7 @@ import rw.itunda.app.network.ToggleReactionRequest
 import rw.itunda.app.network.UpdateEatsOrderStatusRequest
 import rw.itunda.core.designsystem.theme.Ids
 import java.io.IOException
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -1637,6 +1638,28 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
     }
 }
 
+// Real structural fix, 2026-07-21: Karrot's (당근마켓's) own real listing cards lead
+// with *when* something was posted -- "지금 (just now)" and "n분 전 (n min ago)" are
+// core trust/freshness signals for a hyperlocal marketplace, not decoration. itunda's
+// ListingDto already carries a real createdAt from the backend; it just wasn't
+// surfaced anywhere in the card. Parses the same ISO-8601 timestamp shape every
+// other real backend response in this app already uses.
+private fun relativeTimeAgo(isoTimestamp: String): String {
+    val postedAt = try {
+        Instant.parse(isoTimestamp)
+    } catch (e: Exception) {
+        return ""
+    }
+    val elapsed = Duration.between(postedAt, Instant.now())
+    return when {
+        elapsed.toMinutes() < 1 -> "Just now"
+        elapsed.toMinutes() < 60 -> "${elapsed.toMinutes()}m ago"
+        elapsed.toHours() < 24 -> "${elapsed.toHours()}h ago"
+        elapsed.toDays() < 7 -> "${elapsed.toDays()}d ago"
+        else -> "${elapsed.toDays() / 7}w ago"
+    }
+}
+
 @Composable
 private fun ListingCard(
     listing: ListingDto, isMine: Boolean, onChanged: () -> Unit, onMessageSeller: (String) -> Unit, onMakeOffer: (String, Double) -> Unit,
@@ -1672,7 +1695,7 @@ private fun ListingCard(
                             }
                         }
                     }
-                    Text(listing.category, color = TossSecondary, fontSize = 12.sp)
+                    Text("${listing.category} · ${relativeTimeAgo(listing.createdAt)}", color = TossSecondary, fontSize = 12.sp)
                 }
                 Text("%,.0f RWF".format(listing.price), color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
@@ -2770,7 +2793,8 @@ private fun PropertyListingCard(
                 Text(priceLabel, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
             Text(listing.title, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            if (details.isNotBlank()) Text(details, color = TossSecondary, fontSize = 12.sp)
+            val detailsWithTime = (if (details.isNotBlank()) "$details · " else "") + relativeTimeAgo(listing.createdAt)
+            Text(detailsWithTime, color = TossSecondary, fontSize = 12.sp)
             Text(listing.description, color = TossSecondary, fontSize = 13.sp)
             // Real 당근-style price-offer negotiation (2026-07-19) -- see
             // PropertyPriceOfferService's own doc comment; mirrors ListingCard's own
