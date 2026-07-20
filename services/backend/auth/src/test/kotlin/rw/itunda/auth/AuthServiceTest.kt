@@ -9,12 +9,14 @@ import io.mockk.mockk
 import io.mockk.verify
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import rw.itunda.core.domain.EmailVerificationToken
+import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.repository.EmailVerificationTokenRepository
+import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
@@ -44,6 +46,7 @@ class AuthServiceTest : BehaviorSpec({
     Given("a fresh AuthService") {
         val userRepository = mockk<UserRepository>()
         val walletRepository = mockk<WalletRepository>()
+        val interestJarRepository = mockk<InterestJarRepository>()
         val jwtService = JwtService(testSecret)
         val tokenBlocklistService = mockk<TokenBlocklistService>()
         val rateLimiter = mockk<RateLimiter>()
@@ -55,7 +58,7 @@ class AuthServiceTest : BehaviorSpec({
         // covers the real device-recording/verification logic directly.
         val deviceService = mockk<DeviceService>(relaxed = true)
         val service = AuthService(
-            userRepository, walletRepository, jwtService, tokenBlocklistService, rateLimiter,
+            userRepository, walletRepository, interestJarRepository, jwtService, tokenBlocklistService, rateLimiter,
             emailVerificationTokenRepository, notificationRepository, nominatimGeocodingClient, deviceService,
         )
 
@@ -64,6 +67,8 @@ class AuthServiceTest : BehaviorSpec({
             every { userRepository.existsByPhoneNumber("+250788000001") } returns false
             every { userRepository.save(any()) } answers { firstArg() }
             every { walletRepository.save(any()) } answers { firstArg() }
+            val jarSlot = mutableListOf<InterestJar>()
+            every { interestJarRepository.save(capture(jarSlot)) } answers { firstArg() }
 
             val response = service.register(RegisterRequest("+250788000001", "a@b.rw", "Jean", "B", "password123"))
 
@@ -78,6 +83,11 @@ class AuthServiceTest : BehaviorSpec({
                 walletSlot.all { it.balance.signum() == 0 } shouldBe true
                 jwtService.verify(response.accessToken) shouldNotBe null
                 jwtService.verify(response.refreshToken)!!.isRefresh shouldBe true
+
+                // Fixed 2026-07-20: SeedDataRunner was the only place an InterestJar was ever
+                // created, so GET /api/v1/savings/interest-jar 404'd for every real user.
+                jarSlot.single().walletId shouldBe walletSlot.single { it.type == WalletType.SAVINGS }.id
+                jarSlot.single().earnedThisMonth.signum() shouldBe 0
             }
         }
 
@@ -92,6 +102,7 @@ class AuthServiceTest : BehaviorSpec({
             val userSlot = mutableListOf<User>()
             every { userRepository.save(capture(userSlot)) } answers { firstArg() }
             every { walletRepository.save(any()) } answers { firstArg() }
+            every { interestJarRepository.save(any()) } answers { firstArg() }
 
             service.register(RegisterRequest("+250788000011", null, "New", "User", "password123", "ITDREF01"))
 

@@ -4,6 +4,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.EmailVerificationToken
+import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
@@ -11,6 +12,7 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.repository.EmailVerificationTokenRepository
+import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
@@ -30,6 +32,7 @@ import java.util.UUID
 class AuthService(
     private val userRepository: UserRepository,
     private val walletRepository: WalletRepository,
+    private val interestJarRepository: InterestJarRepository,
     private val jwtService: JwtService,
     private val tokenBlocklistService: TokenBlocklistService,
     private val rateLimiter: RateLimiter,
@@ -85,7 +88,7 @@ class AuthService(
         // Fixed 2026-07-13, found live: SavingsService.createGoal requires a real
         // WalletType.SAVINGS wallet and only MAIN was ever provisioned here, so
         // POST /api/v1/savings/goals 404'd (WALLET_NOT_FOUND) for every real user.
-        walletRepository.save(
+        val savingsWallet = walletRepository.save(
             Wallet(
                 id = "wallet_${UUID.randomUUID()}",
                 userId = user.id,
@@ -94,6 +97,26 @@ class AuthService(
                 type = WalletType.SAVINGS,
                 balance = BigDecimal.ZERO,
                 availableBalance = BigDecimal.ZERO,
+            ),
+        )
+        // Fixed 2026-07-20, found live: the same "only ever seeded, never provisioned"
+        // gap as above, one layer deeper -- SeedDataRunner was the ONLY place an
+        // InterestJar was ever created (one hardcoded row for the demo user), so
+        // GET /api/v1/savings/interest-jar 404'd (INTEREST_JAR_NOT_FOUND) for every real
+        // registered user. Real Kakao Bank SafeBox (세이프박스) provisions interest
+        // accrual the moment the sub-account exists -- InterestAccrualScheduler grows
+        // this for real from a zero balance, same as a fresh SafeBox earning nothing
+        // until money lands in it.
+        interestJarRepository.save(
+            InterestJar(
+                userId = user.id,
+                walletId = savingsWallet.id,
+                balance = BigDecimal.ZERO,
+                rate = 7.5,
+                earnedThisMonth = BigDecimal.ZERO,
+                earnedTotal = BigDecimal.ZERO,
+                lastPaidAt = Instant.now(),
+                nextPayoutAt = Instant.now().plusSeconds(86400),
             ),
         )
 

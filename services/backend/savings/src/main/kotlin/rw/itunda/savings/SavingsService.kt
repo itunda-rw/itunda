@@ -4,6 +4,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.SavingsGoal
@@ -15,12 +16,14 @@ import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.Duration
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 private const val AUTO_CONTRIBUTION_INTERVAL_DAYS = 30L
+private const val INTEREST_ACCRUAL_INTERVAL_DAYS = 1L
 
 class GoalNotFoundException(message: String) : RuntimeException(message)
 class WalletNotOwnedException(message: String) : RuntimeException(message)
@@ -153,5 +156,35 @@ class SavingsService(
 
         val updatedWallet = walletRepository.findById(jar.walletId).orElseThrow { NoWalletException("Wallet not found") }
         return mapOf("claimed" to claimed, "newBalance" to updatedWallet.balance)
+    }
+
+    // Real daily interest accrual (2026-07-20) -- found live: earnedThisMonth/earnedTotal
+    // were only ever written by claimInterest (reading or zeroing, never incrementing) and
+    // by SeedDataRunner's one hardcoded demo row. Every real jar's balance sat frozen at
+    // zero forever -- claimInterest always 404'd/NoInterestAvailable for a real account.
+    // Same findAll()-then-filter honesty as getGoalsDueForAutoContribution -- real data
+    // scale here doesn't yet justify an indexed query.
+    fun getJarsDueForAccrual(): List<InterestJar> {
+        val now = Instant.now()
+        return interestJarRepository.findAll().filter { it.nextPayoutAt.isBefore(now) || it.nextPayoutAt == now }
+    }
+
+    // Real Kakao Bank SafeBox (세이프박스) semantics: interest accrues daily off the
+    // *actual* savings wallet balance, not a stored snapshot -- jar.balance is kept as a
+    // synced display cache, never the source of truth. nextPayoutAt advances by exactly
+    // one real day (not "now + 1 day") so a scheduler catch-up after downtime doesn't
+    // silently shrink the accrual window.
+    @Transactional
+    fun accrueInterest(jar: InterestJar) {
+        val wallet = walletRepository.findById(jar.walletId).orElse(null) ?: return
+        val dailyRate = BigDecimal.valueOf(jar.rate).divide(BigDecimal(100), 10, RoundingMode.HALF_UP).divide(BigDecimal(365), 10, RoundingMode.HALF_UP)
+        val accrued = wallet.balance.multiply(dailyRate).setScale(2, RoundingMode.HALF_UP)
+        jar.balance = wallet.balance
+        if (accrued > BigDecimal.ZERO) {
+            jar.earnedThisMonth = jar.earnedThisMonth.add(accrued)
+            jar.earnedTotal = jar.earnedTotal.add(accrued)
+        }
+        jar.nextPayoutAt = jar.nextPayoutAt.plus(INTEREST_ACCRUAL_INTERVAL_DAYS, ChronoUnit.DAYS)
+        interestJarRepository.save(jar)
     }
 }

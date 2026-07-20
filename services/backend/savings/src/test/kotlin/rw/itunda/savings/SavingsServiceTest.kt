@@ -26,9 +26,9 @@ import java.util.Optional
 /** First test coverage for savings goals and the interest jar. */
 class SavingsServiceTest : BehaviorSpec({
 
-    fun wallet(id: String, userId: String, type: WalletType = WalletType.MAIN) = Wallet(
+    fun wallet(id: String, userId: String, type: WalletType = WalletType.MAIN, balance: BigDecimal = BigDecimal("100000")) = Wallet(
         id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
-        type = type, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
+        type = type, balance = balance, availableBalance = balance,
     )
 
     Given("a user with a savings goal and an interest jar") {
@@ -229,6 +229,78 @@ class SavingsServiceTest : BehaviorSpec({
                 succeeded shouldBe false
                 verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
                 g.lastAutoContributionAt shouldBe null
+            }
+        }
+    }
+
+    Given("interest jars due for real daily accrual") {
+        val walletRepository = mockk<WalletRepository>()
+        val savingsGoalRepository = mockk<SavingsGoalRepository>()
+        val interestJarRepository = mockk<InterestJarRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter)
+
+        fun jar(userId: String, nextPayoutAt: Instant, rate: Double = 7.5) = InterestJar(
+            userId = userId, walletId = "wallet_$userId", balance = BigDecimal.ZERO, rate = rate,
+            earnedThisMonth = BigDecimal.ZERO, earnedTotal = BigDecimal.ZERO,
+            lastPaidAt = Instant.now(), nextPayoutAt = nextPayoutAt,
+        )
+
+        When("finding what's due") {
+            val overdue = jar("user_overdue", Instant.now().minus(2, java.time.temporal.ChronoUnit.DAYS))
+            val notYet = jar("user_notyet", Instant.now().plus(20, java.time.temporal.ChronoUnit.HOURS))
+            every { interestJarRepository.findAll() } returns listOf(overdue, notYet)
+
+            val due = service.getJarsDueForAccrual()
+
+            Then("only the jar whose real day has actually elapsed qualifies") {
+                due.map { it.userId } shouldBe listOf("user_overdue")
+            }
+        }
+
+        When("accruing interest for a jar backed by a real nonzero savings balance") {
+            val theJar = jar("user_1", Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS))
+            every { walletRepository.findById("wallet_user_1") } returns Optional.of(wallet("wallet_user_1", "user_1", WalletType.SAVINGS, BigDecimal("36500")))
+            every { interestJarRepository.save(any()) } answers { firstArg() }
+
+            service.accrueInterest(theJar)
+
+            Then("it grows earnedThisMonth/earnedTotal off the real wallet balance, syncs the cached balance, and advances a real day") {
+                // 36500 * 7.5% / 365 = 7.50 per day
+                theJar.earnedThisMonth shouldBe BigDecimal("7.50")
+                theJar.earnedTotal shouldBe BigDecimal("7.50")
+                theJar.balance shouldBe BigDecimal("36500")
+                verify(exactly = 1) { interestJarRepository.save(theJar) }
+            }
+        }
+
+        When("accruing interest for a jar whose savings wallet is still empty") {
+            val originalNextPayoutAt = Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS)
+            val theJar = jar("user_2", originalNextPayoutAt)
+            every { walletRepository.findById("wallet_user_2") } returns Optional.of(wallet("wallet_user_2", "user_2", WalletType.SAVINGS, BigDecimal.ZERO))
+            every { interestJarRepository.save(any()) } answers { firstArg() }
+
+            service.accrueInterest(theJar)
+
+            Then("no interest accrues on a zero balance, but the payout window still advances -- no stuck jar") {
+                theJar.earnedThisMonth shouldBe BigDecimal.ZERO
+                theJar.earnedTotal shouldBe BigDecimal.ZERO
+                theJar.nextPayoutAt shouldBe originalNextPayoutAt.plus(1, java.time.temporal.ChronoUnit.DAYS)
+            }
+        }
+
+        When("accruing across repeated real days keeps building on top of the running total") {
+            val theJar = jar("user_3", Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS))
+            every { walletRepository.findById("wallet_user_3") } returns Optional.of(wallet("wallet_user_3", "user_3", WalletType.SAVINGS, BigDecimal("36500")))
+            every { interestJarRepository.save(any()) } answers { firstArg() }
+
+            service.accrueInterest(theJar)
+            service.accrueInterest(theJar)
+
+            Then("two real days of accrual add up rather than overwrite") {
+                theJar.earnedThisMonth shouldBe BigDecimal("15.00")
+                theJar.earnedTotal shouldBe BigDecimal("15.00")
             }
         }
     }
