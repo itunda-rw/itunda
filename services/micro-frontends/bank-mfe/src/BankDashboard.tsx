@@ -46,9 +46,9 @@ import {
   type AddressSuggestion, type EatsOrder, type EatsOrderStatus, type FavoriteRestaurant, type MenuItem, type RatingSummary, type Rider,
 } from './lib/eats';
 import {
-  advanceOrderStatus, cancelOrder, fetchMerchantOrders, fetchMerchantProducts, fetchMyOrders, fetchOrderDetail,
-  fetchProductRating, fetchProductReviews, placeOrder, submitProductReview,
-  type CommerceOrder, type CommerceOrderItem, type CommerceOrderStatus, type CommerceProduct, type ProductReview,
+  addProductFavorite, advanceOrderStatus, cancelOrder, fetchMerchantOrders, fetchMerchantProducts, fetchMyFavoriteProducts, fetchMyOrders, fetchOrderDetail,
+  fetchProductRating, fetchProductReviews, placeOrder, removeProductFavorite, submitProductReview,
+  type CommerceOrder, type CommerceOrderItem, type CommerceOrderStatus, type CommerceProduct, type FavoriteProduct, type ProductReview,
 } from './lib/commerce';
 import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
@@ -4676,6 +4676,24 @@ function cartTotalItems(cart: CommerceCart): number {
   return Object.values(cart).reduce((sum, group) => sum + Object.values(group.lines).reduce((s, l) => s + l.quantity, 0), 0);
 }
 
+// Real product wishlist toggle (2026-07-20) -- the real "찜하기" heart every real
+// Coupang/Naver/Kakao/Toss Shopping-style catalog card has. Purely presentational --
+// favorited-state is lifted to ProductCatalogView and fetched once for the whole
+// catalog, not once per product card, to avoid N duplicate list fetches.
+function WishlistButton({ favorited, busy, onToggle }: { favorited: boolean; busy: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={busy}
+      aria-label={favorited ? 'Remove from wishlist' : 'Add to wishlist'}
+      style={{ fontSize: '18px', lineHeight: 1, color: favorited ? '#E53935' : 'var(--toss-grey-300)' }}
+    >
+      {favorited ? '♥' : '♡'}
+    </button>
+  );
+}
+
 function ProductCatalogView({
   merchant, cart, onSetQty, onBack, onViewCart,
 }: {
@@ -4687,15 +4705,39 @@ function ProductCatalogView({
 }) {
   const [catalog, setCatalog] = useState<{ businessName: string; products: CommerceProduct[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [favoritedIds, setFavoritedIds] = useState<Set<string>>(new Set());
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const load = () => {
     setError(null);
     fetchMerchantProducts(merchant.merchantId)
       .then((r) => setCatalog({ businessName: r.merchant.businessName, products: r.products }))
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this catalog.'));
+    fetchMyFavoriteProducts()
+      .then((favorites) => setFavoritedIds(new Set(favorites.map((f) => f.productId))))
+      .catch(() => {
+        // Real, non-critical -- a wishlist-status fetch failure shouldn't block browsing.
+      });
   };
 
   useEffect(load, [merchant.merchantId]);
+
+  const toggleFavorite = async (productId: string) => {
+    setTogglingId(productId);
+    try {
+      if (favoritedIds.has(productId)) {
+        await removeProductFavorite(productId);
+        setFavoritedIds((prev) => { const next = new Set(prev); next.delete(productId); return next; });
+      } else {
+        await addProductFavorite(productId);
+        setFavoritedIds((prev) => new Set(prev).add(productId));
+      }
+    } catch {
+      // Real, non-critical -- a wishlist toggle failure shouldn't block browsing.
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   const myLines = cart[merchant.merchantId]?.lines ?? {};
   const qtyFor = (productId: string) => myLines[productId]?.quantity ?? 0;
@@ -4734,6 +4776,11 @@ function ProductCatalogView({
                 <ProductRatingBadge productId={item.id} />
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <WishlistButton
+                  favorited={favoritedIds.has(item.id)}
+                  busy={togglingId === item.id}
+                  onToggle={() => toggleFavorite(item.id)}
+                />
                 <button onClick={() => onSetQty(merchant, item, qtyFor(item.id) - 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>−</button>
                 <span style={{ minWidth: '16px', textAlign: 'center', fontWeight: 700 }}>{qtyFor(item.id)}</span>
                 <button onClick={() => onSetQty(merchant, item, qtyFor(item.id) + 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>+</button>
@@ -5016,8 +5063,70 @@ function MerchantOrdersView() {
   );
 }
 
+// Real product wishlist view (2026-07-20) -- lists every real favorited product,
+// tapping one opens that merchant's real catalog (same "prove once, reuse the existing
+// screen" shape as everywhere else in this file).
+function WishlistView({ onOpenMerchant }: { onOpenMerchant: (merchant: ShoppingMerchant) => void }) {
+  const [favorites, setFavorites] = useState<FavoriteProduct[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchMyFavoriteProducts().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your wishlist.'));
+  };
+  useEffect(load, []);
+
+  const handleRemove = async (productId: string) => {
+    setRemovingId(productId);
+    try {
+      await removeProductFavorite(productId);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not remove this item.');
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="toss-card">
+        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+      </div>
+    );
+  }
+  if (favorites === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+  if (favorites.length === 0) return <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No saved items yet -- tap ♡ on any product to save it here.</p></div>;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {favorites.map((f) => (
+        <div key={f.productId} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <button
+            onClick={() => onOpenMerchant({ merchantId: f.merchantId, businessName: f.businessName, category: null, cashbackRate: '' })}
+            style={{ textAlign: 'left', flex: 1 }}
+          >
+            <p style={{ fontSize: '15px', fontWeight: 700 }}>{f.name}</p>
+            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{f.businessName} · {f.price.toLocaleString()} RWF</p>
+          </button>
+          <button
+            className="toss-btn toss-btn-secondary"
+            disabled={removingId === f.productId}
+            onClick={() => handleRemove(f.productId)}
+            style={{ padding: '8px 12px', fontSize: '12px' }}
+          >
+            {removingId === f.productId ? 'Removing…' : 'Remove'}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ShopView() {
-  const [view, setView] = useState<'BROWSE' | 'ORDERS'>('BROWSE');
+  const [view, setView] = useState<'BROWSE' | 'ORDERS' | 'WISHLIST'>('BROWSE');
   const [merchants, setMerchants] = useState<ShoppingMerchant[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<ShoppingMerchant | null>(null);
@@ -5108,7 +5217,7 @@ function ShopView() {
       <MerchantOrdersView />
 
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'ORDERS'] as const).map((v) => (
+        {(['BROWSE', 'ORDERS', 'WISHLIST'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -5118,13 +5227,15 @@ function ShopView() {
               backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Merchants' : 'My orders'}
+            {v === 'BROWSE' ? 'Merchants' : v === 'ORDERS' ? 'My orders' : '♡ Wishlist'}
           </button>
         ))}
       </div>
 
       {view === 'ORDERS' ? (
         <MyCommerceOrdersView />
+      ) : view === 'WISHLIST' ? (
+        <WishlistView onOpenMerchant={setSelected} />
       ) : error ? (
         <div className="toss-card">
           <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>

@@ -99,3 +99,23 @@ export const fetchProductReviews = (productId: string) =>
 
 export const fetchProductRating = (productId: string) =>
   apiFetch<{ success: boolean; average: number | null; count: number }>(`/api/v1/orders/products/${productId}/rating`);
+
+// Real product wishlist (2026-07-20) -- the real "찜하기"/wishlist every real Coupang/
+// Naver/Kakao/Toss Shopping-style app has. See ProductFavoriteService's own doc comment.
+export interface FavoriteProduct {
+  productId: string;
+  merchantId: string;
+  name: string;
+  price: number;
+  businessName: string;
+  favoritedAt: string;
+}
+
+export const addProductFavorite = (productId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/orders/products/${productId}/favorite`, { method: 'POST' });
+
+export const removeProductFavorite = (productId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/orders/products/${productId}/favorite`, { method: 'DELETE' });
+
+export const fetchMyFavoriteProducts = () =>
+  apiFetch<{ success: boolean; favorites: FavoriteProduct[] }>('/api/v1/orders/products/favorites').then((r) => r.favorites);
