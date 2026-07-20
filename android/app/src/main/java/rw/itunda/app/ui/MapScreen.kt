@@ -183,7 +183,12 @@ private val MAP_STYLE_JSON = """
 fun MapScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    LaunchedEffect(Unit) { MapLibre.getInstance(context) }
+    // Must run synchronously during composition, not in a LaunchedEffect -- LaunchedEffect
+    // only fires after composition commits, but `remember { MapView(context) }` below runs
+    // synchronously during this same initial composition, so MapView was being constructed
+    // before MapLibre.getInstance() ever ran, crashing every time with
+    // MapLibreConfigurationException the moment Map was opened.
+    remember { MapLibre.getInstance(context) }
 
     var merchants by remember { mutableStateOf<List<ShoppingMerchantDto>>(emptyList()) }
     var query by remember { mutableStateOf("") }
