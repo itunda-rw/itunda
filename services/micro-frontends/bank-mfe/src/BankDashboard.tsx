@@ -25,8 +25,9 @@ import {
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup,
 } from './lib/messaging';
 import {
-  contactSeller, createListing, fetchListings, fetchListingsMyNeighborhood, fetchMyListings, fetchOffersForConversation,
-  makeOffer, markListingSold, removeListing, respondToOffer, type Listing, type PriceOffer,
+  addListingFavorite, contactSeller, createListing, fetchListings, fetchListingsMyNeighborhood, fetchMyFavoriteListings,
+  fetchMyListings, fetchOffersForConversation, makeOffer, markListingSold, removeListing, removeListingFavorite,
+  respondToOffer, type FavoriteListing, type Listing, type PriceOffer,
 } from './lib/marketplace';
 import { fetchProfile, setNeighborhood } from './lib/neighborhood';
 import { claimGift, fetchGiftsForConversation, sendGiftInConversation, type Gift, type GiftStatus } from './lib/gift';
@@ -2151,11 +2152,14 @@ function NewListingCard({ onCreated }: { onCreated: () => void }) {
   );
 }
 
-function ListingCard({ listing, isMine, onChanged, onMessageSeller }: {
+function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, favoriteBusy, onToggleFavorite }: {
   listing: Listing;
   isMine: boolean;
   onChanged: () => void;
   onMessageSeller: (conversationId: string) => void;
+  favorited: boolean;
+  favoriteBusy: boolean;
+  onToggleFavorite: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -2264,7 +2268,10 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller }: {
           </p>
           <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{listing.category}</p>
         </div>
-        <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{listing.price.toLocaleString()} RWF</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {!isMine && <WishlistButton favorited={favorited} busy={favoriteBusy} onToggle={onToggleFavorite} />}
+          <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{listing.price.toLocaleString()} RWF</span>
+        </div>
       </div>
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>{listing.description}</p>
       {offering && (
@@ -2376,16 +2383,81 @@ function NeighborhoodSetupPrompt({ onDone }: { onDone: (neighborhood: string) =>
   );
 }
 
+function ListingWishlistView() {
+  const [favorites, setFavorites] = useState<FavoriteListing[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchMyFavoriteListings().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your wishlist.'));
+  };
+  useEffect(load, []);
+
+  const handleRemove = async (listingId: string) => {
+    setRemovingId(listingId);
+    try {
+      await removeListingFavorite(listingId);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not remove this item.');
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="toss-card">
+        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+      </div>
+    );
+  }
+  if (favorites === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+  if (favorites.length === 0) return <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No saved listings yet -- tap ♡ on any listing to save it here.</p></div>;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {favorites.map((f) => (
+        <div key={f.listingId} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <p style={{ fontSize: '15px', fontWeight: 700 }}>{f.title}</p>
+            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{f.category} · {f.price.toLocaleString()} RWF</p>
+          </div>
+          <button
+            className="toss-btn toss-btn-secondary"
+            disabled={removingId === f.listingId}
+            onClick={() => handleRemove(f.listingId)}
+            style={{ padding: '8px 12px', fontSize: '12px' }}
+          >
+            {removingId === f.listingId ? 'Removing…' : 'Remove'}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId: string) => void }) {
-  const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD'>('BROWSE');
+  const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD' | 'WISHLIST'>('BROWSE');
   const [listings, setListings] = useState<Listing[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [favoritingId, setFavoritingId] = useState<string | null>(null);
   const currentUser = getStoredUser();
+
+  const loadFavoriteIds = () => {
+    fetchMyFavoriteListings().then((favs) => setFavoriteIds(new Set(favs.map((f) => f.listingId)))).catch(() => {
+      // Real, non-critical -- a wishlist-status fetch failure shouldn't block browsing.
+    });
+  };
 
   const load = () => {
     setError(null);
     setListings(null);
+    loadFavoriteIds();
     if (view === 'NEIGHBORHOOD') {
       Promise.all([fetchProfile(), fetchListingsMyNeighborhood()])
         .then(([profile, items]) => {
@@ -2402,6 +2474,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
         });
       return;
     }
+    if (view === 'WISHLIST') return;
     const fetcher = view === 'BROWSE' ? fetchListings() : fetchMyListings();
     fetcher
       .then(setListings)
@@ -2410,10 +2483,29 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
 
   useEffect(load, [view]);
 
+  // Real Marketplace listing wishlist (2026-07-21) -- mirrors Shop's own product
+  // wishlist toggle (ProductCatalogView.toggleFavorite) field-for-field.
+  const toggleFavorite = async (listingId: string) => {
+    setFavoritingId(listingId);
+    try {
+      if (favoriteIds.has(listingId)) {
+        await removeListingFavorite(listingId);
+        setFavoriteIds((prev) => { const next = new Set(prev); next.delete(listingId); return next; });
+      } else {
+        await addListingFavorite(listingId);
+        setFavoriteIds((prev) => new Set(prev).add(listingId));
+      }
+    } catch {
+      // Real, non-critical -- a wishlist toggle failure shouldn't block browsing.
+    } finally {
+      setFavoritingId(null);
+    }
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'NEIGHBORHOOD', 'MINE'] as const).map((v) => (
+        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'WISHLIST'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -2423,49 +2515,58 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
               backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : 'My listings'}
+            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : '♡ Wishlist'}
           </button>
         ))}
       </div>
 
-      {view === 'MINE' && <NewListingCard onCreated={load} />}
+      {view === 'WISHLIST' ? (
+        <ListingWishlistView />
+      ) : (
+        <>
+          {view === 'MINE' && <NewListingCard onCreated={load} />}
 
-      {view === 'NEIGHBORHOOD' && neighborhoodName === null && (
-        <NeighborhoodSetupPrompt onDone={() => load()} />
-      )}
+          {view === 'NEIGHBORHOOD' && neighborhoodName === null && (
+            <NeighborhoodSetupPrompt onDone={() => load()} />
+          )}
 
-      {view === 'NEIGHBORHOOD' && neighborhoodName && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
-          Your neighborhood: <strong style={{ color: 'var(--toss-grey-900)' }}>{neighborhoodName}</strong>
-        </p>
-      )}
+          {view === 'NEIGHBORHOOD' && neighborhoodName && (
+            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
+              Your neighborhood: <strong style={{ color: 'var(--toss-grey-900)' }}>{neighborhoodName}</strong>
+            </p>
+          )}
 
-      {error && (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-          <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-        </div>
-      )}
-      {!error && listings === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
-      {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-            {view === 'BROWSE' ? 'No listings yet.' : view === 'NEIGHBORHOOD' ? 'No listings in your neighborhood yet.' : "You haven't listed anything yet."}
-          </p>
-        </div>
-      )}
-      {!error && listings !== null && listings.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {listings.map((listing) => (
-            <ListingCard
-              key={listing.id}
-              listing={listing}
-              isMine={view === 'MINE' || listing.sellerId === currentUser?.id}
-              onChanged={load}
-              onMessageSeller={onMessageSeller}
-            />
-          ))}
-        </div>
+          {error && (
+            <div className="toss-card">
+              <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+              <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+            </div>
+          )}
+          {!error && listings === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
+          {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
+            <div className="toss-card">
+              <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+                {view === 'BROWSE' ? 'No listings yet.' : view === 'NEIGHBORHOOD' ? 'No listings in your neighborhood yet.' : "You haven't listed anything yet."}
+              </p>
+            </div>
+          )}
+          {!error && listings !== null && listings.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {listings.map((listing) => (
+                <ListingCard
+                  key={listing.id}
+                  listing={listing}
+                  isMine={view === 'MINE' || listing.sellerId === currentUser?.id}
+                  onChanged={load}
+                  onMessageSeller={onMessageSeller}
+                  favorited={favoriteIds.has(listing.id)}
+                  favoriteBusy={favoritingId === listing.id}
+                  onToggleFavorite={() => toggleFavorite(listing.id)}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

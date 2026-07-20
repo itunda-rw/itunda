@@ -18,9 +18,11 @@ import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
+import rw.itunda.marketplace.FavoriteListingNotFoundException
 import rw.itunda.marketplace.InvalidCoordinatesException
 import rw.itunda.marketplace.InvalidListingException
 import rw.itunda.marketplace.InvalidOfferAmountException
+import rw.itunda.marketplace.ListingFavoriteService
 import rw.itunda.marketplace.ListingNotActiveException
 import rw.itunda.marketplace.ListingNotFoundException
 import rw.itunda.marketplace.MarketplaceService
@@ -49,7 +51,11 @@ data class RespondToOfferRequest(val action: OfferResponseAction, val counterAmo
 // itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
 @RestController
 @RequestMapping("/api/v1/marketplace")
-class MarketplaceController(private val marketplaceService: MarketplaceService, private val priceOfferService: PriceOfferService) {
+class MarketplaceController(
+    private val marketplaceService: MarketplaceService,
+    private val priceOfferService: PriceOfferService,
+    private val listingFavoriteService: ListingFavoriteService,
+) {
 
     @PostMapping("/listings")
     fun createListing(
@@ -124,6 +130,35 @@ class MarketplaceController(private val marketplaceService: MarketplaceService, 
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "listing" to marketplaceService.removeListing(currentUser.userId, listingId)))
+
+    // Real Marketplace listing wishlist (2026-07-21) -- see ListingFavoriteService's own
+    // doc comment. Mirrors OrderController's own favorite-product endpoints field-for-field.
+    @PostMapping("/listings/{listingId}/favorite")
+    fun addFavorite(
+        @PathVariable listingId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val favorite = listingFavoriteService.addFavorite(currentUser.userId, listingId)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "favorite" to favorite))
+    }
+
+    @DeleteMapping("/listings/{listingId}/favorite")
+    fun removeFavorite(
+        @PathVariable listingId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Boolean>> {
+        listingFavoriteService.removeFavorite(currentUser.userId, listingId)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    @GetMapping("/listings/favorites")
+    fun getMyFavoriteListings(
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = listingFavoriteService.getMyFavorites(currentUser.userId, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "favorites" to page.content) + pageMeta(page))
+    }
 
     @PostMapping("/listings/{listingId}/contact-seller")
     fun contactSeller(
@@ -209,4 +244,8 @@ class MarketplaceController(private val marketplaceService: MarketplaceService, 
     @ExceptionHandler(NeighborhoodNotSetException::class)
     fun handleNeighborhoodNotSet(ex: NeighborhoodNotSetException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("NEIGHBORHOOD_NOT_SET", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(FavoriteListingNotFoundException::class)
+    fun handleFavoriteListingNotFound(ex: FavoriteListingNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("LISTING_NOT_FOUND", ex.message ?: "Not found"))
 }

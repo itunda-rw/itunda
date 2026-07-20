@@ -110,3 +110,24 @@ export const fetchOffersForConversation = (conversationId: string) =>
   apiFetch<{ success: boolean; offers: PriceOffer[] }>(`/api/v1/marketplace/conversations/${conversationId}/offers`).then(
     (r) => r.offers,
   );
+
+// Real Marketplace listing wishlist (2026-07-21) -- closes a gap docs/DESIGN_REFERENCES.md
+// named directly: itunda already had this pattern for Shop products (lib/shopping.ts)
+// and Eats restaurants but not Hood listings. Mirrors ProductFavorite's exact shape;
+// see ListingFavoriteService.kt's own doc comment on the backend.
+export interface FavoriteListing {
+  listingId: string;
+  title: string;
+  price: number;
+  category: string;
+  favoritedAt: string;
+}
+
+export const addListingFavorite = (listingId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/marketplace/listings/${listingId}/favorite`, { method: 'POST' });
+
+export const removeListingFavorite = (listingId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/marketplace/listings/${listingId}/favorite`, { method: 'DELETE' });
+
+export const fetchMyFavoriteListings = () =>
+  apiFetch<{ success: boolean; favorites: FavoriteListing[] }>('/api/v1/marketplace/listings/favorites').then((r) => r.favorites);
