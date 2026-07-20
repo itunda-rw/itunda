@@ -24,7 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import rw.itunda.app.network.NotificationDto
-import rw.itunda.core.designsystem.theme.Tds
+import rw.itunda.core.designsystem.theme.Ids
 
 /**
  * Real account settings screen, matching the real Toss reference screenshots
@@ -47,7 +47,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Tds.colors.background)
+            .background(Ids.colors.background)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -57,37 +57,37 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                 modifier = Modifier.size(44.dp).clip(CircleShape).clickable(onClick = onBack),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Back", modifier = Modifier.size(18.dp), tint = Tds.colors.textPrimary)
+                Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Back", modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
             }
-            Text("Settings", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Tds.colors.textPrimary)
+            Text("Settings", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
         }
 
         LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
             item {
-                Text("My info", color = Tds.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text("My info", color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
-                        modifier = Modifier.size(44.dp).clip(CircleShape).background(Tds.colors.chip),
+                        modifier = Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.chip),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Outlined.Person, contentDescription = null, tint = Tds.colors.textPrimary)
+                        Icon(Icons.Outlined.Person, contentDescription = null, tint = Ids.colors.textPrimary)
                     }
                     Spacer(modifier = Modifier.width(14.dp))
                     Column {
                         Text(
                             profile?.let { "${it.firstName} ${it.lastName}" } ?: "—",
-                            color = Tds.colors.textPrimary,
+                            color = Ids.colors.textPrimary,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.SemiBold
                         )
-                        Text(profile?.phoneNumber ?: "", color = Tds.colors.textTertiary, fontSize = 14.sp)
+                        Text(profile?.phoneNumber ?: "", color = Ids.colors.textTertiary, fontSize = 14.sp)
                     }
                 }
-                androidx.compose.material3.Divider(color = Tds.colors.divider)
+                androidx.compose.material3.Divider(color = Ids.colors.divider)
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
@@ -96,11 +96,11 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Notifications", color = Tds.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Notifications", color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     if (unreadCount > 0) {
                         Text(
                             "Mark all read",
-                            color = Tds.colors.brand,
+                            color = Ids.colors.brand,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.clickable { viewModel.markAllNotificationsRead() }
@@ -113,7 +113,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
             if (notifications.isEmpty()) {
                 item {
                     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
-                        Text("No notifications", color = Tds.colors.textTertiary, fontSize = 14.sp)
+                        Text("No notifications", color = Ids.colors.textTertiary, fontSize = 14.sp)
                     }
                 }
             } else {
@@ -131,9 +131,9 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                         .padding(vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Outlined.Logout, contentDescription = null, tint = Tds.colors.danger)
+                    Icon(Icons.Outlined.Logout, contentDescription = null, tint = Ids.colors.danger)
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Log out", color = Tds.colors.danger, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Log out", color = Ids.colors.danger, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }
                 Spacer(modifier = Modifier.height(40.dp))
             }
@@ -154,20 +154,20 @@ private fun NotificationRow(notification: NotificationDto, onClick: () -> Unit) 
             modifier = Modifier
                 .size(36.dp)
                 .clip(CircleShape)
-                .background(if (notification.isRead) Tds.colors.chip else Tds.colors.pressed),
+                .background(if (notification.isRead) Ids.colors.chip else Ids.colors.pressed),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Outlined.Notifications, contentDescription = null, modifier = Modifier.size(16.dp), tint = Tds.colors.textPrimary)
+            Icon(Icons.Outlined.Notifications, contentDescription = null, modifier = Modifier.size(16.dp), tint = Ids.colors.textPrimary)
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column {
             Text(
                 notification.title,
-                color = Tds.colors.textPrimary,
+                color = Ids.colors.textPrimary,
                 fontSize = 15.sp,
                 fontWeight = if (notification.isRead) FontWeight.Normal else FontWeight.Bold
             )
-            Text(notification.body, color = Tds.colors.textTertiary, fontSize = 13.sp)
+            Text(notification.body, color = Ids.colors.textTertiary, fontSize = 13.sp)
         }
     }
 }

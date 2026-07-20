@@ -18,7 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import rw.itunda.core.designsystem.theme.Tds
+import rw.itunda.core.designsystem.theme.Ids
 
 /**
  * Plain display model, not the App target's TransactionDto directly -- this Feature
@@ -56,16 +56,16 @@ fun TransactionHistoryScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Tds.colors.background)
+            .background(Ids.colors.background)
     ) {
         FlowTopBar(onBack)
 
         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-            Text("Spent this month", color = Tds.colors.textSecondary, fontSize = 15.sp)
+            Text("Spent this month", color = Ids.colors.textSecondary, fontSize = 15.sp)
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 "RWF ${rwfFormatter.format(spentThisMonth.toLong())}",
-                color = Tds.colors.textPrimary,
+                color = Ids.colors.textPrimary,
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -75,7 +75,7 @@ fun TransactionHistoryScreen(
 
         if (transactions.isEmpty()) {
             Box(modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp), contentAlignment = Alignment.Center) {
-                Text("No transactions yet", color = Tds.colors.textTertiary, fontSize = 15.sp)
+                Text("No transactions yet", color = Ids.colors.textTertiary, fontSize = 15.sp)
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
@@ -95,24 +95,24 @@ private fun TransactionRow(tx: TransactionDisplayItem) {
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(if (tx.isOutgoing) Tds.colors.dangerTint else Tds.colors.successTint),
+                .background(if (tx.isOutgoing) Ids.colors.dangerTint else Ids.colors.successTint),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 if (tx.isOutgoing) Icons.Outlined.ArrowUpward else Icons.Outlined.ArrowDownward,
                 contentDescription = null,
                 modifier = Modifier.size(18.dp),
-                tint = if (tx.isOutgoing) Tds.colors.danger else Tds.colors.success
+                tint = if (tx.isOutgoing) Ids.colors.danger else Ids.colors.success
             )
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(tx.description, color = Tds.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Text(tx.status.lowercase().replaceFirstChar { it.uppercase() }, color = Tds.colors.textTertiary, fontSize = 13.sp)
+            Text(tx.description, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(tx.status.lowercase().replaceFirstChar { it.uppercase() }, color = Ids.colors.textTertiary, fontSize = 13.sp)
         }
         Text(
             "${if (tx.isOutgoing) "-" else "+"}${rwfFormatter.format(tx.amount.toLong())} ${tx.currency}",
-            color = if (tx.isOutgoing) Tds.colors.textPrimary else Tds.colors.success,
+            color = if (tx.isOutgoing) Ids.colors.textPrimary else Ids.colors.success,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold
         )

@@ -7,8 +7,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import rw.itunda.core.designsystem.components.TdsButton
-import rw.itunda.core.designsystem.components.TdsListRow
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsListRow
 import rw.itunda.core.network.SduiComponent
 
 /**
@@ -23,7 +23,7 @@ fun SduiRenderer(components: List<SduiComponent>, onAction: (String, Map<String,
                 "BUTTON" -> {
                     val text = component.data["text"] as? String ?: "Button"
                     val action = component.actions?.firstOrNull()
-                    TdsButton(
+                    IdsButton(
                         text = text,
                         onClick = {
                             if (action != null) {
@@ -37,7 +37,7 @@ fun SduiRenderer(components: List<SduiComponent>, onAction: (String, Map<String,
                     val subtitle = component.data["subtitle"] as? String
                     val rightText = component.data["rightText"] as? String
                     val action = component.actions?.firstOrNull()
-                    TdsListRow(
+                    IdsListRow(
                         title = title,
                         subtitle = subtitle,
                         rightText = rightText,

@@ -10,16 +10,16 @@ import androidx.compose.ui.graphics.Color
  * directly-fetched TDS docs (tossmini-docs.toss.im/tds-mobile/foundation/colors) --
  * previously unverified against a real source (docs/ARCHITECTURE.md's own §6 item 6
  * had explicitly noted TDS's non-color token surface was never confirmed sourced;
- * this closes that gap for typography too, see TdsTypography.kt). Found a real,
+ * this closes that gap for typography too, see IdsTypography.kt). Found a real,
  * live mislabeling this pass: the old `Blue600`/`Blue100` constants held the real
  * TDS's blue700/blue50 values respectively, not blue600/blue100 -- both platforms
- * (this file and ios/.../TdsTheme.swift) had independently drifted the same way,
+ * (this file and ios/.../IdsTheme.swift) had independently drifted the same way,
  * so it was internally consistent, just numbered wrong relative to the real scale.
  * Kept the old names as deprecated aliases (same values) rather than a silent
  * rename, since call sites reference them by name; new code should use the
  * correctly-numbered constants below.
  */
-object TdsColors {
+object IdsColors {
     // GENERATED:BEGIN -- do not hand-edit; regenerate with packages/design-tokens/generate-tokens.js from tokens.json (see doc comment above).
     val Grey50 = Color(0xFFF9FAFB)
     val Grey100 = Color(0xFFF2F4F6)

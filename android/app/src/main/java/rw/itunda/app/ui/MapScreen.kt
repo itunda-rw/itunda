@@ -77,7 +77,7 @@ import rw.itunda.app.network.MAP_NEARBY_CATEGORIES
 import rw.itunda.app.network.MapBookmarkDto
 import rw.itunda.app.network.MapsDirectionsResponse
 import rw.itunda.app.network.NearbyPlaceDto
-import rw.itunda.core.designsystem.theme.Tds
+import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.app.network.NetworkClient
 import rw.itunda.app.network.PlaceSearchResultDto
 import rw.itunda.app.network.ShoppingMerchantDto
@@ -549,13 +549,13 @@ fun MapScreen(onBack: () -> Unit) {
                 }
             }
 
-            error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp)) }
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp)) }
 
             AndroidView(factory = { mapView }, modifier = Modifier.fillMaxWidth().padding(16.dp))
 
             selectedPlace?.let { place ->
                 Card(
-                    shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+                    shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
                     colors = CardDefaults.cardColors(containerColor = TossCard),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 ) {
@@ -630,7 +630,7 @@ fun MapScreen(onBack: () -> Unit) {
 
             if (selectedPlace == null && bookmarks.isNotEmpty()) {
                 Card(
-                    shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+                    shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
                     colors = CardDefaults.cardColors(containerColor = TossCard),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 ) {

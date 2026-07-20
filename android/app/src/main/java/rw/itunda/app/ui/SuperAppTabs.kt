@@ -126,7 +126,7 @@ import rw.itunda.app.network.StartConversationRequest
 import rw.itunda.app.network.TokenStore
 import rw.itunda.app.network.ToggleReactionRequest
 import rw.itunda.app.network.UpdateEatsOrderStatusRequest
-import rw.itunda.core.designsystem.theme.Tds
+import rw.itunda.core.designsystem.theme.Ids
 import java.io.IOException
 import java.time.Instant
 import java.util.UUID
@@ -169,12 +169,12 @@ internal fun superAppErrorMessage(e: HttpException): String = when (e.code()) {
 @Composable
 private fun ErrorCard(message: String, onRetry: () -> Unit) {
     Card(
-        shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = TossCard),
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text(message, color = Tds.colors.danger, fontSize = 14.sp)
+            Text(message, color = Ids.colors.danger, fontSize = 14.sp)
             Spacer(modifier = Modifier.height(10.dp))
             Text("Retry", color = TossBlue, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable(onClick = onRetry))
         }
@@ -270,10 +270,10 @@ internal fun TalkTab(initialConversationId: String?, onConsumedInitial: () -> Un
         return
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical)) {
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
         TabHeader("Talk")
         Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = Tds.layout.cardGap).clip(RoundedCornerShape(12.dp)).background(TossTertiary),
+            modifier = Modifier.fillMaxWidth().padding(bottom = Ids.layout.cardGap).clip(RoundedCornerShape(12.dp)).background(TossTertiary),
         ) {
             listOf(TalkView.DIRECT to "Direct", TalkView.GROUPS to "Groups").forEach { (v, label) ->
                 Box(
@@ -324,10 +324,10 @@ private fun DirectMessagesList(
     var starting by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)) {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)) {
         item {
             Card(
-                shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+                shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
                 colors = CardDefaults.cardColors(containerColor = TossCard),
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -371,14 +371,14 @@ private fun DirectMessagesList(
                             Text(if (starting) "..." else "Chat", color = Color.White, fontWeight = FontWeight.Bold)
                         }
                     }
-                    startError?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
+                    startError?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
                 }
             }
         }
         if (error != null) {
             item { ErrorCard(error, onRetry = onRetry) }
         } else if (conversations == null) {
-            item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+            item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
         } else if (conversations.isEmpty()) {
             item { Text("No conversations yet.", color = TossSecondary, fontSize = 14.sp) }
         } else {
@@ -401,10 +401,10 @@ private fun GroupsList(
     var creating by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)) {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)) {
         item {
             Card(
-                shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+                shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
                 colors = CardDefaults.cardColors(containerColor = TossCard),
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -457,14 +457,14 @@ private fun GroupsList(
                     ) {
                         Text(if (creating) "Creating…" else "Create group", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
-                    createError?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
+                    createError?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
                 }
             }
         }
         if (error != null) {
             item { ErrorCard(error, onRetry = onRetry) }
         } else if (groups == null) {
-            item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+            item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
         } else if (groups.isEmpty()) {
             item { Text("No groups yet.", color = TossSecondary, fontSize = 14.sp) }
         } else {
@@ -476,7 +476,7 @@ private fun GroupsList(
 @Composable
 private fun GroupRow(group: GroupSummaryDto, onClick: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Tds.layout.cardCornerRadius)).background(TossCard).clickable(onClick = onClick).padding(16.dp),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(TossCard).clickable(onClick = onClick).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -582,7 +582,7 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
         if (count > 0) listState.animateScrollToItem(count - 1)
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical)) {
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
         BackTopBar(group.name, onBack)
         Spacer(modifier = Modifier.height(8.dp))
         LazyColumn(state = listState, modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -625,7 +625,7 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                 modifier = Modifier.padding(bottom = 4.dp),
             )
         }
-        error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(vertical = 6.dp)) }
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(vertical = 6.dp)) }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
             OutlinedTextField(
                 value = draft,
@@ -643,7 +643,7 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
             Spacer(modifier = Modifier.width(10.dp))
             Box(
                 modifier = Modifier
-                    .size(Tds.layout.minTouchTarget)
+                    .size(Ids.layout.minTouchTarget)
                     .clip(CircleShape)
                     .background(if (draft.isBlank() || sending) TossTertiary else TossBlue)
                     .clickable(enabled = draft.isNotBlank() && !sending) {
@@ -701,7 +701,7 @@ private fun ConversationRow(conversation: ConversationSummaryDto, online: Boolea
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(Tds.layout.cardCornerRadius))
+            .clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
             .background(TossCard)
             .clickable(onClick = onClick)
             .padding(18.dp),
@@ -719,7 +719,7 @@ private fun ConversationRow(conversation: ConversationSummaryDto, online: Boolea
                         .background(Color.White)
                         .padding(2.dp)
                         .clip(CircleShape)
-                        .background(Tds.colors.success),
+                        .background(Ids.colors.success),
                 )
             }
         }
@@ -872,12 +872,12 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
         if (count > 0) listState.animateScrollToItem(count - 1)
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical)) {
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
         BackTopBar(conversation.otherUserName, onBack)
         otherOnline?.let { online ->
             Text(
                 if (online) "Online" else "Offline",
-                color = if (online) Tds.colors.success else TossSecondary,
+                color = if (online) Ids.colors.success else TossSecondary,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(top = 2.dp),
             )
@@ -946,7 +946,7 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
         if (otherTyping) {
             Text("${conversation.otherUserName} is typing…", color = TossSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
         }
-        error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(vertical = 6.dp)) }
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(vertical = 6.dp)) }
         if (giftComposerOpen) {
             Column(
                 modifier = Modifier
@@ -1005,7 +1005,7 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
             Box(
                 modifier = Modifier
-                    .size(Tds.layout.minTouchTarget)
+                    .size(Ids.layout.minTouchTarget)
                     .clip(CircleShape)
                     .background(TossCardSoft)
                     .clickable { giftComposerOpen = !giftComposerOpen },
@@ -1032,7 +1032,7 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
             Spacer(modifier = Modifier.width(10.dp))
             Box(
                 modifier = Modifier
-                    .size(Tds.layout.minTouchTarget)
+                    .size(Ids.layout.minTouchTarget)
                     .clip(CircleShape)
                     .background(if (draft.isBlank() || sending) TossTertiary else TossBlue)
                     .clickable(enabled = draft.isNotBlank() && !sending) {
@@ -1262,7 +1262,7 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Tds.layout.screenHorizontal, vertical = 8.dp)
+                .padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(TossCardSoft)
                 .padding(4.dp),
@@ -1335,7 +1335,7 @@ private fun NeighborhoodSetupPrompt(onDone: (String) -> Unit) {
         onError = { error = it },
     )
 
-    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("Set your neighborhood", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Spacer(modifier = Modifier.height(8.dp))
@@ -1353,7 +1353,7 @@ private fun NeighborhoodSetupPrompt(onDone: (String) -> Unit) {
             ) {
                 Text(if (busy) "Finding your neighborhood…" else "📍 Share my location", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
-            error?.let { Spacer(modifier = Modifier.height(12.dp)); Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+            error?.let { Spacer(modifier = Modifier.height(12.dp)); Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         }
     }
 }
@@ -1414,8 +1414,8 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
     LaunchedEffect(view) { load() }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
-        verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap),
+        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
+        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
         item { TabHeader("Hood") }
         item {
@@ -1459,7 +1459,7 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
         if (error != null) {
             item { ErrorCard(error!!, onRetry = ::load) }
         } else if (listings == null) {
-            item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+            item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
         } else if (listings!!.isEmpty() && (view != HoodView.NEIGHBORHOOD || neighborhoodName != null)) {
             item {
                 Text(
@@ -1562,7 +1562,7 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
         onError = { error = it },
     )
 
-    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("List an item", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             OutlinedTextField(value = title, onValueChange = { title = it }, placeholder = { Text("What are you selling?") }, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -1587,7 +1587,7 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
                     color = if (shareLocation) TossBlue else TossSecondary,
                 )
             }
-            error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Cancel") }
                 Box(
@@ -1649,7 +1649,7 @@ private fun ListingCard(
         onError = { error = it },
     )
 
-    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -1667,7 +1667,7 @@ private fun ListingCard(
                 Text("%,.0f RWF".format(listing.price), color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
             Text(listing.description, color = TossSecondary, fontSize = 13.sp)
-            error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             if (offering) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
@@ -1832,8 +1832,8 @@ private fun CommunityContent() {
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
-        verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap),
+        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
+        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
         item {
             Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
@@ -1895,7 +1895,7 @@ private fun CommunityContent() {
         if (error != null) {
             item { ErrorCard(error!!, onRetry = ::load) }
         } else if (posts == null) {
-            item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+            item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
         } else if (posts!!.isEmpty() && (view != CommunityView.NEIGHBORHOOD || neighborhoodName != null)) {
             item {
                 Text(
@@ -1930,7 +1930,7 @@ private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreat
     var submitting by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Write a post", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Row(
@@ -1949,7 +1949,7 @@ private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreat
             }
             OutlinedTextField(value = title, onValueChange = { title = it }, placeholder = { Text("Title") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = body, onValueChange = { body = it }, placeholder = { Text("What's going on in the neighborhood?") }, modifier = Modifier.fillMaxWidth())
-            error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Cancel") }
                 Box(
@@ -1992,7 +1992,7 @@ private fun CommunityPostCard(post: CommunityPostDto, categoryLabel: String, isM
     val coroutineScope = rememberCoroutineScope()
 
     Card(
-        shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard),
+        shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard),
         modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
     ) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -2017,7 +2017,7 @@ private fun CommunityPostCard(post: CommunityPostDto, categoryLabel: String, isM
             Text(post.title, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Text(post.body, color = TossSecondary, fontSize = 13.sp, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             Text("❤️ ${post.likeCount} · 💬 ${post.commentCount}", color = TossSecondary, fontSize = 12.sp)
-            error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         }
     }
 }
@@ -2051,12 +2051,12 @@ private fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
     }
     LaunchedEffect(postId) { load() }
 
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical)) {
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
         BackTopBar("Post", onBack)
         Spacer(modifier = Modifier.height(12.dp))
-        error?.let { Text(it, color = Tds.colors.danger, fontSize = 13.sp) }
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
         post?.let { p ->
-            Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(p.title, color = TossText, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                     Text("by $authorName", color = TossSecondary, fontSize = 12.sp)
@@ -2083,7 +2083,7 @@ private fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
         Spacer(modifier = Modifier.height(8.dp))
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (comments == null) {
-                item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(80.dp)) {} }
+                item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(80.dp)) {} }
             } else if (comments!!.isEmpty()) {
                 item { Text("No comments yet -- be the first to reply.", color = TossSecondary, fontSize = 13.sp) }
             } else {
@@ -2192,8 +2192,8 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
-        verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap),
+        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
+        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
         item {
             Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
@@ -2255,7 +2255,7 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
         if (error != null) {
             item { ErrorCard(error!!, onRetry = ::load) }
         } else if (posts == null) {
-            item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+            item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
         } else if (posts!!.isEmpty() && (view != JobsView.NEIGHBORHOOD || neighborhoodName != null)) {
             item {
                 Text(
@@ -2303,7 +2303,7 @@ private fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> Un
     var submitting by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Post a job", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Row(
@@ -2339,7 +2339,7 @@ private fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> Un
                     modifier = Modifier.weight(1f),
                 )
             }
-            error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Cancel") }
                 Box(
@@ -2383,7 +2383,7 @@ private fun JobPostCard(post: JobPostDto, categoryLabel: String, isMine: Boolean
     val coroutineScope = rememberCoroutineScope()
     val payLabel = "%,.0f RWF".format(post.payAmount) + if (post.payType == "HOURLY") "/hr" else ""
 
-    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2399,7 +2399,7 @@ private fun JobPostCard(post: JobPostDto, categoryLabel: String, isMine: Boolean
             }
             Text(post.title, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Text(post.description, color = TossSecondary, fontSize = 13.sp)
-            error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (isMine) {
                     if (post.status == "OPEN") {
@@ -2502,8 +2502,8 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
-        verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap),
+        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
+        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
         item {
             Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
@@ -2581,7 +2581,7 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
         if (error != null) {
             item { ErrorCard(error!!, onRetry = ::load) }
         } else if (listings == null) {
-            item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+            item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
         } else if (listings!!.isEmpty() && (view != PropertyView.NEIGHBORHOOD || neighborhoodName != null)) {
             item {
                 Text(
@@ -2643,7 +2643,7 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
     var submitting by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("List a property", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -2684,7 +2684,7 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
                 OutlinedTextField(value = bedrooms, onValueChange = { bedrooms = it }, placeholder = { Text("Bedrooms") }, singleLine = true, modifier = Modifier.weight(1f))
                 OutlinedTextField(value = sizeSqm, onValueChange = { sizeSqm = it }, placeholder = { Text("Size (m²)") }, singleLine = true, modifier = Modifier.weight(1f))
             }
-            error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Cancel") }
                 Box(
@@ -2742,7 +2742,7 @@ private fun PropertyListingCard(
         listing.sizeSqm?.let { "${it} m²" },
     ).joinToString(" · ")
 
-    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2782,7 +2782,7 @@ private fun PropertyListingCard(
                     }
                 }
             }
-            error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (isMine) {
                     if (listing.status == "AVAILABLE") {
@@ -2825,7 +2825,7 @@ internal fun ShopTab() {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Tds.layout.screenHorizontal, vertical = 8.dp)
+                .padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(TossCardSoft)
                 .padding(4.dp),
@@ -2947,8 +2947,8 @@ private fun CommerceShopContent() {
 
     val totalItems = cart.values.sumOf { it.quantity }
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
-        verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap),
+        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
+        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
         item { TabHeader("Shop") }
         item {
@@ -2976,7 +2976,7 @@ private fun CommerceShopContent() {
         } else if (error != null) {
             item { ErrorCard(error!!, onRetry = ::loadMerchants) }
         } else if (merchants == null) {
-            item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+            item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
         } else if (merchants!!.isEmpty()) {
             item { Text("No stores registered yet.", color = TossSecondary, fontSize = 14.sp) }
         } else {
@@ -2984,7 +2984,7 @@ private fun CommerceShopContent() {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(Tds.layout.cardCornerRadius))
+                        .clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
                         .background(TossCard)
                         .clickable { openMerchant(m) }
                         .padding(18.dp),
@@ -3042,7 +3042,7 @@ private fun MerchantDetailView(
         val key = "${merchant.merchantId}:${product.id}"
         if (qty <= 0) cart.remove(key) else cart[key] = CommerceCartLine(merchant.merchantId, merchant.businessName, product, qty)
     }
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical)) {
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
         BackTopBar(merchant.businessName, onBack)
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
             if (products == null) {
@@ -3053,7 +3053,7 @@ private fun MerchantDetailView(
                 items(products, key = { it.id }) { p ->
                     val qty = qtyFor(p.id)
                     Row(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Tds.layout.cardCornerRadius)).background(TossCard).padding(16.dp),
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(TossCard).padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
@@ -3109,7 +3109,7 @@ private fun MultiCartView(
     val groups = cart.values.groupBy { it.merchantId }
     val grandTotal = cart.values.sumOf { it.product.price * it.quantity }
 
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical)) {
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
         BackTopBar("Your cart", onBack)
         if (groups.isEmpty()) {
             Text("Your cart is empty.", color = TossSecondary, fontSize = 14.sp, modifier = Modifier.padding(top = 12.dp))
@@ -3118,7 +3118,7 @@ private fun MultiCartView(
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
             groups.forEach { (merchantId, lines) ->
                 item(key = merchantId) {
-                    Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Tds.layout.cardCornerRadius)).background(TossCard).padding(16.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(TossCard).padding(16.dp)) {
                         Text(lines.first().businessName, color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Spacer(modifier = Modifier.height(6.dp))
                         lines.forEach { line ->
@@ -3131,7 +3131,7 @@ private fun MultiCartView(
                 }
             }
             item {
-                Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Tds.layout.cardCornerRadius)).background(TossCard).padding(16.dp)) {
+                Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(TossCard).padding(16.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("Total (${groups.size} order${if (groups.size == 1) "" else "s"})", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         Text("%,.0f RWF".format(grandTotal), color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
@@ -3143,7 +3143,7 @@ private fun MultiCartView(
                         placeholder = { Text("Delivery address") },
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
+                    error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
                 }
             }
         }
@@ -3196,9 +3196,9 @@ private fun MultiCartResultsView(results: List<CommerceCheckoutResult>, onDone: 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(r.businessName, color = TossText, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                         if (r.order != null) {
-                            Text("%,.0f RWF — placed".format(r.order.totalAmount), color = Tds.colors.success, fontSize = 13.sp)
+                            Text("%,.0f RWF — placed".format(r.order.totalAmount), color = Ids.colors.success, fontSize = 13.sp)
                         } else {
-                            Text(r.error ?: "Failed", color = Tds.colors.danger, fontSize = 13.sp)
+                            Text(r.error ?: "Failed", color = Ids.colors.danger, fontSize = 13.sp)
                         }
                     }
                 }
@@ -3218,7 +3218,7 @@ private val COMMERCE_STATUS_LABEL = mapOf(
 
 @Composable
 private fun CommerceOrderRow(order: OrderDto, action: (@Composable () -> Unit)? = null) {
-    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -3281,7 +3281,7 @@ private fun MyCommerceOrdersView() {
         if (error != null) {
             ErrorCard(error!!, onRetry = ::load)
         } else if (orders == null) {
-            Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {}
+            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {}
         } else if (orders!!.isEmpty()) {
             Text("No orders yet.", color = TossSecondary, fontSize = 14.sp)
         } else {
@@ -3292,7 +3292,7 @@ private fun MyCommerceOrdersView() {
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(Tds.colors.danger)
+                                    .background(Ids.colors.danger)
                                     .clickable(enabled = cancellingId != o.id) { cancel(o.id) }
                                     .padding(horizontal = 16.dp, vertical = 10.dp),
                             ) {
@@ -3407,7 +3407,7 @@ private fun ProductReviewRow(item: OrderItemDto) {
             placeholder = { Text("How was it? (optional)") },
             modifier = Modifier.fillMaxWidth(),
         )
-        error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(
                 modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(TossTertiary).clickable { open = false }.padding(vertical = 12.dp),
@@ -3502,7 +3502,7 @@ private enum class EatsMode { ORDER, DELIVER }
 @Composable
 private fun EatsContent() {
     var mode by remember { mutableStateOf(EatsMode.ORDER) }
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal)) {
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal)) {
         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
             listOf(EatsMode.ORDER to "Order food", EatsMode.DELIVER to "Deliver").forEach { (m, label) ->
                 val selected = m == mode
@@ -3709,7 +3709,7 @@ private fun OrderFoodContent() {
         return
     }
 
-    LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)) {
+    LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)) {
         item {
             Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
                 listOf(OrderFoodView.BROWSE to "Restaurants", OrderFoodView.FAVORITES to "Favorites", OrderFoodView.ORDERS to "My orders").forEach { (v, label) ->
@@ -3736,7 +3736,7 @@ private fun OrderFoodContent() {
                 val reorderErr = reorderError
                 if (reorderErr != null) {
                     Spacer(Modifier.height(8.dp))
-                    Text(reorderErr, color = Tds.colors.danger, fontSize = 13.sp)
+                    Text(reorderErr, color = Ids.colors.danger, fontSize = 13.sp)
                 }
             }
         } else if (view == OrderFoodView.FAVORITES) {
@@ -3786,7 +3786,7 @@ private fun OrderFoodContent() {
             if (error != null) {
                 item { ErrorCard(error!!, onRetry = ::loadRestaurants) }
             } else if (restaurants == null) {
-                item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
+                item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {} }
             } else if (restaurants!!.isEmpty()) {
                 item {
                     Text(
@@ -3800,7 +3800,7 @@ private fun OrderFoodContent() {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(Tds.layout.cardCornerRadius))
+                            .clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
                             .background(TossCard)
                             .clickable { openRestaurant(m) }
                             .padding(18.dp),
@@ -3822,7 +3822,7 @@ private fun OrderFoodContent() {
                         Icon(
                             if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                             contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
-                            tint = if (isFavorite) Tds.colors.danger else TossSecondary,
+                            tint = if (isFavorite) Ids.colors.danger else TossSecondary,
                             modifier = Modifier
                                 .size(22.dp)
                                 .clickable(enabled = favoritingId != m.merchantId) { toggleFavorite(m.merchantId) },
@@ -3876,14 +3876,14 @@ private fun FavoriteRestaurantsView(onOpen: (FavoriteRestaurantDto) -> Unit, onC
 
     when {
         error != null -> ErrorCard(error!!, onRetry = ::load)
-        favorites == null -> Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {}
+        favorites == null -> Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {}
         favorites!!.isEmpty() -> Text("No favorite restaurants yet. Tap the heart on a restaurant to save it here.", color = TossSecondary, fontSize = 14.sp)
         else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             favorites!!.forEach { f ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(Tds.layout.cardCornerRadius))
+                        .clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
                         .background(TossCard)
                         .clickable { onOpen(f) }
                         .padding(18.dp),
@@ -3904,7 +3904,7 @@ private fun FavoriteRestaurantsView(onOpen: (FavoriteRestaurantDto) -> Unit, onC
                     Icon(
                         Icons.Filled.Favorite,
                         contentDescription = "Remove from favorites",
-                        tint = Tds.colors.danger,
+                        tint = Ids.colors.danger,
                         modifier = Modifier
                             .size(22.dp)
                             .clickable(enabled = removingId != f.restaurantId) { remove(f.restaurantId) },
@@ -3998,7 +3998,7 @@ private fun ReviewOrderCard(order: EatsOrderDto) {
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(
                 modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(TossTertiary).clickable { open = false }.padding(vertical = 12.dp),
@@ -4057,7 +4057,7 @@ private fun RestaurantMenuView(
 ) {
     BackHandler(onBack = onBack)
     val cartCount = cart.values.sum()
-    Column(modifier = Modifier.fillMaxSize().padding(vertical = Tds.layout.screenVertical)) {
+    Column(modifier = Modifier.fillMaxSize().padding(vertical = Ids.layout.screenVertical)) {
         BackTopBar(restaurant.businessName, onBack)
         RestaurantRatingBadge(restaurant.merchantId)
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
@@ -4069,7 +4069,7 @@ private fun RestaurantMenuView(
                 items(menu, key = { it.id }) { p ->
                     val qty = cart[p.id] ?: 0
                     Row(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Tds.layout.cardCornerRadius)).background(TossCard).padding(16.dp),
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(TossCard).padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
@@ -4144,7 +4144,7 @@ private fun AddressAutocompleteField(
         )
         if (suggestions.isNotEmpty()) {
             Card(
-                shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+                shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
                 colors = CardDefaults.cardColors(containerColor = TossCard),
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             ) {
@@ -4191,7 +4191,7 @@ private fun EatsCheckoutView(
     val lines = cart.filter { it.value > 0 }.mapNotNull { (productId, qty) -> menu.find { it.id == productId }?.let { it to qty } }
     val total = lines.sumOf { (p, qty) -> p.price * qty }
 
-    Column(modifier = Modifier.fillMaxSize().padding(vertical = Tds.layout.screenVertical)) {
+    Column(modifier = Modifier.fillMaxSize().padding(vertical = Ids.layout.screenVertical)) {
         BackTopBar("Checkout", onBack)
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
             items(lines) { (p, qty) ->
@@ -4221,7 +4221,7 @@ private fun EatsCheckoutView(
                 )
             }
             if (addressLatitude != null) {
-                item { Text("Pinned -- real distance-based delivery fee applies", color = Tds.colors.success, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)) }
+                item { Text("Pinned -- real distance-based delivery fee applies", color = Ids.colors.success, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)) }
             }
             item {
                 OutlinedTextField(
@@ -4231,7 +4231,7 @@ private fun EatsCheckoutView(
                     modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                 )
             }
-            error?.let { item { Text(it, color = Tds.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) } }
+            error?.let { item { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) } }
         }
         Box(
             modifier = Modifier
@@ -4291,7 +4291,7 @@ private fun EatsOrderRow(order: EatsOrderDto, restaurant: ShoppingMerchantDto? =
     var showRoute by remember { mutableStateOf(false) }
     val canShowRoute = restaurant?.latitude != null && restaurant.longitude != null &&
         order.deliveryLatitude != null && order.deliveryLongitude != null
-    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -4380,7 +4380,7 @@ private fun MyEatsOrdersView(onReorder: (EatsOrderDto) -> Unit, reorderingId: St
         if (error != null) {
             ErrorCard(error!!, onRetry = ::load)
         } else if (orders == null) {
-            Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {}
+            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {}
         } else if (orders!!.isEmpty()) {
             Text("No orders yet.", color = TossSecondary, fontSize = 14.sp)
         } else {
@@ -4391,7 +4391,7 @@ private fun MyEatsOrdersView(onReorder: (EatsOrderDto) -> Unit, reorderingId: St
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(Tds.colors.danger)
+                                    .background(Ids.colors.danger)
                                     .clickable(enabled = cancellingId != o.id) { cancel(o.id) }
                                     .padding(horizontal = 16.dp, vertical = 10.dp),
                             ) {
@@ -4488,13 +4488,13 @@ private fun DeliverContent() {
     }
 
     if (!loadedRider) {
-        Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {}
+        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(120.dp)) {}
         return
     }
 
     val currentRider = rider
     if (currentRider == null) {
-        Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Deliver with Itunda", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Spacer(modifier = Modifier.height(6.dp))
@@ -4525,7 +4525,7 @@ private fun DeliverContent() {
                         }
                         .padding(horizontal = 24.dp, vertical = 14.dp),
                 ) { Text(if (registering) "Registering…" else "Become a rider", color = Color.White, fontWeight = FontWeight.Bold) }
-                error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp)) }
+                error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp)) }
             }
         }
         return
@@ -4534,9 +4534,9 @@ private fun DeliverContent() {
     val activeDeliveries = mine.orEmpty().filter { it.status != "DELIVERED" }
     val pastDeliveries = mine.orEmpty().filter { it.status == "DELIVERED" }
 
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap), contentPadding = PaddingValues(bottom = 20.dp)) {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap), contentPadding = PaddingValues(bottom = 20.dp)) {
         item {
-            Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
                 Row(modifier = Modifier.padding(18.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
                         Text(if (currentRider.available) "You're online" else "You're offline", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -4545,7 +4545,7 @@ private fun DeliverContent() {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(14.dp))
-                            .background(if (currentRider.available) Tds.colors.danger else TossBlue)
+                            .background(if (currentRider.available) Ids.colors.danger else TossBlue)
                             .clickable {
                                 coroutineScope.launch {
                                     try {
@@ -4561,7 +4561,7 @@ private fun DeliverContent() {
                 }
             }
         }
-        error?.let { item { Text(it, color = Tds.colors.danger, fontSize = 12.sp) } }
+        error?.let { item { Text(it, color = Ids.colors.danger, fontSize = 12.sp) } }
         if (activeDeliveries.isNotEmpty()) {
             item { Text("Your active deliveries", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             items(activeDeliveries, key = { it.id }) { o ->
@@ -4602,7 +4602,7 @@ private fun DeliverContent() {
         if (currentRider.available) {
             item { Text("Available deliveries", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             if (available == null) {
-                item { Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(100.dp)) {} }
+                item { Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(100.dp)) {} }
             } else if (available!!.isEmpty()) {
                 item { Text("No deliveries waiting right now.", color = TossSecondary, fontSize = 13.sp) }
             } else {

@@ -6,22 +6,22 @@ import androidx.compose.ui.graphics.Color
 
 /**
  * Theme-reactive semantic tokens -- the fix for a real bug found 2026-07-10:
- * TdsColors, TdsButton, and TdsListRow were all hardcoded constants that never
- * changed between light/dark, even though TdsTheme() built a real Material
+ * IdsColors, IdsButton, and IdsListRow were all hardcoded constants that never
+ * changed between light/dark, even though IdsTheme() built a real Material
  * ColorScheme nothing actually read. IDS.kt (core/designsystem/ids) had zero
  * dark-mode values at all. ItundaAppScreen.kt had a third, ad-hoc set of
  * inline dark-mode colors, hand-tuned but duplicated nowhere else.
  *
- * Light values are the real Toss light palette -- TdsColors' Gray900/Gray700/
+ * Light values are the real Toss light palette -- IdsColors' Gray900/Gray700/
  * Gray500/Gray200/Gray100 and the separately-ported IDS.Colors arrived at the
  * same hex values independently, which is why they're used directly below
  * rather than invented. Dark values are the real palette already hand-tuned
  * in ItundaAppScreen.kt (kept for continuity) plus a true-black background,
  * matching the actual Toss app's dark mode (reference: user-provided Toss
- * Bank screenshots, 2026-07-10) rather than TdsDarkColors' previous navy
+ * Bank screenshots, 2026-07-10) rather than IdsDarkColors' previous navy
  * background (#191F28), which didn't match anything.
  */
-data class TdsSemanticColors(
+data class IdsSemanticColors(
     val background: Color,
     val surface: Color,
     val surfaceSoft: Color,
@@ -44,7 +44,7 @@ data class TdsSemanticColors(
     val shadow: Color,
 )
 
-val TdsLightSemanticColors = TdsSemanticColors(
+val IdsLightSemanticColors = IdsSemanticColors(
     background = Color(0xFFF2F4F6),
     surface = Color(0xFFFFFFFF),
     surfaceSoft = Color(0xFFF2F4F6),
@@ -67,7 +67,7 @@ val TdsLightSemanticColors = TdsSemanticColors(
     shadow = Color(0x14000000),
 )
 
-val TdsDarkSemanticColors = TdsSemanticColors(
+val IdsDarkSemanticColors = IdsSemanticColors(
     background = Color(0xFF000000),
     surface = Color(0xFF17181D),
     surfaceSoft = Color(0xFF23242B),
@@ -90,14 +90,14 @@ val TdsDarkSemanticColors = TdsSemanticColors(
     shadow = Color(0x40000000),
 )
 
-val LocalTdsSemanticColors = staticCompositionLocalOf { TdsLightSemanticColors }
+val LocalIdsSemanticColors = staticCompositionLocalOf { IdsLightSemanticColors }
 
-/** Short, ergonomic access point: `Tds.colors.textPrimary`. */
-object Tds {
-    val colors: TdsSemanticColors
-        @Composable get() = LocalTdsSemanticColors.current
+/** Short, ergonomic access point: `Ids.colors.textPrimary`. */
+object Ids {
+    val colors: IdsSemanticColors
+        @Composable get() = LocalIdsSemanticColors.current
 
-    // Added 2026-07-11 -- see TdsLayout.kt's own header for the full reasoning.
-    val layout: TdsLayout
-        get() = TdsLayout
+    // Added 2026-07-11 -- see IdsLayout.kt's own header for the full reasoning.
+    val layout: IdsLayout
+        get() = IdsLayout
 }

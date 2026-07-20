@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.sp
  * Uses a clean Sans-Serif font with high legibility.
  * (Ideally mapped to Toss Product Sans or Pretendard if custom font added)
  */
-object TdsTypography {
+object IdsTypography {
     private val defaultFontFamily = FontFamily.SansSerif
 
     // Real TDS typography scale (2026-07-13), sourced by directly fetching Toss's own
@@ -18,7 +18,7 @@ object TdsTypography {
     // previously docs/ARCHITECTURE.md's backlog explicitly said TDS's non-color token
     // surface was never confirmed sourced from anywhere real; this closes that for
     // typography (spacing/elevation genuinely still aren't published, per that same
-    // note, and remain itunda's own tuned values -- see TdsLayout.kt). Named
+    // note, and remain itunda's own tuned values -- see IdsLayout.kt). Named
     // Typography1-7 to match the real TDS naming exactly, kept separate from the
     // Title1/Subtitle1/etc. names below rather than replacing their values outright --
     // those are itunda's own established semantic scale, already wired at real call

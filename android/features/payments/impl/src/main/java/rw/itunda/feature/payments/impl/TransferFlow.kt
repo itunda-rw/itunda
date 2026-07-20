@@ -26,7 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import rw.itunda.core.designsystem.theme.Tds
+import rw.itunda.core.designsystem.theme.Ids
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -62,14 +62,14 @@ fun RecipientEntryScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Tds.colors.background)
+            .background(Ids.colors.background)
     ) {
         FlowTopBar(onBack)
 
         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
             Text(
                 "Which account should\nwe send to?",
-                color = Tds.colors.textPrimary,
+                color = Ids.colors.textPrimary,
                 fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
                 lineHeight = 34.sp
@@ -80,7 +80,7 @@ fun RecipientEntryScreen(
             // is recognized and normalized client-side -- see MainViewModel.
             // normalizeRecipientIdentifier), not just an account number, now that
             // MainViewModel.sendTransfer calls the real rw.itunda.p2p.sendDirect.
-            Text("Enter phone or account number", color = Tds.colors.brand, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text("Enter phone or account number", color = Ids.colors.brand, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Spacer(modifier = Modifier.height(6.dp))
             // Fixed (2026-07-11): the only form input in this app had no accessible
             // label at all -- BasicTextField, unlike a View-based TextInputLayout,
@@ -92,14 +92,14 @@ fun RecipientEntryScreen(
             BasicTextField(
                 value = accountNumber,
                 onValueChange = { input -> accountNumber = input.filter { it.isDigit() }.take(16) },
-                textStyle = TextStyle(color = Tds.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.SemiBold),
-                cursorBrush = androidx.compose.ui.graphics.SolidColor(Tds.colors.brand),
+                textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.SemiBold),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(Ids.colors.brand),
                 modifier = Modifier
                     .fillMaxWidth()
                     .semantics { contentDescription = "Phone or account number, up to 16 digits" }
             )
             Spacer(modifier = Modifier.height(8.dp))
-            androidx.compose.material3.Divider(color = Tds.colors.brand, thickness = 2.dp)
+            androidx.compose.material3.Divider(color = Ids.colors.brand, thickness = 2.dp)
 
             Spacer(modifier = Modifier.height(28.dp))
 
@@ -112,7 +112,7 @@ fun RecipientEntryScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text("Select bank", color = Tds.colors.textTertiary, fontSize = 17.sp)
+                    Text("Select bank", color = Ids.colors.textTertiary, fontSize = 17.sp)
                     // Real Toss auto-detects the bank from the account number's real
                     // BIN registry -- itunda has no such registry to check against, so
                     // this doesn't claim to (2026-07-12 fix: the previous copy here,
@@ -123,11 +123,11 @@ fun RecipientEntryScreen(
                     // future release; for now this is just a label.
                     Text(
                         "Optional, for your own reference",
-                        color = Tds.colors.textTertiary,
+                        color = Ids.colors.textTertiary,
                         fontSize = 13.sp
                     )
                 }
-                Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Tds.colors.textTertiary)
+                Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = Ids.colors.textTertiary)
             }
 
             // Added 2026-07-11 against a real Toss reference screenshot found this
@@ -143,7 +143,7 @@ fun RecipientEntryScreen(
             // reference identity, not an arbitrary placeholder.
             if (accountNumber.isEmpty()) {
                 Spacer(modifier = Modifier.height(28.dp))
-                Text("Recent", color = Tds.colors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text("Recent", color = Ids.colors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(12.dp))
                 RecentRecipientRow(name = "TUYIZERE Eric", bankAndAccount = "BK - 201-452385-18-277") {
                     accountNumber = "2014523851827".take(16)
@@ -184,7 +184,7 @@ fun TransferAmountScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Tds.colors.background)
+            .background(Ids.colors.background)
     ) {
         FlowTopBar(onBack)
 
@@ -200,7 +200,7 @@ fun TransferAmountScreen(
                     .padding(start = 21.dp)
                     .width(2.dp)
                     .height(20.dp)
-                    .background(Tds.colors.divider)
+                    .background(Ids.colors.divider)
             )
             Spacer(modifier = Modifier.height(2.dp))
             TransferPartyRow(
@@ -220,13 +220,13 @@ fun TransferAmountScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text("How much to send?", color = Tds.colors.textSecondary, fontSize = 16.sp)
+            Text("How much to send?", color = Ids.colors.textSecondary, fontSize = 16.sp)
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = if (digits.isEmpty()) "0 RWF" else "${rwfFormatter.format(amount)} RWF",
                 fontSize = if (digits.isEmpty()) 32.sp else 42.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (digits.isEmpty()) Tds.colors.textTertiary else Tds.colors.textPrimary,
+                color = if (digits.isEmpty()) Ids.colors.textTertiary else Ids.colors.textPrimary,
                 textAlign = TextAlign.Center
             )
         }
@@ -242,7 +242,7 @@ fun TransferAmountScreen(
 
         if (isSubmitting) {
             Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
-                androidx.compose.material3.CircularProgressIndicator(color = Tds.colors.brand)
+                androidx.compose.material3.CircularProgressIndicator(color = Ids.colors.brand)
             }
         } else {
             FlowNextBar(enabled = digits.isNotEmpty() && amount > 0, label = "Send") { onConfirm(amount) }
@@ -269,7 +269,7 @@ internal fun FlowTopBar(onBack: () -> Unit) {
                 .clickable(onClick = onBack),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Back", modifier = Modifier.size(18.dp), tint = Tds.colors.textPrimary)
+            Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Back", modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
         }
     }
 }
@@ -290,15 +290,15 @@ private fun RecentRecipientRow(name: String, bankAndAccount: String, onClick: ()
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier.size(44.dp).clip(CircleShape).background(Tds.colors.chip),
+            modifier = Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.chip),
             contentAlignment = Alignment.Center
         ) {
-            Text(name.take(1), color = Tds.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            Text(name.take(1), color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(modifier = Modifier.width(14.dp))
         Column {
-            Text(name, color = Tds.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Text(bankAndAccount, color = Tds.colors.textTertiary, fontSize = 13.sp)
+            Text(name, color = Ids.colors.textPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(bankAndAccount, color = Ids.colors.textTertiary, fontSize = 13.sp)
         }
     }
 }
@@ -311,14 +311,14 @@ internal fun TransferPartyRow(label: String, sublabel: String, icon: androidx.co
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
-            Text(label, color = Tds.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-            Text(sublabel, color = Tds.colors.textTertiary, fontSize = 13.sp)
+            Text(label, color = Ids.colors.textPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+            Text(sublabel, color = Ids.colors.textTertiary, fontSize = 13.sp)
         }
         Box(
-            modifier = Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(Tds.colors.chip),
+            modifier = Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.chip),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = Tds.colors.textPrimary)
+            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = Ids.colors.textPrimary)
         }
     }
 }
@@ -328,11 +328,11 @@ internal fun QuickAmountChip(label: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(Tds.colors.chip)
+            .background(Ids.colors.chip)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {
-        Text(label, color = Tds.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text(label, color = Ids.colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -343,14 +343,14 @@ internal fun FlowNextBar(enabled: Boolean, label: String, onClick: () -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(if (enabled) Tds.colors.brand else Tds.colors.chip)
+            .background(if (enabled) Ids.colors.brand else Ids.colors.chip)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(vertical = 16.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             label,
-            color = if (enabled) Color.White else Tds.colors.textTertiary,
+            color = if (enabled) Color.White else Ids.colors.textTertiary,
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold
         )
@@ -381,9 +381,9 @@ internal fun NumericKeypad(onDigit: (String) -> Unit, onDelete: () -> Unit) {
                         contentAlignment = Alignment.Center
                     ) {
                         if (key == "DEL") {
-                            Text("⌫", fontSize = 22.sp, color = Tds.colors.textPrimary)
+                            Text("⌫", fontSize = 22.sp, color = Ids.colors.textPrimary)
                         } else {
-                            Text(key, fontSize = 24.sp, fontWeight = FontWeight.Medium, color = Tds.colors.textPrimary)
+                            Text(key, fontSize = 24.sp, fontWeight = FontWeight.Medium, color = Ids.colors.textPrimary)
                         }
                     }
                 }

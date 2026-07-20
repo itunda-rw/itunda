@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
-import rw.itunda.core.designsystem.theme.Tds
+import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.app.network.NetworkClient
 import rw.itunda.app.network.PortfolioValuePointDto
 import rw.itunda.app.network.StockDto
@@ -99,7 +99,7 @@ fun InvestScreen(onBack: () -> Unit) {
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = Tds.layout.screenHorizontal, vertical = 8.dp)
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp)
                 .clip(RoundedCornerShape(10.dp)).background(TossCardSoft).padding(4.dp),
         ) {
             listOf(InvestMode.MARKET to "Market", InvestMode.PORTFOLIO to "Portfolio", InvestMode.WATCHLIST to "Watchlist").forEach { (m, label) ->
@@ -117,7 +117,7 @@ fun InvestScreen(onBack: () -> Unit) {
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = Tds.layout.screenHorizontal, vertical = 8.dp),
+            contentPadding = PaddingValues(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             when (mode) {
@@ -152,7 +152,7 @@ private fun MarketContent(watchlist: List<StockDto>?, onOpen: (StockDto) -> Unit
 
     when {
         error != null -> ErrorCardInvest(error!!, onRetry = ::load)
-        stocks == null -> Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(220.dp)) {}
+        stocks == null -> Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(220.dp)) {}
         else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             stocks!!.forEach { StockRow(it, isWatched = watchlist?.any { w -> w.id == it.id } == true, onClick = { onOpen(it) }) }
         }
@@ -162,7 +162,7 @@ private fun MarketContent(watchlist: List<StockDto>?, onOpen: (StockDto) -> Unit
 @Composable
 private fun WatchlistContent(watchlist: List<StockDto>?, onOpen: (StockDto) -> Unit) {
     when {
-        watchlist == null -> Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(220.dp)) {}
+        watchlist == null -> Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(220.dp)) {}
         watchlist.isEmpty() -> Text("No stocks watched yet. Open a stock in the Market tab and tap the star to follow it.", color = TossSecondary, fontSize = 14.sp)
         else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             watchlist.forEach { StockRow(it, isWatched = true, onClick = { onOpen(it) }) }
@@ -174,7 +174,7 @@ private fun WatchlistContent(watchlist: List<StockDto>?, onOpen: (StockDto) -> U
 private fun StockRow(stock: StockDto, isWatched: Boolean, onClick: () -> Unit) {
     val positive = stock.changePercent >= 0
     Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Tds.layout.cardCornerRadius))
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
             .background(TossCard).clickable(onClick = onClick).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -192,12 +192,12 @@ private fun StockRow(stock: StockDto, isWatched: Boolean, onClick: () -> Unit) {
                 Icon(
                     if (positive) Icons.Outlined.TrendingUp else Icons.Outlined.TrendingDown,
                     contentDescription = null,
-                    tint = if (positive) Tds.colors.success else Tds.colors.danger,
+                    tint = if (positive) Ids.colors.success else Ids.colors.danger,
                     modifier = Modifier.size(12.dp),
                 )
                 Text(
                     "${if (positive) "+" else ""}${"%.2f".format(stock.changePercent)}%",
-                    color = if (positive) Tds.colors.success else Tds.colors.danger,
+                    color = if (positive) Ids.colors.success else Ids.colors.danger,
                     fontSize = 12.sp, fontWeight = FontWeight.Bold,
                 )
             }
@@ -231,18 +231,18 @@ private fun PortfolioContent() {
 
     when {
         error != null -> ErrorCardInvest(error!!, onRetry = ::load)
-        portfolio == null -> Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(220.dp)) {}
+        portfolio == null -> Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(220.dp)) {}
         else -> {
             val p = portfolio!!
             val positive = p.totalReturn >= 0
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text("Total value", color = TossSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                         Text("${formatMoney(p.totalValue)} RWF", color = TossText, fontWeight = FontWeight.Bold, fontSize = 26.sp)
                         Text(
                             "${if (positive) "+" else ""}${formatMoney(p.totalReturn)} RWF (${if (positive) "+" else ""}${"%.2f".format(p.totalReturnPercent)}%)",
-                            color = if (positive) Tds.colors.success else Tds.colors.danger, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                            color = if (positive) Ids.colors.success else Ids.colors.danger, fontSize = 14.sp, fontWeight = FontWeight.Bold,
                         )
                         if (!history.isNullOrEmpty()) {
                             Spacer(modifier = Modifier.height(12.dp))
@@ -268,7 +268,7 @@ private fun PortfolioContent() {
 @Composable
 private fun HoldingRow(holding: StockHoldingDto) {
     val positive = holding.`return` >= 0
-    Card(shape = RoundedCornerShape(Tds.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(holding.symbol, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -278,7 +278,7 @@ private fun HoldingRow(holding: StockHoldingDto) {
                 Text("${holding.shares} shares @ ${formatMoney(holding.avgPrice)} avg", color = TossSecondary, fontSize = 12.sp)
                 Text(
                     "${if (positive) "+" else ""}${"%.2f".format(holding.`return`)}%",
-                    color = if (positive) Tds.colors.success else Tds.colors.danger, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                    color = if (positive) Ids.colors.success else Ids.colors.danger, fontSize = 12.sp, fontWeight = FontWeight.Bold,
                 )
             }
         }
@@ -343,7 +343,7 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
 
     val positive = stock.changePercent >= 0
 
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = 8.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("${stock.symbol} · ${stock.marketCap}", color = TossSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             Icon(
@@ -358,11 +358,11 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 if (positive) Icons.Outlined.TrendingUp else Icons.Outlined.TrendingDown,
-                contentDescription = null, tint = if (positive) Tds.colors.success else Tds.colors.danger, modifier = Modifier.size(16.dp),
+                contentDescription = null, tint = if (positive) Ids.colors.success else Ids.colors.danger, modifier = Modifier.size(16.dp),
             )
             Text(
                 "${if (positive) "+" else ""}${formatMoney(stock.change)} (${if (positive) "+" else ""}${"%.2f".format(stock.changePercent)}%) today",
-                color = if (positive) Tds.colors.success else Tds.colors.danger, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                color = if (positive) Ids.colors.success else Ids.colors.danger, fontSize = 14.sp, fontWeight = FontWeight.Bold,
             )
         }
         Spacer(modifier = Modifier.height(12.dp))
@@ -382,7 +382,7 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
                 val selected = buyMode == isBuy
                 Box(
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                        .background(if (selected) (if (isBuy) TossBlue else Tds.colors.danger) else Color.Transparent)
+                        .background(if (selected) (if (isBuy) TossBlue else Ids.colors.danger) else Color.Transparent)
                         .clickable { buyMode = isBuy }.padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -399,14 +399,14 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
             Spacer(modifier = Modifier.width(10.dp))
             Box(
                 modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                    .background(if (buyMode) TossBlue else Tds.colors.danger)
+                    .background(if (buyMode) TossBlue else Ids.colors.danger)
                     .clickable(enabled = !submitting) { trade() }
                     .padding(horizontal = 20.dp, vertical = 14.dp),
             ) {
                 Text(if (submitting) "Working…" else if (buyMode) "Buy" else "Sell", color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
-        error?.let { Text(it, color = Tds.colors.danger, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp)) }
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp)) }
     }
 }
 
@@ -427,7 +427,7 @@ private fun Sparkline(values: List<Double>, positive: Boolean) {
                     .weight(1f)
                     .padding(horizontal = 1.dp)
                     .fillMaxHeight(heightFraction)
-                    .background(if (positive) Tds.colors.success else Tds.colors.danger, RoundedCornerShape(2.dp)),
+                    .background(if (positive) Ids.colors.success else Ids.colors.danger, RoundedCornerShape(2.dp)),
             )
         }
     }
@@ -436,12 +436,12 @@ private fun Sparkline(values: List<Double>, positive: Boolean) {
 @Composable
 private fun ErrorCardInvest(message: String, onRetry: () -> Unit) {
     Card(
-        shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = TossCard),
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text(message, color = Tds.colors.danger, fontSize = 14.sp)
+            Text(message, color = Ids.colors.danger, fontSize = 14.sp)
             Spacer(modifier = Modifier.height(10.dp))
             Text("Retry", color = TossBlue, fontWeight = FontWeight.SemiBold, modifier = Modifier.clickable(onClick = onRetry))
         }

@@ -7,11 +7,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import rw.itunda.core.designsystem.theme.Tds
-import rw.itunda.core.designsystem.theme.TdsTypography
+import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsTypography
 
 @Composable
-fun TdsListRow(
+fun IdsListRow(
     title: String,
     subtitle: String? = null,
     rightText: String? = null,
@@ -27,23 +27,23 @@ fun TdsListRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = TdsTypography.Subtitle1,
-                color = Tds.colors.textPrimary
+                style = IdsTypography.Subtitle1,
+                color = Ids.colors.textPrimary
             )
             if (subtitle != null) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = subtitle,
-                    style = TdsTypography.Body2,
-                    color = Tds.colors.textSecondary
+                    style = IdsTypography.Body2,
+                    color = Ids.colors.textSecondary
                 )
             }
         }
         if (rightText != null) {
             Text(
                 text = rightText,
-                style = TdsTypography.Subtitle1,
-                color = Tds.colors.textPrimary
+                style = IdsTypography.Subtitle1,
+                color = Ids.colors.textPrimary
             )
         }
     }

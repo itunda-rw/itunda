@@ -46,7 +46,7 @@ import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
 import retrofit2.HttpException
 import rw.itunda.app.network.NetworkClient
-import rw.itunda.core.designsystem.theme.Tds
+import rw.itunda.core.designsystem.theme.Ids
 
 private const val ROUTE_MINI_TILES_URL = "http://192.168.252.3:8090/rwanda/{z}/{x}/{y}.mvt"
 private val ROUTE_MINI_STYLE_JSON = """
@@ -172,7 +172,7 @@ fun RouteMiniMap(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double,
     Column {
         AndroidView(factory = { mapView }, modifier = Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(12.dp)))
         if (loading) Text("Finding the real road route…", fontSize = 12.sp, color = TossSecondary)
-        error?.let { Text(it, fontSize = 12.sp, color = Tds.colors.danger) }
+        error?.let { Text(it, fontSize = 12.sp, color = Ids.colors.danger) }
         val km = distanceKm
         val min = durationMinutes
         if (km != null && min != null) {

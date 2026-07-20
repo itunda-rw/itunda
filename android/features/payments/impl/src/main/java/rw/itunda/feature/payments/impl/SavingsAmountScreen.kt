@@ -14,7 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import rw.itunda.core.designsystem.theme.Tds
+import rw.itunda.core.designsystem.theme.Ids
 
 /**
  * Real savings deposit/withdraw amount screens, matching the two real Toss
@@ -49,7 +49,7 @@ fun SavingsAmountScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Tds.colors.background)
+            .background(Ids.colors.background)
     ) {
         FlowTopBar(onBack)
 
@@ -65,7 +65,7 @@ fun SavingsAmountScreen(
                     .padding(start = 21.dp)
                     .width(2.dp)
                     .height(20.dp)
-                    .background(Tds.colors.divider)
+                    .background(Ids.colors.divider)
             )
             Spacer(modifier = Modifier.height(2.dp))
             TransferPartyRow(
@@ -87,7 +87,7 @@ fun SavingsAmountScreen(
         ) {
             Text(
                 if (mode == SavingsAmountMode.deposit) "How much to save?" else "Claim your interest",
-                color = Tds.colors.textSecondary,
+                color = Ids.colors.textSecondary,
                 fontSize = 16.sp
             )
             Spacer(modifier = Modifier.height(16.dp))
@@ -95,7 +95,7 @@ fun SavingsAmountScreen(
                 text = if (digits.isEmpty()) "0 RWF" else "${rwfFormatter.format(amount)} RWF",
                 fontSize = if (digits.isEmpty()) 32.sp else 42.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (digits.isEmpty()) Tds.colors.textTertiary else Tds.colors.textPrimary,
+                color = if (digits.isEmpty()) Ids.colors.textTertiary else Ids.colors.textPrimary,
                 textAlign = TextAlign.Center
             )
         }
@@ -113,7 +113,7 @@ fun SavingsAmountScreen(
 
         if (isSubmitting) {
             Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
-                androidx.compose.material3.CircularProgressIndicator(color = Tds.colors.brand)
+                androidx.compose.material3.CircularProgressIndicator(color = Ids.colors.brand)
             }
         } else if (mode == SavingsAmountMode.claimInterest) {
             FlowNextBar(enabled = true, label = "Claim") { onConfirm(0L) }

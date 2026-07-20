@@ -105,15 +105,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-import rw.itunda.core.designsystem.components.TdsButton
-import rw.itunda.core.designsystem.components.TdsButtonSize
-import rw.itunda.core.designsystem.components.TdsButtonVariant
-import rw.itunda.core.designsystem.components.TdsIconButton
-import rw.itunda.core.designsystem.theme.TdsTheme
-import rw.itunda.core.designsystem.theme.Tds
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonSize
+import rw.itunda.core.designsystem.components.IdsButtonVariant
+import rw.itunda.core.designsystem.components.IdsIconButton
+import rw.itunda.core.designsystem.theme.IdsTheme
+import rw.itunda.core.designsystem.theme.Ids
 
 // Aliased to the real theme-reactive design-system tokens (see
-// core/designsystem/theme/TdsSemanticColors.kt) rather than the ad-hoc,
+// core/designsystem/theme/IdsSemanticColors.kt) rather than the ad-hoc,
 // half dark-mode-aware set this file used to hand-roll -- kept as thin
 // aliases (not a full rename) since this file's Composables all reference
 // these names throughout; the fix was making the values real, not renaming
@@ -122,23 +122,23 @@ import rw.itunda.core.designsystem.theme.Tds
 // Messaging/Marketplace/Commerce tabs, 2026-07-18) shares this exact same visual
 // language rather than hand-rolling a second palette.
 internal val TossBlue: Color
-    @Composable get() = Tds.colors.brand
+    @Composable get() = Ids.colors.brand
 private val TossBackground: Color
-    @Composable get() = Tds.colors.background
+    @Composable get() = Ids.colors.background
 internal val TossCard: Color
-    @Composable get() = Tds.colors.surface
+    @Composable get() = Ids.colors.surface
 internal val TossCardSoft: Color
-    @Composable get() = Tds.colors.surfaceSoft
+    @Composable get() = Ids.colors.surfaceSoft
 internal val TossText: Color
-    @Composable get() = Tds.colors.textPrimary
+    @Composable get() = Ids.colors.textPrimary
 internal val TossSecondary: Color
-    @Composable get() = Tds.colors.textSecondary
+    @Composable get() = Ids.colors.textSecondary
 internal val TossTertiary: Color
-    @Composable get() = Tds.colors.textTertiary
+    @Composable get() = Ids.colors.textTertiary
 internal val TossLine: Color
-    @Composable get() = Tds.colors.divider
+    @Composable get() = Ids.colors.divider
 private val TossChip: Color
-    @Composable get() = Tds.colors.chip
+    @Composable get() = Ids.colors.chip
 
 // Fixed vivid accent colors for the small product-icon badges in
 // FlatSection rows (갈아타기/서비스/외화/목돈굴리기/연금/대출 등) -- these are
@@ -194,7 +194,7 @@ private sealed class SavingsFlowStep : java.io.Serializable {
 
 @Composable
 fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.compose.viewModel()) {
-    TdsTheme {
+    IdsTheme {
         var selectedTab by rememberSaveable { mutableStateOf(TossTab.Home) }
         var transferStep by rememberSaveable { mutableStateOf<TransferStep?>(null) }
         var savingsFlowStep by rememberSaveable { mutableStateOf<SavingsFlowStep?>(null) }
@@ -284,13 +284,13 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                     biometricError?.let { message ->
                         androidx.compose.material3.Text(
                             text = message,
-                            color = Tds.colors.danger,
+                            color = Ids.colors.danger,
                             modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
                         )
                     }
                 }
             }
-            return@TdsTheme
+            return@IdsTheme
         }
 
         val savingsStep = savingsFlowStep
@@ -368,11 +368,11 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
             savingsError?.let { message ->
                 androidx.compose.material3.Text(
                     text = message,
-                    color = Tds.colors.danger,
+                    color = Ids.colors.danger,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
                 )
             }
-            return@TdsTheme
+            return@IdsTheme
         }
 
         if (showTransactionHistory) {
@@ -392,7 +392,7 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                 },
                 onBack = { showTransactionHistory = false },
             )
-            return@TdsTheme
+            return@IdsTheme
         }
 
         if (showSettings) {
@@ -402,7 +402,7 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                 onBack = { showSettings = false },
                 onLogout = { coroutineScope.launch { rw.itunda.app.network.SessionManager.logout() } },
             )
-            return@TdsTheme
+            return@IdsTheme
         }
 
         // Benefits/Pay folded into My as real full-screen entry points (2026-07-18)
@@ -412,21 +412,21 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
             Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) { BenefitsTab(onBack = { showBenefits = false }) }
             }
-            return@TdsTheme
+            return@IdsTheme
         }
         if (showPay) {
             BackHandler { showPay = false }
             Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
                 Box(modifier = Modifier.fillMaxSize().padding(padding)) { PayTab(onBack = { showPay = false }) }
             }
-            return@TdsTheme
+            return@IdsTheme
         }
         // Real self-hosted Rwanda map (2026-07-19) -- same Quick-links full-screen
         // pattern as Pay/Benefits above, since the 5-tab bottom nav has no free slot.
         if (showMap) {
             BackHandler { showMap = false }
             MapScreen(onBack = { showMap = false })
-            return@TdsTheme
+            return@IdsTheme
         }
         // Real Invest/Stocks screen (2026-07-20) -- same Quick-links full-screen
         // pattern as Pay/Benefits/Map above; this feature never had ANY mobile UI
@@ -434,7 +434,7 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
         if (showInvest) {
             BackHandler { showInvest = false }
             InvestScreen(onBack = { showInvest = false })
-            return@TdsTheme
+            return@IdsTheme
         }
 
         Scaffold(
@@ -546,11 +546,11 @@ private fun HomeTab(
         modifier = Modifier.fillMaxSize(),
         // top/bottom kept as their own literal values, not forced into
         // screenVertical/sectionGap -- they're genuinely different from the other
-        // 4 tabs' uniform vertical padding, and TdsLayout.kt's own header explains
+        // 4 tabs' uniform vertical padding, and IdsLayout.kt's own header explains
         // why this pass doesn't force every value into a token that doesn't
         // actually fit.
-        contentPadding = PaddingValues(start = Tds.layout.screenHorizontal, top = 14.dp, end = Tds.layout.screenHorizontal, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)
+        contentPadding = PaddingValues(start = Ids.layout.screenHorizontal, top = 14.dp, end = Ids.layout.screenHorizontal, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
         item { HomeTopBar() }
         item { WalletHeroCard(balanceText, onSend) }
@@ -644,8 +644,8 @@ private fun HomeTopBar() {
         ) {
             Text("Search", color = TossSecondary, fontSize = 15.sp)
         }
-        TdsIconButton(Icons.Outlined.QrCodeScanner, contentDescription = "Scan QR code", onClick = {})
-        TdsIconButton(Icons.Outlined.Notifications, contentDescription = "Notifications", onClick = {})
+        IdsIconButton(Icons.Outlined.QrCodeScanner, contentDescription = "Scan QR code", onClick = {})
+        IdsIconButton(Icons.Outlined.Notifications, contentDescription = "Notifications", onClick = {})
     }
 }
 
@@ -654,7 +654,7 @@ private fun WalletHeroCard(balanceText: String, onSend: () -> Unit) {
     Card(
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = TossCard),
-        elevation = CardDefaults.cardElevation(defaultElevation = Tds.layout.cardElevation),
+        elevation = CardDefaults.cardElevation(defaultElevation = Ids.layout.cardElevation),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -664,8 +664,8 @@ private fun WalletHeroCard(balanceText: String, onSend: () -> Unit) {
             Text("Wallet", fontSize = 14.sp, color = TossSecondary)
             Text(balanceText, fontSize = 34.sp, color = TossText, fontWeight = FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TdsButton("Add money", onClick = {}, modifier = Modifier.weight(1f), variant = TdsButtonVariant.Tinted, size = TdsButtonSize.Medium)
-                TdsButton("Send", onClick = onSend, modifier = Modifier.weight(1f), variant = TdsButtonVariant.Filled, size = TdsButtonSize.Medium)
+                IdsButton("Add money", onClick = {}, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium)
+                IdsButton("Send", onClick = onSend, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Filled, size = IdsButtonSize.Medium)
             }
             Divider(color = TossLine)
             WalletMiniRow("RWF 613", "Bravo Korea parking", "Send")
@@ -704,7 +704,7 @@ private fun WalletMiniRow(amount: String, subtitle: String, action: String) {
             Text(amount, color = TossText, fontWeight = FontWeight.Bold, fontSize = 18.sp)
             Text(subtitle, color = TossSecondary, fontSize = 14.sp)
         }
-        TdsButton(action, onClick = {}, variant = TdsButtonVariant.Tinted, size = TdsButtonSize.Small)
+        IdsButton(action, onClick = {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
     }
 }
 
@@ -725,7 +725,7 @@ private fun ShellSection(title: String, rows: List<ShellRow>) {
     Card(
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = TossCard),
-        elevation = CardDefaults.cardElevation(defaultElevation = Tds.layout.cardElevation),
+        elevation = CardDefaults.cardElevation(defaultElevation = Ids.layout.cardElevation),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
@@ -769,7 +769,7 @@ private fun ShellSection(title: String, rows: List<ShellRow>) {
                     if (row.action == ">") {
                         Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TossTertiary)
                     } else if (row.action.isNotBlank()) {
-                        TdsButton(row.action, onClick = {}, variant = TdsButtonVariant.Tinted, size = TdsButtonSize.Small)
+                        IdsButton(row.action, onClick = {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
                     }
                 }
                 if (index != rows.lastIndex) {
@@ -785,8 +785,8 @@ private fun BenefitsTab(onBack: () -> Unit = {}) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
-        verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)
+            .padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
+        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
         item { BackTopBar("Benefits", onBack) }
         item { PromoBannerCard() }
@@ -799,8 +799,8 @@ private fun BenefitsTab(onBack: () -> Unit = {}) {
 @Composable
 private fun PayTab(onBack: () -> Unit = {}) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
-        verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)
+        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
+        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
         item { BackTopBar("Pay", onBack) }
         item { MapPlaceholder() }
@@ -827,8 +827,8 @@ private fun AllTab(
     var partnerLoadError by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     var loadingPartnerAppId by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = Tds.layout.screenHorizontal, vertical = Tds.layout.screenVertical),
-        verticalArrangement = Arrangement.spacedBy(Tds.layout.cardGap)
+        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
+        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
         // Real Settings screen (2026-07-12) -- previously this gear icon logged out
         // immediately with no confirmation screen at all; now it opens a real
@@ -1140,9 +1140,9 @@ internal fun PlainTopBar(title: String) {
 @Composable
 private fun PromoBannerCard() {
     Card(
-        shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF5D2FE6)),
-        elevation = CardDefaults.cardElevation(defaultElevation = Tds.layout.cardElevation),
+        elevation = CardDefaults.cardElevation(defaultElevation = Ids.layout.cardElevation),
     ) {
         Box(modifier = Modifier.fillMaxWidth().height(220.dp).padding(20.dp)) {
             Column {
@@ -1182,9 +1182,9 @@ private fun PointPill(label: String) {
 @Composable
 private fun BenefitsVisitCard() {
     Card(
-        shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = TossCard),
-        elevation = CardDefaults.cardElevation(defaultElevation = Tds.layout.cardElevation),
+        elevation = CardDefaults.cardElevation(defaultElevation = Ids.layout.cardElevation),
     ) {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Text("Visit 3 of 4 services and earn points", color = TossText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
@@ -1200,7 +1200,7 @@ private fun BenefitsVisitCard() {
                     }
                     Spacer(modifier = Modifier.width(14.dp))
                     Text(title, modifier = Modifier.weight(1f), color = TossText, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                    TdsButton("Visit", onClick = {}, variant = TdsButtonVariant.Tinted, size = TdsButtonSize.Small)
+                    IdsButton("Visit", onClick = {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
                 }
             }
         }
@@ -1210,9 +1210,9 @@ private fun BenefitsVisitCard() {
 @Composable
 private fun CashbackChanceCard() {
     Card(
-        shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = TossCard),
-        elevation = CardDefaults.cardElevation(defaultElevation = Tds.layout.cardElevation),
+        elevation = CardDefaults.cardElevation(defaultElevation = Ids.layout.cardElevation),
     ) {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(
@@ -1234,7 +1234,7 @@ private fun CashbackChanceCard() {
                     Text("RWF 5,000", color = TossText, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                     Text("BK account -> TUYIZERE Eric", color = TossSecondary)
                 }
-                TdsButton("Get back", onClick = {}, variant = TdsButtonVariant.Tinted, size = TdsButtonSize.Small)
+                IdsButton("Get back", onClick = {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
             }
         }
     }
@@ -1265,7 +1265,7 @@ internal fun BackTopBar(title: String, onBack: () -> Unit) {
     ) {
         Box(
             modifier = Modifier
-                .size(Tds.layout.minTouchTarget)
+                .size(Ids.layout.minTouchTarget)
                 .clip(CircleShape)
                 .clickable(onClick = onBack),
             contentAlignment = Alignment.Center,
@@ -1279,9 +1279,9 @@ internal fun BackTopBar(title: String, onBack: () -> Unit) {
 @Composable
 private fun MapPlaceholder() {
     Card(
-        shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFEFE4D7)),
-        elevation = CardDefaults.cardElevation(defaultElevation = Tds.layout.cardElevation),
+        elevation = CardDefaults.cardElevation(defaultElevation = Ids.layout.cardElevation),
     ) {
         Box(modifier = Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.BottomCenter) {
             Box(modifier = Modifier.padding(bottom = 18.dp).clip(RoundedCornerShape(20.dp)).background(Color(0xFF202228)).padding(horizontal = 20.dp, vertical = 10.dp)) {
@@ -1294,9 +1294,9 @@ private fun MapPlaceholder() {
 @Composable
 private fun PayFeatureCard() {
     Card(
-        shape = RoundedCornerShape(Tds.layout.cardCornerRadius),
+        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = TossCard),
-        elevation = CardDefaults.cardElevation(defaultElevation = Tds.layout.cardElevation),
+        elevation = CardDefaults.cardElevation(defaultElevation = Ids.layout.cardElevation),
     ) {
         Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1308,7 +1308,7 @@ private fun PayFeatureCard() {
                     Text("itunda pay", color = TossSecondary)
                     Text("30% rewards at partner stores", color = TossBlue, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 }
-                TdsButton("Find store", onClick = {}, variant = TdsButtonVariant.Tinted, size = TdsButtonSize.Small)
+                IdsButton("Find store", onClick = {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
             }
             Box(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(TossCardSoft).padding(18.dp)) {
                 Text("Apply pay money and points automatically", color = TossSecondary, fontSize = 16.sp)
@@ -1322,7 +1322,7 @@ private fun PayFeatureCard() {
                     Text("How to pay online", color = TossText, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     Text("Use Itunda Pay on e-commerce and partner stores", color = TossSecondary)
                 }
-                TdsButton("See", onClick = {}, variant = TdsButtonVariant.Tinted, size = TdsButtonSize.Small)
+                IdsButton("See", onClick = {}, variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Small)
             }
         }
     }
@@ -1338,7 +1338,7 @@ private fun AllTopBar(onOpenSettings: () -> Unit = {}) {
         Text("TUYIZERE ERIC", color = TossText, fontWeight = FontWeight.Bold, fontSize = 26.sp)
         // Real Settings screen (2026-07-12, see SettingsScreen.kt) -- previously
         // wired directly to logout with no screen behind it at all.
-        TdsIconButton(Icons.Outlined.Settings, contentDescription = "Settings", onClick = onOpenSettings)
+        IdsIconButton(Icons.Outlined.Settings, contentDescription = "Settings", onClick = onOpenSettings)
     }
 }
 

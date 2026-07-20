@@ -6,8 +6,8 @@ import androidx.compose.ui.unit.dp
  * Real spacing/shape token set (2026-07-11) -- closes part of the gap
  * `docs/ARCHITECTURE.md`'s backlog names: "the rest of the token surface (spacing
  * scale, elevation, component shapes) matching the real documented TDS, not just
- * colors." Android's design system had `TdsColors`/`TdsSemanticColors`/
- * `TdsTypography`, but no spacing/shape layer at all -- every screen (mainly
+ * colors." Android's design system had `IdsColors`/`IdsSemanticColors`/
+ * `IdsTypography`, but no spacing/shape layer at all -- every screen (mainly
  * `ItundaAppScreen.kt`) used raw `.dp` literals directly, unlike iOS's
  * `IDS.Layout`, which this file mirrors the naming convention of for cross-platform
  * consistency.
@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
  * sweep of every remaining magic number in `ItundaAppScreen.kt` is real, separate,
  * larger follow-up scope, not done here.
  */
-object TdsLayout {
+object IdsLayout {
     val screenHorizontal = 20.dp
     val screenVertical = 16.dp
     val sectionGap = 24.dp
@@ -39,7 +39,7 @@ object TdsLayout {
     val iconCornerRadius = 12.dp
 
     // Real fix (2026-07-13) for the other half of the "elevation" gap this file's
-    // own header comment already named as open: Tds.colors.shadow existed but had
+    // own header comment already named as open: Ids.colors.shadow existed but had
     // zero call sites anywhere in the Android app (confirmed via a repo-wide
     // design-token audit) -- every Card(...) in ItundaAppScreen.kt rendered
     // perfectly flat, unlike iOS's BankView.swift, which does apply a real shadow

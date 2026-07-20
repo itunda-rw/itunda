@@ -27,10 +27,10 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import rw.itunda.app.network.AuthResult
 import rw.itunda.app.network.SessionManager
-import rw.itunda.core.designsystem.components.TdsButton
-import rw.itunda.core.designsystem.theme.Tds
-import rw.itunda.core.designsystem.theme.TdsTheme
-import rw.itunda.core.designsystem.theme.TdsTypography
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsTheme
+import rw.itunda.core.designsystem.theme.IdsTypography
 
 /**
  * The login/register screen this app never had (see SessionManager.kt) -- gates
@@ -40,7 +40,7 @@ import rw.itunda.core.designsystem.theme.TdsTypography
  */
 @Composable
 fun LoginScreen(onLoggedIn: () -> Unit) {
-    TdsTheme {
+    IdsTheme {
         var isRegisterMode by remember { mutableStateOf(false) }
         var phoneNumber by remember { mutableStateOf("") }
         var password by remember { mutableStateOf("") }
@@ -74,16 +74,16 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Tds.colors.background)
+                .background(Ids.colors.background)
                 .padding(horizontal = 24.dp),
             verticalArrangement = Arrangement.Center,
         ) {
-            Text(text = "itunda", style = TdsTypography.Title1, color = Tds.colors.textPrimary)
+            Text(text = "itunda", style = IdsTypography.Title1, color = Ids.colors.textPrimary)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = if (isRegisterMode) "Create your account" else "Log in to continue",
-                style = TdsTypography.Body1,
-                color = Tds.colors.textSecondary,
+                style = IdsTypography.Body1,
+                color = Ids.colors.textSecondary,
             )
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -140,7 +140,7 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
 
             errorMessage?.let {
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(text = it, style = TdsTypography.Body2, color = Tds.colors.danger)
+                Text(text = it, style = IdsTypography.Body2, color = Ids.colors.danger)
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -148,10 +148,10 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
             if (isSubmitting) {
                 CircularProgressIndicator(
                     modifier = Modifier.padding(16.dp),
-                    color = Tds.colors.brand,
+                    color = Ids.colors.brand,
                 )
             } else {
-                TdsButton(
+                IdsButton(
                     text = if (isRegisterMode) "Create account" else "Log in",
                     onClick = { submit() },
                     enabled = phoneNumber.isNotBlank() && password.isNotBlank() &&
@@ -163,8 +163,8 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
             TextButton(onClick = { isRegisterMode = !isRegisterMode; errorMessage = null }) {
                 Text(
                     text = if (isRegisterMode) "Already have an account? Log in" else "New to itunda? Create an account",
-                    style = TdsTypography.Body2,
-                    color = Tds.colors.textBrand,
+                    style = IdsTypography.Body2,
+                    color = Ids.colors.textBrand,
                 )
             }
         }
@@ -173,11 +173,11 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
 
 @Composable
 private fun tdsTextFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = Tds.colors.brand,
-    unfocusedBorderColor = Tds.colors.divider,
-    focusedLabelColor = Tds.colors.brand,
-    unfocusedLabelColor = Tds.colors.textSecondary,
-    focusedTextColor = Tds.colors.textPrimary,
-    unfocusedTextColor = Tds.colors.textPrimary,
-    cursorColor = Tds.colors.brand,
+    focusedBorderColor = Ids.colors.brand,
+    unfocusedBorderColor = Ids.colors.divider,
+    focusedLabelColor = Ids.colors.brand,
+    unfocusedLabelColor = Ids.colors.textSecondary,
+    focusedTextColor = Ids.colors.textPrimary,
+    unfocusedTextColor = Ids.colors.textPrimary,
+    cursorColor = Ids.colors.brand,
 )
