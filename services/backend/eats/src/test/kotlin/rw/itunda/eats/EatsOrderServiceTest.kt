@@ -75,6 +75,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { nominatimGeocodingClient.geocode(any()) } returns null
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        // Real buyer order-status notifications (2026-07-20) -- explicit stub, same
+        // known "relaxed mockk can't correctly infer JpaRepository's generic save()
+        // signature" gotcha this project's own tests already document repeatedly
+        // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -382,6 +387,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { nominatimGeocodingClient.geocode(any()) } returns null
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        // Real buyer order-status notifications (2026-07-20) -- explicit stub, same
+        // known "relaxed mockk can't correctly infer JpaRepository's generic save()
+        // signature" gotcha this project's own tests already document repeatedly
+        // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -403,6 +413,10 @@ class EatsOrderServiceTest : BehaviorSpec({
 
             Then("it advances exactly one step") {
                 result.status shouldBe EatsOrderStatus.ACCEPTED
+            }
+
+            Then("it real-notifies the buyer, not the restaurant owner") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_1" && it.type == "EATS_ORDER_UPDATE" }) }
             }
         }
 
@@ -573,6 +587,28 @@ class EatsOrderServiceTest : BehaviorSpec({
                 legs.first { it.accountId == "fee_revenue" }.direction shouldBe LedgerDirection.DEBIT
                 legs.first { it.accountId == "eats_delivery_holding" }.direction shouldBe LedgerDirection.DEBIT
             }
+
+            Then("it real-notifies the buyer, since the RESTAURANT was the one who cancelled") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_1" && it.type == "EATS_ORDER_UPDATE" }) }
+            }
+        }
+
+        When("the real buyer cancels their own real PLACED order") {
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            val originalEntries = listOf(
+                LedgerEntry(id = "le_1", transactionId = "ledgertxn_1", accountId = "wallet_buyer", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.DEBIT, amount = BigDecimal("7500"), currency = "RWF", balanceAfter = BigDecimal("92500"), memo = "Eats order - Kigali Grill"),
+                LedgerEntry(id = "le_2", transactionId = "ledgertxn_1", accountId = "wallet_restaurant", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.CREDIT, amount = BigDecimal("5910.00"), currency = "RWF", balanceAfter = BigDecimal("5910.00"), memo = "Eats order collection - Kigali Grill"),
+            )
+            every { eatsOrderRepository.findById("eats_order_1") } returns Optional.of(order)
+            every { ledgerEntryRepository.findByTransactionId("ledgertxn_1") } returns originalEntries
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("refund_txn_2", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            service.cancelOrder("buyer_1", "eats_order_1")
+
+            Then("it does NOT notify the buyer about their own action") {
+                verify(exactly = 0) { notificationRepository.save(any()) }
+            }
         }
 
         When("someone tries to cancel an order that's already ACCEPTED") {
@@ -626,6 +662,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { nominatimGeocodingClient.geocode(any()) } returns null
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        // Real buyer order-status notifications (2026-07-20) -- explicit stub, same
+        // known "relaxed mockk can't correctly infer JpaRepository's generic save()
+        // signature" gotcha this project's own tests already document repeatedly
+        // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -648,6 +689,10 @@ class EatsOrderServiceTest : BehaviorSpec({
             Then("it real-assigns the rider and moves to RIDER_ASSIGNED") {
                 result.riderId shouldBe "rider_1"
                 result.status shouldBe EatsOrderStatus.RIDER_ASSIGNED
+            }
+
+            Then("it real-notifies the buyer that a rider was assigned") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_1" && it.type == "EATS_ORDER_UPDATE" }) }
             }
         }
 
@@ -759,6 +804,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        // Real buyer order-status notifications (2026-07-20) -- explicit stub, same
+        // known "relaxed mockk can't correctly infer JpaRepository's generic save()
+        // signature" gotcha this project's own tests already document repeatedly
+        // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -826,6 +876,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        // Real buyer order-status notifications (2026-07-20) -- explicit stub, same
+        // known "relaxed mockk can't correctly infer JpaRepository's generic save()
+        // signature" gotcha this project's own tests already document repeatedly
+        // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -910,6 +965,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { nominatimGeocodingClient.geocode(any()) } returns null
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        // Real buyer order-status notifications (2026-07-20) -- explicit stub, same
+        // known "relaxed mockk can't correctly infer JpaRepository's generic save()
+        // signature" gotcha this project's own tests already document repeatedly
+        // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -933,6 +993,10 @@ class EatsOrderServiceTest : BehaviorSpec({
             Then("it advances without touching the ledger yet") {
                 result.status shouldBe EatsOrderStatus.PICKED_UP
                 verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+
+            Then("it real-notifies the buyer that their order was picked up") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_1" && it.type == "EATS_ORDER_UPDATE" }) }
             }
         }
 
@@ -960,6 +1024,10 @@ class EatsOrderServiceTest : BehaviorSpec({
                 val riderLeg = legs.first { it.accountId == "wallet_rider" }
                 holdingLeg.amount shouldBe BigDecimal("1500")
                 riderLeg.amount shouldBe BigDecimal("1500")
+            }
+
+            Then("it real-notifies the buyer that their order was delivered") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_1" && it.type == "EATS_ORDER_UPDATE" }) }
             }
         }
 
@@ -993,6 +1061,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        // Real buyer order-status notifications (2026-07-20) -- explicit stub, same
+        // known "relaxed mockk can't correctly infer JpaRepository's generic save()
+        // signature" gotcha this project's own tests already document repeatedly
+        // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -1106,6 +1179,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val rateLimiter = mockk<RateLimiter>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        // Real buyer order-status notifications (2026-07-20) -- explicit stub, same
+        // known "relaxed mockk can't correctly infer JpaRepository's generic save()
+        // signature" gotcha this project's own tests already document repeatedly
+        // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
@@ -1161,6 +1239,11 @@ class EatsOrderServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        // Real buyer order-status notifications (2026-07-20) -- explicit stub, same
+        // known "relaxed mockk can't correctly infer JpaRepository's generic save()
+        // signature" gotcha this project's own tests already document repeatedly
+        // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,

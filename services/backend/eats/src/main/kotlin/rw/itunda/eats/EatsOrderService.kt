@@ -475,6 +475,11 @@ class EatsOrderService(
         order.status = newStatus
         order.updatedAt = Instant.now()
         val saved = eatsOrderRepository.save(order)
+        when (newStatus) {
+            EatsOrderStatus.ACCEPTED -> notifyBuyer(saved, "Order accepted", "${restaurant.businessName} accepted your order and will start preparing it.")
+            EatsOrderStatus.PREPARING -> notifyBuyer(saved, "Preparing your order", "${restaurant.businessName} is now preparing your order.")
+            else -> {}
+        }
         if (newStatus == EatsOrderStatus.READY_FOR_PICKUP) {
             dispatchToNextCandidate(saved, restaurant)
         }
@@ -692,7 +697,14 @@ class EatsOrderService(
         order.status = EatsOrderStatus.CANCELLED
         order.refundTransactionId = refund.transactionId
         order.updatedAt = Instant.now()
-        return eatsOrderRepository.save(order)
+        val saved = eatsOrderRepository.save(order)
+        // Only notify when the RESTAURANT cancelled -- a buyer who cancelled their own
+        // order already knows, same "don't notify someone about their own action"
+        // discipline every other Notification call site in this codebase already uses.
+        if (isRestaurant) {
+            notifyBuyer(saved, "Order cancelled", "${restaurant?.businessName ?: "The restaurant"} cancelled your order. Your payment has been refunded.")
+        }
+        return saved
     }
 
     /** A real, available rider claims a READY_FOR_PICKUP order no one else has claimed
@@ -722,7 +734,9 @@ class EatsOrderService(
         order.offeredRiderId = null
         order.offerExpiresAt = null
         order.updatedAt = Instant.now()
-        return eatsOrderRepository.save(order)
+        val saved = eatsOrderRepository.save(order)
+        notifyBuyer(saved, "Rider on the way", "A rider has been assigned to your order and is heading to the restaurant.")
+        return saved
     }
 
     /** The assigned rider only, forward-only through RIDER_ASSIGNED -> PICKED_UP ->
@@ -760,6 +774,29 @@ class EatsOrderService(
             order.deliveryPayoutTransactionId = payout.transactionId
         }
 
-        return eatsOrderRepository.save(order)
+        val saved = eatsOrderRepository.save(order)
+        when (newStatus) {
+            EatsOrderStatus.PICKED_UP -> notifyBuyer(saved, "Order picked up", "Your rider has picked up your order and is on the way to you.")
+            EatsOrderStatus.DELIVERED -> notifyBuyer(saved, "Order delivered", "Your order has arrived. Enjoy your meal!")
+            else -> {}
+        }
+        return saved
+    }
+
+    // Real buyer order-status notifications (2026-07-20) -- the real "your order was
+    // accepted / your rider picked it up / your order arrived" push moments every real
+    // Coupang Eats/Uber Eats/요기요/배민-style app sends, closing a gap this class's own
+    // status-transition methods had carried since day one (they moved the real order
+    // forward but never told the one person actually waiting on it). Same
+    // `Notification` shape `dispatchToNextCandidate`'s own rider notification already
+    // established, just addressed to the buyer instead.
+    private fun notifyBuyer(order: EatsOrder, title: String, body: String) {
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = order.buyerId, type = "EATS_ORDER_UPDATE",
+                title = title, body = body, isRead = false, createdAt = Instant.now(),
+                dataJson = "{\"orderId\":\"${order.id}\"}",
+            ),
+        )
     }
 }
