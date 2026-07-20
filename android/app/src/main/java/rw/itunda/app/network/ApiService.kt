@@ -553,6 +553,25 @@ data class OrderItemDto(val id: String, val orderId: String, val productId: Stri
 data class OrderDetailResponse(val success: Boolean, val order: OrderDto, val items: List<OrderItemDto>)
 data class OrdersResponse(val success: Boolean, val orders: List<OrderDto>)
 
+// Real post-delivery product reviews (2026-07-20) -- see ProductReviewService's own doc
+// comment, mirroring Eats' SubmitEatsReviewRequest/EatsReviewDto pattern above but keyed
+// to one order line item rather than the whole order (a Commerce order can carry
+// several different products from one merchant, and real Coupang reviews are per-product).
+data class SubmitProductReviewRequest(val rating: Int, val comment: String? = null)
+data class ProductReviewDto(
+    val id: String,
+    val orderItemId: String,
+    val orderId: String,
+    val buyerId: String,
+    val productId: String,
+    val merchantId: String,
+    val rating: Int,
+    val comment: String?,
+    val createdAt: String,
+)
+data class ProductReviewResponse(val success: Boolean, val review: ProductReviewDto)
+data class ProductRatingResponse(val success: Boolean, val average: Double?, val count: Long)
+
 // Mirrors services/backend/eats's real DTOs exactly (2026-07-18) -- backs the Eats mode
 // folded into the Shop tab. Restaurant/menu browsing reuses ShoppingMerchantDto/
 // MerchantProductDto above (a restaurant IS a Merchant, a menu item IS a
@@ -960,6 +979,13 @@ interface ApiService {
     // See rw.itunda.commerce.OrderService.cancelOrder's own doc comment.
     @POST("api/v1/orders/{id}/cancel")
     suspend fun cancelOrder(@Path("id") orderId: String): OrderDetailResponse
+
+    // Real post-delivery product reviews (2026-07-20) -- see OrderController.submitProductReview.
+    @POST("api/v1/orders/items/{id}/review")
+    suspend fun submitProductReview(@Path("id") orderItemId: String, @Body request: SubmitProductReviewRequest): ProductReviewResponse
+
+    @GET("api/v1/orders/products/{id}/rating")
+    suspend fun getProductRating(@Path("id") productId: String): ProductRatingResponse
 
     // Real Coupang Eats-style food delivery (2026-07-18) -- see rw.itunda.eats.web.EatsController.
     @POST("api/v1/eats/orders")

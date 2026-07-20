@@ -105,9 +105,12 @@ import rw.itunda.app.network.MerchantProductDto
 import rw.itunda.app.network.MessageDto
 import rw.itunda.app.network.NetworkClient
 import rw.itunda.app.network.OrderDto
+import rw.itunda.app.network.OrderItemDto
 import rw.itunda.app.network.OrderItemRequest
 import rw.itunda.app.network.PlaceEatsOrderRequest
 import rw.itunda.app.network.PlaceOrderRequest
+import rw.itunda.app.network.ProductRatingResponse
+import rw.itunda.app.network.SubmitProductReviewRequest
 import rw.itunda.app.network.MakePropertyOfferRequest
 import rw.itunda.app.network.PriceOfferDto
 import rw.itunda.app.network.PropertyPriceOfferDto
@@ -3055,6 +3058,7 @@ private fun MerchantDetailView(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(p.name, color = TossText, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                             Text("%,.0f RWF".format(p.price), color = TossSecondary, fontSize = 13.sp)
+                            ProductRatingBadge(p.id)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             QtyButton("-") { setQty(p, qty - 1) }
@@ -3298,10 +3302,130 @@ private fun MyCommerceOrdersView() {
                                     fontSize = 13.sp,
                                 )
                             }
+                        } else if (o.status == "DELIVERED") {
+                            OrderItemReviews(o)
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+// Real post-delivery product reviews (2026-07-20), mirroring RestaurantRatingBadge/
+// ReviewOrderCard below -- see ProductReviewService's own doc comment for the full
+// backend account. One real review per real delivered order line item.
+@Composable
+private fun ProductRatingBadge(productId: String) {
+    var rating by remember { mutableStateOf<ProductRatingResponse?>(null) }
+    LaunchedEffect(productId) {
+        try {
+            rating = NetworkClient.apiService.getProductRating(productId)
+        } catch (e: Exception) {
+            // Real, non-critical -- a rating fetch failure shouldn't block browsing the catalog.
+        }
+    }
+    val r = rating
+    if (r != null && r.count > 0) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Outlined.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(13.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("%.1f (%d)".format(r.average ?: 0.0, r.count), color = TossSecondary, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun ProductReviewRow(item: OrderItemDto) {
+    var open by remember { mutableStateOf(false) }
+    var done by remember { mutableStateOf(false) }
+    var rating by remember { mutableStateOf(0) }
+    var comment by remember { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    if (done) {
+        Text("${item.productName}: thanks for your review!", color = TossSecondary, fontSize = 12.sp)
+        return
+    }
+    if (!open) {
+        Box(
+            modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(TossTertiary).clickable { open = true }.padding(horizontal = 16.dp, vertical = 10.dp),
+        ) {
+            Text("Rate ${item.productName}", color = TossText, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        }
+        return
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+        Text(item.productName, color = TossSecondary, fontSize = 12.sp)
+        StarRatingRow(rating) { rating = it }
+        OutlinedTextField(
+            value = comment,
+            onValueChange = { comment = it },
+            placeholder = { Text("How was it? (optional)") },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        error?.let { Text(it, color = Tds.colors.danger, fontSize = 12.sp) }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(
+                modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(TossTertiary).clickable { open = false }.padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) { Text("Cancel", color = TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (submitting) TossTertiary else TossBlue)
+                    .clickable(enabled = !submitting) {
+                        if (rating == 0) {
+                            error = "Pick a star rating."
+                            return@clickable
+                        }
+                        submitting = true
+                        error = null
+                        coroutineScope.launch {
+                            try {
+                                NetworkClient.apiService.submitProductReview(item.id, SubmitProductReviewRequest(rating, comment.trim().ifBlank { null }))
+                                done = true
+                            } catch (e: HttpException) {
+                                // A 409 here is the real PRODUCT_ALREADY_REVIEWED case in
+                                // practice -- this form only ever renders for a real
+                                // DELIVERED order.
+                                if (e.code() == 409) {
+                                    done = true
+                                } else {
+                                    error = superAppErrorMessage(e)
+                                }
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
+                            } finally {
+                                submitting = false
+                            }
+                        }
+                    }
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) { Text(if (submitting) "Submitting…" else "Submit review", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+        }
+    }
+}
+
+@Composable
+private fun OrderItemReviews(order: OrderDto) {
+    var items by remember { mutableStateOf<List<OrderItemDto>?>(null) }
+    LaunchedEffect(order.id) {
+        try {
+            val res = NetworkClient.apiService.getOrder(order.id)
+            if (res.success) items = res.items
+        } catch (e: Exception) {
+            // Real, non-critical -- if item fetch fails, the order row itself still renders fine.
+        }
+    }
+    val list = items
+    if (list != null && list.isNotEmpty()) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            list.forEach { item -> ProductReviewRow(item) }
         }
     }
 }
