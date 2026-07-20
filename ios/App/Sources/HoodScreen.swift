@@ -152,7 +152,10 @@ private struct MarketplaceContent: View {
     @Binding var pendingConversationId: String?
     let onSwitchToTalk: () -> Void
 
-    private enum HoodView { case browse, neighborhood, mine }
+    // wishlist added 2026-07-21, porting bank-mfe's Marketplace wishlist (shipped
+    // earlier the same day) to iOS -- see favoriteIds state and ListingWishlistView
+    // below for the full account.
+    private enum HoodView { case browse, neighborhood, mine, wishlist }
 
     @State private var view: HoodView = .browse
     @State private var listings: [ListingDto]?
@@ -161,6 +164,14 @@ private struct MarketplaceContent: View {
     @State private var neighborhoodName: String?
     @State private var neighborhoodChecked = false
     private let currentUserId = KeychainTokenStore.shared.getUserId()
+
+    // Real Marketplace listing wishlist (2026-07-21) -- porting bank-mfe's wishlist
+    // (backend + web UI shipped earlier the same day) to iOS. Favorite state is
+    // lifted here, same as bank-mfe's own MarketplaceView, so the heart on every
+    // ListingCard in Browse/Neighborhood/My-listings stays correct after a toggle
+    // from any of them, not just the dedicated Wishlist tab.
+    @State private var favoriteIds: Set<String> = []
+    @State private var favoritingId: String?
 
     var body: some View {
         ScrollView {
@@ -171,6 +182,7 @@ private struct MarketplaceContent: View {
                     Text("Browse").tag(HoodView.browse)
                     Text("Neighborhood").tag(HoodView.neighborhood)
                     Text("My listings").tag(HoodView.mine)
+                    Text("♡ Wishlist").tag(HoodView.wishlist)
                 }
                 .pickerStyle(.segmented)
 
@@ -199,7 +211,9 @@ private struct MarketplaceContent: View {
                 if view == .neighborhood, let neighborhoodName {
                     Text("Your neighborhood: \(neighborhoodName)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                 }
-                if let error {
+                if view == .wishlist {
+                    ListingWishlistView(onRemoved: { Task { await loadFavoriteIds() } })
+                } else if let error {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(error).foregroundColor(.red).font(.subheadline)
                         Button("Retry") { Task { await load() } }
@@ -224,7 +238,10 @@ private struct MarketplaceContent: View {
                             isMine: view == .mine || listing.sellerId == currentUserId,
                             onChanged: { Task { await load() } },
                             onMessageSeller: { id in Task { await messageSeller(id) } },
-                            onMakeOffer: { id, amount in Task { await makeOffer(id, amount) } }
+                            onMakeOffer: { id, amount in Task { await makeOffer(id, amount) } },
+                            favorited: favoriteIds.contains(listing.id),
+                            favoriteBusy: favoritingId == listing.id,
+                            onToggleFavorite: { Task { await toggleFavorite(listing.id) } }
                         )
                     }
                 }
@@ -235,11 +252,18 @@ private struct MarketplaceContent: View {
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .task { await load() }
+        .task { await loadFavoriteIds() }
         .onChange(of: view) { _ in Task { await load() } }
     }
 
     private func load() async {
         listings = nil
+        if view == .wishlist {
+            // ListingWishlistView below owns its own fetch (it needs title/price/
+            // category straight from the favorites endpoint, not the ListingDto
+            // shape) -- nothing to load into `listings` here.
+            return
+        }
         if view == .neighborhood {
             neighborhoodChecked = false
             do {
@@ -262,6 +286,33 @@ private struct MarketplaceContent: View {
             let res = view == .browse ? try await NetworkClient.shared.browseListings() : try await NetworkClient.shared.getMyListings()
             listings = res.listings
             error = nil
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    // Real Marketplace listing wishlist (2026-07-21) -- best-effort: a failure here
+    // just means hearts render as empty, the rest of the tab still works.
+    private func loadFavoriteIds() async {
+        do {
+            let res = try await NetworkClient.shared.getMyFavoriteListings()
+            favoriteIds = Set(res.favorites.map { $0.listingId })
+        } catch {
+            // Best-effort, see doc comment above.
+        }
+    }
+
+    private func toggleFavorite(_ listingId: String) async {
+        favoritingId = listingId
+        defer { favoritingId = nil }
+        do {
+            if favoriteIds.contains(listingId) {
+                _ = try await NetworkClient.shared.removeListingFavorite(listingId)
+                favoriteIds.remove(listingId)
+            } else {
+                _ = try await NetworkClient.shared.addListingFavorite(listingId)
+                favoriteIds.insert(listingId)
+            }
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
@@ -389,6 +440,13 @@ private struct ListingCard: View {
     let onChanged: () -> Void
     let onMessageSeller: (String) -> Void
     let onMakeOffer: (String, Double) -> Void
+    // Real Marketplace listing wishlist (2026-07-21) -- state is lifted to
+    // MarketplaceContent (mirroring the already-real lifted-favoriteIds pattern used
+    // for Eats favorite restaurants) so the heart stays correct across Browse/
+    // Neighborhood/My-listings without a per-card refetch.
+    var favorited: Bool = false
+    var favoriteBusy: Bool = false
+    var onToggleFavorite: () -> Void = {}
 
     @State private var busy = false
     @State private var error: String?
@@ -420,6 +478,14 @@ private struct ListingCard: View {
                     Text(listing.category).font(.caption).foregroundColor(IDS.Colors.textSecondary)
                 }
                 Spacer()
+                if !isMine {
+                    Button(action: onToggleFavorite) {
+                        Image(systemName: favorited ? "heart.fill" : "heart")
+                            .foregroundColor(favorited ? .red : IDS.Colors.textSecondary)
+                    }
+                    .disabled(favoriteBusy)
+                    .padding(.trailing, 6)
+                }
                 Text("\(Int(listing.price)) RWF").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
             }
             Text(listing.description).font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
@@ -524,6 +590,82 @@ private struct ListingCard: View {
             error = TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+}
+
+// Real Marketplace listing wishlist view (2026-07-21) -- iOS port of bank-mfe's
+// ListingWishlistView, same day. Lists every real favorited listing (title/price/
+// category straight from the favorites endpoint); a favorited-then-deleted listing's
+// "no longer available" fallback is the backend's own responsibility
+// (ListingFavoriteService.kt already resolves that server-side).
+private struct ListingWishlistView: View {
+    let onRemoved: () -> Void
+
+    @State private var favorites: [FavoriteListingDto]?
+    @State private var error: String?
+    @State private var removingId: String?
+
+    var body: some View {
+        Group {
+            if let error {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(error).foregroundColor(.red).font(.subheadline)
+                    Button("Retry") { Task { await load() } }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(20)
+                .background(IDS.Colors.card)
+                .cornerRadius(IDS.Layout.cardCornerRadius)
+            } else if favorites == nil {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+            } else if favorites!.isEmpty {
+                Text("No saved listings yet -- tap ♡ on any listing to save it here.")
+                    .foregroundColor(IDS.Colors.textSecondary)
+            } else {
+                ForEach(favorites!) { f in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(f.title).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                            Text("\(f.category) · \(Int(f.price)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                        Spacer()
+                        Button(action: { Task { await remove(f.listingId) } }) {
+                            Text(removingId == f.listingId ? "Removing…" : "Remove")
+                                .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                .padding(.horizontal, 12).padding(.vertical, 8)
+                                .background(IDS.Colors.chipBackground).cornerRadius(10)
+                        }
+                        .disabled(removingId == f.listingId)
+                    }
+                    .padding(16)
+                    .background(IDS.Colors.card)
+                    .cornerRadius(IDS.Layout.cardCornerRadius)
+                }
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        do {
+            let res = try await NetworkClient.shared.getMyFavoriteListings()
+            favorites = res.favorites
+            error = nil
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func remove(_ listingId: String) async {
+        removingId = listingId
+        defer { removingId = nil }
+        do {
+            _ = try await NetworkClient.shared.removeListingFavorite(listingId)
+            favorites = favorites?.filter { $0.listingId != listingId }
+            onRemoved()
+        } catch {
+            self.error = "Couldn't remove this item. Check your connection and try again."
         }
     }
 }

@@ -101,6 +101,7 @@ import rw.itunda.app.network.JobPostDto
 import rw.itunda.app.network.PropertyListingDto
 import rw.itunda.app.network.PropertyTypeDto
 import rw.itunda.app.network.EatsOrderDto
+import rw.itunda.app.network.FavoriteListingDto
 import rw.itunda.app.network.FavoriteRestaurantDto
 import rw.itunda.app.network.AddressSuggestionDto
 import rw.itunda.app.network.CreateGroupRequest
@@ -1428,12 +1429,16 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit) {
     }
 }
 
-private enum class HoodView { BROWSE, NEIGHBORHOOD, MINE }
+// WISHLIST added 2026-07-21, porting bank-mfe's Marketplace wishlist (shipped earlier
+// the same day) to Android -- see MarketplaceContent's own favoriteIds state and
+// ListingWishlistView below for the full account.
+private enum class HoodView { BROWSE, NEIGHBORHOOD, MINE, WISHLIST }
 
 private fun HoodView.label() = when (this) {
     HoodView.BROWSE -> "Browse"
     HoodView.NEIGHBORHOOD -> "Neighborhood"
     HoodView.MINE -> "My listings"
+    HoodView.WISHLIST -> "♡ Wishlist"
 }
 
 // Real hyperlocal neighborhood setup (2026-07-20) -- shared across every Hood-mode
@@ -1504,8 +1509,56 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
     val coroutineScope = rememberCoroutineScope()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
 
+    // Real Marketplace listing wishlist (2026-07-21) -- porting bank-mfe's wishlist
+    // (backend + web UI shipped earlier the same day) to Android. Favorite state is
+    // lifted here, same as bank-mfe's own MarketplaceView, so the heart on every
+    // ListingCard in Browse/Neighborhood/My-listings stays correct after a toggle from
+    // any of them, not just the dedicated Wishlist tab.
+    var favoriteIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var favoritingId by remember { mutableStateOf<String?>(null) }
+
+    fun loadFavoriteIds() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyFavoriteListings()
+                if (res.success) favoriteIds = res.favorites.map { it.listingId }.toSet()
+            } catch (e: Exception) {
+                // Best-effort -- hearts just won't render as filled if this fails; the
+                // rest of the tab still works.
+            }
+        }
+    }
+    LaunchedEffect(Unit) { loadFavoriteIds() }
+
+    fun toggleFavorite(listingId: String) {
+        favoritingId = listingId
+        coroutineScope.launch {
+            try {
+                if (listingId in favoriteIds) {
+                    NetworkClient.apiService.removeListingFavorite(listingId)
+                    favoriteIds = favoriteIds - listingId
+                } else {
+                    NetworkClient.apiService.addListingFavorite(listingId)
+                    favoriteIds = favoriteIds + listingId
+                }
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                favoritingId = null
+            }
+        }
+    }
+
     fun load() {
         listings = null
+        if (view == HoodView.WISHLIST) {
+            // ListingWishlistView below owns its own fetch (it needs title/price/category
+            // straight from the favorites endpoint, not the ListingDto shape) -- nothing
+            // to load into `listings` here.
+            return
+        }
         if (view == HoodView.NEIGHBORHOOD) {
             neighborhoodChecked = false
             coroutineScope.launch {
@@ -1588,7 +1641,9 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
         if (view == HoodView.NEIGHBORHOOD && neighborhoodName != null) {
             item { Text("Your neighborhood: $neighborhoodName", color = TossSecondary, fontSize = 13.sp) }
         }
-        if (error != null) {
+        if (view == HoodView.WISHLIST) {
+            item { ListingWishlistView(onRemoved = ::loadFavoriteIds) }
+        } else if (error != null) {
             item { ErrorCard(error!!, onRetry = ::load) }
         } else if (listings == null) {
             item { SkeletonBlock() }
@@ -1599,6 +1654,7 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
                         HoodView.BROWSE -> "No listings yet."
                         HoodView.NEIGHBORHOOD -> "No listings in your neighborhood yet."
                         HoodView.MINE -> "You haven't listed anything yet."
+                        HoodView.WISHLIST -> "No saved listings yet."
                     },
                     icon = Icons.Outlined.ShoppingBag,
                 )
@@ -1609,6 +1665,9 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
                     listing = listing,
                     isMine = view == HoodView.MINE || listing.sellerId == currentUserId,
                     onChanged = ::load,
+                    favorited = listing.id in favoriteIds,
+                    favoriteBusy = favoritingId == listing.id,
+                    onToggleFavorite = { toggleFavorite(listing.id) },
                     onMessageSeller = { id ->
                         coroutineScope.launch {
                             try {
@@ -1634,6 +1693,72 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
                         }
                     },
                 )
+            }
+        }
+    }
+}
+
+// Real Marketplace listing wishlist view (2026-07-21) -- Android port of bank-mfe's
+// ListingWishlistView, same day. Lists every real favorited listing (title/price/
+// category straight from the favorites endpoint, an honest "Listing no longer
+// available" fallback for a favorited-then-deleted listing is the backend's own
+// responsibility -- ListingFavoriteService.kt already resolves that server-side).
+@Composable
+private fun ListingWishlistView(onRemoved: () -> Unit) {
+    var favorites by remember { mutableStateOf<List<FavoriteListingDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var removingId by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyFavoriteListings()
+                if (res.success) favorites = res.favorites
+                error = null
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+    LaunchedEffect(Unit) { load() }
+
+    when {
+        error != null -> ErrorCard(error!!, onRetry = ::load)
+        favorites == null -> SkeletonBlock()
+        favorites!!.isEmpty() -> EmptyState("No saved listings yet -- tap ♡ on any listing to save it here.", icon = Icons.Outlined.FavoriteBorder)
+        else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            favorites!!.forEach { f ->
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column {
+                            Text(f.title, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text("${f.category} · %,.0f RWF".format(f.price), color = TossSecondary, fontSize = 13.sp)
+                        }
+                        ListingActionButton(if (removingId == f.listingId) "Removing…" else "Remove", removingId == f.listingId) {
+                            removingId = f.listingId
+                            coroutineScope.launch {
+                                try {
+                                    NetworkClient.apiService.removeListingFavorite(f.listingId)
+                                    favorites = favorites?.filterNot { it.listingId == f.listingId }
+                                    onRemoved()
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } catch (e: IOException) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
+                                } finally {
+                                    removingId = null
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -1784,6 +1909,11 @@ private fun relativeTimeAgo(isoTimestamp: String): String {
 @Composable
 private fun ListingCard(
     listing: ListingDto, isMine: Boolean, onChanged: () -> Unit, onMessageSeller: (String) -> Unit, onMakeOffer: (String, Double) -> Unit,
+    // Real Marketplace listing wishlist (2026-07-21) -- state is lifted to
+    // MarketplaceContent (mirroring FavoriteRestaurantsView's own already-real
+    // lifted-favoriteIds pattern) so the heart stays correct across Browse/
+    // Neighborhood/My-listings without a per-card refetch.
+    favorited: Boolean = false, favoriteBusy: Boolean = false, onToggleFavorite: () -> Unit = {},
 ) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -1818,7 +1948,19 @@ private fun ListingCard(
                     }
                     Text("${listing.category} · ${relativeTimeAgo(listing.createdAt)}", color = TossSecondary, fontSize = 12.sp)
                 }
-                Text("%,.0f RWF".format(listing.price), color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (!isMine) {
+                        Icon(
+                            if (favorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                            contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist",
+                            tint = if (favorited) Ids.colors.danger else TossSecondary,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
+                        )
+                    }
+                    Text("%,.0f RWF".format(listing.price), color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                }
             }
             Text(listing.description, color = TossSecondary, fontSize = 13.sp)
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
