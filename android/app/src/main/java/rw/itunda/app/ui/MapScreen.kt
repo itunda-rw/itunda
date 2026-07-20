@@ -86,13 +86,17 @@ import rw.itunda.app.network.ShoppingMerchantDto
 // coordinate fixture in this codebase (backend tests, bank-mfe's MapView.tsx) uses.
 private const val RWANDA_CENTER_LAT = -1.9441
 private const val RWANDA_CENTER_LNG = 30.0619
-private const val TILES_URL = "http://192.168.252.3:8090/rwanda/{z}/{x}/{y}.mvt"
+// Both driven by BuildConfig now (2026-07-21), not hardcoded to the private cloud's
+// internal-only 192.168.252.3 address -- see app/build.gradle.kts' TILES_BASE_URL/
+// GLYPHS_BASE_URL doc comment for why a physical device on the public HTTPS endpoint
+// got a permanently blank map otherwise.
+private val TILES_URL = "${rw.itunda.app.BuildConfig.TILES_BASE_URL}/rwanda/{z}/{x}/{y}.mvt"
 // Real self-hosted glyphs (font PBF) server (2026-07-19) -- closes item 5, the last item
 // on the Maps "100%" roadmap. See bank-mfe's lib/maps.ts GLYPHS_URL doc comment for the
 // full account (real pre-generated Noto Sans Regular/Bold glyph PBFs, served statically
 // by nginx on itunda-dc-b, ~14MB RSS -- an order of magnitude lighter than OSRM/
 // Nominatim despite being this host's fourth persistent private-cloud service).
-private const val GLYPHS_URL = "http://192.168.252.3:8091/{fontstack}/{range}.pbf"
+private val GLYPHS_URL = "${rw.itunda.app.BuildConfig.GLYPHS_BASE_URL}/{fontstack}/{range}.pbf"
 private const val MERCHANTS_SOURCE_ID = "merchants"
 private const val MERCHANTS_LAYER_ID = "merchants-circle"
 private const val MY_LOCATION_SOURCE_ID = "my-location"

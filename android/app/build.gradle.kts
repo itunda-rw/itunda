@@ -107,6 +107,25 @@ android {
             "API_BASE_URL",
             "\"${project.findProperty("apiBaseUrl") ?: "http://10.0.2.2:4001/"}\""
         )
+
+        // Same real gap as API_BASE_URL above, just discovered later (2026-07-21):
+        // MapScreen.kt had these two hardcoded straight at the private cloud's
+        // internal-only Multipass bridge address (192.168.252.3), unreachable for any
+        // device other than the Mac itself or another device on the same bridge --
+        // a real device testing over the public HTTPS endpoint got a permanently
+        // blank map with no way to fix it short of a rebuild. Mirrors bank-mfe's own
+        // VITE_TILES_BASE_URL/VITE_GLYPHS_BASE_URL env vars (same LAN default, same
+        // override mechanism), so both platforms follow the same real pattern.
+        buildConfigField(
+            "String",
+            "TILES_BASE_URL",
+            "\"${project.findProperty("tilesBaseUrl") ?: "http://192.168.252.3:8090"}\""
+        )
+        buildConfigField(
+            "String",
+            "GLYPHS_BASE_URL",
+            "\"${project.findProperty("glyphsBaseUrl") ?: "http://192.168.252.3:8091"}\""
+        )
     }
 
     buildTypes {
