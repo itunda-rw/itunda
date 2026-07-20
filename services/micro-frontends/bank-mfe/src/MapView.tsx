@@ -170,6 +170,81 @@ export default function MapView() {
   const [bookmarks, setBookmarks] = useState<MapBookmark[]>([]);
   const [bookmarking, setBookmarking] = useState(false);
 
+  // Real draggable peek/half/full bottom sheet (2026-07-21) -- see
+  // docs/DESIGN_REFERENCES.md section 1, recommendation 1. Brings bank-mfe to parity
+  // with Android's own `MapScreen.kt` restructure (commit 48ad768): this component was
+  // a plain flex column stacking the search bar -> chips -> a fixed-height map div ->
+  // detail/bookmark cards below it, in normal document flow. Restructured to a
+  // full-bleed layout *within this component's own allotted box* (the surrounding
+  // dashboard is a fixed 480px-wide mobile-style column, not a full browser viewport,
+  // so "full-bleed" here means filling this component's box, the same way Android's
+  // map fills whatever Scaffold padding it's given): the map fills the whole box,
+  // search/chips/results float on top via the browser's native Pointer Events API
+  // (works for both mouse and touch, no extra dependency), the same anchor-based
+  // peek/half/full model Android implements via `AnchoredDraggableState` and iOS
+  // implements via a hand-rolled `DragGesture`.
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const [wrapperHeight, setWrapperHeight] = useState(0);
+  const [sheetY, setSheetY] = useState<number | null>(null);
+  const [sheetDragging, setSheetDragging] = useState(false);
+  const sheetSettledYRef = useRef(0);
+  const dragStartRef = useRef<{ pointerY: number; startY: number } | null>(null);
+
+  const PEEK_HEIGHT = 130;
+  const FULL_TOP_GAP = 70;
+  const peekAnchorY = wrapperHeight - PEEK_HEIGHT;
+  const halfAnchorY = wrapperHeight * 0.55;
+  const fullAnchorY = FULL_TOP_GAP;
+
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver((entries) => setWrapperHeight(entries[0].contentRect.height));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (wrapperHeight > 0 && sheetY === null) {
+      setSheetY(wrapperHeight - PEEK_HEIGHT);
+      sheetSettledYRef.current = wrapperHeight - PEEK_HEIGHT;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wrapperHeight]);
+
+  // A newly-selected place should be immediately visible without a manual drag --
+  // expands to Half; clearing the selection relaxes back to Peek instead of staying
+  // pinned open over an empty card.
+  useEffect(() => {
+    if (wrapperHeight === 0) return;
+    const target = selectedPlace ? wrapperHeight * 0.55 : wrapperHeight - PEEK_HEIGHT;
+    setSheetY(target);
+    sheetSettledYRef.current = target;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPlace]);
+
+  const onSheetPointerDown = (e: React.PointerEvent) => {
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    dragStartRef.current = { pointerY: e.clientY, startY: sheetSettledYRef.current };
+    setSheetDragging(true);
+  };
+  const onSheetPointerMove = (e: React.PointerEvent) => {
+    if (!dragStartRef.current) return;
+    const delta = e.clientY - dragStartRef.current.pointerY;
+    const proposed = dragStartRef.current.startY + delta;
+    setSheetY(Math.min(peekAnchorY, Math.max(fullAnchorY, proposed)));
+  };
+  const onSheetPointerUp = () => {
+    if (!dragStartRef.current) return;
+    setSheetDragging(false);
+    const current = sheetY ?? peekAnchorY;
+    const candidates = [fullAnchorY, halfAnchorY, peekAnchorY];
+    const nearest = candidates.reduce((a, b) => (Math.abs(b - current) < Math.abs(a - current) ? b : a));
+    setSheetY(nearest);
+    sheetSettledYRef.current = nearest;
+    dragStartRef.current = null;
+  };
+
   useEffect(() => {
     if (!containerRef.current) return;
     const map = new maplibregl.Map({
@@ -390,165 +465,232 @@ export default function MapView() {
     }
   };
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px' }}>
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search a real place in Rwanda"
-          style={{ flex: 1, padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-        />
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={searching || !query.trim()} style={{ padding: '10px 16px' }}>
-          {searching ? '…' : 'Search'}
-        </button>
-        <button
-          type="button"
-          className="toss-btn toss-btn-secondary"
-          disabled={locating}
-          onClick={findMyLocation}
-          style={{ padding: '10px 12px' }}
-          aria-label="Find my real location"
-        >
-          {locating ? '…' : '📍'}
-        </button>
-      </form>
+  const sheetTop = sheetY ?? peekAnchorY;
 
-      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
-        {NEARBY_CATEGORIES.map((category) => {
-          const active = activeCategory === category.id;
-          return (
-            <button
-              key={category.id}
-              type="button"
-              onClick={() => handleCategorySearch(category.id)}
-              disabled={categoryLoading && !active}
-              style={{
-                flexShrink: 0,
-                padding: '6px 12px',
-                borderRadius: '999px',
-                fontSize: '12px',
-                fontWeight: 600,
-                border: active ? '1px solid #8B5CF6' : '1px solid var(--toss-grey-200)',
-                backgroundColor: active ? '#8B5CF6' : '#fff',
-                color: active ? '#fff' : 'var(--toss-grey-700)',
-              }}
-            >
-              {active && categoryLoading ? '…' : category.label}
-            </button>
-          );
-        })}
+  return (
+    <div
+      ref={wrapperRef}
+      style={{ position: 'relative', width: '100%', height: '70vh', minHeight: '460px', borderRadius: '16px', overflow: 'hidden' }}
+    >
+      {/* Real full-bleed map (2026-07-21) -- fills this component's entire box; every
+          other panel below floats on top of it via absolute positioning, instead of
+          the map being one fixed-height div in a document-flow column. */}
+      <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
+
+      {/* Floating top panel -- search bar, category chips, search results, errors --
+          docks to the map's top edge rather than pushing it down. */}
+      <div
+        style={{
+          position: 'absolute', top: 0, left: 0, right: 0, zIndex: 2,
+          display: 'flex', flexDirection: 'column', gap: '8px', padding: '10px',
+          background: 'linear-gradient(to bottom, rgba(255,255,255,0.97), rgba(255,255,255,0.85))',
+        }}
+      >
+        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px' }}>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search a real place in Rwanda"
+            style={{ flex: 1, padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={searching || !query.trim()} style={{ padding: '10px 16px' }}>
+            {searching ? '…' : 'Search'}
+          </button>
+          <button
+            type="button"
+            className="toss-btn toss-btn-secondary"
+            disabled={locating}
+            onClick={findMyLocation}
+            style={{ padding: '10px 12px' }}
+            aria-label="Find my real location"
+          >
+            {locating ? '…' : '📍'}
+          </button>
+        </form>
+
+        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
+          {NEARBY_CATEGORIES.map((category) => {
+            const active = activeCategory === category.id;
+            return (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() => handleCategorySearch(category.id)}
+                disabled={categoryLoading && !active}
+                style={{
+                  flexShrink: 0,
+                  padding: '6px 12px',
+                  borderRadius: '999px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  border: active ? '1px solid #8B5CF6' : '1px solid var(--toss-grey-200)',
+                  backgroundColor: active ? '#8B5CF6' : '#fff',
+                  color: active ? '#fff' : 'var(--toss-grey-700)',
+                }}
+              >
+                {active && categoryLoading ? '…' : category.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {searchResults !== null && (
+          <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px', maxHeight: '160px', overflowY: 'auto' }}>
+            {searchResults.length === 0 ? (
+              <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', padding: '8px' }}>No real places found for that search.</p>
+            ) : (
+              searchResults.map((place, i) => (
+                <button
+                  key={`${place.latitude}-${place.longitude}-${i}`}
+                  onClick={() => selectPlace(place)}
+                  style={{ textAlign: 'left', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', color: 'var(--toss-grey-900)' }}
+                >
+                  {place.displayName}
+                </button>
+              ))
+            )}
+          </div>
+        )}
+
+        {error && (
+          <div className="toss-card">
+            <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+          </div>
+        )}
       </div>
 
-      {activeCategory && categoryResults !== null && (
-        <div className="toss-card" style={{ padding: '8px' }}>
-          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
-            {categoryResults.length === 0
-              ? 'No real matches found nearby for that category.'
-              : `${categoryResults.length} real ${NEARBY_CATEGORIES.find((c) => c.id === activeCategory)?.label.toLowerCase()} found nearby, closest first.`}
-          </p>
-        </div>
-      )}
-
-      {searchResults !== null && (
-        <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px' }}>
-          {searchResults.length === 0 ? (
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', padding: '8px' }}>No real places found for that search.</p>
-          ) : (
-            searchResults.map((place, i) => (
-              <button
-                key={`${place.latitude}-${place.longitude}-${i}`}
-                onClick={() => selectPlace(place)}
-                style={{ textAlign: 'left', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', color: 'var(--toss-grey-900)' }}
-              >
-                {place.displayName}
-              </button>
-            ))
-          )}
-        </div>
-      )}
-
-      {error && (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-        </div>
-      )}
-
+      {/* Real draggable peek/half/full bottom sheet (2026-07-21) -- a persistent,
+          non-modal panel docked over the map. Pointer Events drive `sheetY` live; on
+          release it snaps to whichever of the three real anchors above is closest --
+          the same anchor-based model Android implements via `AnchoredDraggableState`
+          and iOS implements via a hand-rolled `DragGesture`. */}
       <div
-        ref={containerRef}
-        style={{ width: '100%', height: '440px', borderRadius: '16px', overflow: 'hidden' }}
-      />
+        style={{
+          position: 'absolute', left: 0, right: 0, top: 0, height: '100%', zIndex: 3,
+          transform: `translateY(${sheetTop}px)`,
+          transition: sheetDragging ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)',
+          background: '#fff', borderRadius: '16px 16px 0 0',
+          boxShadow: '0 -4px 16px rgba(0,0,0,0.12)',
+          display: 'flex', flexDirection: 'column',
+        }}
+      >
+        <div
+          onPointerDown={onSheetPointerDown}
+          onPointerMove={onSheetPointerMove}
+          onPointerUp={onSheetPointerUp}
+          onPointerCancel={onSheetPointerUp}
+          style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 6px', cursor: 'grab', touchAction: 'none' }}
+        >
+          <div style={{ width: '36px', height: '4px', borderRadius: '2px', backgroundColor: 'var(--toss-grey-300)' }} />
+        </div>
 
-      {selectedPlace && (
-        <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-            <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-grey-900)', flex: 1 }}>{selectedPlace.displayName}</p>
-            <button
-              type="button"
-              onClick={() => toggleBookmark(selectedPlace)}
-              disabled={bookmarking}
-              aria-label={isBookmarked(selectedPlace) ? 'Remove real bookmark' : 'Save this real place'}
-              style={{ fontSize: '18px', lineHeight: 1, color: isBookmarked(selectedPlace) ? '#F5A623' : 'var(--toss-grey-300)' }}
-            >
-              {isBookmarked(selectedPlace) ? '★' : '☆'}
-            </button>
-          </div>
-          {route ? (
-            <div>
-              <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>
-                🚗 {route.distanceKm.toFixed(1)} km · {Math.round(route.durationMinutes)} min by real road, via itunda's own self-hosted OSRM
-              </p>
-              {route.steps.length > 0 && (
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {selectedPlace ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--toss-grey-900)', flex: 1 }}>{selectedPlace.displayName}</p>
                 <button
                   type="button"
-                  onClick={() => setShowSteps((s) => !s)}
-                  style={{ fontSize: '12px', color: 'var(--toss-blue)', fontWeight: 700, marginTop: '4px' }}
+                  onClick={() => toggleBookmark(selectedPlace)}
+                  disabled={bookmarking}
+                  aria-label={isBookmarked(selectedPlace) ? 'Remove real bookmark' : 'Save this real place'}
+                  style={{ fontSize: '20px', lineHeight: 1, color: isBookmarked(selectedPlace) ? '#F5A623' : 'var(--toss-grey-300)' }}
                 >
-                  {showSteps ? 'Hide turn-by-turn directions' : `Show turn-by-turn directions (${route.steps.length} steps)`}
+                  {isBookmarked(selectedPlace) ? '★' : '☆'}
+                </button>
+              </div>
+              {route ? (
+                <div>
+                  <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>
+                    🚗 {route.distanceKm.toFixed(1)} km · {Math.round(route.durationMinutes)} min by real road, via itunda's own self-hosted OSRM
+                  </p>
+                  {route.steps.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowSteps((s) => !s)}
+                      style={{ fontSize: '12px', color: 'var(--toss-blue)', fontWeight: 700, marginTop: '4px' }}
+                    >
+                      {showSteps ? 'Hide turn-by-turn directions' : `Show turn-by-turn directions (${route.steps.length} steps)`}
+                    </button>
+                  )}
+                  {showSteps && (
+                    <ol style={{ margin: '8px 0 0', paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {route.steps.map((step, i) => (
+                        <li key={i} style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>
+                          {step.instruction}
+                          {step.distanceMeters >= 10 && (
+                            <span style={{ color: 'var(--toss-grey-500)' }}> ({Math.round(step.distanceMeters)} m)</span>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
+              ) : (
+                <button className="toss-btn toss-btn-primary" disabled={routing} onClick={handleGetDirections}>
+                  {routing ? 'Finding real route…' : 'Directions'}
                 </button>
               )}
-              {showSteps && (
-                <ol style={{ margin: '8px 0 0', paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  {route.steps.map((step, i) => (
-                    <li key={i} style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>
-                      {step.instruction}
-                      {step.distanceMeters >= 10 && (
-                        <span style={{ color: 'var(--toss-grey-500)' }}> ({Math.round(step.distanceMeters)} m)</span>
-                      )}
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </div>
+            </>
           ) : (
-            <button className="toss-btn toss-btn-primary" disabled={routing} onClick={handleGetDirections}>
-              {routing ? 'Finding real route…' : 'Directions'}
-            </button>
+            <>
+              {/* Real default "around me" state (2026-07-21) -- Naver Map's own Smart
+                  Around sheet keeps a non-modal panel permanently docked with real
+                  curated content even before any search, rather than only ever
+                  appearing once a place is selected. itunda has no editorial "today's
+                  pick" feed to curate, so this surfaces real data it already has: the
+                  active category's real results, a real merchant count, and real
+                  saved places -- honest functional content, not a fabricated feed. */}
+              <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>Around you</p>
+              {activeCategory && categoryResults !== null ? (
+                categoryResults.length === 0 ? (
+                  <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+                    No real matches found nearby for {NEARBY_CATEGORIES.find((c) => c.id === activeCategory)?.label.toLowerCase()}.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {categoryResults.map((place, i) => (
+                      <button
+                        key={`${place.latitude}-${place.longitude}-${i}`}
+                        onClick={() => selectPlace({ displayName: place.displayName, latitude: place.latitude, longitude: place.longitude })}
+                        style={{ textAlign: 'left', padding: '6px 0', fontSize: '13px', color: 'var(--toss-grey-900)' }}
+                      >
+                        {place.displayName} · {place.distanceKm.toFixed(1)} km
+                      </button>
+                    ))}
+                  </div>
+                )
+              ) : (
+                <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+                  {merchantCount === null
+                    ? 'Loading real merchants near you…'
+                    : merchantCount === 0
+                    ? 'Search a real place or pick a category above to explore Rwanda.'
+                    : `${merchantCount} real merchant${merchantCount === 1 ? '' : 's'} on the map. Search a place or pick a category above to explore.`}
+                </p>
+              )}
+
+              <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-500)', marginTop: '8px' }}>★ Your saved places</p>
+              {bookmarks.length === 0 ? (
+                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No saved places yet -- tap ☆ on a place to save it.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {bookmarks.map((b) => (
+                    <button
+                      key={b.id}
+                      onClick={() => selectPlace({ displayName: b.displayName, latitude: b.latitude, longitude: b.longitude })}
+                      style={{ textAlign: 'left', padding: '6px 0', fontSize: '13px', color: 'var(--toss-grey-900)' }}
+                    >
+                      {b.displayName}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
-      )}
-
-      {!selectedPlace && bookmarks.length > 0 && (
-        <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px' }}>
-          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-500)', padding: '4px 8px 0' }}>★ Your saved places</p>
-          {bookmarks.map((b) => (
-            <button
-              key={b.id}
-              onClick={() => selectPlace({ displayName: b.displayName, latitude: b.latitude, longitude: b.longitude })}
-              style={{ textAlign: 'left', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', color: 'var(--toss-grey-900)' }}
-            >
-              {b.displayName}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', padding: '0 4px' }}>
-        {merchantCount === null
-          ? 'Loading real merchants near you…'
-          : `${merchantCount} real merchant${merchantCount === 1 ? '' : 's'} shown on itunda's own self-hosted Rwanda map.`}
-      </p>
+      </div>
     </div>
   );
 }
