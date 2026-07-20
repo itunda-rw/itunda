@@ -16,6 +16,22 @@ export interface ShoppingMerchant {
 export const fetchShoppingCatalog = () =>
   apiFetch<{ success: boolean; merchants: ShoppingMerchant[] }>('/api/v1/shopping/merchants').then((r) => r.merchants);
 
+export interface ProductSearchResult {
+  id: string;
+  merchantId: string;
+  merchantName: string;
+  name: string;
+  price: number;
+}
+
+// Real cross-merchant product search (2026-07-20) -- until now a shopper could only
+// search MERCHANT names then browse one seller's catalog at a time; there was no way
+// to search for a product across every real seller at once, the most basic real
+// feature Coupang/Naver/Toss Shopping all have. See MerchantProductRepository.search's
+// own doc comment on the backend for the real query this hits.
+export const searchProducts = (q: string) =>
+  apiFetch<{ success: boolean; products: ProductSearchResult[] }>(`/api/v1/shopping/products/search?q=${encodeURIComponent(q)}`).then((r) => r.products);
+
 export interface CollectPaymentResult {
   transactionId: string;
   merchantName: string;

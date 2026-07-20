@@ -82,6 +82,25 @@ class ShoppingController(
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to mapOf("id" to merchant.id, "businessName" to merchant.businessName), "products" to products))
     }
 
+    // Real cross-merchant product search -- see MerchantProductRepository.search's own
+    // doc comment for the gap this closes.
+    @GetMapping("/products/search")
+    fun searchProducts(
+        @RequestParam q: String,
+        @PageableDefault(size = 20) pageable: Pageable,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = merchantProductRepository.search(MerchantStatus.ACTIVE, q.trim(), pageable)
+        // Batch-resolved, same no-N+1 discipline as ProductFavoriteService.getMyFavorites.
+        val merchantNames = merchantRepository.findAllById(page.content.map { it.merchantId }.distinct()).associate { it.id to it.businessName }
+        val products = page.content.map { p ->
+            mapOf(
+                "id" to p.id, "merchantId" to p.merchantId, "merchantName" to (merchantNames[p.merchantId] ?: ""),
+                "name" to p.name, "price" to p.price,
+            )
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "products" to products) + pageMeta(page))
+    }
+
     @ExceptionHandler(ShoppingMerchantNotFoundException::class)
     fun handleMerchantNotFound(ex: ShoppingMerchantNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_NOT_FOUND", ex.message ?: "Not found"))

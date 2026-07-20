@@ -12,7 +12,7 @@ import {
 import { collectWithFacePay, enrollFacePay, fetchFacePayStatus, revokeFacePay } from './lib/facepay';
 import { sendDirect } from './lib/p2p';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
-import { collectPayment, fetchShoppingCatalog, type CollectPaymentResult, type ShoppingMerchant } from './lib/shopping';
+import { collectPayment, fetchShoppingCatalog, searchProducts, type CollectPaymentResult, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
 import {
   buyStock, fetchPortfolio, fetchPortfolioHistory, fetchStockHistory, fetchStocks, fetchWatchlist,
   sellStock, unwatchStock, watchStock,
@@ -5213,6 +5213,9 @@ function ShopView() {
   const [cart, setCart] = useState<CommerceCart>({});
   const [showCart, setShowCart] = useState(false);
   const [results, setResults] = useState<CommerceCheckoutResult[] | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<ProductSearchResult[] | null>(null);
+  const [searching, setSearching] = useState(false);
 
   // Real Coupang-style commerce (rw.itunda.commerce) -- deliberately reuses the same
   // GET /api/v1/shopping/merchants catalog the Shopping tab (Toss Shopping cashback
@@ -5224,6 +5227,26 @@ function ShopView() {
   };
 
   useEffect(load, []);
+
+  // Real cross-merchant product search (2026-07-20) -- see lib/shopping.ts's own doc
+  // comment. Opening a result reuses ProductCatalogView as-is: it only ever reads
+  // merchant.merchantId (confirmed by reading the component directly), so a minimal
+  // ShoppingMerchant built from the search result -- not a second real fetch -- is
+  // honest, not a shortcut that risks showing stale/wrong data.
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSearching(true);
+    try {
+      setSearchResults(await searchProducts(searchQuery.trim()));
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+  };
+  const openSearchResult = (r: ProductSearchResult) => {
+    setSelected({ merchantId: r.merchantId, businessName: r.merchantName, category: null, cashbackRate: '1%' });
+  };
 
   const setQtyByMerchant = (merchant: ShoppingMerchant, product: CommerceProduct, quantity: number) => {
     setCart((prev) => {
@@ -5312,10 +5335,51 @@ function ShopView() {
         ))}
       </div>
 
+      {view === 'BROWSE' && (
+        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search products across every merchant"
+            style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={searching || !searchQuery.trim()}>
+            {searching ? '…' : 'Search'}
+          </button>
+          {searchResults !== null && (
+            <button type="button" className="toss-btn toss-btn-secondary" onClick={() => { setSearchResults(null); setSearchQuery(''); }}>
+              Clear
+            </button>
+          )}
+        </form>
+      )}
+
       {view === 'ORDERS' ? (
         <MyCommerceOrdersView />
       ) : view === 'WISHLIST' ? (
         <WishlistView onOpenMerchant={setSelected} />
+      ) : view === 'BROWSE' && searchResults !== null ? (
+        searchResults.length === 0 ? (
+          <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No products matched "{searchQuery}".</p></div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {searchResults.map((r) => (
+              <button
+                key={r.id}
+                onClick={() => openSearchResult(r)}
+                className="toss-card"
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', width: '100%' }}
+              >
+                <div>
+                  <p style={{ fontSize: '14px', fontWeight: 700 }}>{r.name}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Sold by {r.merchantName}</p>
+                </div>
+                <p style={{ fontSize: '14px', fontWeight: 700 }}>{r.price.toLocaleString()} RWF</p>
+              </button>
+            ))}
+          </div>
+        )
       ) : error ? (
         <div className="toss-card">
           <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>

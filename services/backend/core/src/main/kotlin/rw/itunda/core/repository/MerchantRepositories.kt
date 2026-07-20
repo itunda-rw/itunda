@@ -44,4 +44,20 @@ interface PaymentIntentRepository : JpaRepository<PaymentIntent, String> {
 
 interface MerchantProductRepository : JpaRepository<MerchantProduct, String> {
     fun findByMerchantIdAndActiveTrue(merchantId: String): List<MerchantProduct>
+
+    // Real cross-merchant product search (2026-07-20) -- found missing while
+    // researching Coupang/Naver/Toss Shopping for parity: a shopper could only search
+    // MERCHANT names (Merchant.search above) then browse one seller's catalog at a
+    // time. There was no way to search for a PRODUCT across every seller at once, the
+    // single most basic real feature every one of those apps has. No JPA relationship
+    // exists between MerchantProduct and Merchant (both just carry a raw id string,
+    // same convention as GroupAccount.walletId/GroupAccountMember.groupAccountId), so
+    // this is the same theta-style `JOIN ... ON` GroupMessagingRepositories already
+    // established for exactly that situation, not a broken relationship mapping.
+    @Query(
+        "SELECT p FROM MerchantProduct p JOIN Merchant m ON m.id = p.merchantId " +
+            "WHERE p.active = true AND m.status = :status " +
+            "AND LOWER(p.name) LIKE LOWER(CONCAT('%', :q, '%'))",
+    )
+    fun search(@Param("status") status: MerchantStatus, @Param("q") q: String, pageable: Pageable): Page<MerchantProduct>
 }
