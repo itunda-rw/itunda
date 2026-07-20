@@ -1,0 +1,595 @@
+# itunda Design References: Structural & Interaction Patterns from Real Products
+
+**Status:** Research synthesis, 2026-07-20/21. Six parallel deep-dives, one per itunda product
+surface, into real reference ecosystems (Naver, Kakao, Baemin/Woowa Brothers, Karrot/당근마켓,
+Coupang, Toss).
+
+## 0. What this document is not
+
+itunda's design system (IDS) uses **one consistent blue brand color across the entire app**, and
+that is not changing. A prior attempt to give Hood its own accent color (mirroring Karrot's real
+orange) was deliberately reverted: a real multi-product ecosystem like Kakao keeps one main color
+across its whole family for a consistent feel, and itunda is a single app, not a family of
+separate apps — per-tab color fragmentation would be the wrong lesson to take from that ecosystem.
+
+This document contains **zero color recommendations**. It is entirely about information
+architecture, list/card layouts, bottom sheets, search/filter UX, navigation idioms, empty
+states, chat UX, and map overlay patterns — sourced from named real products, official
+design-system docs, and real engineering/product blogs. Where a claim could not be sourced to
+something specific and verifiable, it is labeled `inferred` and should be treated as a hypothesis,
+not a confirmed pattern.
+
+Every recommendation below carries a confidence tag:
+
+- **sourced** — backed by an official doc, a named product's documented behavior, or a
+  cross-verified press/blog account.
+- **partially-sourced** — the underlying pattern is real, but at least one detail (exact figures,
+  full article content, single-source claim) couldn't be independently corroborated.
+- **inferred** — general UX reasoning, not confirmed against the named product. Flagged explicitly
+  wherever it appears; treat as lowest priority and validate before building.
+
+Within each surface, recommendations are ranked by confidence first, then by how large a real gap
+they close in itunda's current implementation.
+
+---
+
+## 1. Maps
+
+### References
+
+| Product | Source | Pattern |
+|---|---|---|
+| Naver Map — Smart Around (스마트어라운드) | brunch.co.kr/@bydot/4 (UX teardown) | Persistent, non-modal bottom sheet docked over an interactive map; peeks rather than disappears; scrolling expands past filters into curated horizontal sections (Today's Pick / Nearby / Worth visiting this week / Frequently saved / New openings); place-detail sheet shows hours/rating/swipeable review photos inline |
+| Kakao Map — place-detail redesign (v5.18.0+) | ditoday.com | Always-visible action-button row (reserve/delivery/bookmark/call/directions) up front; larger hero images; improved transit-info visibility for transport POIs |
+| Kakao Map — 즐겨찾기 (bookmarks) | kakaocorp.io, cs.kakao.com | Bookmarks grouped into named, colored folders; group color becomes marker pin color; bulk recolor per group; shareable via KakaoTalk/link; syncs to map.kakao.com |
+| Naver Map — saved places | antennagom.com, echeveau.net | Save flow triggered from the info sheet's "저장" button; choose/create a list; each list has name + color (becomes marker color) + public/private; public lists get a shareable URL; documented caps (2,000/list default, 1,000/custom list, 400 lists, 5,000 total) |
+| Apple Maps / iOS `UISheetPresentationController` | developer.apple.com | Official multi-detent sheet API (`.medium()`/`.large()`), grabber handle, `largestUndimmedDetentIdentifier` keeps the map interactive under the sheet up to the medium detent |
+| Google Maps (Android) bottom-sheet state model | developer.android.com `BottomSheetBehavior` docs + `reline/Google-Maps-BottomSheet`, `miguelhincapie/CustomBottomSheetBehavior` (GitHub) | Real place-detail needs 3 states (peek/anchor/full); stock `BottomSheetBehavior` only gives 2 cleanly — teams had to build custom extensions to get Google Maps' real middle "anchor" state, confirming this is a genuine, nontrivial engineering gap |
+| Kakao Map — filter chips | search-snippet of icunow.co.kr (article itself unreachable, TLS cert mismatch) | Chip row combines a contextual "search this area" chip with multi-select toggle chips; deeper filters (parking, pet-friendly, wheelchair, 24hr) live in a separate popup |
+| Kakao Map — 길찾기 (directions) | consumer blogs sisimoms.com, wishwrite.com (not official) | Transit options combine bus+subway, color-coded to real line colors, each summarized with duration/fare/transfers; walking directions show distance/duration/calories with crosswalk-aware routing |
+
+### Recommendations (ranked)
+
+1. **[sourced]** Replace the static floating `Card` with a real draggable peek/half/full bottom
+   sheet. `MapScreen.kt` lines 581–689 is a plain `Column`/`Card` pinned to `BottomCenter` with no
+   drag gesture — content just appears/disappears at whatever height its content dictates. Both
+   Apple's own `UISheetPresentationController` and Google Maps' documented need for a custom
+   `BottomSheetBehavior` extension confirm a true 3-state (peek/anchor/full) sheet is real,
+   nontrivial engineering — Compose's stock `BottomSheetScaffold` only gives 2 states out of the
+   box, so this needs a custom `AnchoredDraggable`/`SwipeableState`, same gap Android's stock API
+   has.
+   *Target: `android/app/src/main/java/rw/itunda/app/ui/MapScreen.kt:581-689`*
+
+2. **[sourced]** Give the sheet a default "around me" state instead of only rendering when a place
+   is selected or bookmarks exist. Naver's Smart Around keeps a non-modal sheet permanently docked
+   with curated nearby sections even before any search, contracting to a peek rather than
+   vanishing.
+   *Target: `MapScreen.kt` — new default state when `selectedPlace == null && activeCategory == null`, around line 658*
+
+3. **[sourced]** Elevate the place-detail card's action row and image. itunda's selected-place
+   Card (lines 583–656) shows only a name, a star toggle, and a single "Directions" button.
+   Kakao Map's real redesign deliberately surfaces a full action-button row (reserve/delivery/
+   bookmark/call/directions) plus a hero image up front so actions don't require a sub-page.
+   *Target: `MapScreen.kt:583-656`*
+
+4. **[sourced]** Group bookmarks into named, colored lists instead of one flat list. Both Kakao
+   Map (그룹 + per-group color, shareable) and Naver Map (named list + color + public/private,
+   shareable URL) let the list color become the marker pin color on the map — letting a user
+   visually distinguish saved-place categories on the map itself, not just in text.
+   *Target: `MapScreen.kt:658-688` plus backend `MapBookmarkDto`/`AddMapBookmarkRequest`, which would need a list/group + color field*
+
+5. **[partially-sourced]** Give turn-by-turn its own presentation instead of an inline
+   expand/collapse text block (`showSteps` toggle, lines 605–629). Kakao treats routing as its own
+   dedicated presentation with per-route summaries (duration/fare/transfers for transit;
+   distance/duration/calories for walking). Note: itunda's OSRM-backed route already draws a real
+   road-following line, so this gap is purely presentational, not a routing-data quality issue.
+   *Target: `MapScreen.kt:605-629`*
+
+6. **[inferred]** Move search from submit-then-list toward autocomplete with a recent-searches
+   zero state. itunda's search is tap-"Search"-then-flat-list with no live suggestions and no
+   recent-searches state. This is general autocomplete UX practice, **not** independently
+   confirmed as Naver/Kakao Map's specific implementation — flagged as the weakest-sourced item
+   in this section.
+   *Target: `MapScreen.kt:476-509` (search field) and `550-573` (results list)*
+
+7. **[partially-sourced]** Category chips (lines 513–537) already structurally match Kakao's
+   pattern reasonably well — this is a genuine partial match, not an urgent gap. The one
+   documented difference: Kakao's chips are multi-select toggles paired with a separate detail
+   popup; `searchNearbyCategory()` (line 290) is strictly single-select today.
+
+### Unresolved / worth a follow-up
+
+- Naver's autocomplete/recent-search behavior wasn't independently verified — only generic
+  search-UX practice surfaced.
+- icunow.co.kr (Kakao filter/sort breakdown) was unreachable; only a search-snippet was usable.
+- No official Kakao Map design-system doc exists publicly — everything here is third-party
+  teardown, which is normal for this product but should be corroborated with a second source
+  before treating fine details (e.g. exact section names) as authoritative.
+- No public spec for exact snap-point heights/animation timing from Naver/Kakao — any itunda
+  implementation will need to choose its own values.
+
+---
+
+## 2. Eats (food delivery)
+
+### References
+
+| Product | Source | Pattern |
+|---|---|---|
+| 배달의민족 (Baemin) | brunch.co.kr/@plusx/69, techblog.woowahan.com, news.nate.com (추천 리뷰), story.baemin.com, mt.co.kr (2024 overhaul) | List card shows delivery time/fee/min order/rating together; 8-way swipeable filter chips; "추천순" review ranking (weights photo + length + recency); review-stats aggregate block; 2024 overhaul split home into per-service tabs; owner replies to reviews (사장님 댓글) |
+| 쿠팡이츠 (Coupang Eats) | yozm.wishket.com, brunch.co.kr/@uibowl/356, partners.coupangeats.com (official seller guide), namu.wiki | Proactive address-confirmation bubble on open; "주문많음"/좋아요 tags on menu items; **required-option system where at least one +0원 choice is mandatory** so list price never mismatches checkout price (explicit seller-guide constraint); 치타배달/단건배달 (one rider, one order) speed badge, pioneered 2019, since industry-adopted; in-cart delivery↔pickup toggle; one-tap order with no confirmation screen; bifurcated post-delivery rating (food vs. delivery, binary good/bad with reason tags on "bad"); live rider map + phone + vehicle type with 4-stage status chain |
+
+### Recommendations (ranked)
+
+1. **[sourced]** The restaurant card is missing the data model to show delivery metadata at all.
+   `ShoppingMerchantDto` (`ApiService.kt:488-492`) has only `merchantId, businessName, category,
+   cashbackRate` plus optional lat/lng — no `photoUrl`, `rating`, `reviewCount`, `deliveryFee`,
+   `deliveryTimeMinutes`, `minOrderAmount`, `distanceKm`. Both Baemin and Coupang Eats put all of
+   these directly on the list card so restaurants are comparable before opening any of them. This
+   needs a backend model change (table + DTO + endpoint), not just a UI tweak.
+   *Target: `ApiService.kt:488` + `/api/v1/shopping/merchants` + `OrderFoodContent`'s browse `LazyColumn`*
+
+2. **[sourced]** Rating exists but sits behind an extra tap. `RestaurantRatingBadge` is only
+   called inside `RestaurantMenuView` (`SuperAppTabs.kt:4102`) — after a restaurant is already
+   open. Real apps put rating on the browse-list card. Fix: fold rating/reviewCount into the
+   existing list payload (a join, not a new round trip).
+   *Target: `SuperAppTabs.kt:4102`, browse list*
+
+3. **[sourced]** No menu options/customization model — the single biggest structural gap. Coupang
+   Eats' own seller guide makes required-option groups a first-class, **enforced** concept
+   (explicitly requiring a +0원 choice so list and cart price never diverge); Baemin's item detail
+   is built the same way. itunda's `MerchantProductDto` (`ApiService.kt:531`) is flat
+   `id, merchantId, name, price, active, createdAt` — no way to represent spice level, size, or
+   add-ons. Without this, itunda cannot represent most real restaurant menus.
+   *Target: `ApiService.kt:531`, item row in `RestaurantMenuView:4109-4125`*
+
+4. **[sourced]** No live rider-location map — status is a text label swap
+   (`EATS_STATUS_LABELS`/`RIDER_STATUS_CHAIN`, `SuperAppTabs.kt:3519-3527`). itunda already has a
+   self-hosted OSRM/Nominatim stack and a `RouteMiniMap` component used elsewhere
+   (`~1674`) — the pieces exist, just not wired into Eats tracking the way Baemin/Coupang Eats do
+   (live rider dot + phone + vehicle type during delivery).
+   *Target: `SuperAppTabs.kt:3519-3527`, `4330` (`EatsOrderRow`), pair with `RouteMiniMap`*
+
+5. **[sourced]** Review model has no photo field and no owner reply. `SubmitEatsReviewRequest`
+   (`~4063`) is numeric stars + optional text only. Baemin's 2022 push ranks photo-bearing reviews
+   first via 추천순 정렬, and 사장님 댓글 (owner replies) is a named, sourced feature. Food-delivery
+   trust leans disproportionately on photos of the actual plated food, making this higher-leverage
+   here than on other surfaces.
+   *Target: `SubmitEatsReviewRequest`/`ReviewOrderCard`, `SuperAppTabs.kt:3997-4063`*
+
+6. **[inferred]** Cart cannot hold two configurations of the same item, and has no per-line notes.
+   `cart = remember { mutableStateMapOf<String, Int>() }` (`3580`) is keyed by raw product id only.
+   This follows structurally from the missing options model above (item 3) rather than being an
+   independently sourced claim, and should be fixed alongside it.
+   *Target: `SuperAppTabs.kt:3580`, consumers in `EatsCheckoutView:4214+`*
+
+7. **[sourced]** No delivery-speed badge / no single-order vs. batched-order distinction. Coupang
+   Eats pioneered 단건배달/치타배달 (2019); Baemin now has 배민1. Lower priority than the above —
+   itunda has no equivalent anywhere, but this is a purchase-decision nicety, not a functional gap.
+   *Target: browse list, `~3746+`; no current equivalent*
+
+### Unresolved / worth a follow-up
+
+- Baemin's/Coupang Eats' own official design-system docs (story.baemin.com, bcut.baemin.com)
+  returned only search snippets, not full content — a direct fetch would sharpen visual/spacing
+  specifics.
+- No pixel-level card layout verified against a live, dated screenshot.
+- Baemin's B마트 and either app's algorithmic "today's picks" ranking weren't researched — itunda
+  has no comparable surface yet.
+- Coupang Eats' 좋아요/싫어요 per-item rating and pickup/delivery cart toggle came from secondary
+  writeups, not Coupang's own product pages.
+
+---
+
+## 3. Talk (real-time chat)
+
+### References
+
+| Product | Source | Pattern |
+|---|---|---|
+| KakaoTalk — per-message read receipt | waegukin.com, anotherlittleworldinmymind.blogspot.com, cross-checked vs. namu.wiki | Countdown number next to each sent bubble = recipients who haven't read it yet, disappears at 0; "1" in a 1:1 chat |
+| KakaoTalk — bubble/read-state critique | brunch.co.kr/@ultra0034/32 | Read state via disappearing number, not a checkmark; article separately proposes (unshipped) fade-on-read |
+| KakaoTalk — 2025 reply/thread redesign | facebook.com/hipinkorea, eyesmag.com, inven.co.kr, v.daum.net | Long-press → Copy/Select-copy/Reply, expanding into "start thread"/"thread reply"; forward to up to 10 destinations (individual or new group); pin/delete/vote/@mention listed as the message toolkit |
+| KakaoTalk — Friends tab restoration (Dec 2025, v25.11.0) | designcompass.org, koreapost.com, en.sedaily.com | Friends tab is structurally separate from Chats and is the app's default screen; a Sept 2025 feed-first replacement caused a rating collapse and was reverted within 3 months; restored version adds a Friends/Updates toggle, chat folders, unread-conversations summary |
+| KakaoTalk — Chat Room Drawer | kakaocorp.com/page/detail/8643, cs.kakao.com | Per-thread aggregated gallery of every photo/video/file/link in that one room, distinct from the account-wide Talk Cloud backup |
+| KakaoTalk vs LINE UI/UX comparison | ditoday.com | Swipe right = favorite/notify/pin, swipe left = read/leave; "+" opens a multi-function attach menu (Album flow called out as friction) |
+| KakaoTalk — 조용한 채팅방 (Quiet chat room) | kakaocorp.com/page/detail/10583 | Archive + auto-mute without leaving, distinct from muting notifications only or leaving; also a "leave silently" feature |
+| KakaoTalk — typing indicator (v25.4.0, May 2025) | designcompass.org | Animated yellow dots inline, opt-in via Lab, requires both participants to enable |
+| Kakao emoticon store | inquivix.com, bowloftech.substack.com | Emoticon Studio lets creators publish/sell stickers into the attach menu, 50:50 split; emoticons were ~1/3 of Kakao's 2020 revenue (~$340M) |
+
+### Recommendations (ranked)
+
+1. **[sourced]** Give Talk a real Friends/contacts directory, not just a Direct/Groups
+   chat-*history* toggle. `TalkTab` (`SuperAppTabs.kt:~200-312`) only switches between two
+   chat-history lists — no way to browse contacts you haven't messaged, no favorites, no
+   online-status directory. KakaoTalk's Friends tab is so structurally central that Kakao's own
+   Sept 2025 attempt to bury it caused a rating collapse and was reverted within 3 months. itunda's
+   "New chat" only accepts a hand-typed phone number today.
+   *Target: `SuperAppTabs.kt` `TalkTab`/`TalkView`/`DirectMessagesList` (~200-389); mirror in `ios/App/Sources/TalkScreen.swift` and bank-mfe*
+
+2. **[sourced]** Add a per-message read-receipt countdown — Kakao's most iconic feature. itunda
+   only tracks `unreadCount` at the conversation-list level; inside an open thread there's no
+   per-message read signal at all. Needs backend support (per-recipient message-read tracking, not
+   just conversation-level `unreadCount`) plus the UI badge.
+   *Target: `MessageBubble`/`GroupMessageBubble` in `SuperAppTabs.kt` for UI; backend messaging service for the read-state model*
+
+3. **[sourced]** Add a long-press message menu: reply/thread, forward, pin, delete. itunda's only
+   per-message interaction today is tap-to-toggle a reaction (`MessageReactionsRow`). Kakao's
+   confirmed 2025 toolkit is Copy/Reply (→ thread)/Forward (≤10 destinations)/Pin/Delete/@mention
+   — none of this exists in `ChatThreadView`/`GroupThreadView`.
+
+4. **[sourced]** Add swipe actions and per-chat mute/archive ("quiet chat room") to the
+   conversation list. `ConversationRow`/`GroupRow` (`~478-498`, `~712-749`) support only tap-to-open.
+   Real KakaoTalk supports right-swipe (favorite/notify/pin) and left-swipe (read/leave), plus an
+   official archive-without-leaving feature.
+
+5. **[sourced]** Add a per-thread shared-media gallery (Chat Room Drawer). itunda has zero
+   aggregation of media/files/links shared in a conversation. Directly relevant to itunda's
+   Hood-to-Talk handoff flows (listing photos, offer/gift bubbles).
+   *Target: new surface off `ChatThreadView`/`GroupThreadView`*
+
+6. **[sourced]** Add a real attach ("+") menu to the composer. Both thread composers are just a
+   text field + send button (plus a gift icon on `ChatThreadView`, `~1016-1027`) — no photo, file,
+   or sticker send at all. Kakao's emoticon picker alone is core, monetized product surface (~1/3
+   of 2020 revenue), not a nice-to-have.
+
+7. **[sourced]** Add @mention support in group chats. No mention parsing exists anywhere; Kakao's
+   own message-toolkit coverage lists mention alongside pin/forward/delete as shipped.
+   *Target: `GroupThreadView` header/composer, `GroupMessageBubble` (~500-676)*
+
+8. **[partially-sourced]** Add per-message timestamps — currently entirely absent from both bubble
+   types (`MessageBubble ~1236`, `GroupMessageBubble ~679`). Kakao's bubble redesign coverage
+   discusses time placement alongside read state, but the exact collapsed-per-run convention
+   recommended here is general chat-UI practice, not confirmed pixel-for-pixel from a Kakao
+   source.
+
+9. **[inferred, low priority]** Consider Kakao's newer inline-dots typing indicator. itunda's
+   existing text-line typing indicator ("X is typing…", 3s auto-clear) already covers the core
+   need — this is visual polish, not a missing capability.
+
+### Unresolved / worth a follow-up
+
+- namu.wiki returned HTTP 403 for this session; feature/redesign pages were only triangulated via
+  search snippets and press coverage.
+- No official public KakaoTalk *consumer* design-system site exists (Kakao's public design guide
+  covers KakaoSync/business integrations, not chat UI) — all consumer-UI claims here are
+  press/corporate-blog/independent-teardown sourced.
+- iOS `TalkScreen.swift` and bank-mfe's `ConversationThread` were grep-confirmed to share the same
+  `MessageBubble`/`unreadCount` shape as Android, but not fully read through — worth doing before
+  implementation given this project's history of the three clients drifting.
+- Exact date-divider visual spec (pill shape, format, sticky behavior) wasn't sourced to a
+  specific citation — flagged as general convention, not Kakao-specific.
+- KakaoTalk's Open Chat (오픈채팅) wasn't researched — may be more relevant to Hood's community
+  features than Talk proper; worth a separate pass.
+
+---
+
+## 4. Hood (Market / Life / Jobs / Home)
+
+### References
+
+| Product | Source | Pattern |
+|---|---|---|
+| Karrot — Manner Temperature → Karrot Score localization | redbusbagman.com | Domestic: 매너온도, starts at 36.5°C, warmth metaphor. Karrot's own UK/Canada research found the temperature metaphor confusing and low scores read as insulting to non-Korean users; global replacement is a plain 0–1000 "Karrot Score" starting at 30, reframed around "trustworthy" language. Lesson: localizing a trust signal means redesigning the metric, not translating the label |
+| Seed Design (Karrot's official open-source design system) | seed-design.io, github.com/daangn/seed-design | 44 official components incl. Manner Temp & Badge (10 discrete levels l1–l10, pill variant for cards), Bottom Sheet (documented anatomy, 90/50/10% snap points, mandatory drag handle, switch to full page past 90% height), Scroll Fog (persistent edge-fade, 15–20% depth, always rendered to avoid flicker), Content Placeholder/Skeleton/Identity Placeholder, Tag Group, Menu Sheet, Reaction Button |
+| Karrot — 동네인증 (neighborhood verification) | cs.kr.karrotmarket.com (official FAQs 44, 1), corroborated by nuthang.com | GPS verification of up to 2 neighborhoods (home + work); user-adjustable radius (8–63 nearby areas per secondary source); verification frequency shown as a trust signal |
+| Karrot — 동네생활 board structure | brunch.co.kr/@zezezeze/79 | Question posts get distinct 궁금해요/답변하기 CTA vs. ordinary 공감하기/댓글; feed is strictly chronological (no popularity ranking, to preserve voice diversity); 같이해요 (join-together) posts get a dedicated pinned mid-feed slot; joining their group chat requires an explicit 참여하기 tap |
+| Karrot — review & wishlist UX | ditoday.com | Post-transaction review is a preset checklist, not free text; "good points" shown publicly, "uncomfortable points" kept private between the two parties (deliberate asymmetric visibility to avoid public-negative-review churn); un-hearting a wishlist item is toast-confirmed, not silent |
+| Karrot — general IA | mobiinside.co.kr | Transaction history split into 판매내역/구매내역/관심목록 (sales/purchases/wishlist) tabs; search radius as a slider, not checkboxes |
+
+### Recommendations (ranked)
+
+1. **[sourced]** Replace itunda's missing trust signal with a Karrot-Score-style numeric badge —
+   **not** a literal manner-temperature metaphor. itunda's Hood cards show no seller/poster
+   reputation at all today. Seed Design's real "Manner Temp & Badge" component (10 levels, pill
+   variant for cards) is the mechanic to borrow; Karrot's own localization research (dropped the
+   temperature/Celsius framing for non-Korean users, replaced with a neutral 0–1000 score starting
+   at 30) is the specific choice itunda should copy, since Rwanda is exactly this kind of
+   non-Korean market.
+   *Target: new `SellerTrustBadge` for `ListingCard`/`JobPostCard`/`PropertyListing` in `SuperAppTabs.kt` (~1685+), mirrored in `HoodScreen.swift`; needs a new trust-score field on `User`*
+
+2. **[sourced]** Add a post-transaction review flow with asymmetric public/private visibility.
+   itunda has star reviews for Shop/Eats but Marketplace/Jobs/Property have zero review step —
+   "Mark sold" just flips status. Extend the existing `ProductReviewDto`/`StarRatingRow` pattern
+   with Karrot's public-good/private-uncomfortable split rather than inventing free-text review.
+   *Target: `markListingSold` flow and Job/Property equivalents; template at `~3355-3490`*
+
+3. **[sourced]** Add a wishlist/heart to Marketplace, Jobs, and Property listings with
+   toast-confirmed add/remove. itunda already has this pattern for Community posts and Shop
+   merchants but not Hood listings (`ListingActionButton` only offers Message/Offer/Mark
+   sold/Remove). Karrot confirms both add *and* remove via toast specifically because the icon
+   state change alone wasn't judged sufficient feedback.
+   *Target: `ListingCard`/`JobPostCard`/`PropertyListing`; add a Saved `HoodView`*
+
+4. **[sourced]** Differentiate community-board post types by interaction verb; give "join
+   together" posts a dedicated feed slot. `CommunityContent` (`~1795+`) treats every post
+   identically today. Karrot's real board: distinct CTA pairing for questions vs. ordinary posts,
+   strictly chronological feed (no popularity ranking, to preserve voice diversity), and a pinned
+   mid-feed slot for 같이해요 posts whose group chat requires an explicit join tap.
+   *Target: `CommunityContent`/`CommunityPostCard` (~1795-2160)*
+
+5. **[sourced]** Add a persistent edge-fade ("scroll fog") to Hood's scrollable lists. Seed
+   Design's Scroll Fog is a specifically documented, always-rendered gradient (15–20% depth, min
+   20px) — itunda's feeds have no equivalent hint that content continues below the fold.
+   *Target: shared `LazyColumn` styling across Hood's four modes*
+
+6. **[sourced]** Group a user's own activity into labeled sales/purchases/wishlist tabs instead of
+   one flat "my listings" list. Karrot's real screen splits this three ways specifically to avoid
+   one overloaded list mixing different user intents (cited as an application of Miller's Law).
+   *Target: `HoodView` enum, `MINE` branch in `MarketplaceContent` (~1310-1480)*
+
+7. **[partially-sourced]** Replace bare "Loading…" text (5+ instances across Hood's feeds) with
+   shaped skeleton placeholders — Seed Design ships named Content Placeholder / Skeleton /
+   Identity Placeholder components for exactly this, confirming Karrot's real product uses
+   card-shaped placeholders rather than a spinner or text; the itunda-side call sites are enumerated
+   but the *visual* skeleton spec wasn't independently pulled beyond the component index.
+   *Target: `SuperAppTabs.kt` lines ~592, 900, 3083, 3393, 4105 and iOS equivalents*
+
+8. **[partially-sourced]** Upgrade single-shot, single-neighborhood setup to dual-neighborhood +
+   radius control + verification-frequency trust signal. `NeighborhoodSetupPrompt` (`~1324`) is a
+   one-time single-GPS-capture with no radius control. Karrot's official CS docs confirm the
+   dual-neighborhood and verification-count mechanics; the specific 8–63-area radius-scaling
+   figures are secondary-sourced (nuthang.com) and should be treated as illustrative only.
+   *Target: `NeighborhoodSetupPrompt`, `bank-mfe/src/lib/neighborhood.ts`, `V50__hyperlocal_neighborhood.sql` (currently one VARCHAR(120) column, no radius/verification fields)*
+
+### Unresolved / worth a follow-up
+
+- Could not confirm whether Karrot's live product actually gates category/filter selection behind
+  a Seed Design Bottom Sheet vs. an inline chip row — deliberately left out of the sourced
+  recommendations.
+- Seed Design's Tag Group / Menu Sheet / Reaction Button / Result Section / Contextual Floating
+  Button pages weren't fetched beyond their one-line index listing — worth a follow-up pull of
+  full specs before implementing.
+- 동네인증 radius-scaling numbers (8–63 areas) are secondary-sourced only; the mechanic itself
+  (dual neighborhoods, adjustable radius, verification-count trust signal) is corroborated by
+  Karrot's own CS FAQ.
+- No sourced detail found on Karrot's masked-calling/"safe number" equivalent or exactly how
+  price-offer chips render in-chat — no recommendation was made here beyond the 같이해요 join-gate.
+- Everything in this section was sourced via text-based fetch/search, not visual inspection of
+  live screenshots or Seed Design's Figma file — worth a follow-up visual pass.
+
+---
+
+## 5. Shopping (merchant e-commerce browse/catalog/cart)
+
+### References
+
+| Product | Source | Pattern |
+|---|---|---|
+| Coupang app redesign case study (Chloe Youn) | chloeyoun.squarespace.com/work/coupang-design-renewal | Cards support add-to-cart AND wishlist directly, no detail-page visit needed; detail page uses an inline scrollable variant+quantity selector; reviews restructured into scannable titled/keyword summaries; filters cut from 20+ to a small essential set plus a graphical price-range slider; notification/preference toggles surfaced on the home surface, grouped by type |
+| Coupang Rocket Delivery badge | multiple independent secondary descriptions (Coupang Rocket Growth seller docs, aggregator docs) | Distinct blue rocket badge directly on the product card/thumbnail (not buried in the detail page); separate orange "Seller Rocket" badge for a different fulfillment tier |
+| Coupang product data shape | Apify "Coupang Products Crawler" listing (third-party structured scrape) | Real Coupang list items carry 30+ fields incl. title/brand/current+original price/rating/review count/delivery-speed flag/ad flag — list cards are data-rich, not name+price |
+| Naver 가격비교 (Shopping) price-comparison model | 메이크샵 고객센터 explainer | One product identity maps to multiple seller listings shown together, sortable by lowest price, with per-listing price-tracking — cross-seller comparison, not a single-seller catalog |
+| Baymard Institute — discount/price-badge placement research | baymard.com/blog/product-page-price-discounts | Discount % must sit immediately next to the struck-through original price; badges must stay visually consistent across list card, search result, and detail page |
+| itunda's own codebase (ground truth) | direct repo inspection | `MerchantProduct` has only id/merchantId/name/price/active/createdAt — no image, no discount price, no description, no stock; all three clients render single-column full-width list rows, never a grid; cross-merchant search endpoint exists and is wired into bank-mfe only; wishlist exists in bank-mfe only |
+
+### Recommendations (ranked)
+
+1. **[sourced]** Wire itunda's own existing cross-merchant product-search endpoint into Android
+   and iOS. This is an itunda-internal inconsistency, not a gap against Coupang/Naver:
+   `GET /api/v1/shopping/products/search` already exists on the backend, and bank-mfe already has a
+   working "search across every merchant" bar wired to it (`BankDashboard.tsx:~5340`) — matching
+   what every real marketplace treats as table stakes. Android's `ShopTab` and iOS `ShopScreen`
+   never call it at all.
+   *Target: `SuperAppTabs.kt` `CommerceShopContent`; `ios/App/Sources/ShopScreen.swift` `CommerceShopContent`*
+
+2. **[sourced]** Surface the already-shipped category/search filter params in Shop's own merchant
+   browse UI. `GET /api/v1/shopping/merchants` already accepts `category`/`q`, and Eats already uses
+   both in the *same file* (`~3620`) — Shop's own `CommerceShopContent` calls the endpoint with no
+   params and shows no search box or chips at all. The backend capability and UI pattern both
+   already exist in itunda's own codebase.
+   *Target: `SuperAppTabs.kt` `CommerceShopContent` (~2903-3048), mirror Eats' pattern a few hundred lines below; `ShopScreen.swift`*
+
+3. **[sourced]** Extend product wishlist ("찜") from bank-mfe-only to Android and iOS. bank-mfe
+   already has `WishlistButton`/`WishlistView` backed by real endpoints; Android only has favorites
+   for Eats restaurants, iOS Shop has none. This is extending itunda's own precedent, not adopting
+   a new external pattern.
+   *Target: `CommerceShopContent`/`MerchantDetailView` — reuse the `FavoriteRestaurantDto` pattern; `ShopScreen.swift` `MerchantDetailView`*
+
+4. **[partially-sourced]** Give `MerchantProduct` real images and a discount-price pair. Coupang's
+   documented data model and Baymard's research both confirm image + current/original price is the
+   baseline for a real product card; itunda's `MerchantProduct` entity has neither — a schema-level
+   blocker, not just a UI gap.
+   *Target: `services/backend/core/.../MerchantProduct.kt` (add `imageUrl`, `originalPrice`/`discountPercent`, `description`); propagate through `MerchantProductController.kt`, `ShoppingController.kt`, and all three client DTOs*
+
+5. **[partially-sourced]** Switch merchant/product browse from single-column list to a 2-column
+   image-led grid. Chloe Youn's case study confirms Coupang's real cards carry quick add-to-cart
+   and wishlist directly on a grid card; itunda's three clients render text-only full-width rows
+   with a generic storefront icon.
+   *Target: `CommerceShopContent` merchant list (~3016) and `MerchantDetailView` product list (~3078) in `SuperAppTabs.kt`; `browseBody`/`MerchantDetailView` in `ShopScreen.swift`; `ProductCatalogView` in `BankDashboard.tsx` (~4850)*
+
+6. **[partially-sourced]** Add a dedicated product detail screen with inline variant/qty
+   selection. itunda has none anywhere — tapping a product only reveals an inline qty stepper in
+   the flat catalog list. Coupang's redesign implies a real detail page exists to have replaced a
+   multi-step flow with an inline selector on. Naver Smart Store's tab structure was sourced only
+   from secondary description sites — weaker sourcing, flagged.
+   *Target: new `ProductDetailView` alongside `MerchantDetailView` in all three clients*
+
+7. **[partially-sourced]** Move add-to-cart and wishlist onto the list/grid card itself (depends
+   on the grid layout landing first). Chloe Youn names this as a specific, deliberate Coupang
+   improvement.
+
+8. **[inferred]** Add merchandising modules (banner/promo carousel, category shortcuts, curated
+   deal rails) to the Shop landing surface, above the raw item list. This is general,
+   widely-documented Coupang/Naver home-surface structure but was **not independently re-verified**
+   this pass beyond general knowledge — flagged as the weakest-sourced recommendation in this
+   section.
+   *Target: top of `browseBody` in `CommerceShopContent`/`ShopScreen.swift`; bank-mfe shopping tab header*
+
+### Unresolved / worth a follow-up
+
+- Naver Smart Store's exact detail-page tab structure (상세정보/리뷰/Q&A/Story) wasn't confirmed
+  against a primary Naver source — only secondary description sites.
+- No official Coupang design-system page or engineering blog describing real card anatomy
+  (image placement, badge stacking, aspect ratio) was reachable — Chloe Youn's case study is real
+  and named but is a third-party redesign analysis, not Coupang's own documentation.
+- Naver's real filter UX (facet sidebar, price-slider specifics, sort options beyond lowest-price)
+  wasn't confirmed with a strong primary source.
+- Didn't check whether Hood's Market surface already has grid/image-card patterns reusable for
+  Shop before building new ones — worth a quick in-repo check first.
+- Real Coupang/Naver checkout-flow specifics (address selection, payment picker, delivery-slot
+  selection) weren't compared against itunda's existing `MultiCartView`.
+
+---
+
+## 6. Bank / Pay (Talk-embedded money, savings)
+
+### References
+
+| Product | Source | Pattern |
+|---|---|---|
+| Kakao Pay — chat money transfer | story.kakaopay.com, support.kakaopay.com | Entry point is the "+" icon inside a chat room, not a separate Pay tab; 1:1 sends directly, group requires tapping the specific member; recipient gets a notification with an explicit "receive" button (claim is a distinct act, not auto-credit); daily send/receive limits (10M/30M/2M KRW cited); sender can cancel before accept; claim required same-day; **송금봉투 (money envelopes)** — themed presets ([축하해요]/[내마음]/[행운만땅]/[정산해요]) carry occasion/message instead of free text |
+| KakaoBank — Group Account (모임통장) | kakaobank.com/products/moim, eng.kakaobank.com | Creator/owner retains withdraw authority; invited members (even non-account friends) can view/deposit but not withdraw; capped at 100 members; fresh account number issued (no history leak); automated dues collection with per-member payment-day rules, one-tap "request all unpaid," playful reminder cards |
+| KakaoBank — 26주적금 (26-week savings) | kakaobank.com/products/26weeks | Weekly auto-debit amount escalates automatically from the opening deposit; locked to the account's opening weekday, no mid-plan changes; interest computed per-weekly-installment on its own remaining term then summed; preferential rate requires an unbroken 26-week streak through maturity — a real "don't break the streak" gamification mechanic |
+| KakaoPay 정산하기 (settlement/split-bill) 2020 redesign | seoulfn.com, hankyung.com, digitaltoday.co.kr, moneys.mt.co.kr, v.daum.net (cross-verified across 5 outlets) | "사다리타기" (ladder-game) mode randomizes the split by headcount instead of always even, 3 adjustable variance levels (top level assigns the whole amount to one "loser"); up to 5 sequential settlement "rounds" tracked per thread; manual per-person override with KakaoPay itself absorbing the rounding remainder; scheduled reminder-nudge bell for unpaid friends; up to 3 photos attached; KakaoBank runs its own, differently-branded, non-converged "1/N 빵나누기" feature — Kakao didn't even unify this within its own family |
+| Toss — 더치페이 (split-the-bill) baseline for contrast | blog.toss.im/article/toss-split-the-bill | Opened by searching or tapping under a specific spending-history transaction — receipt/ledger-anchored, not chat-anchored; no randomization, no multi-round, no rounding absorption, no photo attach — deliberately minimal versus KakaoPay |
+
+### Recommendations (ranked)
+
+1. **[sourced]** Build a Talk-chat-embedded split-bill/settlement feature — itunda has none today
+   (confirmed via grep across `docs/TOSS_PARITY_MATRIX.md`: Group Account and Gift both exist and
+   are marked "real," nothing named split/dutch/settlement is). KakaoPay's real 정산하기 is
+   structurally richer than Toss's own 더치페이: chat-embedded entry point (same "+" family as
+   transfer), randomized ladder-game split with adjustable intensity, up to 5 tracked rounds,
+   silent rounding-remainder absorption, scheduled reminder nudges, 3-photo receipt attach. Since
+   itunda's own Gift feature was deliberately built as "a real chat message rather than a separate
+   notification surface" (per `GiftService.kt`'s own doc comment), the chat-embedded Kakao pattern
+   — not Toss's spending-history-anchored one — is the natural fit for itunda's Talk-first
+   architecture. The ladder-game/multi-round/reminder/rounding mechanics are the genuine
+   differentiators worth porting; a plain even-split alone would just be re-doing Toss.
+   *Target: new backend module analogous to `services/backend/gift` (reusing `GiftService`'s escrow-ledger conventions), surfaced as a chat action in bank-mfe's Talk thread (mirror `lib/gift.ts`), Android `SuperAppTabs.kt`/`ItundaAppScreen.kt`, iOS `TalkScreen.swift`*
+
+2. **[sourced]** Add a Kakao-Bank-style auto-escalating, day-locked weekly savings product
+   (26주적금 pattern) as a distinct gamified product type, sibling to the already-shipped Group
+   Account. Structurally distinct from a generic recurring deposit: escalating auto-debit amount,
+   hard-locked opening weekday, per-installment interest computation, and a streak-gated
+   preferential rate. itunda has the Group Account mechanic already sourced and live but nothing
+   for this second, differently-gamified KakaoBank product.
+   *Target: `services/backend/savings` module, sibling to `GroupAccountService.kt`; surfaced wherever Group Account currently lists*
+
+3. **[partially-sourced]** Give itunda's existing Gift feature themed "envelope" presets instead
+   of (or alongside) free-text notes. itunda's Gift already matches KakaoPay's core structure well
+   (escrow-then-explicit-claim, inline chat bubble, 7-day auto-expiry-refund). What's missing is
+   송금봉투: the envelope itself is a themed preset that communicates occasion without typed text —
+   the envelope *is* the message. The specific 4-name preset list came from a search-engine summary
+   of Kakao's help content, not a re-verified primary catalog page, so treat the exact preset names
+   as illustrative.
+   *Target: `services/backend/gift/.../Gift.kt` (add an envelope-theme field), `bank-mfe/src/lib/gift.ts` + gift bubble rendering, Android gift-send sheet, iOS gift-send flow*
+
+4. **[sourced — validation, no action]** itunda's Gift claim/escrow flow and Group Account already
+   match Kakao's real structural pattern point-for-point: Gift's escrow-then-explicit-claim
+   mirrors KakaoPay's real notification-driven claim (not instant credit), and Group Account
+   (`GroupAccountService.kt`, shipped 2026-07-20) already mirrors KakaoBank's 모임통장 mechanics
+   (100-member cap, owner-only withdraw, fresh account number, transparency notifications) per the
+   parity matrix's own citation. No new work follows from this — flagged so the design team knows
+   these two are genuinely sourced-accurate already, not just superficially similar.
+
+### Unresolved / worth a follow-up
+
+- KakaoBank's exact onboarding/KYC screen sequence wasn't sourced beyond general "simple UI"
+  commentary from personal blogs — would need an app teardown or screenshot walkthrough.
+- A complete, verified catalog of 송금봉투 presets and their visual design wasn't found — the
+  primary Kakao help page for this is now defunct/redirected.
+- KakaoPay's same-day claim-expiry window and 10M/2M KRW limits came from a search-engine summary
+  layered over story.kakaopay.com, not a directly re-verified current help page — re-confirm before
+  treating exact figures as current.
+- KakaoBank/KakaoPay's personalized product-recommendation logic has no official documentation or
+  credible engineering-blog source — excluded from recommendations entirely as unsourced.
+
+---
+
+## 7. Cross-product consistency: what's shared vs. surface-specific
+
+itunda's six surfaces pull from six different real ecosystems, which creates a real risk of the
+app feeling like six different apps stitched together if every pattern is treated as
+surface-local. The following separates what should become a **shared itunda component** (built
+once, reused across tabs) from what is genuinely surface-specific and should **not** leak into
+other tabs, even though the underlying idea (e.g. "bottom sheet") sounds generic.
+
+### Should be shared, one component, multiple call sites
+
+- **Bottom sheet primitive (peek/half/full, draggable, non-modal up to a threshold).** This exact
+  need shows up independently in three research threads: Maps (place-detail + around-me),
+  Eats/Shop (if a product-detail sheet pattern is adopted instead of a full page), and potentially
+  Hood (Seed Design's own Bottom Sheet spec was flagged as fitting category/filter selection,
+  though not confirmed as Karrot's actual usage). Building one `AnchoredDraggable`-based
+  itunda-sheet component — matching what both Apple's `UISheetPresentationController` and Google
+  Maps' custom-extension pattern converge on — and reusing it across Maps and any future
+  Eats/Shop detail sheets avoids three independent, slightly-different sheet implementations.
+
+- **Skeleton/placeholder loading state.** The "Loading…" text-row problem was flagged specifically
+  in Hood (5+ call sites) but is visibly the same anti-pattern anywhere itunda shows a bare loading
+  string instead of a shaped placeholder. A single `ContentPlaceholder`/`Skeleton` composable
+  (Seed Design's named pattern) belongs in itunda's shared IDS layer, not rebuilt per-tab.
+
+- **Wishlist/heart affordance + toast-confirmed add/remove.** This pattern is independently
+  recommended for Hood listings and Shopping products, and already exists for Community posts and
+  Eats restaurant favorites. It should be one shared favorite/heart component with a shared toast
+  copy convention ("saved"/"removed from interest list"), backed by one generalized
+  favorite-entity backend shape, rather than four separate bespoke favorite implementations (which
+  is close to what exists today — bank-mfe wishlist, Android Eats favorites, Community likes are
+  all separate).
+
+- **Chat-embedded financial action pattern ("+" menu → Gift / future Split-bill / future
+  transfer).** Both Gift (shipped) and the recommended Split-bill feature (Section 6) share the
+  same structural idea: a financial action initiated from inside a Talk thread, rendered as an
+  inline chat bubble, with an explicit-claim (not auto-credit) step. These should share one
+  "chat-embedded money action" shell — the composer's attach affordance, the escrow/claim bubble
+  rendering, the expiry-refund plumbing — with Gift and Split-bill as two instances of it, not two
+  independently-built features.
+
+- **Search-with-filter-chips pattern.** Eats already has category chips + search input built;
+  Shop's own browse UI is missing the identical pattern despite the backend already supporting it.
+  This should be one shared "merchant/product browse header" component (search field + horizontal
+  chip row) used by both Eats and Shop, not reimplemented per tab — the recommendation in Section 5
+  is explicitly to reuse Eats' existing pattern rather than invent a new one for Shop.
+
+- **Product/listing card "quick action without opening detail"** (add-to-cart + wishlist on Shop
+  cards; save/heart on Hood listing cards). The underlying interaction — act on an item from the
+  list without navigating away — is the same mechanic Coupang applies to Shop and Karrot applies
+  to Hood listings independently. The visual card can and should look different per surface
+  (grocery/product card vs. secondhand-listing card), but the *tap targets and feedback pattern*
+  (inline quantity stepper / heart toggle with toast) should be one shared interaction contract.
+
+### Should stay surface-specific — do not generalize into a shared component
+
+- **Trust/reputation badge semantics.** Hood's recommended Karrot-Score-style numeric trust badge
+  is specifically about person-to-person marketplace trust between strangers transacting locally.
+  This should **not** bleed into Talk (which is closer contacts, not stranger transactions) or
+  Shop (where merchant trust is closer to a business rating, not a peer-to-peer score). Keep the
+  Hood trust badge a Hood-only concept.
+
+- **Map bottom-sheet content sections** (Naver's "Today's Pick"/"Nearby"/"New openings" curated
+  rails). This curated-discovery content model is specific to Maps' place-discovery use case and
+  should not be copied into Shop's merchandising modules (Section 5, item 8) even though both are
+  "browse surface with a home rail" in the abstract — Maps' rails are place-recommendation-driven,
+  Shop's would be promo/deal-driven; conflating them risks a generic, purposeless carousel in both
+  places.
+
+- **Karrot's asymmetric public/private review split** (good points public, uncomfortable points
+  private) is a specific answer to secondhand peer-to-peer transaction dynamics (avoiding
+  platform-wide seller reputation damage from one bad private trade). This is recommended for Hood
+  transactions specifically (Section 4, item 2) and should not be generalized to Eats/Shop
+  reviews, where the reviewed party is a business, not a peer, and public accountability serves a
+  different purpose.
+
+- **26-week savings' streak-gated interest mechanic.** This is a specific KakaoBank product
+  mechanic (Section 6, item 2) tied to a savings product's maturity terms. It should not be
+  reused as a generic "gamification" pattern elsewhere (e.g. do not apply a streak mechanic to
+  Hood posting frequency or Talk usage) without its own independent sourcing — nothing in this
+  research supports that extension.
+
+- **Money-envelope theming (송금봉투)** is specific to person-to-person Gift/transfer occasions
+  (congrats, good luck, settle-up) and shouldn't be generalized into, say, Hood listing templates
+  or Shop gift-wrapping — it's a Talk/Pay-specific expressive layer, sourced only in that context.
+
+### Open question for the design team
+
+Several "shared" candidates above (the sheet primitive, the favorite/heart component, the
+chat-embedded-money shell) don't exist as shared IDS components in itunda today — each surface
+independently rebuilt a version of them (bank-mfe wishlist vs. Android Eats favorites; Gift's
+existing chat-bubble shell vs. what a new Split-bill feature would naturally reinvent otherwise).
+Before building any of the individual recommendations above, it is worth a short IDS design pass
+to define these as first-class shared components — the same discipline that keeps itunda's brand
+color unified should extend to these interaction primitives, so six product surfaces continue to
+feel like one app rather than six.
