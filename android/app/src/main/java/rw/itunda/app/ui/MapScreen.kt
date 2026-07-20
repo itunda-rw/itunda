@@ -441,7 +441,21 @@ fun MapScreen(onBack: () -> Unit) {
             }
         }
 
-        Column(modifier = Modifier.padding(padding)) {
+        // Full-bleed map with floating overlays (Box, not Column) -- matches the real Naver
+        // Map/Kakao Map pattern where the map always fills the screen and search/details
+        // panels float on top of it, rather than pushing it around in normal document flow.
+        // Was previously a plain Column stacking search -> chips -> map -> details/bookmarks
+        // in sequence, which could squeeze the map to a sliver or push bookmarks off-screen
+        // entirely once a place was selected -- a real bug, not just a cosmetic mismatch.
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .background(Ids.colors.background),
+            ) {
             Box(modifier = Modifier.padding(16.dp)) {
                 BackTopBar("Map", onBack)
             }
@@ -550,8 +564,12 @@ fun MapScreen(onBack: () -> Unit) {
             }
 
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp)) }
+            } // end floating top panel
 
-            AndroidView(factory = { mapView }, modifier = Modifier.fillMaxWidth().padding(16.dp))
+            // Floating bottom panel -- selected-place details or saved bookmarks dock to the
+            // bottom edge over the map (Naver/Kakao Maps' own real convention), instead of
+            // pushing the map up or overflowing off-screen the way the old Column layout could.
+            Column(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
 
             selectedPlace?.let { place ->
                 Card(
@@ -659,6 +677,7 @@ fun MapScreen(onBack: () -> Unit) {
                     }
                 }
             }
-        }
+            } // end floating bottom panel
+        } // end full-bleed map Box
     }
 }
