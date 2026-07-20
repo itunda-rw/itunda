@@ -197,6 +197,28 @@ class MapsServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        When("bookmarking with a blank name") {
+            Then("it throws InvalidBookmarkNameException") {
+                try {
+                    service.addBookmark("user_1", "   ", lat, lng)
+                    error("expected InvalidBookmarkNameException")
+                } catch (e: InvalidBookmarkNameException) {
+                    // expected
+                }
+            }
+        }
+
+        When("bookmarking with a name longer than the real 512-char DB column bound") {
+            Then("it throws InvalidBookmarkNameException rather than risking a raw DB insert failure") {
+                try {
+                    service.addBookmark("user_1", "x".repeat(513), lat, lng)
+                    error("expected InvalidBookmarkNameException")
+                } catch (e: InvalidBookmarkNameException) {
+                    // expected
+                }
+            }
+        }
     }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf

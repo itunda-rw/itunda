@@ -17,6 +17,7 @@ import java.util.UUID
 class InvalidMapsCoordinateException(message: String) : RuntimeException(message)
 class RouteNotFoundException(message: String) : RuntimeException(message)
 class InvalidMapsCategoryException(message: String) : RuntimeException(message)
+class InvalidBookmarkNameException(message: String) : RuntimeException(message)
 
 /**
  * A real, general-purpose "search this map" + "get directions" surface -- the
@@ -94,12 +95,25 @@ class MapsService(
         if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
             throw InvalidMapsCoordinateException("Latitude must be between -90 and 90, longitude between -180 and 180")
         }
+        val trimmedName = displayName.trim()
+        if (trimmedName.isEmpty()) {
+            throw InvalidBookmarkNameException("A bookmark needs a name")
+        }
+        // Real bound, found via the same systematic sweep that fixed the identical gap
+        // across Marketplace/Jobs/RealEstate/Community/Messaging the same day --
+        // `display_name` is VARCHAR(512), and this DB's real STRICT_TRANS_TABLES mode
+        // throws a raw, unhandled 500 on an over-length insert rather than truncating.
+        // Never previously caught because addBookmark's own displayName wasn't even
+        // trimmed, let alone length-checked.
+        if (trimmedName.length > 512) {
+            throw InvalidBookmarkNameException("Bookmark name must be 512 characters or fewer")
+        }
         mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude(userId, latitude, longitude)?.let { return it }
         return mapBookmarkRepository.save(
             MapBookmark(
                 id = "map_bookmark_${UUID.randomUUID()}",
                 userId = userId,
-                displayName = displayName,
+                displayName = trimmedName,
                 latitude = latitude,
                 longitude = longitude,
             ),

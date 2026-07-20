@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
+import rw.itunda.maps.InvalidBookmarkNameException
 import rw.itunda.maps.InvalidMapsCategoryException
 import rw.itunda.maps.InvalidMapsCoordinateException
 import rw.itunda.maps.MapPlaceCategory
@@ -92,6 +93,10 @@ class MapsController(private val mapsService: MapsService) {
     @ExceptionHandler(InvalidMapsCategoryException::class)
     fun handleInvalidCategory(ex: InvalidMapsCategoryException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_CATEGORY", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidBookmarkNameException::class)
+    fun handleInvalidBookmarkName(ex: InvalidBookmarkNameException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_BOOKMARK_NAME", ex.message ?: "Bad request"))
 
     @ExceptionHandler(RouteNotFoundException::class)
     fun handleRouteNotFound(ex: RouteNotFoundException) =
