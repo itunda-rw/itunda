@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.web.ApiError
 import rw.itunda.partners.InvalidApiKeyException
+import rw.itunda.partners.InvalidMiniAppSubmissionException
 import rw.itunda.partners.InvalidPermissionScopeException
 import rw.itunda.partners.PartnerEmailAlreadyRegisteredException
 import rw.itunda.partners.PartnerMiniAppPermissions
@@ -81,6 +82,10 @@ class PartnerController(private val partnerService: PartnerService) {
     @ExceptionHandler(InvalidPermissionScopeException::class)
     fun handleInvalidScope(ex: InvalidPermissionScopeException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PERMISSION_SCOPE", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidMiniAppSubmissionException::class)
+    fun handleInvalidSubmission(ex: InvalidMiniAppSubmissionException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MINI_APP_SUBMISSION", ex.message ?: "Bad request"))
 
     @ExceptionHandler(MissingRequestHeaderException::class)
     fun handleMissingHeader(ex: MissingRequestHeaderException) =

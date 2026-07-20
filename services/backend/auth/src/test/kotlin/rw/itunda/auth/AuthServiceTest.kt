@@ -229,6 +229,23 @@ class AuthServiceTest : BehaviorSpec({
             }
         }
 
+        When("updating a profile photo URL longer than the real 512-char DB column bound") {
+            val user = User(
+                id = "user_6b", phoneNumber = "+250788000018", firstName = "Jean", lastName = "B",
+                passwordHash = "unused", createdAt = Instant.now(),
+            )
+            every { userRepository.findById("user_6b") } returns Optional.of(user)
+
+            Then("it throws InvalidProfilePhotoUrlException rather than risking a raw DB insert failure") {
+                try {
+                    service.updateProfilePhoto("user_6b", "https://cdn.itunda.rw/" + "x".repeat(500))
+                    error("expected InvalidProfilePhotoUrlException")
+                } catch (e: InvalidProfilePhotoUrlException) {
+                    // expected
+                }
+            }
+        }
+
         When("requesting email verification with no email on file") {
             val user = User(
                 id = "user_7", phoneNumber = "+250788000009", firstName = "Jean", lastName = "B",

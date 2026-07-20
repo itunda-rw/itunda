@@ -153,7 +153,19 @@ class AuthService(
     @Transactional
     fun updateProfilePhoto(userId: String, profilePhotoUrl: String): PublicUser {
         val user = userRepository.findById(userId).orElseThrow { UserNotFoundException("User not found") }
-        user.profilePhotoUrl = profilePhotoUrl
+        val trimmed = profilePhotoUrl.trim()
+        if (trimmed.isEmpty()) {
+            throw InvalidProfilePhotoUrlException("A profile photo URL is required")
+        }
+        // Real bound, found via the same systematic sweep that fixed the identical gap
+        // across Commerce/Eats/Marketplace/Jobs/RealEstate/Community/Messaging/Maps/
+        // Merchant/Partners the same day -- profile_photo_url is VARCHAR(512), and this
+        // DB's real STRICT_TRANS_TABLES mode throws a raw, unhandled 500 on an
+        // over-length insert.
+        if (trimmed.length > 512) {
+            throw InvalidProfilePhotoUrlException("Profile photo URL must be 512 characters or fewer")
+        }
+        user.profilePhotoUrl = trimmed
         userRepository.save(user)
         return user.toPublic()
     }

@@ -130,4 +130,8 @@ class AuthController(private val authService: AuthService) {
     @ExceptionHandler(NeighborhoodNotResolvedException::class)
     fun handleNeighborhoodNotResolved(ex: NeighborhoodNotResolvedException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("NEIGHBORHOOD_NOT_RESOLVED", ex.message ?: "Couldn't determine a neighborhood"))
+
+    @ExceptionHandler(InvalidProfilePhotoUrlException::class)
+    fun handleInvalidProfilePhotoUrl(ex: InvalidProfilePhotoUrlException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PROFILE_PHOTO_URL", ex.message ?: "Bad request"))
 }

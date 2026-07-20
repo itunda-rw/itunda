@@ -22,6 +22,7 @@ class PartnerSuspendedException(message: String) : RuntimeException(message)
 class InvalidPermissionScopeException(message: String) : RuntimeException(message)
 class PartnerMiniAppNotFoundException(message: String) : RuntimeException(message)
 class PartnerMiniAppNotPendingException(message: String) : RuntimeException(message)
+class InvalidMiniAppSubmissionException(message: String) : RuntimeException(message)
 
 /**
  * The real scopes a partner mini-app can request review for -- deliberately a small,
@@ -96,13 +97,27 @@ class PartnerService(
         if (invalidScopes.isNotEmpty()) {
             throw InvalidPermissionScopeException("Unknown permission scope(s): ${invalidScopes.joinToString(", ")}")
         }
+        val trimmedName = name.trim()
+        val trimmedDescription = description.trim()
+        val trimmedIconUrl = iconUrl?.trim()?.ifBlank { null }
+        val trimmedBundleUrl = bundleUrl.trim()
+        if (trimmedName.isEmpty() || trimmedDescription.isEmpty() || trimmedBundleUrl.isEmpty()) {
+            throw InvalidMiniAppSubmissionException("Name, description, and bundleUrl are all required")
+        }
+        // Real bound, found via the same systematic sweep that fixed the identical gap
+        // across Commerce/Eats/Marketplace/Jobs/RealEstate/Community/Messaging/Maps the
+        // same day -- these columns are VARCHAR(255)/500/500/500, and this DB's real
+        // STRICT_TRANS_TABLES mode throws a raw, unhandled 500 on an over-length insert.
+        if (trimmedName.length > 255 || trimmedDescription.length > 500 || (trimmedIconUrl?.length ?: 0) > 500 || trimmedBundleUrl.length > 500) {
+            throw InvalidMiniAppSubmissionException("Name must be 255 characters or fewer; description, iconUrl, and bundleUrl 500 or fewer")
+        }
         val miniApp = PartnerMiniApp(
             id = "partner_app_${UUID.randomUUID()}",
             partnerId = partner.id,
-            name = name,
-            description = description,
-            iconUrl = iconUrl,
-            bundleUrl = bundleUrl,
+            name = trimmedName,
+            description = trimmedDescription,
+            iconUrl = trimmedIconUrl,
+            bundleUrl = trimmedBundleUrl,
             permissions = permissions.joinToString(","),
             status = PartnerMiniAppStatus.PENDING,
         )

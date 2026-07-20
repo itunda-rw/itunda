@@ -185,6 +185,10 @@ class MerchantController(
     fun handleCardDeclined(ex: CardDeclinedException) =
         ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("CARD_DECLINED", ex.message ?: "Card declined"))
 
+    @ExceptionHandler(InvalidWebhookUrlException::class)
+    fun handleInvalidWebhookUrl(ex: InvalidWebhookUrlException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_WEBHOOK_URL", ex.message ?: "Bad request"))
+
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENCY_KEY_CONFLICT", ex.message ?: "Conflict"))

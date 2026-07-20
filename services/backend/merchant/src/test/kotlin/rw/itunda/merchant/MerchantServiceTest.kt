@@ -442,6 +442,17 @@ class MerchantServiceTest : BehaviorSpec({
                 verify(exactly = 1) { merchantRepository.save(merchant) }
             }
         }
+
+        When("registering a webhook URL longer than the real 500-char DB column bound") {
+            Then("it throws InvalidWebhookUrlException rather than risking a raw DB insert failure") {
+                try {
+                    service.setWebhookUrl("owner_3", "https://example.com/" + "x".repeat(500))
+                    error("expected InvalidWebhookUrlException")
+                } catch (e: InvalidWebhookUrlException) {
+                    // expected
+                }
+            }
+        }
     }
 
     Given("a merchant with real collections spread across two days and two channels") {

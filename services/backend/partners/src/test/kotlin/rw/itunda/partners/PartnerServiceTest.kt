@@ -104,6 +104,19 @@ class PartnerServiceTest : BehaviorSpec({
             }
         }
 
+        When("submitting with a name longer than the real 255-char DB column bound") {
+            Then("it throws InvalidMiniAppSubmissionException rather than risking a raw DB insert failure") {
+                try {
+                    service.submitMiniApp(
+                        "sk_test_real_key", "x".repeat(256), "desc", null, "https://acme.rw/bundle.js", emptyList(),
+                    )
+                    error("expected InvalidMiniAppSubmissionException")
+                } catch (e: InvalidMiniAppSubmissionException) {
+                    verify(exactly = 0) { partnerMiniAppRepository.save(any()) }
+                }
+            }
+        }
+
         When("submitting with an unknown API key") {
             every { partnerRepository.findByApiKeyHash(sha256("sk_test_wrong")) } returns null
 

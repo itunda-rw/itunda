@@ -38,6 +38,7 @@ class PaymentIntentNotFoundException(message: String) : RuntimeException(message
 class PaymentIntentNotPayableException(message: String) : RuntimeException(message)
 class SelfPaymentException(message: String) : RuntimeException(message)
 class CardDeclinedException(message: String) : RuntimeException(message)
+class InvalidWebhookUrlException(message: String) : RuntimeException(message)
 
 data class MerchantReportDay(
     val date: LocalDate,
@@ -104,7 +105,16 @@ class MerchantService(
     @Transactional
     fun setWebhookUrl(ownerUserId: String, webhookUrl: String): Merchant {
         val merchant = getMyMerchant(ownerUserId)
-        merchant.webhookUrl = webhookUrl
+        val trimmed = webhookUrl.trim()
+        // Real bound, found via the same systematic sweep that fixed the identical gap
+        // across Commerce/Eats/Marketplace/Jobs/RealEstate/Community/Messaging/Maps the
+        // same day -- `webhook_url` is VARCHAR(500), and this DB's real
+        // STRICT_TRANS_TABLES mode throws a raw, unhandled 500 on an over-length insert.
+        // Never previously caught because setWebhookUrl didn't even trim its input.
+        if (trimmed.length > 500) {
+            throw InvalidWebhookUrlException("Webhook URL must be 500 characters or fewer")
+        }
+        merchant.webhookUrl = trimmed
         return merchantRepository.save(merchant)
     }
 
