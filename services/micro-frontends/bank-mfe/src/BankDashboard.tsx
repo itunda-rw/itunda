@@ -5,6 +5,7 @@ import { getStoredUser, logout, ApiError } from './lib/api';
 import { fetchTransactions, fetchWallets, type Transaction, type Wallet } from './lib/wallet';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
 import { claimInterest, createGoal, depositToGoal, fetchGoals, fetchInterestJar, type InterestJar, type SavingsGoal } from './lib/savings';
+import { collectWithFacePay, enrollFacePay, fetchFacePayStatus, revokeFacePay } from './lib/facepay';
 import { sendDirect } from './lib/p2p';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
 import { collectPayment, fetchShoppingCatalog, type CollectPaymentResult, type ShoppingMerchant } from './lib/shopping';
@@ -471,20 +472,79 @@ function CertificateView() {
   );
 }
 
-function PayByCodeCard({ onPaid }: { onPaid: (result: CollectPaymentResult) => void }) {
+// Real Face Pay enroll/revoke toggle -- see lib/facepay.ts's doc comment for the full
+// account of the gap this closes (backend fully real since 2026-07-13, zero UI until now).
+// `enrolled`/`onChanged` are lifted to ShoppingView -- found live that this card and
+// PayByCodeCard each fetching their own status independently meant PayByCodeCard never
+// learned about an enrollment that happened in the same session until a full reload.
+function FacePaySettingsCard({ enrolled, onChanged }: { enrolled: boolean | null; onChanged: () => void }) {
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const handleToggle = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      if (enrolled) await revokeFacePay();
+      else await enrollFacePay();
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update Face Pay.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (enrolled === null) return <div className="toss-card skeleton" style={{ height: '64px', marginBottom: '16px' }} />;
+
+  return (
+    <div className="toss-card" style={{ marginBottom: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <p style={{ fontSize: '14px', fontWeight: 700 }}>😊 Face Pay</p>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+            {enrolled ? 'Enabled — authorize payment codes with your face, no code re-entry needed' : 'Not enabled on this account'}
+          </p>
+        </div>
+        <button
+          className={`toss-btn ${enrolled ? 'toss-btn-danger' : 'toss-btn-primary'}`}
+          onClick={handleToggle}
+          disabled={busy}
+          style={{ padding: '8px 14px', fontSize: '12px' }}
+        >
+          {busy ? '…' : enrolled ? 'Disable' : 'Enable'}
+        </button>
+      </div>
+      {error && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '8px' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
+function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPaymentResult) => void; facePayEnrolled: boolean }) {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Real device binding (2026-07-20) -- found while wiring Face Pay into this card:
+  // like TransferFlow, a code payment carries a real Idempotency-Key and can real-403
+  // with DEVICE_NOT_VERIFIED on a device's first money-moving action, but this card
+  // never handled it -- it just showed the raw error string with no actionable next
+  // step. Same fix as TransferFlow/Savings: a real step-up prompt, not a dead end.
+  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setNeedsDeviceVerification(false);
     setSubmitting(true);
     try {
-      const result = await collectPayment(code.trim());
+      const result = facePayEnrolled ? await collectWithFacePay(code.trim()) : await collectPayment(code.trim());
       onPaid(result);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not complete this payment.');
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        setNeedsDeviceVerification(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Could not complete this payment.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -494,21 +554,27 @@ function PayByCodeCard({ onPaid }: { onPaid: (result: CollectPaymentResult) => v
     <div className="toss-card" style={{ marginBottom: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Pay by code</h3>
       <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '14px' }}>
-        No scanner handy? Enter the payment code the merchant shows you to pay instantly and earn cashback.
+        {facePayEnrolled
+          ? 'Face Pay is on — enter the code the merchant shows you to authorize with your face.'
+          : 'No scanner handy? Enter the payment code the merchant shows you to pay instantly and earn cashback.'}
       </p>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px' }}>
-        <input
-          type="text"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder="Payment code"
-          required
-          style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
-        />
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
-          {submitting ? 'Paying…' : 'Pay'}
-        </button>
-      </form>
+      {needsDeviceVerification ? (
+        <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+      ) : (
+        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px' }}>
+          <input
+            type="text"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="Payment code"
+            required
+            style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+            {submitting ? (facePayEnrolled ? 'Authorizing…' : 'Paying…') : facePayEnrolled ? '😊 Pay' : 'Pay'}
+          </button>
+        </form>
+      )}
       {error && (
         <p style={{ fontSize: '13px', color: '#E53935', marginTop: '10px' }} role="alert">{error}</p>
       )}
@@ -522,6 +588,9 @@ function PaymentConfirmation({ result, onDone }: { result: CollectPaymentResult;
       <ShieldCheck size={36} color="var(--toss-green)" style={{ marginBottom: '10px' }} />
       <h3 style={{ fontSize: '17px', fontWeight: 700, marginBottom: '4px' }}>Paid {result.merchantName}</h3>
       <p style={{ fontSize: '22px', fontWeight: 700, marginBottom: '4px' }}>{result.amount.toLocaleString()} RWF</p>
+      {result.channel === 'FACE_PAY' && (
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px' }}>😊 Authorized with Face Pay</p>
+      )}
       {result.cashbackEarned > 0 && (
         <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-green)', marginBottom: '16px' }}>
           +{result.cashbackEarned.toLocaleString()} RWF cashback earned
@@ -536,6 +605,7 @@ function ShoppingView() {
   const [merchants, setMerchants] = useState<ShoppingMerchant[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [paymentResult, setPaymentResult] = useState<CollectPaymentResult | null>(null);
+  const [facePayEnrolled, setFacePayEnrolled] = useState<boolean | null>(null);
 
   const load = () => {
     setError(null);
@@ -543,8 +613,12 @@ function ShoppingView() {
       .then(setMerchants)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load the shopping catalog.'));
   };
+  const loadFacePayStatus = () => {
+    fetchFacePayStatus().then((r) => setFacePayEnrolled(r.enrolled)).catch(() => setFacePayEnrolled(false));
+  };
 
   useEffect(load, []);
+  useEffect(loadFacePayStatus, []);
 
   if (paymentResult) {
     return <PaymentConfirmation result={paymentResult} onDone={() => setPaymentResult(null)} />;
@@ -565,7 +639,8 @@ function ShoppingView() {
 
   return (
     <div>
-      <PayByCodeCard onPaid={setPaymentResult} />
+      <FacePaySettingsCard enrolled={facePayEnrolled} onChanged={loadFacePayStatus} />
+      <PayByCodeCard onPaid={setPaymentResult} facePayEnrolled={facePayEnrolled ?? false} />
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px', padding: '0 4px' }}>
         Earn cashback every time you shop with Itunda merchants.
       </p>
