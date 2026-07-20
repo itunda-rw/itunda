@@ -632,6 +632,19 @@ struct CreateListingRequest: Encodable {
 struct ListingResponse: Decodable { let success: Bool; let listing: ListingDto }
 struct ListingsResponse: Decodable { let success: Bool; let listings: [ListingDto] }
 
+// Real Marketplace listing wishlist (2026-07-21 backend + bank-mfe, ported here) --
+// mirrors FavoriteRestaurantDto's exact shape; see ListingFavoriteService.kt's own doc
+// comment on the backend for why add/remove are both idempotent.
+struct FavoriteListingDto: Decodable, Identifiable {
+    let listingId: String
+    let title: String
+    let price: Double
+    let category: String
+    let favoritedAt: String
+    var id: String { listingId }
+}
+struct FavoriteListingsResponse: Decodable { let success: Bool; let favorites: [FavoriteListingDto] }
+
 // Real KakaoTalk-style "선물하기" money gift (2026-07-20) -- see GiftService's own doc
 // comment. Money leaves the sender's wallet into a real escrow account the moment a
 // gift is sent, and only reaches the recipient's wallet once they explicitly claim it
@@ -1192,6 +1205,19 @@ extension NetworkClient {
     func getOffersForConversation(conversationId: String) async throws -> PriceOffersResponse {
         try await get("api/v1/marketplace/conversations/\(conversationId)/offers")
     }
+
+    // Real Marketplace listing wishlist (2026-07-21 backend + bank-mfe) -- ported here,
+    // closing the "Android/iOS don't have this yet" gap that row's own doc comment
+    // named. Mirrors addFavoriteRestaurant/removeFavoriteRestaurant exactly.
+    func addListingFavorite(_ listingId: String) async throws -> SuccessResponse {
+        try await authenticatedPost("api/v1/marketplace/listings/\(listingId)/favorite", body: EmptyBody())
+    }
+
+    func removeListingFavorite(_ listingId: String) async throws -> SuccessResponse {
+        try await authenticatedDelete("api/v1/marketplace/listings/\(listingId)/favorite")
+    }
+
+    func getMyFavoriteListings() async throws -> FavoriteListingsResponse { try await get("api/v1/marketplace/listings/favorites") }
 
     // Real KakaoTalk-style gift send/claim (2026-07-20) -- see GiftService.
     func sendGiftInConversation(conversationId: String, amount: Double, note: String?) async throws -> GiftResponse {
