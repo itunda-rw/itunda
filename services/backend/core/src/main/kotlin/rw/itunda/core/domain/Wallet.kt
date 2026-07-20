@@ -13,7 +13,13 @@ import java.time.Instant
 // GroupAccount.kt's doc comment. Deliberately not queried via findByUserIdAndType the
 // way MAIN/SAVINGS are: a user can own or belong to many group accounts, so each has
 // its own dedicated Wallet row resolved by GroupAccount.walletId instead.
-enum class WalletType { MAIN, SAVINGS, INVESTMENT, LOAN, GROUP }
+//
+// WEEKLY_SAVINGS added 2026-07-21 for the real KakaoBank 26주적금 (26-week savings)
+// equivalent -- see WeeklySavingsPlan.kt's doc comment. Same reasoning as GROUP: a
+// user can open many 26-week plans over time (one at a time or several concurrently),
+// so each plan gets its own dedicated Wallet resolved by WeeklySavingsPlan.walletId,
+// never via findByUserIdAndType.
+enum class WalletType { MAIN, SAVINGS, INVESTMENT, LOAN, GROUP, WEEKLY_SAVINGS }
 
 /** Mirrors backend/src/types/index.ts Wallet. Money is BigDecimal, not float, on purpose. */
 @Entity
