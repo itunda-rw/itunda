@@ -9,10 +9,18 @@ import type { ShoppingMerchant } from './shopping';
 
 // Real category/search filter (2026-07-19) -- both optional and combinable. See
 // ShoppingController.getEligibleMerchants's own doc comment on the backend.
-export const fetchRestaurants = (category?: string, q?: string) => {
+//
+// Real browse-card enrichment (2026-07-21) -- optional buyerLat/buyerLng backs a real
+// distanceKm + deliveryTimeMinutes estimate per restaurant; see ShoppingMerchant's own
+// doc comment in lib/shopping.ts for the full field account.
+export const fetchRestaurants = (category?: string, q?: string, buyerLat?: number, buyerLng?: number) => {
   const params = new URLSearchParams();
   if (category) params.set('category', category);
   if (q) params.set('q', q);
+  if (buyerLat != null && buyerLng != null) {
+    params.set('buyerLat', String(buyerLat));
+    params.set('buyerLng', String(buyerLng));
+  }
   // Real bug found live (2026-07-20): this call never set a page size, so it silently
   // took the backend's own default of 20 -- fine while the catalog was small, but a
   // real restaurant past the 20th spot would then be missing from this list entirely,
@@ -31,6 +39,22 @@ export const fetchRestaurants = (category?: string, q?: string) => {
 export const fetchRestaurantCategories = () =>
   apiFetch<{ success: boolean; categories: string[] }>('/api/v1/shopping/merchants/categories').then((r) => r.categories);
 
+// Real menu-item option groups (2026-07-21, v1: required single-select only) -- closes
+// docs/DESIGN_REFERENCES.md's Eats recommendation #3, the single biggest structural
+// gap: itunda previously had no way to represent size/spice-level/add-on choices at
+// all. See MenuOptionGroup.kt's own doc comment on the backend for the full,
+// honestly-scoped account.
+export interface MenuOptionChoice {
+  id: string;
+  name: string;
+  priceDelta: number;
+}
+export interface MenuOptionGroup {
+  id: string;
+  name: string;
+  choices: MenuOptionChoice[];
+}
+
 export interface MenuItem {
   id: string;
   merchantId: string;
@@ -38,6 +62,7 @@ export interface MenuItem {
   price: number;
   active: boolean;
   createdAt: string;
+  optionGroups?: MenuOptionGroup[];
 }
 
 export const fetchMenu = (restaurantId: string) =>
@@ -54,6 +79,10 @@ export interface EatsOrderItem {
   productName: string;
   unitPrice: number;
   quantity: number;
+  // Real menu-options receipt breakdown (2026-07-21) -- see EatsOrderItem.kt's own doc
+  // comment. unitPrice above already includes every selected choice's priceDelta; this
+  // is purely a human-readable summary, never a second pricing source.
+  selectedOptionsJson?: string | null;
 }
 
 export interface EatsOrder {
@@ -81,7 +110,7 @@ export interface EatsOrder {
 
 export const placeEatsOrder = (
   restaurantId: string,
-  items: { menuItemId: string; quantity: number }[],
+  items: { menuItemId: string; quantity: number; selectedChoiceIds?: string[] }[],
   deliveryAddress: string,
   deliveryLatitude?: number,
   deliveryLongitude?: number,

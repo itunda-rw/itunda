@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import java.math.BigDecimal
 import java.time.Instant
 
 enum class MerchantStatus { ACTIVE, SUSPENDED }
@@ -76,6 +77,23 @@ class Merchant(
     // default.
     @Column(length = 64, nullable = true)
     var category: String? = null,
+
+    // Real restaurant-card enrichment (2026-07-21) -- closes the "browse card has no
+    // photo/minOrderAmount" gap named in docs/DESIGN_REFERENCES.md's Eats section
+    // (Baemin/Coupang Eats both put these directly on the list card so restaurants are
+    // comparable before opening any of them). A plain URL string, not an upload/storage
+    // pipeline -- same "real, not fabricated" bar as everywhere else: itunda has no
+    // image-hosting system to invent one, but a merchant-set URL to their own hosted
+    // photo is genuinely real, same category as webhookUrl. Nullable: an unset photo
+    // falls back to the client's existing generic storefront icon, never a fabricated
+    // image.
+    @Column(name = "photo_url", length = 500, nullable = true)
+    var photoUrl: String? = null,
+
+    // Real merchant-set minimum order amount (2026-07-21) -- nullable: unset means no
+    // minimum, the pre-existing behavior for every merchant that hasn't opted in yet.
+    @Column(name = "min_order_amount", precision = 18, scale = 2, nullable = true)
+    var minOrderAmount: BigDecimal? = null,
 ) {
     protected constructor() : this(id = "", ownerUserId = "", walletId = "", businessName = "")
 }

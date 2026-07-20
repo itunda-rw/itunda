@@ -11,10 +11,16 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.core.domain.MerchantStatus
+import rw.itunda.core.geo.GeoUtils
+import rw.itunda.core.repository.EatsReviewRepository
+import rw.itunda.core.repository.MenuOptionChoiceRepository
+import rw.itunda.core.repository.MenuOptionGroupRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
+import java.math.BigDecimal
+import java.math.RoundingMode
 
 class ShoppingMerchantNotFoundException(message: String) : RuntimeException(message)
 
@@ -29,7 +35,29 @@ class ShoppingMerchantNotFoundException(message: String) : RuntimeException(mess
 class ShoppingController(
     private val merchantRepository: MerchantRepository,
     private val merchantProductRepository: MerchantProductRepository,
+    private val eatsReviewRepository: EatsReviewRepository,
+    private val menuOptionGroupRepository: MenuOptionGroupRepository,
+    private val menuOptionChoiceRepository: MenuOptionChoiceRepository,
 ) {
+    companion object {
+        // Real, labeled ESTIMATE (2026-07-21) -- not measured historical delivery time
+        // (this backend has never recorded one), same "computed from real distance, never
+        // fabricated" discipline EatsOrderService.computeDeliveryFee already established
+        // for the delivery fee itself. A real kitchen-prep floor plus a real
+        // distance/speed travel estimate, rounded to the nearest 5 minutes the way every
+        // real delivery app's ETA badge is displayed.
+        private const val BASE_PREP_MINUTES = 15.0
+        private const val ASSUMED_AVG_SPEED_KMH = 20.0
+        private const val MIN_DELIVERY_MINUTES = 15
+        private const val MAX_DELIVERY_MINUTES = 90
+    }
+
+    private fun estimateDeliveryMinutes(distanceKm: Double): Int {
+        val travelMinutes = (distanceKm / ASSUMED_AVG_SPEED_KMH) * 60.0
+        val total = BASE_PREP_MINUTES + travelMinutes
+        val rounded = (Math.round(total / 5.0) * 5).toInt()
+        return rounded.coerceIn(MIN_DELIVERY_MINUTES, MAX_DELIVERY_MINUTES)
+    }
 
     // Real category/search filter (2026-07-19) -- both params optional and
     // independently combinable, backing restaurant categories + search/filter for Eats
@@ -37,14 +65,41 @@ class ShoppingController(
     // it for free). Blank query params are treated as absent rather than an empty-string
     // match, since `?category=` from an unset UI filter shouldn't behave differently
     // from omitting it entirely.
+    //
+    // Real browse-card enrichment (2026-07-21) -- closes docs/DESIGN_REFERENCES.md's Eats
+    // recommendations #1/#2: photoUrl/minOrderAmount (real, merchant-set), rating/
+    // reviewCount (real, batch-aggregated from EatsReview -- previously only visible one
+    // tap deeper inside RestaurantMenuView), and, when the caller supplies their own real
+    // buyerLat/buyerLng, a real distanceKm (Haversine straight-line, not the OSRM road
+    // distance EatsOrderService's delivery-fee calculation uses -- a browse list only
+    // needs a rough real distance to sort/display by) plus a real, clearly-an-ESTIMATE
+    // deliveryTimeMinutes derived from that distance. All new fields are null/omitted
+    // when there's genuinely nothing real to compute -- never a fabricated number.
     @GetMapping("/merchants")
     fun getEligibleMerchants(
         @RequestParam(required = false) category: String?,
         @RequestParam(required = false) q: String?,
+        @RequestParam(required = false) buyerLat: Double?,
+        @RequestParam(required = false) buyerLng: Double?,
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
         val page = merchantRepository.search(MerchantStatus.ACTIVE, category?.trim()?.ifBlank { null }, q?.trim()?.ifBlank { null }, pageable)
+        val hasBuyerLocation = buyerLat != null && buyerLng != null && GeoUtils.isValidCoordinate(buyerLat, buyerLng)
+        // Real batched rating lookup -- one GROUP BY query for the whole page, not one
+        // per-merchant call. See EatsReviewRepository.getRestaurantRatingSummaries's own
+        // doc comment.
+        val ratingByMerchant = if (page.content.isNotEmpty()) {
+            eatsReviewRepository.getRestaurantRatingSummaries(page.content.map { it.id }).associateBy { it.restaurantId }
+        } else {
+            emptyMap()
+        }
         val merchants = page.content.map { merchant ->
+            val distanceKm = if (hasBuyerLocation && merchant.latitude != null && merchant.longitude != null) {
+                GeoUtils.haversineKm(buyerLat!!, buyerLng!!, merchant.latitude!!, merchant.longitude!!)
+            } else {
+                null
+            }
+            val rating = ratingByMerchant[merchant.id]
             mapOf(
                 "merchantId" to merchant.id,
                 "businessName" to merchant.businessName,
@@ -55,6 +110,12 @@ class ShoppingController(
                 // Eats' distance-based delivery fee. Null for a merchant that hasn't set one.
                 "latitude" to merchant.latitude,
                 "longitude" to merchant.longitude,
+                "photoUrl" to merchant.photoUrl,
+                "minOrderAmount" to merchant.minOrderAmount,
+                "rating" to rating?.average,
+                "reviewCount" to (rating?.count ?: 0L),
+                "distanceKm" to distanceKm?.let { BigDecimal(it).setScale(2, RoundingMode.HALF_UP) },
+                "deliveryTimeMinutes" to distanceKm?.let { estimateDeliveryMinutes(it) },
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "merchants" to merchants) + pageMeta(page))
@@ -74,12 +135,49 @@ class ShoppingController(
     // is the read-only public counterpart a shopper needs instead, reusing the exact
     // same real MerchantProductRepository.findByMerchantIdAndActiveTrue query
     // MerchantProductService.getCatalog already established.
+    //
+    // Real menu-options enrichment (2026-07-21) -- folds each product's real option
+    // groups + choices directly into this same payload, per
+    // docs/DESIGN_REFERENCES.md's own explicit recommendation ("a join, not a new round
+    // trip"). Two batched queries total for the whole menu, never one pair per item.
     @GetMapping("/merchants/{merchantId}/products")
     fun getMerchantProducts(@PathVariable merchantId: String): ResponseEntity<Map<String, Any?>> {
         val merchant = merchantRepository.findById(merchantId)
             .orElseThrow { ShoppingMerchantNotFoundException("Merchant not found") }
         val products = merchantProductRepository.findByMerchantIdAndActiveTrue(merchant.id)
-        return ResponseEntity.ok(mapOf("success" to true, "merchant" to mapOf("id" to merchant.id, "businessName" to merchant.businessName), "products" to products))
+        val groupsByProduct = if (products.isNotEmpty()) {
+            menuOptionGroupRepository.findByProductIdInOrderByDisplayOrderAsc(products.map { it.id }).groupBy { it.productId }
+        } else {
+            emptyMap()
+        }
+        val allGroups = groupsByProduct.values.flatten()
+        val choicesByGroup = if (allGroups.isNotEmpty()) {
+            menuOptionChoiceRepository.findByGroupIdInOrderByDisplayOrderAsc(allGroups.map { it.id }).groupBy { it.groupId }
+        } else {
+            emptyMap()
+        }
+        val enrichedProducts = products.map { product ->
+            mapOf(
+                "id" to product.id,
+                "merchantId" to product.merchantId,
+                "name" to product.name,
+                "price" to product.price,
+                "active" to product.active,
+                "createdAt" to product.createdAt,
+                "optionGroups" to (groupsByProduct[product.id] ?: emptyList()).map { group ->
+                    mapOf(
+                        "id" to group.id,
+                        "name" to group.name,
+                        "choices" to (choicesByGroup[group.id] ?: emptyList()).map { choice ->
+                            mapOf("id" to choice.id, "name" to choice.name, "priceDelta" to choice.priceDelta)
+                        },
+                    )
+                },
+            )
+        }
+        return ResponseEntity.ok(
+            mapOf("success" to true, "merchant" to mapOf("id" to merchant.id, "businessName" to merchant.businessName), "products" to enrichedProducts),
+        )
     }
 
     // Real cross-merchant product search -- see MerchantProductRepository.search's own

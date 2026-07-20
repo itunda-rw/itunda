@@ -30,6 +30,8 @@ data class GenerateQrRequest(val amount: BigDecimal, val description: String)
 data class SetWebhookUrlRequest(val webhookUrl: String)
 data class SetLocationRequest(val latitude: Double, val longitude: Double)
 data class SetCategoryRequest(val category: String)
+data class SetPhotoUrlRequest(val photoUrl: String)
+data class SetMinOrderAmountRequest(val minOrderAmount: BigDecimal?)
 data class ChargeCardRequest(
     val amount: BigDecimal,
     val description: String,
@@ -96,6 +98,28 @@ class MerchantController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val merchant = merchantService.setCategory(currentUser.userId, request.category)
+        return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
+    }
+
+    // Real restaurant-card photo (2026-07-21) -- see MerchantService.setPhotoUrl's own
+    // doc comment.
+    @PostMapping("/photo")
+    fun setPhotoUrl(
+        @RequestBody request: SetPhotoUrlRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val merchant = merchantService.setPhotoUrl(currentUser.userId, request.photoUrl)
+        return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
+    }
+
+    // Real merchant-set minimum order amount (2026-07-21) -- see
+    // MerchantService.setMinOrderAmount's own doc comment.
+    @PostMapping("/min-order")
+    fun setMinOrderAmount(
+        @RequestBody request: SetMinOrderAmountRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val merchant = merchantService.setMinOrderAmount(currentUser.userId, request.minOrderAmount)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
@@ -220,4 +244,12 @@ class MerchantController(
     @ExceptionHandler(InvalidCategoryException::class)
     fun handleInvalidCategory(ex: InvalidCategoryException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_CATEGORY", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidPhotoUrlException::class)
+    fun handleInvalidPhotoUrl(ex: InvalidPhotoUrlException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PHOTO_URL", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidMinOrderAmountException::class)
+    fun handleInvalidMinOrderAmount(ex: InvalidMinOrderAmountException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MIN_ORDER_AMOUNT", ex.message ?: "Bad request"))
 }

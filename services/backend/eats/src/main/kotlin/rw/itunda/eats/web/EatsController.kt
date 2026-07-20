@@ -43,7 +43,9 @@ import rw.itunda.eats.InvalidEatsOrderStatusTransitionException
 import rw.itunda.eats.InvalidEatsQuantityException
 import rw.itunda.eats.InvalidEatsRatingException
 import rw.itunda.eats.InvalidRiderLocationException
+import rw.itunda.eats.InvalidMenuOptionSelectionException
 import rw.itunda.eats.MenuItemNotFoundException
+import rw.itunda.eats.MissingRequiredMenuOptionException
 import rw.itunda.eats.NoActiveOfferException
 import rw.itunda.eats.NotAssignedRiderException
 import rw.itunda.eats.RestaurantNoWalletException
@@ -357,6 +359,14 @@ class EatsController(
     @ExceptionHandler(MenuItemNotFoundException::class)
     fun handleMenuItemNotFound(ex: MenuItemNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MENU_ITEM_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(MissingRequiredMenuOptionException::class)
+    fun handleMissingRequiredMenuOption(ex: MissingRequiredMenuOptionException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MISSING_REQUIRED_MENU_OPTION", ex.message ?: "Unprocessable"))
+
+    @ExceptionHandler(InvalidMenuOptionSelectionException::class)
+    fun handleInvalidMenuOptionSelection(ex: InvalidMenuOptionSelectionException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MENU_OPTION_SELECTION", ex.message ?: "Bad request"))
 
     @ExceptionHandler(SelfEatsOrderException::class)
     fun handleSelfOrder(ex: SelfEatsOrderException) =

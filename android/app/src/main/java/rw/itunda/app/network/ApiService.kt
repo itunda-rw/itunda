@@ -495,6 +495,19 @@ data class ShoppingMerchantDto(
     val merchantId: String, val businessName: String, val category: String?, val cashbackRate: String,
     // Real optional location (2026-07-19) -- backs the real self-hosted Map view.
     val latitude: Double? = null, val longitude: Double? = null,
+    // Real browse-card enrichment (2026-07-21) -- closes docs/DESIGN_REFERENCES.md's
+    // Eats recommendations #1/#2. photoUrl/minOrderAmount are real, merchant-set (null
+    // when unset); rating/reviewCount are real, batch-aggregated from EatsReview.
+    // distanceKm/deliveryTimeMinutes are only present when this call supplied its own
+    // real buyerLat/buyerLng -- deliveryTimeMinutes is a real, clearly-an-ESTIMATE
+    // derived from that distance (see ShoppingController.estimateDeliveryMinutes's own
+    // doc comment on the backend), never a fabricated/measured number.
+    val photoUrl: String? = null,
+    val minOrderAmount: Double? = null,
+    val rating: Double? = null,
+    val reviewCount: Long = 0,
+    val distanceKm: Double? = null,
+    val deliveryTimeMinutes: Int? = null,
 )
 data class ShoppingMerchantsResponse(val success: Boolean, val merchants: List<ShoppingMerchantDto>)
 
@@ -958,7 +971,14 @@ interface ApiService {
     // Real per-merchant public product browse (2026-07-18) -- see
     // rw.itunda.merchant.web.ShoppingController.getMerchantProducts.
     @GET("api/v1/shopping/merchants")
-    suspend fun getShoppingMerchants(@Query("category") category: String? = null, @Query("q") q: String? = null): ShoppingMerchantsResponse
+    suspend fun getShoppingMerchants(
+        @Query("category") category: String? = null,
+        @Query("q") q: String? = null,
+        // Real browse-card enrichment (2026-07-21) -- see ShoppingMerchantDto's own doc
+        // comment. Omitted (null) means no real distanceKm/deliveryTimeMinutes back.
+        @Query("buyerLat") buyerLat: Double? = null,
+        @Query("buyerLng") buyerLng: Double? = null,
+    ): ShoppingMerchantsResponse
 
     // Real "search this map" + "directions" (2026-07-19) -- see MapsService.
     @GET("api/v1/maps/search")
