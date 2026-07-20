@@ -24,21 +24,21 @@ public struct TransferQuoteScreen: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Transfer to \(recipientName)")
-                .font(TdsTypography.title1)
-                .foregroundColor(TdsColors.gray900)
+                .font(IdsTypeScale.title1)
+                .foregroundColor(IdsPalette.gray900)
                 .padding(.horizontal, 24)
                 .padding(.top, 40)
 
             Spacer().frame(height: 32)
 
-            TdsListRow(title: "Transfer Amount", rightText: "\(amount) RWF", action: {})
+            IdsListRow(title: "Transfer Amount", rightText: "\(amount) RWF", action: {})
 
-            TdsListRow(title: "Fee", rightText: fee == "0" ? "Free" : "\(fee) RWF", action: {})
+            IdsListRow(title: "Fee", rightText: fee == "0" ? "Free" : "\(fee) RWF", action: {})
 
             if let biometricError {
                 Text(biometricError)
-                    .font(TdsTypography.body2)
-                    .foregroundColor(TdsColors.red500)
+                    .font(IdsTypeScale.body2)
+                    .foregroundColor(IdsPalette.red500)
                     .padding(.horizontal, 24)
                     .padding(.top, 8)
             }
@@ -46,8 +46,8 @@ public struct TransferQuoteScreen: View {
             Spacer()
 
             HStack(spacing: 16) {
-                TdsButton(text: "Cancel", action: onCancel)
-                TdsButton(text: "Confirm & Send", action: confirmWithBiometrics)
+                IdsButton(text: "Cancel", action: onCancel)
+                IdsButton(text: "Confirm & Send", action: confirmWithBiometrics)
             }
             .padding(24)
         }

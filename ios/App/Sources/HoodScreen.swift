@@ -165,7 +165,7 @@ private struct MarketplaceContent: View {
     var body: some View {
         ScrollView {
             VStack(spacing: IDS.Layout.cardGap) {
-                TdsPlainTopBar(title: "Hood")
+                IdsPlainTopBar(title: "Hood")
 
                 Picker("", selection: $view) {
                     Text("Browse").tag(HoodView.browse)

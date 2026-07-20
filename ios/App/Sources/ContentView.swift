@@ -6,7 +6,7 @@ import FeaturePayments
 // Fixed (2026-07-11): every Text() in this file used .font(.system(size:weight:)) --
 // a fixed point size that doesn't grow or shrink with iOS's Dynamic Type
 // accessibility setting. Same bug, same fix as CoreDesignSystem's IDS.swift/
-// TdsTheme.swift (see IDS.swift's Typography struct for the full reasoning) --
+// IdsTheme.swift (see IDS.swift's Typography struct for the full reasoning) --
 // this file doesn't import CoreDesignSystem for anything else today, so a small
 // local helper avoids adding a new cross-module dependency just for this.
 private func scaledFont(size: CGFloat, weight: UIFont.Weight, relativeTo style: UIFont.TextStyle) -> Font {

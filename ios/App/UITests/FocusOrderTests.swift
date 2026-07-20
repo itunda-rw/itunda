@@ -137,7 +137,7 @@ final class FocusOrderTests: XCTestCase {
         )
     }
 
-    /// TdsAllTopBar's Settings icon was a bare Image() when this test was first
+    /// IdsAllTopBar's Settings icon was a bare Image() when this test was first
     /// written; it's a real Button now (2026-07-12, see BenefitsShopAllScreens.swift
     /// -- wired to the real Settings screen instead of direct logout), so this
     /// queries app.buttons, not app.images.
@@ -153,7 +153,7 @@ final class FocusOrderTests: XCTestCase {
 
         XCTAssertLessThan(
             name.frame.minX, settings.frame.minX,
-            "Name should sit left of the Settings gear, matching TdsAllTopBar's real SpaceBetween HStack order"
+            "Name should sit left of the Settings gear, matching IdsAllTopBar's real SpaceBetween HStack order"
         )
     }
 }

@@ -144,7 +144,7 @@ for feature in featureModules {
 }
 appDependencies.append(.target(name: "CoreRisk"))
 // Added 2026-07-11 for the Benefits/Shop/All tab rebuild (App/Sources/
-// BenefitsShopAllScreens.swift) -- those screens use IDS/TdsColors design tokens
+// BenefitsShopAllScreens.swift) -- those screens use IDS/IdsPalette design tokens
 // directly, same as ContentView.swift's own Dynamic Type fix needed UIKit, but this
 // one's a real cross-module type dependency, not just an inline helper.
 appDependencies.append(.target(name: "CoreDesignSystem"))

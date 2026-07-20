@@ -2,16 +2,16 @@
 //  IDS.swift
 //  Ported from mobile_clients/ios (2026-07-10) -- see docs/ARCHITECTURE.md §3.
 //
-//  Reconciled (2026-07-11): this token set and this module's Theme/TdsTheme.swift
-//  (TdsColors/TdsTypography) are two real, independently-built design systems that
+//  Reconciled (2026-07-11): this token set and this module's Theme/IdsTheme.swift
+//  (IdsPalette/IdsTypeScale) are two real, independently-built design systems that
 //  both exist in this repo, ported as-is rather than silently merged under time
-//  pressure -- but they were never actually competing at the same layer. TdsColors
+//  pressure -- but they were never actually competing at the same layer. IdsPalette
 //  is the raw/primitive brand palette (Blue500, Gray900, ...) and correctly stays
-//  static/non-reactive, exactly like Android's `TdsColors` object. IDS.Colors is
+//  static/non-reactive, exactly like Android's `IdsPalette` object. IDS.Colors is
 //  the *semantic role* layer (textPrimary, background, divider, ...) -- the layer
 //  that should actually change between light and dark, matching Android's
-//  `Tds.colors` (`TdsSemanticColors`/`TdsLightSemanticColors`/`TdsDarkSemanticColors`
-//  in core/designsystem/theme/TdsSemanticColors.kt). That's the real reconciliation:
+//  `Ids.colors` (`IdsSemanticColors`/`IdsLightSemanticColors`/`IdsDarkSemanticColors`
+//  in core/designsystem/theme/IdsSemanticColors.kt). That's the real reconciliation:
 //  not merging two files into one, but making the *semantic* layer theme-reactive
 //  the way Android's already is, while leaving the primitive layer alone by design.
 //
@@ -20,7 +20,7 @@
 //  provider, so every existing call site (`IDS.Colors.textPrimary`, etc.)
 //  automatically resolves to the right value for the current trait collection --
 //  no call site anywhere in this file's consumers needed to change. Dark values
-//  are Android's already-tuned `TdsDarkSemanticColors` values where the concept
+//  are Android's already-tuned `IdsDarkSemanticColors` values where the concept
 //  maps 1:1 (verified against a real Toss dark-mode reference, see that file's own
 //  comment); `iconTertiary`'s dark value has no Android counterpart to port, so
 //  it's a reasonable extrapolation one step up from `divider`, noted inline.
@@ -36,7 +36,7 @@ import UIKit
 extension Color {
     /// A theme-reactive color: resolves to `dark` under `.dark` userInterfaceStyle,
     /// `light` otherwise. See this file's header for why IDS.Colors uses this and
-    /// TdsColors (the primitive layer) deliberately doesn't.
+    /// IdsPalette (the primitive layer) deliberately doesn't.
     init(light: UInt, dark: UInt) {
         self.init(uiColor: UIColor { traitCollection in
             traitCollection.userInterfaceStyle == .dark ? UIColor(hex: dark) : UIColor(hex: light)
@@ -56,8 +56,8 @@ private extension UIColor {
 }
 
 public struct IDS {
-    // Fixed (2026-07-11): every font constant below Typography (and TdsTypography in
-    // Theme/TdsTheme.swift, and every consumer that had its own inline
+    // Fixed (2026-07-11): every font constant below Typography (and IdsTypeScale in
+    // Theme/IdsTheme.swift, and every consumer that had its own inline
     // Font.system(size:weight:) call, e.g. FeatureBanking's BankView.swift) used to be
     // a plain Font.system(size:weight:) -- a fixed point size that does not grow or
     // shrink with the user's iOS Settings > Accessibility > Display & Text Size >
@@ -94,10 +94,10 @@ public struct IDS {
         public static let dangerTint = Color(light: 0xFFECEB, dark: 0x3A1418)
         public static let iconPrimary = Color(light: 0x2C3643, dark: 0xE8EAED)
         public static let iconSecondary = Color(light: 0x6B7684, dark: 0x989EAA)
-        // No Android TdsDarkSemanticColors counterpart to port -- extrapolated one
+        // No Android IdsDarkSemanticColors counterpart to port -- extrapolated one
         // step up from `divider`'s dark value, not a direct reference-matched port.
         public static let iconTertiary = Color(light: 0xDDE3EA, dark: 0x3A3D45)
-        // Matches Android's TdsSemanticColors.chip / .surfaceSoft exactly -- both are
+        // Matches Android's IdsSemanticColors.chip / .surfaceSoft exactly -- both are
         // the same two hex values (0xF2F4F6 / 0x23242B) under two different names on
         // Android, so one token covers both roles here (chip pill backgrounds, soft
         // icon-badge backgrounds). Added 2026-07-11 for the Benefits/Shop/All tab

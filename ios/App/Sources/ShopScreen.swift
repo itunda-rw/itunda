@@ -107,7 +107,7 @@ private struct CommerceShopContent: View {
         ZStack(alignment: .bottom) {
             ScrollView {
                 VStack(spacing: IDS.Layout.cardGap) {
-                    TdsPlainTopBar(title: "Shop")
+                    IdsPlainTopBar(title: "Shop")
 
                     Picker("", selection: $view) {
                         Text("Merchants").tag(CommerceView.browse)

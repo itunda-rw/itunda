@@ -1,6 +1,6 @@
 import SwiftUI
 
-public struct TdsButton: View {
+public struct IdsButton: View {
     let text: String
     let action: () -> Void
     var isEnabled: Bool = true
@@ -14,14 +14,14 @@ public struct TdsButton: View {
     public var body: some View {
         Button(action: action) {
             Text(text)
-                .font(TdsTypography.button)
+                .font(IdsTypeScale.button)
                 // Real fix (2026-07-13): this read the static, non-theme-reactive
-                // TdsColors before, so the button rendered light-mode #3182F6 even
-                // in dark mode -- Android's own TdsButton.kt already correctly used
-                // Tds.colors.brand (theme-reactive); this ports that exact pattern,
+                // IdsPalette before, so the button rendered light-mode #3182F6 even
+                // in dark mode -- Android's own IdsButton.kt already correctly used
+                // Ids.colors.brand (theme-reactive); this ports that exact pattern,
                 // including the disabled-state colors (Android's disabledContainerColor
-                // = Tds.colors.divider, disabledContentColor = Tds.colors.textTertiary).
-                .foregroundColor(isEnabled ? TdsColors.white : IDS.Colors.textTertiary)
+                // = Ids.colors.divider, disabledContentColor = Ids.colors.textTertiary).
+                .foregroundColor(isEnabled ? IdsPalette.white : IDS.Colors.textTertiary)
                 .frame(maxWidth: .infinity)
                 .frame(height: 56)
                 .background(isEnabled ? IDS.Colors.brand : IDS.Colors.divider)
@@ -31,7 +31,7 @@ public struct TdsButton: View {
     }
 }
 
-public struct TdsListRow: View {
+public struct IdsListRow: View {
     let title: String
     let subtitle: String?
     let rightText: String?
@@ -49,25 +49,25 @@ public struct TdsListRow: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
-                        .font(TdsTypography.subtitle1)
+                        .font(IdsTypeScale.subtitle1)
                         .foregroundColor(IDS.Colors.textPrimary)
 
                     if let subtitle = subtitle {
                         Text(subtitle)
-                            .font(TdsTypography.body2)
+                            .font(IdsTypeScale.body2)
                             .foregroundColor(IDS.Colors.textSecondary)
                     }
                 }
                 Spacer()
                 if let rightText = rightText {
                     Text(rightText)
-                        .font(TdsTypography.subtitle1)
+                        .font(IdsTypeScale.subtitle1)
                         .foregroundColor(IDS.Colors.textPrimary)
                 }
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
-            // Real fix (2026-07-13): same static-vs-reactive bug as TdsButton above --
+            // Real fix (2026-07-13): same static-vs-reactive bug as IdsButton above --
             // this row's background stayed light-mode white in dark mode.
             .background(IDS.Colors.card)
         }

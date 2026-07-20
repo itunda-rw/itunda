@@ -21,7 +21,7 @@ public struct SduiRenderer: View {
                 switch component.type {
                 case "BUTTON":
                     let text = (component.data["text"]?.value as? String) ?? "Button"
-                    TdsButton(text: text) {
+                    IdsButton(text: text) {
                         if let action = action {
                             onAction(action.actionType, action.payload)
                         }
@@ -32,7 +32,7 @@ public struct SduiRenderer: View {
                     let title = (component.data["title"]?.value as? String) ?? ""
                     let subtitle = component.data["subtitle"]?.value as? String
                     let rightText = component.data["rightText"]?.value as? String
-                    TdsListRow(title: title, subtitle: subtitle, rightText: rightText) {
+                    IdsListRow(title: title, subtitle: subtitle, rightText: rightText) {
                         if let action = action {
                             onAction(action.actionType, action.payload)
                         }
@@ -44,7 +44,7 @@ public struct SduiRenderer: View {
                     
                 default:
                     Text("Unknown component: \(component.type)")
-                        .foregroundColor(TdsColors.red500)
+                        .foregroundColor(IdsPalette.red500)
                 }
             }
         }

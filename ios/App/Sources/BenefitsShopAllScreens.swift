@@ -10,7 +10,7 @@
 //  screenshots earlier this session (see ARCHITECTURE.md's own git-log-cited
 //  history), so porting its already-verified structure here is not guessing at a
 //  new design, it's applying an existing, sourced one to the platform that never
-//  got it. Colors/type go through IDS/TdsColors (this file's own new
+//  got it. Colors/type go through IDS/IdsPalette (this file's own new
 //  CoreDesignSystem dependency, see Project.swift), the same tokens BankView.swift
 //  already uses -- not a third, independent hardcoded palette.
 //
@@ -36,7 +36,7 @@ struct BenefitsScreen: View {
     var body: some View {
         ScrollView {
             VStack(spacing: IDS.Layout.cardGap) {
-                TdsPlainTopBar(title: "Benefits")
+                IdsPlainTopBar(title: "Benefits")
                 PromoBannerCard()
                 BenefitsVisitCard()
                 CashbackChanceCard()
@@ -194,14 +194,14 @@ struct EntireMenuScreen: View {
                 // workaround, each Group still contributes its children directly
                 // to the VStack's layout.
                 Group {
-                    TdsAllTopBar(onOpenSettings: onOpenSettings)
+                    IdsAllTopBar(onOpenSettings: onOpenSettings)
                     FlatSection(title: "Quick links", rows: [
                         FlatRow(title: "Pay", subtitle: "Scan or pay by code", symbol: "qrcode", tint: .accentBlue, action: { showPay = true }),
                         FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", symbol: "gift.fill", tint: .accentOrange, action: { showBenefits = true }),
                         FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showInvest = true }),
                         FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", symbol: "map.fill", tint: .accentTeal, action: { showMap = true }),
                     ])
-                    TdsSearchBar(placeholder: "Search")
+                    IdsSearchBar(placeholder: "Search")
                     IconGridSection(title: "Quick access", items: [
                         ("Mini", "square.grid.2x2.fill"),
                         ("Games", "gamecontroller.fill"),
@@ -323,7 +323,7 @@ struct EntireMenuScreen: View {
     }
 }
 
-private struct TdsAllTopBar: View {
+private struct IdsAllTopBar: View {
     var onOpenSettings: () -> Void = {}
 
     var body: some View {
@@ -350,10 +350,10 @@ private struct TdsAllTopBar: View {
     }
 }
 
-// MARK: - Shared components (mirror Android's TdsPlainTopBar/SearchBar/FlatSection/
+// MARK: - Shared components (mirror Android's IdsPlainTopBar/SearchBar/FlatSection/
 // FlatRow/IconGridSection/SmallBlueButton in ItundaAppScreen.kt)
 
-struct TdsPlainTopBar: View {
+struct IdsPlainTopBar: View {
     let title: String
     var body: some View {
         HStack {
@@ -368,7 +368,7 @@ struct TdsPlainTopBar: View {
     }
 }
 
-struct TdsSearchBar: View {
+struct IdsSearchBar: View {
     let placeholder: String
     var body: some View {
         Text(placeholder)
@@ -496,10 +496,10 @@ struct IconGridSection: View {
 }
 
 extension Color {
-    static let accentBlue = TdsColors.accentBlue
-    static let accentTeal = TdsColors.accentTeal
-    static let accentPurple = TdsColors.accentPurple
-    static let accentOrange = TdsColors.accentOrange
-    static let accentRed = TdsColors.accentRed
-    static let accentGray = TdsColors.accentGray
+    static let accentBlue = IdsPalette.accentBlue
+    static let accentTeal = IdsPalette.accentTeal
+    static let accentPurple = IdsPalette.accentPurple
+    static let accentOrange = IdsPalette.accentOrange
+    static let accentRed = IdsPalette.accentRed
+    static let accentGray = IdsPalette.accentGray
 }

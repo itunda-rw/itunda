@@ -70,7 +70,7 @@ struct TalkScreen: View {
 
     private var listBody: some View {
         VStack(spacing: 0) {
-            TdsPlainTopBar(title: "Talk")
+            IdsPlainTopBar(title: "Talk")
                 .padding(.horizontal, IDS.Layout.screenHorizontal)
                 .padding(.top, IDS.Layout.screenTop)
 

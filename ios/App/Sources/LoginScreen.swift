@@ -74,7 +74,7 @@ struct LoginScreen: View {
                         }
                         .padding(.vertical, 16)
                     } else {
-                        TdsButton(
+                        IdsButton(
                             text: isRegisterMode ? "Create account" : "Log in",
                             isEnabled: canSubmit,
                             action: { submit() }

@@ -5,8 +5,8 @@ import UIKit
 /// Deliberately static, not theme-reactive: see IDS.swift's header comment for the
 /// 2026-07-11 reconciliation between this file and IDS.Colors. The *semantic* layer
 /// that should change between light/dark is IDS.Colors, matching Android's split
-/// between the static `TdsColors` object and the reactive `Tds.colors`.
-public struct TdsColors {
+/// between the static `IdsPalette` object and the reactive `Ids.colors`.
+public struct IdsPalette {
     // GENERATED:BEGIN -- do not hand-edit; regenerate with packages/design-tokens/generate-tokens.js from tokens.json. gray900 is primary text, gray700 secondary, gray500 tertiary/placeholder by established convention (see IDS.Colors for the theme-reactive equivalents).
     public static let gray50 = Color(hex: 0xF9FAFB)
     public static let gray100 = Color(hex: 0xF2F4F6)
@@ -84,10 +84,10 @@ extension Color {
 /// accessibility setting. Reuses `IDS.scaledFont` (same module, `Core/DesignSystem/
 /// Sources/IDS.swift`) rather than a second copy of the same helper -- see its doc
 /// comment for the full reasoning. No call site needed to change.
-public struct TdsTypography {
+public struct IdsTypeScale {
     // Real TDS typography scale (2026-07-13), sourced by directly fetching Toss's own
     // official docs (tossmini-docs.toss.im/tds-mobile/foundation/typography) --
-    // ported 1:1 from Android's TdsTypography.kt Typography1-7 addition, see that
+    // ported 1:1 from Android's IdsTypeScale.kt Typography1-7 addition, see that
     // file's own doc comment for the full reasoning (kept alongside, not replacing,
     // the existing title1/subtitle1/etc. semantic scale below). Line height isn't
     // expressible via IDS.scaledFont's UIFontMetrics-based API the way Android's
