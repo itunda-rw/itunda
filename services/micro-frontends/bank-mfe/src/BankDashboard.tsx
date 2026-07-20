@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowUpRight, Bike, Heart, LogOut, MessageCircle, Plus, Scan
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { fetchTransactions, fetchWallets, type Transaction, type Wallet } from './lib/wallet';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
+import { claimInterest, createGoal, depositToGoal, fetchGoals, fetchInterestJar, type InterestJar, type SavingsGoal } from './lib/savings';
 import { sendDirect } from './lib/p2p';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
 import { collectPayment, fetchShoppingCatalog, type CollectPaymentResult, type ShoppingMerchant } from './lib/shopping';
@@ -54,7 +55,7 @@ import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
 import LiveRiderMap from './LiveRiderMap';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'MAP' | 'DEVICES';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'MAP' | 'DEVICES';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
@@ -5349,6 +5350,253 @@ function DevicesView() {
   );
 }
 
+// Real Kakao Bank SafeBox (세이프박스) equivalent -- claim-anytime interest that grows
+// for real off the actual SAVINGS wallet balance (InterestAccrualScheduler, 2026-07-20).
+function InterestJarCard() {
+  const [jar, setJar] = useState<InterestJar | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [claiming, setClaiming] = useState(false);
+  const [claimMsg, setClaimMsg] = useState<string | null>(null);
+  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+
+  const load = () => {
+    setError(null);
+    fetchInterestJar().then(setJar).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your Safe Box.'));
+  };
+  useEffect(load, []);
+
+  const handleClaim = async () => {
+    setClaiming(true);
+    setError(null);
+    setClaimMsg(null);
+    setNeedsDeviceVerification(false);
+    try {
+      const result = await claimInterest();
+      setClaimMsg(result.message);
+      load();
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        setNeedsDeviceVerification(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Could not claim interest.');
+      }
+    } finally {
+      setClaiming(false);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="toss-card" style={{ marginBottom: '16px' }}>
+        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+      </div>
+    );
+  }
+  if (jar === null) return <div className="toss-card skeleton" style={{ height: '140px', marginBottom: '16px' }} />;
+
+  const canClaim = jar.earnedThisMonth > 0;
+
+  return (
+    <div className="toss-card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, var(--toss-blue) 0%, #4A90E2 100%)', color: '#fff' }}>
+      <p style={{ fontSize: '13px', opacity: 0.85 }}>Safe Box · {jar.rate}% real daily interest</p>
+      <p style={{ fontSize: '28px', fontWeight: 800, margin: '6px 0' }}>{jar.balance.toLocaleString()} RWF</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
+        <div>
+          <p style={{ fontSize: '11px', opacity: 0.8 }}>Earned, unclaimed</p>
+          <p style={{ fontSize: '16px', fontWeight: 700 }}>{jar.earnedThisMonth.toLocaleString()} RWF</p>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <p style={{ fontSize: '11px', opacity: 0.8 }}>Earned all-time</p>
+          <p style={{ fontSize: '16px', fontWeight: 700 }}>{jar.earnedTotal.toLocaleString()} RWF</p>
+        </div>
+      </div>
+      {needsDeviceVerification ? (
+        <div style={{ marginTop: '14px' }}>
+          <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+        </div>
+      ) : (
+        <button
+          className="toss-btn"
+          onClick={handleClaim}
+          disabled={!canClaim || claiming}
+          style={{ marginTop: '14px', width: '100%', backgroundColor: '#fff', color: 'var(--toss-blue)', fontWeight: 700, opacity: canClaim ? 1 : 0.6 }}
+        >
+          {claiming ? 'Claiming…' : canClaim ? `Claim ${jar.earnedThisMonth.toLocaleString()} RWF` : 'Nothing to claim yet'}
+        </button>
+      )}
+      {claimMsg && <p style={{ fontSize: '12px', marginTop: '8px' }}>{claimMsg}</p>}
+    </div>
+  );
+}
+
+function GoalCard({ goal, onChanged }: { goal: SavingsGoal; onChanged: () => void }) {
+  const [depositing, setDepositing] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+  const pct = Math.min(100, Math.round((goal.currentAmount / goal.targetAmount) * 100));
+
+  const handleDeposit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    setNeedsDeviceVerification(false);
+    try {
+      await depositToGoal(goal.id, Number(amount));
+      setAmount('');
+      setDepositing(false);
+      onChanged();
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        setNeedsDeviceVerification(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Could not deposit.');
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="toss-card" style={{ marginBottom: '10px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <p style={{ fontSize: '14px', fontWeight: 700 }}>{goal.name}</p>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+            {goal.currentAmount.toLocaleString()} / {goal.targetAmount.toLocaleString()} RWF
+            {goal.status === 'completed' && ' · Completed 🎉'}
+          </p>
+        </div>
+        {goal.status === 'active' && (
+          <button className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => setDepositing((d) => !d)}>
+            Deposit
+          </button>
+        )}
+      </div>
+      <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--toss-grey-100)', marginTop: '10px', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${pct}%`, backgroundColor: 'var(--toss-blue)' }} />
+      </div>
+      {goal.monthlyContribution > 0 && (
+        <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginTop: '6px' }}>
+          Auto-saves {goal.monthlyContribution.toLocaleString()} RWF/month
+        </p>
+      )}
+      {depositing && (
+        needsDeviceVerification ? (
+          <div style={{ marginTop: '10px' }}>
+            <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setDepositing(false)} />
+          </div>
+        ) : (
+          <form onSubmit={handleDeposit} style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+            <input
+              type="number" min="1" required value={amount} onChange={(e) => setAmount(e.target.value)}
+              placeholder="Amount (RWF)"
+              style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            />
+            <button type="submit" className="toss-btn toss-btn-primary" disabled={busy} style={{ padding: '8px 14px', fontSize: '13px' }}>
+              {busy ? '…' : 'Add'}
+            </button>
+          </form>
+        )
+      )}
+      {error && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '6px' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
+function CreateGoalForm({ onCreated }: { onCreated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [targetAmount, setTargetAmount] = useState('');
+  const [monthlyContribution, setMonthlyContribution] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!open) {
+    return (
+      <button
+        className="toss-btn toss-btn-secondary"
+        style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+        onClick={() => setOpen(true)}
+      >
+        <Plus size={16} /> New savings goal
+      </button>
+    );
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await createGoal(name, Number(targetAmount), monthlyContribution ? Number(monthlyContribution) : undefined);
+      setName('');
+      setTargetAmount('');
+      setMonthlyContribution('');
+      setOpen(false);
+      onCreated();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not create goal.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+      <input
+        type="text" required placeholder="Goal name (e.g. Emergency Fund)" value={name} onChange={(e) => setName(e.target.value)}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      />
+      <input
+        type="number" min="1" required placeholder="Target amount (RWF)" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      />
+      <input
+        type="number" min="0" placeholder="Monthly auto-save (optional)" value={monthlyContribution} onChange={(e) => setMonthlyContribution(e.target.value)}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      />
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
+      </div>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+    </form>
+  );
+}
+
+function SavingsView() {
+  const [goals, setGoals] = useState<SavingsGoal[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchGoals().then(setGoals).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your goals.'));
+  };
+  useEffect(load, []);
+
+  return (
+    <div>
+      <InterestJarCard />
+      <CreateGoalForm onCreated={load} />
+      {error && (
+        <div className="toss-card" style={{ marginBottom: '16px' }}>
+          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        </div>
+      )}
+      {goals === null ? (
+        <div className="toss-card skeleton" style={{ height: '100px' }} />
+      ) : goals.length === 0 ? (
+        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No savings goals yet.</p></div>
+      ) : (
+        goals.map((g) => <GoalCard key={g.id} goal={g} onChanged={load} />)
+      )}
+    </div>
+  );
+}
+
 export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>('HOME');
   const [pendingConversationId, setPendingConversationId] = useState<string | null>(null);
@@ -5372,6 +5620,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'SHOP', label: 'Shop' },
     { id: 'EATS', label: 'Eats' },
     { id: 'STOCKS', label: 'Invest' },
+    { id: 'SAVINGS', label: 'Savings' },
     { id: 'MESSAGES', label: 'Messages' },
     { id: 'MARKETPLACE', label: 'Marketplace' },
     { id: 'COMMUNITY', label: 'Community' },
@@ -5420,6 +5669,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'SHOP' && <ShopView />}
       {tab === 'EATS' && <EatsView />}
       {tab === 'STOCKS' && <StocksView />}
+      {tab === 'SAVINGS' && <SavingsView />}
       {tab === 'MESSAGES' && (
         <MessagesView
           initialConversationId={pendingConversationId}
