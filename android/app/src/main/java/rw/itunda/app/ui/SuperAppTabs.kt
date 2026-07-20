@@ -2030,7 +2030,7 @@ private fun CommunityPostCard(post: CommunityPostDto, categoryLabel: String, isM
     ) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(categoryLabel, color = TossBlue, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                Text("$categoryLabel · ${relativeTimeAgo(post.createdAt)}", color = TossBlue, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                 if (isMine) {
                     ListingActionButton("Remove", busy) {
                         busy = true
@@ -2420,7 +2420,7 @@ private fun JobPostCard(post: JobPostDto, categoryLabel: String, isMine: Boolean
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(categoryLabel, color = TossBlue, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    Text("$categoryLabel · ${relativeTimeAgo(post.createdAt)}", color = TossBlue, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     if (post.status == "FILLED") {
                         Spacer(modifier = Modifier.width(8.dp))
                         Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(TossCardSoft).padding(horizontal = 8.dp, vertical = 2.dp)) {
