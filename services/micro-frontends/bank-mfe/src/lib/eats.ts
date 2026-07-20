@@ -12,6 +12,13 @@ export const fetchRestaurants = (category?: string, q?: string) => {
   const params = new URLSearchParams();
   if (category) params.set('category', category);
   if (q) params.set('q', q);
+  // Real bug found live (2026-07-20): this call never set a page size, so it silently
+  // took the backend's own default of 20 -- fine while the catalog was small, but a
+  // real restaurant past the 20th spot would then be missing from this list entirely,
+  // breaking any UI that cross-references an order's restaurant by id (the delivery
+  // route button, and the new live rider-tracking map). A real "browse everything"
+  // list wants every real active restaurant, not a silently-truncated page of them.
+  params.set('size', '100');
   const qs = params.toString();
   return apiFetch<{ success: boolean; merchants: ShoppingMerchant[] }>(`/api/v1/shopping/merchants${qs ? `?${qs}` : ''}`).then(
     (r) => r.merchants,
@@ -110,6 +117,21 @@ export const cancelEatsOrder = (orderId: string) =>
   apiFetch<{ success: boolean; order: EatsOrder }>(`/api/v1/eats/orders/${orderId}/cancel`, {
     method: 'POST',
   }).then((r) => r.order);
+
+// Real live rider-location tracking (2026-07-19 backend, 2026-07-20 first UI) -- "the
+// defining 'watch your order arrive' moment every real Coupang Eats/Uber Eats-style app
+// has," per EatsOrderService.getRiderLocation's own doc comment. `available: false` (not
+// an error) is the real, honest response whenever there's genuinely nothing to show yet
+// (no rider assigned, order already delivered/cancelled, or the assigned rider hasn't
+// pushed a location yet) -- never a fabricated position.
+export interface RiderLocation {
+  latitude: number;
+  longitude: number;
+  updatedAt: string;
+}
+
+export const fetchRiderLocation = (orderId: string) =>
+  apiFetch<{ success: boolean; available: boolean; location: RiderLocation | null }>(`/api/v1/eats/orders/${orderId}/rider-location`);
 
 // Real rider role -- any itunda user can opt in.
 export interface Rider {

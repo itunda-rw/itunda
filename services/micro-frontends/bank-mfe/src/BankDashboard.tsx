@@ -52,6 +52,7 @@ import {
 } from './lib/commerce';
 import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
+import LiveRiderMap from './LiveRiderMap';
 
 type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'MAP' | 'DEVICES';
 
@@ -3435,7 +3436,12 @@ function nextInChain<T>(chain: T[], current: T): T | null {
 
 function EatsOrderCard({ order, restaurant, action }: { order: EatsOrder; restaurant?: ShoppingMerchant; action?: React.ReactNode }) {
   const [showRoute, setShowRoute] = useState(false);
+  const [showLiveTracking, setShowLiveTracking] = useState(false);
   const canShowRoute = restaurant?.latitude != null && restaurant?.longitude != null && order.deliveryLatitude != null && order.deliveryLongitude != null;
+  // Real live rider tracking (2026-07-20) -- only meaningful while a real rider is
+  // actually en route, matching EatsOrderService.getRiderLocation's own real state gate
+  // (RIDER_ASSIGNED/PICKED_UP only; before/after that there's honestly nothing to show).
+  const canShowLiveTracking = canShowRoute && (order.status === 'RIDER_ASSIGNED' || order.status === 'PICKED_UP');
 
   return (
     <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -3451,12 +3457,28 @@ function EatsOrderCard({ order, restaurant, action }: { order: EatsOrder; restau
           Note: {order.deliveryNotes}
         </p>
       )}
-      {canShowRoute && (
+      {canShowLiveTracking && (
+        <button className="toss-btn toss-btn-primary" onClick={() => { setShowLiveTracking((v) => !v); setShowRoute(false); }}>
+          {showLiveTracking ? 'Hide live tracking' : '🛵 Track your rider live'}
+        </button>
+      )}
+      {showLiveTracking && restaurant?.latitude != null && restaurant?.longitude != null && order.deliveryLatitude != null && order.deliveryLongitude != null && (
+        <LiveRiderMap
+          orderId={order.id}
+          fromLat={restaurant.latitude}
+          fromLng={restaurant.longitude}
+          toLat={order.deliveryLatitude}
+          toLng={order.deliveryLongitude}
+          fromLabel={restaurant.businessName}
+          toLabel="Delivery address"
+        />
+      )}
+      {canShowRoute && !showLiveTracking && (
         <button className="toss-btn toss-btn-secondary" onClick={() => setShowRoute((v) => !v)}>
           {showRoute ? 'Hide route' : '🚗 View real delivery route'}
         </button>
       )}
-      {showRoute && restaurant?.latitude != null && restaurant?.longitude != null && order.deliveryLatitude != null && order.deliveryLongitude != null && (
+      {showRoute && !showLiveTracking && restaurant?.latitude != null && restaurant?.longitude != null && order.deliveryLatitude != null && order.deliveryLongitude != null && (
         <RouteMiniMap
           fromLat={restaurant.latitude}
           fromLng={restaurant.longitude}
