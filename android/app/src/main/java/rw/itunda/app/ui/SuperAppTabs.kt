@@ -32,6 +32,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+// Real 2-column image-led product grid (2026-07-21) -- closes
+// docs/DESIGN_REFERENCES.md Section 5 recommendation #5.
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
+import coil.compose.AsyncImage
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -71,6 +77,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -3356,6 +3363,56 @@ private fun CartFab(totalItems: Int, onClick: () -> Unit) {
     }
 }
 
+// Real product-image thumbnail (2026-07-21) -- imageUrl is a merchant-supplied external
+// URL (see backend MerchantProduct.kt's own doc comment: no upload/storage layer exists
+// in this backend, so this is a real "bring your own URL" v1, not a fake pipeline). Coil
+// handles the null/broken-URL case itself (falls through to `error`), same fallback icon
+// shown for a product that simply has no image set at all -- both are real, valid states.
+@Composable
+private fun ProductImageThumb(imageUrl: String?, size: androidx.compose.ui.unit.Dp = 44.dp, corner: androidx.compose.ui.unit.Dp = 14.dp) {
+    if (imageUrl.isNullOrBlank()) {
+        Box(modifier = Modifier.size(size).clip(RoundedCornerShape(corner)).background(TossCardSoft), contentAlignment = Alignment.Center) {
+            Icon(Icons.Outlined.ShoppingBag, contentDescription = null, modifier = Modifier.size(size / 2), tint = TossBlue)
+        }
+    } else {
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.size(size).clip(RoundedCornerShape(corner)).background(TossCardSoft),
+        )
+    }
+}
+
+// Real discount-price display (2026-07-21) -- Baymard Institute's own placement research
+// (docs/DESIGN_REFERENCES.md Section 5): the discount % must sit immediately next to the
+// struck-through original price, not elsewhere on the card. discountPercent is always
+// server-computed (see backend doc comment), never trusted from the client, so this is
+// purely a rendering of numbers the server already validated.
+@Composable
+private fun ProductPriceRow(p: MerchantProductDto) {
+    if (p.originalPrice != null && p.discountPercent != null && p.discountPercent > 0) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "${p.discountPercent}%",
+                color = Ids.colors.danger,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("%,.0f RWF".format(p.price), color = TossText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        }
+        Text(
+            "%,.0f RWF".format(p.originalPrice),
+            color = TossSecondary,
+            fontSize = 11.sp,
+            textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough,
+        )
+    } else {
+        Text("%,.0f RWF".format(p.price), color = TossSecondary, fontSize = 13.sp)
+    }
+}
+
 @Composable
 private fun MerchantDetailView(
     merchant: ShoppingMerchantDto,
@@ -3373,24 +3430,35 @@ private fun MerchantDetailView(
     }
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
         BackTopBar(merchant.businessName, onBack)
-        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
-            if (products == null) {
-                item { SkeletonBlock(height = 72.dp) }
-            } else if (products.isEmpty()) {
-                item { EmptyState("No products yet.", icon = Icons.Outlined.ShoppingBag) }
-            } else {
-                items(products, key = { it.id }) { p ->
+        if (products == null) {
+            SkeletonBlock(height = 72.dp)
+        } else if (products.isEmpty()) {
+            EmptyState("No products yet.", icon = Icons.Outlined.ShoppingBag)
+        } else {
+            // Real 2-column image-led grid (2026-07-21), replacing the previous
+            // single-column text-only row -- closes docs/DESIGN_REFERENCES.md Section 5
+            // recommendation #5 (Chloe Youn's Coupang case study: real cards are
+            // image-led, not name+price text rows).
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = PaddingValues(vertical = 12.dp),
+            ) {
+                gridItems(products, key = { it.id }) { p ->
                     val qty = qtyFor(p.id)
-                    Row(
-                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(TossCard).padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                    Column(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(TossCard).padding(12.dp),
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(p.name, color = TossText, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            Text("%,.0f RWF".format(p.price), color = TossSecondary, fontSize = 13.sp)
-                            ProductRatingBadge(p.id)
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        ProductImageThumb(p.imageUrl, size = 96.dp, corner = 12.dp)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(p.name, color = TossText, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 2)
+                        Spacer(modifier = Modifier.height(2.dp))
+                        ProductPriceRow(p)
+                        ProductRatingBadge(p.id)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                             QtyButton("-") { setQty(p, qty - 1) }
                             Text(qty.toString(), modifier = Modifier.width(28.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center, color = TossText, fontWeight = FontWeight.Bold)
                             QtyButton("+") { setQty(p, qty + 1) }

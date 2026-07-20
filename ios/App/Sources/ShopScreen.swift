@@ -275,36 +275,42 @@ private struct MerchantDetailView: View {
             .padding(.horizontal, 8)
 
             ScrollView {
-                VStack(spacing: 10) {
-                    if let products {
-                        if products.isEmpty {
-                            Text("No products yet.").foregroundColor(IDS.Colors.textSecondary).padding(.top, 20)
-                        }
-                        ForEach(products) { product in
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(product.name).font(IDS.Typography.bodyMedium).foregroundColor(IDS.Colors.textPrimary)
-                                    Text("\(Int(product.price)) RWF").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
-                                    ProductRatingBadge(productId: product.id)
-                                }
-                                Spacer()
-                                HStack(spacing: 12) {
-                                    qtyButton("minus") { setQty(product, qty(product.id) - 1) }
-                                    Text("\(qty(product.id))").frame(width: 24).font(.subheadline).bold()
-                                    qtyButton("plus") { setQty(product, qty(product.id) + 1) }
-                                }
-                            }
-                            .padding(16)
-                            .background(IDS.Colors.card)
-                            .cornerRadius(IDS.Layout.cardCornerRadius)
-                        }
+                if let products {
+                    if products.isEmpty {
+                        Text("No products yet.").foregroundColor(IDS.Colors.textSecondary).padding(.top, 20)
                     } else {
-                        ProgressView().padding(.top, 20)
+                        // Real 2-column image-led grid (2026-07-21), replacing the
+                        // previous single-column text-only row -- closes
+                        // docs/DESIGN_REFERENCES.md Section 5 recommendation #5
+                        // (Chloe Youn's Coupang case study: real cards are image-led).
+                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                            ForEach(products) { product in
+                                VStack(alignment: .leading, spacing: 6) {
+                                    ProductImageThumb(imageUrl: product.imageUrl, side: 96)
+                                    Text(product.name).font(IDS.Typography.bodyMedium).foregroundColor(IDS.Colors.textPrimary).lineLimit(2)
+                                    ProductPriceRow(product: product)
+                                    ProductRatingBadge(productId: product.id)
+                                    HStack(spacing: 10) {
+                                        Spacer()
+                                        qtyButton("minus") { setQty(product, qty(product.id) - 1) }
+                                        Text("\(qty(product.id))").frame(width: 24).font(.subheadline).bold()
+                                        qtyButton("plus") { setQty(product, qty(product.id) + 1) }
+                                        Spacer()
+                                    }
+                                }
+                                .padding(12)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(IDS.Colors.card)
+                                .cornerRadius(IDS.Layout.cardCornerRadius)
+                            }
+                        }
                     }
+                } else {
+                    ProgressView().padding(.top, 20)
                 }
-                .padding(.horizontal, IDS.Layout.screenHorizontal)
-                .padding(.top, 12)
             }
+            .padding(.horizontal, IDS.Layout.screenHorizontal)
+            .padding(.top, 12)
 
             if totalItems > 0 {
                 CartFab(totalItems: totalItems, onTap: onViewCart)
@@ -607,6 +613,67 @@ private struct StarRatingRow: View {
                         .foregroundColor(n <= value ? .yellow : IDS.Colors.textTertiary)
                 }
             }
+        }
+    }
+}
+
+// Real product-image thumbnail (2026-07-21) -- imageUrl is a merchant-supplied external
+// URL (see backend MerchantProduct.kt's own doc comment: no upload/storage layer exists
+// in this backend, so this is a real "bring your own URL" v1, not a fake pipeline).
+// AsyncImage (native SwiftUI, no third-party dependency) handles the nil/broken-URL case
+// itself via its placeholder closure -- same fallback icon for "no image set" and "image
+// failed to load," both real, valid states.
+private struct ProductImageThumb: View {
+    let imageUrl: String?
+    var side: CGFloat = 44
+
+    var body: some View {
+        Group {
+            if let imageUrl, let url = URL(string: imageUrl) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().scaledToFill()
+                    default:
+                        placeholder
+                    }
+                }
+            } else {
+                placeholder
+            }
+        }
+        .frame(width: side, height: side)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .background(IDS.Colors.chipBackground)
+    }
+
+    private var placeholder: some View {
+        ZStack {
+            IDS.Colors.chipBackground
+            Image(systemName: "bag").foregroundColor(IDS.Colors.brand).font(.system(size: side / 2.5))
+        }
+    }
+}
+
+// Real discount-price display (2026-07-21) -- Baymard Institute's own placement
+// research (docs/DESIGN_REFERENCES.md Section 5): the discount % must sit immediately
+// next to the struck-through original price. discountPercent is always server-computed
+// (see backend doc comment), never trusted from the client -- purely a rendering of
+// numbers the server already validated.
+private struct ProductPriceRow: View {
+    let product: MerchantProductDto
+
+    var body: some View {
+        if let originalPrice = product.originalPrice, let discountPercent = product.discountPercent, discountPercent > 0 {
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 4) {
+                    Text("\(discountPercent)%").font(.subheadline).bold().foregroundColor(.red)
+                    Text("\(Int(product.price)) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                }
+                Text("\(Int(originalPrice)) RWF").font(.caption2).foregroundColor(IDS.Colors.textSecondary).strikethrough()
+            }
+        } else {
+            Text("\(Int(product.price)) RWF").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
         }
     }
 }

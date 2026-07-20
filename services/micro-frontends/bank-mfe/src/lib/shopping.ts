@@ -34,12 +34,18 @@ export const fetchShoppingCatalog = (category?: string, q?: string) => {
 export const fetchMerchantCategories = () =>
   apiFetch<{ success: boolean; categories: string[] }>('/api/v1/shopping/merchants/categories').then((r) => r.categories);
 
+// imageUrl/originalPrice/discountPercent added 2026-07-21 -- see commerce.ts's
+// CommerceProduct comment for the full account; search results carry the same real
+// product-card fields the per-merchant catalog already exposes.
 export interface ProductSearchResult {
   id: string;
   merchantId: string;
   merchantName: string;
   name: string;
   price: number;
+  imageUrl?: string | null;
+  originalPrice?: number | null;
+  discountPercent?: number | null;
 }
 
 // Real cross-merchant product search (2026-07-20) -- until now a shopper could only

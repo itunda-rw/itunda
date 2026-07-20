@@ -534,7 +534,21 @@ val MAP_NEARBY_CATEGORIES = listOf(
 )
 
 // Mirrors services/backend/core's real MerchantProduct entity exactly.
-data class MerchantProductDto(val id: String, val merchantId: String, val name: String, val price: Double, val active: Boolean, val createdAt: String)
+// imageUrl/originalPrice/discountPercent added 2026-07-21, closing
+// docs/DESIGN_REFERENCES.md Section 5 recommendation #4 -- see backend
+// MerchantProduct.kt's own doc comment for the full account (merchant-supplied external
+// URL, no upload/storage layer; discountPercent is server-computed, never client-set).
+data class MerchantProductDto(
+    val id: String,
+    val merchantId: String,
+    val name: String,
+    val price: Double,
+    val active: Boolean,
+    val createdAt: String,
+    val imageUrl: String? = null,
+    val originalPrice: Double? = null,
+    val discountPercent: Int? = null,
+)
 data class MerchantSummaryDto(val id: String, val businessName: String)
 data class MerchantProductsResponse(val success: Boolean, val merchant: MerchantSummaryDto, val products: List<MerchantProductDto>)
 

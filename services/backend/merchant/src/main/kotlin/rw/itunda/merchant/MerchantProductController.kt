@@ -17,7 +17,15 @@ import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
 
-data class AddProductRequest(val name: String, val price: BigDecimal)
+// imageUrl/originalPrice added 2026-07-21 (see MerchantProduct.kt's own doc comment) --
+// both optional; discountPercent is deliberately NOT part of this request, it's always
+// server-computed from price/originalPrice, never trusted from the client.
+data class AddProductRequest(
+    val name: String,
+    val price: BigDecimal,
+    val imageUrl: String? = null,
+    val originalPrice: BigDecimal? = null,
+)
 
 // Real merchant product-catalog endpoints -- the register-software half of "Toss
 // Place" (see MerchantProductService's own doc comment). Not money-moving, so no
@@ -32,7 +40,7 @@ class MerchantProductController(private val merchantProductService: MerchantProd
         @RequestBody request: AddProductRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val product = merchantProductService.addProduct(currentUser.userId, request.name, request.price)
+        val product = merchantProductService.addProduct(currentUser.userId, request.name, request.price, request.imageUrl, request.originalPrice)
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "product" to product))
     }
 
@@ -46,7 +54,7 @@ class MerchantProductController(private val merchantProductService: MerchantProd
         @RequestBody request: AddProductRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val product = merchantProductService.updateProduct(currentUser.userId, productId, request.name, request.price)
+        val product = merchantProductService.updateProduct(currentUser.userId, productId, request.name, request.price, request.imageUrl, request.originalPrice)
         return ResponseEntity.ok(mapOf("success" to true, "product" to product))
     }
 
@@ -66,6 +74,14 @@ class MerchantProductController(private val merchantProductService: MerchantProd
     @ExceptionHandler(InvalidProductPriceException::class)
     fun handleInvalidPrice(ex: InvalidProductPriceException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PRODUCT_PRICE", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidProductImageUrlException::class)
+    fun handleInvalidImageUrl(ex: InvalidProductImageUrlException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PRODUCT_IMAGE_URL", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidProductDiscountException::class)
+    fun handleInvalidDiscount(ex: InvalidProductDiscountException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PRODUCT_DISCOUNT", ex.message ?: "Bad request"))
 
     @ExceptionHandler(MerchantProductNotFoundException::class)
     fun handleProductNotFound(ex: MerchantProductNotFoundException) =

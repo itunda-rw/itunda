@@ -189,6 +189,14 @@ dependencies {
     // `google()` is already a declared repository for this project.
     implementation("com.google.android.gms:play-services-location:21.3.0")
 
+    // Real product-image loading (2026-07-21) -- Coil, the standard modern
+    // Compose-native async image loader. Closes docs/DESIGN_REFERENCES.md Section 5's
+    // #4/#5 recommendations (real product images on catalog/grid cards): this app had
+    // zero image-loading capability anywhere before this (confirmed by repo-wide
+    // search), since no client feature needed one until real merchant-supplied product
+    // photo URLs existed. Plain Maven Central coordinate, no new repository needed.
+    implementation("io.coil-kt:coil-compose:2.6.0")
+
     // Project Modules
     implementation(project(":core:designsystem"))
     implementation(project(":core:risk"))

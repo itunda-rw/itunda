@@ -96,6 +96,10 @@ class ShoppingController(
             mapOf(
                 "id" to p.id, "merchantId" to p.merchantId, "merchantName" to (merchantNames[p.merchantId] ?: ""),
                 "name" to p.name, "price" to p.price,
+                // imageUrl/originalPrice/discountPercent added 2026-07-21 -- see
+                // MerchantProduct.kt's own doc comment; search results need the same
+                // real product-card fields the per-merchant catalog already exposes.
+                "imageUrl" to p.imageUrl, "originalPrice" to p.originalPrice, "discountPercent" to p.discountPercent,
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "products" to products) + pageMeta(page))

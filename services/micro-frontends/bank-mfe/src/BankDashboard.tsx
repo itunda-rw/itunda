@@ -4909,6 +4909,50 @@ function WishlistButton({ favorited, busy, onToggle }: { favorited: boolean; bus
   );
 }
 
+// Real product-image thumbnail (2026-07-21) -- imageUrl is a merchant-supplied external
+// URL (see backend MerchantProduct.kt's own doc comment: no upload/storage layer exists
+// in this backend, so this is a real "bring your own URL" v1, not a fake pipeline). A
+// plain <img> with onError falling back to the same placeholder icon shown for a
+// product that simply has no image set at all -- both are real, valid states.
+function ProductImageThumb({ imageUrl, size = 96 }: { imageUrl?: string | null; size?: number }) {
+  const [failed, setFailed] = useState(false);
+  if (!imageUrl || failed) {
+    return (
+      <div style={{ width: size, height: size, borderRadius: '12px', background: 'var(--toss-grey-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <ShoppingBag size={size * 0.4} color="var(--toss-blue)" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={imageUrl}
+      alt=""
+      onError={() => setFailed(true)}
+      style={{ width: size, height: size, borderRadius: '12px', objectFit: 'cover', background: 'var(--toss-grey-100)', flexShrink: 0 }}
+    />
+  );
+}
+
+// Real discount-price display (2026-07-21) -- Baymard Institute's own placement
+// research (docs/DESIGN_REFERENCES.md Section 5): the discount % must sit immediately
+// next to the struck-through original price. discountPercent is always server-computed
+// (see backend doc comment), never trusted from the client -- purely a rendering of
+// numbers the server already validated.
+function ProductPriceBlock({ price, originalPrice, discountPercent }: { price: number; originalPrice?: number | null; discountPercent?: number | null }) {
+  if (originalPrice != null && discountPercent != null && discountPercent > 0) {
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+          <span style={{ fontSize: '13px', fontWeight: 700, color: '#E53935' }}>{discountPercent}%</span>
+          <span style={{ fontSize: '14px', fontWeight: 700 }}>{price.toLocaleString()} RWF</span>
+        </div>
+        <p style={{ fontSize: '11px', color: 'var(--toss-grey-400)', textDecoration: 'line-through' }}>{originalPrice.toLocaleString()} RWF</p>
+      </div>
+    );
+  }
+  return <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{price.toLocaleString()} RWF</p>;
+}
+
 function ProductCatalogView({
   merchant, cart, onSetQty, onBack, onViewCart,
 }: {
@@ -4982,20 +5026,26 @@ function ProductCatalogView({
       {catalog.products.length === 0 ? (
         <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No products yet.</p></div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: totalCartItems > 0 ? '80px' : 0 }}>
+        // Real 2-column image-led grid (2026-07-21), replacing the previous
+        // single-column text-only row -- closes docs/DESIGN_REFERENCES.md Section 5
+        // recommendation #5 (Chloe Youn's Coupang case study: real cards are
+        // image-led, with add-to-cart/wishlist directly on the card, not buried behind
+        // a detail-page visit -- recommendation #7).
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: totalCartItems > 0 ? '80px' : 0 }}>
           {catalog.products.map((item) => (
-            <div key={item.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <p style={{ fontSize: '15px', fontWeight: 700 }}>{item.name}</p>
-                <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{item.price.toLocaleString()} RWF</p>
-                <ProductRatingBadge productId={item.id} />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div key={item.id} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <ProductImageThumb imageUrl={item.imageUrl} />
                 <WishlistButton
                   favorited={favoritedIds.has(item.id)}
                   busy={togglingId === item.id}
                   onToggle={() => toggleFavorite(item.id)}
                 />
+              </div>
+              <p style={{ fontSize: '14px', fontWeight: 700, lineHeight: 1.3 }}>{item.name}</p>
+              <ProductPriceBlock price={item.price} originalPrice={item.originalPrice} discountPercent={item.discountPercent} />
+              <ProductRatingBadge productId={item.id} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginTop: '4px' }}>
                 <button onClick={() => onSetQty(merchant, item, qtyFor(item.id) - 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>−</button>
                 <span style={{ minWidth: '16px', textAlign: 'center', fontWeight: 700 }}>{qtyFor(item.id)}</span>
                 <button onClick={() => onSetQty(merchant, item, qtyFor(item.id) + 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>+</button>
@@ -5318,13 +5368,17 @@ function WishlistView({ onOpenMerchant }: { onOpenMerchant: (merchant: ShoppingM
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       {favorites.map((f) => (
-        <div key={f.productId} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div key={f.productId} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
           <button
             onClick={() => onOpenMerchant({ merchantId: f.merchantId, businessName: f.businessName, category: null, cashbackRate: '' })}
-            style={{ textAlign: 'left', flex: 1 }}
+            style={{ textAlign: 'left', flex: 1, display: 'flex', alignItems: 'center', gap: '12px' }}
           >
-            <p style={{ fontSize: '15px', fontWeight: 700 }}>{f.name}</p>
-            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{f.businessName} · {f.price.toLocaleString()} RWF</p>
+            <ProductImageThumb imageUrl={f.imageUrl} size={44} />
+            <div>
+              <p style={{ fontSize: '15px', fontWeight: 700 }}>{f.name}</p>
+              <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{f.businessName}</p>
+              <ProductPriceBlock price={f.price} originalPrice={f.originalPrice} discountPercent={f.discountPercent} />
+            </div>
           </button>
           <button
             className="toss-btn toss-btn-secondary"
@@ -5532,13 +5586,16 @@ function ShopView() {
                 key={r.id}
                 onClick={() => openSearchResult(r)}
                 className="toss-card"
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', width: '100%' }}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left', width: '100%', gap: '12px' }}
               >
-                <div>
-                  <p style={{ fontSize: '14px', fontWeight: 700 }}>{r.name}</p>
-                  <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Sold by {r.merchantName}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <ProductImageThumb imageUrl={r.imageUrl} size={44} />
+                  <div>
+                    <p style={{ fontSize: '14px', fontWeight: 700 }}>{r.name}</p>
+                    <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Sold by {r.merchantName}</p>
+                  </div>
                 </div>
-                <p style={{ fontSize: '14px', fontWeight: 700 }}>{r.price.toLocaleString()} RWF</p>
+                <ProductPriceBlock price={r.price} originalPrice={r.originalPrice} discountPercent={r.discountPercent} />
               </button>
             ))}
           </div>
