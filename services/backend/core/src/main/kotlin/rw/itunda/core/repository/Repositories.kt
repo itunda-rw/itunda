@@ -22,6 +22,8 @@ import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.domain.WeeklySavingsInstallment
+import rw.itunda.core.domain.WeeklySavingsPlan
 import java.time.Instant
 import java.util.Optional
 
@@ -60,6 +62,14 @@ interface GroupAccountMemberRepository : JpaRepository<GroupAccountMember, Strin
     fun findByUserId(userId: String): List<GroupAccountMember>
     fun findByGroupAccountIdAndUserId(groupAccountId: String, userId: String): GroupAccountMember?
     fun countByGroupAccountId(groupAccountId: String): Long
+}
+
+interface WeeklySavingsPlanRepository : JpaRepository<WeeklySavingsPlan, String> {
+    fun findByUserId(userId: String): List<WeeklySavingsPlan>
+}
+
+interface WeeklySavingsInstallmentRepository : JpaRepository<WeeklySavingsInstallment, String> {
+    fun findByPlanIdOrderByWeekNumberAsc(planId: String): List<WeeklySavingsInstallment>
 }
 
 interface LedgerAccountRepository : JpaRepository<LedgerAccount, String> {
