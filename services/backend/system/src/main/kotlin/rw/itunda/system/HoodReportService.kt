@@ -8,18 +8,36 @@ import rw.itunda.core.domain.HoodReport
 import rw.itunda.core.domain.HoodReportStatus
 import rw.itunda.core.domain.HoodReportTargetType
 import rw.itunda.core.repository.HoodReportRepository
+import rw.itunda.core.repository.ListingRepository
+import rw.itunda.core.repository.CommunityPostRepository
+import rw.itunda.core.repository.JobPostRepository
+import rw.itunda.core.repository.PropertyListingRepository
 import java.time.Instant
 import java.util.UUID
 
 class HoodReportAlreadyOpenException(message: String) : RuntimeException(message)
 class HoodReportNotFoundException(message: String) : RuntimeException(message)
+class HoodReportTargetNotFoundException(message: String) : RuntimeException(message)
 
 @Service
-class HoodReportService(private val repository: HoodReportRepository) {
+class HoodReportService(
+    private val repository: HoodReportRepository,
+    private val listingRepository: ListingRepository,
+    private val communityPostRepository: CommunityPostRepository,
+    private val jobPostRepository: JobPostRepository,
+    private val propertyListingRepository: PropertyListingRepository,
+) {
     @Transactional
     fun report(reporterId: String, targetType: HoodReportTargetType, targetId: String, reason: String): HoodReport {
         require(targetId.isNotBlank()) { "A report target is required" }
         require(reason.trim().length in 3..180) { "Give a short reason between 3 and 180 characters" }
+        val exists = when (targetType) {
+            HoodReportTargetType.MARKETPLACE_LISTING -> listingRepository.existsById(targetId)
+            HoodReportTargetType.COMMUNITY_POST -> communityPostRepository.existsById(targetId)
+            HoodReportTargetType.JOB_POST -> jobPostRepository.existsById(targetId)
+            HoodReportTargetType.PROPERTY_LISTING -> propertyListingRepository.existsById(targetId)
+        }
+        if (!exists) throw HoodReportTargetNotFoundException("Report target not found")
         if (repository.findByReporterUserIdAndTargetTypeAndTargetIdAndStatus(reporterId, targetType, targetId, HoodReportStatus.OPEN) != null) {
             throw HoodReportAlreadyOpenException("You already have an open report for this post")
         }

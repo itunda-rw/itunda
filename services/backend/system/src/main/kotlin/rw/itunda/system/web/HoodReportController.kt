@@ -18,6 +18,7 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.system.HoodReportAlreadyOpenException
 import rw.itunda.system.HoodReportNotFoundException
+import rw.itunda.system.HoodReportTargetNotFoundException
 import rw.itunda.system.HoodReportService
 
 data class CreateHoodReportRequest(val targetType: HoodReportTargetType, val targetId: String, val reason: String)
@@ -31,6 +32,9 @@ class HoodReportController(private val hoodReportService: HoodReportService) {
 
     @ExceptionHandler(HoodReportAlreadyOpenException::class)
     fun duplicate(ex: HoodReportAlreadyOpenException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("HOOD_REPORT_ALREADY_OPEN", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(HoodReportTargetNotFoundException::class)
+    fun targetMissing(ex: HoodReportTargetNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("HOOD_REPORT_TARGET_NOT_FOUND", ex.message ?: "Not found"))
 }
 
 @RestController
