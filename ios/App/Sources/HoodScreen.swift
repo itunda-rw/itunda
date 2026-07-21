@@ -639,7 +639,7 @@ private struct ListingCard: View {
         } catch let NetworkError.httpError(statusCode) where statusCode == 409 {
             error = "You already reported this listing."
         } catch {
-            error = "Couldn't send the report. Check your connection and try again."
+            self.error = "Couldn't send the report. Check your connection and try again."
         }
     }
 }
@@ -1000,7 +1000,7 @@ private struct CommunityPostCard: View {
         } catch let NetworkError.httpError(statusCode) where statusCode == 409 {
             error = "You already reported this post."
         } catch {
-            error = "Couldn't send the report. Check your connection and try again."
+            self.error = "Couldn't send the report. Check your connection and try again."
         }
     }
 }
@@ -1472,7 +1472,7 @@ private struct JobPostCard: View {
         } catch let NetworkError.httpError(statusCode) where statusCode == 409 {
             error = "You already reported this job."
         } catch {
-            error = "Couldn't send the report. Check your connection and try again."
+            self.error = "Couldn't send the report. Check your connection and try again."
         }
     }
 }
@@ -1888,7 +1888,7 @@ private struct PropertyListingCard: View {
         } catch let NetworkError.httpError(statusCode) where statusCode == 409 {
             error = "You already reported this property."
         } catch {
-            error = "Couldn't send the report. Check your connection and try again."
+            self.error = "Couldn't send the report. Check your connection and try again."
         }
     }
 }
