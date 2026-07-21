@@ -2,6 +2,7 @@ package rw.itunda.core.idempotency
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
@@ -25,6 +26,20 @@ class IdempotencyServiceTest : BehaviorSpec({
                 result.first shouldBe 201
                 result.second["success"] shouldBe true
                 verify(exactly = 0) { repository.save(any()) }
+            }
+        }
+    }
+
+    Given("a key already associated with a different withdrawal request") {
+        val claimStore = mockk<IdempotencyClaimStore>()
+        val service = IdempotencyService(claimStore, mockk(), ObjectMapper())
+        every { claimStore.claim(any(), any()) } returns ClaimOutcome.Conflict
+
+        Then("it rejects the request before a second code can be created") {
+            shouldThrow<IdempotencyConflictException> {
+                service.replayOrExecute(
+                    "POST /api/v1/wallet/agent-withdrawal-authorizations", "retry-key", mapOf("amount" to 7000),
+                ) { error("a conflicted key must not execute") }
             }
         }
     }
