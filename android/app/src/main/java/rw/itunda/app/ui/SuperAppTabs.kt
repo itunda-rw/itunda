@@ -2267,6 +2267,14 @@ private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreat
     var error by remember { mutableStateOf<String?>(null) }
     var submitting by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    var shareLocation by remember { mutableStateOf(false) }
+    var myLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var locating by remember { mutableStateOf(false) }
+    val requestLocation = rememberRealLocationRequester(
+        onLocating = { locating = it },
+        onSuccess = { lat, lng -> myLocation = lat to lng; shareLocation = true },
+        onError = { error = it },
+    )
 
     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -2287,6 +2295,11 @@ private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreat
             }
             OutlinedTextField(value = title, onValueChange = { title = it }, placeholder = { Text("Title") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = body, onValueChange = { body = it }, placeholder = { Text("What's going on in the neighborhood?") }, modifier = Modifier.fillMaxWidth())
+            Box(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft)
+                    .clickable(enabled = !locating) { if (shareLocation) shareLocation = false else requestLocation() }
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+            ) { Text(if (locating) "Finding your real location…" else if (shareLocation) "📍 Location shared with nearby neighbors" else "📍 Share location for nearby neighbors (optional)", fontSize = 13.sp, color = if (shareLocation) TossBlue else TossSecondary) }
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Cancel") }
@@ -2304,7 +2317,8 @@ private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreat
                             error = null
                             coroutineScope.launch {
                                 try {
-                                    val res = NetworkClient.apiService.createCommunityPost(CreateCommunityPostRequest(category, title, body))
+                                    val loc = if (shareLocation) myLocation else null
+                                    val res = NetworkClient.apiService.createCommunityPost(CreateCommunityPostRequest(category, title, body, loc?.first, loc?.second))
                                     if (res.success) onCreated()
                                 } catch (e: HttpException) {
                                     error = superAppErrorMessage(e)
@@ -2640,6 +2654,14 @@ private fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> Un
     var error by remember { mutableStateOf<String?>(null) }
     var submitting by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    var shareLocation by remember { mutableStateOf(false) }
+    var myLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var locating by remember { mutableStateOf(false) }
+    val requestLocation = rememberRealLocationRequester(
+        onLocating = { locating = it },
+        onSuccess = { lat, lng -> myLocation = lat to lng; shareLocation = true },
+        onError = { error = it },
+    )
 
     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -2677,6 +2699,11 @@ private fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> Un
                     modifier = Modifier.weight(1f),
                 )
             }
+            Box(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft)
+                    .clickable(enabled = !locating) { if (shareLocation) shareLocation = false else requestLocation() }
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+            ) { Text(if (locating) "Finding your real location…" else if (shareLocation) "📍 Work location shared with nearby applicants" else "📍 Share work location for nearby applicants (optional)", fontSize = 13.sp, color = if (shareLocation) TossBlue else TossSecondary) }
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Cancel") }
@@ -2695,7 +2722,8 @@ private fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> Un
                             error = null
                             coroutineScope.launch {
                                 try {
-                                    val res = NetworkClient.apiService.createJobPost(CreateJobPostRequest(category, title, description, payType, amount))
+                                    val loc = if (shareLocation) myLocation else null
+                                    val res = NetworkClient.apiService.createJobPost(CreateJobPostRequest(category, title, description, payType, amount, loc?.first, loc?.second))
                                     if (res.success) onCreated()
                                 } catch (e: HttpException) {
                                     error = superAppErrorMessage(e)
@@ -2980,6 +3008,14 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
     var error by remember { mutableStateOf<String?>(null) }
     var submitting by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    var shareLocation by remember { mutableStateOf(false) }
+    var myLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var locating by remember { mutableStateOf(false) }
+    val requestLocation = rememberRealLocationRequester(
+        onLocating = { locating = it },
+        onSuccess = { lat, lng -> myLocation = lat to lng; shareLocation = true },
+        onError = { error = it },
+    )
 
     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -3022,6 +3058,11 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
                 OutlinedTextField(value = bedrooms, onValueChange = { bedrooms = it }, placeholder = { Text("Bedrooms") }, singleLine = true, modifier = Modifier.weight(1f))
                 OutlinedTextField(value = sizeSqm, onValueChange = { sizeSqm = it }, placeholder = { Text("Size (m²)") }, singleLine = true, modifier = Modifier.weight(1f))
             }
+            Box(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft)
+                    .clickable(enabled = !locating) { if (shareLocation) shareLocation = false else requestLocation() }
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+            ) { Text(if (locating) "Finding your real location…" else if (shareLocation) "📍 Property area shared for nearby search" else "📍 Share property area for nearby search (optional)", fontSize = 13.sp, color = if (shareLocation) TossBlue else TossSecondary) }
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Cancel") }
@@ -3044,6 +3085,7 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
                                         CreatePropertyListingRequest(
                                             listingType, propertyType, title, description, priceValue,
                                             bedrooms.toIntOrNull(), sizeSqm.toDoubleOrNull(),
+                                            if (shareLocation) myLocation?.first else null, if (shareLocation) myLocation?.second else null,
                                         ),
                                     )
                                     if (res.success) onCreated()
