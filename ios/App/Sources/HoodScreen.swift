@@ -1720,6 +1720,8 @@ private struct PropertyListingCard: View {
     // state exactly.
     @State private var offering = false
     @State private var offerAmount = ""
+    @State private var showingSafetyChecklist = false
+    @State private var showingReportOptions = false
 
     private var priceLabel: String {
         let base = "\(Int(listing.price)) RWF"
@@ -1787,12 +1789,18 @@ private struct PropertyListingCard: View {
                 } else if listing.status == "AVAILABLE" && !offering {
                     actionButton("Message lister", filled: false) { onContact() }
                     actionButton("Make an offer", filled: true) { offering = true }
+                    actionButton("Report", filled: false) { showingReportOptions = true }
                 }
             }
         }
         .padding(18)
         .background(IDS.Colors.card)
         .cornerRadius(IDS.Layout.cardCornerRadius)
+        .confirmationDialog("Report this property", isPresented: $showingReportOptions, titleVisibility: .visible) {
+            Button("Suspected fake or unavailable property") { Task { await report("The property may be fake or unavailable") } }
+            Button("Misleading price or property details") { Task { await report("The price or property details appear misleading") } }
+            Button("Unsafe payment request") { Task { await report("The lister made an unsafe payment request") } }
+        } message: { Text("Reports go to Itunda’s review queue.") }
     }
 
     private func actionButton(_ label: String, filled: Bool, action: @escaping () async -> Void) -> some View {
@@ -1826,6 +1834,19 @@ private struct PropertyListingCard: View {
             onChanged()
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func report(_ reason: String) async {
+        busy = true
+        defer { busy = false }
+        do {
+            _ = try await NetworkClient.shared.reportHoodContent(targetType: "PROPERTY_LISTING", targetId: listing.id, reason: reason)
+            error = "Thanks. Your report was sent for review."
+        } catch let NetworkError.httpError(statusCode) where statusCode == 409 {
+            error = "You already reported this property."
+        } catch {
+            error = "Couldn't send the report. Check your connection and try again."
         }
     }
 }
