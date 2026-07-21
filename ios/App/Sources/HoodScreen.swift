@@ -1807,7 +1807,7 @@ private struct PropertyContent: View {
     @Binding var pendingConversationId: String?
     let onSwitchToTalk: () -> Void
 
-    private enum PropertyView { case browse, nearby, neighborhood, mine }
+    private enum PropertyView { case browse, nearby, neighborhood, mine, saved }
 
     @State private var view: PropertyView = .browse
     @State private var propertyTypes: [PropertyTypeDto] = []
@@ -1820,6 +1820,8 @@ private struct PropertyContent: View {
     @State private var neighborhoodChecked = false
     @StateObject private var locationFetcher = HoodLocationFetcher()
     private let currentUserId = KeychainTokenStore.shared.getUserId()
+    @State private var favoriteIds: Set<String> = []
+    @State private var favoritingId: String?
 
     var body: some View {
         ScrollView {
@@ -1829,6 +1831,7 @@ private struct PropertyContent: View {
                     Text("Near me").tag(PropertyView.nearby)
                     Text("Neighborhood").tag(PropertyView.neighborhood)
                     Text("My listings").tag(PropertyView.mine)
+                    Text("Saved").tag(PropertyView.saved)
                 }
                 .pickerStyle(.segmented)
 
@@ -1885,7 +1888,9 @@ private struct PropertyContent: View {
                 if view == .neighborhood, let neighborhoodName {
                     Text("Your neighborhood: \(neighborhoodName)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                 }
-                if let error {
+                if view == .saved {
+                    PropertyWishlistView(onRemoved: { Task { await loadFavoriteIds() } })
+                } else if let error {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(error).foregroundColor(.red).font(.subheadline)
                         Button("Retry") { Task { await load() } }
@@ -1908,6 +1913,8 @@ private struct PropertyContent: View {
                             propertyTypeLabel: propertyTypes.first(where: { $0.id == listing.propertyType })?.label ?? listing.propertyType,
                             isMine: view == .mine || listing.listerId == currentUserId,
                             onChanged: { Task { await load() } },
+                            favorited: favoriteIds.contains(listing.id), favoriteBusy: favoritingId == listing.id,
+                            onToggleFavorite: { Task { await toggleFavorite(listing.id) } },
                             onContact: { Task { await contact(listing.id) } },
                             onMakeOffer: { id, amount in Task { await makeOffer(id, amount) } }
                         )
@@ -1926,6 +1933,7 @@ private struct PropertyContent: View {
             locationFetcher.onLocation = { coordinate in Task { await loadNearby(coordinate) } }
             await load()
         }
+        .task { await loadFavoriteIds() }
         .onChange(of: view) { _ in Task { await load() } }
         .onChange(of: listingTypeFilter) { _ in Task { await load() } }
         .onChange(of: propertyTypeFilter) { _ in Task { await load() } }
@@ -1938,6 +1946,7 @@ private struct PropertyContent: View {
 
     private func load() async {
         listings = nil
+        if view == .saved { listings = []; error = nil; return }
         if view == .nearby {
             locationFetcher.requestLocation()
             return
@@ -1970,6 +1979,9 @@ private struct PropertyContent: View {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
     }
+
+    private func loadFavoriteIds() async { if let result = try? await NetworkClient.shared.getMyFavoritePropertyListings().favorites { favoriteIds = Set(result.map(\.propertyListingId)) } }
+    private func toggleFavorite(_ id: String) async { favoritingId = id; defer { favoritingId = nil }; do { if favoriteIds.contains(id) { _ = try await NetworkClient.shared.removePropertyListingFavorite(id); favoriteIds.remove(id) } else { _ = try await NetworkClient.shared.addPropertyListingFavorite(id); favoriteIds.insert(id) } } catch { error = "Couldn't update your saved properties. Check your connection and try again." } }
 
     private func loadNearby(_ coordinate: CLLocationCoordinate2D) async {
         do {
@@ -2116,6 +2128,22 @@ private struct NewPropertyListingForm: View {
     }
 }
 
+private struct PropertyWishlistView: View {
+    let onRemoved: () -> Void
+    @State private var favorites: [FavoritePropertyListingDto]?
+    @State private var error: String?
+    var body: some View {
+        Group {
+            if let error { VStack(alignment: .leading, spacing: 10) { Text(error).foregroundColor(.red); Button("Retry") { Task { await load() } } }.padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius) }
+            else if favorites == nil { HoodFeedSkeleton() }
+            else if favorites!.isEmpty { Text("No saved properties yet — tap ♡ on a property to keep it here.").foregroundColor(IDS.Colors.textSecondary) }
+            else { ForEach(favorites!) { favorite in HStack { VStack(alignment: .leading) { Text(favorite.title).font(IDS.Typography.bodyBold); Text("\(favorite.listingType == "RENT" ? "For rent" : "For sale") · \(Int(favorite.price)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary) }; Spacer(); Button("Remove") { Task { await remove(favorite.propertyListingId) } }.font(.caption).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8) }.padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius) } }
+        }.task { await load() }
+    }
+    private func load() async { do { favorites = try await NetworkClient.shared.getMyFavoritePropertyListings().favorites; error = nil } catch { error = "Couldn't load your saved properties. Check your connection and try again." } }
+    private func remove(_ id: String) async { do { _ = try await NetworkClient.shared.removePropertyListingFavorite(id); favorites?.removeAll { $0.propertyListingId == id }; onRemoved() } catch { error = "Couldn't remove this saved property. Check your connection and try again." } }
+}
+
 private struct PropertyListingCard: View {
     let listing: PropertyListingDto
     let propertyTypeLabel: String
@@ -2123,6 +2151,9 @@ private struct PropertyListingCard: View {
     let onChanged: () -> Void
     let onContact: () -> Void
     let onMakeOffer: (String, Double) -> Void
+    var favorited: Bool = false
+    var favoriteBusy: Bool = false
+    var onToggleFavorite: () -> Void = {}
 
     @State private var busy = false
     @State private var error: String?
@@ -2162,6 +2193,7 @@ private struct PropertyListingCard: View {
                     }
                 }
                 Spacer()
+                if !isMine { Button(action: onToggleFavorite) { Image(systemName: favorited ? "heart.fill" : "heart").foregroundColor(favorited ? .red : IDS.Colors.textSecondary) }.disabled(favoriteBusy).padding(.trailing, 6) }
                 Text(priceLabel).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
             }
             Text(listing.title).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)

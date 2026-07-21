@@ -826,6 +826,8 @@ struct CreatePropertyListingRequest: Encodable {
 }
 struct PropertyListingResponse: Decodable { let success: Bool; let listing: PropertyListingDto }
 struct PropertyListingsResponse: Decodable { let success: Bool; let listings: [PropertyListingDto] }
+struct FavoritePropertyListingDto: Decodable, Identifiable { let propertyListingId: String; let title: String; let price: Double; let listingType: String; let favoritedAt: String; var id: String { propertyListingId } }
+struct FavoritePropertyListingsResponse: Decodable { let success: Bool; let favorites: [FavoritePropertyListingDto] }
 struct PropertyTypesResponse: Decodable { let success: Bool; let propertyTypes: [PropertyTypeDto] }
 struct ContactListerResponse: Decodable { let success: Bool; let conversation: ConversationDto }
 struct ContactSellerResponse: Decodable { let success: Bool; let conversation: ConversationDto }
@@ -1453,6 +1455,9 @@ extension NetworkClient {
     }
 
     func getMyPropertyListings() async throws -> PropertyListingsResponse { try await get("api/v1/realestate/my-listings") }
+    func addPropertyListingFavorite(_ id: String) async throws -> SuccessResponse { try await authenticatedPost("api/v1/realestate/listings/\(id)/favorite", body: EmptyBody()) }
+    func removePropertyListingFavorite(_ id: String) async throws -> SuccessResponse { try await authenticatedDelete("api/v1/realestate/listings/\(id)/favorite") }
+    func getMyFavoritePropertyListings() async throws -> FavoritePropertyListingsResponse { try await get("api/v1/realestate/listings/favorites") }
 
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see setNeighborhood.
     // Deliberately not combined with listingType/propertyType filters -- an honest v1
