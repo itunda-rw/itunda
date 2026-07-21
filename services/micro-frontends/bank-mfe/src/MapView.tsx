@@ -236,6 +236,10 @@ export default function MapView() {
   const [savingToFolder, setSavingToFolder] = useState<PlaceSearchResult | null>(null);
   const [folderNameInput, setFolderNameInput] = useState(DEFAULT_BOOKMARK_FOLDER);
   const [folderColorInput, setFolderColorInput] = useState(BOOKMARK_COLOR_PALETTE[0]);
+  // Real "share this place" clipboard-fallback confirmation (2026-07-22) -- only used on
+  // browsers without the native Web Share API (navigator.share), see shareLocation's own
+  // doc comment.
+  const [shareCopied, setShareCopied] = useState(false);
   // Real recent-searches list (2026-07-22) -- the other half of the same previously-
   // flagged "no autocomplete/recent-searches" gap the live-search-as-you-type pass just
   // closed the first half of. Naver/Kakao Maps' own real recent-searches list is a purely
@@ -499,6 +503,32 @@ export default function MapView() {
 
   const isBookmarked = (place: PlaceSearchResult) =>
     bookmarks.some((b) => b.latitude === place.latitude && b.longitude === place.longitude);
+
+  // Real "share this place" (2026-07-22) -- Naver/Kakao Maps' own real share action.
+  // Deliberately plain name+coordinate text, not a link into itunda's own domain: bank-mfe
+  // is an authenticated dashboard with no public per-place page, so a fabricated
+  // "shareable link" would open to nothing useful for a recipient who isn't logged into
+  // this exact deployment -- honest plain text a recipient can paste into whatever real
+  // maps app they already use is the truthful choice here, not an itunda-hosted URL that
+  // doesn't actually exist.
+  const shareLocation = async (place: PlaceSearchResult) => {
+    const text = `${place.displayName} (${place.latitude.toFixed(6)}, ${place.longitude.toFixed(6)})`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: place.displayName, text });
+      } catch {
+        // A cancelled native share sheet throws -- not a real error, nothing to show.
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setShareCopied(true);
+      window.setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      setError('Could not share this place.');
+    }
+  };
 
   // Real "My Places" folder grouping (2026-07-22) -- see lib/maps.ts's MapBookmark doc
   // comment. Groups preserve `bookmarks`' own createdAt-desc order (a folder's position
@@ -924,6 +954,14 @@ export default function MapView() {
               )}
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                 <p style={{ fontSize: '14px', fontWeight: 700, color: MAP_CARD_TEXT, flex: 1 }}>{selectedPlace.displayName}</p>
+                <button
+                  type="button"
+                  onClick={() => shareLocation(selectedPlace)}
+                  aria-label="Share this real place"
+                  style={{ fontSize: '18px', lineHeight: 1, color: MAP_CARD_TEXT_SECONDARY }}
+                >
+                  {shareCopied ? '✓' : '📤'}
+                </button>
                 <button
                   type="button"
                   onClick={() => toggleBookmark(selectedPlace)}
