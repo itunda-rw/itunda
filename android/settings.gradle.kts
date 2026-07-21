@@ -72,6 +72,14 @@ applyBrickModules.call(
 // compile time; this redirect is a real fix, not a bypass.
 project(":granite-js_brownfield-module").projectDir = file("brownfield-module-stub")
 
+// `brick-module` itself contains the runtime registry/package classes that the
+// generated bridge and MiniAppActivity genuinely use. Its published Gradle
+// script, however, is evaluated during React configuration and reads an empty
+// app extension before normal app configuration is possible. Compile the exact
+// vendored Kotlin source through an Itunda-owned wrapper instead of patching
+// node_modules or dropping the runtime dependency.
+project(":brick-module").projectDir = file("brick-module-stub")
+
 dependencyResolutionManagement {
     // Relaxed from FAIL_ON_PROJECT_REPOS (2026-07-12, granite-adoption stage 2): the
     // real React Native Gradle Plugin adds its own project-level `maven { }`
