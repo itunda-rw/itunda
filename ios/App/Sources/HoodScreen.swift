@@ -467,6 +467,7 @@ private struct ListingCard: View {
     @State private var offering = false
     @State private var offerAmount = ""
     @State private var showingSafetyChecklist = false
+    @State private var showingReportOptions = false
 
     // Real "directions to this seller" (2026-07-19, item 8 on the Maps "100%" roadmap) --
     // reuses itunda's own self-hosted OSRM directions, same RouteMiniMap component Eats
@@ -505,13 +506,13 @@ private struct ListingCard: View {
             }
             Text(listing.description).font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
             Button(action: { showingSafetyChecklist.toggle() }) {
-                Text(showingSafetyChecklist ? "Hide contract checklist" : "Before you pay: safety checklist")
+                Text(showingSafetyChecklist ? "Hide safety tips" : "Before you pay: safety tips")
                     .font(IDS.Typography.caption).foregroundColor(IDS.Colors.brand)
             }
             if showingSafetyChecklist {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Before you pay or sign").font(IDS.Typography.sectionLabel).foregroundColor(IDS.Colors.textPrimary)
-                    Text("• Visit the property and confirm the address\n• Ask the owner or agent for proof they can list it\n• Put rent, deposit and move-in date in writing\n• Never send money before you verify the person and property")
+                    Text("Before you meet or pay").font(IDS.Typography.sectionLabel).foregroundColor(IDS.Colors.textPrimary)
+                    Text("• Meet in a safe public place\n• Inspect the item before payment\n• Keep the price and handover in Itunda chat\n• Never share a PIN or send money for an unseen item")
                         .font(IDS.Typography.caption).foregroundColor(IDS.Colors.textSecondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -555,6 +556,7 @@ private struct ListingCard: View {
                         onMessageSeller(listing.id)
                     }
                     actionButton("Make an offer", filled: true) { offering = true }
+                    actionButton("Report", filled: false) { showingReportOptions = true }
                 }
             }
             if !isMine, listing.status == "ACTIVE", let toLat = listing.latitude, let toLng = listing.longitude {
@@ -574,6 +576,11 @@ private struct ListingCard: View {
         .padding(18)
         .background(IDS.Colors.card)
         .cornerRadius(IDS.Layout.cardCornerRadius)
+        .confirmationDialog("Report this listing", isPresented: $showingReportOptions, titleVisibility: .visible) {
+            Button("Item is unavailable or misleading") { Task { await report("The item appears unavailable or misleading") } }
+            Button("Unsafe payment or contact request") { Task { await report("The seller made an unsafe payment or contact request") } }
+            Button("Prohibited or suspicious item") { Task { await report("The item appears prohibited or suspicious") } }
+        } message: { Text("Reports go to Itunda’s review queue.") }
         .onAppear {
             locationFetcher.onLocation = { coordinate in
                 myLocation = coordinate
@@ -620,6 +627,19 @@ private struct ListingCard: View {
             error = TalkScreen.errorMessage(statusCode)
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func report(_ reason: String) async {
+        busy = true
+        defer { busy = false }
+        do {
+            _ = try await NetworkClient.shared.reportHoodContent(targetType: "MARKETPLACE_LISTING", targetId: listing.id, reason: reason)
+            error = "Thanks. Your report was sent for review."
+        } catch let NetworkError.httpError(statusCode) where statusCode == 409 {
+            error = "You already reported this listing."
+        } catch {
+            error = "Couldn't send the report. Check your connection and try again."
         }
     }
 }
