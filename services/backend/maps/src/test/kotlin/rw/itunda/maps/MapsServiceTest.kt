@@ -265,6 +265,82 @@ class MapsServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        // Real bookmark folders/colors (2026-07-22) -- see MapBookmark's own doc comment
+        // for the full account of this Naver/Kakao Maps "My Places" parity gap.
+        When("a real new place is bookmarked into a real named folder with a real color") {
+            every { mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude("user_1", lat, lng) } returns null
+            every { mapBookmarkRepository.save(any()) } answers { firstArg() }
+
+            val bookmark = service.addBookmark("user_1", "Kigali International Airport", lat, lng, folderName = "Family", color = "#3182F6")
+
+            Then("it saves the bookmark into that real folder with that real color") {
+                bookmark.folderName shouldBe "Family"
+                bookmark.color shouldBe "#3182F6"
+            }
+        }
+
+        When("bookmarking with no folder/color given") {
+            every { mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude("user_1", lat, lng) } returns null
+            every { mapBookmarkRepository.save(any()) } answers { firstArg() }
+
+            val bookmark = service.addBookmark("user_1", "Kigali International Airport", lat, lng)
+
+            Then("it defaults into the real 'Saved places' folder in the real pre-existing star color") {
+                bookmark.folderName shouldBe "Saved places"
+                bookmark.color shouldBe "#F5A623"
+            }
+        }
+
+        When("bookmarking with a real invalid (non-hex) color") {
+            Then("it throws InvalidBookmarkColorException before ever touching the repository") {
+                try {
+                    service.addBookmark("user_1", "Kigali International Airport", lat, lng, color = "blue")
+                    error("expected InvalidBookmarkColorException")
+                } catch (e: InvalidBookmarkColorException) {
+                    // expected
+                }
+            }
+        }
+
+        When("bookmarking with a folder name longer than the real 120-char DB column bound") {
+            Then("it throws InvalidBookmarkFolderException rather than risking a raw DB insert failure") {
+                try {
+                    service.addBookmark("user_1", "Kigali International Airport", lat, lng, folderName = "x".repeat(121))
+                    error("expected InvalidBookmarkFolderException")
+                } catch (e: InvalidBookmarkFolderException) {
+                    // expected
+                }
+            }
+        }
+
+        When("a real existing bookmark is moved to a different real folder") {
+            val existing = MapBookmark(id = "map_bookmark_1", userId = "user_1", displayName = "Kigali International Airport", latitude = lat, longitude = lng, folderName = "Saved places", color = "#F5A623")
+            every { mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude("user_1", lat, lng) } returns existing
+            every { mapBookmarkRepository.save(any()) } answers { firstArg() }
+
+            val moved = service.moveBookmark("user_1", lat, lng, "Cafes to try", "#8B5CF6")
+
+            Then("it real-preserves the original id/place while updating the real folder/color") {
+                moved.id shouldBe existing.id
+                moved.displayName shouldBe existing.displayName
+                moved.folderName shouldBe "Cafes to try"
+                moved.color shouldBe "#8B5CF6"
+            }
+        }
+
+        When("moving a bookmark that doesn't real-exist at that location") {
+            every { mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude("user_1", lat, lng) } returns null
+
+            Then("it throws BookmarkNotFoundException rather than silently creating one") {
+                try {
+                    service.moveBookmark("user_1", lat, lng, "Cafes to try", "#8B5CF6")
+                    error("expected BookmarkNotFoundException")
+                } catch (e: BookmarkNotFoundException) {
+                    // expected
+                }
+            }
+        }
     }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf

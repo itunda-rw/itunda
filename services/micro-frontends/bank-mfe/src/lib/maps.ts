@@ -111,21 +111,35 @@ export const searchNearbyPlaces = (category: string, lat: number, lng: number, r
 
 // Real bookmarked/favorite places (2026-07-19) -- item 7 on the Maps "100%" roadmap, the
 // same star/save feature Naver/Kakao Maps offer. See MapsService's own doc comment.
+//
+// `folderName`/`color` added 2026-07-22 -- Naver/Kakao Maps' own real "My Places" folder
+// grouping (see MapBookmark.kt's own doc comment on the backend, migration V73). Every
+// bookmark belongs to exactly one named folder with its own pin color; bookmarks made
+// before this existed default into a single real "Saved places" folder.
 export interface MapBookmark {
   id: string;
   displayName: string;
   latitude: number;
   longitude: number;
+  folderName: string;
+  color: string;
   createdAt: string;
 }
 
 export const fetchMyMapBookmarks = () =>
   apiFetch<{ success: boolean; bookmarks: MapBookmark[] }>('/api/v1/maps/bookmarks').then((r) => r.bookmarks);
 
-export const addMapBookmark = (displayName: string, latitude: number, longitude: number) =>
+export const addMapBookmark = (displayName: string, latitude: number, longitude: number, folderName?: string, color?: string) =>
   apiFetch<{ success: boolean; bookmark: MapBookmark }>('/api/v1/maps/bookmarks', {
     method: 'POST',
-    body: JSON.stringify({ displayName, latitude, longitude }),
+    body: JSON.stringify({ displayName, latitude, longitude, folderName, color }),
+  }).then((r) => r.bookmark);
+
+// Real "move to folder" (2026-07-22) -- see MapsService.moveBookmark's own doc comment.
+export const moveMapBookmark = (latitude: number, longitude: number, folderName: string, color: string) =>
+  apiFetch<{ success: boolean; bookmark: MapBookmark }>(`/api/v1/maps/bookmarks?lat=${latitude}&lng=${longitude}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ folderName, color }),
   }).then((r) => r.bookmark);
 
 export const removeMapBookmark = (latitude: number, longitude: number) =>

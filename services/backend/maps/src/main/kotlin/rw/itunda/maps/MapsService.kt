@@ -19,6 +19,9 @@ class InvalidMapsCoordinateException(message: String) : RuntimeException(message
 class RouteNotFoundException(message: String) : RuntimeException(message)
 class InvalidMapsCategoryException(message: String) : RuntimeException(message)
 class InvalidBookmarkNameException(message: String) : RuntimeException(message)
+class InvalidBookmarkFolderException(message: String) : RuntimeException(message)
+class InvalidBookmarkColorException(message: String) : RuntimeException(message)
+class BookmarkNotFoundException(message: String) : RuntimeException(message)
 
 /**
  * A real, general-purpose "search this map" + "get directions" surface -- the
@@ -110,8 +113,19 @@ class MapsService(
     // 409) -- matches `EatsFavoriteService.addFavorite`'s own precedent, since a real
     // star-toggle UI shouldn't error on a double-tap and the real DB unique constraint
     // already makes a concurrent double-add safe without this check either.
+    //
+    // `folderName`/`color` added 2026-07-22 -- Naver/Kakao Maps' own real "My Places"
+    // folder grouping (migration V73). Defaulted so every pre-existing caller keeps
+    // saving into the same single real "Saved places" folder unchanged.
     @Transactional
-    fun addBookmark(userId: String, displayName: String, latitude: Double, longitude: Double): MapBookmark {
+    fun addBookmark(
+        userId: String,
+        displayName: String,
+        latitude: Double,
+        longitude: Double,
+        folderName: String = DEFAULT_BOOKMARK_FOLDER,
+        color: String = DEFAULT_BOOKMARK_COLOR,
+    ): MapBookmark {
         if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
             throw InvalidMapsCoordinateException("Latitude must be between -90 and 90, longitude between -180 and 180")
         }
@@ -128,6 +142,13 @@ class MapsService(
         if (trimmedName.length > 512) {
             throw InvalidBookmarkNameException("Bookmark name must be 512 characters or fewer")
         }
+        val trimmedFolder = folderName.trim().ifEmpty { DEFAULT_BOOKMARK_FOLDER }
+        if (trimmedFolder.length > 120) {
+            throw InvalidBookmarkFolderException("Folder name must be 120 characters or fewer")
+        }
+        if (!HEX_COLOR_REGEX.matches(color)) {
+            throw InvalidBookmarkColorException("color must be a hex value like #F5A623")
+        }
         mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude(userId, latitude, longitude)?.let { return it }
         return mapBookmarkRepository.save(
             MapBookmark(
@@ -136,6 +157,41 @@ class MapsService(
                 displayName = trimmedName,
                 latitude = latitude,
                 longitude = longitude,
+                folderName = trimmedFolder,
+                color = color,
+            ),
+        )
+    }
+
+    // Real "move to folder" (2026-07-22) -- the other half of real folder grouping: a
+    // user reorganizing already-saved places into a different named folder/color rather
+    // than only ever choosing one at save time. Looked up by (userId, lat, lng), the same
+    // real key `removeBookmark` already uses, since there's no bookmark-by-id lookup
+    // endpoint for a client to have an id in hand from.
+    @Transactional
+    fun moveBookmark(userId: String, latitude: Double, longitude: Double, folderName: String, color: String): MapBookmark {
+        if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
+            throw InvalidMapsCoordinateException("Latitude must be between -90 and 90, longitude between -180 and 180")
+        }
+        val trimmedFolder = folderName.trim().ifEmpty { DEFAULT_BOOKMARK_FOLDER }
+        if (trimmedFolder.length > 120) {
+            throw InvalidBookmarkFolderException("Folder name must be 120 characters or fewer")
+        }
+        if (!HEX_COLOR_REGEX.matches(color)) {
+            throw InvalidBookmarkColorException("color must be a hex value like #F5A623")
+        }
+        val existing = mapBookmarkRepository.findByUserIdAndLatitudeAndLongitude(userId, latitude, longitude)
+            ?: throw BookmarkNotFoundException("No bookmark exists at that location")
+        return mapBookmarkRepository.save(
+            MapBookmark(
+                id = existing.id,
+                userId = existing.userId,
+                displayName = existing.displayName,
+                latitude = existing.latitude,
+                longitude = existing.longitude,
+                folderName = trimmedFolder,
+                color = color,
+                createdAt = existing.createdAt,
             ),
         )
     }
@@ -146,4 +202,10 @@ class MapsService(
     }
 
     fun getMyBookmarks(userId: String): List<MapBookmark> = mapBookmarkRepository.findByUserIdOrderByCreatedAtDesc(userId)
+
+    companion object {
+        const val DEFAULT_BOOKMARK_FOLDER = "Saved places"
+        const val DEFAULT_BOOKMARK_COLOR = "#F5A623"
+        private val HEX_COLOR_REGEX = Regex("^#[0-9A-Fa-f]{6}$")
+    }
 }

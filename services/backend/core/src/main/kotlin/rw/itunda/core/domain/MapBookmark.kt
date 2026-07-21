@@ -14,6 +14,12 @@ import java.time.Instant
  * directly, exactly what a client already has in hand from `GET /api/v1/maps/search` or
  * `/nearby`. Real DB unique constraint on (user_id, latitude, longitude) backs the same
  * application-level "add is idempotent" check `MapsService.addBookmark` makes.
+ *
+ * `folderName`/`color` added 2026-07-22 (migration V73) -- Naver/Kakao Maps' own real
+ * "My Places" folder grouping, closing item 4 from the Maps design-doc sweep. Every
+ * bookmark belongs to exactly one named folder with its own pin color; a bookmark made
+ * before this existed defaults into a single real "Saved places" folder in the same
+ * star-yellow (#F5A623) the star icon already used, not a placeholder value.
  */
 @Entity
 @Table(name = "map_bookmarks")
@@ -33,6 +39,12 @@ class MapBookmark(
 
     @Column(nullable = false)
     val longitude: Double,
+
+    @Column(name = "folder_name", nullable = false, length = 120)
+    val folderName: String = "Saved places",
+
+    @Column(nullable = false, length = 7)
+    val color: String = "#F5A623",
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),

@@ -6,6 +6,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -15,6 +16,9 @@ import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.geo.TravelMode
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
+import rw.itunda.maps.BookmarkNotFoundException
+import rw.itunda.maps.InvalidBookmarkColorException
+import rw.itunda.maps.InvalidBookmarkFolderException
 import rw.itunda.maps.InvalidBookmarkNameException
 import rw.itunda.maps.InvalidMapsCategoryException
 import rw.itunda.maps.InvalidMapsCoordinateException
@@ -90,8 +94,28 @@ class MapsController(private val mapsService: MapsService) {
     ): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
         mapOf(
             "success" to true,
-            "bookmark" to mapsService.addBookmark(currentUser.userId, request.displayName, request.latitude, request.longitude),
+            "bookmark" to mapsService.addBookmark(
+                currentUser.userId,
+                request.displayName,
+                request.latitude,
+                request.longitude,
+                request.folderName ?: MapsService.DEFAULT_BOOKMARK_FOLDER,
+                request.color ?: MapsService.DEFAULT_BOOKMARK_COLOR,
+            ),
         ),
+    )
+
+    // Real "move to folder" (2026-07-22) -- see MapsService.moveBookmark's own doc
+    // comment. Keyed by (lat, lng) via query params, same real key `/bookmarks` DELETE
+    // already uses, not a path id this API has never exposed.
+    @PatchMapping("/bookmarks")
+    fun moveBookmark(
+        @RequestParam lat: Double,
+        @RequestParam lng: Double,
+        @RequestBody request: MoveBookmarkRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
+        mapOf("success" to true, "bookmark" to mapsService.moveBookmark(currentUser.userId, lat, lng, request.folderName, request.color)),
     )
 
     @DeleteMapping("/bookmarks")
@@ -120,6 +144,18 @@ class MapsController(private val mapsService: MapsService) {
     fun handleInvalidBookmarkName(ex: InvalidBookmarkNameException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_BOOKMARK_NAME", ex.message ?: "Bad request"))
 
+    @ExceptionHandler(InvalidBookmarkFolderException::class)
+    fun handleInvalidBookmarkFolder(ex: InvalidBookmarkFolderException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_BOOKMARK_FOLDER", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidBookmarkColorException::class)
+    fun handleInvalidBookmarkColor(ex: InvalidBookmarkColorException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_BOOKMARK_COLOR", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(BookmarkNotFoundException::class)
+    fun handleBookmarkNotFound(ex: BookmarkNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("BOOKMARK_NOT_FOUND", ex.message ?: "Not found"))
+
     @ExceptionHandler(RouteNotFoundException::class)
     fun handleRouteNotFound(ex: RouteNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ROUTE_NOT_FOUND", ex.message ?: "Not found"))
@@ -137,4 +173,12 @@ class MapsController(private val mapsService: MapsService) {
         ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
 }
 
-data class AddBookmarkRequest(val displayName: String, val latitude: Double, val longitude: Double)
+data class AddBookmarkRequest(
+    val displayName: String,
+    val latitude: Double,
+    val longitude: Double,
+    val folderName: String? = null,
+    val color: String? = null,
+)
+
+data class MoveBookmarkRequest(val folderName: String, val color: String)

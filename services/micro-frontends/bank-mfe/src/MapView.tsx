@@ -466,6 +466,20 @@ export default function MapView() {
   const isBookmarked = (place: PlaceSearchResult) =>
     bookmarks.some((b) => b.latitude === place.latitude && b.longitude === place.longitude);
 
+  // Real "My Places" folder grouping (2026-07-22) -- see lib/maps.ts's MapBookmark doc
+  // comment. Groups preserve `bookmarks`' own createdAt-desc order (a folder's position
+  // here is simply wherever its most-recently-saved place falls), not a separate alphabetic
+  // re-sort -- matches how a real recently-used folder list naturally feels most useful.
+  const bookmarksByFolder = bookmarks.reduce<Array<[string, MapBookmark[]]>>((groups, b) => {
+    const group = groups.find(([folder]) => folder === b.folderName);
+    if (group) {
+      group[1].push(b);
+    } else {
+      groups.push([b.folderName, [b]]);
+    }
+    return groups;
+  }, []);
+
   const toggleBookmark = async (place: PlaceSearchResult) => {
     setBookmarking(true);
     setError(null);
@@ -953,15 +967,26 @@ export default function MapView() {
               {bookmarks.length === 0 ? (
                 <p style={{ fontSize: '12px', color: MAP_CARD_TEXT_TERTIARY }}>No saved places yet -- tap ☆ on a place to save it.</p>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  {bookmarks.map((b) => (
-                    <button
-                      key={b.id}
-                      onClick={() => selectPlace({ displayName: b.displayName, latitude: b.latitude, longitude: b.longitude })}
-                      style={{ textAlign: 'left', padding: '6px 0', fontSize: '13px', color: MAP_CARD_TEXT }}
-                    >
-                      {b.displayName}
-                    </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {bookmarksByFolder.map(([folderName, folderBookmarks]) => (
+                    <div key={folderName}>
+                      {/* Only shown once there's more than one real folder -- a single
+                          default "Saved places" folder stays exactly as flat as it looked
+                          before this feature existed. */}
+                      {bookmarksByFolder.length > 1 && (
+                        <p style={{ fontSize: '11px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY, padding: '4px 0' }}>{folderName}</p>
+                      )}
+                      {folderBookmarks.map((b) => (
+                        <button
+                          key={b.id}
+                          onClick={() => selectPlace({ displayName: b.displayName, latitude: b.latitude, longitude: b.longitude })}
+                          style={{ textAlign: 'left', padding: '6px 0', fontSize: '13px', color: MAP_CARD_TEXT, display: 'flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: b.color, flexShrink: 0 }} />
+                          {b.displayName}
+                        </button>
+                      ))}
+                    </div>
                   ))}
                 </div>
               )}
