@@ -881,7 +881,9 @@ struct ShoppingMerchantsResponse: Decodable { let success: Bool; let merchants: 
 // Real "search this map" + "directions" (2026-07-19) -- see rw.itunda.maps.MapsService's
 // own doc comment on the backend for why these are a new, general-purpose front door
 // onto itunda's already-deployed self-hosted Nominatim/OSRM.
-struct PlaceSearchResultDto: Decodable { let displayName: String; let latitude: Double; let longitude: Double }
+// Codable, not just Decodable (2026-07-22) -- RecentMapSearchesStore needs to encode
+// this back to JSON for local UserDefaults persistence, not just decode it from the API.
+struct PlaceSearchResultDto: Codable { let displayName: String; let latitude: Double; let longitude: Double }
 struct MapsSearchResponse: Decodable { let success: Bool; let results: [PlaceSearchResultDto] }
 struct RouteStepDto: Decodable { let instruction: String; let distanceMeters: Double; let streetName: String? }
 struct RouteResultDto: Decodable { let distanceKm: Double; let durationMinutes: Double; let geometry: [[Double]]; let steps: [RouteStepDto] }

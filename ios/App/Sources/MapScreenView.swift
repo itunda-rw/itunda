@@ -158,6 +158,13 @@ struct MapScreenView: View {
     @State private var query = ""
     @State private var searchResults: [PlaceSearchResultDto]?
     @State private var searching = false
+    // Real search-as-you-type autocomplete + recent-searches (2026-07-22) -- ported from
+    // bank-mfe's own real debounced live-search. `searchTask` is cancelled and replaced
+    // on every keystroke (see the `.onChange(of: query)` below) so a slower stale
+    // keystroke's response can never overwrite a newer one's results.
+    @State private var searchTask: Task<Void, Never>?
+    @State private var recentSearches: [PlaceSearchResultDto] = RecentMapSearchesStore.shared.getAll()
+    @FocusState private var searchFocused: Bool
     @State private var selectedPlace: PlaceSearchResultDto?
     @State private var route: RouteResultDto?
     // Real alternative routes (2026-07-22) -- see MapsDirectionsAlternativesResponse's
@@ -237,7 +244,21 @@ struct MapScreenView: View {
                                 .foregroundColor(searching ? IdsPalette.gray400 : IdsPalette.blue500)
                             TextField("Search a real place in Rwanda", text: $query)
                                 .foregroundColor(IdsPalette.gray900)
+                                .focused($searchFocused)
                                 .onSubmit { Task { await search() } }
+                                .onChange(of: query) { newValue in
+                                    searchTask?.cancel()
+                                    let trimmed = newValue.trimmingCharacters(in: .whitespaces)
+                                    guard trimmed.count >= 2 else {
+                                        searchResults = nil
+                                        return
+                                    }
+                                    searchTask = Task {
+                                        try? await Task.sleep(nanoseconds: 350_000_000)
+                                        guard !Task.isCancelled else { return }
+                                        await search()
+                                    }
+                                }
                             if !query.trimmingCharacters(in: .whitespaces).isEmpty {
                                 Button(action: { query = ""; searchResults = nil }) {
                                     Image(systemName: "xmark.circle.fill").foregroundColor(IdsPalette.gray400)
@@ -285,12 +306,46 @@ struct MapScreenView: View {
                                                 .foregroundColor(IdsPalette.gray900)
                                                 .frame(maxWidth: .infinity, alignment: .leading)
                                                 .padding(10)
-                                                .onTapGesture { selectPlace(place) }
+                                                .onTapGesture {
+                                                    recentSearches = RecentMapSearchesStore.shared.add(place)
+                                                    selectPlace(place)
+                                                }
                                         }
                                     }
                                 }
                                 if let error {
                                     Text(error).font(.caption).foregroundColor(.red).padding(8)
+                                }
+                            }
+                            .frame(maxHeight: 160)
+                            .background(IdsPalette.white)
+                            .cornerRadius(14)
+                            .shadow(color: .black.opacity(0.14), radius: 8, y: 2)
+                        }
+
+                        // Real recent-searches list (2026-07-22) -- only shown while the
+                        // search box is focused and empty, same real Naver/Kakao Maps
+                        // convention bank-mfe's own version already follows.
+                        if searchFocused && query.trimmingCharacters(in: .whitespaces).isEmpty && !recentSearches.isEmpty {
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack {
+                                    Text("Recent searches").font(.caption2).bold().foregroundColor(IdsPalette.gray500)
+                                    Spacer()
+                                    Button(action: { RecentMapSearchesStore.shared.clear(); recentSearches = [] }) {
+                                        Text("Clear").font(.caption2).bold().foregroundColor(IdsPalette.blue500)
+                                    }
+                                }
+                                .padding(.horizontal, 10).padding(.top, 8)
+                                ForEach(Array(recentSearches.enumerated()), id: \.offset) { _, place in
+                                    Text("🕐 \(place.displayName)")
+                                        .font(.caption)
+                                        .foregroundColor(IdsPalette.gray900)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(10)
+                                        .onTapGesture {
+                                            recentSearches = RecentMapSearchesStore.shared.add(place)
+                                            selectPlace(place)
+                                        }
                                 }
                             }
                             .frame(maxHeight: 160)
@@ -356,6 +411,16 @@ struct MapScreenView: View {
                                     HStack(alignment: .top) {
                                         Text(place.displayName).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                                         Spacer()
+                                        // Real "share this place" (2026-07-22) -- ported
+                                        // from bank-mfe's own real Web Share/clipboard
+                                        // action. Plain name+coordinate text via the
+                                        // native share sheet, not a link into itunda's own
+                                        // domain -- there's no public per-place page a
+                                        // recipient outside this app could open.
+                                        ShareLink(item: "\(place.displayName) (\(String(format: "%.6f", place.latitude)), \(String(format: "%.6f", place.longitude)))") {
+                                            Text("📤").font(.body)
+                                        }
+                                        .padding(.trailing, 4)
                                         Button(action: { Task { await toggleBookmark(place) } }) {
                                             Text(isBookmarked(place) ? "★" : "☆")
                                                 .font(.title3)

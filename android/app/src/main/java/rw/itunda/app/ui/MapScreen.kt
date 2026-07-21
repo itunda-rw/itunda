@@ -1,6 +1,7 @@
 package rw.itunda.app.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -63,6 +64,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -77,6 +79,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
@@ -117,6 +120,7 @@ import rw.itunda.app.network.NearbyPlaceDto
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.app.network.NetworkClient
 import rw.itunda.app.network.PlaceSearchResultDto
+import rw.itunda.app.network.RecentMapSearchesStore
 import rw.itunda.app.network.RouteResultDto
 import rw.itunda.app.network.ShoppingMerchantDto
 
@@ -299,6 +303,11 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
     var query by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<PlaceSearchResultDto>?>(null) }
     var searching by remember { mutableStateOf(false) }
+    // Real recent-searches list (2026-07-22) -- see RecentMapSearchesStore's own doc
+    // comment; ported from bank-mfe's own real localStorage-backed feature.
+    val recentSearchesStore = remember { RecentMapSearchesStore(context) }
+    var recentSearches by remember { mutableStateOf<List<PlaceSearchResultDto>>(emptyList()) }
+    var searchFocused by remember { mutableStateOf(false) }
     var selectedPlace by remember { mutableStateOf<PlaceSearchResultDto?>(null) }
     var route by remember { mutableStateOf<MapsDirectionsResponse?>(null) }
     // Real alternative routes (2026-07-22) -- see MapsDirectionsAlternativesResponse's
@@ -372,7 +381,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
     }
 
     // Shared by both the search field's own leading icon and its keyboard "search"
-    // IME action -- previously only reachable via a separate colored "Search" button.
+    // IME action -- runs immediately, bypassing the debounce below.
     fun runSearch() {
         if (searching || query.isBlank()) return
         coroutineScope.launch {
@@ -388,6 +397,36 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                 searching = false
             }
         }
+    }
+
+    // Real search-as-you-type autocomplete (2026-07-22) -- ported from bank-mfe's own
+    // real debounced live-search. `LaunchedEffect(query)` gives this the exact debounce
+    // behavior for free: Compose automatically cancels the in-flight coroutine from a
+    // stale keystroke the moment `query` changes again, so a slower "Kigal" response can
+    // never overwrite a newer "Kigali" one -- no manual request-id guard needed, unlike
+    // bank-mfe's own JS setTimeout-based version.
+    LaunchedEffect(query) {
+        val trimmed = query.trim()
+        if (trimmed.length < 2) {
+            searchResults = null
+            return@LaunchedEffect
+        }
+        delay(350)
+        searching = true
+        error = null
+        try {
+            searchResults = NetworkClient.apiService.searchPlaces(trimmed).results
+        } catch (e: HttpException) {
+            error = superAppErrorMessage(e)
+        } catch (e: Exception) {
+            error = "Couldn't reach itunda. Check your connection and try again."
+        } finally {
+            searching = false
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        recentSearches = recentSearchesStore.getAll()
     }
 
     LaunchedEffect(Unit) {
@@ -714,7 +753,8 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                         ),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { runSearch() }),
-                        modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
+                        modifier = Modifier.weight(1f).padding(horizontal = 6.dp)
+                            .onFocusChanged { searchFocused = it.isFocused },
                     )
                     if (query.isNotBlank()) {
                         Icon(
@@ -791,6 +831,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
+                                            recentSearches = recentSearchesStore.add(place)
                                             selectedPlace = place
                                             searchResults = null
                                             route = null
@@ -805,6 +846,52 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                     }
 
                     error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) }
+                }
+            }
+
+            // Real recent-searches list (2026-07-22) -- its own card, separately gated
+            // from the search-results/category-results card above (that one only renders
+            // when there's a real result set; this one renders instead of it, only while
+            // the search box is focused and empty). Same real Naver/Kakao Maps convention
+            // bank-mfe's own version already follows.
+            if (searchFocused && query.isBlank() && recentSearches.isNotEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(3.dp, RoundedCornerShape(Ids.layout.sectionCornerRadius))
+                        .background(TossCard, RoundedCornerShape(Ids.layout.sectionCornerRadius))
+                        .padding(vertical = 4.dp),
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
+                    ) {
+                        Text("Recent searches", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TossSecondary)
+                        Text(
+                            "Clear", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TossBlue,
+                            modifier = Modifier.clickable { recentSearchesStore.clear(); recentSearches = emptyList() },
+                        )
+                    }
+                    recentSearches.forEach { place ->
+                        Text(
+                            "🕐 ${place.displayName}",
+                            fontSize = 13.sp,
+                            color = TossText,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    recentSearches = recentSearchesStore.add(place)
+                                    selectedPlace = place
+                                    searchResults = null
+                                    route = null
+                                    routeAlternatives = null
+                                    selectedRouteIndex = 0
+                                    showSteps = false
+                                }
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                        )
+                    }
                 }
             }
             } // end floating top panel
@@ -915,6 +1002,23 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                                     fontSize = 15.sp,
                                     color = TossText,
                                     modifier = Modifier.weight(1f),
+                                )
+                                // Real "share this place" (2026-07-22) -- ported from
+                                // bank-mfe's own real Web Share/clipboard action. Plain
+                                // name+coordinate text via Android's native share sheet,
+                                // not a link into itunda's own domain -- there's no public
+                                // per-place page a recipient outside this app could open.
+                                Text(
+                                    "📤",
+                                    fontSize = 18.sp,
+                                    modifier = Modifier.padding(end = 8.dp).clickable {
+                                        val text = "${place.displayName} (${"%.6f".format(place.latitude)}, ${"%.6f".format(place.longitude)})"
+                                        val intent = Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(Intent.EXTRA_TEXT, text)
+                                        }
+                                        context.startActivity(Intent.createChooser(intent, place.displayName))
+                                    },
                                 )
                                 Text(
                                     if (isBookmarked(place)) "★" else "☆",
