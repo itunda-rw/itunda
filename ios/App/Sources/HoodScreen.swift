@@ -234,6 +234,7 @@ private struct MarketplaceContent: View {
     // from any of them, not just the dedicated Wishlist tab.
     @State private var favoriteIds: Set<String> = []
     @State private var favoritingId: String?
+
     @State private var favoriteNotice: String?
 
     var body: some View {
@@ -1289,6 +1290,7 @@ private struct JobsContent: View {
     private let currentUserId = KeychainTokenStore.shared.getUserId()
     @State private var favoriteIds: Set<String> = []
     @State private var favoritingId: String?
+    @State private var favoriteNotice: String?
 
     var body: some View {
         ScrollView {
@@ -1301,6 +1303,8 @@ private struct JobsContent: View {
                         Text("Saved").tag(JobsView.wishlist)
                 }
                 .pickerStyle(.segmented)
+
+                if let favoriteNotice { Text(favoriteNotice).font(.caption).foregroundColor(IDS.Colors.brand).frame(maxWidth: .infinity, alignment: .leading) }
 
                 HStack(alignment: .top, spacing: 8) {
                     Text("Safe work")
@@ -1468,9 +1472,11 @@ private struct JobsContent: View {
             if favoriteIds.contains(jobPostId) {
                 _ = try await NetworkClient.shared.removeJobPostFavorite(jobPostId)
                 favoriteIds.remove(jobPostId)
+                favoriteNotice = "Removed from saved jobs."
             } else {
                 _ = try await NetworkClient.shared.addJobPostFavorite(jobPostId)
                 favoriteIds.insert(jobPostId)
+                favoriteNotice = "Saved to your jobs list."
             }
         } catch {
             error = "Couldn't update your saved jobs. Check your connection and try again."
@@ -1824,6 +1830,7 @@ private struct PropertyContent: View {
     private let currentUserId = KeychainTokenStore.shared.getUserId()
     @State private var favoriteIds: Set<String> = []
     @State private var favoritingId: String?
+    @State private var favoriteNotice: String?
 
     var body: some View {
         ScrollView {
@@ -1836,6 +1843,8 @@ private struct PropertyContent: View {
                     Text("Saved").tag(PropertyView.saved)
                 }
                 .pickerStyle(.segmented)
+
+                if let favoriteNotice { Text(favoriteNotice).font(.caption).foregroundColor(IDS.Colors.brand).frame(maxWidth: .infinity, alignment: .leading) }
 
                 if view == .browse {
                     HStack(spacing: 6) {
@@ -1983,7 +1992,7 @@ private struct PropertyContent: View {
     }
 
     private func loadFavoriteIds() async { if let result = try? await NetworkClient.shared.getMyFavoritePropertyListings().favorites { favoriteIds = Set(result.map(\.propertyListingId)) } }
-    private func toggleFavorite(_ id: String) async { favoritingId = id; defer { favoritingId = nil }; do { if favoriteIds.contains(id) { _ = try await NetworkClient.shared.removePropertyListingFavorite(id); favoriteIds.remove(id) } else { _ = try await NetworkClient.shared.addPropertyListingFavorite(id); favoriteIds.insert(id) } } catch { error = "Couldn't update your saved properties. Check your connection and try again." } }
+    private func toggleFavorite(_ id: String) async { favoritingId = id; defer { favoritingId = nil }; do { if favoriteIds.contains(id) { _ = try await NetworkClient.shared.removePropertyListingFavorite(id); favoriteIds.remove(id); favoriteNotice = "Removed from saved properties." } else { _ = try await NetworkClient.shared.addPropertyListingFavorite(id); favoriteIds.insert(id); favoriteNotice = "Saved to your properties list." } } catch { error = "Couldn't update your saved properties. Check your connection and try again." } }
 
     private func loadNearby(_ coordinate: CLLocationCoordinate2D) async {
         do {
