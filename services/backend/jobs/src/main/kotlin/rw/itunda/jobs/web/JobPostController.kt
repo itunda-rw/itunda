@@ -19,8 +19,10 @@ import rw.itunda.core.domain.JobPayType
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
+import rw.itunda.jobs.FavoriteJobPostNotFoundException
 import rw.itunda.jobs.InvalidJobCoordinatesException
 import rw.itunda.jobs.InvalidJobPostException
+import rw.itunda.jobs.JobPostFavoriteService
 import rw.itunda.jobs.JobPostNotFoundException
 import rw.itunda.jobs.JobPostNotOpenException
 import rw.itunda.jobs.JobPostService
@@ -42,7 +44,10 @@ data class CreateJobPostRequest(
 // itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
 @RestController
 @RequestMapping("/api/v1/jobs")
-class JobPostController(private val jobPostService: JobPostService) {
+class JobPostController(
+    private val jobPostService: JobPostService,
+    private val jobPostFavoriteService: JobPostFavoriteService,
+) {
 
     @GetMapping("/categories")
     fun categories(): ResponseEntity<Map<String, Any?>> =
@@ -119,6 +124,36 @@ class JobPostController(private val jobPostService: JobPostService) {
     ): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "post" to jobPostService.removePost(currentUser.userId, jobPostId)))
 
+    // Real 당근알바 job-post wishlist (2026-07-22) -- see JobPostFavoriteService's own
+    // doc comment. Mirrors MarketplaceController's own favorite-listing endpoints
+    // field-for-field.
+    @PostMapping("/posts/{jobPostId}/favorite")
+    fun addFavorite(
+        @PathVariable jobPostId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val favorite = jobPostFavoriteService.addFavorite(currentUser.userId, jobPostId)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "favorite" to favorite))
+    }
+
+    @DeleteMapping("/posts/{jobPostId}/favorite")
+    fun removeFavorite(
+        @PathVariable jobPostId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Boolean>> {
+        jobPostFavoriteService.removeFavorite(currentUser.userId, jobPostId)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    @GetMapping("/posts/favorites")
+    fun getMyFavoritePosts(
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = jobPostFavoriteService.getMyFavorites(currentUser.userId, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "favorites" to page.content) + pageMeta(page))
+    }
+
     @PostMapping("/posts/{jobPostId}/contact-poster")
     fun contactPoster(
         @PathVariable jobPostId: String,
@@ -155,4 +190,8 @@ class JobPostController(private val jobPostService: JobPostService) {
     @ExceptionHandler(JobsNeighborhoodNotSetException::class)
     fun handleNeighborhoodNotSet(ex: JobsNeighborhoodNotSetException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("NEIGHBORHOOD_NOT_SET", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(FavoriteJobPostNotFoundException::class)
+    fun handleFavoriteNotFound(ex: FavoriteJobPostNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("JOB_POST_NOT_FOUND", ex.message ?: "Not found"))
 }

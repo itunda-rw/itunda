@@ -126,3 +126,27 @@ export const fetchPropertyOffersForConversation = (conversationId: string) =>
   apiFetch<{ success: boolean; offers: PropertyPriceOffer[] }>(`/api/v1/realestate/conversations/${conversationId}/offers`).then(
     (r) => r.offers,
   );
+
+// Real 당근부동산 property-listing wishlist (2026-07-22) -- closes the same
+// docs/DESIGN_REFERENCES.md-named gap lib/jobs.ts's FavoriteJobPost closes: Marketplace
+// listings already got a real wishlist (2026-07-21, lib/marketplace.ts) but Property
+// never did. Mirrors FavoriteListing's exact shape; see PropertyListingFavoriteService.kt's
+// own doc comment on the backend.
+export interface FavoritePropertyListing {
+  propertyListingId: string;
+  title: string;
+  price: number;
+  propertyType: string;
+  favoritedAt: string;
+}
+
+export const addPropertyListingFavorite = (propertyListingId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/realestate/listings/${propertyListingId}/favorite`, { method: 'POST' });
+
+export const removePropertyListingFavorite = (propertyListingId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/realestate/listings/${propertyListingId}/favorite`, { method: 'DELETE' });
+
+export const fetchMyFavoritePropertyListings = () =>
+  apiFetch<{ success: boolean; favorites: FavoritePropertyListing[] }>('/api/v1/realestate/listings/favorites').then(
+    (r) => r.favorites,
+  );

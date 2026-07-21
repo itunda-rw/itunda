@@ -37,13 +37,15 @@ import {
   type CommunityCategory, type CommunityComment, type CommunityPost,
 } from './lib/community';
 import {
-  contactPoster, createJobPost, fetchJobCategories, fetchJobPosts, fetchJobPostsMyNeighborhood, fetchMyJobPosts,
-  markJobPostFilled, removeJobPost, type JobCategory, type JobPayType, type JobPost,
+  addJobPostFavorite, contactPoster, createJobPost, fetchJobCategories, fetchJobPosts, fetchJobPostsMyNeighborhood,
+  fetchMyFavoriteJobPosts, fetchMyJobPosts, markJobPostFilled, removeJobPost, removeJobPostFavorite,
+  type FavoriteJobPost, type JobCategory, type JobPayType, type JobPost,
 } from './lib/jobs';
 import {
-  contactLister, createPropertyListing, fetchMyPropertyListings, fetchPropertyListings, fetchPropertyListingsMyNeighborhood,
-  fetchPropertyOffersForConversation, fetchPropertyTypes, makePropertyOffer, markPropertyListingTaken, removePropertyListing,
-  respondToPropertyOffer, type PropertyListing, type PropertyListingType, type PropertyPriceOffer, type PropertyType,
+  addPropertyListingFavorite, contactLister, createPropertyListing, fetchMyFavoritePropertyListings, fetchMyPropertyListings,
+  fetchPropertyListings, fetchPropertyListingsMyNeighborhood, fetchPropertyOffersForConversation, fetchPropertyTypes,
+  makePropertyOffer, markPropertyListingTaken, removePropertyListing, removePropertyListingFavorite, respondToPropertyOffer,
+  type FavoritePropertyListing, type PropertyListing, type PropertyListingType, type PropertyPriceOffer, type PropertyType,
 } from './lib/realestate';
 import {
   addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, fetchAvailableDeliveries,
@@ -3065,8 +3067,9 @@ function NewJobPostCard({ categories, onCreated }: { categories: JobCategory[]; 
   );
 }
 
-function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact }: {
+function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favorited, favoriteBusy, onToggleFavorite }: {
   post: JobPost; categoryLabel: string; isMine: boolean; onChanged: () => void; onContact: () => void;
+  favorited: boolean; favoriteBusy: boolean; onToggleFavorite: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -3084,7 +3087,13 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact }: {
             </span>
           )}
         </div>
-        <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{payLabel}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Real 당근알바 job-post wishlist (2026-07-22) -- mirrors ListingCard's own
+              WishlistButton reuse exactly, closing a docs/DESIGN_REFERENCES.md-named
+              gap: Marketplace listings already had this, Jobs never did. */}
+          {!isMine && <WishlistButton favorited={favorited} busy={favoriteBusy} onToggle={onToggleFavorite} />}
+          <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{payLabel}</span>
+        </div>
       </div>
       <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{post.title}</p>
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{post.description}</p>
@@ -3133,22 +3142,89 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact }: {
   );
 }
 
+// Real 당근알바 job-post wishlist view (2026-07-22) -- mirrors ListingWishlistView
+// exactly, closing a docs/DESIGN_REFERENCES.md-named gap.
+function JobPostWishlistView() {
+  const [favorites, setFavorites] = useState<FavoriteJobPost[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchMyFavoriteJobPosts().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your wishlist.'));
+  };
+  useEffect(load, []);
+
+  const handleRemove = async (jobPostId: string) => {
+    setRemovingId(jobPostId);
+    try {
+      await removeJobPostFavorite(jobPostId);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not remove this item.');
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="toss-card">
+        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+      </div>
+    );
+  }
+  if (favorites === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+  if (favorites.length === 0) return <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No saved jobs yet -- tap ♡ on any job post to save it here.</p></div>;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {favorites.map((f) => (
+        <div key={f.jobPostId} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <p style={{ fontSize: '15px', fontWeight: 700 }}>{f.title}</p>
+            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{f.category} · {f.payAmount.toLocaleString()} RWF</p>
+          </div>
+          <button
+            className="toss-btn toss-btn-secondary"
+            disabled={removingId === f.jobPostId}
+            onClick={() => handleRemove(f.jobPostId)}
+            style={{ padding: '8px 12px', fontSize: '12px' }}
+          >
+            {removingId === f.jobPostId ? 'Removing…' : 'Remove'}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: string) => void }) {
-  const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD'>('BROWSE');
+  const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD' | 'WISHLIST'>('BROWSE');
   const [categories, setCategories] = useState<JobCategory[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [posts, setPosts] = useState<JobPost[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [favoritingId, setFavoritingId] = useState<string | null>(null);
   const currentUser = getStoredUser();
 
   useEffect(() => {
     fetchJobCategories().then(setCategories).catch(() => { /* chips just won't render, browse still works */ });
   }, []);
 
+  const loadFavoriteIds = () => {
+    fetchMyFavoriteJobPosts().then((favs) => setFavoriteIds(new Set(favs.map((f) => f.jobPostId)))).catch(() => {
+      // Real, non-critical -- a wishlist-status fetch failure shouldn't block browsing.
+    });
+  };
+
   const load = () => {
     setError(null);
     setPosts(null);
+    loadFavoriteIds();
     if (view === 'NEIGHBORHOOD') {
       Promise.all([fetchProfile(), fetchJobPostsMyNeighborhood(activeCategory ?? undefined)])
         .then(([profile, items]) => {
@@ -3165,6 +3241,7 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
         });
       return;
     }
+    if (view === 'WISHLIST') return;
     const fetcher = view === 'BROWSE' ? fetchJobPosts(activeCategory ?? undefined) : fetchMyJobPosts();
     fetcher
       .then(setPosts)
@@ -3184,10 +3261,29 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
     }
   };
 
+  // Real 당근알바 job-post wishlist (2026-07-22) -- mirrors MarketplaceView's own
+  // toggleFavorite field-for-field.
+  const toggleFavorite = async (jobPostId: string) => {
+    setFavoritingId(jobPostId);
+    try {
+      if (favoriteIds.has(jobPostId)) {
+        await removeJobPostFavorite(jobPostId);
+        setFavoriteIds((prev) => { const next = new Set(prev); next.delete(jobPostId); return next; });
+      } else {
+        await addJobPostFavorite(jobPostId);
+        setFavoriteIds((prev) => new Set(prev).add(jobPostId));
+      }
+    } catch {
+      // Real, non-critical -- a wishlist toggle failure shouldn't block browsing.
+    } finally {
+      setFavoritingId(null);
+    }
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'NEIGHBORHOOD', 'MINE'] as const).map((v) => (
+        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'WISHLIST'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -3197,69 +3293,78 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
               backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Find work' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : 'My posts'}
+            {v === 'BROWSE' ? 'Find work' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My posts' : '♡ Wishlist'}
           </button>
         ))}
       </div>
 
-      {(view === 'BROWSE' || view === 'NEIGHBORHOOD') && categories.length > 0 && (
-        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '12px', paddingBottom: '2px' }}>
-          {categories.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setActiveCategory(activeCategory === c.id ? null : c.id)}
-              style={{
-                whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
-                border: `1px solid ${activeCategory === c.id ? 'var(--toss-blue)' : 'var(--toss-grey-200)'}`,
-                color: activeCategory === c.id ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-                backgroundColor: activeCategory === c.id ? 'var(--toss-blue)' : 'transparent',
-              }}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {view === 'WISHLIST' ? (
+        <JobPostWishlistView />
+      ) : (
+        <>
+          {(view === 'BROWSE' || view === 'NEIGHBORHOOD') && categories.length > 0 && (
+            <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '12px', paddingBottom: '2px' }}>
+              {categories.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setActiveCategory(activeCategory === c.id ? null : c.id)}
+                  style={{
+                    whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
+                    border: `1px solid ${activeCategory === c.id ? 'var(--toss-blue)' : 'var(--toss-grey-200)'}`,
+                    color: activeCategory === c.id ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+                    backgroundColor: activeCategory === c.id ? 'var(--toss-blue)' : 'transparent',
+                  }}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          )}
 
-      {view === 'MINE' && <NewJobPostCard categories={categories} onCreated={load} />}
+          {view === 'MINE' && <NewJobPostCard categories={categories} onCreated={load} />}
 
-      {view === 'NEIGHBORHOOD' && neighborhoodName === null && (
-        <NeighborhoodSetupPrompt onDone={() => load()} />
-      )}
+          {view === 'NEIGHBORHOOD' && neighborhoodName === null && (
+            <NeighborhoodSetupPrompt onDone={() => load()} />
+          )}
 
-      {view === 'NEIGHBORHOOD' && neighborhoodName && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
-          Your neighborhood: <strong style={{ color: 'var(--toss-grey-900)' }}>{neighborhoodName}</strong>
-        </p>
-      )}
+          {view === 'NEIGHBORHOOD' && neighborhoodName && (
+            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
+              Your neighborhood: <strong style={{ color: 'var(--toss-grey-900)' }}>{neighborhoodName}</strong>
+            </p>
+          )}
 
-      {error && (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-          <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-        </div>
-      )}
-      {!error && posts === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
-      {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && posts !== null && posts.length === 0 && (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-            {view === 'BROWSE' ? 'No jobs posted yet.' : view === 'NEIGHBORHOOD' ? 'No jobs in your neighborhood yet.' : "You haven't posted any jobs yet."}
-          </p>
-        </div>
-      )}
-      {!error && posts !== null && posts.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {posts.map((post) => (
-            <JobPostCard
-              key={post.id}
-              post={post}
-              categoryLabel={categoryLabel(post.category)}
-              isMine={view === 'MINE' || post.posterId === currentUser?.id}
-              onChanged={load}
-              onContact={() => handleContact(post.id)}
-            />
-          ))}
-        </div>
+          {error && (
+            <div className="toss-card">
+              <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+              <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+            </div>
+          )}
+          {!error && posts === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
+          {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && posts !== null && posts.length === 0 && (
+            <div className="toss-card">
+              <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+                {view === 'BROWSE' ? 'No jobs posted yet.' : view === 'NEIGHBORHOOD' ? 'No jobs in your neighborhood yet.' : "You haven't posted any jobs yet."}
+              </p>
+            </div>
+          )}
+          {!error && posts !== null && posts.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {posts.map((post) => (
+                <JobPostCard
+                  key={post.id}
+                  post={post}
+                  categoryLabel={categoryLabel(post.category)}
+                  isMine={view === 'MINE' || post.posterId === currentUser?.id}
+                  onChanged={load}
+                  onContact={() => handleContact(post.id)}
+                  favorited={favoriteIds.has(post.id)}
+                  favoriteBusy={favoritingId === post.id}
+                  onToggleFavorite={() => toggleFavorite(post.id)}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -3362,9 +3467,10 @@ function NewPropertyListingCard({ propertyTypes, onCreated }: { propertyTypes: P
   );
 }
 
-function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, onContact, onMessageLister }: {
+function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, onContact, onMessageLister, favorited, favoriteBusy, onToggleFavorite }: {
   listing: PropertyListing; propertyTypeLabel: string; isMine: boolean; onChanged: () => void; onContact: () => void;
   onMessageLister: (conversationId: string) => void;
+  favorited: boolean; favoriteBusy: boolean; onToggleFavorite: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -3409,7 +3515,14 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
             </span>
           )}
         </div>
-        <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{priceLabel}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Real 당근부동산 property-listing wishlist (2026-07-22) -- mirrors
+              ListingCard's own WishlistButton reuse exactly, closing a
+              docs/DESIGN_REFERENCES.md-named gap: Marketplace listings already had
+              this, Property never did. */}
+          {!isMine && <WishlistButton favorited={favorited} busy={favoriteBusy} onToggle={onToggleFavorite} />}
+          <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{priceLabel}</span>
+        </div>
       </div>
       <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{listing.title}</p>
       {detailsLabel && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{detailsLabel}</p>}
@@ -3478,23 +3591,90 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
   );
 }
 
+// Real 당근부동산 property-listing wishlist view (2026-07-22) -- mirrors
+// ListingWishlistView exactly, closing a docs/DESIGN_REFERENCES.md-named gap.
+function PropertyListingWishlistView() {
+  const [favorites, setFavorites] = useState<FavoritePropertyListing[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchMyFavoritePropertyListings().then(setFavorites).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your wishlist.'));
+  };
+  useEffect(load, []);
+
+  const handleRemove = async (propertyListingId: string) => {
+    setRemovingId(propertyListingId);
+    try {
+      await removePropertyListingFavorite(propertyListingId);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not remove this item.');
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="toss-card">
+        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+      </div>
+    );
+  }
+  if (favorites === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+  if (favorites.length === 0) return <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No saved properties yet -- tap ♡ on any listing to save it here.</p></div>;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {favorites.map((f) => (
+        <div key={f.propertyListingId} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <p style={{ fontSize: '15px', fontWeight: 700 }}>{f.title}</p>
+            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{f.propertyType} · {f.price.toLocaleString()} RWF</p>
+          </div>
+          <button
+            className="toss-btn toss-btn-secondary"
+            disabled={removingId === f.propertyListingId}
+            onClick={() => handleRemove(f.propertyListingId)}
+            style={{ padding: '8px 12px', fontSize: '12px' }}
+          >
+            {removingId === f.propertyListingId ? 'Removing…' : 'Remove'}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: string) => void }) {
-  const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD'>('BROWSE');
+  const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD' | 'WISHLIST'>('BROWSE');
   const [propertyTypes, setPropertyTypes] = useState<PropertyType[]>([]);
   const [listingTypeFilter, setListingTypeFilter] = useState<PropertyListingType | null>(null);
   const [propertyTypeFilter, setPropertyTypeFilter] = useState<string | null>(null);
   const [listings, setListings] = useState<PropertyListing[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [favoritingId, setFavoritingId] = useState<string | null>(null);
   const currentUser = getStoredUser();
 
   useEffect(() => {
     fetchPropertyTypes().then(setPropertyTypes).catch(() => { /* chips just won't render, browse still works */ });
   }, []);
 
+  const loadFavoriteIds = () => {
+    fetchMyFavoritePropertyListings().then((favs) => setFavoriteIds(new Set(favs.map((f) => f.propertyListingId)))).catch(() => {
+      // Real, non-critical -- a wishlist-status fetch failure shouldn't block browsing.
+    });
+  };
+
   const load = () => {
     setError(null);
     setListings(null);
+    loadFavoriteIds();
     if (view === 'NEIGHBORHOOD') {
       Promise.all([fetchProfile(), fetchPropertyListingsMyNeighborhood()])
         .then(([profile, items]) => {
@@ -3511,6 +3691,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
         });
       return;
     }
+    if (view === 'WISHLIST') return;
     const fetcher = view === 'BROWSE'
       ? fetchPropertyListings(listingTypeFilter ?? undefined, propertyTypeFilter ?? undefined)
       : fetchMyPropertyListings();
@@ -3532,10 +3713,29 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
     }
   };
 
+  // Real 당근부동산 property-listing wishlist (2026-07-22) -- mirrors MarketplaceView's
+  // own toggleFavorite field-for-field.
+  const toggleFavorite = async (propertyListingId: string) => {
+    setFavoritingId(propertyListingId);
+    try {
+      if (favoriteIds.has(propertyListingId)) {
+        await removePropertyListingFavorite(propertyListingId);
+        setFavoriteIds((prev) => { const next = new Set(prev); next.delete(propertyListingId); return next; });
+      } else {
+        await addPropertyListingFavorite(propertyListingId);
+        setFavoriteIds((prev) => new Set(prev).add(propertyListingId));
+      }
+    } catch {
+      // Real, non-critical -- a wishlist toggle failure shouldn't block browsing.
+    } finally {
+      setFavoritingId(null);
+    }
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'NEIGHBORHOOD', 'MINE'] as const).map((v) => (
+        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'WISHLIST'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -3545,89 +3745,98 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
               backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : 'My listings'}
+            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : '♡ Wishlist'}
           </button>
         ))}
       </div>
 
-      {view === 'BROWSE' && (
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
-          {(['RENT', 'SALE'] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setListingTypeFilter(listingTypeFilter === t ? null : t)}
-              style={{
-                padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
-                border: `1px solid ${listingTypeFilter === t ? 'var(--toss-blue)' : 'var(--toss-grey-200)'}`,
-                color: listingTypeFilter === t ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-                backgroundColor: listingTypeFilter === t ? 'var(--toss-blue)' : 'transparent',
-              }}
-            >
-              {t === 'RENT' ? 'For rent' : 'For sale'}
-            </button>
-          ))}
-        </div>
-      )}
+      {view === 'WISHLIST' ? (
+        <PropertyListingWishlistView />
+      ) : (
+        <>
+          {view === 'BROWSE' && (
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+              {(['RENT', 'SALE'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setListingTypeFilter(listingTypeFilter === t ? null : t)}
+                  style={{
+                    padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
+                    border: `1px solid ${listingTypeFilter === t ? 'var(--toss-blue)' : 'var(--toss-grey-200)'}`,
+                    color: listingTypeFilter === t ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+                    backgroundColor: listingTypeFilter === t ? 'var(--toss-blue)' : 'transparent',
+                  }}
+                >
+                  {t === 'RENT' ? 'For rent' : 'For sale'}
+                </button>
+              ))}
+            </div>
+          )}
 
-      {view === 'BROWSE' && propertyTypes.length > 0 && (
-        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '12px', paddingBottom: '2px' }}>
-          {propertyTypes.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setPropertyTypeFilter(propertyTypeFilter === t.id ? null : t.id)}
-              style={{
-                whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
-                border: `1px solid ${propertyTypeFilter === t.id ? 'var(--toss-blue)' : 'var(--toss-grey-200)'}`,
-                color: propertyTypeFilter === t.id ? 'var(--toss-white)' : 'var(--toss-grey-700)',
-                backgroundColor: propertyTypeFilter === t.id ? 'var(--toss-blue)' : 'transparent',
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      )}
+          {view === 'BROWSE' && propertyTypes.length > 0 && (
+            <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '12px', paddingBottom: '2px' }}>
+              {propertyTypes.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setPropertyTypeFilter(propertyTypeFilter === t.id ? null : t.id)}
+                  style={{
+                    whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 700,
+                    border: `1px solid ${propertyTypeFilter === t.id ? 'var(--toss-blue)' : 'var(--toss-grey-200)'}`,
+                    color: propertyTypeFilter === t.id ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+                    backgroundColor: propertyTypeFilter === t.id ? 'var(--toss-blue)' : 'transparent',
+                  }}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          )}
 
-      {view === 'MINE' && <NewPropertyListingCard propertyTypes={propertyTypes} onCreated={load} />}
+          {view === 'MINE' && <NewPropertyListingCard propertyTypes={propertyTypes} onCreated={load} />}
 
-      {view === 'NEIGHBORHOOD' && neighborhoodName === null && (
-        <NeighborhoodSetupPrompt onDone={() => load()} />
-      )}
+          {view === 'NEIGHBORHOOD' && neighborhoodName === null && (
+            <NeighborhoodSetupPrompt onDone={() => load()} />
+          )}
 
-      {view === 'NEIGHBORHOOD' && neighborhoodName && (
-        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
-          Your neighborhood: <strong style={{ color: 'var(--toss-grey-900)' }}>{neighborhoodName}</strong>
-        </p>
-      )}
+          {view === 'NEIGHBORHOOD' && neighborhoodName && (
+            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px', padding: '0 4px' }}>
+              Your neighborhood: <strong style={{ color: 'var(--toss-grey-900)' }}>{neighborhoodName}</strong>
+            </p>
+          )}
 
-      {error && (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-          <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
-        </div>
-      )}
-      {!error && listings === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
-      {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
-        <div className="toss-card">
-          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-            {view === 'BROWSE' ? 'No properties listed yet.' : view === 'NEIGHBORHOOD' ? 'No properties in your neighborhood yet.' : "You haven't listed any properties yet."}
-          </p>
-        </div>
-      )}
-      {!error && listings !== null && listings.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {listings.map((listing) => (
-            <PropertyListingCard
-              key={listing.id}
-              listing={listing}
-              propertyTypeLabel={propertyTypeLabel(listing.propertyType)}
-              isMine={view === 'MINE' || listing.listerId === currentUser?.id}
-              onChanged={load}
-              onContact={() => handleContact(listing.id)}
-              onMessageLister={onMessageLister}
-            />
-          ))}
-        </div>
+          {error && (
+            <div className="toss-card">
+              <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+              <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+            </div>
+          )}
+          {!error && listings === null && <div className="toss-card skeleton" style={{ height: '220px' }} />}
+          {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
+            <div className="toss-card">
+              <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+                {view === 'BROWSE' ? 'No properties listed yet.' : view === 'NEIGHBORHOOD' ? 'No properties in your neighborhood yet.' : "You haven't listed any properties yet."}
+              </p>
+            </div>
+          )}
+          {!error && listings !== null && listings.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {listings.map((listing) => (
+                <PropertyListingCard
+                  key={listing.id}
+                  listing={listing}
+                  propertyTypeLabel={propertyTypeLabel(listing.propertyType)}
+                  isMine={view === 'MINE' || listing.listerId === currentUser?.id}
+                  onChanged={load}
+                  onContact={() => handleContact(listing.id)}
+                  onMessageLister={onMessageLister}
+                  favorited={favoriteIds.has(listing.id)}
+                  favoriteBusy={favoritingId === listing.id}
+                  onToggleFavorite={() => toggleFavorite(listing.id)}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

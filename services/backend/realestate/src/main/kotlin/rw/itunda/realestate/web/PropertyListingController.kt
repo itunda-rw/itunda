@@ -19,10 +19,12 @@ import rw.itunda.core.domain.PropertyListingType
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
+import rw.itunda.realestate.FavoritePropertyListingNotFoundException
 import rw.itunda.realestate.InvalidPropertyCoordinatesException
 import rw.itunda.realestate.InvalidPropertyListingException
 import rw.itunda.realestate.InvalidPropertyOfferAmountException
 import rw.itunda.realestate.OwnPropertyListingException
+import rw.itunda.realestate.PropertyListingFavoriteService
 import rw.itunda.realestate.OwnPropertyOfferException
 import rw.itunda.realestate.PropertyListingNotAvailableException
 import rw.itunda.realestate.PropertyListingNotFoundException
@@ -58,6 +60,7 @@ data class RespondToPropertyOfferRequest(val action: PropertyOfferResponseAction
 class PropertyListingController(
     private val propertyListingService: PropertyListingService,
     private val propertyPriceOfferService: PropertyPriceOfferService,
+    private val propertyListingFavoriteService: PropertyListingFavoriteService,
 ) {
 
     @GetMapping("/property-types")
@@ -134,6 +137,36 @@ class PropertyListingController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "listing" to propertyListingService.removeListing(currentUser.userId, propertyListingId)))
+
+    // Real 당근부동산 property-listing wishlist (2026-07-22) -- see
+    // PropertyListingFavoriteService's own doc comment. Mirrors MarketplaceController's
+    // own favorite-listing endpoints field-for-field.
+    @PostMapping("/listings/{propertyListingId}/favorite")
+    fun addFavorite(
+        @PathVariable propertyListingId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val favorite = propertyListingFavoriteService.addFavorite(currentUser.userId, propertyListingId)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "favorite" to favorite))
+    }
+
+    @DeleteMapping("/listings/{propertyListingId}/favorite")
+    fun removeFavorite(
+        @PathVariable propertyListingId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Boolean>> {
+        propertyListingFavoriteService.removeFavorite(currentUser.userId, propertyListingId)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    @GetMapping("/listings/favorites")
+    fun getMyFavoriteListings(
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = propertyListingFavoriteService.getMyFavorites(currentUser.userId, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "favorites" to page.content) + pageMeta(page))
+    }
 
     @PostMapping("/listings/{propertyListingId}/contact-lister")
     fun contactLister(
@@ -215,4 +248,8 @@ class PropertyListingController(
     @ExceptionHandler(RealEstateNeighborhoodNotSetException::class)
     fun handleNeighborhoodNotSet(ex: RealEstateNeighborhoodNotSetException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("NEIGHBORHOOD_NOT_SET", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(FavoritePropertyListingNotFoundException::class)
+    fun handleFavoriteNotFound(ex: FavoritePropertyListingNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("PROPERTY_LISTING_NOT_FOUND", ex.message ?: "Not found"))
 }

@@ -78,3 +78,24 @@ export const contactPoster = (jobPostId: string) =>
   apiFetch<{ success: boolean; conversation: { id: string } }>(`/api/v1/jobs/posts/${jobPostId}/contact-poster`, {
     method: 'POST',
   }).then((r) => r.conversation);
+
+// Real 당근알바 job-post wishlist (2026-07-22) -- closes a gap docs/DESIGN_REFERENCES.md
+// named directly: Marketplace listings already got a real wishlist (2026-07-21,
+// lib/marketplace.ts) but Jobs never did. Mirrors FavoriteListing's exact shape; see
+// JobPostFavoriteService.kt's own doc comment on the backend.
+export interface FavoriteJobPost {
+  jobPostId: string;
+  title: string;
+  payAmount: number;
+  category: string;
+  favoritedAt: string;
+}
+
+export const addJobPostFavorite = (jobPostId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/jobs/posts/${jobPostId}/favorite`, { method: 'POST' });
+
+export const removeJobPostFavorite = (jobPostId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/jobs/posts/${jobPostId}/favorite`, { method: 'DELETE' });
+
+export const fetchMyFavoriteJobPosts = () =>
+  apiFetch<{ success: boolean; favorites: FavoriteJobPost[] }>('/api/v1/jobs/posts/favorites').then((r) => r.favorites);
