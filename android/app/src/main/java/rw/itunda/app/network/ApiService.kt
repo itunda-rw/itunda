@@ -890,6 +890,13 @@ interface ApiService {
     @GET("api/v1/marketplace/listings")
     suspend fun browseListings(@Query("category") category: String? = null): ListingsResponse
 
+    @GET("api/v1/marketplace/listings/nearby")
+    suspend fun getNearbyListings(
+        @Query("latitude") latitude: Double,
+        @Query("longitude") longitude: Double,
+        @Query("radiusKm") radiusKm: Double = 3.0,
+    ): ListingsResponse
+
     @GET("api/v1/marketplace/my-listings")
     suspend fun getMyListings(): ListingsResponse
 

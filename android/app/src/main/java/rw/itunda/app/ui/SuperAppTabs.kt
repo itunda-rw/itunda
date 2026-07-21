@@ -1474,10 +1474,11 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit) {
 // WISHLIST added 2026-07-21, porting bank-mfe's Marketplace wishlist (shipped earlier
 // the same day) to Android -- see MarketplaceContent's own favoriteIds state and
 // ListingWishlistView below for the full account.
-private enum class HoodView { BROWSE, NEIGHBORHOOD, MINE, WISHLIST }
+private enum class HoodView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, WISHLIST }
 
 private fun HoodView.label() = when (this) {
     HoodView.BROWSE -> "Browse"
+    HoodView.NEARBY -> "Near me"
     HoodView.NEIGHBORHOOD -> "Neighborhood"
     HoodView.MINE -> "My listings"
     HoodView.WISHLIST -> "♡ Wishlist"
@@ -1550,6 +1551,27 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
     }
     val coroutineScope = rememberCoroutineScope()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
+    var locatingNearby by remember { mutableStateOf(false) }
+    val requestNearbyLocation = rememberRealLocationRequester(
+        onLocating = { locatingNearby = it },
+        onSuccess = { lat, lng ->
+            listings = null
+            coroutineScope.launch {
+                try {
+                    val res = NetworkClient.apiService.getNearbyListings(lat, lng)
+                    if (res.success) listings = res.listings
+                    error = null
+                } catch (e: HttpException) {
+                    error = superAppErrorMessage(e)
+                    listings = emptyList()
+                } catch (e: IOException) {
+                    error = "Couldn't load nearby listings. Check your connection and try again."
+                    listings = emptyList()
+                }
+            }
+        },
+        onError = { message -> error = "$message You can still use Browse or Neighborhood."; listings = emptyList() },
+    )
 
     // Real Marketplace listing wishlist (2026-07-21) -- porting bank-mfe's wishlist
     // (backend + web UI shipped earlier the same day) to Android. Favorite state is
@@ -1595,6 +1617,10 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
 
     fun load() {
         listings = null
+        if (view == HoodView.NEARBY) {
+            requestNearbyLocation()
+            return
+        }
         if (view == HoodView.WISHLIST) {
             // ListingWishlistView below owns its own fetch (it needs title/price/category
             // straight from the favorites endpoint, not the ListingDto shape) -- nothing
@@ -1628,7 +1654,7 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
         }
         coroutineScope.launch {
             try {
-                val res = if (view == HoodView.BROWSE) NetworkClient.apiService.browseListings() else NetworkClient.apiService.getMyListings()
+            val res = if (view == HoodView.BROWSE) NetworkClient.apiService.browseListings() else NetworkClient.apiService.getMyListings()
                 if (res.success) listings = res.listings
                 error = null
             } catch (e: HttpException) {
@@ -1638,7 +1664,9 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
             }
         }
     }
-    LaunchedEffect(view) { load() }
+    LaunchedEffect(view) {
+        if (view == HoodView.NEARBY) requestNearbyLocation() else load()
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
@@ -1694,6 +1722,7 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
                 EmptyState(
                     when (view) {
                         HoodView.BROWSE -> "No listings yet."
+                        HoodView.NEARBY -> "No listings near you yet."
                         HoodView.NEIGHBORHOOD -> "No listings in your neighborhood yet."
                         HoodView.MINE -> "You haven't listed anything yet."
                         HoodView.WISHLIST -> "No saved listings yet."
