@@ -10,6 +10,7 @@ import rw.itunda.core.geo.NearbyPlace
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.geo.RouteResult
+import rw.itunda.core.geo.TravelMode
 import rw.itunda.core.repository.MapBookmarkRepository
 import java.time.Duration
 import java.util.UUID
@@ -43,7 +44,10 @@ class MapsService(
         return nominatimGeocodingClient.search(query, limit = 8)
     }
 
-    fun getDirections(userId: String, fromLat: Double, fromLng: Double, toLat: Double, toLng: Double): RouteResult {
+    // mode added 2026-07-22 -- see OsrmRoutingClient.route's own doc comment for the
+    // full account of the real, separately-deployed foot-profile OSRM instance this
+    // now lets a caller actually reach.
+    fun getDirections(userId: String, fromLat: Double, fromLng: Double, toLat: Double, toLng: Double, mode: TravelMode = TravelMode.DRIVING): RouteResult {
         if (!GeoUtils.isValidCoordinate(fromLat, fromLng) || !GeoUtils.isValidCoordinate(toLat, toLng)) {
             throw InvalidMapsCoordinateException("Latitude must be between -90 and 90, longitude between -180 and 180")
         }
@@ -55,7 +59,7 @@ class MapsService(
         if (!GeoUtils.isWithinRwanda(fromLat, fromLng) || !GeoUtils.isWithinRwanda(toLat, toLng)) {
             throw RouteNotFoundException("Directions are only available within Rwanda")
         }
-        return osrmRoutingClient.route(fromLat, fromLng, toLat, toLng)
+        return osrmRoutingClient.route(fromLat, fromLng, toLat, toLng, mode)
             ?: throw RouteNotFoundException("No route could be found between these two points")
     }
 

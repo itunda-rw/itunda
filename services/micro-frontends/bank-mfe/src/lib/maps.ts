@@ -54,9 +54,15 @@ export interface RouteResult {
   steps: RouteStep[];
 }
 
-export const getDirections = (fromLat: number, fromLng: number, toLat: number, toLng: number) =>
+// Real walking directions (2026-07-22) -- see OsrmRoutingClient.route's own doc
+// comment on the backend for the full account of the real, separately-deployed
+// foot-profile OSRM instance this now reaches. Defaults to 'DRIVING', matching the
+// backend's own default and every pre-existing caller's unchanged behavior.
+export type TravelMode = 'DRIVING' | 'WALKING';
+
+export const getDirections = (fromLat: number, fromLng: number, toLat: number, toLng: number, mode: TravelMode = 'DRIVING') =>
   apiFetch<{ success: boolean; route: RouteResult }>(
-    `/api/v1/maps/directions?fromLat=${fromLat}&fromLng=${fromLng}&toLat=${toLat}&toLng=${toLng}`,
+    `/api/v1/maps/directions?fromLat=${fromLat}&fromLng=${fromLng}&toLat=${toLat}&toLng=${toLng}&mode=${mode}`,
   ).then((r) => r.route);
 
 // Real "nearby places" category search (2026-07-19) -- Naver/Kakao's own category-chip

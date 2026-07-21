@@ -16,6 +16,7 @@ import {
   type NearbyPlace,
   type MapBookmark,
   type RouteStep,
+  type TravelMode,
 } from './lib/maps';
 import { fetchShoppingCatalog, type ShoppingMerchant } from './lib/shopping';
 import { ApiError } from './lib/api';
@@ -188,6 +189,9 @@ export default function MapView() {
   const [route, setRoute] = useState<{ distanceKm: number; durationMinutes: number; steps: RouteStep[] } | null>(null);
   const [showSteps, setShowSteps] = useState(false);
   const [routing, setRouting] = useState(false);
+  // Real driving/walking toggle (2026-07-22) -- see lib/maps.ts's TravelMode doc
+  // comment for the real, separately-deployed foot-profile OSRM instance this reaches.
+  const [travelMode, setTravelMode] = useState<TravelMode>('DRIVING');
   const [locating, setLocating] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [categoryLoading, setCategoryLoading] = useState(false);
@@ -460,14 +464,15 @@ export default function MapView() {
     }
   };
 
-  const handleGetDirections = async () => {
+  const handleGetDirections = async (mode: TravelMode = travelMode) => {
     const map = mapRef.current;
     if (!map || !selectedPlace) return;
     const origin = myLocationRef.current ?? [map.getCenter().lat, map.getCenter().lng];
     setRouting(true);
     setError(null);
     try {
-      const result = await getDirections(origin[0], origin[1], selectedPlace.latitude, selectedPlace.longitude);
+      const result = await getDirections(origin[0], origin[1], selectedPlace.latitude, selectedPlace.longitude, mode);
+      setTravelMode(mode);
       setRoute({ distanceKm: result.distanceKm, durationMinutes: result.durationMinutes, steps: result.steps });
       setShowSteps(false);
       const source = map.getSource('route') as maplibregl.GeoJSONSource | undefined;
@@ -682,10 +687,39 @@ export default function MapView() {
                   {isBookmarked(selectedPlace) ? '★' : '☆'}
                 </button>
               </div>
+              {/* Real driving/walking mode toggle (2026-07-22) -- same real Naver/Kakao
+                  Maps convention of picking a travel mode before/after a route is drawn.
+                  Switching mode while a route is already shown re-fetches it against
+                  itunda's own separately-deployed foot-profile OSRM instance rather than
+                  just relabeling the existing driving route. */}
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {(['DRIVING', 'WALKING'] as TravelMode[]).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    disabled={routing}
+                    onClick={() => {
+                      if (m === travelMode) return;
+                      if (route) {
+                        handleGetDirections(m);
+                      } else {
+                        setTravelMode(m);
+                      }
+                    }}
+                    style={{
+                      flex: 1, padding: '6px 0', borderRadius: '8px', fontSize: '12px', fontWeight: 700,
+                      background: travelMode === m ? 'var(--toss-blue)' : '#F2F4F6',
+                      color: travelMode === m ? '#fff' : MAP_CARD_TEXT_SECONDARY,
+                    }}
+                  >
+                    {m === 'DRIVING' ? '🚗 Driving' : '🚶 Walking'}
+                  </button>
+                ))}
+              </div>
               {route ? (
                 <div>
                   <p style={{ fontSize: '13px', color: MAP_CARD_TEXT_SECONDARY }}>
-                    🚗 {route.distanceKm.toFixed(1)} km · {Math.round(route.durationMinutes)} min by real road, via itunda's own self-hosted OSRM
+                    {travelMode === 'DRIVING' ? '🚗' : '🚶'} {route.distanceKm.toFixed(1)} km · {Math.round(route.durationMinutes)} min by real road, via itunda's own self-hosted OSRM
                   </p>
                   {route.steps.length > 0 && (
                     <button
@@ -710,7 +744,7 @@ export default function MapView() {
                   )}
                 </div>
               ) : (
-                <button className="toss-btn toss-btn-primary" disabled={routing} onClick={handleGetDirections}>
+                <button className="toss-btn toss-btn-primary" disabled={routing} onClick={() => handleGetDirections()}>
                   {routing ? 'Finding real route…' : 'Directions'}
                 </button>
               )}

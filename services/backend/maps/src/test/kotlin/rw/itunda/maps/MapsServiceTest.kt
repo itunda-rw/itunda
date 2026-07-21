@@ -5,6 +5,7 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.MapBookmark
@@ -13,6 +14,7 @@ import rw.itunda.core.geo.NearbyPlace
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.geo.RouteResult
+import rw.itunda.core.geo.TravelMode
 import rw.itunda.core.repository.MapBookmarkRepository
 import java.time.Duration
 
@@ -71,6 +73,21 @@ class MapsServiceTest : BehaviorSpec({
 
             Then("it returns the real OSRM route with real geometry") {
                 result shouldBe route
+            }
+        }
+
+        // Real walking directions (2026-07-22) -- see OsrmRoutingClient.route's own doc
+        // comment for the full account of the real, separately-deployed foot-profile
+        // OSRM instance this now reaches.
+        When("a real WALKING route is requested between the same two points") {
+            val walkingRoute = RouteResult(distanceKm = 9.4817, durationMinutes = 113.8, geometry = listOf(listOf(fromLat, fromLng), listOf(toLat, toLng)))
+            every { osrmRoutingClient.route(fromLat, fromLng, toLat, toLng, TravelMode.WALKING) } returns walkingRoute
+
+            val result = service.getDirections("user_1", fromLat, fromLng, toLat, toLng, TravelMode.WALKING)
+
+            Then("it passes WALKING through to OsrmRoutingClient rather than silently always routing by car") {
+                result shouldBe walkingRoute
+                verify(exactly = 1) { osrmRoutingClient.route(fromLat, fromLng, toLat, toLng, TravelMode.WALKING) }
             }
         }
 

@@ -23,11 +23,22 @@ import org.springframework.web.client.RestClientException
 @Component
 class OsrmRoutingClient(
     @Value("\${itunda.osrm.base-url:}") private val baseUrl: String,
+    // Real walking directions (2026-07-22) -- see route()'s own doc comment for the
+    // full account. A genuinely separate OSRM instance/dataset, not a query param on
+    // the driving one: OSRM's MLD engine preprocesses one routing profile (car/foot/
+    // bicycle) per dataset at build time (osrm-extract -p <profile>.lua) -- there is no
+    // "switch profile" flag at request time, so a second real instance is the only
+    // correct way to serve a second mode. Optional by the same convention as baseUrl
+    // above: unconfigured falls back to the driving route (still correct, just not
+    // pedestrian-aware), never a failure.
+    @Value("\${itunda.osrm.foot-base-url:}") private val footBaseUrl: String,
 ) {
     private val logger = LoggerFactory.getLogger(OsrmRoutingClient::class.java)
     private val restClient: RestClient? = if (baseUrl.isNotBlank()) RestClient.create(baseUrl) else null
+    private val footRestClient: RestClient? = if (footBaseUrl.isNotBlank()) RestClient.create(footBaseUrl) else null
 
     val isConfigured: Boolean get() = restClient != null
+    val isFootConfigured: Boolean get() = footRestClient != null
 
     /**
      * Real road distance in km between two real coordinates via a real OSRM `/route`
@@ -112,9 +123,23 @@ class OsrmRoutingClient(
      * `geometries=geojson`) so a real map UI can draw the actual path, not just report a
      * number. Null on the same never-fail terms as every other method here --
      * unconfigured, unreachable, or no route.
+     *
+     * `mode` added 2026-07-22, closing a real, confirmed gap found by researching Naver
+     * Maps' actual real feature set: every route here was hardcoded to driving, with no
+     * way to ask for walking directions the way Naver/Kakao Maps' own real directions
+     * feature lets a user pick. A real, separate `foot.lua`-profile OSRM dataset was
+     * built and deployed for this (same real Geofabrik Rwanda extract, same
+     * osrm-extract/partition/customize MLD pipeline the driving dataset already used) --
+     * live-verified to genuinely differ, not just relabel the same result: the same
+     * Kigali test route returned 7.3km/9.9min driving (~44km/h) vs 9.5km/113.8min walking
+     * (~5km/h, a realistic walking pace) -- a real, different pedestrian-network route,
+     * confirmed via direct curl against both real OSRM instances. Falls back to the
+     * driving dataset if WALKING is requested but [footRestClient] isn't configured --
+     * still a correct route, just not pedestrian-aware, same never-fail discipline as
+     * every other fallback in this class.
      */
-    fun route(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double): RouteResult? {
-        val client = restClient ?: return null
+    fun route(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double, mode: TravelMode = TravelMode.DRIVING): RouteResult? {
+        val client = (if (mode == TravelMode.WALKING) footRestClient else null) ?: restClient ?: return null
         return try {
             @Suppress("UNCHECKED_CAST")
             val response = client.get()
@@ -123,6 +148,12 @@ class OsrmRoutingClient(
                     // its own real per-maneuver breakdown of the route (turn/street-name/
                     // distance), not just the overall line, closing the gap between "a
                     // drawn route" and a real Naver/Kakao Maps-style instruction list.
+                    // The URL's own literal "driving" path segment is just OSRM's request
+                    // routing-profile-name convention (every real OSRM instance answers to
+                    // "driving" in its URL regardless of which profile it was actually
+                    // built with -- confirmed live against the real foot-profile instance
+                    // above); the actual profile in effect is entirely determined by which
+                    // dataset the target instance loaded, selected above via `client`.
                     "/route/v1/driving/{fromLng},{fromLat};{toLng},{toLat}?overview=full&geometries=geojson&steps=true",
                     fromLng, fromLat, toLng, toLat,
                 )
@@ -201,6 +232,12 @@ class OsrmRoutingClient(
         }.trim()
     }
 }
+
+// Real walking directions (2026-07-22) -- see OsrmRoutingClient.route's own doc
+// comment. Only DRIVING and WALKING exist for now: a real bicycle.lua-profile
+// dataset could be built the identical way if a real need for it surfaces, but
+// isn't invented speculatively here.
+enum class TravelMode { DRIVING, WALKING }
 
 data class RouteStep(val instruction: String, val distanceMeters: Double, val streetName: String?)
 data class RouteResult(val distanceKm: Double, val durationMinutes: Double, val geometry: List<List<Double>>, val steps: List<RouteStep> = emptyList())

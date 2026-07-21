@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.core.geo.TravelMode
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.maps.InvalidBookmarkNameException
@@ -31,15 +32,20 @@ class MapsController(private val mapsService: MapsService) {
     fun search(@RequestParam q: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "results" to mapsService.searchPlaces(currentUser.userId, q)))
 
+    // mode added 2026-07-22 (default DRIVING, matching the pre-existing behavior for
+    // every caller that doesn't pass it) -- see MapsService.getDirections' own doc
+    // comment. An unrecognized value real-400s via the enum-conversion failure handler
+    // below rather than silently falling back to DRIVING.
     @GetMapping("/directions")
     fun directions(
         @RequestParam fromLat: Double,
         @RequestParam fromLng: Double,
         @RequestParam toLat: Double,
         @RequestParam toLng: Double,
+        @RequestParam(required = false, defaultValue = "DRIVING") mode: TravelMode,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
-        mapOf("success" to true, "route" to mapsService.getDirections(currentUser.userId, fromLat, fromLng, toLat, toLng)),
+        mapOf("success" to true, "route" to mapsService.getDirections(currentUser.userId, fromLat, fromLng, toLat, toLng, mode)),
     )
 
     @GetMapping("/categories")
@@ -101,6 +107,14 @@ class MapsController(private val mapsService: MapsService) {
     @ExceptionHandler(RouteNotFoundException::class)
     fun handleRouteNotFound(ex: RouteNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ROUTE_NOT_FOUND", ex.message ?: "Not found"))
+
+    // A `mode` value that isn't a real TravelMode name (added 2026-07-22) fails Spring's
+    // own enum conversion before this controller's method body ever runs -- same
+    // consistent ApiError shape as every other bad-input case here, not Spring's default
+    // generic error body.
+    @ExceptionHandler(org.springframework.web.method.annotation.MethodArgumentTypeMismatchException::class)
+    fun handleInvalidMode(ex: org.springframework.web.method.annotation.MethodArgumentTypeMismatchException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_TRAVEL_MODE", "mode must be DRIVING or WALKING"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =
