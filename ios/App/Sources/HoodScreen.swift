@@ -1564,6 +1564,9 @@ private struct JobPostCard: View {
 
     @State private var busy = false
     @State private var error: String?
+    @State private var myLocation: CLLocationCoordinate2D?
+    @State private var showRoute = false
+    @StateObject private var locationFetcher = HoodLocationFetcher()
     @State private var showingReportOptions = false
 
     private var payLabel: String {
@@ -1603,6 +1606,19 @@ private struct JobPostCard: View {
                     actionButton("Report", filled: false) { showingReportOptions = true }
                 }
             }
+            if !isMine, post.status == "OPEN", let toLat = post.latitude, let toLng = post.longitude {
+                Button(action: {
+                    if showRoute { showRoute = false } else if myLocation != nil { showRoute = true } else { locationFetcher.requestLocation() }
+                }) {
+                    Text(showRoute ? "Hide directions" : "🚗 Directions to this work")
+                        .font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                        .padding(.horizontal, 16).padding(.vertical, 10)
+                        .background(IDS.Colors.chipBackground).cornerRadius(12)
+                }
+                if showRoute, let myLocation {
+                    RouteMiniMap(fromLat: myLocation.latitude, fromLng: myLocation.longitude, toLat: toLat, toLng: toLng, fromLabel: "You", toLabel: post.title)
+                }
+            }
         }
         .padding(18)
         .background(IDS.Colors.card)
@@ -1612,6 +1628,15 @@ private struct JobPostCard: View {
             Button("Pay or work details are misleading") { Task { await report("The pay or work details appear misleading") } }
             Button("Looks unsafe or illegal") { Task { await report("The post appears unsafe or illegal") } }
         } message: { Text("Reports go to Itunda’s review queue.") }
+        .onAppear {
+            locationFetcher.onLocation = { coordinate in
+                myLocation = coordinate
+                showRoute = true
+            }
+        }
+        .onChange(of: locationFetcher.errorMessage) { message in
+            if let message { error = message }
+        }
     }
 
     private func actionButton(_ label: String, filled: Bool, action: @escaping () async -> Void) -> some View {
@@ -1994,6 +2019,9 @@ private struct PropertyListingCard: View {
     @State private var offerAmount = ""
     @State private var showingSafetyChecklist = false
     @State private var showingReportOptions = false
+    @State private var myLocation: CLLocationCoordinate2D?
+    @State private var showRoute = false
+    @StateObject private var locationFetcher = HoodLocationFetcher()
 
     private var priceLabel: String {
         let base = "\(Int(listing.price)) RWF"
@@ -2064,6 +2092,19 @@ private struct PropertyListingCard: View {
                     actionButton("Report", filled: false) { showingReportOptions = true }
                 }
             }
+            if !isMine, listing.status == "AVAILABLE", let toLat = listing.latitude, let toLng = listing.longitude {
+                Button(action: {
+                    if showRoute { showRoute = false } else if myLocation != nil { showRoute = true } else { locationFetcher.requestLocation() }
+                }) {
+                    Text(showRoute ? "Hide directions" : "🚗 Directions to this property")
+                        .font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                        .padding(.horizontal, 16).padding(.vertical, 10)
+                        .background(IDS.Colors.chipBackground).cornerRadius(12)
+                }
+                if showRoute, let myLocation {
+                    RouteMiniMap(fromLat: myLocation.latitude, fromLng: myLocation.longitude, toLat: toLat, toLng: toLng, fromLabel: "You", toLabel: listing.title)
+                }
+            }
         }
         .padding(18)
         .background(IDS.Colors.card)
@@ -2073,6 +2114,15 @@ private struct PropertyListingCard: View {
             Button("Misleading price or property details") { Task { await report("The price or property details appear misleading") } }
             Button("Unsafe payment request") { Task { await report("The lister made an unsafe payment request") } }
         } message: { Text("Reports go to Itunda’s review queue.") }
+        .onAppear {
+            locationFetcher.onLocation = { coordinate in
+                myLocation = coordinate
+                showRoute = true
+            }
+        }
+        .onChange(of: locationFetcher.errorMessage) { message in
+            if let message { error = message }
+        }
     }
 
     private func actionButton(_ label: String, filled: Bool, action: @escaping () async -> Void) -> some View {
