@@ -63,7 +63,13 @@ data class AgentActivity(
     val ledgerTransactionId: String,
     val createdAt: java.time.Instant,
 )
-data class NearbyAgent(val agent: Agent, val distanceKm: Double)
+data class NearbyAgent(
+    val id: String,
+    val displayName: String,
+    val latitude: Double,
+    val longitude: Double,
+    val distanceKm: Double,
+)
 
 @Service
 class AgentService(
@@ -126,7 +132,12 @@ class AgentService(
         require(radiusKm in 0.1..100.0) { "radiusKm must be between 0.1 and 100" }
         return agentRepository.findAll().asSequence()
             .filter { it.status == AgentStatus.ACTIVE && it.latitude != null && it.longitude != null }
-            .map { NearbyAgent(it, GeoUtils.haversineKm(latitude, longitude, it.latitude!!, it.longitude!!)) }
+            .map {
+                NearbyAgent(
+                    it.id, it.displayName, it.latitude!!, it.longitude!!,
+                    GeoUtils.haversineKm(latitude, longitude, it.latitude!!, it.longitude!!),
+                )
+            }
             .filter { it.distanceKm <= radiusKm }
             .sortedBy { it.distanceKm }
             .take(50)
