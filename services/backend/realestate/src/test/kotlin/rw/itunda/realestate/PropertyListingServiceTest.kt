@@ -38,6 +38,7 @@ class PropertyListingServiceTest : BehaviorSpec({
         When("listing with valid fields") {
             val savedSlot = slot<PropertyListing>()
             every { propertyListingRepository.save(capture(savedSlot)) } answers { firstArg() }
+            every { userRepository.findById("lister_1") } returns java.util.Optional.empty()
 
             val listing = service.createListing(
                 "lister_1", PropertyListingType.RENT, "apartment", "  2-bedroom in Kacyiru  ", "  Quiet, close to town  ",

@@ -118,7 +118,7 @@ class JobPostService(
         val neighborhood = if (latitude != null && longitude != null) {
             nominatimGeocodingClient.reverseGeocode(latitude, longitude)
         } else {
-            null
+            userRepository.findById(posterId).orElse(null)?.neighborhood
         }
 
         return jobPostRepository.save(

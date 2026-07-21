@@ -38,6 +38,7 @@ class JobPostServiceTest : BehaviorSpec({
         When("posting with valid fields") {
             val savedSlot = slot<JobPost>()
             every { jobPostRepository.save(capture(savedSlot)) } answers { firstArg() }
+            every { userRepository.findById("poster_1") } returns java.util.Optional.empty()
 
             val post = service.createPost(
                 "poster_1", "delivery", "  Weekend delivery rider needed  ", "  Deliver parcels in Kimironko  ",

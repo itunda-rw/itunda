@@ -127,7 +127,7 @@ class PropertyListingService(
         val neighborhood = if (latitude != null && longitude != null) {
             nominatimGeocodingClient.reverseGeocode(latitude, longitude)
         } else {
-            null
+            userRepository.findById(listerId).orElse(null)?.neighborhood
         }
 
         return propertyListingRepository.save(
