@@ -56,6 +56,8 @@ data class PublicUser(
     // doc comment. Set via a real coordinate, reverse-geocoded server-side; never
     // self-declared free text.
     val neighborhood: String? = null,
+    val neighborhoodVerifiedAt: String? = null,
+    val neighborhoodVerificationCount: Int = 0,
 )
 
 data class AuthResponse(

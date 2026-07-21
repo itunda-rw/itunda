@@ -1434,6 +1434,18 @@ private enum class HoodMode { MARKETPLACE, COMMUNITY, JOBS, PROPERTY }
 @Composable
 internal fun HoodTab(onMessageSeller: (String) -> Unit) {
     var mode by remember { mutableStateOf(HoodMode.MARKETPLACE) }
+    var neighborhoodName by remember { mutableStateOf<String?>(null) }
+    var neighborhoodVerificationCount by remember { mutableStateOf(0) }
+    LaunchedEffect(Unit) {
+        try {
+            val user = NetworkClient.authApi.getProfile().user
+            neighborhoodName = user.neighborhood
+            neighborhoodVerificationCount = user.neighborhoodVerificationCount
+        } catch (_: Exception) {
+            // The individual Hood services retain their own usable neighborhood setup
+            // prompt; this shared context label is deliberately best-effort.
+        }
+    }
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -1462,6 +1474,14 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit) {
                         .padding(vertical = 8.dp),
                 )
             }
+        }
+        neighborhoodName?.let { neighborhood ->
+            Text(
+                "📍 Near $neighborhood" + if (neighborhoodVerificationCount > 0) " · location confirmed" else "",
+                color = TossSecondary,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = Ids.layout.screenHorizontal, vertical = 2.dp),
+            )
         }
         when (mode) {
             HoodMode.MARKETPLACE -> MarketplaceContent(onMessageSeller)
