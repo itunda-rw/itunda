@@ -999,6 +999,13 @@ interface ApiService {
     @GET("api/v1/jobs/posts")
     suspend fun browseJobPosts(@Query("category") category: String? = null): JobPostsResponse
 
+    @GET("api/v1/jobs/posts/nearby")
+    suspend fun getNearbyJobPosts(
+        @Query("latitude") latitude: Double,
+        @Query("longitude") longitude: Double,
+        @Query("radiusKm") radiusKm: Double = 3.0,
+    ): JobPostsResponse
+
     @GET("api/v1/jobs/my-posts")
     suspend fun getMyJobPosts(): JobPostsResponse
 

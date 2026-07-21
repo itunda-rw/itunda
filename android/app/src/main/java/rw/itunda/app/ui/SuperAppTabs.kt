@@ -2533,7 +2533,7 @@ private fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
 
 // ============================== JOBS (당근알바) ==============================
 
-private enum class JobsView { BROWSE, NEIGHBORHOOD, MINE }
+private enum class JobsView { BROWSE, NEARBY, NEIGHBORHOOD, MINE }
 
 @Composable
 private fun JobsContent(onMessagePoster: (String) -> Unit) {
@@ -2547,6 +2547,26 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
     var neighborhoodChecked by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
+    val requestNearbyLocation = rememberRealLocationRequester(
+        onLocating = {},
+        onSuccess = { lat, lng ->
+            posts = null
+            coroutineScope.launch {
+                try {
+                    val res = NetworkClient.apiService.getNearbyJobPosts(lat, lng)
+                    if (res.success) posts = res.posts
+                    error = null
+                } catch (e: HttpException) {
+                    error = superAppErrorMessage(e)
+                    posts = emptyList()
+                } catch (e: IOException) {
+                    error = "Couldn't load nearby work. Check your connection and try again."
+                    posts = emptyList()
+                }
+            }
+        },
+        onError = { message -> error = "$message You can still use Find work or Neighborhood."; posts = emptyList() },
+    )
 
     LaunchedEffect(Unit) {
         try { categories = NetworkClient.apiService.getJobCategories().categories } catch (e: Exception) { /* chips just won't render */ }
@@ -2554,6 +2574,10 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
 
     fun load() {
         posts = null
+        if (view == JobsView.NEARBY) {
+            requestNearbyLocation()
+            return
+        }
         if (view == JobsView.NEIGHBORHOOD) {
             neighborhoodChecked = false
             coroutineScope.launch {
@@ -2603,7 +2627,7 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
     ) {
         item {
             Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
-                listOf(JobsView.BROWSE to "Find work", JobsView.NEIGHBORHOOD to "Neighborhood", JobsView.MINE to "My posts").forEach { (v, label) ->
+                listOf(JobsView.BROWSE to "Find work", JobsView.NEARBY to "Near me", JobsView.NEIGHBORHOOD to "Neighborhood", JobsView.MINE to "My posts").forEach { (v, label) ->
                     val selected = v == view
                     Text(
                         label,
@@ -2667,6 +2691,7 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
                 Text(
                     when (view) {
                         JobsView.BROWSE -> "No jobs posted yet."
+                        JobsView.NEARBY -> "No jobs near you yet."
                         JobsView.NEIGHBORHOOD -> "No jobs in your neighborhood yet."
                         JobsView.MINE -> "You haven't posted any jobs yet."
                     },
