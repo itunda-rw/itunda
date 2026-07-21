@@ -23,6 +23,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import rw.itunda.app.network.AgentWithdrawalAuthorizationDto
@@ -40,6 +42,8 @@ fun AgentCashScreen(onBack: () -> Unit, onFindNearbyAgent: () -> Unit) {
     var authorizations by remember { mutableStateOf<List<AgentWithdrawalAuthorizationDto>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var copiedCode by remember { mutableStateOf<String?>(null) }
+    val clipboard = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
     suspend fun refresh() {
         try { authorizations = NetworkClient.apiService.getAgentWithdrawalAuthorizations().authorizations; error = null }
@@ -88,8 +92,22 @@ fun AgentCashScreen(onBack: () -> Unit, onFindNearbyAgent: () -> Unit) {
             }) { Text(if (busy) "Creating…" else "Create withdrawal code") }
         }
         error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
-        item { Text("Your codes", style = MaterialTheme.typography.titleMedium) }
-        items(authorizations) { authorization -> AuthorizationCard(authorization, busy) {
+        item {
+            Text(
+                "Your codes (${authorizations.count { it.status == \"ACTIVE\" }} active)",
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
+        item {
+            Text(
+                "For your security, give a code only to an Itunda agent at the counter. It can be used once for the exact amount shown.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        items(authorizations, key = { it.id }) { authorization -> AuthorizationCard(authorization, busy, copiedCode == authorization.code, {
+            clipboard.setText(AnnotatedString(authorization.code))
+            copiedCode = authorization.code
+        }) {
             busy = true
             scope.launch {
                 try { NetworkClient.apiService.cancelAgentWithdrawalAuthorization(CancelAgentWithdrawalAuthorizationRequest(authorization.code)); refresh() }
@@ -101,10 +119,25 @@ fun AgentCashScreen(onBack: () -> Unit, onFindNearbyAgent: () -> Unit) {
 }
 
 @Composable
-private fun AuthorizationCard(authorization: AgentWithdrawalAuthorizationDto, busy: Boolean, onCancel: () -> Unit) = Card(Modifier.fillMaxWidth()) {
+private fun AuthorizationCard(
+    authorization: AgentWithdrawalAuthorizationDto,
+    busy: Boolean,
+    copied: Boolean,
+    onCopy: () -> Unit,
+    onCancel: () -> Unit,
+) = Card(Modifier.fillMaxWidth()) {
     Column(Modifier.padding(16.dp)) {
         Text("RWF ${authorization.amount}", style = MaterialTheme.typography.titleLarge)
-        Text(if (authorization.status == "ACTIVE") "Show this code to the agent: ${authorization.code}" else authorization.status)
+        if (authorization.status == "ACTIVE") {
+            Text("Withdrawal code", style = MaterialTheme.typography.labelMedium)
+            Text(authorization.code, style = MaterialTheme.typography.headlineSmall)
+            Text("Show it only when the agent is ready to give you cash.", style = MaterialTheme.typography.bodySmall)
+            Button(enabled = !busy, onClick = onCopy, modifier = Modifier.padding(top = 8.dp)) {
+                Text(if (copied) "Code copied" else "Copy code")
+            }
+        } else {
+            Text(authorization.status)
+        }
         Text("Expires: ${authorization.expiresAt}", style = MaterialTheme.typography.bodySmall)
         if (authorization.status == "ACTIVE") Button(enabled = !busy, onClick = onCancel, modifier = Modifier.padding(top = 8.dp)) { Text("Cancel code") }
     }
