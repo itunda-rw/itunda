@@ -1254,6 +1254,11 @@ private struct JobsContent: View {
         }
         .onChange(of: view) { _ in Task { await load() } }
         .onChange(of: activeCategory) { _ in Task { await load() } }
+        .onChange(of: locationFetcher.errorMessage) { message in
+            guard view == .nearby, let message else { return }
+            error = message + " You can still use Find work or Neighborhood."
+            posts = []
+        }
     }
 
     private func load() async {
