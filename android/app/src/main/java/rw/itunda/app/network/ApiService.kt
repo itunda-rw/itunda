@@ -960,6 +960,13 @@ interface ApiService {
     @GET("api/v1/community/posts")
     suspend fun browseCommunityPosts(@Query("category") category: String? = null): CommunityPostsResponse
 
+    @GET("api/v1/community/posts/nearby")
+    suspend fun getNearbyCommunityPosts(
+        @Query("latitude") latitude: Double,
+        @Query("longitude") longitude: Double,
+        @Query("radiusKm") radiusKm: Double = 3.0,
+    ): CommunityPostsResponse
+
     @GET("api/v1/community/my-posts")
     suspend fun getMyCommunityPosts(): CommunityPostsResponse
 

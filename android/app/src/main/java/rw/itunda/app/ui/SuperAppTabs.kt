@@ -2128,7 +2128,7 @@ private fun ListingActionButton(label: String, disabled: Boolean, filled: Boolea
 
 // ============================== COMMUNITY (동네생활) ==============================
 
-private enum class CommunityView { BROWSE, NEIGHBORHOOD, MINE }
+private enum class CommunityView { BROWSE, NEARBY, NEIGHBORHOOD, MINE }
 
 @Composable
 private fun CommunityContent() {
@@ -2143,6 +2143,26 @@ private fun CommunityContent() {
     var neighborhoodChecked by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
+    val requestNearbyLocation = rememberRealLocationRequester(
+        onLocating = {},
+        onSuccess = { lat, lng ->
+            posts = null
+            coroutineScope.launch {
+                try {
+                    val res = NetworkClient.apiService.getNearbyCommunityPosts(lat, lng)
+                    if (res.success) posts = res.posts
+                    error = null
+                } catch (e: HttpException) {
+                    error = superAppErrorMessage(e)
+                    posts = emptyList()
+                } catch (e: IOException) {
+                    error = "Couldn't load nearby posts. Check your connection and try again."
+                    posts = emptyList()
+                }
+            }
+        },
+        onError = { message -> error = "$message You can still use Feed or Neighborhood."; posts = emptyList() },
+    )
 
     LaunchedEffect(Unit) {
         try { categories = NetworkClient.apiService.getCommunityCategories().categories } catch (e: Exception) { /* chips just won't render */ }
@@ -2150,6 +2170,10 @@ private fun CommunityContent() {
 
     fun load() {
         posts = null
+        if (view == CommunityView.NEARBY) {
+            requestNearbyLocation()
+            return
+        }
         if (view == CommunityView.NEIGHBORHOOD) {
             neighborhoodChecked = false
             coroutineScope.launch {
@@ -2204,7 +2228,7 @@ private fun CommunityContent() {
     ) {
         item {
             Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
-                listOf(CommunityView.BROWSE to "Feed", CommunityView.NEIGHBORHOOD to "Neighborhood", CommunityView.MINE to "My posts").forEach { (v, label) ->
+                listOf(CommunityView.BROWSE to "Feed", CommunityView.NEARBY to "Near me", CommunityView.NEIGHBORHOOD to "Neighborhood", CommunityView.MINE to "My posts").forEach { (v, label) ->
                     val selected = v == view
                     Text(
                         label,
@@ -2268,6 +2292,7 @@ private fun CommunityContent() {
                 Text(
                     when (view) {
                         CommunityView.BROWSE -> "No posts yet."
+                        CommunityView.NEARBY -> "No posts near you yet."
                         CommunityView.NEIGHBORHOOD -> "No posts in your neighborhood yet."
                         CommunityView.MINE -> "You haven't posted anything yet."
                     },
