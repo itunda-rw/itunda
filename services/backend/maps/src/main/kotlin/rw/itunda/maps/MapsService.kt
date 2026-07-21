@@ -63,6 +63,22 @@ class MapsService(
             ?: throw RouteNotFoundException("No route could be found between these two points")
     }
 
+    // Real alternative routes (2026-07-22) -- see OsrmRoutingClient.routeAlternatives'
+    // own doc comment. Same validation as getDirections; a genuinely single-route answer
+    // (OSRM found nothing else worth offering) is a valid one-element list, not an error.
+    fun getDirectionsAlternatives(userId: String, fromLat: Double, fromLng: Double, toLat: Double, toLng: Double, mode: TravelMode = TravelMode.DRIVING): List<RouteResult> {
+        if (!GeoUtils.isValidCoordinate(fromLat, fromLng) || !GeoUtils.isValidCoordinate(toLat, toLng)) {
+            throw InvalidMapsCoordinateException("Latitude must be between -90 and 90, longitude between -180 and 180")
+        }
+        rateLimiter.checkLimit("maps:directions:$userId", limit = 60, window = Duration.ofMinutes(1))
+        if (!GeoUtils.isWithinRwanda(fromLat, fromLng) || !GeoUtils.isWithinRwanda(toLat, toLng)) {
+            throw RouteNotFoundException("Directions are only available within Rwanda")
+        }
+        val routes = osrmRoutingClient.routeAlternatives(fromLat, fromLng, toLat, toLng, mode)
+        if (routes.isEmpty()) throw RouteNotFoundException("No route could be found between these two points")
+        return routes
+    }
+
     // Real "nearby places" category search (restaurants, hospitals, pharmacies, ...) --
     // Naver/Kakao's own category-chip search, bounded to a real radius around the user
     // (or a map center they're browsing), sorted by real proximity, not relevance/ads.

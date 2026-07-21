@@ -6,7 +6,7 @@ import {
   TILES_SOURCE_URL,
   GLYPHS_URL,
   searchPlaces,
-  getDirections,
+  getDirectionsAlternatives,
   searchNearbyPlaces,
   NEARBY_CATEGORIES,
   fetchMyMapBookmarks,
@@ -16,6 +16,7 @@ import {
   type NearbyPlace,
   type MapBookmark,
   type RouteStep,
+  type RouteResult,
   type TravelMode,
 } from './lib/maps';
 import { fetchShoppingCatalog, type ShoppingMerchant } from './lib/shopping';
@@ -187,6 +188,12 @@ export default function MapView() {
   const [searching, setSearching] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<PlaceSearchResult | null>(null);
   const [route, setRoute] = useState<{ distanceKm: number; durationMinutes: number; steps: RouteStep[] } | null>(null);
+  // Real alternative routes (2026-07-22) -- see lib/maps.ts's getDirectionsAlternatives
+  // doc comment. `routeAlternatives` holds every real route OSRM offered for this trip
+  // (often just one -- OSRM itself decides whether a real alternative exists);
+  // `selectedRouteIndex` is whichever one is currently drawn/reported above.
+  const [routeAlternatives, setRouteAlternatives] = useState<RouteResult[] | null>(null);
+  const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
   const [showSteps, setShowSteps] = useState(false);
   const [routing, setRouting] = useState(false);
   // Real driving/walking toggle (2026-07-22) -- see lib/maps.ts's TravelMode doc
@@ -356,6 +363,8 @@ export default function MapView() {
     setSelectedPlace(place);
     setSearchResults(null);
     setRoute(null);
+    setRouteAlternatives(null);
+    setSelectedRouteIndex(0);
     const map = mapRef.current;
     if (!map) return;
     map.flyTo({ center: [place.longitude, place.latitude], zoom: 15 });
@@ -464,6 +473,34 @@ export default function MapView() {
     }
   };
 
+  // Draws one real route's geometry, fits the map to it, and updates the displayed
+  // stats -- shared by the initial "Directions" fetch and by tapping a real alternative
+  // route chip below it (2026-07-22, see lib/maps.ts's getDirectionsAlternatives doc
+  // comment), so switching which route is selected never re-fetches from OSRM.
+  const applyRoute = (result: RouteResult) => {
+    const map = mapRef.current;
+    if (!map) return;
+    setRoute({ distanceKm: result.distanceKm, durationMinutes: result.durationMinutes, steps: result.steps });
+    setShowSteps(false);
+    const source = map.getSource('route') as maplibregl.GeoJSONSource | undefined;
+    source?.setData({
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        properties: {},
+        geometry: { type: 'LineString', coordinates: result.geometry.map(([lat, lng]) => [lng, lat]) },
+      }],
+    });
+    const bounds = result.geometry.reduce(
+      (b, [lat, lng]) => b.extend([lng, lat]),
+      new maplibregl.LngLatBounds(
+        [result.geometry[0][1], result.geometry[0][0]],
+        [result.geometry[0][1], result.geometry[0][0]],
+      ),
+    );
+    map.fitBounds(bounds, { padding: 60 });
+  };
+
   const handleGetDirections = async (mode: TravelMode = travelMode) => {
     const map = mapRef.current;
     if (!map || !selectedPlace) return;
@@ -471,32 +508,22 @@ export default function MapView() {
     setRouting(true);
     setError(null);
     try {
-      const result = await getDirections(origin[0], origin[1], selectedPlace.latitude, selectedPlace.longitude, mode);
+      const results = await getDirectionsAlternatives(origin[0], origin[1], selectedPlace.latitude, selectedPlace.longitude, mode);
       setTravelMode(mode);
-      setRoute({ distanceKm: result.distanceKm, durationMinutes: result.durationMinutes, steps: result.steps });
-      setShowSteps(false);
-      const source = map.getSource('route') as maplibregl.GeoJSONSource | undefined;
-      source?.setData({
-        type: 'FeatureCollection',
-        features: [{
-          type: 'Feature',
-          properties: {},
-          geometry: { type: 'LineString', coordinates: result.geometry.map(([lat, lng]) => [lng, lat]) },
-        }],
-      });
-      const bounds = result.geometry.reduce(
-        (b, [lat, lng]) => b.extend([lng, lat]),
-        new maplibregl.LngLatBounds(
-          [result.geometry[0][1], result.geometry[0][0]],
-          [result.geometry[0][1], result.geometry[0][0]],
-        ),
-      );
-      map.fitBounds(bounds, { padding: 60 });
+      setRouteAlternatives(results);
+      setSelectedRouteIndex(0);
+      applyRoute(results[0]);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not find directions to this place.');
     } finally {
       setRouting(false);
     }
+  };
+
+  const selectRouteAlternative = (index: number) => {
+    if (!routeAlternatives || index === selectedRouteIndex) return;
+    setSelectedRouteIndex(index);
+    applyRoute(routeAlternatives[index]);
   };
 
   const sheetTop = sheetY ?? peekAnchorY;
@@ -721,6 +748,28 @@ export default function MapView() {
                   <p style={{ fontSize: '13px', color: MAP_CARD_TEXT_SECONDARY }}>
                     {travelMode === 'DRIVING' ? '🚗' : '🚶'} {route.distanceKm.toFixed(1)} km · {Math.round(route.durationMinutes)} min by real road, via itunda's own self-hosted OSRM
                   </p>
+                  {/* Real alternative-route picker (2026-07-22) -- only rendered when
+                      OSRM genuinely offered more than one real route for this trip (see
+                      lib/maps.ts's getDirectionsAlternatives doc comment); a real single-
+                      route trip stays exactly as it looked before this feature existed. */}
+                  {routeAlternatives && routeAlternatives.length > 1 && (
+                    <div style={{ display: 'flex', gap: '6px', margin: '6px 0' }}>
+                      {routeAlternatives.map((alt, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => selectRouteAlternative(i)}
+                          style={{
+                            flex: 1, padding: '5px 0', borderRadius: '8px', fontSize: '11px', fontWeight: 700,
+                            background: selectedRouteIndex === i ? 'var(--toss-blue)' : '#F2F4F6',
+                            color: selectedRouteIndex === i ? '#fff' : MAP_CARD_TEXT_SECONDARY,
+                          }}
+                        >
+                          Route {i + 1} · {alt.distanceKm.toFixed(1)}km · {Math.round(alt.durationMinutes)}min
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {route.steps.length > 0 && (
                     <button
                       type="button"

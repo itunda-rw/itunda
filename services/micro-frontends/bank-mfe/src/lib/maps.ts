@@ -65,6 +65,16 @@ export const getDirections = (fromLat: number, fromLng: number, toLat: number, t
     `/api/v1/maps/directions?fromLat=${fromLat}&fromLng=${fromLng}&toLat=${toLat}&toLng=${toLng}&mode=${mode}`,
   ).then((r) => r.route);
 
+// Real alternative routes (2026-07-22) -- see OsrmRoutingClient.routeAlternatives' own
+// doc comment on the backend for the full account of the real, live-verified case where
+// itunda's own OSRM instance genuinely offers more than one route for the same trip.
+// Often just a single-element list -- OSRM itself decides whether a real alternative
+// exists for a given pair of points, this doesn't force a second option to exist.
+export const getDirectionsAlternatives = (fromLat: number, fromLng: number, toLat: number, toLng: number, mode: TravelMode = 'DRIVING') =>
+  apiFetch<{ success: boolean; routes: RouteResult[] }>(
+    `/api/v1/maps/directions/alternatives?fromLat=${fromLat}&fromLng=${fromLng}&toLat=${toLat}&toLng=${toLng}&mode=${mode}`,
+  ).then((r) => r.routes);
+
 // Real "nearby places" category search (2026-07-19) -- Naver/Kakao's own category-chip
 // search (restaurants, cafes, hospitals, ...), backed by real OSM tag search over
 // itunda's self-hosted Nominatim, bounded to a real radius and sorted by real distance

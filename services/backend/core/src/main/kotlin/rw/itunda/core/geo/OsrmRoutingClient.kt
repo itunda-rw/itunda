@@ -138,8 +138,36 @@ class OsrmRoutingClient(
      * still a correct route, just not pedestrian-aware, same never-fail discipline as
      * every other fallback in this class.
      */
-    fun route(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double, mode: TravelMode = TravelMode.DRIVING): RouteResult? {
-        val client = (if (mode == TravelMode.WALKING) footRestClient else null) ?: restClient ?: return null
+    fun route(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double, mode: TravelMode = TravelMode.DRIVING): RouteResult? =
+        requestRoutes(fromLat, fromLng, toLat, toLng, mode, alternatives = false).firstOrNull()
+
+    /**
+     * Real alternative routes (2026-07-22) -- Naver/Kakao Maps' own real "route options"
+     * list under the main directions panel, letting a user pick a different real road
+     * path (e.g. avoiding a particular route) rather than only ever seeing OSRM's single
+     * fastest pick. Confirmed live against itunda's real MLD-algorithm OSRM instance
+     * (not assumed from OSRM's docs alone) that `alternatives=true` genuinely returns
+     * more than one distinct route for some real Kigali coordinate pairs -- e.g. one
+     * live-verified pair returned a 4.8km/470s route and a genuinely different 5.9km/484s
+     * route, not a duplicate. Many coordinate pairs still only have one reasonable route
+     * (OSRM itself decides whether a real alternative exists), so this can return a
+     * single-element list -- that's a correct, honest answer, not a bug: callers should
+     * render it exactly like a single-route response when there's nothing else to pick
+     * from. Empty only on the same never-fail terms as [route] -- unconfigured,
+     * unreachable, or no route at all.
+     */
+    fun routeAlternatives(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double, mode: TravelMode = TravelMode.DRIVING): List<RouteResult> =
+        requestRoutes(fromLat, fromLng, toLat, toLng, mode, alternatives = true)
+
+    private fun requestRoutes(
+        fromLat: Double,
+        fromLng: Double,
+        toLat: Double,
+        toLng: Double,
+        mode: TravelMode,
+        alternatives: Boolean,
+    ): List<RouteResult> {
+        val client = (if (mode == TravelMode.WALKING) footRestClient else null) ?: restClient ?: return emptyList()
         return try {
             @Suppress("UNCHECKED_CAST")
             val response = client.get()
@@ -154,38 +182,42 @@ class OsrmRoutingClient(
                     // built with -- confirmed live against the real foot-profile instance
                     // above); the actual profile in effect is entirely determined by which
                     // dataset the target instance loaded, selected above via `client`.
-                    "/route/v1/driving/{fromLng},{fromLat};{toLng},{toLat}?overview=full&geometries=geojson&steps=true",
+                    "/route/v1/driving/{fromLng},{fromLat};{toLng},{toLat}?overview=full&geometries=geojson&steps=true&alternatives=$alternatives",
                     fromLng, fromLat, toLng, toLat,
                 )
                 .retrieve()
                 .body(Map::class.java) as Map<String, Any?>?
             val code = response?.get("code") as? String
             @Suppress("UNCHECKED_CAST")
-            val bestRoute = (response?.get("routes") as? List<Map<String, Any?>>)?.firstOrNull()
-            val distanceMeters = (bestRoute?.get("distance") as? Number)?.toDouble()
-            val durationSeconds = (bestRoute?.get("duration") as? Number)?.toDouble()
-            @Suppress("UNCHECKED_CAST")
-            val geometry = bestRoute?.get("geometry") as? Map<String, Any?>
-            @Suppress("UNCHECKED_CAST")
-            val coordinates = geometry?.get("coordinates") as? List<List<Number>>
-            if (code != "Ok" || distanceMeters == null || durationSeconds == null || coordinates == null) {
+            val routes = response?.get("routes") as? List<Map<String, Any?>>
+            if (code != "Ok" || routes.isNullOrEmpty()) {
                 logger.warn("OSRM route request returned no usable route (code={})", code)
-                null
+                emptyList()
             } else {
-                // Flip OSRM's [lng, lat] GeoJSON order back to this codebase's own
-                // [lat, lng] convention for the response, same reasoning as
-                // routeDistanceKm's own doc comment on why this is kept explicit.
-                RouteResult(
-                    distanceKm = distanceMeters / 1000.0,
-                    durationMinutes = durationSeconds / 60.0,
-                    geometry = coordinates.map { listOf(it[1].toDouble(), it[0].toDouble()) },
-                    steps = parseSteps(bestRoute),
-                )
+                routes.mapNotNull { toRouteResult(it) }
             }
         } catch (e: RestClientException) {
             logger.warn("OSRM route request failed: {}", e.message)
-            null
+            emptyList()
         }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun toRouteResult(routeMap: Map<String, Any?>): RouteResult? {
+        val distanceMeters = (routeMap["distance"] as? Number)?.toDouble()
+        val durationSeconds = (routeMap["duration"] as? Number)?.toDouble()
+        val geometry = routeMap["geometry"] as? Map<String, Any?>
+        val coordinates = geometry?.get("coordinates") as? List<List<Number>>
+        if (distanceMeters == null || durationSeconds == null || coordinates == null) return null
+        // Flip OSRM's [lng, lat] GeoJSON order back to this codebase's own [lat, lng]
+        // convention for the response, same reasoning as routeDistanceKm's own doc
+        // comment on why this is kept explicit.
+        return RouteResult(
+            distanceKm = distanceMeters / 1000.0,
+            durationMinutes = durationSeconds / 60.0,
+            geometry = coordinates.map { listOf(it[1].toDouble(), it[0].toDouble()) },
+            steps = parseSteps(routeMap),
+        )
     }
 
     @Suppress("UNCHECKED_CAST")

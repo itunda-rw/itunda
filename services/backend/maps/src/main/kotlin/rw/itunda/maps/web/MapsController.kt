@@ -48,6 +48,22 @@ class MapsController(private val mapsService: MapsService) {
         mapOf("success" to true, "route" to mapsService.getDirections(currentUser.userId, fromLat, fromLng, toLat, toLng, mode)),
     )
 
+    // Real alternative-routes list (2026-07-22) -- see MapsService.getDirectionsAlternatives'
+    // own doc comment. A separate endpoint rather than a `?alternatives=true` flag on
+    // `/directions` above: that endpoint's real response shape is a single `route` object,
+    // and every existing caller (web/mobile) already depends on that shape unchanged.
+    @GetMapping("/directions/alternatives")
+    fun directionsAlternatives(
+        @RequestParam fromLat: Double,
+        @RequestParam fromLng: Double,
+        @RequestParam toLat: Double,
+        @RequestParam toLng: Double,
+        @RequestParam(required = false, defaultValue = "DRIVING") mode: TravelMode,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
+        mapOf("success" to true, "routes" to mapsService.getDirectionsAlternatives(currentUser.userId, fromLat, fromLng, toLat, toLng, mode)),
+    )
+
     @GetMapping("/categories")
     fun categories(): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
         mapOf(

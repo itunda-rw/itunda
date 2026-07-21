@@ -91,6 +91,35 @@ class MapsServiceTest : BehaviorSpec({
             }
         }
 
+        // Real alternative routes (2026-07-22) -- see OsrmRoutingClient.routeAlternatives'
+        // own doc comment for the full account of the real, live-verified case (against
+        // itunda's own MLD-algorithm OSRM instance) where OSRM genuinely returns more
+        // than one distinct route for the same coordinate pair.
+        When("real alternative routes exist between two real in-Rwanda points") {
+            val primary = RouteResult(distanceKm = 4.7759, durationMinutes = 7.838, geometry = listOf(listOf(fromLat, fromLng), listOf(toLat, toLng)))
+            val alternative = RouteResult(distanceKm = 5.8763, durationMinutes = 8.06, geometry = listOf(listOf(fromLat, fromLng), listOf(toLat, toLng)))
+            every { osrmRoutingClient.routeAlternatives(fromLat, fromLng, toLat, toLng, TravelMode.DRIVING) } returns listOf(primary, alternative)
+
+            val results = service.getDirectionsAlternatives("user_1", fromLat, fromLng, toLat, toLng)
+
+            Then("it returns every real route OSRM offered rather than only the fastest") {
+                results shouldBe listOf(primary, alternative)
+            }
+        }
+
+        When("OSRM finds no real alternative routes at all") {
+            every { osrmRoutingClient.routeAlternatives(fromLat, fromLng, toLat, toLng, TravelMode.DRIVING) } returns emptyList()
+
+            Then("it throws RouteNotFoundException rather than returning a fabricated route") {
+                try {
+                    service.getDirectionsAlternatives("user_1", fromLat, fromLng, toLat, toLng)
+                    error("expected RouteNotFoundException")
+                } catch (e: RouteNotFoundException) {
+                    // expected
+                }
+            }
+        }
+
         When("OSRM finds no real route") {
             every { osrmRoutingClient.route(fromLat, fromLng, toLat, toLng) } returns null
 
