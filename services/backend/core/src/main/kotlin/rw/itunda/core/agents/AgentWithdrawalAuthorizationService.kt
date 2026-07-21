@@ -70,7 +70,7 @@ class AgentWithdrawalAuthorizationService(
             ?: throw IllegalArgumentException("Main wallet not found")
         require(wallet.isActive) { "Wallet is frozen pending review" }
         var code: String
-        do { code = UUID.randomUUID().toString().replace("-", "").take(8).uppercase() } while (repository.existsByCode(code))
+        do { code = UUID.randomUUID().toString().replace("-", "").take(12).uppercase() } while (repository.existsByCode(code))
         return repository.save(AgentWithdrawalAuthorization("withdrawal_auth_${UUID.randomUUID()}", userId, wallet.id, code, amount, Instant.now().plusSeconds(600)))
     }
 
