@@ -7,12 +7,14 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.SavingsGoal
 import rw.itunda.core.domain.SavingsGoalStatus
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.InterestJarRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -24,6 +26,12 @@ import java.util.UUID
 
 private const val AUTO_CONTRIBUTION_INTERVAL_DAYS = 30L
 private const val INTEREST_ACCRUAL_INTERVAL_DAYS = 1L
+
+// Real "hidden money" nudge cadence (2026-07-21) -- see maybeNudgeUnclaimed's own doc
+// comment. Weekly, not per-accrual (accrual runs daily): Toss's own real "숨은 돈 찾기"
+// (find hidden money) feature surfaces dormant/uncollected balances periodically, not
+// as a constant nag -- matching that cadence rather than pinging on every accrual cycle.
+private const val UNCLAIMED_INTEREST_NUDGE_INTERVAL_DAYS = 7L
 
 class GoalNotFoundException(message: String) : RuntimeException(message)
 class WalletNotOwnedException(message: String) : RuntimeException(message)
@@ -46,6 +54,7 @@ class SavingsService(
     private val interestJarRepository: InterestJarRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val notificationRepository: NotificationRepository,
 ) {
     private val log = LoggerFactory.getLogger(SavingsService::class.java)
 
@@ -185,6 +194,49 @@ class SavingsService(
             jar.earnedTotal = jar.earnedTotal.add(accrued)
         }
         jar.nextPayoutAt = jar.nextPayoutAt.plus(INTEREST_ACCRUAL_INTERVAL_DAYS, ChronoUnit.DAYS)
+        // Mutates jar.lastNudgedAt (if due) and creates the Notification, but doesn't
+        // save the jar itself -- folded into the single save below instead of a second
+        // round-trip.
+        maybeNudgeUnclaimed(jar)
         interestJarRepository.save(jar)
+    }
+
+    // Real "hidden money" nudge (2026-07-21) -- modeled on Toss's own real, published
+    // "숨은 돈 찾기" (find hidden money) feature (toss.tech/tossfeed's "마이데이터로 숨은
+    // 돈 찾는 3가지 방법", tossbank.com's own "숨은 금융자산" articles): Toss proactively
+    // surfaces dormant deposits, unclaimed insurance payouts, and unused card points a
+    // user has but isn't actively looking at. itunda has no external institution
+    // aggregation to mirror the dormant-deposit/insurance half of that (would need a
+    // real MyData-style consent relationship this repo has no path to, the same class of
+    // gap as NIDA/RDB access) -- but the identical PATTERN already exists entirely
+    // within itunda's own ledger: interest accrues daily into `earnedThisMonth`
+    // (see accrueInterest above) with no proactive surface at all before this fix --
+    // silently found via a direct read of this file: only `claimInterest` ever zeroed
+    // it, nothing ever notified a user that it existed to claim. A real user could accrue
+    // real RWF for weeks and never know, unless they happened to open the Savings tab --
+    // the exact "money that exists but isn't surfaced" gap Toss's real feature targets.
+    //
+    // Weekly cadence (not per-accrual, which runs daily): a real Notification every
+    // single day would be spam, not a helpful nudge -- matches how Toss's own feature
+    // surfaces periodically, not constantly. Deliberately silent when there's nothing to
+    // claim (earnedThisMonth <= 0) -- a nudge about zero money isn't a real nudge.
+    private fun maybeNudgeUnclaimed(jar: InterestJar) {
+        if (jar.earnedThisMonth <= BigDecimal.ZERO) return
+        val lastNudgedAt = jar.lastNudgedAt
+        val due = lastNudgedAt == null || Duration.between(lastNudgedAt, Instant.now()).toDays() >= UNCLAIMED_INTEREST_NUDGE_INTERVAL_DAYS
+        if (!due) return
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}",
+                userId = jar.userId,
+                type = "UNCLAIMED_INTEREST",
+                title = "You have interest waiting",
+                body = "${jar.earnedThisMonth} RWF in savings interest is ready to claim -- it's just sitting there until you do.",
+                isRead = false,
+                createdAt = Instant.now(),
+                dataJson = "{\"earnedThisMonth\":\"${jar.earnedThisMonth}\"}",
+            ),
+        )
+        jar.lastNudgedAt = Instant.now()
     }
 }

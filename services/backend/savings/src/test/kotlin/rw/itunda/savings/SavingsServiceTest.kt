@@ -3,6 +3,7 @@ package rw.itunda.savings
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -16,6 +17,7 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.InterestJarRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -37,7 +39,8 @@ class SavingsServiceTest : BehaviorSpec({
         val interestJarRepository = mockk<InterestJarRepository>()
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, notificationRepository)
 
         When("depositing to an owned goal from the default MAIN wallet") {
             val goal = SavingsGoal(
@@ -178,7 +181,8 @@ class SavingsServiceTest : BehaviorSpec({
         val interestJarRepository = mockk<InterestJarRepository>()
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, notificationRepository)
 
         fun goal(id: String, monthlyContribution: String, lastAutoContributionAt: Instant?, status: SavingsGoalStatus = SavingsGoalStatus.active) = SavingsGoal(
             id = id, userId = "user_1", walletId = "wallet_savings", name = "Goal $id",
@@ -239,7 +243,8 @@ class SavingsServiceTest : BehaviorSpec({
         val interestJarRepository = mockk<InterestJarRepository>()
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, notificationRepository)
 
         fun jar(userId: String, nextPayoutAt: Instant, rate: Double = 7.5) = InterestJar(
             userId = userId, walletId = "wallet_$userId", balance = BigDecimal.ZERO, rate = rate,
@@ -263,6 +268,7 @@ class SavingsServiceTest : BehaviorSpec({
             val theJar = jar("user_1", Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS))
             every { walletRepository.findById("wallet_user_1") } returns Optional.of(wallet("wallet_user_1", "user_1", WalletType.SAVINGS, BigDecimal("36500")))
             every { interestJarRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
 
             service.accrueInterest(theJar)
 
@@ -272,6 +278,13 @@ class SavingsServiceTest : BehaviorSpec({
                 theJar.earnedTotal shouldBe BigDecimal("7.50")
                 theJar.balance shouldBe BigDecimal("36500")
                 verify(exactly = 1) { interestJarRepository.save(theJar) }
+            }
+
+            Then("real unclaimed money that just appeared gets a real one-time nudge notification, mirroring Toss's own real 숨은 돈 찾기 (find hidden money) feature") {
+                verify(exactly = 1) {
+                    notificationRepository.save(match { it.userId == "user_1" && it.type == "UNCLAIMED_INTEREST" })
+                }
+                theJar.lastNudgedAt shouldNotBe null
             }
         }
 
@@ -294,6 +307,7 @@ class SavingsServiceTest : BehaviorSpec({
             val theJar = jar("user_3", Instant.now().minus(1, java.time.temporal.ChronoUnit.DAYS))
             every { walletRepository.findById("wallet_user_3") } returns Optional.of(wallet("wallet_user_3", "user_3", WalletType.SAVINGS, BigDecimal("36500")))
             every { interestJarRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
 
             service.accrueInterest(theJar)
             service.accrueInterest(theJar)
@@ -301,6 +315,10 @@ class SavingsServiceTest : BehaviorSpec({
             Then("two real days of accrual add up rather than overwrite") {
                 theJar.earnedThisMonth shouldBe BigDecimal("15.00")
                 theJar.earnedTotal shouldBe BigDecimal("15.00")
+            }
+
+            Then("the second accrual (moments later) does NOT re-nudge -- a real notification every accrual cycle would be spam, not a helpful nudge") {
+                verify(exactly = 1) { notificationRepository.save(any()) }
             }
         }
     }
@@ -311,7 +329,8 @@ class SavingsServiceTest : BehaviorSpec({
         val interestJarRepository = mockk<InterestJarRepository>()
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>()
-        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, notificationRepository)
         every { rateLimiter.checkLimit("savings:goal:user_9", limit = 10, window = Duration.ofHours(1)) } throws RateLimitExceededException("Too many requests")
 
         When("they try to create another real goal") {

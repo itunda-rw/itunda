@@ -35,6 +35,13 @@ class InterestJar(
 
     @Column(name = "next_payout_at", nullable = false)
     var nextPayoutAt: Instant = Instant.now().plusSeconds(86400),
+
+    // Real "hidden money" nudge (2026-07-21) -- see SavingsService.maybeNudgeUnclaimed's
+    // own doc comment. Tracks when this jar last got a real Notification about unclaimed
+    // interest, so accrual (which runs far more often than any user should be pinged)
+    // doesn't spam a new notification every cycle.
+    @Column(name = "last_nudged_at")
+    var lastNudgedAt: Instant? = null,
 ) {
     protected constructor() : this(userId = "", walletId = "", balance = BigDecimal.ZERO, rate = 0.0, earnedThisMonth = BigDecimal.ZERO, earnedTotal = BigDecimal.ZERO)
 }
