@@ -78,3 +78,24 @@ extra["kotlinVersion"] = "2.1.20"
 // live: "Unable to resolve react-native location in node_modules").
 extra["REACT_NATIVE_NODE_MODULES_DIR"] = file("../packages/saronite/node_modules/react-native")
 
+// Some autolinked React Native libraries still ship Gradle scripts written for
+// older AGP releases.  Give every Android library the same SDK baseline as the
+// app when its plugin is applied, before that library's script configures its
+// own `android {}` block.  This keeps the non-standard monorepo wiring in our
+// build instead of patching generated node_modules content.
+subprojects {
+    pluginManager.withPlugin("com.android.library") {
+        extensions.configure<com.android.build.api.dsl.LibraryExtension> {
+            compileSdk = 34
+        }
+    }
+}
+
+// `react-native-screens` reads the React Native directory from the first Android
+// application project's Groovy `ext` object while it is being evaluated.  Seed
+// that exact object from the root configuration phase; relying on :app's own
+// later script assignment is order-sensitive once settings autolinking adds
+// libraries to this build.
+allprojects {
+    extra["REACT_NATIVE_NODE_MODULES_DIR"] = rootProject.file("../packages/saronite/node_modules/react-native")
+}
