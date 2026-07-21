@@ -46,6 +46,24 @@ private final class HoodLocationFetcher: NSObject, ObservableObject, CLLocationM
     }
 }
 
+/// Freshness is a practical trust signal in a local marketplace: it distinguishes a
+/// current offer from a stale listing without inventing any reputation data.
+private func hoodRelativeTime(_ isoTimestamp: String) -> String {
+    let standard = ISO8601DateFormatter()
+    standard.formatOptions = [.withInternetDateTime]
+    let fractional = ISO8601DateFormatter()
+    fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    guard let date = fractional.date(from: isoTimestamp) ?? standard.date(from: isoTimestamp) else { return "" }
+    let seconds = max(0, Date().timeIntervalSince(date))
+    switch seconds {
+    case ..<60: return "Just now"
+    case ..<3_600: return "\(Int(seconds / 60))m ago"
+    case ..<86_400: return "\(Int(seconds / 3_600))h ago"
+    case ..<604_800: return "\(Int(seconds / 86_400))d ago"
+    default: return "\(Int(seconds / 604_800))w ago"
+    }
+}
+
 /// Real hyperlocal neighborhood setup (2026-07-20) -- shared across every Hood-mode
 /// content view (Marketplace/Community/Jobs/Property), mirroring bank-mfe's
 /// NeighborhoodSetupPrompt and Android's own composable of the same name exactly.
@@ -547,7 +565,7 @@ private struct ListingCard: View {
                                 .cornerRadius(8)
                         }
                     }
-                    Text(listing.category).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    Text("\(listing.category) · \(hoodRelativeTime(listing.createdAt))").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                 }
                 Spacer()
                 if !isMine {
@@ -1055,7 +1073,7 @@ private struct CommunityPostCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(categoryLabel).font(.caption2).bold().foregroundColor(IDS.Colors.brand)
+                Text("\(categoryLabel) · \(hoodRelativeTime(post.createdAt))").font(.caption2).bold().foregroundColor(IDS.Colors.brand)
                 Spacer()
                 if isMine {
                     Button(action: { Task { await remove() } }) {
@@ -1549,7 +1567,7 @@ private struct JobPostCard: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 HStack(spacing: 6) {
-                    Text(categoryLabel).font(.caption2).bold().foregroundColor(IDS.Colors.brand)
+                    Text("\(categoryLabel) · \(hoodRelativeTime(post.createdAt))").font(.caption2).bold().foregroundColor(IDS.Colors.brand)
                     if post.status == "FILLED" {
                         Text("FILLED").font(.caption2).bold().foregroundColor(IDS.Colors.textSecondary)
                             .padding(.horizontal, 8).padding(.vertical, 2)
@@ -1985,7 +2003,7 @@ private struct PropertyListingCard: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 HStack(spacing: 6) {
-                    Text("\(listing.listingType == "RENT" ? "For rent" : "For sale") · \(propertyTypeLabel)")
+                    Text("\(listing.listingType == "RENT" ? "For rent" : "For sale") · \(propertyTypeLabel) · \(hoodRelativeTime(listing.createdAt))")
                         .font(.caption2).bold().foregroundColor(IDS.Colors.brand)
                     if listing.status == "TAKEN" {
                         Text("TAKEN").font(.caption2).bold().foregroundColor(IDS.Colors.textSecondary)
