@@ -749,7 +749,10 @@ interface ApiService {
     suspend fun claimInterest(@Header("Idempotency-Key") idempotencyKey: String): ClaimInterestResponse
 
     @POST("api/v1/wallet/agent-withdrawal-authorizations")
-    suspend fun createAgentWithdrawalAuthorization(@Body request: CreateAgentWithdrawalAuthorizationRequest): AgentWithdrawalAuthorizationResponse
+    suspend fun createAgentWithdrawalAuthorization(
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body request: CreateAgentWithdrawalAuthorizationRequest,
+    ): AgentWithdrawalAuthorizationResponse
 
     @GET("api/v1/wallet/agent-withdrawal-authorizations")
     suspend fun getAgentWithdrawalAuthorizations(): AgentWithdrawalAuthorizationsResponse

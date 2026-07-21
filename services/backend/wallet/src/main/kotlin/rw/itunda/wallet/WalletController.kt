@@ -74,10 +74,16 @@ class WalletController(
     @PostMapping("/agent-withdrawal-authorizations")
     fun createAgentWithdrawalAuthorization(
         @RequestBody request: CreateAgentWithdrawalAuthorizationRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
-    ) = ResponseEntity.status(HttpStatus.CREATED).body(
-        mapOf("success" to true, "authorization" to agentWithdrawalAuthorizationService.create(currentUser.userId, request.amount)),
-    )
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute(
+            "POST /api/v1/wallet/agent-withdrawal-authorizations", idempotencyKey, request,
+        ) {
+            201 to mapOf("success" to true, "authorization" to agentWithdrawalAuthorizationService.create(currentUser.userId, request.amount))
+        }
+        return ResponseEntity.status(status).body(body)
+    }
 
     @PostMapping("/agent-withdrawal-authorizations/cancel")
     fun cancelAgentWithdrawalAuthorization(

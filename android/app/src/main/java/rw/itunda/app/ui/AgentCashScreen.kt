@@ -30,6 +30,7 @@ import rw.itunda.app.network.CancelAgentWithdrawalAuthorizationRequest
 import rw.itunda.app.network.CreateAgentWithdrawalAuthorizationRequest
 import rw.itunda.app.network.NetworkClient
 import java.math.BigDecimal
+import java.util.UUID
 
 /** Customer-owned, short-lived cash-out consent. No balance moves until the agent validates this code and pays cash. */
 @Composable
@@ -56,7 +57,13 @@ fun AgentCashScreen(onBack: () -> Unit) {
                 if (amount == null || amount <= BigDecimal.ZERO) { error = "Enter a valid positive amount."; return@Button }
                 busy = true; error = null
                 scope.launch {
-                    try { NetworkClient.apiService.createAgentWithdrawalAuthorization(CreateAgentWithdrawalAuthorizationRequest(amount)); amountText = ""; refresh() }
+                    try {
+                        NetworkClient.apiService.createAgentWithdrawalAuthorization(
+                            UUID.randomUUID().toString(), CreateAgentWithdrawalAuthorizationRequest(amount),
+                        )
+                        amountText = ""
+                        refresh()
+                    }
                     catch (_: Exception) { error = "Could not create a code. You may already have three active codes." }
                     finally { busy = false }
                 }
