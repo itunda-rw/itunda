@@ -14,6 +14,7 @@ dependencyManagement {
 dependencies {
     implementation(project(":core"))
     implementation(project(":auth"))
+    implementation(project(":agents"))
     implementation(project(":wallet"))
     implementation(project(":bills"))
     implementation(project(":loans"))
