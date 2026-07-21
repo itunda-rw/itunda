@@ -1581,6 +1581,7 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
     // any of them, not just the dedicated Wishlist tab.
     var favoriteIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var favoritingId by remember { mutableStateOf<String?>(null) }
+    var favoriteNotice by remember { mutableStateOf<String?>(null) }
 
     fun loadFavoriteIds() {
         coroutineScope.launch {
@@ -1602,9 +1603,11 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
                 if (listingId in favoriteIds) {
                     NetworkClient.apiService.removeListingFavorite(listingId)
                     favoriteIds = favoriteIds - listingId
+                    favoriteNotice = "Removed from your wishlist."
                 } else {
                     NetworkClient.apiService.addListingFavorite(listingId)
                     favoriteIds = favoriteIds + listingId
+                    favoriteNotice = "Saved to your wishlist."
                 }
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
@@ -1693,6 +1696,9 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
                     )
                 }
             }
+        }
+        favoriteNotice?.let { notice ->
+            item { Text(notice, color = TossBlue, fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
         }
         if (view == HoodView.MINE) {
             item {

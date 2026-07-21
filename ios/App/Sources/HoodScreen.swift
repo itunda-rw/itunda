@@ -208,6 +208,7 @@ private struct MarketplaceContent: View {
     // from any of them, not just the dedicated Wishlist tab.
     @State private var favoriteIds: Set<String> = []
     @State private var favoritingId: String?
+    @State private var favoriteNotice: String?
 
     var body: some View {
         ScrollView {
@@ -222,6 +223,12 @@ private struct MarketplaceContent: View {
                     Text("♡ Wishlist").tag(HoodView.wishlist)
                 }
                 .pickerStyle(.segmented)
+
+                if let favoriteNotice {
+                    Text(favoriteNotice)
+                        .font(.caption).foregroundColor(IDS.Colors.brand)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
 
                 if view == .mine {
                     if showNewListing {
@@ -370,9 +377,11 @@ private struct MarketplaceContent: View {
             if favoriteIds.contains(listingId) {
                 _ = try await NetworkClient.shared.removeListingFavorite(listingId)
                 favoriteIds.remove(listingId)
+                favoriteNotice = "Removed from your wishlist."
             } else {
                 _ = try await NetworkClient.shared.addListingFavorite(listingId)
                 favoriteIds.insert(listingId)
+                favoriteNotice = "Saved to your wishlist."
             }
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
