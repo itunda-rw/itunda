@@ -40,6 +40,11 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
       maxzoom: 14,
     },
     route: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+    // Real distance-measurement (ruler) tool (2026-07-22) -- Naver/Kakao Maps' own real
+    // "measure distance" action, a genuinely distinct capability from Directions (no
+    // real road route, no OSRM call -- just the straight-line path between whatever
+    // points a user taps, same as the real tool this mirrors).
+    measure: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
   },
   layers: [
     { id: 'background', type: 'background', paint: { 'background-color': '#f2efe9' } },
@@ -86,6 +91,20 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
       id: 'route-line', type: 'line', source: 'route',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': '#3182F6', 'line-width': 5, 'line-opacity': 0.9 },
+    },
+    // Real distance-measurement (ruler) tool line (2026-07-22) -- dashed, and a
+    // deliberately different color from the real drawn route above, so the two are never
+    // visually confused: one is a real road route, the other a plain straight-line
+    // measurement between tapped points.
+    {
+      id: 'measure-line', type: 'line', source: 'measure',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#E53935', 'line-width': 3, 'line-dasharray': [2, 1.5] },
+    },
+    {
+      id: 'measure-points', type: 'circle', source: 'measure',
+      filter: ['==', ['geometry-type'], 'Point'],
+      paint: { 'circle-radius': 5, 'circle-color': '#E53935', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' },
     },
     // Real text labels (2026-07-19) -- item 5, the last item on the Maps "100%"
     // roadmap. Real OSM name data already baked into the tile archive (see the
@@ -240,6 +259,11 @@ export default function MapView() {
   // browsers without the native Web Share API (navigator.share), see shareLocation's own
   // doc comment.
   const [shareCopied, setShareCopied] = useState(false);
+  // Real distance-measurement (ruler) tool state (2026-07-22) -- see the toggle button's
+  // own doc comment. Plain [lat, lng] pairs, same convention as everywhere else in this
+  // file, in tap order.
+  const [measuring, setMeasuring] = useState(false);
+  const [measurePoints, setMeasurePoints] = useState<[number, number][]>([]);
   // Real recent-searches list (2026-07-22) -- the other half of the same previously-
   // flagged "no autocomplete/recent-searches" gap the live-search-as-you-type pass just
   // closed the first half of. Naver/Kakao Maps' own real recent-searches list is a purely
@@ -292,6 +316,43 @@ export default function MapView() {
       // a pure convenience feature, never worth failing the whole map view over.
     }
   }, []);
+
+  // Real distance-measurement (ruler) tool -- map click handler (2026-07-22). Only
+  // attached while `measuring` is on; uses the functional setState form so it never
+  // needs `measurePoints` in its closure (no stale-state risk across re-renders).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !measuring) return;
+    const handleClick = (e: maplibregl.MapMouseEvent) => {
+      setMeasurePoints((prev) => [...prev, [e.lngLat.lat, e.lngLat.lng]]);
+    };
+    map.on('click', handleClick);
+    return () => {
+      map.off('click', handleClick);
+    };
+  }, [measuring]);
+
+  // Real distance-measurement (ruler) tool -- keeps the `measure` GeoJSON source (a
+  // dot per tapped point, a dashed line once there are 2+) in sync with real tapped
+  // points, and clears it whenever measuring is turned off.
+  useEffect(() => {
+    const map = mapRef.current;
+    const source = map?.getSource('measure') as maplibregl.GeoJSONSource | undefined;
+    if (!source) return;
+    const features: GeoJSON.Feature[] = measurePoints.map(([lat, lng]) => ({
+      type: 'Feature',
+      properties: {},
+      geometry: { type: 'Point', coordinates: [lng, lat] },
+    }));
+    if (measurePoints.length > 1) {
+      features.push({
+        type: 'Feature',
+        properties: {},
+        geometry: { type: 'LineString', coordinates: measurePoints.map(([lat, lng]) => [lng, lat]) },
+      });
+    }
+    source.setData({ type: 'FeatureCollection', features });
+  }, [measurePoints]);
 
   useEffect(() => {
     if (wrapperHeight > 0 && sheetY === null) {
@@ -721,6 +782,30 @@ export default function MapView() {
     ? merchants.find((m) => m.latitude === selectedPlace.latitude && m.longitude === selectedPlace.longitude)
     : undefined;
 
+  const toggleMeasuring = () => {
+    setMeasuring((prev) => !prev);
+    setMeasurePoints([]);
+  };
+
+  // Real straight-line distance (2026-07-22) -- the standard Haversine great-circle
+  // formula, the same one `rw.itunda.core.geo.GeoUtils.haversineKm` implements on the
+  // backend; kept as a plain local function here rather than a network round-trip since
+  // a ruler tool needs to update live as a user taps, not once per API call.
+  const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  const measureTotalKm = measurePoints.slice(1).reduce((total, [lat, lng], i) => {
+    const [prevLat, prevLng] = measurePoints[i];
+    return total + haversineKm(prevLat, prevLng, lat, lng);
+  }, 0);
+
   const sheetTop = sheetY ?? peekAnchorY;
 
   return (
@@ -895,7 +980,51 @@ export default function MapView() {
         >
           {locating ? '…' : '📍'}
         </button>
+        {/* Real distance-measurement (ruler) tool toggle (2026-07-22) -- Naver/Kakao
+            Maps' own real "measure distance" action: tap to enter measure mode, then tap
+            points on the map to build a straight-line path and see the real cumulative
+            distance -- a genuinely different capability from Directions (no road route,
+            no OSRM call, just the plain distance between tapped points). */}
+        <button
+          type="button"
+          onClick={toggleMeasuring}
+          aria-label={measuring ? 'Stop measuring distance' : 'Measure distance'}
+          style={{
+            width: '46px', height: '46px', borderRadius: '50%',
+            background: measuring ? '#E53935' : '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.14)',
+            fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: measuring ? '#fff' : MAP_CARD_TEXT_SECONDARY,
+          }}
+        >
+          📏
+        </button>
       </div>
+
+      {/* Real distance-measurement (ruler) tool info badge (2026-07-22) -- only shown
+          while active, floats above the search chrome so it never fights the docked
+          bottom sheet for space. */}
+      {measuring && (
+        <div
+          style={{
+            position: 'absolute', top: '72px', left: '50%', transform: 'translateX(-50%)', zIndex: 2,
+            background: '#fff', borderRadius: '999px', padding: '8px 16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.14)',
+            display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px',
+          }}
+        >
+          <span style={{ fontWeight: 700, color: MAP_CARD_TEXT }}>
+            {measurePoints.length < 2 ? 'Tap the map to start measuring' : `${measureTotalKm.toFixed(2)} km`}
+          </span>
+          {measurePoints.length > 0 && (
+            <button type="button" onClick={() => setMeasurePoints((prev) => prev.slice(0, -1))} style={{ fontSize: '12px', color: 'var(--toss-blue)', fontWeight: 700 }}>
+              Undo
+            </button>
+          )}
+          <button type="button" onClick={() => { setMeasuring(false); setMeasurePoints([]); }} style={{ fontSize: '12px', color: MAP_CARD_TEXT_TERTIARY, fontWeight: 700 }}>
+            Done
+          </button>
+        </div>
+      )}
 
       {/* Real draggable peek/half/full bottom sheet (2026-07-21) -- a persistent,
           non-modal panel docked over the map. Pointer Events drive `sheetY` live; on
