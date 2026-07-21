@@ -174,7 +174,11 @@ struct HoodScreen: View {
 
             HStack(spacing: 6) {
                 Text("📍")
-                Text(neighborhoodName.map { neighborhoodVerificationCount > 0 ? "Near \($0) · location confirmed" : "Near \($0)" } ?? "Choose your neighborhood in any Hood service")
+                Text(neighborhoodName.map {
+                    neighborhoodVerificationCount > 0
+                        ? "Near \($0) · confirmed \(neighborhoodVerificationCount)×"
+                        : "Near \($0)"
+                } ?? "Choose your neighborhood in any Hood service")
                     .font(IDS.Typography.caption)
                     .foregroundColor(IDS.Colors.textSecondary)
                 Spacer()

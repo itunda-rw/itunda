@@ -1477,7 +1477,7 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit) {
         }
         neighborhoodName?.let { neighborhood ->
             Text(
-                "📍 Near $neighborhood" + if (neighborhoodVerificationCount > 0) " · location confirmed" else "",
+                "📍 Near $neighborhood" + if (neighborhoodVerificationCount > 0) " · confirmed ${neighborhoodVerificationCount}×" else "",
                 color = TossSecondary,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(horizontal = Ids.layout.screenHorizontal, vertical = 2.dp),
