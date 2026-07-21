@@ -103,6 +103,27 @@ private struct NeighborhoodSetupPrompt: View {
     }
 }
 
+/// Card-shaped loading placeholders keep every Hood feed legible while its real
+/// neighborhood data is loading, instead of showing a disconnected spinner.
+private struct HoodFeedSkeleton: View {
+    var body: some View {
+        VStack(spacing: IDS.Layout.cardGap) {
+            ForEach(0..<3, id: \.self) { _ in
+                VStack(alignment: .leading, spacing: 10) {
+                    RoundedRectangle(cornerRadius: 5).fill(IDS.Colors.chipBackground).frame(width: 92, height: 12)
+                    RoundedRectangle(cornerRadius: 6).fill(IDS.Colors.chipBackground).frame(maxWidth: .infinity).frame(height: 18)
+                    RoundedRectangle(cornerRadius: 5).fill(IDS.Colors.chipBackground).frame(maxWidth: .infinity).frame(height: 12)
+                    RoundedRectangle(cornerRadius: 5).fill(IDS.Colors.chipBackground).frame(width: 160, height: 12)
+                }
+                .padding(18)
+                .background(IDS.Colors.card)
+                .cornerRadius(IDS.Layout.cardCornerRadius)
+            }
+        }
+        .accessibilityLabel("Loading Hood content")
+    }
+}
+
 /// Real 당근마켓 (Danggeun/Karrot Market)-style neighborhood marketplace (2026-07-18) --
 /// iOS mirror of Android's HoodTab (SuperAppTabs.kt). See NetworkClient.swift's
 /// Marketplace extension and rw.itunda.marketplace.MarketplaceService's own doc
@@ -239,7 +260,7 @@ private struct MarketplaceContent: View {
                     .background(IDS.Colors.card)
                     .cornerRadius(IDS.Layout.cardCornerRadius)
                 } else if listings == nil {
-                    ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                    HoodFeedSkeleton()
                 } else if listings!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
                     Text(
                         view == .browse ? "No listings yet."
@@ -694,7 +715,7 @@ private struct ListingWishlistView: View {
                 .background(IDS.Colors.card)
                 .cornerRadius(IDS.Layout.cardCornerRadius)
             } else if favorites == nil {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                HoodFeedSkeleton()
             } else if favorites!.isEmpty {
                 Text("No saved listings yet -- tap ♡ on any listing to save it here.")
                     .foregroundColor(IDS.Colors.textSecondary)
@@ -829,7 +850,7 @@ private struct CommunityContent: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
                     } else if posts == nil {
-                        ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                        HoodFeedSkeleton()
                     } else if posts!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
                         Text(
                             view == .browse ? "No posts yet."
@@ -1299,7 +1320,7 @@ private struct JobsContent: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
                 } else if posts == nil {
-                    ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                    HoodFeedSkeleton()
                 } else if posts!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
                     Text(
                         view == .browse ? "No jobs posted yet."
@@ -1698,7 +1719,7 @@ private struct PropertyContent: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
                 } else if listings == nil {
-                    ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                    HoodFeedSkeleton()
                 } else if listings!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
                     Text(
                         view == .browse ? "No properties listed yet."
