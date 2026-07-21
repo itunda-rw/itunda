@@ -208,6 +208,12 @@ data class DepositRequest(val goalId: String, val amount: java.math.BigDecimal, 
 data class DepositResponse(val success: Boolean, val message: String, val goal: SavingsGoal)
 data class ClaimInterestResponse(val success: Boolean, val message: String, val claimed: Double? = null)
 
+data class CreateAgentWithdrawalAuthorizationRequest(val amount: java.math.BigDecimal)
+data class CancelAgentWithdrawalAuthorizationRequest(val code: String)
+data class AgentWithdrawalAuthorizationDto(val id: String, val code: String, val amount: java.math.BigDecimal, val expiresAt: String, val status: String, val createdAt: String)
+data class AgentWithdrawalAuthorizationResponse(val success: Boolean, val authorization: AgentWithdrawalAuthorizationDto)
+data class AgentWithdrawalAuthorizationsResponse(val success: Boolean, val authorizations: List<AgentWithdrawalAuthorizationDto>)
+
 // Mirrors services/backend/notifications's NotificationController.kt (2026-07-12) --
 // backs the Settings screen's notifications list.
 data class NotificationDto(
@@ -741,6 +747,15 @@ interface ApiService {
 
     @POST("api/v1/savings/interest-jar/claim")
     suspend fun claimInterest(@Header("Idempotency-Key") idempotencyKey: String): ClaimInterestResponse
+
+    @POST("api/v1/wallet/agent-withdrawal-authorizations")
+    suspend fun createAgentWithdrawalAuthorization(@Body request: CreateAgentWithdrawalAuthorizationRequest): AgentWithdrawalAuthorizationResponse
+
+    @GET("api/v1/wallet/agent-withdrawal-authorizations")
+    suspend fun getAgentWithdrawalAuthorizations(): AgentWithdrawalAuthorizationsResponse
+
+    @POST("api/v1/wallet/agent-withdrawal-authorizations/cancel")
+    suspend fun cancelAgentWithdrawalAuthorization(@Body request: CancelAgentWithdrawalAuthorizationRequest): AgentWithdrawalAuthorizationResponse
 
     // Real transaction history (2026-07-12) -- backs the new card/transaction-
     // history screen; see services/backend/wallet's new WalletController endpoint.

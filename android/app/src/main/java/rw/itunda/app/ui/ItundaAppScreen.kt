@@ -203,6 +203,7 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
         var showBenefits by rememberSaveable { mutableStateOf(false) }
         var showPay by rememberSaveable { mutableStateOf(false) }
         var showMap by rememberSaveable { mutableStateOf(false) }
+        var showAgentCash by rememberSaveable { mutableStateOf(false) }
         var showInvest by rememberSaveable { mutableStateOf(false) }
         // Real "message seller" hand-off from Hood to Talk (2026-07-18) -- mirrors
         // bank-mfe's BankDashboard.tsx pendingConversationId/onConsumedInitial pattern
@@ -428,6 +429,11 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
             MapScreen(onBack = { showMap = false })
             return@IdsTheme
         }
+        if (showAgentCash) {
+            BackHandler { showAgentCash = false }
+            AgentCashScreen(onBack = { showAgentCash = false })
+            return@IdsTheme
+        }
         // Real Invest/Stocks screen (2026-07-20) -- same Quick-links full-screen
         // pattern as Pay/Benefits/Map above; this feature never had ANY mobile UI
         // before now, not even the original buy/sell/portfolio.
@@ -456,6 +462,7 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                         onDepositToGoal = { goalId, goalName -> savingsFlowStep = SavingsFlowStep.Deposit(goalId, goalName) },
                         onClaimInterest = { savingsFlowStep = SavingsFlowStep.ClaimInterest },
                         onOpenTransactionHistory = { showTransactionHistory = true },
+                        onCashOutAtAgent = { showAgentCash = true },
                     )
                     TossTab.Shop -> ShopTab()
                     TossTab.Hood -> HoodTab(
@@ -536,6 +543,7 @@ private fun HomeTab(
     onDepositToGoal: (goalId: String, goalName: String) -> Unit,
     onClaimInterest: () -> Unit,
     onOpenTransactionHistory: () -> Unit,
+    onCashOutAtAgent: () -> Unit,
 ) {
     val primaryWallet by viewModel.primaryWallet.collectAsState()
     val balanceText = primaryWallet?.let { "${it.currency} %,.0f".format(it.balance) } ?: "RWF 0"
@@ -553,7 +561,7 @@ private fun HomeTab(
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
         item { HomeTopBar() }
-        item { WalletHeroCard(balanceText, onSend) }
+        item { WalletHeroCard(balanceText, onSend, onCashOutAtAgent) }
         item {
             ShellSection(
                 title = "",
@@ -650,7 +658,7 @@ private fun HomeTopBar() {
 }
 
 @Composable
-private fun WalletHeroCard(balanceText: String, onSend: () -> Unit) {
+private fun WalletHeroCard(balanceText: String, onSend: () -> Unit, onCashOutAtAgent: () -> Unit) {
     Card(
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = TossCard),
@@ -664,7 +672,7 @@ private fun WalletHeroCard(balanceText: String, onSend: () -> Unit) {
             Text("Wallet", fontSize = 14.sp, color = TossSecondary)
             Text(balanceText, fontSize = 34.sp, color = TossText, fontWeight = FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                IdsButton("Add money", onClick = {}, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium)
+                IdsButton("Cash out", onClick = onCashOutAtAgent, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Tinted, size = IdsButtonSize.Medium)
                 IdsButton("Send", onClick = onSend, modifier = Modifier.weight(1f), variant = IdsButtonVariant.Filled, size = IdsButtonSize.Medium)
             }
             Divider(color = TossLine)
