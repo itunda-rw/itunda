@@ -2467,6 +2467,11 @@ private fun CommunityPostCard(post: CommunityPostDto, categoryLabel: String, isM
             Text(post.title, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Text(post.body, color = TossSecondary, fontSize = 13.sp, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             Text("❤️ ${post.likeCount} · 💬 ${post.commentCount}", color = TossSecondary, fontSize = 12.sp)
+            if (!isMine && post.category == "question") {
+                ListingActionButton("Answer this question", busy, onClick = onOpen)
+            } else if (!isMine && post.category == "meetup") {
+                ListingActionButton("View meetup", busy, onClick = onOpen)
+            }
             if (!isMine) {
                 HoodReportAction(targetType = "COMMUNITY_POST", targetId = post.id)
             }

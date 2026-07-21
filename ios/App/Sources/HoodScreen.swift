@@ -1042,6 +1042,13 @@ private struct CommunityPostCard: View {
             Text(post.title).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
             Text(post.body).font(.subheadline).foregroundColor(IDS.Colors.textSecondary).lineLimit(2)
             Text("❤️ \(post.likeCount) · 💬 \(post.commentCount)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            if !isMine && post.category == "question" {
+                Button("Answer this question", action: onOpen)
+                    .font(.caption).bold().foregroundColor(IDS.Colors.brand)
+            } else if !isMine && post.category == "meetup" {
+                Button("View meetup", action: onOpen)
+                    .font(.caption).bold().foregroundColor(IDS.Colors.brand)
+            }
             if let error {
                 Text(error).font(.caption).foregroundColor(.red)
             }
