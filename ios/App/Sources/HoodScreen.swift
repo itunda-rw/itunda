@@ -767,12 +767,19 @@ private struct CommunityContent: View {
                         }
                     }
 
-                    if view == .mine {
-                        if showNewPost {
-                            NewCommunityPostForm(categories: categories, onCreated: { showNewPost = false; Task { await load() } }, onCancel: { showNewPost = false })
-                        } else {
+                    if showNewPost {
+                        NewCommunityPostForm(categories: categories, onCreated: { showNewPost = false; Task { await load() } }, onCancel: { showNewPost = false })
+                    } else {
+                        if view == .mine {
                             Button(action: { showNewPost = true }) {
                                 Text("+ Write a post")
+                                    .font(IDS.Typography.bodyBold).foregroundColor(.white)
+                                    .frame(maxWidth: .infinity).padding(.vertical, 14)
+                                    .background(IDS.Colors.brand).cornerRadius(14)
+                            }
+                        } else {
+                            Button(action: { showNewPost = true }) {
+                                Text("Ask your neighbors")
                                     .font(IDS.Typography.bodyBold).foregroundColor(.white)
                                     .frame(maxWidth: .infinity).padding(.vertical, 14)
                                     .background(IDS.Colors.brand).cornerRadius(14)
