@@ -43,6 +43,7 @@ fun AgentHomeScreen(onLogout: () -> Unit) {
     var action by remember { mutableStateOf<TransactionMode?>(null) }
     var till by remember { mutableStateOf<TillDto?>(null) }
     var activity by remember { mutableStateOf<List<ActivityDto>>(emptyList()) }
+    var showingActivity by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
@@ -66,9 +67,16 @@ fun AgentHomeScreen(onLogout: () -> Unit) {
         till?.let { snapshot -> item { TillSummary(snapshot) } }
         item { ActionPicker(onAction = { action = it }) }
         error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
-        item { Text(if (loading) "Refreshing…" else "Latest activity", style = MaterialTheme.typography.titleMedium) }
-        if (!loading && activity.isEmpty()) item { Text("No store transactions recorded yet.", style = MaterialTheme.typography.bodyMedium) }
-        items(activity) { entry -> ActivityCard(entry) }
+        item {
+            TextButton(onClick = { showingActivity = !showingActivity }, modifier = Modifier.fillMaxWidth()) {
+                Text(if (showingActivity) "Hide today’s activity" else "View today’s activity")
+            }
+        }
+        if (showingActivity) {
+            item { Text(if (loading) "Refreshing…" else "Today’s activity", style = MaterialTheme.typography.titleMedium) }
+            if (!loading && activity.isEmpty()) item { Text("No store transactions recorded yet.", style = MaterialTheme.typography.bodyMedium) }
+            items(activity.take(5)) { entry -> ActivityCard(entry) }
+        }
     }
 }
 
