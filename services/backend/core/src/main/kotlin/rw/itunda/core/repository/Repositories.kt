@@ -167,6 +167,7 @@ interface AgentOperatorRepository : JpaRepository<AgentOperator, String> {
 interface AgentTillReconciliationRepository : JpaRepository<AgentTillReconciliation, String> {
     fun findByAgentIdAndBusinessDate(agentId: String, businessDate: LocalDate): AgentTillReconciliation?
     fun findByStatusOrderByCreatedAtDesc(status: TillReconciliationStatus): List<AgentTillReconciliation>
+    fun findByBusinessDateBetweenOrderByCreatedAtDesc(from: LocalDate, to: LocalDate): List<AgentTillReconciliation>
 }
 
 interface TransactionRepository : JpaRepository<Transaction, String> {

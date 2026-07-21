@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.core.domain.AgentStatus
 import rw.itunda.core.idempotency.IdempotencyConflictException
@@ -18,6 +19,7 @@ import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
+import java.time.LocalDate
 
 data class RegisterAgentRequest(val displayName: String, val dailyCashInLimit: BigDecimal, val dailyCashOutLimit: BigDecimal)
 data class SetAgentStatusRequest(val status: AgentStatus)
@@ -76,6 +78,12 @@ class AgentAdminController(
 
     @GetMapping("/till-reconciliations/pending")
     fun pendingTillReconciliations() = ResponseEntity.ok(mapOf("success" to true, "reconciliations" to agentService.pendingTillReconciliations()))
+
+    @GetMapping("/till-reconciliations")
+    fun reconciliationReport(
+        @RequestParam from: LocalDate,
+        @RequestParam to: LocalDate,
+    ) = ResponseEntity.ok(mapOf("success" to true, "report" to agentService.reconciliationReport(from, to)))
 
     @PostMapping("/till-reconciliations/{id}/resolve")
     fun resolveTillReconciliation(@PathVariable id: String, @RequestBody request: ResolveTillReconciliationRequest, @AuthenticationPrincipal currentUser: CurrentUser) =

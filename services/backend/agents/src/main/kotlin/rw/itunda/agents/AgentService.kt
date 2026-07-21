@@ -55,6 +55,15 @@ data class AgentTillSnapshot(
     val reconciliation: AgentTillReconciliation?,
 )
 
+/** A bounded, auditable view for the operations team to work daily till variances. */
+data class AgentReconciliationReport(
+    val from: LocalDate,
+    val to: LocalDate,
+    val reconciliations: List<AgentTillReconciliation>,
+    val pendingReviewCount: Int,
+    val totalVariance: BigDecimal,
+)
+
 data class AgentActivity(
     val id: String,
     val type: String,
@@ -219,6 +228,20 @@ class AgentService(
     }
 
     fun pendingTillReconciliations(): List<AgentTillReconciliation> = tillReconciliationRepository.findByStatusOrderByCreatedAtDesc(TillReconciliationStatus.PENDING_REVIEW)
+
+    @Transactional(readOnly = true)
+    fun reconciliationReport(from: LocalDate, to: LocalDate): AgentReconciliationReport {
+        require(!to.isBefore(from)) { "Report end date must not be before its start date" }
+        require(!from.plusDays(30).isBefore(to)) { "Reconciliation reports are limited to 31 days" }
+        val reconciliations = tillReconciliationRepository.findByBusinessDateBetweenOrderByCreatedAtDesc(from, to)
+        return AgentReconciliationReport(
+            from = from,
+            to = to,
+            reconciliations = reconciliations,
+            pendingReviewCount = reconciliations.count { it.status == TillReconciliationStatus.PENDING_REVIEW },
+            totalVariance = reconciliations.fold(BigDecimal.ZERO) { total, reconciliation -> total.add(reconciliation.variance) },
+        )
+    }
 
     @Transactional
     fun resolveTillReconciliation(id: String, reviewerUserId: String, note: String): AgentTillReconciliation {
