@@ -14,6 +14,7 @@ import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -579,10 +580,17 @@ data class MapNearbyResponse(val success: Boolean, val places: List<NearbyPlaceD
 // details, and cash availability; customers only need a name, location and distance.
 data class NearbyAgentDto(val id: String, val displayName: String, val latitude: Double, val longitude: Double, val distanceKm: Double)
 data class NearbyAgentsResponse(val success: Boolean, val agents: List<NearbyAgentDto>)
-data class MapBookmarkDto(val id: String, val displayName: String, val latitude: Double, val longitude: Double, val createdAt: String)
+// folderName/color added 2026-07-22 -- see MapBookmark.kt's own doc comment on the
+// backend (migration V73). Every bookmark belongs to exactly one named folder with its
+// own pin color; a bookmark saved before this existed defaults into "Saved places" /
+// "#F5A623" (the same star-yellow the ★ icon already used).
+data class MapBookmarkDto(val id: String, val displayName: String, val latitude: Double, val longitude: Double, val folderName: String, val color: String, val createdAt: String)
 data class MapBookmarksResponse(val success: Boolean, val bookmarks: List<MapBookmarkDto>)
-data class AddMapBookmarkRequest(val displayName: String, val latitude: Double, val longitude: Double)
+data class AddMapBookmarkRequest(val displayName: String, val latitude: Double, val longitude: Double, val folderName: String? = null, val color: String? = null)
 data class AddMapBookmarkResponse(val success: Boolean, val bookmark: MapBookmarkDto)
+// Real "move to folder" (2026-07-22) -- see MapsService.moveBookmark's own doc comment.
+data class MoveMapBookmarkRequest(val folderName: String, val color: String)
+data class MoveMapBookmarkResponse(val success: Boolean, val bookmark: MapBookmarkDto)
 data class RemoveMapBookmarkResponse(val success: Boolean)
 
 data class MapPlaceCategory(val id: String, val label: String)
@@ -1095,6 +1103,10 @@ interface ApiService {
 
     @POST("api/v1/maps/bookmarks")
     suspend fun addMapBookmark(@Body request: AddMapBookmarkRequest): AddMapBookmarkResponse
+
+    // Real "move to folder" (2026-07-22) -- see MoveMapBookmarkRequest's own doc comment.
+    @PATCH("api/v1/maps/bookmarks")
+    suspend fun moveMapBookmark(@Query("lat") lat: Double, @Query("lng") lng: Double, @Body request: MoveMapBookmarkRequest): MoveMapBookmarkResponse
 
     @DELETE("api/v1/maps/bookmarks")
     suspend fun removeMapBookmark(@Query("lat") lat: Double, @Query("lng") lng: Double): RemoveMapBookmarkResponse

@@ -16,6 +16,30 @@ private let tilesURL = "http://192.168.252.3:8090/rwanda/{z}/{x}/{y}.mvt"
 // Nominatim despite being this host's fourth persistent private-cloud service).
 private let glyphsURL = "http://192.168.252.3:8091/{fontstack}/{range}.pbf"
 
+// Real bookmark-folder defaults/palette (2026-07-22) -- kept in sync by hand with
+// MapsService.DEFAULT_BOOKMARK_FOLDER/DEFAULT_BOOKMARK_COLOR on the backend, same plain-
+// literal convention as bank-mfe's/Android's own copies. A small fixed palette rather
+// than a full color picker, matching this app's own design-system palette.
+private let defaultBookmarkFolder = "Saved places"
+private let bookmarkColorPalette = ["#F5A623", "#3182F6", "#8B5CF6", "#E53935", "#22B07D", "#4E5968"]
+
+// Real hex-string -> Color parsing (2026-07-22) -- this codebase has no existing
+// Color(hex:) helper (checked: `extension Color` in BenefitsShopAllScreens.swift only
+// aliases IdsPalette constants), so this is a small, local, file-scoped parser rather
+// than a new app-wide Color extension for one feature.
+private func colorFromHex(_ hex: String) -> Color {
+    var sanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+    if sanitized.hasPrefix("#") { sanitized.removeFirst() }
+    guard sanitized.count == 6, let value = UInt64(sanitized, radix: 16) else {
+        return Color(red: 0.961, green: 0.651, blue: 0.137) // the default star-yellow, same fallback as the star icon's own hardcoded color
+    }
+    return Color(
+        red: Double((value >> 16) & 0xFF) / 255,
+        green: Double((value >> 8) & 0xFF) / 255,
+        blue: Double(value & 0xFF) / 255
+    )
+}
+
 // A real, minimal MapLibre style over itunda's own self-hosted vector tiles -- mirrors
 // bank-mfe's MapView.tsx MAP_STYLE / Android's MapScreen.kt MAP_STYLE_JSON exactly (same
 // source, same layer set, no text labels yet since that needs a separate self-hosted
@@ -184,6 +208,12 @@ struct MapScreenView: View {
     @State private var categoryResults: [NearbyPlaceDto]?
     @State private var bookmarks: [MapBookmarkDto] = []
     @State private var bookmarking = false
+    // Real folder/color picker (2026-07-22) -- ported from bank-mfe's own real save-time
+    // picker. `savingToFolder` holds whichever real place's picker is currently expanded
+    // (nil = closed).
+    @State private var savingToFolder: PlaceSearchResultDto?
+    @State private var folderNameInput = defaultBookmarkFolder
+    @State private var folderColorInput = bookmarkColorPalette[0]
     @StateObject private var locationFetcher = LocationFetcher()
 
     // Real draggable peek/half/full bottom sheet (2026-07-21) -- see
@@ -428,6 +458,14 @@ struct MapScreenView: View {
                                         }
                                         .disabled(bookmarking)
                                     }
+                                    // Real folder/color picker (2026-07-22) -- only
+                                    // expanded for the place actually being saved right
+                                    // now. Its own @ViewBuilder function, not inlined --
+                                    // same type-checker-timeout lesson as
+                                    // travelModeToggle()/routeAlternativesPicker(_:) below.
+                                    if let savingToFolder, savingToFolder.latitude == place.latitude, savingToFolder.longitude == place.longitude {
+                                        folderPicker()
+                                    }
                                     // Real driving/walking mode toggle (2026-07-22) --
                                     // same real Naver/Kakao Maps convention of picking a
                                     // travel mode before/after a route is drawn. Extracted
@@ -511,14 +549,23 @@ struct MapScreenView: View {
                                     if bookmarks.isEmpty {
                                         Text("No saved places yet -- tap ☆ on a place to save it.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                     } else {
-                                        ForEach(bookmarks) { bookmark in
-                                            Text(bookmark.displayName)
-                                                .font(.caption).foregroundColor(IDS.Colors.textPrimary)
+                                        let folders = bookmarksByFolder
+                                        ForEach(folders, id: \.0) { folderName, folderBookmarks in
+                                            if folders.count > 1 {
+                                                Text(folderName).font(.caption2).bold().foregroundColor(IDS.Colors.textSecondary).padding(.top, 4)
+                                            }
+                                            ForEach(folderBookmarks) { bookmark in
+                                                HStack(spacing: 6) {
+                                                    Circle().fill(colorFromHex(bookmark.color)).frame(width: 8, height: 8)
+                                                    Text(bookmark.displayName)
+                                                        .font(.caption).foregroundColor(IDS.Colors.textPrimary)
+                                                }
                                                 .frame(maxWidth: .infinity, alignment: .leading)
                                                 .padding(.vertical, 6)
                                                 .onTapGesture {
                                                     selectPlace(PlaceSearchResultDto(displayName: bookmark.displayName, latitude: bookmark.latitude, longitude: bookmark.longitude))
                                                 }
+                                            }
                                         }
                                     }
                                 }
@@ -613,6 +660,7 @@ struct MapScreenView: View {
         routeAlternatives = nil
         selectedRouteIndex = 0
         showSteps = false
+        savingToFolder = nil
     }
 
     // mode defaults to the currently-selected travelMode (2026-07-22) -- called both by
@@ -637,6 +685,47 @@ struct MapScreenView: View {
         } catch {
             self.error = "Could not find directions to this place."
         }
+    }
+
+    // Real folder/color picker (2026-07-22) -- ported from bank-mfe's own real save-time
+    // picker. Its own @ViewBuilder function from the start, learning from the
+    // travelModeToggle()/routeAlternativesPicker(_:) type-checker-timeout lesson below.
+    @ViewBuilder
+    private func folderPicker() -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            TextField("Folder name (e.g. Favorites)", text: $folderNameInput)
+                .font(.caption)
+                .padding(8)
+                .background(IdsPalette.white)
+                .cornerRadius(8)
+            HStack(spacing: 6) {
+                ForEach(bookmarkColorPalette, id: \.self) { hex in
+                    let active = folderColorInput == hex
+                    Circle()
+                        .fill(colorFromHex(hex))
+                        .frame(width: 22, height: 22)
+                        .overlay(Circle().stroke(IDS.Colors.textPrimary, lineWidth: active ? 2 : 0))
+                        .onTapGesture { folderColorInput = hex }
+                }
+            }
+            HStack(spacing: 6) {
+                Button(action: { Task { await confirmSaveToFolder() } }) {
+                    Text(bookmarking ? "Saving…" : "Save")
+                        .font(.subheadline).bold().foregroundColor(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 8)
+                        .background(IDS.Colors.brand).cornerRadius(8)
+                }
+                .disabled(bookmarking)
+                Button(action: { savingToFolder = nil }) {
+                    Text("Cancel").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
+                        .frame(maxWidth: .infinity).padding(.vertical, 8)
+                }
+                .disabled(bookmarking)
+            }
+        }
+        .padding(8)
+        .background(Color(red: 0.976, green: 0.980, blue: 0.988))
+        .cornerRadius(8)
     }
 
     // Real driving/walking mode toggle (2026-07-22) -- extracted into its own
@@ -714,20 +803,58 @@ struct MapScreenView: View {
     }
 
     private func toggleBookmark(_ place: PlaceSearchResultDto) async {
+        if isBookmarked(place) {
+            bookmarking = true
+            error = nil
+            defer { bookmarking = false }
+            do {
+                _ = try await NetworkClient.shared.removeMapBookmark(latitude: place.latitude, longitude: place.longitude)
+                bookmarks.removeAll { $0.latitude == place.latitude && $0.longitude == place.longitude }
+            } catch {
+                self.error = "Could not remove this place."
+            }
+            return
+        }
+        // Real folder/color picker (2026-07-22) -- opens inline rather than saving
+        // straight to the default folder, defaulting to whichever real folder was used
+        // last (ported from bank-mfe's own real save-time picker).
+        folderNameInput = bookmarks.first?.folderName ?? defaultBookmarkFolder
+        folderColorInput = bookmarks.first?.color ?? bookmarkColorPalette[0]
+        savingToFolder = place
+    }
+
+    private func confirmSaveToFolder() async {
+        guard let place = savingToFolder else { return }
         bookmarking = true
         error = nil
         defer { bookmarking = false }
         do {
-            if isBookmarked(place) {
-                _ = try await NetworkClient.shared.removeMapBookmark(latitude: place.latitude, longitude: place.longitude)
-                bookmarks.removeAll { $0.latitude == place.latitude && $0.longitude == place.longitude }
-            } else {
-                let saved = try await NetworkClient.shared.addMapBookmark(displayName: place.displayName, latitude: place.latitude, longitude: place.longitude).bookmark
-                bookmarks.insert(saved, at: 0)
-            }
+            let saved = try await NetworkClient.shared.addMapBookmark(
+                displayName: place.displayName, latitude: place.latitude, longitude: place.longitude,
+                folderName: folderNameInput, color: folderColorInput
+            ).bookmark
+            bookmarks.insert(saved, at: 0)
+            savingToFolder = nil
         } catch {
             self.error = "Could not save this place."
         }
+    }
+
+    // Real "My Places" folder grouping (2026-07-22) -- ported from bank-mfe's own real
+    // grouping. Preserves `bookmarks`' own createdAt-desc encounter order (a folder's
+    // position here is simply wherever its most-recently-saved place falls), not a
+    // separate alphabetic re-sort.
+    private var bookmarksByFolder: [(String, [MapBookmarkDto])] {
+        var order: [String] = []
+        var groups: [String: [MapBookmarkDto]] = [:]
+        for bookmark in bookmarks {
+            if groups[bookmark.folderName] == nil {
+                order.append(bookmark.folderName)
+                groups[bookmark.folderName] = []
+            }
+            groups[bookmark.folderName]?.append(bookmark)
+        }
+        return order.map { ($0, groups[$0] ?? []) }
     }
 }
 

@@ -128,6 +128,12 @@ import rw.itunda.app.network.ShoppingMerchantDto
 // coordinate fixture in this codebase (backend tests, bank-mfe's MapView.tsx) uses.
 private const val RWANDA_CENTER_LAT = -1.9441
 private const val RWANDA_CENTER_LNG = 30.0619
+// Real bookmark-folder defaults/palette (2026-07-22) -- kept in sync by hand with
+// MapsService.DEFAULT_BOOKMARK_FOLDER/DEFAULT_BOOKMARK_COLOR on the backend, same plain-
+// literal convention as bank-mfe's own copy. A small fixed palette rather than a full
+// color picker, matching this app's own design-system palette.
+private const val DEFAULT_BOOKMARK_FOLDER = "Saved places"
+private val BOOKMARK_COLOR_PALETTE = listOf("#F5A623", "#3182F6", "#8B5CF6", "#E53935", "#22B07D", "#4E5968")
 // Both driven by BuildConfig now (2026-07-21), not hardcoded to the private cloud's
 // internal-only 192.168.252.3 address -- see app/build.gradle.kts' TILES_BASE_URL/
 // GLYPHS_BASE_URL doc comment for why a physical device on the public HTTPS endpoint
@@ -329,6 +335,12 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
     var categoryResults by remember { mutableStateOf<List<NearbyPlaceDto>?>(null) }
     var bookmarks by remember { mutableStateOf<List<MapBookmarkDto>>(emptyList()) }
     var bookmarking by remember { mutableStateOf(false) }
+    // Real folder/color picker (2026-07-22) -- see MapBookmarkDto's own doc comment;
+    // ported from bank-mfe's own real save-time picker. `savingToFolder` holds whichever
+    // real place's picker is currently expanded (null = closed).
+    var savingToFolder by remember { mutableStateOf<PlaceSearchResultDto?>(null) }
+    var folderNameInput by remember { mutableStateOf(DEFAULT_BOOKMARK_FOLDER) }
+    var folderColorInput by remember { mutableStateOf(BOOKMARK_COLOR_PALETTE[0]) }
 
     // Real draggable bottom-sheet state (peek/half/full) -- see `MapSheetValue`'s own
     // doc comment. `density` is needed both here (for the velocity threshold, in real
@@ -452,19 +464,42 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
         bookmarks.any { it.latitude == place.latitude && it.longitude == place.longitude }
 
     fun toggleBookmark(place: PlaceSearchResultDto) {
+        if (isBookmarked(place)) {
+            coroutineScope.launch {
+                bookmarking = true
+                error = null
+                try {
+                    NetworkClient.apiService.removeMapBookmark(place.latitude, place.longitude)
+                    bookmarks = bookmarks.filterNot { it.latitude == place.latitude && it.longitude == place.longitude }
+                } catch (e: HttpException) {
+                    error = superAppErrorMessage(e)
+                } catch (e: Exception) {
+                    error = "Couldn't reach itunda. Check your connection and try again."
+                } finally {
+                    bookmarking = false
+                }
+            }
+            return
+        }
+        // Real folder/color picker (2026-07-22) -- opens inline rather than saving
+        // straight to the default folder, defaulting to whichever real folder was used
+        // last (ported from bank-mfe's own real save-time picker).
+        folderNameInput = bookmarks.firstOrNull()?.folderName ?: DEFAULT_BOOKMARK_FOLDER
+        folderColorInput = bookmarks.firstOrNull()?.color ?: BOOKMARK_COLOR_PALETTE[0]
+        savingToFolder = place
+    }
+
+    fun confirmSaveToFolder() {
+        val place = savingToFolder ?: return
         coroutineScope.launch {
             bookmarking = true
             error = null
             try {
-                if (isBookmarked(place)) {
-                    NetworkClient.apiService.removeMapBookmark(place.latitude, place.longitude)
-                    bookmarks = bookmarks.filterNot { it.latitude == place.latitude && it.longitude == place.longitude }
-                } else {
-                    val saved = NetworkClient.apiService.addMapBookmark(
-                        AddMapBookmarkRequest(place.displayName, place.latitude, place.longitude),
-                    ).bookmark
-                    bookmarks = listOf(saved) + bookmarks
-                }
+                val saved = NetworkClient.apiService.addMapBookmark(
+                    AddMapBookmarkRequest(place.displayName, place.latitude, place.longitude, folderNameInput, folderColorInput),
+                ).bookmark
+                bookmarks = listOf(saved) + bookmarks
+                savingToFolder = null
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
             } catch (e: Exception) {
@@ -838,6 +873,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                                             routeAlternatives = null
                                             selectedRouteIndex = 0
                                             showSteps = false
+                                            savingToFolder = null
                                         }
                                         .padding(horizontal = 14.dp, vertical = 10.dp),
                                 )
@@ -888,6 +924,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                                     routeAlternatives = null
                                     selectedRouteIndex = 0
                                     showSteps = false
+                                    savingToFolder = null
                                 }
                                 .padding(horizontal = 14.dp, vertical = 10.dp),
                         )
@@ -1026,6 +1063,58 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                                     color = if (isBookmarked(place)) androidx.compose.ui.graphics.Color(0xFFF5A623) else TossSecondary,
                                     modifier = Modifier.clickable(enabled = !bookmarking) { toggleBookmark(place) },
                                 )
+                            }
+                            // Real folder/color picker (2026-07-22) -- only expanded for
+                            // the place actually being saved right now, ported from
+                            // bank-mfe's own real save-time picker.
+                            if (savingToFolder != null && savingToFolder!!.latitude == place.latitude && savingToFolder!!.longitude == place.longitude) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(androidx.compose.ui.graphics.Color(0xFFF9FAFB), RoundedCornerShape(8.dp))
+                                        .padding(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    OutlinedTextField(
+                                        value = folderNameInput,
+                                        onValueChange = { folderNameInput = it },
+                                        placeholder = { Text("Folder name (e.g. Favorites)", fontSize = 12.sp) },
+                                        singleLine = true,
+                                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        BOOKMARK_COLOR_PALETTE.forEach { c ->
+                                            val color = try { androidx.compose.ui.graphics.Color(AndroidColor.parseColor(c)) } catch (_: Exception) { androidx.compose.ui.graphics.Color(0xFFF5A623) }
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(22.dp)
+                                                    .background(color, CircleShape)
+                                                    .then(
+                                                        if (folderColorInput == c) Modifier.border(2.dp, TossText, CircleShape) else Modifier,
+                                                    )
+                                                    .clickable { folderColorInput = c },
+                                            )
+                                        }
+                                    }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .background(TossBlue, RoundedCornerShape(8.dp))
+                                                .clickable(enabled = !bookmarking) { confirmSaveToFolder() }
+                                                .padding(vertical = 8.dp),
+                                            contentAlignment = androidx.compose.ui.Alignment.Center,
+                                        ) { Text(if (bookmarking) "Saving…" else "Save", color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp) }
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clickable(enabled = !bookmarking) { savingToFolder = null }
+                                                .padding(vertical = 8.dp),
+                                            contentAlignment = androidx.compose.ui.Alignment.Center,
+                                        ) { Text("Cancel", color = TossSecondary, fontSize = 13.sp) }
+                                    }
+                                }
                             }
                             if (isAgentCashDiscovery && activeCategory == "ITUNDA_AGENT") {
                                 Text(
@@ -1186,6 +1275,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                                                     route = null
                                                     routeAlternatives = null
                                                     selectedRouteIndex = 0
+                                                    savingToFolder = null
                                                 }
                                                 .padding(vertical = 6.dp),
                                         )
@@ -1210,21 +1300,46 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                             if (bookmarks.isEmpty()) {
                                 Text("No saved places yet -- tap ☆ on a place to save it.", fontSize = 12.sp, color = TossSecondary)
                             } else {
-                                bookmarks.forEach { bookmark ->
-                                    Text(
-                                        bookmark.displayName,
-                                        fontSize = 13.sp,
-                                        color = TossText,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable {
-                                                selectedPlace = PlaceSearchResultDto(bookmark.displayName, bookmark.latitude, bookmark.longitude)
-                                                route = null
-                                                routeAlternatives = null
-                                                selectedRouteIndex = 0
-                                            }
-                                            .padding(vertical = 6.dp),
-                                    )
+                                // Real "My Places" folder grouping (2026-07-22) --
+                                // ported from bank-mfe's own real grouping. groupBy
+                                // preserves encounter order, so a folder's position here
+                                // is simply wherever its most-recently-saved place falls
+                                // (bookmarks is already createdAt-desc), not a separate
+                                // alphabetic re-sort.
+                                val bookmarksByFolder = bookmarks.groupBy { it.folderName }
+                                bookmarksByFolder.forEach { (folderName, folderBookmarks) ->
+                                    if (bookmarksByFolder.size > 1) {
+                                        Text(
+                                            folderName, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TossSecondary,
+                                            modifier = Modifier.padding(top = 4.dp),
+                                        )
+                                    }
+                                    folderBookmarks.forEach { bookmark ->
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable {
+                                                    selectedPlace = PlaceSearchResultDto(bookmark.displayName, bookmark.latitude, bookmark.longitude)
+                                                    route = null
+                                                    routeAlternatives = null
+                                                    selectedRouteIndex = 0
+                                                    savingToFolder = null
+                                                }
+                                                .padding(vertical = 6.dp),
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(8.dp)
+                                                    .background(
+                                                        try { androidx.compose.ui.graphics.Color(AndroidColor.parseColor(bookmark.color)) } catch (_: Exception) { androidx.compose.ui.graphics.Color(0xFFF5A623) },
+                                                        CircleShape,
+                                                    ),
+                                            )
+                                            Text(bookmark.displayName, fontSize = 13.sp, color = TossText)
+                                        }
+                                    }
                                 }
                             }
                             Box(modifier = Modifier.height(24.dp))

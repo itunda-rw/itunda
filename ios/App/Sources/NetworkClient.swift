@@ -899,10 +899,17 @@ struct MerchantCategoriesResponse: Decodable { let success: Bool; let categories
 // mirrors bank-mfe's own hardcoded `NEARBY_CATEGORIES` list exactly.
 struct NearbyPlaceDto: Decodable { let displayName: String; let latitude: Double; let longitude: Double; let distanceKm: Double }
 struct MapNearbyResponse: Decodable { let success: Bool; let places: [NearbyPlaceDto] }
-struct MapBookmarkDto: Decodable, Identifiable { let id: String; let displayName: String; let latitude: Double; let longitude: Double; let createdAt: String }
+// folderName/color added 2026-07-22 -- see MapBookmark.kt's own doc comment on the
+// backend (migration V73). Every bookmark belongs to exactly one named folder with its
+// own pin color; a bookmark saved before this existed defaults into "Saved places" /
+// "#F5A623" (the same star-yellow the ★ icon already used).
+struct MapBookmarkDto: Decodable, Identifiable { let id: String; let displayName: String; let latitude: Double; let longitude: Double; let folderName: String; let color: String; let createdAt: String }
 struct MapBookmarksResponse: Decodable { let success: Bool; let bookmarks: [MapBookmarkDto] }
-struct AddMapBookmarkRequest: Encodable { let displayName: String; let latitude: Double; let longitude: Double }
+struct AddMapBookmarkRequest: Encodable { let displayName: String; let latitude: Double; let longitude: Double; let folderName: String?; let color: String? }
 struct AddMapBookmarkResponse: Decodable { let success: Bool; let bookmark: MapBookmarkDto }
+// Real "move to folder" (2026-07-22) -- see MapsService.moveBookmark's own doc comment.
+struct MoveMapBookmarkRequest: Encodable { let folderName: String; let color: String }
+struct MoveMapBookmarkResponse: Decodable { let success: Bool; let bookmark: MapBookmarkDto }
 
 struct MapPlaceCategory: Identifiable { let id: String; let label: String }
 let mapNearbyCategories: [MapPlaceCategory] = [
@@ -1487,8 +1494,30 @@ extension NetworkClient {
 
     func getMyMapBookmarks() async throws -> MapBookmarksResponse { try await get("api/v1/maps/bookmarks") }
 
-    func addMapBookmark(displayName: String, latitude: Double, longitude: Double) async throws -> AddMapBookmarkResponse {
-        try await authenticatedPost("api/v1/maps/bookmarks", body: AddMapBookmarkRequest(displayName: displayName, latitude: latitude, longitude: longitude))
+    func addMapBookmark(displayName: String, latitude: Double, longitude: Double, folderName: String? = nil, color: String? = nil) async throws -> AddMapBookmarkResponse {
+        try await authenticatedPost("api/v1/maps/bookmarks", body: AddMapBookmarkRequest(displayName: displayName, latitude: latitude, longitude: longitude, folderName: folderName, color: color))
+    }
+
+    // Real "move to folder" (2026-07-22) -- see MoveMapBookmarkRequest's own doc
+    // comment. A real query-param PATCH -- same manual-request pattern
+    // removeMapBookmark's own doc comment above already established for a query-param
+    // request this client's authenticated* helpers don't directly support.
+    func moveMapBookmark(latitude: Double, longitude: Double, folderName: String, color: String) async throws -> MoveMapBookmarkResponse {
+        var components = URLComponents(url: baseURL.appendingPathComponent("api/v1/maps/bookmarks"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [URLQueryItem(name: "lat", value: String(latitude)), URLQueryItem(name: "lng", value: String(longitude))]
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(MoveMapBookmarkRequest(folderName: folderName, color: color))
+        if let token = KeychainTokenStore.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
+        }
+        return try decoder.decode(MoveMapBookmarkResponse.self, from: data)
     }
 
     // A real query-param DELETE -- `authenticatedDelete(_:)` below takes no query, so
