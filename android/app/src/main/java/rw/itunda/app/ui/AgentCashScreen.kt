@@ -36,6 +36,7 @@ import java.util.UUID
 @Composable
 fun AgentCashScreen(onBack: () -> Unit) {
     var amountText by remember { mutableStateOf("") }
+    var pendingCreationKey by remember { mutableStateOf<String?>(null) }
     var authorizations by remember { mutableStateOf<List<AgentWithdrawalAuthorizationDto>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -50,7 +51,17 @@ fun AgentCashScreen(onBack: () -> Unit) {
         item { Text("Cash out at an Itunda agent", style = MaterialTheme.typography.headlineSmall) }
         item { Text("Create a one-time code, then show it to the agent only when they are ready to hand over cash. Codes expire in 10 minutes.") }
         item {
-            OutlinedTextField(amountText, { amountText = it }, label = { Text("Amount (RWF)") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(
+                amountText,
+                {
+                    amountText = it
+                    // Editing the amount is a new customer intent. Retrying unchanged
+                    // input after a timeout deliberately keeps the original key.
+                    pendingCreationKey = null
+                },
+                label = { Text("Amount (RWF)") },
+                modifier = Modifier.fillMaxWidth(),
+            )
             Spacer(Modifier.height(8.dp))
             Button(enabled = !busy, modifier = Modifier.fillMaxWidth(), onClick = {
                 val amount = amountText.toBigDecimalOrNull()
@@ -58,10 +69,12 @@ fun AgentCashScreen(onBack: () -> Unit) {
                 busy = true; error = null
                 scope.launch {
                     try {
+                        val key = pendingCreationKey ?: UUID.randomUUID().toString().also { pendingCreationKey = it }
                         NetworkClient.apiService.createAgentWithdrawalAuthorization(
-                            UUID.randomUUID().toString(), CreateAgentWithdrawalAuthorizationRequest(amount),
+                            key, CreateAgentWithdrawalAuthorizationRequest(amount),
                         )
                         amountText = ""
+                        pendingCreationKey = null
                         refresh()
                     }
                     catch (_: Exception) { error = "Could not create a code. You may already have three active codes." }
