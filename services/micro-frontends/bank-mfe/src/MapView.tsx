@@ -197,6 +197,16 @@ export default function MapView() {
 
   const [error, setError] = useState<string | null>(null);
   const [merchantCount, setMerchantCount] = useState<number | null>(null);
+  // Real merchant-pin enrichment (2026-07-22) -- itunda's own registered merchants
+  // already carry a real photo/rating/category/cashback rate (see ShoppingMerchant's own
+  // doc comment in lib/shopping.ts, all wired up for the Shop tab's browse cards), but
+  // tapping a merchant pin on the map only ever showed a plain-text business-name popup --
+  // none of that real data reached the map, unlike Naver/Kakao Maps' own real "tap a
+  // business pin -> see a rich place card" convention. Kept as its own list (not folded
+  // into `selectedPlace`, which only ever has displayName/lat/lng) so the detail sheet can
+  // look up a real match by coordinate and layer on enrichment when one exists, without
+  // changing what a plain Nominatim search result looks like.
+  const [merchants, setMerchants] = useState<ShoppingMerchant[]>([]);
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<PlaceSearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
@@ -354,15 +364,22 @@ export default function MapView() {
       });
 
     fetchShoppingCatalog()
-      .then((merchants: ShoppingMerchant[]) => {
+      .then((fetched: ShoppingMerchant[]) => {
         if (cancelled) return;
-        const located = merchants.filter((m) => m.latitude != null && m.longitude != null);
+        const located = fetched.filter((m) => m.latitude != null && m.longitude != null);
         located.forEach((m) => {
+          // Real tap-through to the full search/directions/bookmark sheet (2026-07-22)
+          // -- previously a merchant pin just showed a plain MapLibre popup with no
+          // further action; a real business pin now behaves exactly like tapping a
+          // search result, plus a real enrichment header (see the detail-sheet render
+          // below) since a merchant lookup by coordinate finds this real catalog entry.
           new maplibregl.Marker({ color: '#3182F6' })
             .setLngLat([m.longitude as number, m.latitude as number])
-            .setPopup(new maplibregl.Popup({ offset: 12 }).setText(m.businessName))
-            .addTo(map);
+            .addTo(map)
+            .getElement()
+            .addEventListener('click', () => selectPlace({ displayName: m.businessName, latitude: m.latitude as number, longitude: m.longitude as number }));
         });
+        setMerchants(located);
         setMerchantCount(located.length);
       })
       .catch(() => {
@@ -667,6 +684,13 @@ export default function MapView() {
     applyRoute(routeAlternatives[index]);
   };
 
+  // Real merchant-pin enrichment lookup (2026-07-22) -- see the `merchants` state's own
+  // doc comment. A plain Nominatim search/nearby result has no matching entry here, so
+  // the detail sheet below only shows the enrichment header for a real itunda merchant.
+  const selectedMerchant = selectedPlace
+    ? merchants.find((m) => m.latitude === selectedPlace.latitude && m.longitude === selectedPlace.longitude)
+    : undefined;
+
   const sheetTop = sheetY ?? peekAnchorY;
 
   return (
@@ -871,6 +895,33 @@ export default function MapView() {
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {selectedPlace ? (
             <>
+              {/* Real merchant-pin enrichment (2026-07-22) -- only rendered for a real
+                  itunda merchant pin, matching Naver/Kakao Maps' own real "tap a business
+                  pin -> see a rich place card" convention. A plain Nominatim search result
+                  still renders exactly as it did before this feature existed. */}
+              {selectedMerchant && (
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  {selectedMerchant.photoUrl && (
+                    <img
+                      src={selectedMerchant.photoUrl}
+                      alt=""
+                      style={{ width: '48px', height: '48px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0 }}
+                    />
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '12px', color: MAP_CARD_TEXT_SECONDARY }}>
+                    {selectedMerchant.rating != null && (
+                      <span>★ {selectedMerchant.rating.toFixed(1)} ({selectedMerchant.reviewCount ?? 0})</span>
+                    )}
+                    {(selectedMerchant.category || selectedMerchant.cashbackRate) && (
+                      <span>
+                        {selectedMerchant.category}
+                        {selectedMerchant.category && selectedMerchant.cashbackRate ? ' · ' : ''}
+                        {selectedMerchant.cashbackRate ? `${selectedMerchant.cashbackRate} cashback` : ''}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                 <p style={{ fontSize: '14px', fontWeight: 700, color: MAP_CARD_TEXT, flex: 1 }}>{selectedPlace.displayName}</p>
                 <button
