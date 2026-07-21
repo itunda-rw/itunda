@@ -1,0 +1,31 @@
+package rw.itunda.core.idempotency
+
+import com.fasterxml.jackson.databind.ObjectMapper
+import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.shouldBe
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
+
+class IdempotencyServiceTest : BehaviorSpec({
+    Given("a completed withdrawal-code request with the same idempotency key") {
+        val claimStore = mockk<IdempotencyClaimStore>()
+        val repository = mockk<IdempotencyRecordRepository>()
+        val service = IdempotencyService(claimStore, repository, ObjectMapper())
+        every { claimStore.claim(any(), any()) } returns ClaimOutcome.Replay(
+            IdempotentReplay(201, mapOf("success" to true, "authorization" to mapOf("code" to "A1B2C3D4E5F6"))),
+        )
+
+        When("the mobile client retries the request") {
+            val result = service.replayOrExecute(
+                "POST /api/v1/wallet/agent-withdrawal-authorizations", "retry-key", mapOf("amount" to 5000),
+            ) { error("a replay must not create a second authorization") }
+
+            Then("it returns the original response without executing the money action") {
+                result.first shouldBe 201
+                result.second["success"] shouldBe true
+                verify(exactly = 0) { repository.save(any()) }
+            }
+        }
+    }
+})
