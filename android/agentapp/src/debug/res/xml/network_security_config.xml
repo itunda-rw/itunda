@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <!-- Debug only: trust the current Itunda private-cloud edge certificate. -->
+            <certificates src="@raw/itunda_private_cloud_edge" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
