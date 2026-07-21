@@ -158,6 +158,7 @@ struct HoodScreen: View {
     private enum HoodMode { case marketplace, community, jobs, property }
     @State private var mode: HoodMode = .marketplace
     @State private var neighborhoodName: String?
+    @State private var neighborhoodVerificationCount = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -173,7 +174,7 @@ struct HoodScreen: View {
 
             HStack(spacing: 6) {
                 Text("📍")
-                Text(neighborhoodName.map { "Near \($0)" } ?? "Choose your neighborhood in any Hood service")
+                Text(neighborhoodName.map { neighborhoodVerificationCount > 0 ? "Near \($0) · location confirmed" : "Near \($0)" } ?? "Choose your neighborhood in any Hood service")
                     .font(IDS.Typography.caption)
                     .foregroundColor(IDS.Colors.textSecondary)
                 Spacer()
@@ -194,7 +195,10 @@ struct HoodScreen: View {
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .task {
-            neighborhoodName = try? await NetworkClient.shared.getProfile().user.neighborhood
+            if let profile = try? await NetworkClient.shared.getProfile() {
+                neighborhoodName = profile.user.neighborhood
+                neighborhoodVerificationCount = profile.user.neighborhoodVerificationCount ?? 0
+            }
         }
     }
 }

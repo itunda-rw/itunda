@@ -232,6 +232,8 @@ class AuthService(
         val neighborhood = nominatimGeocodingClient.reverseGeocode(latitude, longitude)
             ?: throw NeighborhoodNotResolvedException("Couldn't determine a neighborhood for this location")
         user.neighborhood = neighborhood
+        user.neighborhoodVerifiedAt = Instant.now()
+        user.neighborhoodVerificationCount += 1
         userRepository.save(user)
         return user.toPublic()
     }
@@ -299,6 +301,7 @@ class AuthService(
         id = id, phoneNumber = phoneNumber, email = email, firstName = firstName,
         lastName = lastName, kycVerified = kycVerified, creditScore = creditScore, createdAt = createdAt,
         referralCode = referralCode, profilePhotoUrl = profilePhotoUrl, emailVerified = emailVerified,
-        neighborhood = neighborhood,
+        neighborhood = neighborhood, neighborhoodVerifiedAt = neighborhoodVerifiedAt,
+        neighborhoodVerificationCount = neighborhoodVerificationCount,
     )
 }

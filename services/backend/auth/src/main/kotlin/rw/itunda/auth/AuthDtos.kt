@@ -41,6 +41,8 @@ data class PublicUser(
     val profilePhotoUrl: String?,
     val emailVerified: Boolean,
     val neighborhood: String?,
+    val neighborhoodVerifiedAt: Instant? = null,
+    val neighborhoodVerificationCount: Int = 0,
 )
 
 data class AuthResponse(

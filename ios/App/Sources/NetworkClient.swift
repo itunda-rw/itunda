@@ -47,6 +47,8 @@ struct PublicUser: Decodable {
     // doc comment. Set via a real coordinate, reverse-geocoded server-side; never
     // self-declared free text.
     let neighborhood: String?
+    let neighborhoodVerifiedAt: String?
+    let neighborhoodVerificationCount: Int?
 }
 
 struct SetNeighborhoodRequest: Encodable {

@@ -74,6 +74,15 @@ class User(
     // free text, so it can't drift from where the user actually is.
     @Column(name = "neighborhood", length = 120)
     var neighborhood: String? = null,
+
+    // Evidence from the actual location-confirmation flow, not a self-declared badge.
+    // `neighborhoodVerificationCount` lets clients describe repeat confirmation without
+    // retaining a user's precise historical coordinates.
+    @Column(name = "neighborhood_verified_at")
+    var neighborhoodVerifiedAt: Instant? = null,
+
+    @Column(name = "neighborhood_verification_count", nullable = false)
+    var neighborhoodVerificationCount: Int = 0,
 ) {
     // JPA requires a no-arg constructor; Kotlin generates one only when every
     // property has a default, which id/phoneNumber/etc. intentionally don't.
