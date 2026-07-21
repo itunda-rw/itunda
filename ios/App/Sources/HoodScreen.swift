@@ -818,6 +818,8 @@ private struct CommunityContent: View {
     @State private var neighborhoodChecked = false
     @StateObject private var locationFetcher = HoodLocationFetcher()
     private let currentUserId = KeychainTokenStore.shared.getUserId()
+    @State private var favoriteIds: Set<String> = []
+    @State private var favoritingId: String?
 
     var body: some View {
         if let openPostId {
@@ -1273,7 +1275,7 @@ private struct JobsContent: View {
     @Binding var pendingConversationId: String?
     let onSwitchToTalk: () -> Void
 
-    private enum JobsView { case browse, nearby, neighborhood, mine }
+    private enum JobsView { case browse, nearby, neighborhood, mine, wishlist }
 
     @State private var view: JobsView = .browse
     @State private var categories: [JobCategoryDto] = []
@@ -1293,7 +1295,8 @@ private struct JobsContent: View {
                         Text("Find work").tag(JobsView.browse)
                         Text("Near me").tag(JobsView.nearby)
                         Text("Neighborhood").tag(JobsView.neighborhood)
-                    Text("My posts").tag(JobsView.mine)
+                        Text("My posts").tag(JobsView.mine)
+                        Text("Saved").tag(JobsView.wishlist)
                 }
                 .pickerStyle(.segmented)
 
@@ -1347,7 +1350,9 @@ private struct JobsContent: View {
                 if view == .neighborhood, let neighborhoodName {
                     Text("Your neighborhood: \(neighborhoodName)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                 }
-                if let error {
+                if view == .wishlist {
+                    JobPostWishlistView(onRemoved: { Task { await loadFavoriteIds() } })
+                } else if let error {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(error).foregroundColor(.red).font(.subheadline)
                         Button("Retry") { Task { await load() } }
@@ -1369,7 +1374,10 @@ private struct JobsContent: View {
                             categoryLabel: categories.first(where: { $0.id == post.category })?.label ?? post.category,
                             isMine: view == .mine || post.posterId == currentUserId,
                             onChanged: { Task { await load() } },
-                            onContact: { Task { await contact(post.id) } }
+                            onContact: { Task { await contact(post.id) } },
+                            favorited: favoriteIds.contains(post.id),
+                            favoriteBusy: favoritingId == post.id,
+                            onToggleFavorite: { Task { await toggleFavorite(post.id) } }
                         )
                     }
                 }
@@ -1386,6 +1394,7 @@ private struct JobsContent: View {
             await load()
             locationFetcher.onLocation = { coordinate in Task { await loadNearby(coordinate) } }
         }
+        .task { await loadFavoriteIds() }
         .onChange(of: view) { _ in Task { await load() } }
         .onChange(of: activeCategory) { _ in Task { await load() } }
         .onChange(of: locationFetcher.errorMessage) { message in
@@ -1397,6 +1406,11 @@ private struct JobsContent: View {
 
     private func load() async {
         posts = nil
+        if view == .wishlist {
+            posts = []
+            error = nil
+            return
+        }
         if view == .nearby {
             locationFetcher.requestLocation()
             return
@@ -1439,6 +1453,28 @@ private struct JobsContent: View {
         }
     }
 
+    private func loadFavoriteIds() async {
+        if let favorites = try? await NetworkClient.shared.getMyFavoriteJobPosts().favorites {
+            favoriteIds = Set(favorites.map(\.jobPostId))
+        }
+    }
+
+    private func toggleFavorite(_ jobPostId: String) async {
+        favoritingId = jobPostId
+        defer { favoritingId = nil }
+        do {
+            if favoriteIds.contains(jobPostId) {
+                _ = try await NetworkClient.shared.removeJobPostFavorite(jobPostId)
+                favoriteIds.remove(jobPostId)
+            } else {
+                _ = try await NetworkClient.shared.addJobPostFavorite(jobPostId)
+                favoriteIds.insert(jobPostId)
+            }
+        } catch {
+            error = "Couldn't update your saved jobs. Check your connection and try again."
+        }
+    }
+
     private func contact(_ jobPostId: String) async {
         do {
             let res = try await NetworkClient.shared.contactPoster(jobPostId)
@@ -1446,6 +1482,73 @@ private struct JobsContent: View {
             onSwitchToTalk()
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+}
+
+private struct JobPostWishlistView: View {
+    let onRemoved: () -> Void
+
+    @State private var favorites: [FavoriteJobPostDto]?
+    @State private var error: String?
+    @State private var removingId: String?
+
+    var body: some View {
+        Group {
+            if let error {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(error).foregroundColor(.red).font(.subheadline)
+                    Button("Retry") { Task { await load() } }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+            } else if favorites == nil {
+                HoodFeedSkeleton()
+            } else if favorites!.isEmpty {
+                Text("No saved jobs yet — tap ♡ on a job to keep it here.")
+                    .foregroundColor(IDS.Colors.textSecondary)
+            } else {
+                ForEach(favorites!) { favorite in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(favorite.title).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                            Text("\(favorite.category) · \(Int(favorite.payAmount)) RWF")
+                                .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                        Spacer()
+                        Button(action: { Task { await remove(favorite.jobPostId) } }) {
+                            Text(removingId == favorite.jobPostId ? "Removing…" : "Remove")
+                                .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                .padding(.horizontal, 12).padding(.vertical, 8)
+                                .background(IDS.Colors.chipBackground).cornerRadius(10)
+                        }
+                        .disabled(removingId != nil)
+                    }
+                    .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                }
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        do {
+            favorites = try await NetworkClient.shared.getMyFavoriteJobPosts().favorites
+            error = nil
+        } catch {
+            error = "Couldn't load your saved jobs. Check your connection and try again."
+        }
+    }
+
+    private func remove(_ jobPostId: String) async {
+        removingId = jobPostId
+        defer { removingId = nil }
+        do {
+            _ = try await NetworkClient.shared.removeJobPostFavorite(jobPostId)
+            favorites?.removeAll { $0.jobPostId == jobPostId }
+            onRemoved()
+        } catch {
+            error = "Couldn't remove this saved job. Check your connection and try again."
         }
     }
 }
@@ -1561,6 +1664,9 @@ private struct JobPostCard: View {
     let isMine: Bool
     let onChanged: () -> Void
     let onContact: () -> Void
+    var favorited: Bool = false
+    var favoriteBusy: Bool = false
+    var onToggleFavorite: () -> Void = {}
 
     @State private var busy = false
     @State private var error: String?
@@ -1586,6 +1692,14 @@ private struct JobPostCard: View {
                     }
                 }
                 Spacer()
+                if !isMine {
+                    Button(action: onToggleFavorite) {
+                        Image(systemName: favorited ? "heart.fill" : "heart")
+                            .foregroundColor(favorited ? .red : IDS.Colors.textSecondary)
+                    }
+                    .disabled(favoriteBusy)
+                    .padding(.trailing, 6)
+                }
                 Text(payLabel).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
             }
             Text(post.title).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)

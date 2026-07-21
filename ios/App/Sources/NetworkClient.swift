@@ -709,6 +709,16 @@ struct FavoriteListingDto: Decodable, Identifiable {
 }
 struct FavoriteListingsResponse: Decodable { let success: Bool; let favorites: [FavoriteListingDto] }
 
+struct FavoriteJobPostDto: Decodable, Identifiable {
+    let jobPostId: String
+    let title: String
+    let payAmount: Double
+    let category: String
+    let favoritedAt: String
+    var id: String { jobPostId }
+}
+struct FavoriteJobPostsResponse: Decodable { let success: Bool; let favorites: [FavoriteJobPostDto] }
+
 // Real KakaoTalk-style "선물하기" money gift (2026-07-20) -- see GiftService's own doc
 // comment. Money leaves the sender's wallet into a real escrow account the moment a
 // gift is sent, and only reaches the recipient's wallet once they explicitly claim it
@@ -1382,6 +1392,16 @@ extension NetworkClient {
     }
 
     func getMyJobPosts() async throws -> JobPostsResponse { try await get("api/v1/jobs/my-posts") }
+
+    func addJobPostFavorite(_ jobPostId: String) async throws -> SuccessResponse {
+        try await authenticatedPost("api/v1/jobs/posts/\(jobPostId)/favorite", body: EmptyBody())
+    }
+
+    func removeJobPostFavorite(_ jobPostId: String) async throws -> SuccessResponse {
+        try await authenticatedDelete("api/v1/jobs/posts/\(jobPostId)/favorite")
+    }
+
+    func getMyFavoriteJobPosts() async throws -> FavoriteJobPostsResponse { try await get("api/v1/jobs/posts/favorites") }
 
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see setNeighborhood.
     func getJobPostsMyNeighborhood(category: String? = nil) async throws -> JobPostsResponse {
