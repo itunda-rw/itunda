@@ -1139,7 +1139,7 @@ private struct JobsContent: View {
     @Binding var pendingConversationId: String?
     let onSwitchToTalk: () -> Void
 
-    private enum JobsView { case browse, neighborhood, mine }
+    private enum JobsView { case browse, nearby, neighborhood, mine }
 
     @State private var view: JobsView = .browse
     @State private var categories: [JobCategoryDto] = []
@@ -1149,14 +1149,16 @@ private struct JobsContent: View {
     @State private var showNewPost = false
     @State private var neighborhoodName: String?
     @State private var neighborhoodChecked = false
+    @StateObject private var locationFetcher = HoodLocationFetcher()
     private let currentUserId = KeychainTokenStore.shared.getUserId()
 
     var body: some View {
         ScrollView {
             VStack(spacing: IDS.Layout.cardGap) {
-                Picker("", selection: $view) {
-                    Text("Find work").tag(JobsView.browse)
-                    Text("Neighborhood").tag(JobsView.neighborhood)
+                    Picker("", selection: $view) {
+                        Text("Find work").tag(JobsView.browse)
+                        Text("Near me").tag(JobsView.nearby)
+                        Text("Neighborhood").tag(JobsView.neighborhood)
                     Text("My posts").tag(JobsView.mine)
                 }
                 .pickerStyle(.segmented)
@@ -1248,6 +1250,7 @@ private struct JobsContent: View {
                 categories = (try? await NetworkClient.shared.getJobCategories().categories) ?? []
             }
             await load()
+            locationFetcher.onLocation = { coordinate in Task { await loadNearby(coordinate) } }
         }
         .onChange(of: view) { _ in Task { await load() } }
         .onChange(of: activeCategory) { _ in Task { await load() } }
@@ -1255,6 +1258,10 @@ private struct JobsContent: View {
 
     private func load() async {
         posts = nil
+        if view == .nearby {
+            locationFetcher.requestLocation()
+            return
+        }
         if view == .neighborhood {
             neighborhoodChecked = false
             do {
@@ -1279,6 +1286,17 @@ private struct JobsContent: View {
             error = nil
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func loadNearby(_ coordinate: CLLocationCoordinate2D) async {
+        do {
+            let res = try await NetworkClient.shared.getNearbyJobPosts(lat: coordinate.latitude, lng: coordinate.longitude)
+            posts = res.posts
+            error = nil
+        } catch {
+            self.error = "Couldn't load nearby work. Check your connection and try again."
+            posts = []
         }
     }
 
