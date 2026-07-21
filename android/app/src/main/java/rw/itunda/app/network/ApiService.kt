@@ -1035,6 +1035,13 @@ interface ApiService {
         @Query("propertyType") propertyType: String? = null,
     ): PropertyListingsResponse
 
+    @GET("api/v1/realestate/listings/nearby")
+    suspend fun getNearbyPropertyListings(
+        @Query("latitude") latitude: Double,
+        @Query("longitude") longitude: Double,
+        @Query("radiusKm") radiusKm: Double = 3.0,
+    ): PropertyListingsResponse
+
     @GET("api/v1/realestate/my-listings")
     suspend fun getMyPropertyListings(): PropertyListingsResponse
 

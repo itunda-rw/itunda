@@ -2877,7 +2877,7 @@ private fun JobPostCard(post: JobPostDto, categoryLabel: String, isMine: Boolean
 
 // ============================== PROPERTY (당근부동산) ==============================
 
-private enum class PropertyView { BROWSE, NEIGHBORHOOD, MINE }
+private enum class PropertyView { BROWSE, NEARBY, NEIGHBORHOOD, MINE }
 
 @Composable
 private fun PropertyContent(onMessageLister: (String) -> Unit) {
@@ -2892,6 +2892,26 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
     var neighborhoodChecked by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
+    val requestNearbyLocation = rememberRealLocationRequester(
+        onLocating = {},
+        onSuccess = { lat, lng ->
+            listings = null
+            coroutineScope.launch {
+                try {
+                    val res = NetworkClient.apiService.getNearbyPropertyListings(lat, lng)
+                    if (res.success) listings = res.listings
+                    error = null
+                } catch (e: HttpException) {
+                    error = superAppErrorMessage(e)
+                    listings = emptyList()
+                } catch (e: IOException) {
+                    error = "Couldn't load nearby properties. Check your connection and try again."
+                    listings = emptyList()
+                }
+            }
+        },
+        onError = { message -> error = "$message You can still use Browse or Neighborhood."; listings = emptyList() },
+    )
 
     LaunchedEffect(Unit) {
         try { propertyTypes = NetworkClient.apiService.getPropertyTypes().propertyTypes } catch (e: Exception) { /* chips just won't render */ }
@@ -2899,6 +2919,10 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
 
     fun load() {
         listings = null
+        if (view == PropertyView.NEARBY) {
+            requestNearbyLocation()
+            return
+        }
         if (view == PropertyView.NEIGHBORHOOD) {
             neighborhoodChecked = false
             coroutineScope.launch {
@@ -2952,7 +2976,7 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
     ) {
         item {
             Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
-                listOf(PropertyView.BROWSE to "Browse", PropertyView.NEIGHBORHOOD to "Neighborhood", PropertyView.MINE to "My listings").forEach { (v, label) ->
+                listOf(PropertyView.BROWSE to "Browse", PropertyView.NEARBY to "Near me", PropertyView.NEIGHBORHOOD to "Neighborhood", PropertyView.MINE to "My listings").forEach { (v, label) ->
                     val selected = v == view
                     Text(
                         label,
@@ -3032,6 +3056,7 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
                 Text(
                     when (view) {
                         PropertyView.BROWSE -> "No properties listed yet."
+                        PropertyView.NEARBY -> "No properties near you yet."
                         PropertyView.NEIGHBORHOOD -> "No properties in your neighborhood yet."
                         PropertyView.MINE -> "You haven't listed any properties yet."
                     },
