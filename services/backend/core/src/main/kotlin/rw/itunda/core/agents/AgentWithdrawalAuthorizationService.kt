@@ -89,9 +89,13 @@ class AgentWithdrawalAuthorizationService(
     fun cancel(userId: String, code: String): AgentWithdrawalAuthorization {
         val authorization = repository.findByCode(code.trim().uppercase())
             ?: throw WithdrawalAuthorizationInvalidException("Withdrawal authorization is invalid")
-        if (authorization.userId != userId || authorization.consumedAt != null || authorization.cancelledAt != null || authorization.expiresAt.isBefore(Instant.now())) {
+        if (authorization.userId != userId || authorization.consumedAt != null || authorization.expiresAt.isBefore(Instant.now())) {
             throw WithdrawalAuthorizationInvalidException("Withdrawal authorization cannot be cancelled")
         }
+        // Cancellation is safe to retry: a customer can lose the HTTP response after
+        // the first request commits, and should see the already-cancelled result on
+        // the next tap rather than being told their valid cancellation "failed".
+        if (authorization.cancelledAt != null) return authorization
         authorization.cancelledAt = Instant.now()
         return authorization
     }

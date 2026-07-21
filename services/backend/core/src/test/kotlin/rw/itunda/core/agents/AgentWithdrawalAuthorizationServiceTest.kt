@@ -110,4 +110,15 @@ class AgentWithdrawalAuthorizationServiceTest : BehaviorSpec({
             verify(exactly = 0) { repository.save(any()) }
         }
     }
+
+    Given("a code that was already cancelled by its owner") {
+        val repository = mockk<AgentWithdrawalAuthorizationRepository>()
+        val service = AgentWithdrawalAuthorizationService(repository, mockk())
+        val cancelled = authorization("cancelled_1", "CANCEL000001").apply { cancelledAt = Instant.now() }
+        every { repository.findByCode("CANCEL000001") } returns cancelled
+
+        Then("a retry returns the existing cancellation rather than failing") {
+            service.cancel("user_1", "cancel000001") shouldBe cancelled
+        }
+    }
 })
