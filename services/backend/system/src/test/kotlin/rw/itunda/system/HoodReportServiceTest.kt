@@ -10,12 +10,16 @@ import io.mockk.verify
 import rw.itunda.core.domain.HoodReport
 import rw.itunda.core.domain.HoodReportStatus
 import rw.itunda.core.domain.HoodReportTargetType
+import rw.itunda.core.domain.JobPayType
+import rw.itunda.core.domain.JobPost
+import rw.itunda.core.domain.JobPostStatus
 import rw.itunda.core.repository.HoodReportRepository
 import rw.itunda.core.repository.ListingRepository
 import rw.itunda.core.repository.CommunityPostRepository
 import rw.itunda.core.repository.JobPostRepository
 import rw.itunda.core.repository.PropertyListingRepository
 import java.util.Optional
+import java.math.BigDecimal
 
 class HoodReportServiceTest : BehaviorSpec({
     Given("an open report for a job") {
@@ -76,6 +80,29 @@ class HoodReportServiceTest : BehaviorSpec({
                     )
                 }
                 verify(exactly = 0) { repository.save(any()) }
+            }
+        }
+    }
+
+    Given("a substantiated job report") {
+        val repository = mockk<HoodReportRepository>()
+        val jobs = mockk<JobPostRepository>()
+        val service = HoodReportService(repository, mockk(), mockk(), jobs, mockk())
+        val report = HoodReport("report_3", "user_3", HoodReportTargetType.JOB_POST, "job_3", "Asks for a fee")
+        val job = JobPost("job_3", "poster_1", "cleaning", "Cleaner needed", "Bring supplies", JobPayType.FIXED, BigDecimal("3000"))
+
+        When("an administrator removes the reported job") {
+            every { repository.findById("report_3") } returns Optional.of(report)
+            every { jobs.findById("job_3") } returns Optional.of(job)
+            every { jobs.save(any()) } answers { firstArg() }
+            every { repository.save(any()) } answers { firstArg() }
+            val resolved = service.removeTarget("report_3", "admin_1")
+
+            Then("the job is hidden and the decision is audited") {
+                job.status shouldBe JobPostStatus.REMOVED
+                resolved.status shouldBe HoodReportStatus.RESOLVED
+                resolved.reviewedBy shouldBe "admin_1"
+                verify { jobs.save(job) }
             }
         }
     }

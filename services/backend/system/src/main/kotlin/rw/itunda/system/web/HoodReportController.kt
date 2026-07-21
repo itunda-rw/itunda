@@ -50,6 +50,13 @@ class HoodReportAdminController(private val hoodReportService: HoodReportService
     fun resolve(@PathVariable id: String, @AuthenticationPrincipal user: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true, "report" to hoodReportService.resolve(id, user.userId)))
 
+    @PostMapping("/{id}/remove-target")
+    fun removeTarget(@PathVariable id: String, @AuthenticationPrincipal user: CurrentUser) =
+        ResponseEntity.ok(mapOf("success" to true, "report" to hoodReportService.removeTarget(id, user.userId)))
+
     @ExceptionHandler(HoodReportNotFoundException::class)
     fun missing(ex: HoodReportNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("HOOD_REPORT_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(HoodReportTargetNotFoundException::class)
+    fun targetMissing(ex: HoodReportTargetNotFoundException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("HOOD_REPORT_TARGET_NOT_FOUND", ex.message ?: "Not found"))
 }
