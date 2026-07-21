@@ -526,6 +526,10 @@ data class MerchantCategoriesResponse(val success: Boolean, val categories: List
 // mirrors bank-mfe's own hardcoded `NEARBY_CATEGORIES` list exactly.
 data class NearbyPlaceDto(val displayName: String, val latitude: Double, val longitude: Double, val distanceKm: Double)
 data class MapNearbyResponse(val success: Boolean, val places: List<NearbyPlaceDto>)
+// Public-safe cash-point discovery. The backend deliberately omits tills, operator
+// details, and cash availability; customers only need a name, location and distance.
+data class NearbyAgentDto(val id: String, val displayName: String, val latitude: Double, val longitude: Double, val distanceKm: Double)
+data class NearbyAgentsResponse(val success: Boolean, val agents: List<NearbyAgentDto>)
 data class MapBookmarkDto(val id: String, val displayName: String, val latitude: Double, val longitude: Double, val createdAt: String)
 data class MapBookmarksResponse(val success: Boolean, val bookmarks: List<MapBookmarkDto>)
 data class AddMapBookmarkRequest(val displayName: String, val latitude: Double, val longitude: Double)
@@ -544,6 +548,7 @@ val MAP_NEARBY_CATEGORIES = listOf(
     MapPlaceCategory("SUPERMARKET", "Supermarkets"),
     MapPlaceCategory("GAS_STATION", "Gas stations"),
     MapPlaceCategory("SCHOOL", "Schools"),
+    MapPlaceCategory("ITUNDA_AGENT", "Itunda agents"),
 )
 
 // Mirrors services/backend/core's real MerchantProduct entity exactly.
@@ -1001,6 +1006,13 @@ interface ApiService {
         @Query("lng") lng: Double,
         @Query("radiusKm") radiusKm: Double = 2.0,
     ): MapNearbyResponse
+
+    @GET("api/v1/agents/nearby")
+    suspend fun searchNearbyAgents(
+        @Query("latitude") latitude: Double,
+        @Query("longitude") longitude: Double,
+        @Query("radiusKm") radiusKm: Double = 5.0,
+    ): NearbyAgentsResponse
 
     @GET("api/v1/maps/bookmarks")
     suspend fun getMyMapBookmarks(): MapBookmarksResponse

@@ -156,7 +156,7 @@ private const val NEARBY_ICON_ID = "nearby-pin"
 private val MAP_CATEGORY_ICONS = mapOf(
     "RESTAURANT" to "🍽️", "CAFE" to "☕", "HOSPITAL" to "🏥", "PHARMACY" to "💊",
     "BANK" to "🏦", "ATM" to "🏧", "HOTEL" to "🏨", "SUPERMARKET" to "🛒",
-    "GAS_STATION" to "⛽", "SCHOOL" to "🏫",
+    "GAS_STATION" to "⛽", "SCHOOL" to "🏫", "ITUNDA_AGENT" to "💜",
 )
 
 // Real teardrop pin markers (2026-07-21), replacing the flat, unlabeled `CircleLayer`
@@ -435,7 +435,13 @@ fun MapScreen(onBack: () -> Unit) {
             categoryLoading = true
             error = null
             try {
-                categoryResults = NetworkClient.apiService.searchNearbyPlaces(categoryId, center.first, center.second).places
+                categoryResults = if (categoryId == "ITUNDA_AGENT") {
+                    NetworkClient.apiService.searchNearbyAgents(center.first, center.second).agents.map {
+                        NearbyPlaceDto(it.displayName, it.latitude, it.longitude, it.distanceKm)
+                    }
+                } else {
+                    NetworkClient.apiService.searchNearbyPlaces(categoryId, center.first, center.second).places
+                }
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
                 activeCategory = null
