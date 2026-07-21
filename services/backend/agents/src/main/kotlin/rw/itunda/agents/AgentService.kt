@@ -393,7 +393,18 @@ class AgentService(
     private fun getForUpdate(agentId: String): Agent = agentRepository.findByIdForUpdate(agentId)
         .orElseThrow { AgentNotFoundException("Agent not found") }
 
-    private fun activeOperator(userId: String): AgentOperator = agentOperatorRepository.findByUserId(userId)
-        ?.takeIf { it.isActive }
-        ?: throw AgentOperatorNotAuthorizedException("This account is not an active agent operator")
+    /**
+     * An operator assignment alone is not enough to operate a cash location.  Keeping
+     * this check here, rather than only on cash-in/out, makes an agent suspension a
+     * complete operational stop: the assigned account cannot inspect a till, submit a
+     * count, or continue using the operator app while a review is in progress.
+     */
+    private fun activeOperator(userId: String): AgentOperator {
+        val operator = agentOperatorRepository.findByUserId(userId)
+            ?.takeIf { it.isActive }
+            ?: throw AgentOperatorNotAuthorizedException("This account is not an active agent operator")
+        val agent = get(operator.agentId)
+        if (agent.status != AgentStatus.ACTIVE) throw AgentSuspendedException("This agent is suspended")
+        return operator
+    }
 }
