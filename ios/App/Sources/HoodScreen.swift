@@ -1337,6 +1337,7 @@ private struct JobPostCard: View {
 
     @State private var busy = false
     @State private var error: String?
+    @State private var showingReportOptions = false
 
     private var payLabel: String {
         let base = "\(Int(post.payAmount)) RWF"
@@ -1372,12 +1373,18 @@ private struct JobPostCard: View {
                     }
                 } else if post.status == "OPEN" {
                     actionButton("Message poster", filled: true) { onContact() }
+                    actionButton("Report", filled: false) { showingReportOptions = true }
                 }
             }
         }
         .padding(18)
         .background(IDS.Colors.card)
         .cornerRadius(IDS.Layout.cardCornerRadius)
+        .confirmationDialog("Report this job", isPresented: $showingReportOptions, titleVisibility: .visible) {
+            Button("Asks for money or a fee") { Task { await report("The post asks applicants to pay money or a fee") } }
+            Button("Pay or work details are misleading") { Task { await report("The pay or work details appear misleading") } }
+            Button("Looks unsafe or illegal") { Task { await report("The post appears unsafe or illegal") } }
+        } message: { Text("Reports go to Itunda’s review queue.") }
     }
 
     private func actionButton(_ label: String, filled: Bool, action: @escaping () async -> Void) -> some View {
@@ -1411,6 +1418,19 @@ private struct JobPostCard: View {
             onChanged()
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func report(_ reason: String) async {
+        busy = true
+        defer { busy = false }
+        do {
+            _ = try await NetworkClient.shared.reportHoodContent(targetType: "JOB_POST", targetId: post.id, reason: reason)
+            error = "Thanks. Your report was sent for review."
+        } catch let NetworkError.httpError(statusCode) where statusCode == 409 {
+            error = "You already reported this job."
+        } catch {
+            error = "Couldn't send the report. Check your connection and try again."
         }
     }
 }

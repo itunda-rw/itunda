@@ -788,6 +788,8 @@ struct JobPostResponse: Decodable { let success: Bool; let post: JobPostDto }
 struct JobPostsResponse: Decodable { let success: Bool; let posts: [JobPostDto] }
 struct JobCategoriesResponse: Decodable { let success: Bool; let categories: [JobCategoryDto] }
 struct ContactPosterResponse: Decodable { let success: Bool; let conversation: ConversationDto }
+struct CreateHoodReportRequest: Encodable { let targetType: String; let targetId: String; let reason: String }
+struct HoodReportResponse: Decodable { let success: Bool }
 
 // Real 당근부동산-style property listing (2026-07-19) -- see rw.itunda.realestate.web.PropertyListingController.
 struct PropertyTypeDto: Decodable, Identifiable { let id: String; let label: String }
@@ -1382,6 +1384,10 @@ extension NetworkClient {
 
     func contactPoster(_ jobPostId: String) async throws -> ContactPosterResponse {
         try await authenticatedPost("api/v1/jobs/posts/\(jobPostId)/contact-poster", body: EmptyBody())
+    }
+
+    func reportHoodContent(targetType: String, targetId: String, reason: String) async throws -> HoodReportResponse {
+        try await authenticatedPost("api/v1/hood/reports", body: CreateHoodReportRequest(targetType: targetType, targetId: targetId, reason: reason))
     }
 
     // Real 당근부동산-style property listing (2026-07-19) -- see rw.itunda.realestate.web.PropertyListingController.

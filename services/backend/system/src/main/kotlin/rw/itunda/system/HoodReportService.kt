@@ -1,0 +1,36 @@
+package rw.itunda.system
+
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import rw.itunda.core.domain.HoodReport
+import rw.itunda.core.domain.HoodReportStatus
+import rw.itunda.core.domain.HoodReportTargetType
+import rw.itunda.core.repository.HoodReportRepository
+import java.time.Instant
+import java.util.UUID
+
+class HoodReportAlreadyOpenException(message: String) : RuntimeException(message)
+class HoodReportNotFoundException(message: String) : RuntimeException(message)
+
+@Service
+class HoodReportService(private val repository: HoodReportRepository) {
+    @Transactional
+    fun report(reporterId: String, targetType: HoodReportTargetType, targetId: String, reason: String): HoodReport {
+        require(targetId.isNotBlank()) { "A report target is required" }
+        require(reason.trim().length in 3..180) { "Give a short reason between 3 and 180 characters" }
+        if (repository.findByReporterUserIdAndTargetTypeAndTargetIdAndStatus(reporterId, targetType, targetId, HoodReportStatus.OPEN) != null) {
+            throw HoodReportAlreadyOpenException("You already have an open report for this post")
+        }
+        return repository.save(HoodReport("hood_report_${UUID.randomUUID()}", reporterId, targetType, targetId, reason.trim()))
+    }
+
+    fun queue(pageable: Pageable): Page<HoodReport> = repository.findByStatusOrderByCreatedAtAsc(HoodReportStatus.OPEN, pageable)
+    @Transactional
+    fun resolve(id: String, reviewerId: String): HoodReport {
+        val report = repository.findById(id).orElseThrow { HoodReportNotFoundException("Report not found") }
+        report.status = HoodReportStatus.RESOLVED; report.reviewedBy = reviewerId; report.reviewedAt = Instant.now()
+        return repository.save(report)
+    }
+}
