@@ -11,6 +11,7 @@ import rw.itunda.core.domain.AgentOperator
 import rw.itunda.core.domain.AgentTillReconciliation
 import rw.itunda.core.domain.TillReconciliationStatus
 import rw.itunda.core.domain.LedgerAccount
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Transaction
@@ -28,6 +29,7 @@ import rw.itunda.core.repository.LedgerAccountRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.geo.GeoUtils
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -76,6 +78,7 @@ class AgentService(
     private val transactionRepository: TransactionRepository,
     private val userRepository: UserRepository,
     private val withdrawalAuthorizationService: AgentWithdrawalAuthorizationService,
+    private val notificationRepository: NotificationRepository,
 ) {
     @Transactional
     fun register(displayName: String, dailyCashInLimit: BigDecimal, dailyCashOutLimit: BigDecimal): Agent {
@@ -242,6 +245,12 @@ class AgentService(
             description = "Cash-in at ${agent.displayName}", channel = "ITUNDA_AGENT", providerReference = receipt,
             completedAt = cashIn.createdAt,
         ))
+        notificationRepository.save(Notification(
+            id = "notification_${UUID.randomUUID()}", userId = wallet.userId, type = "cash_in",
+            title = "Cash added", body = "${amount.toPlainString()} ${wallet.currency} was added at ${agent.displayName}",
+            isRead = false, createdAt = cashIn.createdAt,
+            dataJson = "{\"agentId\":\"${agent.id}\",\"receiptNumber\":\"$receipt\",\"transactionId\":\"${ledger.transactionId}\"}",
+        ))
         return mapOf("cashIn" to cashIn, "transaction" to transaction, "newBalance" to wallet.balance)
     }
 
@@ -303,6 +312,12 @@ class AgentService(
             currency = wallet.currency, type = TransactionType.WITHDRAWAL, status = TransactionStatus.COMPLETED,
             description = "Cash-out at ${agent.displayName}", channel = "ITUNDA_AGENT", providerReference = receipt,
             completedAt = cashOut.createdAt,
+        ))
+        notificationRepository.save(Notification(
+            id = "notification_${UUID.randomUUID()}", userId = wallet.userId, type = "cash_out",
+            title = "Cash withdrawn", body = "${amount.toPlainString()} ${wallet.currency} was withdrawn at ${agent.displayName}",
+            isRead = false, createdAt = cashOut.createdAt,
+            dataJson = "{\"agentId\":\"${agent.id}\",\"receiptNumber\":\"$receipt\",\"transactionId\":\"${ledger.transactionId}\"}",
         ))
         return mapOf("cashOut" to cashOut, "transaction" to transaction, "newBalance" to wallet.balance)
     }

@@ -25,6 +25,7 @@ import rw.itunda.core.repository.LedgerAccountRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.agents.AgentWithdrawalAuthorizationService
 import java.math.BigDecimal
 import java.util.Optional
@@ -41,7 +42,8 @@ class AgentServiceTest : BehaviorSpec({
     val transactionRepository = mockk<TransactionRepository>()
     val userRepository = mockk<UserRepository>()
     val withdrawalAuthorizationService = mockk<AgentWithdrawalAuthorizationService>()
-    val service = AgentService(agentRepository, operatorRepository, tillReconciliationRepository, cashInRepository, cashOutRepository, walletRepository, ledgerAccountRepository, ledgerService, transactionRepository, userRepository, withdrawalAuthorizationService)
+    val notificationRepository = mockk<NotificationRepository>()
+    val service = AgentService(agentRepository, operatorRepository, tillReconciliationRepository, cashInRepository, cashOutRepository, walletRepository, ledgerAccountRepository, ledgerService, transactionRepository, userRepository, withdrawalAuthorizationService, notificationRepository)
     val agent = Agent("agent_1", "Kigali Central", "agent_cash_1", AgentStatus.ACTIVE, BigDecimal("100000"))
     val wallet = Wallet("wallet_1", "user_1", "2024100001", "Jean Main", WalletType.MAIN, BigDecimal("1000"), BigDecimal("1000"))
 
@@ -54,6 +56,7 @@ class AgentServiceTest : BehaviorSpec({
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
         every { cashInRepository.save(any()) } answers { firstArg() }
         every { transactionRepository.save(any()) } answers { firstArg() }
+        every { notificationRepository.save(any()) } answers { firstArg() }
 
         When("an operator accepts cash") {
             val result = service.cashIn(agent.id, wallet.accountNumber, BigDecimal("25000"), "KGL-001", "admin_1")
