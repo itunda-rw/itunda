@@ -104,6 +104,23 @@ class AgentService(
         return agentRepository.save(agent)
     }
 
+    @Transactional
+    fun fundTill(agentId: String, amount: BigDecimal, reference: String): Map<String, Any?> {
+        require(amount > BigDecimal.ZERO) { "Till funding amount must be greater than zero" }
+        val trimmedReference = reference.trim()
+        require(trimmedReference.length in 3..80) { "Funding reference must be between 3 and 80 characters" }
+        val agent = getForUpdate(agentId)
+        if (agent.status != AgentStatus.ACTIVE) throw AgentSuspendedException("This agent is suspended")
+        val result = ledgerService.postLedgerTransaction(
+            "RWF",
+            listOf(
+                LedgerLeg(agent.cashAccountId, LedgerAccountType.AGENT_CASH, LedgerDirection.DEBIT, amount, "Till float received: $trimmedReference"),
+                LedgerLeg("cash_vault", LedgerAccountType.CASH_VAULT, LedgerDirection.CREDIT, amount, "Till float sent to ${agent.displayName}: $trimmedReference"),
+            ),
+        )
+        return mapOf("agent" to agent, "ledgerTransactionId" to result.transactionId, "amount" to amount, "reference" to trimmedReference)
+    }
+
     fun nearby(latitude: Double, longitude: Double, radiusKm: Double): List<NearbyAgent> {
         require(GeoUtils.isValidCoordinate(latitude, longitude) && GeoUtils.isWithinRwanda(latitude, longitude)) { "Search location must be within Rwanda" }
         require(radiusKm in 0.1..100.0) { "radiusKm must be between 0.1 and 100" }
@@ -129,6 +146,15 @@ class AgentService(
     }
 
     fun getMyOperator(userId: String): AgentOperator = activeOperator(userId)
+
+    @Transactional
+    fun setOperatorStatus(agentId: String, userId: String, isActive: Boolean): AgentOperator {
+        val operator = agentOperatorRepository.findByUserId(userId)
+            ?: throw AgentOperatorNotAuthorizedException("Agent operator not found")
+        require(operator.agentId == agentId) { "This operator is not assigned to this agent" }
+        operator.isActive = isActive
+        return agentOperatorRepository.save(operator)
+    }
 
     @Transactional(readOnly = true)
     fun getTillSnapshot(userId: String): AgentTillSnapshot {

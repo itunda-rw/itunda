@@ -26,6 +26,8 @@ data class CashOutRequest(val accountNumber: String, val amount: BigDecimal, val
 data class AssignAgentOperatorRequest(val userId: String)
 data class ResolveTillReconciliationRequest(val note: String)
 data class SetAgentLocationRequest(val latitude: Double, val longitude: Double)
+data class SetAgentOperatorStatusRequest(val isActive: Boolean)
+data class FundAgentTillRequest(val amount: BigDecimal, val reference: String)
 
 /** Admin-operated until the separate agent-staff authentication flow is introduced. */
 @RestController
@@ -52,6 +54,25 @@ class AgentAdminController(
     @PostMapping("/{agentId}/location")
     fun setLocation(@PathVariable agentId: String, @RequestBody request: SetAgentLocationRequest) =
         ResponseEntity.ok(mapOf("success" to true, "agent" to agentService.setLocation(agentId, request.latitude, request.longitude)))
+
+    @PostMapping("/{agentId}/operators/{userId}/status")
+    fun setOperatorStatus(
+        @PathVariable agentId: String,
+        @PathVariable userId: String,
+        @RequestBody request: SetAgentOperatorStatusRequest,
+    ) = ResponseEntity.ok(mapOf("success" to true, "operator" to agentService.setOperatorStatus(agentId, userId, request.isActive)))
+
+    @PostMapping("/{agentId}/float")
+    fun fundTill(
+        @PathVariable agentId: String,
+        @RequestBody request: FundAgentTillRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/system/agents/$agentId/float", idempotencyKey, request) {
+            200 to (mapOf("success" to true) + agentService.fundTill(agentId, request.amount, request.reference))
+        }
+        return ResponseEntity.status(status).body(body)
+    }
 
     @GetMapping("/till-reconciliations/pending")
     fun pendingTillReconciliations() = ResponseEntity.ok(mapOf("success" to true, "reconciliations" to agentService.pendingTillReconciliations()))

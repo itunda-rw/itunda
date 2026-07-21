@@ -56,6 +56,7 @@ class LedgerAccount(
             // sender after Gift.EXPIRY (rw.itunda.gift.GiftService, 2026-07-20) -- same
             // real escrow-clearing-account shape as eats_delivery_holding above.
             "gift_holding" to "Gift Holding",
+            "cash_vault" to "Itunda Cash Vault",
         )
     }
 }
