@@ -1425,6 +1425,10 @@ extension NetworkClient {
         ])
     }
 
+    func getNearbyPropertyListings(lat: Double, lng: Double, radiusKm: Double = 3) async throws -> PropertyListingsResponse {
+        try await get("api/v1/realestate/listings/nearby", query: [URLQueryItem(name: "latitude", value: String(lat)), URLQueryItem(name: "longitude", value: String(lng)), URLQueryItem(name: "radiusKm", value: String(radiusKm))])
+    }
+
     func getMyPropertyListings() async throws -> PropertyListingsResponse { try await get("api/v1/realestate/my-listings") }
 
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see setNeighborhood.

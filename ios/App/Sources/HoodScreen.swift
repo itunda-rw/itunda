@@ -1563,7 +1563,7 @@ private struct PropertyContent: View {
     @Binding var pendingConversationId: String?
     let onSwitchToTalk: () -> Void
 
-    private enum PropertyView { case browse, neighborhood, mine }
+    private enum PropertyView { case browse, nearby, neighborhood, mine }
 
     @State private var view: PropertyView = .browse
     @State private var propertyTypes: [PropertyTypeDto] = []
@@ -1574,6 +1574,7 @@ private struct PropertyContent: View {
     @State private var showNewListing = false
     @State private var neighborhoodName: String?
     @State private var neighborhoodChecked = false
+    @StateObject private var locationFetcher = HoodLocationFetcher()
     private let currentUserId = KeychainTokenStore.shared.getUserId()
 
     var body: some View {
@@ -1581,6 +1582,7 @@ private struct PropertyContent: View {
             VStack(spacing: IDS.Layout.cardGap) {
                 Picker("", selection: $view) {
                     Text("Browse").tag(PropertyView.browse)
+                    Text("Near me").tag(PropertyView.nearby)
                     Text("Neighborhood").tag(PropertyView.neighborhood)
                     Text("My listings").tag(PropertyView.mine)
                 }
@@ -1651,6 +1653,7 @@ private struct PropertyContent: View {
                 } else if listings!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
                     Text(
                         view == .browse ? "No properties listed yet."
+                            : view == .nearby ? "No properties near you yet."
                             : view == .neighborhood ? "No properties in your neighborhood yet."
                             : "You haven't listed any properties yet."
                     ).foregroundColor(IDS.Colors.textSecondary)
@@ -1676,15 +1679,25 @@ private struct PropertyContent: View {
             if propertyTypes.isEmpty {
                 propertyTypes = (try? await NetworkClient.shared.getPropertyTypes().propertyTypes) ?? []
             }
+            locationFetcher.onLocation = { coordinate in Task { await loadNearby(coordinate) } }
             await load()
         }
         .onChange(of: view) { _ in Task { await load() } }
         .onChange(of: listingTypeFilter) { _ in Task { await load() } }
         .onChange(of: propertyTypeFilter) { _ in Task { await load() } }
+        .onChange(of: locationFetcher.errorMessage) { message in
+            guard view == .nearby, let message else { return }
+            error = message + " You can still use Browse or Neighborhood."
+            listings = []
+        }
     }
 
     private func load() async {
         listings = nil
+        if view == .nearby {
+            locationFetcher.requestLocation()
+            return
+        }
         if view == .neighborhood {
             neighborhoodChecked = false
             do {
@@ -1711,6 +1724,17 @@ private struct PropertyContent: View {
             error = nil
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func loadNearby(_ coordinate: CLLocationCoordinate2D) async {
+        do {
+            let res = try await NetworkClient.shared.getNearbyPropertyListings(lat: coordinate.latitude, lng: coordinate.longitude)
+            listings = res.listings
+            error = nil
+        } catch {
+            self.error = "Couldn't load nearby properties. Check your connection and try again."
+            listings = []
         }
     }
 
