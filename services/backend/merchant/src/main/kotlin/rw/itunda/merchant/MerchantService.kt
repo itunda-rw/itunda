@@ -17,6 +17,7 @@ import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.PaymentIntentRepository
 import rw.itunda.core.repository.TransactionRepository
@@ -45,6 +46,8 @@ class CardDeclinedException(message: String) : RuntimeException(message)
 class InvalidWebhookUrlException(message: String) : RuntimeException(message)
 class InvalidApiKeyException(message: String) : RuntimeException(message)
 class InvalidCheckoutRequestException(message: String) : RuntimeException(message)
+class PaymentIntentNotRefundableException(message: String) : RuntimeException(message)
+class InvalidCancelRequestException(message: String) : RuntimeException(message)
 
 // Real external-checkout DTOs (2026-07-21) -- see PaymentsApiController's own doc
 // comment for the full account of the real Toss Payments feature this mirrors.
@@ -89,6 +92,7 @@ class MerchantService(
     private val demoCardAuthorizationService: DemoCardAuthorizationService,
     private val shoppingCashbackService: ShoppingCashbackService,
     private val rateLimiter: RateLimiter,
+    private val ledgerEntryRepository: LedgerEntryRepository,
 ) {
     // Toss Payments' real published fee schedule tiers wallet-based payments
     // ("Toss Pay") at 0.8%-1.8% depending on merchant volume (see
@@ -301,6 +305,74 @@ class MerchantService(
         return intent
     }
 
+    // Real cancel/refund (2026-07-21) -- mirrors Toss Payments' own real cancel API
+    // exactly (docs.tosspayments.com/guides/v2/cancel-payment): paymentKey + a required
+    // cancelReason, an optional cancelAmount (a full refund if omitted), supporting
+    // repeated partial cancels up to the original amount rather than a single
+    // all-or-nothing flag. Reuses the exact real ledger-reversal pattern
+    // rw.itunda.commerce.OrderService.cancelOrder already established for Commerce
+    // order cancellation: look up the original transaction's real ledger entries and
+    // post a new, offsetting transaction with each leg's direction flipped -- a real
+    // double-entry reversal, never mutating or deleting the original historical entry.
+    //
+    // Honest scoping note: Toss Payments' own real per-partial-cancel fee policy isn't
+    // published in enough detail to mirror exactly (their docs cover the cancelAmount
+    // parameter, not the exact fee-refund math behind it) -- this refunds each original
+    // leg (payer debit, merchant credit, fee credit) in the same proportion as the
+    // cancelled amount, an itunda-specific, internally-consistent choice, not a
+    // fabricated claim about Toss's own internal math.
+    @Transactional
+    fun cancelPayment(merchant: Merchant, paymentKey: String, cancelReason: String, cancelAmount: BigDecimal?): Map<String, Any?> {
+        val intent = paymentIntentRepository.findById(paymentKey)
+            .orElseThrow { PaymentIntentNotFoundException("Payment not found") }
+        if (intent.merchantId != merchant.id) throw PaymentIntentNotFoundException("Payment not found")
+        if (intent.status != PaymentIntentStatus.COMPLETED) {
+            throw PaymentIntentNotRefundableException("Only a completed payment can be cancelled -- this payment is ${intent.status}")
+        }
+        val transactionId = intent.completedTransactionId
+            ?: throw PaymentIntentNotRefundableException("No completed transaction found for this payment")
+
+        val trimmedReason = cancelReason.trim()
+        if (trimmedReason.isEmpty() || trimmedReason.length > 200) {
+            throw InvalidCancelRequestException("cancelReason must be between 1 and 200 characters")
+        }
+        val remaining = intent.amount.subtract(intent.refundedAmount)
+        val amountToCancel = cancelAmount ?: remaining
+        if (amountToCancel <= BigDecimal.ZERO || amountToCancel > remaining) {
+            throw InvalidCancelRequestException("cancelAmount must be positive and no more than the remaining refundable amount ($remaining)")
+        }
+
+        val originalEntries = ledgerEntryRepository.findByTransactionId(transactionId)
+        if (originalEntries.isEmpty()) throw PaymentIntentNotRefundableException("No ledger entries found for this payment")
+
+        val ratio = amountToCancel.divide(intent.amount, 10, RoundingMode.HALF_UP)
+        val reversedLegs = originalEntries.map { entry ->
+            val flipped = if (entry.direction == LedgerDirection.DEBIT) LedgerDirection.CREDIT else LedgerDirection.DEBIT
+            val partialAmount = entry.amount.multiply(ratio).setScale(2, RoundingMode.HALF_UP)
+            LedgerLeg(entry.accountId, entry.accountType, flipped, partialAmount, "Refund for payment ${intent.id}: $trimmedReason")
+        }
+        val refund = ledgerService.postLedgerTransaction(originalEntries.first().currency, reversedLegs)
+
+        intent.refundedAmount = intent.refundedAmount.add(amountToCancel)
+        paymentIntentRepository.save(intent)
+
+        val resultMap = mapOf(
+            "paymentKey" to intent.id,
+            "orderId" to intent.orderId,
+            "cancelledAmount" to amountToCancel,
+            "totalRefundedAmount" to intent.refundedAmount,
+            "remainingAmount" to intent.amount.subtract(intent.refundedAmount),
+            "cancelReason" to trimmedReason,
+            "refundTransactionId" to refund.transactionId,
+            "fullyCancelled" to (intent.refundedAmount.compareTo(intent.amount) == 0),
+        )
+        // Same "never let a slow/unreachable webhook block real money movement" discipline
+        // as collect()/chargeCard -- called last, after the refund ledger transaction and
+        // intent are already saved.
+        webhookDeliveryService.deliverCancelStatusChanged(merchant.webhookUrl, resultMap)
+        return resultMap
+    }
+
     private fun generateRawApiKey(): String {
         val bytes = ByteArray(24)
         SecureRandom().nextBytes(bytes)
@@ -416,7 +488,19 @@ class MerchantService(
         // after the ledger transaction and intent status are already saved, so a slow or
         // unreachable webhook endpoint can only delay the response, never roll back real money
         // that already moved.
-        webhookDeliveryService.deliverPaymentStatusChanged(merchant.webhookUrl, resultMap + ("paymentIntentId" to intentId) + ("payerId" to payerUserId))
+        //
+        // orderId added 2026-07-21 -- a real, found-live gap: Toss Payments' own real webhook
+        // payload always includes orderId ("orderId persists even when the payment status
+        // changes", per docs.tosspayments.com/en/webhooks), specifically so a merchant's
+        // webhook receiver can correlate the event back to ITS OWN order record without a
+        // second lookup call. Every in-app QR/Face Pay/card payment leaves this null (they
+        // have no external orderId at all) -- only real external-checkout payments
+        // (PaymentsApiController) ever set one, so this is purely additive for every existing
+        // webhook consumer.
+        webhookDeliveryService.deliverPaymentStatusChanged(
+            merchant.webhookUrl,
+            resultMap + ("paymentIntentId" to intentId) + ("payerId" to payerUserId) + ("orderId" to intent.orderId),
+        )
         return resultMap
     }
 

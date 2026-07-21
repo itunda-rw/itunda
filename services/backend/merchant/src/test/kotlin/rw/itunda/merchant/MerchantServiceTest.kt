@@ -11,6 +11,7 @@ import io.mockk.verify
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.LedgerEntry
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.domain.PaymentIntent
@@ -24,6 +25,7 @@ import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.PaymentIntentRepository
 import rw.itunda.core.repository.TransactionRepository
@@ -64,7 +66,8 @@ class MerchantServiceTest : BehaviorSpec({
         val demoCardAuthorizationService = DemoCardAuthorizationService()
         val shoppingCashbackService = mockk<ShoppingCashbackService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository)
 
         val ownerWallet = wallet("wallet_merchant", "owner_1")
         val merchant = Merchant(
@@ -541,6 +544,131 @@ class MerchantServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        // Real cancel/refund (2026-07-21) -- see MerchantService.cancelPayment's own doc
+        // comment for the full account of the real Toss Payments cancel API this mirrors.
+        fun completedIntent(id: String, amount: BigDecimal, refundedAmount: BigDecimal = BigDecimal.ZERO) = PaymentIntent(
+            id = id, merchantId = "merchant_1", amount = amount, description = "Order #C1",
+            status = PaymentIntentStatus.COMPLETED, expiresAt = Instant.now().plusSeconds(900),
+            completedTransactionId = "txn_c1", orderId = "order_C1", refundedAmount = refundedAmount,
+        )
+
+        fun originalLegs(txnId: String) = listOf(
+            LedgerEntry(id = "le_1", transactionId = txnId, accountId = "payer_wallet", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.DEBIT, amount = BigDecimal("10000"), currency = "RWF", balanceAfter = BigDecimal("90000"), memo = "QR payment"),
+            LedgerEntry(id = "le_2", transactionId = txnId, accountId = "wallet_merchant", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.CREDIT, amount = BigDecimal("9850"), currency = "RWF", balanceAfter = BigDecimal("9850"), memo = "QR collection"),
+            LedgerEntry(id = "le_3", transactionId = txnId, accountId = "fee_revenue", accountType = LedgerAccountType.FEE_REVENUE, direction = LedgerDirection.CREDIT, amount = BigDecimal("150"), currency = "RWF", balanceAfter = BigDecimal("150"), memo = "QR fee"),
+        )
+
+        When("fully cancelling a real completed payment") {
+            val intent = completedIntent("pi_c1", BigDecimal("10000"))
+            every { paymentIntentRepository.findById("pi_c1") } returns Optional.of(intent)
+            every { ledgerEntryRepository.findByTransactionId("txn_c1") } returns originalLegs("txn_c1")
+            val legsSlot = slot<List<LedgerLeg>>()
+            every { ledgerService.postLedgerTransaction(any(), capture(legsSlot)) } returns LedgerPostResult("txn_refund_1", emptyList())
+            every { paymentIntentRepository.save(any()) } answers { firstArg() }
+
+            val result = service.cancelPayment(merchant, "pi_c1", "Customer requested refund", null)
+
+            Then("it reverses every original leg's direction at full amount, matching rw.itunda.commerce.OrderService.cancelOrder's exact real reversal pattern") {
+                legsSlot.captured.size shouldBe 3
+                legsSlot.captured.find { it.accountId == "payer_wallet" }!!.direction shouldBe LedgerDirection.CREDIT
+                legsSlot.captured.find { it.accountId == "payer_wallet" }!!.amount shouldBe BigDecimal("10000.00")
+                legsSlot.captured.find { it.accountId == "wallet_merchant" }!!.direction shouldBe LedgerDirection.DEBIT
+                legsSlot.captured.find { it.accountId == "fee_revenue" }!!.direction shouldBe LedgerDirection.DEBIT
+            }
+
+            Then("the real result reports a full cancellation, including the merchant's own orderId for correlation") {
+                result["orderId"] shouldBe "order_C1"
+                result["fullyCancelled"] shouldBe true
+                result["cancelledAmount"] shouldBe BigDecimal("10000")
+                intent.refundedAmount shouldBe BigDecimal("10000")
+            }
+        }
+
+        When("partially cancelling a real completed payment") {
+            val intent = completedIntent("pi_c2", BigDecimal("10000"))
+            every { paymentIntentRepository.findById("pi_c2") } returns Optional.of(intent)
+            every { ledgerEntryRepository.findByTransactionId("txn_c1") } returns originalLegs("txn_c1")
+            val legsSlot = slot<List<LedgerLeg>>()
+            every { ledgerService.postLedgerTransaction(any(), capture(legsSlot)) } returns LedgerPostResult("txn_refund_2", emptyList())
+            every { paymentIntentRepository.save(any()) } answers { firstArg() }
+
+            val result = service.cancelPayment(merchant, "pi_c2", "Partial return", BigDecimal("2000"))
+
+            Then("only 20% of each original leg is reversed -- an itunda-specific proportional choice, not a fabricated claim about Toss's own internal partial-cancel math") {
+                legsSlot.captured.find { it.accountId == "payer_wallet" }!!.amount shouldBe BigDecimal("2000.00")
+                legsSlot.captured.find { it.accountId == "fee_revenue" }!!.amount shouldBe BigDecimal("30.00")
+            }
+
+            Then("the real payment stays partially, not fully, cancelled") {
+                result["fullyCancelled"] shouldBe false
+                result["remainingAmount"] shouldBe BigDecimal("8000")
+                intent.refundedAmount shouldBe BigDecimal("2000")
+            }
+        }
+
+        When("trying to cancel a payment that hasn't been completed yet") {
+            val pendingIntent = PaymentIntent(
+                id = "pi_pending", merchantId = "merchant_1", amount = BigDecimal("5000"),
+                description = "Not paid yet", expiresAt = Instant.now().plusSeconds(900),
+            )
+            every { paymentIntentRepository.findById("pi_pending") } returns Optional.of(pendingIntent)
+
+            Then("it real-throws PaymentIntentNotRefundableException rather than reversing a payment that never happened") {
+                try {
+                    service.cancelPayment(merchant, "pi_pending", "Too early", null)
+                    error("expected PaymentIntentNotRefundableException")
+                } catch (e: PaymentIntentNotRefundableException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("trying to cancel more than the real remaining refundable amount") {
+            val intent = completedIntent("pi_c3", BigDecimal("10000"), refundedAmount = BigDecimal("8000"))
+            every { paymentIntentRepository.findById("pi_c3") } returns Optional.of(intent)
+
+            Then("it real-throws InvalidCancelRequestException -- only 2000 is left to refund, not the full 10000") {
+                try {
+                    service.cancelPayment(merchant, "pi_c3", "Too much", BigDecimal("5000"))
+                    error("expected InvalidCancelRequestException")
+                } catch (e: InvalidCancelRequestException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("trying to cancel with a blank cancelReason") {
+            val intent = completedIntent("pi_c4", BigDecimal("5000"))
+            every { paymentIntentRepository.findById("pi_c4") } returns Optional.of(intent)
+
+            Then("it real-throws InvalidCancelRequestException before ever touching the ledger") {
+                try {
+                    service.cancelPayment(merchant, "pi_c4", "   ", null)
+                    error("expected InvalidCancelRequestException")
+                } catch (e: InvalidCancelRequestException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("one merchant tries to cancel a payment real-belonging to a different merchant") {
+            val otherMerchantsIntent = PaymentIntent(
+                id = "pi_c5", merchantId = "merchant_999", amount = BigDecimal("5000"),
+                description = "Not yours", status = PaymentIntentStatus.COMPLETED,
+                expiresAt = Instant.now().plusSeconds(900), completedTransactionId = "txn_x",
+            )
+            every { paymentIntentRepository.findById("pi_c5") } returns Optional.of(otherMerchantsIntent)
+
+            Then("it real-404s rather than letting a merchant refund a payment they never received") {
+                try {
+                    service.cancelPayment(merchant, "pi_c5", "Not mine to cancel", null)
+                    error("expected PaymentIntentNotFoundException")
+                } catch (e: PaymentIntentNotFoundException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
     }
 
     Given("a registered merchant with no webhook configured yet") {
@@ -559,7 +687,8 @@ class MerchantServiceTest : BehaviorSpec({
         val demoCardAuthorizationService = DemoCardAuthorizationService()
         val shoppingCashbackService = mockk<ShoppingCashbackService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository)
 
         val merchant = Merchant(id = "merchant_3", ownerUserId = "owner_3", walletId = "wallet_3", businessName = "Test Shop")
         every { merchantRepository.findByOwnerUserId("owner_3") } returns merchant
@@ -597,7 +726,8 @@ class MerchantServiceTest : BehaviorSpec({
         val demoCardAuthorizationService = DemoCardAuthorizationService()
         val shoppingCashbackService = mockk<ShoppingCashbackService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter)
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository)
 
         val merchant = Merchant(id = "merchant_4", ownerUserId = "owner_4", walletId = "wallet_4", businessName = "Report Cafe")
         every { merchantRepository.findByOwnerUserId("owner_4") } returns merchant

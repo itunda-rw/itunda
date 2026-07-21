@@ -12,6 +12,9 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import rw.itunda.core.idempotency.IdempotencyConflictException
+import rw.itunda.core.idempotency.IdempotencyInProgressException
+import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
 
@@ -21,6 +24,11 @@ data class CreatePaymentRequest(
     val orderId: String? = null,
     val successUrl: String? = null,
     val failUrl: String? = null,
+)
+
+data class CancelPaymentRequest(
+    val cancelReason: String,
+    val cancelAmount: BigDecimal? = null,
 )
 
 /**
@@ -64,6 +72,7 @@ data class CreatePaymentRequest(
 @RequestMapping("/api/v1/pay")
 class PaymentsApiController(
     private val merchantService: MerchantService,
+    private val idempotencyService: IdempotencyService,
     @Value("\${itunda.pay.checkout-base-url}")
     private val checkoutBaseUrl: String,
 ) {
@@ -106,6 +115,28 @@ class PaymentsApiController(
         )
     }
 
+    // Real cancel/refund (2026-07-21) -- see MerchantService.cancelPayment's own doc
+    // comment for the full account of the real Toss Payments cancel API this mirrors.
+    // Idempotency-Key required, same convention as every other money-moving endpoint in
+    // this backend (this one reverses real ledger legs, unlike createPayment above,
+    // which only ever creates an intent -- no money moves until a customer actually
+    // pays it).
+    @PostMapping("/payments/{paymentKey}/cancel")
+    fun cancelPayment(
+        @RequestHeader("X-Api-Key") apiKey: String,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @PathVariable paymentKey: String,
+        @RequestBody request: CancelPaymentRequest,
+    ): ResponseEntity<Map<String, Any?>> {
+        val merchant = merchantService.resolveMerchantByApiKey(apiKey)
+        val (status, body) = idempotencyService.replayOrExecute(
+            "POST /api/v1/pay/payments/$paymentKey/cancel", idempotencyKey, request,
+        ) {
+            200 to (mapOf("success" to true) + merchantService.cancelPayment(merchant, paymentKey, request.cancelReason, request.cancelAmount))
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
     // Public, no API key -- see this class's own doc comment for why (the customer's
     // browser, not the merchant's server, calls this).
     @GetMapping("/checkout/{paymentKey}")
@@ -141,7 +172,30 @@ class PaymentsApiController(
     fun handleMerchantNotFound(ex: MerchantNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_NOT_FOUND", ex.message ?: "Not found"))
 
+    // Distinguishes which header is actually missing -- this controller now requires
+    // two different headers on different endpoints (X-Api-Key everywhere, Idempotency-Key
+    // on cancel only), so a single hardcoded message would be wrong for the other case.
     @ExceptionHandler(MissingRequestHeaderException::class)
-    fun handleMissingApiKey(ex: MissingRequestHeaderException) =
-        ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiError("API_KEY_REQUIRED", "X-Api-Key header is required"))
+    fun handleMissingHeader(ex: MissingRequestHeaderException) =
+        if (ex.headerName == "Idempotency-Key") {
+            ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key header is required"))
+        } else {
+            ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiError("API_KEY_REQUIRED", "X-Api-Key header is required"))
+        }
+
+    @ExceptionHandler(PaymentIntentNotRefundableException::class)
+    fun handleNotRefundable(ex: PaymentIntentNotRefundableException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("PAYMENT_NOT_REFUNDABLE", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(InvalidCancelRequestException::class)
+    fun handleInvalidCancelRequest(ex: InvalidCancelRequestException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_CANCEL_REQUEST", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(IdempotencyConflictException::class)
+    fun handleIdempotencyConflict(ex: IdempotencyConflictException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENCY_KEY_CONFLICT", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(IdempotencyInProgressException::class)
+    fun handleIdempotencyInProgress(ex: IdempotencyInProgressException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENT_REQUEST_PROCESSING", ex.message ?: "Conflict"))
 }

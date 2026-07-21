@@ -47,11 +47,21 @@ class WebhookDeliveryService(
         const val MAX_ATTEMPTS = 7
     }
 
-    fun deliverPaymentStatusChanged(webhookUrl: String?, data: Map<String, Any?>) {
+    fun deliverPaymentStatusChanged(webhookUrl: String?, data: Map<String, Any?>) = deliver("PAYMENT_STATUS_CHANGED", webhookUrl, data)
+
+    // Real cancel/refund webhook event (2026-07-21) -- Toss Payments' own real webhooks
+    // distinguish CANCEL_STATUS_CHANGED from PAYMENT_STATUS_CHANGED as a genuinely
+    // separate event type (docs.tosspayments.com/en/webhooks), not the same event
+    // reused with a different status field -- so a merchant's webhook receiver can
+    // dispatch on `eventType` alone without inspecting `data` first. See
+    // MerchantService.cancelPayment.
+    fun deliverCancelStatusChanged(webhookUrl: String?, data: Map<String, Any?>) = deliver("CANCEL_STATUS_CHANGED", webhookUrl, data)
+
+    private fun deliver(eventType: String, webhookUrl: String?, data: Map<String, Any?>) {
         if (webhookUrl.isNullOrBlank()) return
 
         val payload = mapOf(
-            "eventType" to "PAYMENT_STATUS_CHANGED",
+            "eventType" to eventType,
             "createdAt" to Instant.now().toString(),
             "data" to data,
         )

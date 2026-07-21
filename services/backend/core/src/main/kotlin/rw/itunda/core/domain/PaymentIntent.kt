@@ -66,6 +66,14 @@ class PaymentIntent(
 
     @Column(name = "fail_url", length = 500, nullable = true)
     var failUrl: String? = null,
+
+    // Real cancel/refund tracking (2026-07-21) -- see MerchantService.cancelPayment's
+    // own doc comment. Supports Toss Payments' real partial-cancel model (multiple
+    // cancels can accumulate up to the original amount) rather than a single
+    // all-or-nothing boolean flag: a full refund is simply refundedAmount == amount,
+    // no separate CANCELLED status needed.
+    @Column(name = "refunded_amount", nullable = false, precision = 18, scale = 2)
+    var refundedAmount: BigDecimal = BigDecimal.ZERO,
 ) {
     protected constructor() : this(id = "", merchantId = "", amount = BigDecimal.ZERO, description = "", expiresAt = Instant.now())
 }
