@@ -426,12 +426,20 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
         // pattern as Pay/Benefits above, since the 5-tab bottom nav has no free slot.
         if (showMap) {
             BackHandler { showMap = false }
-            MapScreen(onBack = { showMap = false })
+            MapScreen(
+                onBack = { showMap = false },
+                initialCategory = if (showAgentCash) "ITUNDA_AGENT" else null,
+            )
             return@IdsTheme
         }
         if (showAgentCash) {
             BackHandler { showAgentCash = false }
-            AgentCashScreen(onBack = { showAgentCash = false })
+            AgentCashScreen(
+                onBack = { showAgentCash = false },
+                // Keep the cash-out screen in the back stack: map Back returns the
+                // customer to their code flow rather than silently dropping it.
+                onFindNearbyAgent = { showMap = true },
+            )
             return@IdsTheme
         }
         // Real Invest/Stocks screen (2026-07-20) -- same Quick-links full-screen

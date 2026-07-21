@@ -281,7 +281,7 @@ private val MAP_STYLE_JSON = """
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MapScreen(onBack: () -> Unit) {
+fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     // Must run synchronously during composition, not in a LaunchedEffect -- LaunchedEffect
@@ -451,6 +451,15 @@ fun MapScreen(onBack: () -> Unit) {
             } finally {
                 categoryLoading = false
             }
+        }
+    }
+
+    // A cash-out customer arrives here with the store network already selected.
+    // This is intentionally the same nearby-search path as the map chips, so it
+    // uses the public agent-discovery API rather than a duplicate client-side list.
+    LaunchedEffect(initialCategory) {
+        initialCategory?.takeIf { it in MAP_NEARBY_CATEGORIES.map { category -> category.id } }?.let {
+            searchNearbyCategory(it)
         }
     }
 

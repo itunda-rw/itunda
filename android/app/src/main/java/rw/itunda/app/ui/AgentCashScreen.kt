@@ -34,7 +34,7 @@ import java.util.UUID
 
 /** Customer-owned, short-lived cash-out consent. No balance moves until the agent validates this code and pays cash. */
 @Composable
-fun AgentCashScreen(onBack: () -> Unit) {
+fun AgentCashScreen(onBack: () -> Unit, onFindNearbyAgent: () -> Unit) {
     var amountText by remember { mutableStateOf("") }
     var pendingCreationKey by remember { mutableStateOf<String?>(null) }
     var authorizations by remember { mutableStateOf<List<AgentWithdrawalAuthorizationDto>>(emptyList()) }
@@ -50,6 +50,11 @@ fun AgentCashScreen(onBack: () -> Unit) {
     LazyColumn(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { Text("Cash out at an Itunda agent", style = MaterialTheme.typography.headlineSmall) }
         item { Text("Create a one-time code, then show it to the agent only when they are ready to hand over cash. Codes expire in 10 minutes.") }
+        item {
+            Button(onClick = onFindNearbyAgent, modifier = Modifier.fillMaxWidth()) {
+                Text("Find a nearby Itunda agent")
+            }
+        }
         item {
             OutlinedTextField(
                 amountText,
