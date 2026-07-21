@@ -111,6 +111,8 @@ import rw.itunda.app.network.PropertyListingDto
 import rw.itunda.app.network.PropertyTypeDto
 import rw.itunda.app.network.EatsOrderDto
 import rw.itunda.app.network.FavoriteListingDto
+import rw.itunda.app.network.FavoriteJobPostDto
+import rw.itunda.app.network.FavoritePropertyListingDto
 import rw.itunda.app.network.FavoriteRestaurantDto
 import rw.itunda.app.network.AddressSuggestionDto
 import rw.itunda.app.network.CreateGroupRequest
@@ -2627,6 +2629,8 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
     var neighborhoodChecked by remember { mutableStateOf(false) }
     var favoriteIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var favoritingId by remember { mutableStateOf<String?>(null) }
+    var nearbyRadiusKm by remember { mutableStateOf(3.0) }
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
     val requestNearbyLocation = rememberRealLocationRequester(
@@ -2635,7 +2639,7 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
             posts = null
             coroutineScope.launch {
                 try {
-                    val res = NetworkClient.apiService.getNearbyJobPosts(lat, lng)
+                    val res = NetworkClient.apiService.getNearbyJobPosts(lat, lng, nearbyRadiusKm)
                     if (res.success) posts = res.posts
                     error = null
                 } catch (e: HttpException) {
@@ -2728,6 +2732,12 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
                     )
                 }
             }
+        }
+        if (view == JobsView.NEARBY) item {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { listOf(1.0, 3.0, 5.0, 10.0).forEach { radius ->
+                val active = nearbyRadiusKm == radius
+                Text("${radius.toInt()} km", color = if (active) Color.White else TossText, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) TossBlue else TossCardSoft).clickable { nearbyRadiusKm = radius; requestNearbyLocation() }.padding(horizontal = 12.dp, vertical = 7.dp))
+            } }
         }
         if ((view == JobsView.BROWSE || view == JobsView.NEIGHBORHOOD) && categories.isNotEmpty()) {
             item {
@@ -3050,6 +3060,7 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
     var neighborhoodChecked by remember { mutableStateOf(false) }
     var favoriteIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var nearbyRadiusKm by remember { mutableStateOf(3.0) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
@@ -3059,7 +3070,7 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
             listings = null
             coroutineScope.launch {
                 try {
-                    val res = NetworkClient.apiService.getNearbyPropertyListings(lat, lng)
+                    val res = NetworkClient.apiService.getNearbyPropertyListings(lat, lng, nearbyRadiusKm)
                     if (res.success) listings = res.listings
                     error = null
                 } catch (e: HttpException) {
@@ -3156,6 +3167,12 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
                     )
                 }
             }
+        }
+        if (view == PropertyView.NEARBY) item {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { listOf(1.0, 3.0, 5.0, 10.0).forEach { radius ->
+                val active = nearbyRadiusKm == radius
+                Text("${radius.toInt()} km", color = if (active) Color.White else TossText, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) TossBlue else TossCardSoft).clickable { nearbyRadiusKm = radius; requestNearbyLocation() }.padding(horizontal = 12.dp, vertical = 7.dp))
+            } }
         }
         if (view == PropertyView.BROWSE) {
             item {

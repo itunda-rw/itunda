@@ -495,6 +495,7 @@ data class CreateJobPostRequest(
     val latitude: Double? = null, val longitude: Double? = null,
 )
 data class JobPostResponse(val success: Boolean, val post: JobPostDto)
+data class SuccessResponse(val success: Boolean)
 data class JobPostsResponse(val success: Boolean, val posts: List<JobPostDto>)
 data class JobCategoriesResponse(val success: Boolean, val categories: List<JobCategoryDto>)
 data class FavoriteJobPostDto(val jobPostId: String, val title: String, val payAmount: Double, val category: String, val favoritedAt: String)
