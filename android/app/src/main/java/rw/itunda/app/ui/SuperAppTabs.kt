@@ -81,6 +81,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -1601,6 +1602,7 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
     // any of them, not just the dedicated Wishlist tab.
     var favoriteIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var favoritingId by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
     var favoriteNotice by remember { mutableStateOf<String?>(null) }
 
     fun loadFavoriteIds() {
@@ -2808,8 +2810,8 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
                         favoritingId = post.id
                         coroutineScope.launch {
                             try {
-                                if (post.id in favoriteIds) { NetworkClient.apiService.removeJobPostFavorite(post.id); favoriteIds = favoriteIds - post.id }
-                                else { NetworkClient.apiService.addJobPostFavorite(post.id); favoriteIds = favoriteIds + post.id }
+                                if (post.id in favoriteIds) { NetworkClient.apiService.removeJobPostFavorite(post.id); favoriteIds = favoriteIds - post.id; Toast.makeText(context, "Removed from saved jobs", Toast.LENGTH_SHORT).show() }
+                                else { NetworkClient.apiService.addJobPostFavorite(post.id); favoriteIds = favoriteIds + post.id; Toast.makeText(context, "Saved to your jobs list", Toast.LENGTH_SHORT).show() }
                             } catch (e: Exception) { error = "Couldn't update your saved jobs. Check your connection and try again." }
                             finally { favoritingId = null }
                         }
@@ -3048,6 +3050,7 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
     var neighborhoodChecked by remember { mutableStateOf(false) }
     var favoriteIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
     val requestNearbyLocation = rememberRealLocationRequester(
@@ -3258,7 +3261,7 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
                         }
                     },
                     favorited = listing.id in favoriteIds,
-                    onToggleFavorite = { coroutineScope.launch { try { if (listing.id in favoriteIds) { NetworkClient.apiService.removePropertyListingFavorite(listing.id); favoriteIds = favoriteIds - listing.id } else { NetworkClient.apiService.addPropertyListingFavorite(listing.id); favoriteIds = favoriteIds + listing.id } } catch (e: Exception) { error = "Couldn't update your saved properties. Check your connection and try again." } } },
+                    onToggleFavorite = { coroutineScope.launch { try { if (listing.id in favoriteIds) { NetworkClient.apiService.removePropertyListingFavorite(listing.id); favoriteIds = favoriteIds - listing.id; Toast.makeText(context, "Removed from saved properties", Toast.LENGTH_SHORT).show() } else { NetworkClient.apiService.addPropertyListingFavorite(listing.id); favoriteIds = favoriteIds + listing.id; Toast.makeText(context, "Saved to your properties list", Toast.LENGTH_SHORT).show() } } catch (e: Exception) { error = "Couldn't update your saved properties. Check your connection and try again." } } },
                 )
             }
         }
