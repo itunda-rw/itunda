@@ -140,6 +140,11 @@ const EMPTY_ROUTE_GEOJSON: GeoJSON.FeatureCollection = { type: 'FeatureCollectio
 // MAP_CATEGORY_ICONS lookup exactly (MapScreen.kt), same client-side-only convention:
 // no icon field on the backend's NearbyPlace/category model, plain emoji over an icon
 // font, never sent back to the server.
+// Real recent-searches persistence key (2026-07-22) -- see the `recentSearches` state's
+// own doc comment. Namespaced per-app, not just "recent_searches", since this is real
+// shared browser localStorage the whole bank-mfe origin's other features also write into.
+const RECENT_SEARCHES_KEY = 'itunda_map_recent_searches';
+
 const CATEGORY_ICONS: Record<string, string> = {
   RESTAURANT: '🍽️', CAFE: '☕', HOSPITAL: '🏥', PHARMACY: '💊',
   BANK: '🏦', ATM: '🏧', HOTEL: '🏨', SUPERMARKET: '🛒',
@@ -205,6 +210,14 @@ export default function MapView() {
   const [categoryResults, setCategoryResults] = useState<NearbyPlace[] | null>(null);
   const [bookmarks, setBookmarks] = useState<MapBookmark[]>([]);
   const [bookmarking, setBookmarking] = useState(false);
+  // Real recent-searches list (2026-07-22) -- the other half of the same previously-
+  // flagged "no autocomplete/recent-searches" gap the live-search-as-you-type pass just
+  // closed the first half of. Naver/Kakao Maps' own real recent-searches list is a purely
+  // client-side, per-device convenience (no account-wide sync), so this is real
+  // localStorage persistence, not a fabricated backend feature -- no server-side value in
+  // storing "which places did this browser search for" centrally.
+  const [recentSearches, setRecentSearches] = useState<PlaceSearchResult[]>([]);
+  const [searchFocused, setSearchFocused] = useState(false);
 
   // Real draggable peek/half/full bottom sheet (2026-07-21) -- see
   // docs/DESIGN_REFERENCES.md section 1, recommendation 1. Brings bank-mfe to parity
@@ -238,6 +251,16 @@ export default function MapView() {
     const ro = new ResizeObserver((entries) => setWrapperHeight(entries[0].contentRect.height));
     ro.observe(el);
     return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(RECENT_SEARCHES_KEY);
+      if (raw) setRecentSearches(JSON.parse(raw));
+    } catch {
+      // Corrupt/unavailable localStorage just means an empty recent-searches list --
+      // a pure convenience feature, never worth failing the whole map view over.
+    }
   }, []);
 
   useEffect(() => {
@@ -392,6 +415,33 @@ export default function MapView() {
     } finally {
       setSearching(false);
     }
+  };
+
+  const addRecentSearch = (place: PlaceSearchResult) => {
+    setRecentSearches((prev) => {
+      const next = [place, ...prev.filter((p) => p.latitude !== place.latitude || p.longitude !== place.longitude)].slice(0, 8);
+      try {
+        window.localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(next));
+      } catch {
+        // Best-effort only -- a private-browsing/storage-disabled session just doesn't
+        // get a persisted recent-searches list, not a broken search feature.
+      }
+      return next;
+    });
+  };
+
+  const clearRecentSearches = () => {
+    setRecentSearches([]);
+    try {
+      window.localStorage.removeItem(RECENT_SEARCHES_KEY);
+    } catch {
+      // same best-effort reasoning as addRecentSearch above
+    }
+  };
+
+  const selectSearchResult = (place: PlaceSearchResult) => {
+    addRecentSearch(place);
+    selectPlace(place);
   };
 
   const selectPlace = (place: PlaceSearchResult) => {
@@ -597,6 +647,8 @@ export default function MapView() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => window.setTimeout(() => setSearchFocused(false), 150)}
             placeholder="Search a real place in Rwanda"
             style={{ flex: 1, padding: '10px 6px', border: 'none', outline: 'none', fontSize: '14px', background: 'transparent' }}
           />
@@ -649,7 +701,7 @@ export default function MapView() {
               searchResults.map((place, i) => (
                 <button
                   key={`${place.latitude}-${place.longitude}-${i}`}
-                  onClick={() => selectPlace(place)}
+                  onClick={() => selectSearchResult(place)}
                   style={{ textAlign: 'left', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', color: 'var(--toss-grey-900)' }}
                 >
                   {place.displayName}
@@ -657,6 +709,32 @@ export default function MapView() {
               ))
             ))}
             {error && <p style={{ fontSize: '13px', color: '#E53935', padding: '8px' }} role="alert">{error}</p>}
+          </div>
+        )}
+
+        {/* Real recent-searches list (2026-07-22) -- only shown while the search box is
+            focused and empty (Naver/Kakao Maps' own real convention: tap the search box
+            before typing anything to see what you searched for before), never competing
+            with live results once a query exists. */}
+        {searchFocused && query.trim() === '' && recentSearches.length > 0 && (
+          <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px', maxHeight: '160px', overflowY: 'auto', boxShadow: '0 2px 8px rgba(0,0,0,0.14)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px' }}>
+              <p style={{ fontSize: '12px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY }}>Recent searches</p>
+              <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={clearRecentSearches} style={{ fontSize: '11px', color: 'var(--toss-blue)', fontWeight: 700 }}>
+                Clear
+              </button>
+            </div>
+            {recentSearches.map((place, i) => (
+              <button
+                key={`${place.latitude}-${place.longitude}-${i}`}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => selectSearchResult(place)}
+                style={{ textAlign: 'left', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', color: 'var(--toss-grey-900)', display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <span style={{ color: MAP_CARD_TEXT_TERTIARY }}>🕐</span>
+                {place.displayName}
+              </button>
+            ))}
           </div>
         )}
       </div>
