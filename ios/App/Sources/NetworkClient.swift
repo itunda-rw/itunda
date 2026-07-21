@@ -1327,8 +1327,8 @@ extension NetworkClient {
     // Real 동네생활-style community board (2026-07-19) -- see rw.itunda.community.web.CommunityController.
     func getCommunityCategories() async throws -> CommunityCategoriesResponse { try await get("api/v1/community/categories") }
 
-    func createCommunityPost(category: String, title: String, body: String) async throws -> CommunityPostResponse {
-        try await authenticatedPost("api/v1/community/posts", body: CreateCommunityPostRequest(category: category, title: title, body: body, latitude: nil, longitude: nil))
+    func createCommunityPost(category: String, title: String, body: String, latitude: Double? = nil, longitude: Double? = nil) async throws -> CommunityPostResponse {
+        try await authenticatedPost("api/v1/community/posts", body: CreateCommunityPostRequest(category: category, title: title, body: body, latitude: latitude, longitude: longitude))
     }
 
     func browseCommunityPosts(category: String? = nil) async throws -> CommunityPostsResponse {
@@ -1367,8 +1367,8 @@ extension NetworkClient {
     // Real 당근알바-style local job board (2026-07-19) -- see rw.itunda.jobs.web.JobPostController.
     func getJobCategories() async throws -> JobCategoriesResponse { try await get("api/v1/jobs/categories") }
 
-    func createJobPost(category: String, title: String, description: String, payType: String, payAmount: Double) async throws -> JobPostResponse {
-        try await authenticatedPost("api/v1/jobs/posts", body: CreateJobPostRequest(category: category, title: title, description: description, payType: payType, payAmount: payAmount, latitude: nil, longitude: nil))
+    func createJobPost(category: String, title: String, description: String, payType: String, payAmount: Double, latitude: Double? = nil, longitude: Double? = nil) async throws -> JobPostResponse {
+        try await authenticatedPost("api/v1/jobs/posts", body: CreateJobPostRequest(category: category, title: title, description: description, payType: payType, payAmount: payAmount, latitude: latitude, longitude: longitude))
     }
 
     func browseJobPosts(category: String? = nil) async throws -> JobPostsResponse {
@@ -1408,12 +1408,13 @@ extension NetworkClient {
     func createPropertyListing(
         listingType: String, propertyType: String, title: String, description: String, price: Double,
         bedrooms: Int? = nil, sizeSqm: Double? = nil,
+        latitude: Double? = nil, longitude: Double? = nil,
     ) async throws -> PropertyListingResponse {
         try await authenticatedPost(
             "api/v1/realestate/listings",
             body: CreatePropertyListingRequest(
                 listingType: listingType, propertyType: propertyType, title: title, description: description, price: price,
-                bedrooms: bedrooms, sizeSqm: sizeSqm, latitude: nil, longitude: nil,
+                bedrooms: bedrooms, sizeSqm: sizeSqm, latitude: latitude, longitude: longitude,
             ),
         )
     }

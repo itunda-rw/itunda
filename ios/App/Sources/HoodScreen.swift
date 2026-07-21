@@ -926,6 +926,9 @@ private struct NewCommunityPostForm: View {
     @State private var postBody = ""
     @State private var error: String?
     @State private var submitting = false
+    @State private var shareLocation = false
+    @State private var myLocation: CLLocationCoordinate2D?
+    @StateObject private var locationFetcher = HoodLocationFetcher()
 
     init(categories: [CommunityCategoryDto], onCreated: @escaping () -> Void, onCancel: @escaping () -> Void) {
         self.categories = categories
@@ -953,6 +956,14 @@ private struct NewCommunityPostForm: View {
             }
             TextField("Title", text: $title).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
             TextField("What's going on in the neighborhood?", text: $postBody).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
+            Button(action: {
+                if shareLocation { shareLocation = false } else { locationFetcher.requestLocation() }
+            }) {
+                Text(shareLocation ? "📍 Location shared with nearby neighbors" : "📍 Share location for nearby neighbors (optional)")
+                    .font(.caption).foregroundColor(shareLocation ? IDS.Colors.brand : IDS.Colors.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 14).padding(.vertical, 12)
+                    .background(IDS.Colors.chipBackground).cornerRadius(12)
+            }
             if let error {
                 Text(error).font(.caption).foregroundColor(.red)
             }
@@ -969,6 +980,15 @@ private struct NewCommunityPostForm: View {
         .padding(20)
         .background(IDS.Colors.card)
         .cornerRadius(IDS.Layout.cardCornerRadius)
+        .onAppear {
+            locationFetcher.onLocation = { coordinate in
+                myLocation = coordinate
+                shareLocation = true
+            }
+        }
+        .onChange(of: locationFetcher.errorMessage) { message in
+            if let message { error = message }
+        }
     }
 
     private func submit() async {
@@ -980,7 +1000,8 @@ private struct NewCommunityPostForm: View {
         error = nil
         defer { submitting = false }
         do {
-            _ = try await NetworkClient.shared.createCommunityPost(category: category, title: title, body: postBody)
+            let location = shareLocation ? myLocation : nil
+            _ = try await NetworkClient.shared.createCommunityPost(category: category, title: title, body: postBody, latitude: location?.latitude, longitude: location?.longitude)
             onCreated()
         } catch let NetworkError.httpError(statusCode) {
             error = TalkScreen.errorMessage(statusCode)
@@ -1378,6 +1399,9 @@ private struct NewJobPostForm: View {
     @State private var payAmount = ""
     @State private var error: String?
     @State private var submitting = false
+    @State private var shareLocation = false
+    @State private var myLocation: CLLocationCoordinate2D?
+    @StateObject private var locationFetcher = HoodLocationFetcher()
 
     init(categories: [JobCategoryDto], onCreated: @escaping () -> Void, onCancel: @escaping () -> Void) {
         self.categories = categories
@@ -1413,6 +1437,14 @@ private struct NewJobPostForm: View {
                 .pickerStyle(.segmented)
                 TextField("Pay (RWF)", text: $payAmount).keyboardType(.numberPad).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
             }
+            Button(action: {
+                if shareLocation { shareLocation = false } else { locationFetcher.requestLocation() }
+            }) {
+                Text(shareLocation ? "📍 Work location shared with nearby applicants" : "📍 Share work location for nearby applicants (optional)")
+                    .font(.caption).foregroundColor(shareLocation ? IDS.Colors.brand : IDS.Colors.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 14).padding(.vertical, 12)
+                    .background(IDS.Colors.chipBackground).cornerRadius(12)
+            }
             if let error {
                 Text(error).font(.caption).foregroundColor(.red)
             }
@@ -1429,6 +1461,15 @@ private struct NewJobPostForm: View {
         .padding(20)
         .background(IDS.Colors.card)
         .cornerRadius(IDS.Layout.cardCornerRadius)
+        .onAppear {
+            locationFetcher.onLocation = { coordinate in
+                myLocation = coordinate
+                shareLocation = true
+            }
+        }
+        .onChange(of: locationFetcher.errorMessage) { message in
+            if let message { error = message }
+        }
     }
 
     private func submit() async {
@@ -1440,7 +1481,8 @@ private struct NewJobPostForm: View {
         error = nil
         defer { submitting = false }
         do {
-            _ = try await NetworkClient.shared.createJobPost(category: category, title: title, description: description, payType: payType, payAmount: amount)
+            let location = shareLocation ? myLocation : nil
+            _ = try await NetworkClient.shared.createJobPost(category: category, title: title, description: description, payType: payType, payAmount: amount, latitude: location?.latitude, longitude: location?.longitude)
             onCreated()
         } catch let NetworkError.httpError(statusCode) {
             error = TalkScreen.errorMessage(statusCode)
@@ -1773,6 +1815,9 @@ private struct NewPropertyListingForm: View {
     @State private var sizeSqm = ""
     @State private var error: String?
     @State private var submitting = false
+    @State private var shareLocation = false
+    @State private var myLocation: CLLocationCoordinate2D?
+    @StateObject private var locationFetcher = HoodLocationFetcher()
 
     init(propertyTypes: [PropertyTypeDto], onCreated: @escaping () -> Void, onCancel: @escaping () -> Void) {
         self.propertyTypes = propertyTypes
@@ -1811,6 +1856,14 @@ private struct NewPropertyListingForm: View {
                 TextField("Bedrooms", text: $bedrooms).keyboardType(.numberPad).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
                 TextField("Size (m²)", text: $sizeSqm).keyboardType(.numberPad).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
             }
+            Button(action: {
+                if shareLocation { shareLocation = false } else { locationFetcher.requestLocation() }
+            }) {
+                Text(shareLocation ? "📍 Property area shared for nearby search" : "📍 Share property area for nearby search (optional)")
+                    .font(.caption).foregroundColor(shareLocation ? IDS.Colors.brand : IDS.Colors.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 14).padding(.vertical, 12)
+                    .background(IDS.Colors.chipBackground).cornerRadius(12)
+            }
             if let error {
                 Text(error).font(.caption).foregroundColor(.red)
             }
@@ -1827,6 +1880,15 @@ private struct NewPropertyListingForm: View {
         .padding(20)
         .background(IDS.Colors.card)
         .cornerRadius(IDS.Layout.cardCornerRadius)
+        .onAppear {
+            locationFetcher.onLocation = { coordinate in
+                myLocation = coordinate
+                shareLocation = true
+            }
+        }
+        .onChange(of: locationFetcher.errorMessage) { message in
+            if let message { error = message }
+        }
     }
 
     private func submit() async {
@@ -1838,9 +1900,10 @@ private struct NewPropertyListingForm: View {
         error = nil
         defer { submitting = false }
         do {
+            let location = shareLocation ? myLocation : nil
             _ = try await NetworkClient.shared.createPropertyListing(
                 listingType: listingType, propertyType: propertyType, title: title, description: description, price: priceValue,
-                bedrooms: Int(bedrooms), sizeSqm: Double(sizeSqm),
+                bedrooms: Int(bedrooms), sizeSqm: Double(sizeSqm), latitude: location?.latitude, longitude: location?.longitude,
             )
             onCreated()
         } catch let NetworkError.httpError(statusCode) {
