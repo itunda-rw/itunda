@@ -154,6 +154,9 @@ class WalletController(
     @ExceptionHandler(rw.itunda.core.agents.WithdrawalAuthorizationInvalidException::class)
     fun handleWithdrawalAuthorization(ex: rw.itunda.core.agents.WithdrawalAuthorizationInvalidException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("WITHDRAWAL_AUTHORIZATION_INVALID", ex.message ?: "Invalid authorization"))
 
+    @ExceptionHandler(rw.itunda.core.agents.TooManyWithdrawalAuthorizationsException::class)
+    fun handleTooManyWithdrawalAuthorizations(ex: rw.itunda.core.agents.TooManyWithdrawalAuthorizationsException) = ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("TOO_MANY_WITHDRAWAL_AUTHORIZATIONS", ex.message ?: "Too many requests"))
+
     @ExceptionHandler(IllegalArgumentException::class)
     fun handleBadRequest(ex: IllegalArgumentException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_REQUEST", ex.message ?: "Bad request"))
 }

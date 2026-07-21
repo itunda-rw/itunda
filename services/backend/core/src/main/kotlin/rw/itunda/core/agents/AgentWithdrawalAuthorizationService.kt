@@ -13,6 +13,7 @@ import java.time.Instant
 import java.util.UUID
 
 class WithdrawalAuthorizationInvalidException(message: String) : RuntimeException(message)
+class TooManyWithdrawalAuthorizationsException(message: String) : RuntimeException(message)
 
 data class WithdrawalAuthorizationView(
     val id: String,
@@ -61,6 +62,10 @@ class AgentWithdrawalAuthorizationService(
     @Transactional
     fun create(userId: String, amount: BigDecimal): AgentWithdrawalAuthorization {
         require(amount > BigDecimal.ZERO) { "Withdrawal amount must be greater than zero" }
+        val active = repository.findByUserIdOrderByCreatedAtDesc(userId).count {
+            it.consumedAt == null && it.cancelledAt == null && it.expiresAt.isAfter(Instant.now())
+        }
+        if (active >= 3) throw TooManyWithdrawalAuthorizationsException("Cancel or use an existing withdrawal authorization first")
         val wallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
             ?: throw IllegalArgumentException("Main wallet not found")
         require(wallet.isActive) { "Wallet is frozen pending review" }
