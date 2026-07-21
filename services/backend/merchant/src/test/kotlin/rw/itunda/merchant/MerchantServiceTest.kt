@@ -3,6 +3,7 @@ package rw.itunda.merchant
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -407,6 +408,136 @@ class MerchantServiceTest : BehaviorSpec({
                     error("expected CardDeclinedException")
                 } catch (e: CardDeclinedException) {
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        // Real "Pay with itunda" external checkout API (2026-07-21) -- see
+        // PaymentsApiController's own doc comment for the full account of the real Toss
+        // Payments feature this mirrors.
+        When("a merchant generates a real external-checkout API key") {
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
+            val savedKeySlot = slot<Merchant>()
+            every { merchantRepository.save(capture(savedKeySlot)) } answers { firstArg() }
+
+            val rawKey1 = service.generateApiKey("owner_1")
+
+            Then("it returns a real raw key and persists only its hash, never the raw value") {
+                rawKey1.startsWith("sk_test_") shouldBe true
+                savedKeySlot.captured.apiKeyHash shouldNotBe null
+                savedKeySlot.captured.apiKeyHash shouldNotBe rawKey1
+            }
+
+            Then("regenerating produces a genuinely different key, rotating out the old one") {
+                val rawKey2 = service.generateApiKey("owner_1")
+                (rawKey1 == rawKey2) shouldBe false
+            }
+        }
+
+        When("resolving a merchant by a real, valid API key") {
+            val keyedMerchant = Merchant(
+                id = "merchant_5", ownerUserId = "owner_5", walletId = "wallet_5",
+                businessName = "External Shop", status = MerchantStatus.ACTIVE,
+                apiKeyHash = "d1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+            )
+            every { merchantRepository.findByApiKeyHash(any()) } returns keyedMerchant
+
+            Then("it resolves the correct merchant") {
+                service.resolveMerchantByApiKey("sk_test_anything").id shouldBe "merchant_5"
+            }
+        }
+
+        When("resolving by an unknown API key") {
+            every { merchantRepository.findByApiKeyHash(any()) } returns null
+
+            Then("it real-throws InvalidApiKeyException rather than a null merchant slipping through") {
+                try {
+                    service.resolveMerchantByApiKey("sk_test_bogus")
+                    error("expected InvalidApiKeyException")
+                } catch (e: InvalidApiKeyException) {
+                    // expected
+                }
+            }
+        }
+
+        When("resolving by a real key belonging to a suspended merchant") {
+            val suspendedMerchant = Merchant(
+                id = "merchant_6", ownerUserId = "owner_6", walletId = "wallet_6",
+                businessName = "Suspended Shop", status = MerchantStatus.SUSPENDED,
+                apiKeyHash = "hash6",
+            )
+            every { merchantRepository.findByApiKeyHash(any()) } returns suspendedMerchant
+
+            Then("a valid key on a suspended account still real-fails, not silently succeeds") {
+                try {
+                    service.resolveMerchantByApiKey("sk_test_suspended")
+                    error("expected InvalidApiKeyException")
+                } catch (e: InvalidApiKeyException) {
+                    // expected
+                }
+            }
+        }
+
+        When("creating a real external payment with successUrl/failUrl/orderId") {
+            every { paymentIntentRepository.save(any()) } answers { firstArg() }
+
+            val intent = service.createExternalPayment(
+                merchant, BigDecimal("5000"), "Order #A1", "order_A1",
+                "https://shop.example/success", "https://shop.example/fail",
+            )
+
+            Then("the real PaymentIntent carries every external field, unlike the in-app QR path which leaves them null") {
+                intent.merchantId shouldBe "merchant_1"
+                intent.orderId shouldBe "order_A1"
+                intent.successUrl shouldBe "https://shop.example/success"
+                intent.failUrl shouldBe "https://shop.example/fail"
+                intent.status shouldBe PaymentIntentStatus.PENDING
+            }
+        }
+
+        When("creating an external payment with a real invalid (non-positive) amount") {
+            Then("it real-throws InvalidCheckoutRequestException before ever touching the repository") {
+                try {
+                    service.createExternalPayment(merchant, BigDecimal.ZERO, "Bad order", null, null, null)
+                    error("expected InvalidCheckoutRequestException")
+                } catch (e: InvalidCheckoutRequestException) {
+                    verify(exactly = 0) { paymentIntentRepository.save(any()) }
+                }
+            }
+        }
+
+        When("a customer's browser requests the real public checkout info for a paymentKey") {
+            val intent = PaymentIntent(
+                id = "pi_checkout_1", merchantId = "merchant_1", amount = BigDecimal("2500"),
+                description = "Order #B2", expiresAt = Instant.now().plusSeconds(900),
+                successUrl = "https://shop.example/ok", failUrl = "https://shop.example/no",
+            )
+            every { paymentIntentRepository.findById("pi_checkout_1") } returns Optional.of(intent)
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+
+            val info = service.getCheckoutInfo("pi_checkout_1")
+
+            Then("it returns only real, safe-to-show fields -- the merchant's business name, never its internal id or webhook URL") {
+                info.merchantName shouldBe "Kigali Coffee"
+                info.amount shouldBe BigDecimal("2500")
+                info.successUrl shouldBe "https://shop.example/ok"
+                info.failUrl shouldBe "https://shop.example/no"
+            }
+        }
+
+        When("one merchant's API key tries to read a payment that real-belongs to a different merchant") {
+            val otherMerchantsIntent = PaymentIntent(
+                id = "pi_other", merchantId = "merchant_999", amount = BigDecimal("1000"),
+                description = "Not yours", expiresAt = Instant.now().plusSeconds(900),
+            )
+            every { paymentIntentRepository.findById("pi_other") } returns Optional.of(otherMerchantsIntent)
+
+            Then("it real-404s rather than leaking another merchant's payment data") {
+                try {
+                    service.getPaymentStatusForMerchant(merchant, "pi_other")
+                    error("expected PaymentIntentNotFoundException")
+                } catch (e: PaymentIntentNotFoundException) {
+                    // expected -- ownership check, not just "does this id exist"
                 }
             }
         }

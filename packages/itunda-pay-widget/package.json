@@ -1,0 +1,7 @@
+{
+  "name": "@itunda/pay-widget",
+  "version": "1.0.0",
+  "description": "Embeddable 'Pay with itunda' checkout widget for external merchant websites -- modeled after Toss Payments' own real JS SDK (docs.tosspayments.com/sdk/v2/js), same requestPayment()/successUrl/failUrl shape.",
+  "main": "src/index.ts",
+  "private": true
+}

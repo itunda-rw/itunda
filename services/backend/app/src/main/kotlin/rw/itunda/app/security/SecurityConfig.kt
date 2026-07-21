@@ -28,8 +28,13 @@ class SecurityConfig(
     // bank-mfe/kyc-mfe never actually called it from a browser (mocked fetch only), so
     // the gap was never hit. Origins are the micro-frontends' Vite dev ports; override
     // via ITUNDA_CORS_ALLOWED_ORIGINS (comma-separated) for non-local environments.
-    // Port 5004 added 2026-07-17 for merchant-mfe.
-    @Value("\${itunda.cors.allowed-origins:http://localhost:5000,http://localhost:5001,http://localhost:5002,http://localhost:5003,http://localhost:5004}")
+    // Port 5004 added 2026-07-17 for merchant-mfe. Port 5005 added 2026-07-21 for
+    // pay-checkout -- see PaymentsApiController's own doc comment. This is the one
+    // origin in this list that isn't itunda's own team's dev server in production (a
+    // real external merchant's customer's browser loads it) -- CORS here only matters
+    // for local dev against this same-origin page anyway, since /api/v1/pay/checkout
+    // is a public GET with no credentials to protect.
+    @Value("\${itunda.cors.allowed-origins:http://localhost:5000,http://localhost:5001,http://localhost:5002,http://localhost:5003,http://localhost:5004,http://localhost:5005}")
     private val allowedOrigins: List<String>,
 ) {
 
@@ -91,6 +96,15 @@ class SecurityConfig(
                     // endpoint but /register still real-401s without a valid key. See
                     // PartnerController's own doc comment.
                     .requestMatchers("/api/v1/partners/**").permitAll()
+                    // Real "Pay with itunda" external checkout API (2026-07-21) -- same
+                    // exact reasoning as /api/v1/partners/** above (a real merchant's own
+                    // backend server, or a paying customer's browser, has no itunda user
+                    // JWT at all). /payments/** is API-key gated inside
+                    // PaymentsApiController/MerchantService.resolveMerchantByApiKey;
+                    // /checkout/{paymentKey} is deliberately public (a browser never holds
+                    // the merchant's secret key) -- see PaymentsApiController's own doc
+                    // comment for the full account.
+                    .requestMatchers("/api/v1/pay/**").permitAll()
                     // Real public-key signature verification/status lookup never needs a
                     // secret -- a real third party checking a document someone signed
                     // with their itunda certificate has no itunda account of their own.

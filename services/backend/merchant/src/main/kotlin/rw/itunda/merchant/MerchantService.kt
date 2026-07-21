@@ -23,6 +23,8 @@ import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.security.MessageDigest
+import java.security.SecureRandom
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -41,6 +43,20 @@ class PaymentIntentNotPayableException(message: String) : RuntimeException(messa
 class SelfPaymentException(message: String) : RuntimeException(message)
 class CardDeclinedException(message: String) : RuntimeException(message)
 class InvalidWebhookUrlException(message: String) : RuntimeException(message)
+class InvalidApiKeyException(message: String) : RuntimeException(message)
+class InvalidCheckoutRequestException(message: String) : RuntimeException(message)
+
+// Real external-checkout DTOs (2026-07-21) -- see PaymentsApiController's own doc
+// comment for the full account of the real Toss Payments feature this mirrors.
+data class CheckoutInfo(
+    val paymentKey: String,
+    val merchantName: String,
+    val amount: BigDecimal,
+    val description: String,
+    val status: PaymentIntentStatus,
+    val successUrl: String?,
+    val failUrl: String?,
+)
 
 data class MerchantReportDay(
     val date: LocalDate,
@@ -187,6 +203,113 @@ class MerchantService(
         )
         return paymentIntentRepository.save(intent)
     }
+
+    // Real "Pay with itunda" external checkout API key (2026-07-21) -- mirrors
+    // PartnerService.register's exact raw-key-shown-once/hash-stored pattern (same
+    // sk_test_ prefix convention, same reasoning: no real production/live-mode
+    // distinction exists here yet, so claiming a "live" prefix would be dishonest).
+    // Only the logged-in merchant owner can call this (normal JWT auth, see
+    // MerchantController) -- the resulting secret key is what their OWN backend server
+    // then uses non-interactively, with no itunda user login involved at all. Calling
+    // this again rotates the key -- the old one stops working immediately, since only
+    // the hash is ever stored.
+    @Transactional
+    fun generateApiKey(ownerUserId: String): String {
+        val merchant = getMyMerchant(ownerUserId)
+        val rawKey = generateRawApiKey()
+        merchant.apiKeyHash = hashApiKey(rawKey)
+        merchantRepository.save(merchant)
+        return rawKey
+    }
+
+    fun resolveMerchantByApiKey(apiKey: String): Merchant {
+        val merchant = merchantRepository.findByApiKeyHash(hashApiKey(apiKey))
+            ?: throw InvalidApiKeyException("Invalid or unknown API key")
+        if (merchant.status != MerchantStatus.ACTIVE) {
+            throw InvalidApiKeyException("This merchant account is suspended")
+        }
+        return merchant
+    }
+
+    // Real server-to-server payment creation (2026-07-21) -- the external-checkout
+    // counterpart to generateQr above (that one's caller is always a logged-in itunda
+    // merchant user in merchant-mfe/:merchantapp; this one's caller is the MERCHANT'S
+    // OWN backend server, authenticated by API key, with no itunda user session
+    // involved at all -- see PaymentsApiController). Reuses the identical PaymentIntent
+    // shape and the identical collect()/webhook machinery underneath -- a customer still
+    // completes this exact intent by scanning the same real QR/deep-link with their
+    // itunda app, same as any in-app-generated one.
+    @Transactional
+    fun createExternalPayment(
+        merchant: Merchant, amount: BigDecimal, description: String,
+        orderId: String?, successUrl: String?, failUrl: String?,
+    ): PaymentIntent {
+        if (amount <= BigDecimal.ZERO) throw InvalidCheckoutRequestException("Amount must be positive")
+        val trimmedDescription = description.trim()
+        if (trimmedDescription.isEmpty() || trimmedDescription.length > 500) {
+            throw InvalidCheckoutRequestException("Description must be between 1 and 500 characters")
+        }
+        if ((orderId?.length ?: 0) > 200) throw InvalidCheckoutRequestException("orderId must be 200 characters or fewer")
+        if ((successUrl?.length ?: 0) > 500 || (failUrl?.length ?: 0) > 500) {
+            throw InvalidCheckoutRequestException("successUrl/failUrl must be 500 characters or fewer")
+        }
+        val intent = PaymentIntent(
+            id = "pi_${UUID.randomUUID()}",
+            merchantId = merchant.id,
+            amount = amount,
+            description = trimmedDescription,
+            expiresAt = Instant.now().plusSeconds(900),
+            orderId = orderId?.trim()?.ifBlank { null },
+            successUrl = successUrl?.trim()?.ifBlank { null },
+            failUrl = failUrl?.trim()?.ifBlank { null },
+        )
+        return paymentIntentRepository.save(intent)
+    }
+
+    // Real public checkout info (2026-07-21) -- deliberately NOT behind the API key:
+    // the customer's own browser calls this (via itunda's hosted checkout page), and a
+    // browser never has the merchant's secret key -- only the paymentKey (this intent's
+    // id), the same public/secret split every real payment gateway's checkout page
+    // uses. Returns only what's safe to show a paying customer -- never the merchant's
+    // internal id, webhook URL, or any other account detail.
+    fun getCheckoutInfo(paymentKey: String): CheckoutInfo {
+        val intent = paymentIntentRepository.findById(paymentKey)
+            .orElseThrow { PaymentIntentNotFoundException("Payment not found") }
+        val merchant = merchantRepository.findById(intent.merchantId)
+            .orElseThrow { MerchantNotFoundException("Merchant not found") }
+        return CheckoutInfo(
+            paymentKey = intent.id,
+            merchantName = merchant.businessName,
+            amount = intent.amount,
+            description = intent.description,
+            status = intent.status,
+            successUrl = intent.successUrl,
+            failUrl = intent.failUrl,
+        )
+    }
+
+    // Real server-to-server status confirmation (2026-07-21) -- the synchronous
+    // counterpart to the async webhook: a merchant's backend can (and per real payment
+    // gateway convention, should) confirm a payment's status directly before fulfilling
+    // an order, not rely on the webhook alone arriving in time. Ownership-checked: the
+    // API key resolves to a specific merchant, and this real-404s (not just returns
+    // someone else's data) for a paymentKey belonging to a different merchant.
+    fun getPaymentStatusForMerchant(merchant: Merchant, paymentKey: String): PaymentIntent {
+        val intent = paymentIntentRepository.findById(paymentKey)
+            .orElseThrow { PaymentIntentNotFoundException("Payment not found") }
+        if (intent.merchantId != merchant.id) throw PaymentIntentNotFoundException("Payment not found")
+        return intent
+    }
+
+    private fun generateRawApiKey(): String {
+        val bytes = ByteArray(24)
+        SecureRandom().nextBytes(bytes)
+        val token = bytes.joinToString("") { "%02x".format(it) }
+        return "sk_test_$token"
+    }
+
+    private fun hashApiKey(rawKey: String): String =
+        MessageDigest.getInstance("SHA-256").digest(rawKey.toByteArray()).joinToString("") { "%02x".format(it) }
 
     @Transactional
     fun collect(payerUserId: String, intentId: String, channel: String = "QR"): Map<String, Any?> {

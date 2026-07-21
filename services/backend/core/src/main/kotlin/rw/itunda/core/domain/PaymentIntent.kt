@@ -50,6 +50,22 @@ class PaymentIntent(
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
+
+    // Real external-checkout fields (2026-07-21) -- only ever set by
+    // PaymentsApiController's API-key-authenticated create path, never by the in-app
+    // merchant QR flow (MerchantController.generateQr leaves all three null). orderId
+    // is the merchant's own reference for reconciliation, matching Toss Payments' real
+    // orderId parameter; successUrl/failUrl are where itunda's hosted checkout page
+    // redirects the customer's browser once payment completes or the intent expires,
+    // matching Toss Payments' real requestPayment() successUrl/failUrl contract exactly.
+    @Column(name = "order_id", length = 200, nullable = true)
+    var orderId: String? = null,
+
+    @Column(name = "success_url", length = 500, nullable = true)
+    var successUrl: String? = null,
+
+    @Column(name = "fail_url", length = 500, nullable = true)
+    var failUrl: String? = null,
 ) {
     protected constructor() : this(id = "", merchantId = "", amount = BigDecimal.ZERO, description = "", expiresAt = Instant.now())
 }

@@ -94,6 +94,16 @@ class Merchant(
     // minimum, the pre-existing behavior for every merchant that hasn't opted in yet.
     @Column(name = "min_order_amount", precision = 18, scale = 2, nullable = true)
     var minOrderAmount: BigDecimal? = null,
+
+    // Real external-checkout API key (2026-07-21) -- mirrors Partner.apiKeyHash's exact
+    // pattern (SHA-256 hash, never the raw key, which is shown to the merchant exactly
+    // once at generation time). Nullable: unset means this merchant hasn't opted into
+    // the external "Pay with itunda" checkout API -- their existing QR/POS/Eats/Commerce
+    // flows are completely unaffected either way. See PaymentsApiController's own doc
+    // comment for the real Toss Payments feature this mirrors (a merchant's own backend
+    // server calling itunda directly, with no itunda user login involved at all).
+    @Column(name = "api_key_hash", length = 64, nullable = true)
+    var apiKeyHash: String? = null,
 ) {
     protected constructor() : this(id = "", ownerUserId = "", walletId = "", businessName = "")
 }

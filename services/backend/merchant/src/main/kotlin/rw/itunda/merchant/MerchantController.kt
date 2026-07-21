@@ -60,6 +60,14 @@ class MerchantController(
     fun me(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "merchant" to merchantService.getMyMerchant(currentUser.userId)))
 
+    // Real "Pay with itunda" external checkout API key (2026-07-21) -- see
+    // MerchantService.generateApiKey's own doc comment. The raw key is returned exactly
+    // once, here, and never again -- only its hash is ever stored, same convention as
+    // PartnerController.register.
+    @PostMapping("/api-key/generate")
+    fun generateApiKey(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "apiKey" to merchantService.generateApiKey(currentUser.userId)))
+
     @PostMapping("/qr/generate")
     fun generateQr(
         @RequestBody request: GenerateQrRequest,

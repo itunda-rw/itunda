@@ -12,6 +12,11 @@ import rw.itunda.core.domain.PaymentIntent
 
 interface MerchantRepository : JpaRepository<Merchant, String> {
     fun findByOwnerUserId(ownerUserId: String): Merchant?
+
+    // Real external-checkout API-key resolution (2026-07-21) -- see
+    // Merchant.apiKeyHash's own doc comment. Mirrors PartnerRepository.findByApiKeyHash
+    // exactly.
+    fun findByApiKeyHash(apiKeyHash: String): Merchant?
     // Paginated -- see PageResponse.kt's doc comment; Toss Shopping's merchant catalog
     // grows as more merchants register and had no bound at all before this.
     fun findByStatus(status: MerchantStatus, pageable: Pageable): Page<Merchant>
