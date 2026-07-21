@@ -17,8 +17,10 @@ import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PaymentIntentRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
@@ -93,6 +95,7 @@ class MerchantService(
     private val shoppingCashbackService: ShoppingCashbackService,
     private val rateLimiter: RateLimiter,
     private val ledgerEntryRepository: LedgerEntryRepository,
+    private val notificationRepository: NotificationRepository,
 ) {
     // Toss Payments' real published fee schedule tiers wallet-based payments
     // ("Toss Pay") at 0.8%-1.8% depending on merchant volume (see
@@ -472,6 +475,31 @@ class MerchantService(
             shoppingCashbackService.awardCashback(payerWallet, intent.amount, merchant.businessName)
         } catch (e: Exception) {
             BigDecimal.ZERO
+        }
+
+        // Real-time "money received" notification for the merchant owner (2026-07-22) --
+        // same real gap and same fix as rw.itunda.p2p.P2pService.notifyMoneyReceived
+        // (see that method's own doc comment for the full account of the real Toss Bank
+        // feature this mirrors): a merchant collecting a real QR/Face Pay payment never
+        // got any proactive alert that money had arrived, only whatever they happened to
+        // notice next time they opened Reports. Best-effort, same discipline as the
+        // cashback try/catch immediately above -- never blocks a payment that already
+        // succeeded.
+        try {
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}",
+                    userId = merchant.ownerUserId,
+                    type = "MONEY_RECEIVED",
+                    title = "Payment received",
+                    body = "You received ${intent.amount} RWF via $channelLabel.",
+                    isRead = false,
+                    createdAt = Instant.now(),
+                    dataJson = "{\"amount\":\"${intent.amount}\",\"payerId\":\"$payerUserId\"}",
+                ),
+            )
+        } catch (e: Exception) {
+            // Non-critical -- the real payment already completed and succeeded.
         }
 
         val resultMap = mapOf(

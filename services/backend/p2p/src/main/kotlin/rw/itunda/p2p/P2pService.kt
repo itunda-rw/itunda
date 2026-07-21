@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.P2pPaymentRequest
 import rw.itunda.core.domain.P2pPaymentRequestStatus
 import rw.itunda.core.domain.Transaction
@@ -15,6 +16,7 @@ import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.P2pPaymentRequestRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
@@ -51,6 +53,7 @@ class P2pService(
     private val ledgerService: LedgerService,
     private val fraudRuleEngine: FraudRuleEngine,
     private val rateLimiter: RateLimiter,
+    private val notificationRepository: NotificationRepository,
 ) {
 
     fun generateRequest(requesterUserId: String, amount: BigDecimal, description: String): P2pPaymentRequest {
@@ -138,6 +141,7 @@ class P2pService(
         request.completedTransactionId = transaction.id
         request.paidByUserId = payerUserId
         p2pPaymentRequestRepository.save(request)
+        notifyMoneyReceived(request.requesterUserId, payerUserId, request.amount)
 
         // Re-fetch, same as WalletService.confirmTransfer -- postLedgerTransaction doesn't
         // mutate the Wallet instance already held in memory, only the underlying row.
@@ -218,8 +222,48 @@ class P2pService(
         // history and permanently mask NEW_RECIPIENT.
         fraudRuleEngine.evaluate(senderUserId, recipientWallet.userId, amount, transaction.id)
         transactionRepository.save(transaction)
+        notifyMoneyReceived(recipientWallet.userId, senderUserId, amount)
 
         val updatedSenderWallet = walletRepository.findById(senderWallet.id).orElseThrow { P2pNoWalletException("No wallet found for this account") }
         return transaction to updatedSenderWallet.balance
+    }
+
+    // Real-time "money received" notification (2026-07-22) -- modeled on one of Toss
+    // Bank's most iconic, signature UX elements: an instant in-app notification the
+    // moment money arrives (real Toss shows "OOO님이 5,000원을 보냈어요" -- "OOO sent you
+    // 5,000 won" -- the instant a transfer completes), not something a recipient has to
+    // notice by manually opening the app and checking their balance. Found as a real,
+    // significant gap by auditing this file directly: zero `Notification` references
+    // existed anywhere in it despite both real money-movement paths (payRequest,
+    // sendDirect) completing successfully -- confirmed by grep across every module that
+    // already does write real notifications (auth, savings, wallet budget alerts,
+    // messaging, commerce, community, agents), `p2p` and `merchant` were the two
+    // conspicuously absent ones for money actually arriving in someone's account.
+    // Deliberately recipient-only, not sender-side too: the sender already gets an
+    // immediate synchronous success response in the app UI from the action they just
+    // took -- a second notification telling them what they just did themselves would be
+    // redundant, matching real Toss's own behavior of notifying the *other* party.
+    // Best-effort: a notification failure must never roll back or fail money that
+    // already moved, same "auxiliary side-effect can't block real money movement"
+    // discipline `MerchantService.collect`'s own cashback-award try/catch established.
+    private fun notifyMoneyReceived(recipientUserId: String, senderUserId: String, amount: BigDecimal) {
+        try {
+            val sender = userRepository.findById(senderUserId).orElse(null)
+            val senderName = sender?.let { "${it.firstName} ${it.lastName}" } ?: "Someone"
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}",
+                    userId = recipientUserId,
+                    type = "MONEY_RECEIVED",
+                    title = "Money received",
+                    body = "$senderName sent you $amount RWF.",
+                    isRead = false,
+                    createdAt = Instant.now(),
+                    dataJson = "{\"amount\":\"$amount\",\"senderId\":\"$senderUserId\"}",
+                ),
+            )
+        } catch (e: Exception) {
+            // Non-critical -- the real transfer already completed and succeeded.
+        }
     }
 }

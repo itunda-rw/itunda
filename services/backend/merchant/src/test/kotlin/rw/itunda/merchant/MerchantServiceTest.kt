@@ -27,6 +27,7 @@ import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.PaymentIntentRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
@@ -67,7 +68,8 @@ class MerchantServiceTest : BehaviorSpec({
         val shoppingCashbackService = mockk<ShoppingCashbackService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val ledgerEntryRepository = mockk<LedgerEntryRepository>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository)
 
         val ownerWallet = wallet("wallet_merchant", "owner_1")
         val merchant = Merchant(
@@ -237,6 +239,16 @@ class MerchantServiceTest : BehaviorSpec({
             Then("real Toss Shopping cashback is awarded for the real payer wallet and purchase amount") {
                 verify(exactly = 1) { shoppingCashbackService.awardCashback(payerWallet, BigDecimal("5000"), "Kigali Coffee") }
                 result.containsKey("cashbackEarned") shouldBe true
+            }
+            // Real-time "money received" notification for the merchant owner (2026-07-22)
+            // -- same real gap and fix as rw.itunda.p2p.P2pService.notifyMoneyReceived
+            // (see that method's own doc comment for the full account).
+            Then("the merchant owner gets a real, immediate notification that a payment arrived") {
+                verify(exactly = 1) {
+                    notificationRepository.save(
+                        match { it.userId == "owner_1" && it.type == "MONEY_RECEIVED" && it.body.contains("5000") },
+                    )
+                }
             }
         }
 
@@ -688,7 +700,8 @@ class MerchantServiceTest : BehaviorSpec({
         val shoppingCashbackService = mockk<ShoppingCashbackService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val ledgerEntryRepository = mockk<LedgerEntryRepository>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository)
 
         val merchant = Merchant(id = "merchant_3", ownerUserId = "owner_3", walletId = "wallet_3", businessName = "Test Shop")
         every { merchantRepository.findByOwnerUserId("owner_3") } returns merchant
@@ -727,7 +740,8 @@ class MerchantServiceTest : BehaviorSpec({
         val shoppingCashbackService = mockk<ShoppingCashbackService>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val ledgerEntryRepository = mockk<LedgerEntryRepository>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository)
 
         val merchant = Merchant(id = "merchant_4", ownerUserId = "owner_4", walletId = "wallet_4", businessName = "Report Cafe")
         every { merchantRepository.findByOwnerUserId("owner_4") } returns merchant
