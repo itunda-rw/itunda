@@ -14,6 +14,15 @@ import java.util.UUID
 
 class WithdrawalAuthorizationInvalidException(message: String) : RuntimeException(message)
 
+data class WithdrawalAuthorizationView(
+    val id: String,
+    val code: String,
+    val amount: BigDecimal,
+    val expiresAt: Instant,
+    val status: String,
+    val createdAt: Instant,
+)
+
 @Entity
 @Table(name = "agent_withdrawal_authorizations")
 class AgentWithdrawalAuthorization(
@@ -39,7 +48,15 @@ class AgentWithdrawalAuthorizationService(
     private val repository: AgentWithdrawalAuthorizationRepository,
     private val walletRepository: WalletRepository,
 ) {
-    fun list(userId: String): List<AgentWithdrawalAuthorization> = repository.findByUserIdOrderByCreatedAtDesc(userId)
+    fun list(userId: String): List<WithdrawalAuthorizationView> = repository.findByUserIdOrderByCreatedAtDesc(userId).map { authorization ->
+        val status = when {
+            authorization.cancelledAt != null -> "CANCELLED"
+            authorization.consumedAt != null -> "CONSUMED"
+            authorization.expiresAt.isBefore(Instant.now()) -> "EXPIRED"
+            else -> "ACTIVE"
+        }
+        WithdrawalAuthorizationView(authorization.id, authorization.code, authorization.amount, authorization.expiresAt, status, authorization.createdAt)
+    }
 
     @Transactional
     fun create(userId: String, amount: BigDecimal): AgentWithdrawalAuthorization {
@@ -67,7 +84,7 @@ class AgentWithdrawalAuthorizationService(
     fun cancel(userId: String, code: String): AgentWithdrawalAuthorization {
         val authorization = repository.findByCode(code.trim().uppercase())
             ?: throw WithdrawalAuthorizationInvalidException("Withdrawal authorization is invalid")
-        if (authorization.userId != userId || authorization.consumedAt != null || authorization.cancelledAt != null) {
+        if (authorization.userId != userId || authorization.consumedAt != null || authorization.cancelledAt != null || authorization.expiresAt.isBefore(Instant.now())) {
             throw WithdrawalAuthorizationInvalidException("Withdrawal authorization cannot be cancelled")
         }
         authorization.cancelledAt = Instant.now()
