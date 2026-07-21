@@ -343,10 +343,45 @@ export default function MapView() {
     };
   }, []);
 
+  // Real search-as-you-type autocomplete (2026-07-22) -- itunda's search was submit-then-
+  // list only, unlike Naver/Kakao Maps' own real live-suggestion box; MapsService.searchPlaces
+  // already anticipated this ("search-as-you-type is easy to hammer otherwise" -- its own
+  // rate limit was sized for it before this UI ever called it that way). No new backend
+  // work needed, just a debounced front door onto the same real Nominatim-backed endpoint
+  // handleSearch below already uses. `searchRequestIdRef` discards a stale response that
+  // resolves after a newer keystroke's request -- typing "Kigal" then "Kigali" fast enough
+  // could otherwise let "Kigal"'s slower response overwrite "Kigali"'s newer, more relevant
+  // results.
+  const searchRequestIdRef = useRef(0);
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      setSearchResults(null);
+      return;
+    }
+    const requestId = ++searchRequestIdRef.current;
+    const timer = window.setTimeout(async () => {
+      setSearching(true);
+      setError(null);
+      try {
+        const results = await searchPlaces(trimmed);
+        if (searchRequestIdRef.current === requestId) setSearchResults(results);
+      } catch (err) {
+        if (searchRequestIdRef.current === requestId) {
+          setError(err instanceof ApiError ? err.message : 'Could not search for that place.');
+        }
+      } finally {
+        if (searchRequestIdRef.current === requestId) setSearching(false);
+      }
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = query.trim();
     if (!trimmed) return;
+    searchRequestIdRef.current += 1;
     setSearching(true);
     setError(null);
     try {
