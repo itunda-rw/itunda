@@ -15,6 +15,7 @@ import org.springframework.web.bind.MissingRequestHeaderException
 import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
+import rw.itunda.core.agents.AgentWithdrawalAuthorizationService
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.WalletFrozenException
 import rw.itunda.core.provider.ProviderDeclinedException
@@ -25,10 +26,16 @@ import java.math.BigDecimal
 data class QuoteTransferRequest(val amount: BigDecimal, val recipient: String, val fromWalletId: String? = null, val description: String? = null)
 data class ConfirmTransferRequest(val quoteId: String)
 data class SetBudgetRequest(val category: String? = null, val monthlyLimit: BigDecimal)
+data class CreateAgentWithdrawalAuthorizationRequest(val amount: BigDecimal)
+data class CancelAgentWithdrawalAuthorizationRequest(val code: String)
 
 @RestController
 @RequestMapping("/api/v1/wallet")
-class WalletController(private val walletService: WalletService, private val idempotencyService: IdempotencyService) {
+class WalletController(
+    private val walletService: WalletService,
+    private val idempotencyService: IdempotencyService,
+    private val agentWithdrawalAuthorizationService: AgentWithdrawalAuthorizationService,
+) {
 
     @GetMapping
     fun getWallets(@AuthenticationPrincipal currentUser: CurrentUser) =
@@ -62,6 +69,27 @@ class WalletController(private val walletService: WalletService, private val ide
     @GetMapping("/budgets")
     fun getBudgets(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> =
         ResponseEntity.ok(mapOf("success" to true, "budgets" to walletService.getBudgets(currentUser.userId)))
+
+    /** Creates a one-time, ten-minute code the customer shows only after confirming a cash-out. */
+    @PostMapping("/agent-withdrawal-authorizations")
+    fun createAgentWithdrawalAuthorization(
+        @RequestBody request: CreateAgentWithdrawalAuthorizationRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ) = ResponseEntity.status(HttpStatus.CREATED).body(
+        mapOf("success" to true, "authorization" to agentWithdrawalAuthorizationService.create(currentUser.userId, request.amount)),
+    )
+
+    @PostMapping("/agent-withdrawal-authorizations/cancel")
+    fun cancelAgentWithdrawalAuthorization(
+        @RequestBody request: CancelAgentWithdrawalAuthorizationRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ) = ResponseEntity.ok(
+        mapOf("success" to true, "authorization" to agentWithdrawalAuthorizationService.cancel(currentUser.userId, request.code)),
+    )
+
+    @GetMapping("/agent-withdrawal-authorizations")
+    fun getAgentWithdrawalAuthorizations(@AuthenticationPrincipal currentUser: CurrentUser) =
+        ResponseEntity.ok(mapOf("success" to true, "authorizations" to agentWithdrawalAuthorizationService.list(currentUser.userId)))
 
     @PostMapping("/transfer/quote")
     fun quoteTransfer(@RequestBody request: QuoteTransferRequest, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> {
@@ -122,6 +150,9 @@ class WalletController(private val walletService: WalletService, private val ide
     // Same handler as BillsController's -- provider connector wired into confirmTransfer.
     @ExceptionHandler(ProviderDeclinedException::class)
     fun handleProviderDeclined(ex: ProviderDeclinedException) = ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(ApiError("PROVIDER_DECLINED", ex.message ?: "Provider declined"))
+
+    @ExceptionHandler(rw.itunda.core.agents.WithdrawalAuthorizationInvalidException::class)
+    fun handleWithdrawalAuthorization(ex: rw.itunda.core.agents.WithdrawalAuthorizationInvalidException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("WITHDRAWAL_AUTHORIZATION_INVALID", ex.message ?: "Invalid authorization"))
 
     @ExceptionHandler(IllegalArgumentException::class)
     fun handleBadRequest(ex: IllegalArgumentException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_REQUEST", ex.message ?: "Bad request"))

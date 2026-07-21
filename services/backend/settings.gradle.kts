@@ -33,5 +33,6 @@ include(
     ":maps",
     ":gift",
     ":splitbill",
+    ":agents",
     ":app"
 )

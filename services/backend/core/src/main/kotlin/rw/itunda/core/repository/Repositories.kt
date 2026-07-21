@@ -6,6 +6,12 @@ import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.Contact
+import rw.itunda.core.domain.Agent
+import rw.itunda.core.domain.AgentCashIn
+import rw.itunda.core.domain.AgentCashOut
+import rw.itunda.core.domain.AgentOperator
+import rw.itunda.core.domain.AgentTillReconciliation
+import rw.itunda.core.domain.TillReconciliationStatus
 import rw.itunda.core.domain.EmailVerificationToken
 import rw.itunda.core.domain.GroupAccount
 import rw.itunda.core.domain.GroupAccountMember
@@ -25,6 +31,7 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.domain.WeeklySavingsInstallment
 import rw.itunda.core.domain.WeeklySavingsPlan
 import java.time.Instant
+import java.time.LocalDate
 import java.util.Optional
 
 interface LoanAccountRepository : JpaRepository<LoanAccount, String> {
@@ -129,6 +136,37 @@ interface LedgerEntryRepository : JpaRepository<LedgerEntry, String> {
     // call per debit (a real N+1 found in a 2026-07-19 performance sweep, same shape as
     // PayrollService.runPayroll's/GroupMessagingService's own already-fixed N+1s).
     fun findByTransactionIdIn(transactionIds: List<String>): List<LedgerEntry>
+}
+
+interface AgentRepository : JpaRepository<Agent, String> {
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from Agent a where a.id = :id")
+    fun findByIdForUpdate(@Param("id") id: String): Optional<Agent>
+}
+
+interface AgentCashInRepository : JpaRepository<AgentCashIn, String> {
+    fun existsByReceiptNumber(receiptNumber: String): Boolean
+
+    @Query("select coalesce(sum(c.amount), 0) from AgentCashIn c where c.agentId = :agentId and c.createdAt >= :from and c.createdAt < :to")
+    fun sumAmountByAgentIdBetween(@Param("agentId") agentId: String, @Param("from") from: Instant, @Param("to") to: Instant): java.math.BigDecimal
+    fun findByAgentIdOrderByCreatedAtDesc(agentId: String): List<AgentCashIn>
+}
+
+interface AgentCashOutRepository : JpaRepository<AgentCashOut, String> {
+    fun existsByReceiptNumber(receiptNumber: String): Boolean
+
+    @Query("select coalesce(sum(c.amount), 0) from AgentCashOut c where c.agentId = :agentId and c.createdAt >= :from and c.createdAt < :to")
+    fun sumAmountByAgentIdBetween(@Param("agentId") agentId: String, @Param("from") from: Instant, @Param("to") to: Instant): java.math.BigDecimal
+    fun findByAgentIdOrderByCreatedAtDesc(agentId: String): List<AgentCashOut>
+}
+
+interface AgentOperatorRepository : JpaRepository<AgentOperator, String> {
+    fun findByUserId(userId: String): AgentOperator?
+}
+
+interface AgentTillReconciliationRepository : JpaRepository<AgentTillReconciliation, String> {
+    fun findByAgentIdAndBusinessDate(agentId: String, businessDate: LocalDate): AgentTillReconciliation?
+    fun findByStatusOrderByCreatedAtDesc(status: TillReconciliationStatus): List<AgentTillReconciliation>
 }
 
 interface TransactionRepository : JpaRepository<Transaction, String> {

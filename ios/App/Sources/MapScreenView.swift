@@ -79,6 +79,27 @@ private func writeStyleFile() -> URL {
     return url
 }
 
+// Real per-category glyphs for the chip row (2026-07-21) -- mirrors Android's
+// MAP_CATEGORY_ICONS / bank-mfe's CATEGORY_ICONS exactly, same client-side-only
+// convention: no icon field on the backend's category model, plain emoji, never sent
+// back to the server.
+private let mapCategoryIcons: [String: String] = [
+    "RESTAURANT": "🍽️", "CAFE": "☕", "HOSPITAL": "🏥", "PHARMACY": "💊",
+    "BANK": "🏦", "ATM": "🏧", "HOTEL": "🏨", "SUPERMARKET": "🛒",
+    "GAS_STATION": "⛽", "SCHOOL": "🏫",
+]
+
+/// Real, minimal handle onto the live `MLNMapView` (2026-07-21) -- SwiftUI's
+/// `UIViewRepresentable` doesn't otherwise expose the underlying UIKit view to sibling
+/// SwiftUI controls, so the new floating zoom +/- buttons (below, mirroring Android's
+/// MapScreen.kt / bank-mfe's MapView.tsx own zoom control) need this thin bridge to call
+/// `setZoomLevel` on the real map instance.
+private final class MapController: ObservableObject {
+    weak var mapView: MLNMapView?
+    func zoomIn() { mapView.map { $0.setZoomLevel($0.zoomLevel + 1, animated: true) } }
+    func zoomOut() { mapView.map { $0.setZoomLevel($0.zoomLevel - 1, animated: true) } }
+}
+
 /// Real "my location" via Apple's own CLLocationManager, runtime-permission-gated,
 /// never assumed granted -- see MapScreenView's own doc comment for why this was added
 /// 2026-07-19 alongside search/directions.
@@ -160,6 +181,7 @@ struct MapScreenView: View {
     // first `GeometryReader` pass supplies a real screen height to anchor against.
     @State private var sheetY: CGFloat?
     @State private var sheetSettledY: CGFloat = 0
+    @StateObject private var mapController = MapController()
 
     private func isBookmarked(_ place: PlaceSearchResultDto) -> Bool {
         bookmarks.contains { $0.latitude == place.latitude && $0.longitude == place.longitude }
@@ -186,85 +208,126 @@ struct MapScreenView: View {
                 ZStack(alignment: .top) {
                     MapLibreMapRepresentable(
                         merchants: merchants, myLocation: locationFetcher.coordinate, destination: selectedPlace,
-                        routeGeometry: route?.geometry, nearbyPlaces: categoryResults,
+                        routeGeometry: route?.geometry, nearbyPlaces: categoryResults, controller: mapController,
                     )
                         .ignoresSafeArea()
 
-                    // Floating top panel -- search bar, category chips, search
-                    // results, errors -- docks to the map's top edge rather than
-                    // pushing it down.
-                    VStack(spacing: 0) {
-                        HStack(spacing: 8) {
+                    // Real floating chrome (2026-07-21 redesign, mirrors Android's
+                    // MapScreen.kt / bank-mfe's MapView.tsx) -- previously one flat,
+                    // edge-to-edge `IDS.Colors.background` panel that read as a fixed
+                    // toolbar. Now the search pill and chip row are their own
+                    // individually-shadowed, deliberately theme-independent white
+                    // surfaces (using the static `IdsPalette`, not the theme-reactive
+                    // `IDS.Colors`, for exactly the reason found live in bank-mfe's own
+                    // dark-mode verification pass: `IDS.Colors.textPrimary` resolves to
+                    // white in dark mode, which would be invisible on a hardcoded white
+                    // card) with real map visible between them.
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundColor(searching ? IdsPalette.gray400 : IdsPalette.blue500)
                             TextField("Search a real place in Rwanda", text: $query)
-                                .padding(10)
-                                .background(IDS.Colors.chipBackground)
-                                .cornerRadius(10)
-                            Button(action: { Task { await search() } }) {
-                                Text(searching ? "…" : "Search").font(.subheadline).bold().foregroundColor(.white)
-                                    .padding(.horizontal, 14).padding(.vertical, 10)
-                                    .background(IDS.Colors.brand).cornerRadius(10)
-                            }
-                            .disabled(searching || query.trimmingCharacters(in: .whitespaces).isEmpty)
-                            Button(action: { locationFetcher.requestLocation() }) {
-                                Image(systemName: "location.fill").foregroundColor(IDS.Colors.brand)
+                                .foregroundColor(IdsPalette.gray900)
+                                .onSubmit { Task { await search() } }
+                            if !query.trimmingCharacters(in: .whitespaces).isEmpty {
+                                Button(action: { query = ""; searchResults = nil }) {
+                                    Image(systemName: "xmark.circle.fill").foregroundColor(IdsPalette.gray400)
+                                }
                             }
                         }
-                        .padding(.horizontal, IDS.Layout.screenHorizontal)
-                        .padding(.top, 8)
+                        .padding(.vertical, 10).padding(.horizontal, 14)
+                        .background(IdsPalette.white)
+                        .clipShape(Capsule())
+                        .shadow(color: .black.opacity(0.14), radius: 8, y: 2)
 
                         // Real category-chip "nearby places" search (Naver/Kakao's own
                         // convention) -- mirrors bank-mfe's MapView.tsx / Android's
-                        // MapScreen.kt chip row exactly.
+                        // MapScreen.kt chip row, now with a per-category emoji glyph.
                         ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 6) {
+                            HStack(spacing: 8) {
                                 ForEach(mapNearbyCategories) { category in
                                     let active = activeCategory == category.id
                                     Button(action: { Task { await searchNearbyCategory(category.id) } }) {
-                                        Text(active && categoryLoading ? "…" : category.label)
-                                            .font(.caption).bold()
-                                            .foregroundColor(active ? .white : IDS.Colors.textPrimary)
-                                            .padding(.horizontal, 12).padding(.vertical, 6)
-                                            .background(active ? Color(red: 0.545, green: 0.361, blue: 0.965) : Color.clear)
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 999)
-                                                    .stroke(active ? Color(red: 0.545, green: 0.361, blue: 0.965) : IDS.Colors.textSecondary.opacity(0.3), lineWidth: 1)
-                                            )
-                                            .cornerRadius(999)
+                                        HStack(spacing: 4) {
+                                            Text(mapCategoryIcons[category.id] ?? "📍")
+                                            Text(active && categoryLoading ? "…" : category.label)
+                                        }
+                                        .font(.caption).bold()
+                                        .foregroundColor(active ? .white : IdsPalette.gray700)
+                                        .padding(.horizontal, 12).padding(.vertical, 8)
+                                        .background(active ? Color(red: 0.545, green: 0.361, blue: 0.965) : IdsPalette.white)
+                                        .clipShape(Capsule())
+                                        .shadow(color: .black.opacity(active ? 0.28 : 0.1), radius: active ? 4 : 3, y: 1)
                                     }
                                     .disabled(categoryLoading && !active)
                                 }
                             }
-                            .padding(.horizontal, IDS.Layout.screenHorizontal)
                         }
-                        .padding(.top, 8)
 
-                        if let results = searchResults {
-                            ScrollView {
-                                VStack(alignment: .leading, spacing: 2) {
+                        if searchResults != nil || error != nil {
+                            VStack(alignment: .leading, spacing: 2) {
+                                if let results = searchResults {
                                     if results.isEmpty {
-                                        Text("No real places found for that search.").font(.caption).foregroundColor(IDS.Colors.textSecondary).padding(8)
+                                        Text("No real places found for that search.").font(.caption).foregroundColor(IdsPalette.gray500).padding(8)
                                     } else {
                                         ForEach(Array(results.enumerated()), id: \.offset) { _, place in
                                             Text(place.displayName)
                                                 .font(.caption)
-                                                .foregroundColor(IDS.Colors.textPrimary)
+                                                .foregroundColor(IdsPalette.gray900)
                                                 .frame(maxWidth: .infinity, alignment: .leading)
                                                 .padding(10)
                                                 .onTapGesture { selectPlace(place) }
                                         }
                                     }
                                 }
+                                if let error {
+                                    Text(error).font(.caption).foregroundColor(.red).padding(8)
+                                }
                             }
                             .frame(maxHeight: 160)
-                            .padding(.horizontal, IDS.Layout.screenHorizontal)
-                            .background(IDS.Colors.card)
-                        }
-
-                        if let error {
-                            Text(error).font(.caption).foregroundColor(.red).padding(.horizontal, IDS.Layout.screenHorizontal).padding(.top, 4)
+                            .background(IdsPalette.white)
+                            .cornerRadius(14)
+                            .shadow(color: .black.opacity(0.14), radius: 8, y: 2)
                         }
                     }
-                    .background(IDS.Colors.background)
+                    .padding(.horizontal, IDS.Layout.screenHorizontal)
+                    .padding(.top, 12)
+
+                    // Real floating right-side controls (2026-07-21) -- zoom +/- and a
+                    // dedicated "locate me" button, matching the standard Google
+                    // Maps/Naver Map/Kakao Map convention of a vertical control stack on
+                    // the right, distinct from the search bar (which previously carried
+                    // the locate button inline). Mirrors Android's/bank-mfe's own control
+                    // stack exactly. Anchored above the sheet's own peek height.
+                    VStack(spacing: 10) {
+                        VStack(spacing: 0) {
+                            Button(action: { mapController.zoomIn() }) {
+                                Image(systemName: "plus").foregroundColor(IdsPalette.gray900)
+                                    .frame(width: 44, height: 44)
+                            }
+                            Divider().frame(width: 44)
+                            Button(action: { mapController.zoomOut() }) {
+                                Image(systemName: "minus").foregroundColor(IdsPalette.gray900)
+                                    .frame(width: 44, height: 44)
+                            }
+                        }
+                        .background(IdsPalette.white)
+                        .cornerRadius(14)
+                        .shadow(color: .black.opacity(0.14), radius: 8, y: 2)
+
+                        Button(action: { locationFetcher.requestLocation() }) {
+                            Image(systemName: "location.fill")
+                                .foregroundColor(IdsPalette.blue500)
+                                .frame(width: 46, height: 46)
+                                .background(IdsPalette.white)
+                                .clipShape(Circle())
+                                .shadow(color: .black.opacity(0.14), radius: 8, y: 2)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.trailing, 16)
+                    .padding(.bottom, peekHeight + 16)
+                    .frame(maxHeight: .infinity, alignment: .bottom)
 
                     // Real draggable peek/half/full bottom sheet (2026-07-21) -- a
                     // persistent, non-modal panel docked over the map. `DragGesture`
@@ -524,6 +587,7 @@ private struct MapLibreMapRepresentable: UIViewRepresentable {
     let destination: PlaceSearchResultDto?
     let routeGeometry: [[Double]]?
     let nearbyPlaces: [NearbyPlaceDto]?
+    let controller: MapController
 
     private let myLocationAnnotationTitle = "itunda-my-location"
 
@@ -535,6 +599,7 @@ private struct MapLibreMapRepresentable: UIViewRepresentable {
             zoomLevel: 12,
             animated: false,
         )
+        controller.mapView = mapView
         return mapView
     }
 
