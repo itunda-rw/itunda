@@ -1790,8 +1790,6 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
                             }
                         }
                     },
-                    favorited = listing.id in favoriteIds,
-                    onToggleFavorite = { coroutineScope.launch { try { if (listing.id in favoriteIds) { NetworkClient.apiService.removePropertyListingFavorite(listing.id); favoriteIds = favoriteIds - listing.id } else { NetworkClient.apiService.addPropertyListingFavorite(listing.id); favoriteIds = favoriteIds + listing.id } } catch (e: Exception) { error = "Couldn't update your saved properties. Check your connection and try again." } } },
                 )
             }
         }
@@ -3259,6 +3257,8 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
                             }
                         }
                     },
+                    favorited = listing.id in favoriteIds,
+                    onToggleFavorite = { coroutineScope.launch { try { if (listing.id in favoriteIds) { NetworkClient.apiService.removePropertyListingFavorite(listing.id); favoriteIds = favoriteIds - listing.id } else { NetworkClient.apiService.addPropertyListingFavorite(listing.id); favoriteIds = favoriteIds + listing.id } } catch (e: Exception) { error = "Couldn't update your saved properties. Check your connection and try again." } } },
                 )
             }
         }
