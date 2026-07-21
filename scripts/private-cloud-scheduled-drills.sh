@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_DIR="${ITUNDA_PRIVATE_CLOUD_DRILL_LOG_DIR:-$HOME/Library/Logs/itunda-private-cloud}"
 LOG_FILE="$LOG_DIR/drills.log"

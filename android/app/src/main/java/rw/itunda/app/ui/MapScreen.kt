@@ -2,6 +2,11 @@ package rw.itunda.app.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.Color as AndroidColor
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.tween
@@ -25,15 +30,24 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ArrowBackIosNew
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.MyLocation
+import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,11 +61,14 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,15 +80,22 @@ import com.google.android.gms.location.Priority
 import kotlinx.coroutines.launch
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.LineLayer
+import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.layers.PropertyFactory.circleColor
+import org.maplibre.android.style.layers.PropertyFactory.circleOpacity
 import org.maplibre.android.style.layers.PropertyFactory.circleStrokeColor
 import org.maplibre.android.style.layers.PropertyFactory.circleStrokeWidth
 import org.maplibre.android.style.layers.PropertyFactory.circleRadius
+import org.maplibre.android.style.layers.PropertyFactory.iconAllowOverlap
+import org.maplibre.android.style.layers.PropertyFactory.iconAnchor
+import org.maplibre.android.style.layers.PropertyFactory.iconImage
+import org.maplibre.android.style.layers.PropertyFactory.iconSize
 import org.maplibre.android.style.layers.PropertyFactory.lineCap
 import org.maplibre.android.style.layers.PropertyFactory.lineColor
 import org.maplibre.android.style.layers.PropertyFactory.lineJoin
@@ -120,6 +144,55 @@ private const val ROUTE_SOURCE_ID = "route"
 private const val ROUTE_LAYER_ID = "route-line"
 private const val NEARBY_SOURCE_ID = "nearby-places"
 private const val NEARBY_LAYER_ID = "nearby-places-circle"
+private const val MERCHANT_ICON_ID = "merchant-pin"
+private const val DESTINATION_ICON_ID = "destination-pin"
+private const val NEARBY_ICON_ID = "nearby-pin"
+
+// Real per-category glyphs for the chip row (2026-07-21) -- plain emoji, matching this
+// screen's own existing convention of emoji over icon-font glyphs for real content (the
+// 🚗/★/☆ already used below), not a new pattern. No icon field exists on the backend's
+// `MapPlaceCategory` DTO -- this is a client-side-only lookup by id, honestly scoped to
+// display, never sent back to the server.
+private val MAP_CATEGORY_ICONS = mapOf(
+    "RESTAURANT" to "🍽️", "CAFE" to "☕", "HOSPITAL" to "🏥", "PHARMACY" to "💊",
+    "BANK" to "🏦", "ATM" to "🏧", "HOTEL" to "🏨", "SUPERMARKET" to "🛒",
+    "GAS_STATION" to "⛽", "SCHOOL" to "🏫",
+)
+
+// Real teardrop pin markers (2026-07-21), replacing the flat, unlabeled `CircleLayer`
+// dots this screen used before -- MapLibre has no vector marker primitive of its own, so
+// the shape is drawn once at runtime straight into a Bitmap (no drawable asset needed)
+// and registered via `Style.addImage`, matching the real Naver Map/Kakao Map/Google Maps
+// pin silhouette (a circle head + a pointed tail anchored at the actual coordinate)
+// instead of a dot that reads as a generic data point. Drawn as an oversized white
+// "border" shape first, then the real color on top, rather than stroking a single
+// circle+triangle path directly -- stroking that combined path leaves a visible seam
+// where the triangle's edges cross the circle's, since the triangle's own corners don't
+// land exactly on the circle's boundary.
+private fun teardropPath(cx: Float, cy: Float, r: Float): Path = Path().apply {
+    addCircle(cx, cy, r, Path.Direction.CW)
+    moveTo(cx - r * 0.58f, cy + r * 0.58f)
+    lineTo(cx, cy + r * 1.35f)
+    lineTo(cx + r * 0.58f, cy + r * 0.58f)
+    close()
+}
+
+private fun createPinBitmap(density: Float, fillColorHex: String): Bitmap {
+    val stroke = 2f * density
+    val w = (30f * density).roundToInt()
+    val h = (38f * density).roundToInt()
+    val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val cx = w / 2f
+    val r = w / 2f - stroke
+    val cy = r + stroke
+    val whitePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = AndroidColor.WHITE; style = Paint.Style.FILL }
+    val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = AndroidColor.parseColor(fillColorHex); style = Paint.Style.FILL }
+    canvas.drawPath(teardropPath(cx, cy, r + stroke), whitePaint)
+    canvas.drawPath(teardropPath(cx, cy, r), fillPaint)
+    canvas.drawCircle(cx, cy, r * 0.34f, whitePaint)
+    return bitmap
+}
 
 // Real 3-state (peek/half/full) draggable bottom sheet (2026-07-21) -- replaces the
 // static Card that only ever appeared/vanished at whatever height its content
@@ -285,6 +358,25 @@ fun MapScreen(onBack: () -> Unit) {
         if (hasPermission) fetchRealLocation() else locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
     }
 
+    // Shared by both the search field's own leading icon and its keyboard "search"
+    // IME action -- previously only reachable via a separate colored "Search" button.
+    fun runSearch() {
+        if (searching || query.isBlank()) return
+        coroutineScope.launch {
+            searching = true
+            error = null
+            try {
+                searchResults = NetworkClient.apiService.searchPlaces(query).results
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: Exception) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                searching = false
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         try {
             val response = NetworkClient.apiService.getShoppingMerchants()
@@ -379,14 +471,20 @@ fun MapScreen(onBack: () -> Unit) {
                     .zoom(12.0)
                     .build()
                 map.setStyle(Style.Builder().fromJson(MAP_STYLE_JSON)) { style ->
+                    val pinDensity = context.resources.displayMetrics.density
+                    style.addImage(MERCHANT_ICON_ID, createPinBitmap(pinDensity, "#3182F6"))
+                    style.addImage(DESTINATION_ICON_ID, createPinBitmap(pinDensity, "#E53935"))
+                    style.addImage(NEARBY_ICON_ID, createPinBitmap(pinDensity, "#8B5CF6"))
+
                     style.addSource(GeoJsonSource(MERCHANTS_SOURCE_ID, FeatureCollection.fromFeatures(emptyArray())))
                     style.addLayer(
-                        CircleLayer(MERCHANTS_LAYER_ID, MERCHANTS_SOURCE_ID).withProperties(
-                            circleRadius(8f), circleColor("#3182F6"), circleStrokeWidth(2f), circleStrokeColor("#ffffff"),
+                        SymbolLayer(MERCHANTS_LAYER_ID, MERCHANTS_SOURCE_ID).withProperties(
+                            iconImage(MERCHANT_ICON_ID), iconAnchor(Property.ICON_ANCHOR_BOTTOM),
+                            iconAllowOverlap(true), iconSize(0.85f),
                         ),
                     )
                     // Real drawn route (2026-07-19) -- rendered before the location/
-                    // destination circles so the circles paint on top of the line.
+                    // destination pins so they paint on top of the line.
                     style.addSource(GeoJsonSource(ROUTE_SOURCE_ID, FeatureCollection.fromFeatures(emptyArray())))
                     style.addLayer(
                         LineLayer(ROUTE_LAYER_ID, ROUTE_SOURCE_ID).withProperties(
@@ -396,25 +494,34 @@ fun MapScreen(onBack: () -> Unit) {
                     )
                     style.addSource(GeoJsonSource(DESTINATION_SOURCE_ID, FeatureCollection.fromFeatures(emptyArray())))
                     style.addLayer(
-                        CircleLayer(DESTINATION_LAYER_ID, DESTINATION_SOURCE_ID).withProperties(
-                            circleRadius(9f), circleColor("#E53935"), circleStrokeWidth(2f), circleStrokeColor("#ffffff"),
+                        SymbolLayer(DESTINATION_LAYER_ID, DESTINATION_SOURCE_ID).withProperties(
+                            iconImage(DESTINATION_ICON_ID), iconAnchor(Property.ICON_ANCHOR_BOTTOM),
+                            iconAllowOverlap(true), iconSize(1f),
                         ),
                     )
-                    // Real "my location" blue dot -- a distinct circle style from both
-                    // merchants and the destination pin, matching Naver/Kakao Maps' own
-                    // real convention for a location indicator.
+                    // Real "my location" blue dot with a soft translucent accuracy halo
+                    // beneath it -- a distinct style from the merchant/destination pins,
+                    // matching Google Maps/Naver/Kakao's own real convention that the
+                    // user's own position is a plain dot, never a pin.
                     style.addSource(GeoJsonSource(MY_LOCATION_SOURCE_ID, FeatureCollection.fromFeatures(emptyArray())))
+                    style.addLayer(
+                        CircleLayer("$MY_LOCATION_LAYER_ID-halo", MY_LOCATION_SOURCE_ID).withProperties(
+                            circleRadius(18f), circleColor("#3182F6"), circleOpacity(0.16f),
+                        ),
+                    )
                     style.addLayer(
                         CircleLayer(MY_LOCATION_LAYER_ID, MY_LOCATION_SOURCE_ID).withProperties(
                             circleRadius(7f), circleColor("#3182F6"), circleStrokeWidth(3f), circleStrokeColor("#ffffff"),
                         ),
                     )
                     // Real "nearby places" category-search markers (2026-07-19) -- a
-                    // distinct violet color, same as bank-mfe's MapView.tsx category chips.
+                    // distinct violet pin, same accent color as bank-mfe's MapView.tsx
+                    // category chips.
                     style.addSource(GeoJsonSource(NEARBY_SOURCE_ID, FeatureCollection.fromFeatures(emptyArray())))
                     style.addLayer(
-                        CircleLayer(NEARBY_LAYER_ID, NEARBY_SOURCE_ID).withProperties(
-                            circleRadius(7f), circleColor("#8B5CF6"), circleStrokeWidth(2f), circleStrokeColor("#ffffff"),
+                        SymbolLayer(NEARBY_LAYER_ID, NEARBY_SOURCE_ID).withProperties(
+                            iconImage(NEARBY_ICON_ID), iconAnchor(Property.ICON_ANCHOR_BOTTOM),
+                            iconAllowOverlap(true), iconSize(0.85f),
                         ),
                     )
                     val featureCollection = FeatureCollection.fromFeatures(
@@ -521,121 +628,205 @@ fun MapScreen(onBack: () -> Unit) {
 
             AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
 
+            // Real floating chrome (2026-07-21 redesign) -- previously one flat,
+            // edge-to-edge, opaque `Column` that visually read as a fixed toolbar
+            // rather than floating over the map (the header comment above already
+            // named "floating overlays" as the goal; the implementation didn't match
+            // it). Now every piece -- back button, search pill, chip row -- is its own
+            // individually-shadowed rounded surface with real map visible between them,
+            // matching the actual Naver Map/Kakao Map/Google Maps chrome convention.
             Column(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
-                    .background(Ids.colors.background),
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-            Box(modifier = Modifier.padding(16.dp)) {
-                BackTopBar("Map", onBack)
-            }
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    placeholder = { Text("Search a real place in Rwanda") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
-                )
                 Box(
                     modifier = Modifier
-                        .background(TossBlue, RoundedCornerShape(10.dp))
-                        .clickable(enabled = !searching && query.isNotBlank()) {
-                            coroutineScope.launch {
-                                searching = true
-                                error = null
-                                try {
-                                    searchResults = NetworkClient.apiService.searchPlaces(query).results
-                                } catch (e: HttpException) {
-                                    error = superAppErrorMessage(e)
-                                } catch (e: Exception) {
-                                    error = "Couldn't reach itunda. Check your connection and try again."
-                                } finally {
-                                    searching = false
-                                }
-                            }
-                        }
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                ) { Text(if (searching) "…" else "Search", color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp) }
-                Icon(
-                    Icons.Outlined.MyLocation,
-                    contentDescription = "Find my real location",
-                    tint = if (locating) TossSecondary else TossBlue,
-                    modifier = Modifier.clickable(enabled = !locating) { requestMyLocation() },
-                )
+                        .size(46.dp)
+                        .shadow(3.dp, CircleShape)
+                        .background(TossCard, CircleShape)
+                        .clip(CircleShape)
+                        .clickable(onClick = onBack),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Back", modifier = Modifier.size(16.dp), tint = TossText)
+                }
+
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .shadow(3.dp, RoundedCornerShape(999.dp))
+                        .background(TossCard, RoundedCornerShape(999.dp))
+                        .padding(start = 14.dp, end = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Outlined.Search,
+                        contentDescription = "Search",
+                        tint = if (searching) TossSecondary else TossBlue,
+                        modifier = Modifier.size(18.dp).clickable(enabled = !searching && query.isNotBlank()) { runSearch() },
+                    )
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        placeholder = { Text("Search a real place in Rwanda", fontSize = 13.sp) },
+                        singleLine = true,
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+                            unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+                            disabledBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+                        ),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { runSearch() }),
+                        modifier = Modifier.weight(1f).padding(horizontal = 6.dp),
+                    )
+                    if (query.isNotBlank()) {
+                        Icon(
+                            Icons.Outlined.Close,
+                            contentDescription = "Clear search",
+                            tint = TossSecondary,
+                            modifier = Modifier.size(16.dp).clickable { query = ""; searchResults = null },
+                        )
+                        Box(modifier = Modifier.width(6.dp))
+                    }
+                }
             }
 
             // Real category-chip "nearby places" search (Naver/Kakao's own convention) --
-            // mirrors bank-mfe's MapView.tsx chip row exactly.
+            // mirrors bank-mfe's MapView.tsx chip row, now with a per-category emoji glyph
+            // (MAP_CATEGORY_ICONS) so chips read at a glance instead of as text-only pills.
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 MAP_NEARBY_CATEGORIES.forEach { category ->
                     val active = activeCategory == category.id
-                    Box(
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier
-                            .background(if (active) androidx.compose.ui.graphics.Color(0xFF8B5CF6) else androidx.compose.ui.graphics.Color.White, RoundedCornerShape(999.dp))
-                            .border(1.dp, if (active) androidx.compose.ui.graphics.Color(0xFF8B5CF6) else TossSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
+                            .shadow(if (active) 3.dp else 1.dp, RoundedCornerShape(999.dp))
+                            .background(if (active) androidx.compose.ui.graphics.Color(0xFF8B5CF6) else TossCard, RoundedCornerShape(999.dp))
                             .clickable(enabled = !categoryLoading || active) { searchNearbyCategory(category.id) }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
                     ) {
+                        Text(MAP_CATEGORY_ICONS[category.id] ?: "📍", fontSize = 13.sp)
                         Text(
                             if (active && categoryLoading) "…" else category.label,
                             fontSize = 12.sp,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                            fontWeight = FontWeight.SemiBold,
                             color = if (active) androidx.compose.ui.graphics.Color.White else TossText,
                         )
                     }
                 }
             }
 
-            if (activeCategory != null && categoryResults != null) {
-                val label = MAP_NEARBY_CATEGORIES.firstOrNull { it.id == activeCategory }?.label?.lowercase()
-                Text(
-                    if (categoryResults!!.isEmpty()) "No real matches found nearby for that category."
-                    else "${categoryResults!!.size} real $label found nearby, closest first.",
-                    color = TossSecondary,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                )
-            }
+            if ((activeCategory != null && categoryResults != null) || searchResults != null || error != null) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(3.dp, RoundedCornerShape(Ids.layout.sectionCornerRadius))
+                        .background(TossCard, RoundedCornerShape(Ids.layout.sectionCornerRadius))
+                        .padding(vertical = 4.dp),
+                ) {
+                    if (activeCategory != null && categoryResults != null) {
+                        val label = MAP_NEARBY_CATEGORIES.firstOrNull { it.id == activeCategory }?.label?.lowercase()
+                        Text(
+                            if (categoryResults!!.isEmpty()) "No real matches found nearby for that category."
+                            else "${categoryResults!!.size} real $label found nearby, closest first.",
+                            color = TossSecondary,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        )
+                    }
 
-            searchResults?.let { results ->
-                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    if (results.isEmpty()) {
-                        Text("No real places found for that search.", color = TossSecondary, fontSize = 13.sp, modifier = Modifier.padding(8.dp))
-                    } else {
-                        results.forEach { place ->
-                            Text(
-                                place.displayName,
-                                fontSize = 13.sp,
-                                color = TossText,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        selectedPlace = place
-                                        searchResults = null
-                                        route = null
-                                        showSteps = false
-                                    }
-                                    .padding(10.dp),
-                            )
+                    searchResults?.let { results ->
+                        if (results.isEmpty()) {
+                            Text("No real places found for that search.", color = TossSecondary, fontSize = 13.sp, modifier = Modifier.padding(14.dp))
+                        } else {
+                            results.forEach { place ->
+                                Text(
+                                    place.displayName,
+                                    fontSize = 13.sp,
+                                    color = TossText,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            selectedPlace = place
+                                            searchResults = null
+                                            route = null
+                                            showSteps = false
+                                        }
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                )
+                            }
                         }
                     }
+
+                    error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) }
                 }
             }
-
-            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp)) }
             } // end floating top panel
+
+            // Real floating right-side controls (2026-07-21) -- zoom +/- and a dedicated
+            // "locate me" button, matching the standard Google Maps/Naver Map/Kakao Map
+            // convention of a vertical control stack on the right, distinct from the
+            // search bar (which previously carried the locate icon inline, unlike any
+            // real map app). Anchored above the sheet's own peek height so it's never
+            // covered at rest.
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp)
+                    .offset { IntOffset(0, -(peekHeightPx + with(density) { 16.dp.toPx() }).roundToInt()) },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .shadow(3.dp, RoundedCornerShape(14.dp))
+                        .background(TossCard, RoundedCornerShape(14.dp)),
+                ) {
+                    Box(
+                        modifier = Modifier.size(44.dp).clickable {
+                            mapView.getMapAsync { map -> map.easeCamera(CameraUpdateFactory.zoomIn()) }
+                        },
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(Icons.Outlined.Add, contentDescription = "Zoom in", tint = TossText, modifier = Modifier.size(18.dp)) }
+                    Box(modifier = Modifier.width(44.dp).height(1.dp).background(TossLine))
+                    Box(
+                        modifier = Modifier.size(44.dp).clickable {
+                            mapView.getMapAsync { map -> map.easeCamera(CameraUpdateFactory.zoomOut()) }
+                        },
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(Icons.Outlined.Remove, contentDescription = "Zoom out", tint = TossText, modifier = Modifier.size(18.dp)) }
+                }
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .shadow(3.dp, CircleShape)
+                        .background(TossCard, CircleShape)
+                        .clip(CircleShape)
+                        .clickable(enabled = !locating) { requestMyLocation() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Outlined.MyLocation,
+                        contentDescription = "Find my real location",
+                        tint = if (locating) TossSecondary else TossBlue,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
 
             // Real draggable peek/half/full bottom sheet (2026-07-21) -- a persistent,
             // non-modal panel docked over the map that the user can drag between three
@@ -649,7 +840,14 @@ fun MapScreen(onBack: () -> Unit) {
                     .align(Alignment.TopStart)
                     .fillMaxWidth()
                     .height(maxHeight)
-                    .offset { IntOffset(0, sheetState.requireOffset().roundToInt()) }
+                    .offset {
+                        // requireOffset() throws on the very first layout pass: updateAnchors()
+                        // above only runs once its LaunchedEffect's coroutine is dispatched,
+                        // which is after this frame's layout already ran once. Fall back to the
+                        // peek position (this state's own initial value) for that one frame.
+                        val offset = sheetState.offset.let { if (it.isNaN()) fullHeightPx - peekHeightPx else it }
+                        IntOffset(0, offset.roundToInt())
+                    }
                     .anchoredDraggable(sheetState, Orientation.Vertical),
             ) {
                 Column(

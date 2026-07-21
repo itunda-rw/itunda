@@ -134,6 +134,31 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
 
 const EMPTY_ROUTE_GEOJSON: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
 
+// Real per-category glyphs for the chip row (2026-07-21) -- mirrors Android's own
+// MAP_CATEGORY_ICONS lookup exactly (MapScreen.kt), same client-side-only convention:
+// no icon field on the backend's NearbyPlace/category model, plain emoji over an icon
+// font, never sent back to the server.
+const CATEGORY_ICONS: Record<string, string> = {
+  RESTAURANT: '🍽️', CAFE: '☕', HOSPITAL: '🏥', PHARMACY: '💊',
+  BANK: '🏦', ATM: '🏧', HOTEL: '🏨', SUPERMARKET: '🛒',
+  GAS_STATION: '⛽', SCHOOL: '🏫',
+};
+
+// Real fixed (non-theme-reactive) text colors for this component's own deliberately-
+// white map chrome (search pill, chip row, results dropdown, bottom sheet) -- found as a
+// real bug 2026-07-21 while verifying the redesign live in a real dark-mode browser
+// session: `var(--toss-grey-900)` resolves to #ffffff in this app's dark theme (correct
+// for text on the app's own dark page background), but every one of these panels uses a
+// literal `background: '#fff'`, not the theme-reactive `--toss-white` token `.toss-card`
+// uses -- so grey-900 text on them was rendering fully invisible (white-on-white), not
+// just low-contrast. This affected the pre-existing bottom sheet ("Around you" heading,
+// selected-place name, bookmark/nearby-result rows) as well as this pass's new zoom
+// control, not only newly-added elements.
+const MAP_CARD_TEXT = '#191F28';
+const MAP_CARD_TEXT_SECONDARY = '#4E5968';
+const MAP_CARD_TEXT_TERTIARY = '#8B95A1';
+const MAP_CARD_DIVIDER = '#D1D6DB';
+
 /**
  * Real interactive Rwanda map -- itunda's own self-hosted Kakao Maps/Naver Maps-style
  * mapping. Plots real registered merchants (reusing the same GET /api/v1/shopping/merchants
@@ -255,7 +280,11 @@ export default function MapView() {
       attributionControl: false,
     });
     mapRef.current = map;
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+    // Real custom zoom control (2026-07-21) -- replaces MapLibre's own default
+    // `NavigationControl` (a plain white square button pair, visually inconsistent
+    // with the rest of this app's rounded-card/shadow language) with the same
+    // itunda-styled floating control the JSX below renders, mirroring Android's own
+    // MapScreen.kt zoom +/- stack exactly.
 
     let cancelled = false;
     map.on('error', (e) => {
@@ -477,39 +506,46 @@ export default function MapView() {
           the map being one fixed-height div in a document-flow column. */}
       <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
 
-      {/* Floating top panel -- search bar, category chips, search results, errors --
-          docks to the map's top edge rather than pushing it down. */}
+      {/* Real floating chrome (2026-07-21 redesign, mirrors Android's MapScreen.kt) --
+          previously one flat, edge-to-edge gradient band that read as a fixed toolbar.
+          Now the search pill and chip row are their own individually-shadowed rounded
+          surfaces with real map visible between them, matching the actual Naver
+          Map/Kakao Map/Google Maps chrome convention. */}
       <div
         style={{
           position: 'absolute', top: 0, left: 0, right: 0, zIndex: 2,
-          display: 'flex', flexDirection: 'column', gap: '8px', padding: '10px',
-          background: 'linear-gradient(to bottom, rgba(255,255,255,0.97), rgba(255,255,255,0.85))',
+          display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px',
         }}
       >
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px' }}>
+        <form
+          onSubmit={handleSearch}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            background: '#fff', borderRadius: '999px', padding: '4px 14px 4px 12px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.14)',
+          }}
+        >
+          <span style={{ fontSize: '15px', color: searching ? 'var(--toss-grey-400)' : 'var(--toss-blue)' }}>🔍</span>
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search a real place in Rwanda"
-            style={{ flex: 1, padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            style={{ flex: 1, padding: '10px 6px', border: 'none', outline: 'none', fontSize: '14px', background: 'transparent' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={searching || !query.trim()} style={{ padding: '10px 16px' }}>
-            {searching ? '…' : 'Search'}
-          </button>
-          <button
-            type="button"
-            className="toss-btn toss-btn-secondary"
-            disabled={locating}
-            onClick={findMyLocation}
-            style={{ padding: '10px 12px' }}
-            aria-label="Find my real location"
-          >
-            {locating ? '…' : '📍'}
-          </button>
+          {query.trim() !== '' && (
+            <button
+              type="button"
+              onClick={() => { setQuery(''); setSearchResults(null); }}
+              aria-label="Clear search"
+              style={{ fontSize: '13px', color: 'var(--toss-grey-400)', padding: '4px' }}
+            >
+              ✕
+            </button>
+          )}
         </form>
 
-        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '2px' }}>
           {NEARBY_CATEGORIES.map((category) => {
             const active = activeCategory === category.id;
             return (
@@ -520,24 +556,27 @@ export default function MapView() {
                 disabled={categoryLoading && !active}
                 style={{
                   flexShrink: 0,
-                  padding: '6px 12px',
+                  display: 'flex', alignItems: 'center', gap: '4px',
+                  padding: '8px 12px',
                   borderRadius: '999px',
                   fontSize: '12px',
                   fontWeight: 600,
-                  border: active ? '1px solid #8B5CF6' : '1px solid var(--toss-grey-200)',
+                  border: 'none',
+                  boxShadow: active ? '0 2px 6px rgba(139,92,246,0.4)' : '0 1px 4px rgba(0,0,0,0.1)',
                   backgroundColor: active ? '#8B5CF6' : '#fff',
-                  color: active ? '#fff' : 'var(--toss-grey-700)',
+                  color: active ? '#fff' : MAP_CARD_TEXT_SECONDARY,
                 }}
               >
+                <span>{CATEGORY_ICONS[category.id] ?? '📍'}</span>
                 {active && categoryLoading ? '…' : category.label}
               </button>
             );
           })}
         </div>
 
-        {searchResults !== null && (
-          <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px', maxHeight: '160px', overflowY: 'auto' }}>
-            {searchResults.length === 0 ? (
+        {(searchResults !== null || error) && (
+          <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px', maxHeight: '160px', overflowY: 'auto', boxShadow: '0 2px 8px rgba(0,0,0,0.14)' }}>
+            {searchResults !== null && (searchResults.length === 0 ? (
               <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', padding: '8px' }}>No real places found for that search.</p>
             ) : (
               searchResults.map((place, i) => (
@@ -549,15 +588,58 @@ export default function MapView() {
                   {place.displayName}
                 </button>
               ))
-            )}
+            ))}
+            {error && <p style={{ fontSize: '13px', color: '#E53935', padding: '8px' }} role="alert">{error}</p>}
           </div>
         )}
+      </div>
 
-        {error && (
-          <div className="toss-card">
-            <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
-          </div>
-        )}
+      {/* Real floating right-side controls (2026-07-21) -- zoom +/- and a dedicated
+          "locate me" button, matching the standard Google Maps/Naver Map/Kakao Map
+          convention of a vertical control stack on the right, distinct from the search
+          bar (which previously carried the locate button inline). Mirrors Android's
+          own MapScreen.kt control stack exactly. Anchored above the sheet's own peek
+          height so it's never covered at rest. */}
+      <div
+        style={{
+          position: 'absolute', right: '12px', zIndex: 2,
+          bottom: `${PEEK_HEIGHT + 16}px`,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px',
+        }}
+      >
+        <div style={{ background: '#fff', borderRadius: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.14)', overflow: 'hidden' }}>
+          <button
+            type="button"
+            aria-label="Zoom in"
+            onClick={() => mapRef.current?.zoomIn()}
+            style={{ display: 'block', width: '44px', height: '44px', fontSize: '18px', color: MAP_CARD_TEXT }}
+          >
+            +
+          </button>
+          <div style={{ height: '1px', background: '#E5E8EB' }} />
+          <button
+            type="button"
+            aria-label="Zoom out"
+            onClick={() => mapRef.current?.zoomOut()}
+            style={{ display: 'block', width: '44px', height: '44px', fontSize: '18px', color: MAP_CARD_TEXT }}
+          >
+            −
+          </button>
+        </div>
+        <button
+          type="button"
+          disabled={locating}
+          onClick={findMyLocation}
+          aria-label="Find my real location"
+          style={{
+            width: '46px', height: '46px', borderRadius: '50%',
+            background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.14)',
+            fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: locating ? 'var(--toss-grey-400)' : 'var(--toss-blue)',
+          }}
+        >
+          {locating ? '…' : '📍'}
+        </button>
       </div>
 
       {/* Real draggable peek/half/full bottom sheet (2026-07-21) -- a persistent,
@@ -582,27 +664,27 @@ export default function MapView() {
           onPointerCancel={onSheetPointerUp}
           style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 6px', cursor: 'grab', touchAction: 'none' }}
         >
-          <div style={{ width: '36px', height: '4px', borderRadius: '2px', backgroundColor: 'var(--toss-grey-300)' }} />
+          <div style={{ width: '36px', height: '4px', borderRadius: '2px', backgroundColor: MAP_CARD_DIVIDER }} />
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {selectedPlace ? (
             <>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--toss-grey-900)', flex: 1 }}>{selectedPlace.displayName}</p>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: MAP_CARD_TEXT, flex: 1 }}>{selectedPlace.displayName}</p>
                 <button
                   type="button"
                   onClick={() => toggleBookmark(selectedPlace)}
                   disabled={bookmarking}
                   aria-label={isBookmarked(selectedPlace) ? 'Remove real bookmark' : 'Save this real place'}
-                  style={{ fontSize: '20px', lineHeight: 1, color: isBookmarked(selectedPlace) ? '#F5A623' : 'var(--toss-grey-300)' }}
+                  style={{ fontSize: '20px', lineHeight: 1, color: isBookmarked(selectedPlace) ? '#F5A623' : MAP_CARD_DIVIDER }}
                 >
                   {isBookmarked(selectedPlace) ? '★' : '☆'}
                 </button>
               </div>
               {route ? (
                 <div>
-                  <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>
+                  <p style={{ fontSize: '13px', color: MAP_CARD_TEXT_SECONDARY }}>
                     🚗 {route.distanceKm.toFixed(1)} km · {Math.round(route.durationMinutes)} min by real road, via itunda's own self-hosted OSRM
                   </p>
                   {route.steps.length > 0 && (
@@ -617,10 +699,10 @@ export default function MapView() {
                   {showSteps && (
                     <ol style={{ margin: '8px 0 0', paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       {route.steps.map((step, i) => (
-                        <li key={i} style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>
+                        <li key={i} style={{ fontSize: '12px', color: MAP_CARD_TEXT_SECONDARY }}>
                           {step.instruction}
                           {step.distanceMeters >= 10 && (
-                            <span style={{ color: 'var(--toss-grey-500)' }}> ({Math.round(step.distanceMeters)} m)</span>
+                            <span style={{ color: MAP_CARD_TEXT_TERTIARY }}> ({Math.round(step.distanceMeters)} m)</span>
                           )}
                         </li>
                       ))}
@@ -642,10 +724,10 @@ export default function MapView() {
                   pick" feed to curate, so this surfaces real data it already has: the
                   active category's real results, a real merchant count, and real
                   saved places -- honest functional content, not a fabricated feed. */}
-              <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>Around you</p>
+              <p style={{ fontSize: '14px', fontWeight: 700, color: MAP_CARD_TEXT }}>Around you</p>
               {activeCategory && categoryResults !== null ? (
                 categoryResults.length === 0 ? (
-                  <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+                  <p style={{ fontSize: '13px', color: MAP_CARD_TEXT_TERTIARY }}>
                     No real matches found nearby for {NEARBY_CATEGORIES.find((c) => c.id === activeCategory)?.label.toLowerCase()}.
                   </p>
                 ) : (
@@ -654,7 +736,7 @@ export default function MapView() {
                       <button
                         key={`${place.latitude}-${place.longitude}-${i}`}
                         onClick={() => selectPlace({ displayName: place.displayName, latitude: place.latitude, longitude: place.longitude })}
-                        style={{ textAlign: 'left', padding: '6px 0', fontSize: '13px', color: 'var(--toss-grey-900)' }}
+                        style={{ textAlign: 'left', padding: '6px 0', fontSize: '13px', color: MAP_CARD_TEXT }}
                       >
                         {place.displayName} · {place.distanceKm.toFixed(1)} km
                       </button>
@@ -662,7 +744,7 @@ export default function MapView() {
                   </div>
                 )
               ) : (
-                <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+                <p style={{ fontSize: '13px', color: MAP_CARD_TEXT_TERTIARY }}>
                   {merchantCount === null
                     ? 'Loading real merchants near you…'
                     : merchantCount === 0
@@ -671,16 +753,16 @@ export default function MapView() {
                 </p>
               )}
 
-              <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-500)', marginTop: '8px' }}>★ Your saved places</p>
+              <p style={{ fontSize: '12px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY, marginTop: '8px' }}>★ Your saved places</p>
               {bookmarks.length === 0 ? (
-                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No saved places yet -- tap ☆ on a place to save it.</p>
+                <p style={{ fontSize: '12px', color: MAP_CARD_TEXT_TERTIARY }}>No saved places yet -- tap ☆ on a place to save it.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {bookmarks.map((b) => (
                     <button
                       key={b.id}
                       onClick={() => selectPlace({ displayName: b.displayName, latitude: b.latitude, longitude: b.longitude })}
-                      style={{ textAlign: 'left', padding: '6px 0', fontSize: '13px', color: 'var(--toss-grey-900)' }}
+                      style={{ textAlign: 'left', padding: '6px 0', fontSize: '13px', color: MAP_CARD_TEXT }}
                     >
                       {b.displayName}
                     </button>
