@@ -118,6 +118,7 @@ struct HoodScreen: View {
 
     private enum HoodMode { case marketplace, community, jobs, property }
     @State private var mode: HoodMode = .marketplace
+    @State private var neighborhoodName: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -131,6 +132,16 @@ struct HoodScreen: View {
             .padding(.horizontal, IDS.Layout.screenHorizontal)
             .padding(.top, IDS.Layout.screenTop)
 
+            HStack(spacing: 6) {
+                Text("📍")
+                Text(neighborhoodName.map { "Near \($0)" } ?? "Choose your neighborhood in any Hood service")
+                    .font(IDS.Typography.caption)
+                    .foregroundColor(IDS.Colors.textSecondary)
+                Spacer()
+            }
+            .padding(.horizontal, IDS.Layout.screenHorizontal)
+            .padding(.vertical, 10)
+
             switch mode {
             case .marketplace:
                 MarketplaceContent(pendingConversationId: $pendingConversationId, onSwitchToTalk: onSwitchToTalk)
@@ -143,6 +154,9 @@ struct HoodScreen: View {
             }
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+        .task {
+            neighborhoodName = try? await NetworkClient.shared.getProfile().user.neighborhood
+        }
     }
 }
 
