@@ -14,8 +14,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,6 +40,7 @@ private enum class TransactionMode { CASH_IN, CASH_OUT, COUNT_TILL }
 
 @Composable
 fun AgentHomeScreen(onLogout: () -> Unit) {
+    var action by remember { mutableStateOf<TransactionMode?>(null) }
     var till by remember { mutableStateOf<TillDto?>(null) }
     var activity by remember { mutableStateOf<List<ActivityDto>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -48,18 +51,22 @@ fun AgentHomeScreen(onLogout: () -> Unit) {
         catch (_: Exception) { error = "Could not refresh store data. Check the connection and try again." }
         finally { loading = false }
     }
+    action?.let { selected ->
+        CashOperationScreen(mode = selected, onBack = { action = null }, onCompleted = { action = null; scope.launch { refresh() } })
+        return
+    }
     LaunchedEffect(Unit) { refresh() }
     LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column { Text("Agent till", style = MaterialTheme.typography.headlineMedium); Text(till?.agentName ?: "Loading store…") }
-                Button(onClick = onLogout) { Text("Sign out") }
+                Column { Text(till?.agentName ?: "Your agent store", style = MaterialTheme.typography.headlineSmall); Text("Today’s cash desk") }
+                TextButton(onClick = onLogout) { Text("Sign out") }
             }
         }
         till?.let { snapshot -> item { TillSummary(snapshot) } }
-        item { CashOperationCard(onCompleted = { loading = true; scope.launch { refresh() } }) }
+        item { ActionPicker(onAction = { action = it }) }
         error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
-        item { Text(if (loading) "Refreshing…" else "Recent activity", style = MaterialTheme.typography.titleMedium) }
+        item { Text(if (loading) "Refreshing…" else "Latest activity", style = MaterialTheme.typography.titleMedium) }
         if (!loading && activity.isEmpty()) item { Text("No store transactions recorded yet.", style = MaterialTheme.typography.bodyMedium) }
         items(activity) { entry -> ActivityCard(entry) }
     }
@@ -85,8 +92,19 @@ private fun TillSummary(till: TillDto) = Card(Modifier.fillMaxWidth()) {
 }
 
 @Composable
-private fun CashOperationCard(onCompleted: () -> Unit) {
-    var mode by remember { mutableStateOf(TransactionMode.CASH_IN) }
+private fun ActionPicker(onAction: (TransactionMode) -> Unit) = Card(Modifier.fillMaxWidth()) {
+    Column(Modifier.padding(16.dp)) {
+        Text("What do you need to do?", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(8.dp))
+        Button(onClick = { onAction(TransactionMode.CASH_IN) }, modifier = Modifier.fillMaxWidth()) { Text("Receive cash from customer") }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(onClick = { onAction(TransactionMode.CASH_OUT) }, modifier = Modifier.fillMaxWidth()) { Text("Pay cash to customer") }
+        TextButton(onClick = { onAction(TransactionMode.COUNT_TILL) }, modifier = Modifier.fillMaxWidth()) { Text("End-of-day cash count") }
+    }
+}
+
+@Composable
+private fun CashOperationScreen(mode: TransactionMode, onBack: () -> Unit, onCompleted: () -> Unit) {
     var account by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     var receipt by remember { mutableStateOf("") }
@@ -96,12 +114,10 @@ private fun CashOperationCard(onCompleted: () -> Unit) {
     var successMessage by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) {
-        Text("Record store transaction", style = MaterialTheme.typography.titleMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { mode = TransactionMode.CASH_IN; payoutChecked = false; successMessage = null }, enabled = !busy) { Text("Cash in") }
-            Button(onClick = { mode = TransactionMode.CASH_OUT; payoutChecked = false; successMessage = null }, enabled = !busy) { Text("Cash out") }
-            Button(onClick = { mode = TransactionMode.COUNT_TILL; payoutChecked = false; successMessage = null }, enabled = !busy) { Text("Count till") }
+    Column(Modifier.fillMaxSize().padding(20.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(when (mode) { TransactionMode.CASH_IN -> "Receive cash"; TransactionMode.CASH_OUT -> "Pay cash"; TransactionMode.COUNT_TILL -> "Cash count" }, style = MaterialTheme.typography.headlineSmall)
+            TextButton(onClick = onBack, enabled = !busy) { Text("Back") }
         }
         if (mode == TransactionMode.COUNT_TILL) {
             OutlinedTextField(amount, { amount = it }, label = { Text("Counted cash (RWF)") }, modifier = Modifier.fillMaxWidth())
@@ -147,6 +163,6 @@ private fun CashOperationCard(onCompleted: () -> Unit) {
                 } catch (_: Exception) { message = "Transaction was not completed. Check the details; do not give cash until confirmation succeeds." }
                 finally { busy = false }
             }
-        }) { Text(if (busy) "Submitting…" else when (mode) { TransactionMode.CASH_IN -> "Confirm cash in"; TransactionMode.CASH_OUT -> "Confirm cash out"; TransactionMode.COUNT_TILL -> "Submit count" }) }
-    } }
+        }) { Text(if (busy) "Submitting…" else when (mode) { TransactionMode.CASH_IN -> "Confirm cash received"; TransactionMode.CASH_OUT -> "Confirm cash paid"; TransactionMode.COUNT_TILL -> "Submit count" }) }
+    }
 }
