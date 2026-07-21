@@ -45,4 +45,8 @@ class IdentityController(private val identityService: IdentityService) {
     @ExceptionHandler(SubmissionAlreadyPendingException::class)
     fun handleAlreadyPending(ex: SubmissionAlreadyPendingException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("KYC_SUBMISSION_ALREADY_PENDING", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(IllegalArgumentException::class)
+    fun handleInvalidSubmission(ex: IllegalArgumentException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_IDENTITY_SUBMISSION", ex.message ?: "Bad request"))
 }

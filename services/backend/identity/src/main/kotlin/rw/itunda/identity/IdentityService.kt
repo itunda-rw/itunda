@@ -29,10 +29,16 @@ class IdentityService(
 
     @Transactional
     fun submit(userId: String, documentType: String, documentNumber: String, documentReference: String): KycSubmission {
+        val normalizedType = documentType.trim().uppercase()
+        val normalizedNumber = documentNumber.trim().uppercase()
+        val normalizedReference = documentReference.trim()
         val existing = kycSubmissionRepository.findByUserIdOrderBySubmittedAtDesc(userId)
         if (existing.any { it.status == "PENDING" }) {
             throw SubmissionAlreadyPendingException("A KYC submission is already pending review")
         }
+        require(normalizedType in setOf("NATIONAL_ID", "PASSPORT", BUSINESS_TIN_DOCUMENT_TYPE)) { "Unsupported identity document type" }
+        require(normalizedNumber.length in 1..32 && normalizedNumber.all { it.isLetterOrDigit() || it == '-' }) { "Document number must be 1 to 32 letters, digits, or hyphens" }
+        require(normalizedReference.length in 3..500) { "Document reference must be between 3 and 500 characters" }
         // Real automated pre-check, not a real NIDA/RDB lookup -- see
         // DemoNidaVerificationService's and DemoKybVerificationService's own doc
         // comments. Shown to the human reviewer, never auto-decides the submission on
@@ -41,19 +47,19 @@ class IdentityService(
         // BUSINESS_TIN routes to the KYB pre-check (9-digit TIN, no citizenship/birth-
         // year/gender fields to parse) instead of the National ID one -- everything
         // else about this workflow (PENDING row, human review, decide()) is identical.
-        val (autoStatus, autoDetail) = if (documentType.equals(BUSINESS_TIN_DOCUMENT_TYPE, ignoreCase = true)) {
-            val result = demoKybVerificationService.verify(documentNumber)
+        val (autoStatus, autoDetail) = if (normalizedType == BUSINESS_TIN_DOCUMENT_TYPE) {
+            val result = demoKybVerificationService.verify(normalizedNumber)
             result.status.name to result.detail
         } else {
-            val result = demoNidaVerificationService.verify(documentType, documentNumber)
+            val result = demoNidaVerificationService.verify(normalizedType, normalizedNumber)
             result.status.name to result.detail
         }
         val submission = KycSubmission(
             id = "kyc_${UUID.randomUUID()}",
             userId = userId,
-            documentType = documentType,
-            documentNumber = documentNumber,
-            documentReference = documentReference,
+            documentType = normalizedType,
+            documentNumber = normalizedNumber,
+            documentReference = normalizedReference,
             status = "PENDING",
             submittedAt = Instant.now(),
             autoVerificationStatus = autoStatus,
