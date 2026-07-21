@@ -2904,6 +2904,14 @@ private fun JobPostCard(post: JobPostDto, categoryLabel: String, isMine: Boolean
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    var myLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var showRoute by remember { mutableStateOf(false) }
+    var locating by remember { mutableStateOf(false) }
+    val requestLocation = rememberRealLocationRequester(
+        onLocating = { locating = it },
+        onSuccess = { lat, lng -> myLocation = lat to lng; showRoute = true },
+        onError = { error = it },
+    )
     val payLabel = "%,.0f RWF".format(post.payAmount) + if (post.payType == "HOURLY") "/hr" else ""
 
     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
@@ -2951,6 +2959,14 @@ private fun JobPostCard(post: JobPostDto, categoryLabel: String, isMine: Boolean
             }
             if (!isMine && post.status == "OPEN") {
                 HoodReportAction(targetType = "JOB_POST", targetId = post.id)
+            }
+            if (!isMine && post.status == "OPEN" && post.latitude != null && post.longitude != null) {
+                ListingActionButton(if (locating) "Finding your real location…" else if (showRoute) "Hide directions" else "🚗 Directions to this work", locating) {
+                    if (showRoute) showRoute = false else if (myLocation != null) showRoute = true else requestLocation()
+                }
+                myLocation?.let { loc ->
+                    if (showRoute) RouteMiniMap(loc.first, loc.second, post.latitude, post.longitude, "You", post.title)
+                }
             }
         }
     }
@@ -3301,6 +3317,14 @@ private fun PropertyListingCard(
     var offering by remember { mutableStateOf(false) }
     var offerAmount by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
+    var myLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var showRoute by remember { mutableStateOf(false) }
+    var locating by remember { mutableStateOf(false) }
+    val requestLocation = rememberRealLocationRequester(
+        onLocating = { locating = it },
+        onSuccess = { lat, lng -> myLocation = lat to lng; showRoute = true },
+        onError = { error = it },
+    )
     val priceLabel = "%,.0f RWF".format(listing.price) + if (listing.listingType == "RENT") "/mo" else ""
     val details = listOfNotNull(
         listing.bedrooms?.let { "$it bd" },
@@ -3378,6 +3402,14 @@ private fun PropertyListingCard(
             }
             if (!isMine && listing.status == "AVAILABLE") {
                 HoodReportAction(targetType = "PROPERTY_LISTING", targetId = listing.id)
+            }
+            if (!isMine && listing.status == "AVAILABLE" && listing.latitude != null && listing.longitude != null) {
+                ListingActionButton(if (locating) "Finding your real location…" else if (showRoute) "Hide directions" else "🚗 Directions to this property", locating) {
+                    if (showRoute) showRoute = false else if (myLocation != null) showRoute = true else requestLocation()
+                }
+                myLocation?.let { loc ->
+                    if (showRoute) RouteMiniMap(loc.first, loc.second, listing.latitude, listing.longitude, "You", listing.title)
+                }
             }
         }
     }
