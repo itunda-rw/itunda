@@ -1790,6 +1790,8 @@ private fun MarketplaceContent(onMessageSeller: (String) -> Unit) {
                             }
                         }
                     },
+                    favorited = listing.id in favoriteIds,
+                    onToggleFavorite = { coroutineScope.launch { try { if (listing.id in favoriteIds) { NetworkClient.apiService.removePropertyListingFavorite(listing.id); favoriteIds = favoriteIds - listing.id } else { NetworkClient.apiService.addPropertyListingFavorite(listing.id); favoriteIds = favoriteIds + listing.id } } catch (e: Exception) { error = "Couldn't update your saved properties. Check your connection and try again." } } },
                 )
             }
         }
@@ -3034,7 +3036,7 @@ private fun JobPostCard(post: JobPostDto, categoryLabel: String, isMine: Boolean
 
 // ============================== PROPERTY (당근부동산) ==============================
 
-private enum class PropertyView { BROWSE, NEARBY, NEIGHBORHOOD, MINE }
+private enum class PropertyView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, SAVED }
 
 @Composable
 private fun PropertyContent(onMessageLister: (String) -> Unit) {
@@ -3047,6 +3049,7 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
     var showNewListing by remember { mutableStateOf(false) }
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
     var neighborhoodChecked by remember { mutableStateOf(false) }
+    var favoriteIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     val coroutineScope = rememberCoroutineScope()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
     val requestNearbyLocation = rememberRealLocationRequester(
@@ -3072,10 +3075,12 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
 
     LaunchedEffect(Unit) {
         try { propertyTypes = NetworkClient.apiService.getPropertyTypes().propertyTypes } catch (e: Exception) { /* chips just won't render */ }
+        try { favoriteIds = NetworkClient.apiService.getMyFavoritePropertyListings().favorites.map { it.propertyListingId }.toSet() } catch (e: Exception) { }
     }
 
     fun load() {
         listings = null
+        if (view == PropertyView.SAVED) { listings = emptyList(); error = null; return }
         if (view == PropertyView.NEARBY) {
             requestNearbyLocation()
             return
@@ -3133,7 +3138,7 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
     ) {
         item {
             Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
-                listOf(PropertyView.BROWSE to "Browse", PropertyView.NEARBY to "Near me", PropertyView.NEIGHBORHOOD to "Neighborhood", PropertyView.MINE to "My listings").forEach { (v, label) ->
+                listOf(PropertyView.BROWSE to "Browse", PropertyView.NEARBY to "Near me", PropertyView.NEIGHBORHOOD to "Neighborhood", PropertyView.MINE to "My listings", PropertyView.SAVED to "Saved").forEach { (v, label) ->
                     val selected = v == view
                     Text(
                         label,
@@ -3204,7 +3209,9 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
         if (view == PropertyView.NEIGHBORHOOD && neighborhoodName != null) {
             item { Text("Your neighborhood: $neighborhoodName", color = TossSecondary, fontSize = 13.sp) }
         }
-        if (error != null) {
+        if (view == PropertyView.SAVED) {
+            item { PropertyWishlistView(onRemoved = { coroutineScope.launch { favoriteIds = NetworkClient.apiService.getMyFavoritePropertyListings().favorites.map { it.propertyListingId }.toSet() } }) }
+        } else if (error != null) {
             item { ErrorCard(error!!, onRetry = ::load) }
         } else if (listings == null) {
             item { SkeletonBlock() }
@@ -3216,6 +3223,7 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
                         PropertyView.NEARBY -> "No properties near you yet."
                         PropertyView.NEIGHBORHOOD -> "No properties in your neighborhood yet."
                         PropertyView.MINE -> "You haven't listed any properties yet."
+                        PropertyView.SAVED -> ""
                     },
                     color = TossSecondary, fontSize = 14.sp,
                 )
@@ -3255,6 +3263,14 @@ private fun PropertyContent(onMessageLister: (String) -> Unit) {
             }
         }
     }
+}
+
+@Composable
+private fun PropertyWishlistView(onRemoved: () -> Unit) {
+    var favorites by remember { mutableStateOf<List<FavoritePropertyListingDto>?>(null) }; var error by remember { mutableStateOf<String?>(null) }; val scope = rememberCoroutineScope()
+    fun load() = scope.launch { try { favorites = NetworkClient.apiService.getMyFavoritePropertyListings().favorites; error = null } catch (e: Exception) { error = "Couldn't load your saved properties. Check your connection and try again." } }
+    LaunchedEffect(Unit) { load() }
+    when { error != null -> ErrorCard(error!!, onRetry = ::load); favorites == null -> SkeletonBlock(); favorites!!.isEmpty() -> Text("No saved properties yet — tap ♡ on a property to keep it here.", color = TossSecondary); else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { favorites!!.forEach { f -> Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard)) { Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(f.title, color = TossText, fontWeight = FontWeight.Bold); Text("${f.listingType} · %,.0f RWF".format(f.price), color = TossSecondary, fontSize = 12.sp) }; Text("Remove", color = TossText, modifier = Modifier.clickable { scope.launch { try { NetworkClient.apiService.removePropertyListingFavorite(f.propertyListingId); favorites = favorites!!.filterNot { it.propertyListingId == f.propertyListingId }; onRemoved() } catch (e: Exception) { error = "Couldn't remove this saved property. Check your connection and try again." } } }) } } } } }
 }
 
 @Composable
@@ -3370,7 +3386,7 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
 @Composable
 private fun PropertyListingCard(
     listing: PropertyListingDto, propertyTypeLabel: String, isMine: Boolean, onChanged: () -> Unit, onContact: () -> Unit,
-    onMakeOffer: (String, Double) -> Unit,
+    onMakeOffer: (String, Double) -> Unit, favorited: Boolean = false, onToggleFavorite: () -> Unit = {},
 ) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -3406,7 +3422,10 @@ private fun PropertyListingCard(
                         }
                     }
                 }
-                Text(priceLabel, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (!isMine) Text(if (favorited) "♥" else "♡", color = if (favorited) Ids.colors.danger else TossSecondary, fontSize = 22.sp, modifier = Modifier.clickable { onToggleFavorite() }.padding(end = 8.dp))
+                    Text(priceLabel, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                }
             }
             Text(listing.title, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             val detailsWithTime = (if (details.isNotBlank()) "$details · " else "") + relativeTimeAgo(listing.createdAt)
