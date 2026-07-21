@@ -284,6 +284,9 @@ private val MAP_STYLE_JSON = """
 fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    // The cash-out flow deliberately arrives with the public agent network selected.
+    // Keep that intent visible while the customer explores the general-purpose map.
+    val isAgentCashDiscovery = initialCategory == "ITUNDA_AGENT"
     // Must run synchronously during composition, not in a LaunchedEffect -- LaunchedEffect
     // only fires after composition commits, but `remember { MapView(context) }` below runs
     // synchronously during this same initial composition, so MapView was being constructed
@@ -757,7 +760,9 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                         val label = MAP_NEARBY_CATEGORIES.firstOrNull { it.id == activeCategory }?.label?.lowercase()
                         Text(
                             if (categoryResults!!.isEmpty()) "No real matches found nearby for that category."
-                            else "${categoryResults!!.size} real $label found nearby, closest first.",
+                            else if (isAgentCashDiscovery && activeCategory == "ITUNDA_AGENT") {
+                                "${categoryResults!!.size} Itunda agents found nearby, closest first. Select one for directions."
+                            } else "${categoryResults!!.size} real $label found nearby, closest first.",
                             color = TossSecondary,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -906,6 +911,13 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                                     modifier = Modifier.clickable(enabled = !bookmarking) { toggleBookmark(place) },
                                 )
                             }
+                            if (isAgentCashDiscovery && activeCategory == "ITUNDA_AGENT") {
+                                Text(
+                                    "This is an Itunda agent location. Confirm the cash is ready before showing your withdrawal code.",
+                                    fontSize = 12.sp,
+                                    color = TossSecondary,
+                                )
+                            }
                             val currentRoute = route
                             if (currentRoute != null) {
                                 Column {
@@ -955,6 +967,18 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                                         .padding(horizontal = 16.dp, vertical = 10.dp),
                                 ) { Text(if (routing) "Finding real route…" else "Directions", color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp) }
                             }
+                            if (isAgentCashDiscovery && activeCategory == "ITUNDA_AGENT") {
+                                Text(
+                                    "Back to cash-out codes",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TossBlue,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable(onClick = onBack)
+                                        .padding(vertical = 8.dp),
+                                )
+                            }
                             // A little breathing room below so the drag-to-Full state
                             // doesn't cut the last line off against the screen edge.
                             Box(modifier = Modifier.height(24.dp))
@@ -976,7 +1000,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                                 } else {
                                     categoryResults!!.forEach { nearby ->
                                         Text(
-                                            "${nearby.displayName} · ${"%.1f".format(nearby.distanceKm)} km",
+                                            "${if (isAgentCashDiscovery && activeCategory == "ITUNDA_AGENT") "Itunda agent · " else ""}${nearby.displayName} · ${"%.1f".format(nearby.distanceKm)} km",
                                             fontSize = 13.sp,
                                             color = TossText,
                                             modifier = Modifier
