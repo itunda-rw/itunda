@@ -44,6 +44,7 @@ class CommunityServiceTest : BehaviorSpec({
         When("posting with valid fields") {
             val savedSlot = slot<CommunityPost>()
             every { postRepository.save(capture(savedSlot)) } answers { firstArg() }
+            every { userRepository.findById("author_1") } returns java.util.Optional.empty()
 
             val post = service.createPost("author_1", "question", "  Any good plumbers nearby?  ", "  Kitchen sink is leaking  ")
 

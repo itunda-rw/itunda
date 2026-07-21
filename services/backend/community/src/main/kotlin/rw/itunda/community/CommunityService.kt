@@ -123,10 +123,13 @@ class CommunityService(
         // reverse-geocode, same discipline MarketplaceService.createListing already
         // established. Best-effort: null when unconfigured/unreachable/no match, never
         // blocks the post itself from being created.
+        // iOS may intentionally omit an exact pin for a neighborhood conversation.
+        // In that case use the user's already-confirmed Hood neighborhood rather than
+        // creating a post that can never appear in their own neighborhood feed.
         val neighborhood = if (latitude != null && longitude != null) {
             nominatimGeocodingClient.reverseGeocode(latitude, longitude)
         } else {
-            null
+            userRepository.findById(authorId).orElse(null)?.neighborhood
         }
 
         return postRepository.save(
