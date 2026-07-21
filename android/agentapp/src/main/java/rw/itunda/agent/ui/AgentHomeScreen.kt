@@ -60,13 +60,18 @@ fun AgentHomeScreen(onLogout: () -> Unit) {
         item { CashOperationCard(onCompleted = { loading = true; scope.launch { refresh() } }) }
         error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
         item { Text(if (loading) "Refreshing…" else "Recent activity", style = MaterialTheme.typography.titleMedium) }
-        items(activity) { entry ->
-            Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp)) {
-                Text(if (entry.type == "CASH_IN") "Cash in" else "Cash out", style = MaterialTheme.typography.titleSmall)
-                Text("RWF ${entry.amount} · Receipt ${entry.receiptNumber}")
-                Text(entry.createdAt, style = MaterialTheme.typography.bodySmall)
-            } }
-        }
+        if (!loading && activity.isEmpty()) item { Text("No store transactions recorded yet.", style = MaterialTheme.typography.bodyMedium) }
+        items(activity) { entry -> ActivityCard(entry) }
+    }
+}
+
+@Composable
+private fun ActivityCard(entry: ActivityDto) = Card(Modifier.fillMaxWidth()) {
+    val cashIn = entry.type == "CASH_IN"
+    Column(Modifier.padding(12.dp)) {
+        Text(if (cashIn) "Cash in completed" else "Cash out completed", style = MaterialTheme.typography.titleSmall)
+        Text((if (cashIn) "+" else "−") + " RWF ${entry.amount} · Receipt ${entry.receiptNumber}")
+        Text(entry.createdAt, style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -88,14 +93,15 @@ private fun CashOperationCard(onCompleted: () -> Unit) {
     var code by remember { mutableStateOf("") }
     var payoutChecked by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var successMessage by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) {
         Text("Record store transaction", style = MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { mode = TransactionMode.CASH_IN; payoutChecked = false }, enabled = !busy) { Text("Cash in") }
-            Button(onClick = { mode = TransactionMode.CASH_OUT; payoutChecked = false }, enabled = !busy) { Text("Cash out") }
-            Button(onClick = { mode = TransactionMode.COUNT_TILL; payoutChecked = false }, enabled = !busy) { Text("Count till") }
+            Button(onClick = { mode = TransactionMode.CASH_IN; payoutChecked = false; successMessage = null }, enabled = !busy) { Text("Cash in") }
+            Button(onClick = { mode = TransactionMode.CASH_OUT; payoutChecked = false; successMessage = null }, enabled = !busy) { Text("Cash out") }
+            Button(onClick = { mode = TransactionMode.COUNT_TILL; payoutChecked = false; successMessage = null }, enabled = !busy) { Text("Count till") }
         }
         if (mode == TransactionMode.COUNT_TILL) {
             OutlinedTextField(amount, { amount = it }, label = { Text("Counted cash (RWF)") }, modifier = Modifier.fillMaxWidth())
@@ -112,6 +118,7 @@ private fun CashOperationCard(onCompleted: () -> Unit) {
             }
         }
         message?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp)) }
+        successMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 8.dp)) }
         Spacer(Modifier.height(8.dp))
         Button(enabled = !busy, modifier = Modifier.fillMaxWidth(), onClick = {
             val numericAmount = amount.toBigDecimalOrNull()
@@ -123,13 +130,18 @@ private fun CashOperationCard(onCompleted: () -> Unit) {
                 else "Complete all required fields and confirm the cash check."
                 return@Button
             }
-            busy = true; message = null
+            busy = true; message = null; successMessage = null
             scope.launch {
                 try {
                     when (mode) {
                         TransactionMode.CASH_IN -> NetworkClient.agentApi.cashIn(request = CashInRequest(account.trim(), numericAmount, receipt.trim()))
                         TransactionMode.CASH_OUT -> NetworkClient.agentApi.cashOut(request = CashOutRequest(account.trim(), numericAmount, receipt.trim(), code.trim()))
                         TransactionMode.COUNT_TILL -> NetworkClient.agentApi.submitTillCount(TillCountRequest(numericAmount))
+                    }
+                    successMessage = when (mode) {
+                        TransactionMode.CASH_IN -> "Cash in confirmed. The customer balance has been updated."
+                        TransactionMode.CASH_OUT -> "Cash out confirmed. You can now hand the cash to the customer."
+                        TransactionMode.COUNT_TILL -> "Till count submitted for supervisor review."
                     }
                     account = ""; amount = ""; receipt = ""; code = ""; payoutChecked = false; onCompleted()
                 } catch (_: Exception) { message = "Transaction was not completed. Check the details; do not give cash until confirmation succeeds." }
