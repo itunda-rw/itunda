@@ -1112,6 +1112,19 @@ private struct JobsContent: View {
                 }
                 .pickerStyle(.segmented)
 
+                HStack(alignment: .top, spacing: 8) {
+                    Text("Safe work")
+                        .font(IDS.Typography.sectionLabel)
+                        .foregroundColor(IDS.Colors.textPrimary)
+                    Text("Never pay a fee to get a job. Keep pay and work details in Itunda chat before you travel.")
+                        .font(IDS.Typography.caption)
+                        .foregroundColor(IDS.Colors.textSecondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(IDS.Colors.chipBackground)
+                .cornerRadius(12)
+
                 if (view == .browse || view == .neighborhood) && !categories.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
