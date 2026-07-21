@@ -160,6 +160,15 @@ struct MapScreenView: View {
     @State private var searching = false
     @State private var selectedPlace: PlaceSearchResultDto?
     @State private var route: RouteResultDto?
+    // Real alternative routes (2026-07-22) -- see MapsDirectionsAlternativesResponse's
+    // own doc comment on the network client. Often just a single-element array -- OSRM
+    // itself decides whether a real alternative exists for a given trip.
+    @State private var routeAlternatives: [RouteResultDto]?
+    @State private var selectedRouteIndex = 0
+    // Real driving/walking toggle (2026-07-22) -- see OsrmRoutingClient.route's own doc
+    // comment on the backend for the real, separately-deployed foot-profile OSRM
+    // instance this reaches.
+    @State private var travelMode = "DRIVING"
     @State private var showSteps = false
     @State private var routing = false
     @State private var error: String?
@@ -354,10 +363,26 @@ struct MapScreenView: View {
                                         }
                                         .disabled(bookmarking)
                                     }
+                                    // Real driving/walking mode toggle (2026-07-22) --
+                                    // same real Naver/Kakao Maps convention of picking a
+                                    // travel mode before/after a route is drawn. Extracted
+                                    // into its own @ViewBuilder function (not inlined) --
+                                    // inlined here, the combined nesting made the Swift
+                                    // type-checker time out ("unable to type-check this
+                                    // expression in reasonable time").
+                                    travelModeToggle()
                                     if let route {
                                         VStack(alignment: .leading, spacing: 4) {
-                                            Text("🚗 \(String(format: "%.1f", route.distanceKm)) km · \(Int(route.durationMinutes)) min by real road, via itunda's own self-hosted OSRM")
+                                            Text("\(travelMode == "DRIVING" ? "🚗" : "🚶") \(String(format: "%.1f", route.distanceKm)) km · \(Int(route.durationMinutes)) min by real road, via itunda's own self-hosted OSRM")
                                                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                            // Real alternative-route picker (2026-07-22) --
+                                            // only shown when OSRM genuinely offered more
+                                            // than one real route for this trip. Same
+                                            // type-checker-timeout reasoning as above for
+                                            // why this is its own function, not inlined.
+                                            if let alternatives = routeAlternatives, alternatives.count > 1 {
+                                                routeAlternativesPicker(alternatives)
+                                            }
                                             if !route.steps.isEmpty {
                                                 Button(action: { showSteps.toggle() }) {
                                                     Text(showSteps ? "Hide turn-by-turn directions" : "Show turn-by-turn directions (\(route.steps.count) steps)")
@@ -520,23 +545,88 @@ struct MapScreenView: View {
         selectedPlace = place
         searchResults = nil
         route = nil
+        routeAlternatives = nil
+        selectedRouteIndex = 0
         showSteps = false
     }
 
-    private func getDirections() async {
+    // mode defaults to the currently-selected travelMode (2026-07-22) -- called both by
+    // the initial "Directions" tap and by the driving/walking toggle when a route is
+    // already shown, mirroring bank-mfe's own applyRoute/handleGetDirections split.
+    private func getDirections(mode: String? = nil) async {
         guard let place = selectedPlace else { return }
+        let requestedMode = mode ?? travelMode
         routing = true
         error = nil
         defer { routing = false }
         let origin = locationFetcher.coordinate ?? CLLocationCoordinate2D(latitude: rwandaCenterLat, longitude: rwandaCenterLng)
         do {
-            route = try await NetworkClient.shared.getDirections(
-                fromLat: origin.latitude, fromLng: origin.longitude, toLat: place.latitude, toLng: place.longitude,
-            ).route
+            let response = try await NetworkClient.shared.getDirectionsAlternatives(
+                fromLat: origin.latitude, fromLng: origin.longitude, toLat: place.latitude, toLng: place.longitude, mode: requestedMode,
+            )
+            travelMode = requestedMode
+            routeAlternatives = response.routes
+            selectedRouteIndex = 0
+            route = response.routes.first
             showSteps = false
         } catch {
             self.error = "Could not find directions to this place."
         }
+    }
+
+    // Real driving/walking mode toggle (2026-07-22) -- extracted into its own
+    // @ViewBuilder function (see the call site's own comment for why: inlined directly
+    // into the surrounding view hierarchy, the combined nesting made the Swift
+    // type-checker time out).
+    @ViewBuilder
+    private func travelModeToggle() -> some View {
+        HStack(spacing: 6) {
+            ForEach([("DRIVING", "🚗 Driving"), ("WALKING", "🚶 Walking")], id: \.0) { mode, label in
+                let active = travelMode == mode
+                Button(action: {
+                    guard mode != travelMode else { return }
+                    if route != nil {
+                        Task { await getDirections(mode: mode) }
+                    } else {
+                        travelMode = mode
+                    }
+                }) {
+                    Text(label)
+                        .font(.caption2).bold()
+                        .foregroundColor(active ? .white : IDS.Colors.textSecondary)
+                        .frame(maxWidth: .infinity).padding(.vertical, 6)
+                        .background(active ? IDS.Colors.brand : Color(red: 0.949, green: 0.957, blue: 0.965))
+                        .cornerRadius(8)
+                }
+                .disabled(routing)
+            }
+        }
+    }
+
+    // Real alternative-route picker (2026-07-22) -- see travelModeToggle's own comment
+    // for why this is its own function rather than inlined.
+    @ViewBuilder
+    private func routeAlternativesPicker(_ alternatives: [RouteResultDto]) -> some View {
+        HStack(spacing: 6) {
+            ForEach(Array(alternatives.enumerated()), id: \.offset) { i, alt in
+                let active = selectedRouteIndex == i
+                let altKm: String = String(format: "%.1f", alt.distanceKm)
+                let altMin: Int = Int(alt.durationMinutes)
+                let altLabel: String = "Route \(i + 1) · \(altKm)km · \(altMin)min"
+                Button(action: {
+                    selectedRouteIndex = i
+                    route = alt
+                }) {
+                    Text(altLabel)
+                        .font(.caption2).bold()
+                        .foregroundColor(active ? .white : IDS.Colors.textSecondary)
+                        .frame(maxWidth: .infinity).padding(.vertical, 5)
+                        .background(active ? IDS.Colors.brand : Color(red: 0.949, green: 0.957, blue: 0.965))
+                        .cornerRadius(8)
+                }
+            }
+        }
+        .padding(.top, 6)
     }
 
     private func searchNearbyCategory(_ categoryId: String) async {

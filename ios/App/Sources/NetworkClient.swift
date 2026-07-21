@@ -886,6 +886,10 @@ struct MapsSearchResponse: Decodable { let success: Bool; let results: [PlaceSea
 struct RouteStepDto: Decodable { let instruction: String; let distanceMeters: Double; let streetName: String? }
 struct RouteResultDto: Decodable { let distanceKm: Double; let durationMinutes: Double; let geometry: [[Double]]; let steps: [RouteStepDto] }
 struct MapsDirectionsResponse: Decodable { let success: Bool; let route: RouteResultDto }
+// Real alternative routes (2026-07-22) -- see OsrmRoutingClient.routeAlternatives' own
+// doc comment on the backend. Often just a single-element array -- OSRM itself decides
+// whether a real alternative exists for a given trip.
+struct MapsDirectionsAlternativesResponse: Decodable { let success: Bool; let routes: [RouteResultDto] }
 struct MerchantCategoriesResponse: Decodable { let success: Bool; let categories: [String] }
 
 // Real "nearby places" category search + bookmarked/favorite places (2026-07-19) -- see
@@ -1443,12 +1447,28 @@ extension NetworkClient {
         try await get("api/v1/maps/search", query: [URLQueryItem(name: "q", value: query)])
     }
 
-    func getDirections(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double) async throws -> MapsDirectionsResponse {
+    // mode added 2026-07-22 (default "DRIVING") -- see OsrmRoutingClient.route's own doc
+    // comment on the backend for the real, separately-deployed foot-profile OSRM
+    // instance this now lets a caller reach.
+    func getDirections(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double, mode: String = "DRIVING") async throws -> MapsDirectionsResponse {
         try await get("api/v1/maps/directions", query: [
             URLQueryItem(name: "fromLat", value: String(fromLat)),
             URLQueryItem(name: "fromLng", value: String(fromLng)),
             URLQueryItem(name: "toLat", value: String(toLat)),
             URLQueryItem(name: "toLng", value: String(toLng)),
+            URLQueryItem(name: "mode", value: mode),
+        ])
+    }
+
+    // Real alternative routes (2026-07-22) -- see MapsDirectionsAlternativesResponse's
+    // own doc comment.
+    func getDirectionsAlternatives(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double, mode: String = "DRIVING") async throws -> MapsDirectionsAlternativesResponse {
+        try await get("api/v1/maps/directions/alternatives", query: [
+            URLQueryItem(name: "fromLat", value: String(fromLat)),
+            URLQueryItem(name: "fromLng", value: String(fromLng)),
+            URLQueryItem(name: "toLat", value: String(toLat)),
+            URLQueryItem(name: "toLng", value: String(toLng)),
+            URLQueryItem(name: "mode", value: mode),
         ])
     }
 

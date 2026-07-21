@@ -564,6 +564,10 @@ data class MapsSearchResponse(val success: Boolean, val results: List<PlaceSearc
 data class RouteStepDto(val instruction: String, val distanceMeters: Double, val streetName: String?)
 data class RouteResultDto(val distanceKm: Double, val durationMinutes: Double, val geometry: List<List<Double>>, val steps: List<RouteStepDto> = emptyList())
 data class MapsDirectionsResponse(val success: Boolean, val route: RouteResultDto)
+// Real alternative routes (2026-07-22) -- see OsrmRoutingClient.routeAlternatives' own
+// doc comment on the backend. Often just a single-element list -- OSRM itself decides
+// whether a real alternative exists for a given trip.
+data class MapsDirectionsAlternativesResponse(val success: Boolean, val routes: List<RouteResultDto>)
 data class MerchantCategoriesResponse(val success: Boolean, val categories: List<String>)
 
 // Real "nearby places" category search + bookmarked/favorite places (2026-07-19) -- see
@@ -1046,13 +1050,28 @@ interface ApiService {
     @GET("api/v1/maps/search")
     suspend fun searchPlaces(@Query("q") q: String): MapsSearchResponse
 
+    // mode added 2026-07-22 (default "DRIVING") -- see OsrmRoutingClient.route's own doc
+    // comment on the backend for the real, separately-deployed foot-profile OSRM
+    // instance this now lets a caller reach.
     @GET("api/v1/maps/directions")
     suspend fun getDirections(
         @Query("fromLat") fromLat: Double,
         @Query("fromLng") fromLng: Double,
         @Query("toLat") toLat: Double,
         @Query("toLng") toLng: Double,
+        @Query("mode") mode: String = "DRIVING",
     ): MapsDirectionsResponse
+
+    // Real alternative routes (2026-07-22) -- see MapsDirectionsAlternativesResponse's
+    // own doc comment.
+    @GET("api/v1/maps/directions/alternatives")
+    suspend fun getDirectionsAlternatives(
+        @Query("fromLat") fromLat: Double,
+        @Query("fromLng") fromLng: Double,
+        @Query("toLat") toLat: Double,
+        @Query("toLng") toLng: Double,
+        @Query("mode") mode: String = "DRIVING",
+    ): MapsDirectionsAlternativesResponse
 
     // Real "nearby places" category search + bookmarked/favorite places (2026-07-19) --
     // see rw.itunda.maps.MapsService's own doc comment on the backend.

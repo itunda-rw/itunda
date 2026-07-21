@@ -117,6 +117,7 @@ import rw.itunda.app.network.NearbyPlaceDto
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.app.network.NetworkClient
 import rw.itunda.app.network.PlaceSearchResultDto
+import rw.itunda.app.network.RouteResultDto
 import rw.itunda.app.network.ShoppingMerchantDto
 
 // Real itunda-hosted Rwanda coordinates -- Kigali, same default center every other real
@@ -300,6 +301,15 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
     var searching by remember { mutableStateOf(false) }
     var selectedPlace by remember { mutableStateOf<PlaceSearchResultDto?>(null) }
     var route by remember { mutableStateOf<MapsDirectionsResponse?>(null) }
+    // Real alternative routes (2026-07-22) -- see MapsDirectionsAlternativesResponse's
+    // own doc comment on the network client. Often just a single-element list -- OSRM
+    // itself decides whether a real alternative exists for a given trip.
+    var routeAlternatives by remember { mutableStateOf<List<RouteResultDto>?>(null) }
+    var selectedRouteIndex by remember { mutableStateOf(0) }
+    // Real driving/walking toggle (2026-07-22) -- see OsrmRoutingClient.route's own doc
+    // comment on the backend for the real, separately-deployed foot-profile OSRM
+    // instance this reaches.
+    var travelMode by remember { mutableStateOf("DRIVING") }
     var showSteps by remember { mutableStateOf(false) }
     var routing by remember { mutableStateOf(false) }
     var locating by remember { mutableStateOf(false) }
@@ -784,6 +794,8 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                                             selectedPlace = place
                                             searchResults = null
                                             route = null
+                                            routeAlternatives = null
+                                            selectedRouteIndex = 0
                                             showSteps = false
                                         }
                                         .padding(horizontal = 14.dp, vertical = 10.dp),
@@ -918,13 +930,89 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                                     color = TossSecondary,
                                 )
                             }
+                            // Real driving/walking mode toggle (2026-07-22) -- same real
+                            // Naver/Kakao Maps convention of picking a travel mode
+                            // before/after a route is drawn. Switching mode while a route
+                            // is already shown re-fetches against itunda's own
+                            // separately-deployed foot-profile OSRM instance.
+                            fun fetchDirections(mode: String) {
+                                coroutineScope.launch {
+                                    routing = true
+                                    error = null
+                                    try {
+                                        val origin = myLocation ?: (RWANDA_CENTER_LAT to RWANDA_CENTER_LNG)
+                                        val response = NetworkClient.apiService.getDirectionsAlternatives(
+                                            origin.first, origin.second, place.latitude, place.longitude, mode,
+                                        )
+                                        travelMode = mode
+                                        routeAlternatives = response.routes
+                                        selectedRouteIndex = 0
+                                        route = MapsDirectionsResponse(success = true, route = response.routes[0])
+                                        showSteps = false
+                                    } catch (e: HttpException) {
+                                        error = superAppErrorMessage(e)
+                                    } catch (e: Exception) {
+                                        error = "Couldn't reach itunda. Check your connection and try again."
+                                    } finally {
+                                        routing = false
+                                    }
+                                }
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                                listOf("DRIVING" to "🚗 Driving", "WALKING" to "🚶 Walking").forEach { (mode, label) ->
+                                    val active = travelMode == mode
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .background(if (active) TossBlue else androidx.compose.ui.graphics.Color(0xFFF2F4F6), RoundedCornerShape(8.dp))
+                                            .clickable(enabled = !routing) {
+                                                if (mode != travelMode) {
+                                                    if (route != null) fetchDirections(mode) else travelMode = mode
+                                                }
+                                            }
+                                            .padding(vertical = 6.dp),
+                                        contentAlignment = androidx.compose.ui.Alignment.Center,
+                                    ) {
+                                        Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) androidx.compose.ui.graphics.Color.White else TossSecondary)
+                                    }
+                                }
+                            }
                             val currentRoute = route
                             if (currentRoute != null) {
                                 Column {
                                     Text(
-                                        "🚗 ${"%.1f".format(currentRoute.route.distanceKm)} km · ${currentRoute.route.durationMinutes.toInt()} min by real road, via itunda's own self-hosted OSRM",
+                                        "${if (travelMode == "DRIVING") "🚗" else "🚶"} ${"%.1f".format(currentRoute.route.distanceKm)} km · ${currentRoute.route.durationMinutes.toInt()} min by real road, via itunda's own self-hosted OSRM",
                                         fontSize = 13.sp, color = TossSecondary,
                                     )
+                                    // Real alternative-route picker (2026-07-22) -- only
+                                    // rendered when OSRM genuinely offered more than one
+                                    // real route for this trip. See
+                                    // MapsDirectionsAlternativesResponse's own doc comment.
+                                    val alternatives = routeAlternatives
+                                    if (alternatives != null && alternatives.size > 1) {
+                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp)) {
+                                            alternatives.forEachIndexed { i, alt ->
+                                                val active = selectedRouteIndex == i
+                                                Box(
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .background(if (active) TossBlue else androidx.compose.ui.graphics.Color(0xFFF2F4F6), RoundedCornerShape(8.dp))
+                                                        .clickable {
+                                                            selectedRouteIndex = i
+                                                            route = MapsDirectionsResponse(success = true, route = alt)
+                                                        }
+                                                        .padding(vertical = 5.dp),
+                                                    contentAlignment = androidx.compose.ui.Alignment.Center,
+                                                ) {
+                                                    Text(
+                                                        "Route ${i + 1} · ${"%.1f".format(alt.distanceKm)}km · ${alt.durationMinutes.toInt()}min",
+                                                        fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                                                        color = if (active) androidx.compose.ui.graphics.Color.White else TossSecondary,
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
                                     if (currentRoute.route.steps.isNotEmpty()) {
                                         Text(
                                             if (showSteps) "Hide turn-by-turn directions" else "Show turn-by-turn directions (${currentRoute.route.steps.size} steps)",
@@ -947,23 +1035,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                                 Box(
                                     modifier = Modifier
                                         .background(TossBlue, RoundedCornerShape(12.dp))
-                                        .clickable(enabled = !routing) {
-                                            coroutineScope.launch {
-                                                routing = true
-                                                error = null
-                                                try {
-                                                    val origin = myLocation ?: (RWANDA_CENTER_LAT to RWANDA_CENTER_LNG)
-                                                    route = NetworkClient.apiService.getDirections(origin.first, origin.second, place.latitude, place.longitude)
-                                                    showSteps = false
-                                                } catch (e: HttpException) {
-                                                    error = superAppErrorMessage(e)
-                                                } catch (e: Exception) {
-                                                    error = "Couldn't reach itunda. Check your connection and try again."
-                                                } finally {
-                                                    routing = false
-                                                }
-                                            }
-                                        }
+                                        .clickable(enabled = !routing) { fetchDirections(travelMode) }
                                         .padding(horizontal = 16.dp, vertical = 10.dp),
                                 ) { Text(if (routing) "Finding real route…" else "Directions", color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp) }
                             }
@@ -1008,6 +1080,8 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                                                 .clickable {
                                                     selectedPlace = PlaceSearchResultDto(nearby.displayName, nearby.latitude, nearby.longitude)
                                                     route = null
+                                                    routeAlternatives = null
+                                                    selectedRouteIndex = 0
                                                 }
                                                 .padding(vertical = 6.dp),
                                         )
@@ -1042,6 +1116,8 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                                             .clickable {
                                                 selectedPlace = PlaceSearchResultDto(bookmark.displayName, bookmark.latitude, bookmark.longitude)
                                                 route = null
+                                                routeAlternatives = null
+                                                selectedRouteIndex = 0
                                             }
                                             .padding(vertical = 6.dp),
                                     )
