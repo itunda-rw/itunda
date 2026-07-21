@@ -245,7 +245,10 @@ class AgentService(
 
     @Transactional
     fun resolveTillReconciliation(id: String, reviewerUserId: String, note: String): AgentTillReconciliation {
-        val reconciliation = tillReconciliationRepository.findById(id).orElseThrow { TillReconciliationNotFoundException("Till reconciliation not found") }
+        // Review decisions are audit records.  Lock before checking the status so two
+        // administrators cannot both resolve the same variance with different notes.
+        val reconciliation = tillReconciliationRepository.findByIdForUpdate(id)
+            .orElseThrow { TillReconciliationNotFoundException("Till reconciliation not found") }
         require(reconciliation.status == TillReconciliationStatus.PENDING_REVIEW) { "This reconciliation is not awaiting review" }
         require(note.trim().isNotEmpty() && note.trim().length <= 255) { "A review note between 1 and 255 characters is required" }
         reconciliation.status = TillReconciliationStatus.RESOLVED

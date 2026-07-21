@@ -165,6 +165,10 @@ interface AgentOperatorRepository : JpaRepository<AgentOperator, String> {
 }
 
 interface AgentTillReconciliationRepository : JpaRepository<AgentTillReconciliation, String> {
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from AgentTillReconciliation r where r.id = :id")
+    fun findByIdForUpdate(@Param("id") id: String): Optional<AgentTillReconciliation>
+
     fun findByAgentIdAndBusinessDate(agentId: String, businessDate: LocalDate): AgentTillReconciliation?
     fun findByStatusOrderByCreatedAtDesc(status: TillReconciliationStatus): List<AgentTillReconciliation>
     fun findByBusinessDateBetweenOrderByCreatedAtDesc(from: LocalDate, to: LocalDate): List<AgentTillReconciliation>
