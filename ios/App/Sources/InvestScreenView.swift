@@ -249,6 +249,11 @@ private struct StockDetailContent: View {
     @State private var error: String?
     @State private var submitting = false
     @State private var watching: Bool
+    // Real device binding step-up (2026-07-21) -- Stocks buy/sell was a real gap:
+    // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but a
+    // bare `catch { }` swallowed it into a generic error, same fix already applied to
+    // Transfer/Savings.
+    @State private var needsDeviceVerification = false
 
     init(stock: StockDto, isWatched: Bool, onTraded: @escaping () -> Void, onWatchToggled: @escaping () -> Void) {
         self.stock = stock
@@ -309,6 +314,15 @@ private struct StockDetailContent: View {
                     .disabled(submitting)
                 }
 
+                DeviceStepUpHost(
+                    visible: needsDeviceVerification,
+                    onDismiss: { needsDeviceVerification = false },
+                    onVerified: {
+                        needsDeviceVerification = false
+                        trade()
+                    }
+                )
+
                 if let error {
                     Text(error).font(.caption).foregroundColor(.red)
                 }
@@ -348,6 +362,7 @@ private struct StockDetailContent: View {
             return
         }
         submitting = true
+        needsDeviceVerification = false
         Task {
             do {
                 if buyMode {
@@ -358,6 +373,8 @@ private struct StockDetailContent: View {
                 shares = ""
                 error = nil
                 onTraded()
+            } catch NetworkError.deviceNotVerified {
+                needsDeviceVerification = true
             } catch {
                 self.error = "Could not \(buyMode ? "buy" : "sell") this stock."
             }

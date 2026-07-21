@@ -714,6 +714,11 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
   const [submitting, setSubmitting] = useState(false);
   const [watching, setWatching] = useState(isWatched);
   const [watchBusy, setWatchBusy] = useState(false);
+  // Real device binding step-up (2026-07-21) -- Stocks buy/sell was a real gap:
+  // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but
+  // showed only a generic error, same fix already applied to Transfer/Savings/Group
+  // Account above.
+  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
 
   useEffect(() => {
     fetchStockHistory(stock.id, 14).then(setHistory).catch(() => setHistory([]));
@@ -722,6 +727,7 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
   const handleTrade = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setNeedsDeviceVerification(false);
     const shareCount = Number(shares);
     if (!shareCount || shareCount <= 0) {
       setError('Enter a real number of shares.');
@@ -735,7 +741,11 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
       onTraded();
       onClose();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : `Could not ${mode === 'BUY' ? 'buy' : 'sell'} this stock.`);
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        setNeedsDeviceVerification(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : `Could not ${mode === 'BUY' ? 'buy' : 'sell'} this stock.`);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -814,7 +824,13 @@ function StockDetailSheet({ stock, isWatched, onClose, onTraded, onWatchToggled 
           {submitting ? 'Working…' : mode === 'BUY' ? 'Buy' : 'Sell'}
         </button>
       </form>
-      {error && <p style={{ fontSize: '13px', color: '#E53935', marginTop: '10px' }} role="alert">{error}</p>}
+      {needsDeviceVerification ? (
+        <div style={{ marginTop: '10px' }}>
+          <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+        </div>
+      ) : (
+        error && <p style={{ fontSize: '13px', color: '#E53935', marginTop: '10px' }} role="alert">{error}</p>
+      )}
     </div>
   );
 }
@@ -1283,6 +1299,8 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   const [giftAmount, setGiftAmount] = useState('');
   const [giftNote, setGiftNote] = useState('');
   const [sendingGift, setSendingGift] = useState(false);
+  // Real device binding step-up (2026-07-21) -- covers Gift send/claim below.
+  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
   const [otherOnline, setOtherOnline] = useState<boolean | null>(null);
   const [otherTyping, setOtherTyping] = useState(false);
   const currentUser = getStoredUser();
@@ -1331,6 +1349,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     if (!amount || amount <= 0) return;
     setSendingGift(true);
     setError(null);
+    setNeedsDeviceVerification(false);
     try {
       await sendGiftInConversation(conversation.conversationId, amount, giftNote);
       setGiftAmount('');
@@ -1338,18 +1357,30 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       setGiftComposerOpen(false);
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send this gift.');
+      // Real device binding step-up (2026-07-21) -- Gift send was a real gap:
+      // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but
+      // showed only a generic error, same fix already applied to Transfer/Savings.
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        setNeedsDeviceVerification(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Could not send this gift.');
+      }
     } finally {
       setSendingGift(false);
     }
   };
 
   const handleClaimGift = async (giftId: string) => {
+    setNeedsDeviceVerification(false);
     try {
       await claimGift(giftId);
       loadGifts();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not open this gift.');
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        setNeedsDeviceVerification(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Could not open this gift.');
+      }
     }
   };
 
@@ -1523,8 +1554,14 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         </p>
       )}
 
-      {error && (
-        <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>
+      {needsDeviceVerification ? (
+        <div style={{ marginBottom: '8px' }}>
+          <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+        </div>
+      ) : (
+        error && (
+          <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>
+        )
       )}
 
       {giftComposerOpen && (
@@ -3895,6 +3932,10 @@ function MenuView({
 }) {
   const [menu, setMenu] = useState<{ businessName: string; products: MenuItem[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Real device binding step-up (2026-07-21) -- Eats checkout was a real gap:
+  // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but
+  // showed only a generic error, same fix already applied to Transfer/Savings.
+  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
   const [cart, setCart] = useState<Record<string, EatsCartLine>>(
     () => Object.fromEntries(Object.entries(initialCart ?? {}).map(([productId, quantity]) => [productId, { productId, quantity, choiceIds: [] }])),
   );
@@ -3972,6 +4013,7 @@ function MenuView({
     if (!menu) return;
     setPlacing(true);
     setError(null);
+    setNeedsDeviceVerification(false);
     try {
       const items = cartItems.map(([, line]) => ({
         menuItemId: line.productId, quantity: line.quantity,
@@ -3983,11 +4025,23 @@ function MenuView({
       );
       onOrderPlaced(result.order);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not place this order.');
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        setNeedsDeviceVerification(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Could not place this order.');
+      }
     } finally {
       setPlacing(false);
     }
   };
+
+  if (needsDeviceVerification) {
+    return (
+      <div className="toss-card">
+        <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+      </div>
+    );
+  }
 
   if (error) {
     return (
@@ -5268,6 +5322,13 @@ function MultiCartView({
   const [address, setAddress] = useState('');
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Real device binding step-up (2026-07-21) -- Commerce checkout was a real gap:
+  // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but
+  // showed only a generic per-order failure, same fix already applied to
+  // Transfer/Savings. Every order in this batch shares the same device/session, so
+  // hitting this once means every remaining order would fail identically -- the loop
+  // below stops at the first one rather than collecting N duplicate failures.
+  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
 
   const groups = Object.entries(cart).filter(([, g]) => Object.values(g.lines).some((l) => l.quantity > 0));
   const grandTotal = groups.reduce(
@@ -5286,6 +5347,7 @@ function MultiCartView({
     e.preventDefault();
     setPlacing(true);
     setError(null);
+    setNeedsDeviceVerification(false);
     const results: CommerceCheckoutResult[] = [];
     for (const [merchantId, group] of groups) {
       const items = Object.entries(group.lines).filter(([, l]) => l.quantity > 0).map(([productId, l]) => ({ productId, quantity: l.quantity }));
@@ -5293,6 +5355,11 @@ function MultiCartView({
         const result = await placeOrder(merchantId, items, address.trim());
         results.push({ merchantId, businessName: group.businessName, success: true, order: result.order });
       } catch (err) {
+        if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+          setNeedsDeviceVerification(true);
+          setPlacing(false);
+          return;
+        }
         results.push({ merchantId, businessName: group.businessName, success: false, error: err instanceof ApiError ? err.message : 'Could not place this order.' });
       }
     }
@@ -5335,10 +5402,16 @@ function MultiCartView({
               type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Delivery address" required
               style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
             />
-            {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
-            <button type="submit" className="toss-btn toss-btn-primary" disabled={placing || !address.trim()}>
-              {placing ? 'Placing orders…' : `Place ${groups.length} order${groups.length === 1 ? '' : 's'}`}
-            </button>
+            {needsDeviceVerification ? (
+              <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+            ) : (
+              <>
+                {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+                <button type="submit" className="toss-btn toss-btn-primary" disabled={placing || !address.trim()}>
+                  {placing ? 'Placing orders…' : `Place ${groups.length} order${groups.length === 1 ? '' : 's'}`}
+                </button>
+              </>
+            )}
           </div>
         </form>
       )}

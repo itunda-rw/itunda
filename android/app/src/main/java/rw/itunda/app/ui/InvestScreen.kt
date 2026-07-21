@@ -46,6 +46,7 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.app.network.NetworkClient
+import rw.itunda.app.network.isDeviceNotVerifiedError
 import rw.itunda.app.network.PortfolioValuePointDto
 import rw.itunda.app.network.StockDto
 import rw.itunda.app.network.StockHoldingDto
@@ -293,6 +294,10 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
     var error by remember { mutableStateOf<String?>(null) }
     var submitting by remember { mutableStateOf(false) }
     var watching by remember { mutableStateOf(isWatched) }
+    // Real device binding step-up (2026-07-21) -- Stocks buy/sell was a real gap:
+    // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but
+    // showed only a generic error, same fix already applied to Transfer/Savings.
+    var needsDeviceVerification by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(stock.id) {
@@ -323,6 +328,7 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
             return
         }
         submitting = true
+        needsDeviceVerification = false
         coroutineScope.launch {
             try {
                 val request = TradeStockRequest(stock.id, shareCount)
@@ -332,7 +338,11 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
                 error = null
                 onTraded()
             } catch (e: HttpException) {
-                error = superAppErrorMessage(e)
+                if (isDeviceNotVerifiedError(e)) {
+                    needsDeviceVerification = true
+                } else {
+                    error = superAppErrorMessage(e)
+                }
             } catch (e: IOException) {
                 error = "Couldn't reach itunda. Check your connection and try again."
             } finally {
@@ -407,6 +417,28 @@ private fun StockDetailContent(stock: StockDto, isWatched: Boolean, onTraded: ()
             }
         }
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp)) }
+        DeviceStepUpHost(
+            visible = needsDeviceVerification,
+            onDismiss = { needsDeviceVerification = false },
+            onVerified = {
+                needsDeviceVerification = false
+                submitting = true
+                try {
+                    val request = TradeStockRequest(stock.id, shares.toDoubleOrNull() ?: 0.0)
+                    val key = UUID.randomUUID().toString()
+                    if (buyMode) NetworkClient.apiService.buyStock(key, request) else NetworkClient.apiService.sellStock(key, request)
+                    shares = ""
+                    error = null
+                    onTraded()
+                } catch (e: HttpException) {
+                    error = superAppErrorMessage(e)
+                } catch (e: IOException) {
+                    error = "Couldn't reach itunda. Check your connection and try again."
+                } finally {
+                    submitting = false
+                }
+            },
+        )
     }
 }
 

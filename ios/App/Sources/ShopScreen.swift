@@ -343,6 +343,12 @@ private struct MultiCartView: View {
     @State private var address = ""
     @State private var submitting = false
     @State private var error: String?
+    // Real device binding step-up (2026-07-21) -- every order in this batch shares
+    // the same device/session, so hitting this once means every remaining order
+    // would fail identically -- the loop below stops at the first one rather than
+    // collecting N duplicate failures, same fix already applied to bank-mfe's
+    // MultiCartView/Android's MultiCartView.
+    @State private var needsDeviceVerification = false
 
     private var groups: [(merchantId: String, businessName: String, lines: [CommerceCartLine])] {
         Dictionary(grouping: cart.values, by: { $0.merchantId })
@@ -419,6 +425,11 @@ private struct MultiCartView: View {
                 .disabled(submitting || address.isEmpty)
                 .padding(IDS.Layout.screenHorizontal)
             }
+            DeviceStepUpHost(
+                visible: needsDeviceVerification,
+                onDismiss: { needsDeviceVerification = false },
+                onVerified: { needsDeviceVerification = false }
+            )
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
     }
@@ -426,6 +437,7 @@ private struct MultiCartView: View {
     private func placeOrders() async {
         submitting = true
         error = nil
+        needsDeviceVerification = false
         defer { submitting = false }
         var results: [CommerceCheckoutResult] = []
         for group in groups {
@@ -436,6 +448,9 @@ private struct MultiCartView: View {
                     deliveryAddress: address.trimmingCharacters(in: .whitespaces)
                 ))
                 results.append(CommerceCheckoutResult(merchantId: group.merchantId, businessName: group.businessName, order: res.order, error: nil))
+            } catch NetworkError.deviceNotVerified {
+                needsDeviceVerification = true
+                return
             } catch let NetworkError.httpError(statusCode) {
                 results.append(CommerceCheckoutResult(merchantId: group.merchantId, businessName: group.businessName, order: nil, error: TalkScreen.errorMessage(statusCode)))
             } catch {

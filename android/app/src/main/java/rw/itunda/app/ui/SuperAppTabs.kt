@@ -94,6 +94,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.WebSocket
 import retrofit2.HttpException
+import rw.itunda.app.network.isDeviceNotVerifiedError
 import rw.itunda.app.network.AddCommunityCommentRequest
 import rw.itunda.app.network.CommunityCategoryDto
 import rw.itunda.app.network.CommunityCommentWithAuthorDto
@@ -891,6 +892,12 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
     var draft by remember { mutableStateOf("") }
     var sending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Real device binding step-up (2026-07-21) -- Gift send/claim was a real gap:
+    // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but
+    // showed only a generic error, same fix already applied to Transfer/Savings/
+    // Interest via MainViewModel.
+    var needsDeviceVerification by remember { mutableStateOf(false) }
+    var pendingDeviceRetry by remember { mutableStateOf<(suspend () -> Unit)?>(null) }
     var otherOnline by remember { mutableStateOf<Boolean?>(null) }
     var otherTyping by remember { mutableStateOf(false) }
     var giftComposerOpen by remember { mutableStateOf(false) }
@@ -1043,7 +1050,16 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
                                     NetworkClient.apiService.claimGift(giftId, UUID.randomUUID().toString())
                                     loadGifts()
                                 } catch (e: HttpException) {
-                                    error = superAppErrorMessage(e)
+                                    if (isDeviceNotVerifiedError(e)) {
+                                        pendingDeviceRetry = {
+                                            try { NetworkClient.apiService.claimGift(giftId, UUID.randomUUID().toString()); loadGifts() }
+                                            catch (e2: HttpException) { error = superAppErrorMessage(e2) }
+                                            catch (_: IOException) { error = "Couldn't reach itunda. Check your connection and try again." }
+                                        }
+                                        needsDeviceVerification = true
+                                    } else {
+                                        error = superAppErrorMessage(e)
+                                    }
                                 } catch (_: IOException) {
                                     error = "Couldn't reach itunda. Check your connection and try again."
                                 }
@@ -1086,6 +1102,16 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
         if (otherTyping) {
             Text("${conversation.otherUserName} is typing…", color = TossSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
         }
+        DeviceStepUpHost(
+            visible = needsDeviceVerification,
+            onDismiss = { needsDeviceVerification = false; pendingDeviceRetry = null },
+            onVerified = {
+                needsDeviceVerification = false
+                val retry = pendingDeviceRetry
+                pendingDeviceRetry = null
+                retry?.invoke()
+            },
+        )
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(vertical = 6.dp)) }
         if (giftComposerOpen) {
             Column(
@@ -1117,19 +1143,28 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
                         if (amountValue == null || amountValue <= 0 || sendingGift) return@OfferActionButton
                         sendingGift = true
                         error = null
+                        needsDeviceVerification = false
+                        val sendGift: suspend () -> Unit = {
+                            NetworkClient.apiService.sendGiftInConversation(
+                                conversation.conversationId,
+                                UUID.randomUUID().toString(),
+                                SendGiftInConversationRequest(amountValue, giftNote.trim().ifBlank { null }),
+                            )
+                            giftAmount = ""
+                            giftNote = ""
+                            giftComposerOpen = false
+                            refresh()
+                        }
                         coroutineScope.launch {
                             try {
-                                NetworkClient.apiService.sendGiftInConversation(
-                                    conversation.conversationId,
-                                    UUID.randomUUID().toString(),
-                                    SendGiftInConversationRequest(amountValue, giftNote.trim().ifBlank { null }),
-                                )
-                                giftAmount = ""
-                                giftNote = ""
-                                giftComposerOpen = false
-                                refresh()
+                                sendGift()
                             } catch (e: HttpException) {
-                                error = superAppErrorMessage(e)
+                                if (isDeviceNotVerifiedError(e)) {
+                                    pendingDeviceRetry = sendGift
+                                    needsDeviceVerification = true
+                                } else {
+                                    error = superAppErrorMessage(e)
+                                }
                             } catch (_: IOException) {
                                 error = "Couldn't reach itunda. Check your connection and try again."
                             } finally {
@@ -3501,6 +3536,12 @@ private fun MultiCartView(
     var address by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Real device binding step-up (2026-07-21) -- every order in this batch shares
+    // the same device/session, so hitting this once means every remaining order
+    // would fail identically -- the loop below stops at the first one rather than
+    // collecting N duplicate failures, same fix already applied to bank-mfe's
+    // MultiCartView.
+    var needsDeviceVerification by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     val groups = cart.values.groupBy { it.merchantId }
@@ -3552,6 +3593,7 @@ private fun MultiCartView(
                 .clickable(enabled = !submitting && address.isNotBlank()) {
                     submitting = true
                     error = null
+                    needsDeviceVerification = false
                     coroutineScope.launch {
                         val results = mutableListOf<CommerceCheckoutResult>()
                         for ((merchantId, lines) in groups) {
@@ -3566,6 +3608,11 @@ private fun MultiCartView(
                                 )
                                 results.add(CommerceCheckoutResult(merchantId, lines.first().businessName, res.order, null))
                             } catch (e: HttpException) {
+                                if (isDeviceNotVerifiedError(e)) {
+                                    needsDeviceVerification = true
+                                    submitting = false
+                                    return@launch
+                                }
                                 results.add(CommerceCheckoutResult(merchantId, lines.first().businessName, null, superAppErrorMessage(e)))
                             } catch (e: IOException) {
                                 results.add(CommerceCheckoutResult(merchantId, lines.first().businessName, null, "Couldn't reach itunda. Check your connection and try again."))
@@ -3578,6 +3625,11 @@ private fun MultiCartView(
                 .padding(vertical = 16.dp),
             contentAlignment = Alignment.Center,
         ) { Text(if (submitting) "Placing orders…" else "Place ${groups.size} order${if (groups.size == 1) "" else "s"}", color = Color.White, fontWeight = FontWeight.Bold) }
+        DeviceStepUpHost(
+            visible = needsDeviceVerification,
+            onDismiss = { needsDeviceVerification = false },
+            onVerified = { needsDeviceVerification = false },
+        )
     }
 }
 
@@ -4590,6 +4642,10 @@ private fun EatsCheckoutView(
     var deliveryNotes by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Real device binding step-up (2026-07-21) -- Eats checkout was a real gap:
+    // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but
+    // showed only a generic error, same fix already applied to Transfer/Savings.
+    var needsDeviceVerification by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val idempotencyKey = remember { UUID.randomUUID().toString() }
 
@@ -4646,6 +4702,7 @@ private fun EatsCheckoutView(
                 .clickable(enabled = !submitting && address.isNotBlank()) {
                     submitting = true
                     error = null
+                    needsDeviceVerification = false
                     coroutineScope.launch {
                         try {
                             val res = NetworkClient.apiService.placeEatsOrder(
@@ -4661,7 +4718,11 @@ private fun EatsCheckoutView(
                             )
                             if (res.success) onOrderPlaced(res.order)
                         } catch (e: HttpException) {
-                            error = superAppErrorMessage(e)
+                            if (isDeviceNotVerifiedError(e)) {
+                                needsDeviceVerification = true
+                            } else {
+                                error = superAppErrorMessage(e)
+                            }
                         } catch (e: IOException) {
                             error = "Couldn't reach itunda. Check your connection and try again."
                         } finally {
@@ -4672,6 +4733,34 @@ private fun EatsCheckoutView(
                 .padding(vertical = 16.dp),
             contentAlignment = Alignment.Center,
         ) { Text(if (submitting) "Placing order…" else "Place order", color = Color.White, fontWeight = FontWeight.Bold) }
+        DeviceStepUpHost(
+            visible = needsDeviceVerification,
+            onDismiss = { needsDeviceVerification = false },
+            onVerified = {
+                needsDeviceVerification = false
+                submitting = true
+                try {
+                    val res = NetworkClient.apiService.placeEatsOrder(
+                        idempotencyKey = idempotencyKey,
+                        request = PlaceEatsOrderRequest(
+                            restaurantId = restaurant.merchantId,
+                            items = lines.map { (p, qty) -> EatsOrderItemRequest(p.id, qty) },
+                            deliveryAddress = address.trim(),
+                            deliveryLatitude = addressLatitude,
+                            deliveryLongitude = addressLongitude,
+                            deliveryNotes = deliveryNotes.trim().ifBlank { null },
+                        ),
+                    )
+                    if (res.success) onOrderPlaced(res.order)
+                } catch (e: HttpException) {
+                    error = superAppErrorMessage(e)
+                } catch (e: IOException) {
+                    error = "Couldn't reach itunda. Check your connection and try again."
+                } finally {
+                    submitting = false
+                }
+            },
+        )
     }
 }
 

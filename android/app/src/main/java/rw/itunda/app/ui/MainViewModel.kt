@@ -335,21 +335,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Real device binding (2026-07-21 port) -- every money-moving call above checks
-    // this before falling back to a generic Failure. A 403 alone isn't enough (other
-    // real 403s exist elsewhere in this backend); the real `ApiError.code` field in
-    // the response body is what DeviceVerificationFilter actually sets, so that's
-    // what's checked, not just the HTTP status. Mirrors bank-mfe's own
-    // `err.code === 'DEVICE_NOT_VERIFIED'` check on its ApiError exactly.
-    private fun isDeviceNotVerified(e: retrofit2.HttpException): Boolean {
-        if (e.code() != 403) return false
-        return try {
-            val body = e.response()?.errorBody()?.string() ?: return false
-            com.google.gson.JsonParser.parseString(body).asJsonObject.get("code")?.asString == "DEVICE_NOT_VERIFIED"
-        } catch (_: Exception) {
-            false
-        }
-    }
+    // Moved to network/ApiService.kt as `isDeviceNotVerifiedError` (2026-07-21) so
+    // every money-moving call site can reuse it, not just this ViewModel's original
+    // three (sendTransfer/depositToSavingsGoal/claimInterest).
+    private fun isDeviceNotVerified(e: retrofit2.HttpException): Boolean =
+        rw.itunda.app.network.isDeviceNotVerifiedError(e)
 
     // Real step-up re-verification (2026-07-21 port) -- re-proves password ownership
     // on THIS device (resolved server-side from the caller's own JWT deviceId claim)

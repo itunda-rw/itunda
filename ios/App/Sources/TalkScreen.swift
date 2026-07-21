@@ -709,6 +709,12 @@ private struct ChatThreadScreen: View {
     @State private var giftAmount = ""
     @State private var giftNote = ""
     @State private var sendingGift = false
+    // Real device binding step-up (2026-07-21) -- Gift send/claim was a real gap:
+    // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but a
+    // bare `catch { }` swallowed it into a generic error, same fix already applied to
+    // Transfer/Savings via TransferFlowContainer/SavingsFlowContainer.
+    @State private var needsDeviceVerification = false
+    @State private var pendingGiftRetry: (() async -> Void)?
     private let currentUserId = KeychainTokenStore.shared.getUserId()
 
     var body: some View {
@@ -770,6 +776,17 @@ private struct ChatThreadScreen: View {
                     .foregroundColor(IDS.Colors.textSecondary)
                     .padding(.horizontal, IDS.Layout.screenHorizontal)
             }
+
+            DeviceStepUpHost(
+                visible: needsDeviceVerification,
+                onDismiss: { needsDeviceVerification = false; pendingGiftRetry = nil },
+                onVerified: {
+                    needsDeviceVerification = false
+                    let retry = pendingGiftRetry
+                    pendingGiftRetry = nil
+                    await retry?()
+                }
+            )
 
             if let error {
                 Text(error).font(.caption).foregroundColor(.red).padding(.horizontal, IDS.Layout.screenHorizontal)
@@ -932,6 +949,7 @@ private struct ChatThreadScreen: View {
         guard let amount = Double(giftAmount), amount > 0 else { return }
         sendingGift = true
         error = nil
+        needsDeviceVerification = false
         defer { sendingGift = false }
         do {
             _ = try await NetworkClient.shared.sendGiftInConversation(
@@ -943,6 +961,9 @@ private struct ChatThreadScreen: View {
             giftNote = ""
             giftComposerOpen = false
             await refresh()
+        } catch NetworkError.deviceNotVerified {
+            pendingGiftRetry = { await sendGift() }
+            needsDeviceVerification = true
         } catch {
             self.error = "Couldn't send this gift. Check your connection and try again."
         }
@@ -952,6 +973,9 @@ private struct ChatThreadScreen: View {
         do {
             _ = try await NetworkClient.shared.claimGift(giftId: giftId)
             await loadGifts()
+        } catch NetworkError.deviceNotVerified {
+            pendingGiftRetry = { await claimGift(giftId) }
+            needsDeviceVerification = true
         } catch {
             self.error = "Couldn't open this gift. Check your connection and try again."
         }

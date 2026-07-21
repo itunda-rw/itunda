@@ -1231,6 +1231,23 @@ data class BatchActionResultDto(
 
 data class BatchResponse(val success: Boolean, val results: List<BatchActionResultDto>)
 
+// Real device binding (2026-07-21) -- shared, public so any money-moving call site
+// can check it, not just MainViewModel's original three (sendTransfer/
+// depositToSavingsGoal/claimInterest). A 403 alone isn't enough (other real 403s
+// exist elsewhere in this backend); the real `ApiError.code` field in the response
+// body is what DeviceVerificationFilter actually sets, so that's what's checked.
+// Mirrors bank-mfe's own `err.code === 'DEVICE_NOT_VERIFIED'` check on its ApiError
+// exactly.
+fun isDeviceNotVerifiedError(e: retrofit2.HttpException): Boolean {
+    if (e.code() != 403) return false
+    return try {
+        val body = e.response()?.errorBody()?.string() ?: return false
+        com.google.gson.JsonParser.parseString(body).asJsonObject.get("code")?.asString == "DEVICE_NOT_VERIFIED"
+    } catch (_: Exception) {
+        false
+    }
+}
+
 // Network Client Singleton
 object NetworkClient {
     // Was hardcoded to "http://10.0.2.2:8080/" -- the emulator-only loopback alias, at

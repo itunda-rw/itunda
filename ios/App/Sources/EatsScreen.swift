@@ -598,6 +598,10 @@ private struct EatsCheckoutView: View {
     @State private var deliveryNotes = ""
     @State private var submitting = false
     @State private var error: String?
+    // Real device binding step-up (2026-07-21) -- Eats checkout was a real gap:
+    // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but
+    // showed only a generic error, same fix already applied to Transfer/Savings.
+    @State private var needsDeviceVerification = false
 
     private var lines: [(MerchantProductDto, Int)] {
         cart.compactMap { productId, qty in
@@ -673,6 +677,14 @@ private struct EatsCheckoutView: View {
             }
             .disabled(submitting || address.isEmpty)
             .padding(IDS.Layout.screenHorizontal)
+            DeviceStepUpHost(
+                visible: needsDeviceVerification,
+                onDismiss: { needsDeviceVerification = false },
+                onVerified: {
+                    needsDeviceVerification = false
+                    await placeOrder()
+                }
+            )
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
     }
@@ -680,6 +692,7 @@ private struct EatsCheckoutView: View {
     private func placeOrder() async {
         submitting = true
         error = nil
+        needsDeviceVerification = false
         defer { submitting = false }
         do {
             let res = try await NetworkClient.shared.placeEatsOrder(PlaceEatsOrderRequest(
@@ -691,6 +704,8 @@ private struct EatsCheckoutView: View {
                 deliveryNotes: deliveryNotes.trimmingCharacters(in: .whitespaces).isEmpty ? nil : deliveryNotes.trimmingCharacters(in: .whitespaces)
             ))
             onOrderPlaced(res.order)
+        } catch NetworkError.deviceNotVerified {
+            needsDeviceVerification = true
         } catch let NetworkError.httpError(statusCode) {
             error = TalkScreen.errorMessage(statusCode)
         } catch {

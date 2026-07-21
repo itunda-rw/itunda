@@ -44,3 +44,46 @@ struct DeviceStepUpView: View {
         .padding(.horizontal, 24)
     }
 }
+
+/// Real device binding step-up host, factored out 2026-07-21 after the fourth copy of
+/// this exact busy/error/verify-then-retry pattern (Gift send/claim, Commerce
+/// checkout, Eats checkout, Stocks buy/sell -- see TalkScreen.swift/ShopScreen.swift/
+/// EatsScreen.swift/InvestScreenView.swift) would otherwise have hand-duplicated the
+/// same logic. Mirrors Android's DeviceStepUpHost.kt exactly: verifies the current
+/// device, then invokes the caller's retry closure.
+struct DeviceStepUpHost: View {
+    let visible: Bool
+    let onDismiss: () -> Void
+    let onVerified: () async -> Void
+
+    @State private var busy = false
+    @State private var error: String?
+
+    var body: some View {
+        if visible {
+            Color.black.opacity(0.3).ignoresSafeArea()
+            DeviceStepUpView(
+                busy: busy,
+                error: error,
+                onVerify: { password in
+                    error = nil
+                    busy = true
+                    Task { @MainActor in
+                        do {
+                            _ = try await NetworkClient.shared.verifyDevice(password: password)
+                            busy = false
+                            await onVerified()
+                        } catch let NetworkError.httpError(statusCode) {
+                            busy = false
+                            error = statusCode == 400 ? "Incorrect password." : "Something went wrong. Please try again."
+                        } catch {
+                            busy = false
+                            self.error = "Couldn't reach itunda. Check your connection and try again."
+                        }
+                    }
+                },
+                onCancel: onDismiss
+            )
+        }
+    }
+}
