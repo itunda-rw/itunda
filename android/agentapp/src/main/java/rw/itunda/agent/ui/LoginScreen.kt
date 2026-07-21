@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +21,9 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import rw.itunda.agent.network.LoginRequest
 import rw.itunda.agent.network.NetworkClient
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsTypography
 
 @Composable
 fun LoginScreen(onLoggedIn: () -> Unit) {
@@ -32,16 +33,17 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
-        Text("Itunda Agent", style = MaterialTheme.typography.headlineMedium)
-        Text("Use the Itunda account assigned to this store. Customer cash activity is recorded immediately.")
+        Text("itunda", style = IdsTypography.Title1, color = Ids.colors.textPrimary)
+        Text("Agent", style = IdsTypography.Title2, color = Ids.colors.textSecondary)
+        Text("Use the Itunda account assigned to this store.", style = IdsTypography.Body1, color = Ids.colors.textSecondary)
         Spacer(Modifier.height(24.dp))
         OutlinedTextField(phone, { phone = it }, label = { Text("Phone number") }, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(password, { password = it }, label = { Text("Password") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 12.dp)) }
+        error?.let { Text(it, color = Ids.colors.danger, style = IdsTypography.Body2, modifier = Modifier.padding(top = 12.dp)) }
         Spacer(Modifier.height(20.dp))
-        Button(enabled = !busy, modifier = Modifier.fillMaxWidth(), onClick = {
-            if (phone.isBlank() || password.isBlank()) { error = "Enter your phone number and password."; return@Button }
+        IdsButton(enabled = !busy, onClick = {
+            if (phone.isBlank() || password.isBlank()) { error = "Enter your phone number and password."; return@IdsButton }
             busy = true; error = null
             scope.launch {
                 try {
@@ -56,6 +58,6 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     error = "This account is not an active agent operator, or the service could not be reached."
                 } finally { busy = false }
             }
-        }) { Text(if (busy) "Signing in…" else "Sign in") }
+        }, text = if (busy) "Signing in…" else "Sign in")
     }
 }

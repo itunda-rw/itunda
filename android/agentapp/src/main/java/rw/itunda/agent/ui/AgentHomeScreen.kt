@@ -34,6 +34,10 @@ import rw.itunda.agent.network.CashOutRequest
 import rw.itunda.agent.network.NetworkClient
 import rw.itunda.agent.network.TillCountRequest
 import rw.itunda.agent.network.TillDto
+import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.core.designsystem.components.IdsButtonVariant
+import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.theme.IdsTypography
 import java.math.BigDecimal
 
 private enum class TransactionMode { CASH_IN, CASH_OUT, COUNT_TILL }
@@ -60,7 +64,7 @@ fun AgentHomeScreen(onLogout: () -> Unit) {
     LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column { Text(till?.agentName ?: "Your agent store", style = MaterialTheme.typography.headlineSmall); Text("Today’s cash desk") }
+                Column { Text(till?.agentName ?: "Your agent store", style = IdsTypography.Title1, color = Ids.colors.textPrimary); Text("Today’s cash desk", style = IdsTypography.Body2, color = Ids.colors.textSecondary) }
                 TextButton(onClick = onLogout) { Text("Sign out") }
             }
         }
@@ -93,20 +97,20 @@ private fun ActivityCard(entry: ActivityDto) = Card(Modifier.fillMaxWidth()) {
 @Composable
 private fun TillSummary(till: TillDto) = Card(Modifier.fillMaxWidth()) {
     Column(Modifier.padding(16.dp)) {
-        Text("Cash expected in till", style = MaterialTheme.typography.titleMedium)
-        Text("RWF ${till.expectedCash}", style = MaterialTheme.typography.headlineMedium)
-        Text("Today: RWF ${till.todayCashIn} in · RWF ${till.todayCashOut} out")
+        Text("Cash expected in till", style = IdsTypography.Body2, color = Ids.colors.textSecondary)
+        Text("RWF ${till.expectedCash}", style = IdsTypography.Title1, color = Ids.colors.textPrimary)
+        Text("Today: RWF ${till.todayCashIn} in · RWF ${till.todayCashOut} out", style = IdsTypography.Body2, color = Ids.colors.textSecondary)
     }
 }
 
 @Composable
 private fun ActionPicker(onAction: (TransactionMode) -> Unit) = Card(Modifier.fillMaxWidth()) {
     Column(Modifier.padding(16.dp)) {
-        Text("What do you need to do?", style = MaterialTheme.typography.titleMedium)
+        Text("What do you need to do?", style = IdsTypography.Title2, color = Ids.colors.textPrimary)
         Spacer(Modifier.height(8.dp))
-        Button(onClick = { onAction(TransactionMode.CASH_IN) }, modifier = Modifier.fillMaxWidth()) { Text("Receive cash from customer") }
+        IdsButton(text = "Receive cash from customer", onClick = { onAction(TransactionMode.CASH_IN) })
         Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = { onAction(TransactionMode.CASH_OUT) }, modifier = Modifier.fillMaxWidth()) { Text("Pay cash to customer") }
+        IdsButton(text = "Pay cash to customer", onClick = { onAction(TransactionMode.CASH_OUT) }, variant = IdsButtonVariant.Tinted)
         TextButton(onClick = { onAction(TransactionMode.COUNT_TILL) }, modifier = Modifier.fillMaxWidth()) { Text("End-of-day cash count") }
     }
 }
