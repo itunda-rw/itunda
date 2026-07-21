@@ -466,6 +466,7 @@ private struct ListingCard: View {
     @State private var error: String?
     @State private var offering = false
     @State private var offerAmount = ""
+    @State private var showingSafetyChecklist = false
 
     // Real "directions to this seller" (2026-07-19, item 8 on the Maps "100%" roadmap) --
     // reuses itunda's own self-hosted OSRM directions, same RouteMiniMap component Eats
@@ -503,6 +504,21 @@ private struct ListingCard: View {
                 Text("\(Int(listing.price)) RWF").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
             }
             Text(listing.description).font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
+            Button(action: { showingSafetyChecklist.toggle() }) {
+                Text(showingSafetyChecklist ? "Hide contract checklist" : "Before you pay: safety checklist")
+                    .font(IDS.Typography.caption).foregroundColor(IDS.Colors.brand)
+            }
+            if showingSafetyChecklist {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Before you pay or sign").font(IDS.Typography.sectionLabel).foregroundColor(IDS.Colors.textPrimary)
+                    Text("• Visit the property and confirm the address\n• Ask the owner or agent for proof they can list it\n• Put rent, deposit and move-in date in writing\n• Never send money before you verify the person and property")
+                        .font(IDS.Typography.caption).foregroundColor(IDS.Colors.textSecondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(IDS.Colors.chipBackground)
+                .cornerRadius(12)
+            }
             if let error {
                 Text(error).font(.caption).foregroundColor(.red)
             }
