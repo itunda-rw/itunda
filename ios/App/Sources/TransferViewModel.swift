@@ -7,6 +7,11 @@ enum MoneyActionResult {
     // OfflineActionQueue.swift. Mirrors Android's MoneyActionResult.Queued exactly.
     case queued(String)
     case failure(String)
+    // Real device binding (2026-07-21 port) -- a real 403 DEVICE_NOT_VERIFIED (this
+    // device hasn't been step-up-verified yet) gets its own case, not a generic
+    // failure, since the caller has a real, actionable next step (re-enter password,
+    // then retry). Mirrors Android's MoneyActionResult.DeviceNotVerified exactly.
+    case deviceNotVerified
 }
 
 /// Real direct P2P push-transfer + savings deposit/claim -- mirrors Android's
@@ -30,6 +35,8 @@ final class TransferViewModel: ObservableObject {
                 amount: Double(amountRwf)
             )
             return .success(response.message)
+        } catch NetworkError.deviceNotVerified {
+            return .deviceNotVerified
         } catch let NetworkError.httpError(statusCode) {
             return .failure(Self.errorMessage(statusCode))
         } catch {
@@ -75,6 +82,8 @@ final class TransferViewModel: ObservableObject {
         do {
             let response = try await NetworkClient.shared.depositToGoal(goalId: goalId, amount: Double(amountRwf))
             return .success(response.message)
+        } catch NetworkError.deviceNotVerified {
+            return .deviceNotVerified
         } catch let NetworkError.httpError(statusCode) {
             return .failure(Self.errorMessage(statusCode))
         } catch is URLError {
@@ -89,8 +98,27 @@ final class TransferViewModel: ObservableObject {
         do {
             let response = try await NetworkClient.shared.claimInterest()
             return .success(response.message)
+        } catch NetworkError.deviceNotVerified {
+            return .deviceNotVerified
         } catch let NetworkError.httpError(statusCode) {
             return .failure(Self.errorMessage(statusCode))
+        } catch {
+            return .failure("Couldn't reach itunda. Check your connection and try again.")
+        }
+    }
+
+    // Real step-up re-verification (2026-07-21 port) -- re-proves password ownership
+    // on THIS device (resolved server-side from the caller's own JWT deviceId claim)
+    // and marks it trusted, matching bank-mfe's verifyDevice()/Android's
+    // MainViewModel.verifyDevice exactly. The caller is expected to retry whatever
+    // money-moving action returned .deviceNotVerified once this returns true.
+    func verifyDevice(password: String) async -> MoneyActionResult {
+        do {
+            _ = try await NetworkClient.shared.verifyDevice(password: password)
+            return .success("Device verified")
+        } catch let NetworkError.httpError(statusCode) {
+            let message = statusCode == 400 ? "Incorrect password." : "Something went wrong. Please try again."
+            return .failure(message)
         } catch {
             return .failure("Couldn't reach itunda. Check your connection and try again.")
         }

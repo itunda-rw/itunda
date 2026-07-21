@@ -254,6 +254,66 @@ fun TransferAmountScreen(
     }
 }
 
+/**
+ * Real device binding step-up dialog (2026-07-21 port) -- shown wherever a
+ * money-moving call real-403s with DEVICE_NOT_VERIFIED. Re-proves password ownership
+ * on THIS device (resolved server-side from the caller's own JWT, never a
+ * client-supplied id) and marks it trusted, matching the same real re-verification
+ * Toss requires before a new device can move money. Mirrors bank-mfe's
+ * DeviceStepUpPrompt (BankDashboard.tsx) exactly -- same copy, same shape (password
+ * field, Cancel/Verify), ported to Compose rather than reinvented.
+ */
+@Composable
+fun DeviceStepUpDialog(
+    busy: Boolean,
+    error: String?,
+    onVerify: (password: String) -> Unit,
+    onCancel: () -> Unit,
+) {
+    var password by rememberSaveable { mutableStateOf("") }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text("🔒 Verify this device", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) },
+        text = {
+            Column {
+                Text(
+                    "This is a new device for your account. Re-enter your password to allow it to send money, then try again.",
+                    color = Ids.colors.textSecondary,
+                    fontSize = 13.sp,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                BasicTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 16.sp),
+                    cursorBrush = androidx.compose.ui.graphics.SolidColor(Ids.colors.brand),
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Ids.colors.surfaceSoft, RoundedCornerShape(10.dp))
+                        .padding(12.dp)
+                        .semantics { contentDescription = "Password" }
+                )
+                if (error != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(error, color = Ids.colors.danger, fontSize = 12.sp)
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = { onVerify(password) }, enabled = !busy && password.isNotEmpty()) {
+                Text(if (busy) "Verifying…" else "Verify device", color = Ids.colors.brand, fontWeight = FontWeight.SemiBold)
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onCancel, enabled = !busy) {
+                Text("Cancel", color = Ids.colors.textSecondary)
+            }
+        },
+        containerColor = Ids.colors.surface,
+    )
+}
+
 @Composable
 internal fun FlowTopBar(onBack: () -> Unit) {
     Row(

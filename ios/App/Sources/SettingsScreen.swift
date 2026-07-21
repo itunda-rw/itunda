@@ -3,10 +3,15 @@ import SwiftUI
 /// Real account settings screen, matching Android's SettingsScreen.kt exactly
 /// (2026-07-12): "내 정보" (real name/phone from /api/v1/auth/profile), a real
 /// notifications list (/api/v1/notifications, mark-as-read already real on the
-/// backend, just never surfaced anywhere on iOS), and logout. "보안"-style rows
-/// are deliberately NOT rendered -- no real 2FA/device-management backend exists
-/// behind them yet, and a tappable row that goes nowhere is worse than not
-/// claiming the feature.
+/// backend, just never surfaced anywhere on iOS), and logout.
+///
+/// Real device management added 2026-07-21 (see the Devices section below) --
+/// closes the "no real device-management backend exists yet" gap this comment used
+/// to name: there IS now a real device-binding backend (DeviceService.kt, modeled on
+/// Toss's own published Gateway/Passport architecture), already shipped on web
+/// (bank-mfe's Devices tab, 2026-07-20) and Android (SettingsScreen.kt, same day as
+/// this). This is the iOS port, same real GET/POST/DELETE /api/v1/auth/devices
+/// endpoints, same real list/revoke actions.
 struct SettingsScreen: View {
     @StateObject private var viewModel = SettingsViewModel()
     let onDone: () -> Void
@@ -36,6 +41,33 @@ struct SettingsScreen: View {
                             Text(viewModel.profile?.phoneNumber ?? "")
                                 .font(.system(size: 14))
                                 .foregroundColor(.secondary)
+                        }
+                    }
+                }
+
+                // Real device management (2026-07-21 port) -- see this screen's own
+                // header comment. Mirrors bank-mfe's Devices tab/Android's Devices
+                // section: every device this account has ever signed in from,
+                // whether it's trusted (can move money) or merely seen, and a real
+                // "Remove" action.
+                Section("Devices") {
+                    ForEach(viewModel.devices) { device in
+                        HStack(spacing: 14) {
+                            Image(systemName: "iphone")
+                                .frame(width: 44, height: 44)
+                                .background(Color.gray.opacity(0.15))
+                                .clipShape(Circle())
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text((device.deviceName ?? "Unknown device") + (device.deviceId == DeviceStore.shared.getOrCreateDeviceId() ? " (this device)" : ""))
+                                    .font(.system(size: 15, weight: .semibold))
+                                Text(device.trusted ? "Trusted -- can send money" : "Not verified -- can't send money yet")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(device.trusted ? .secondary : .red)
+                            }
+                            Spacer()
+                            Button("Remove") { Task { await viewModel.revokeDevice(device.deviceId) } }
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.red)
                         }
                     }
                 }

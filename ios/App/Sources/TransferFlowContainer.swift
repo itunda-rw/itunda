@@ -17,6 +17,15 @@ struct TransferFlowContainer: View {
     @State private var step: TransferStep = .recipient
     @State private var isSubmitting = false
     @State private var errorMessage: String?
+    // Real device binding step-up (2026-07-21 port) -- see DeviceStepUpView's own doc
+    // comment for the full account.
+    @State private var showDeviceStepUp = false
+    @State private var deviceStepUpBusy = false
+    @State private var deviceStepUpError: String?
+    // Remembers the in-flight amount across a device-not-verified -> verify -> retry
+    // round trip -- `step` only carries the recipient's account number, not the
+    // amount being sent.
+    @State private var pendingAmountRwf = 0
     let availableBalance: Double
     let onDone: () -> Void
 
@@ -75,6 +84,41 @@ struct TransferFlowContainer: View {
         // real fix.
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea(.keyboard)
+        .overlay {
+            if showDeviceStepUp {
+                Color.black.opacity(0.3).ignoresSafeArea()
+                DeviceStepUpView(
+                    busy: deviceStepUpBusy,
+                    error: deviceStepUpError,
+                    onVerify: { password in verifyThenRetry(password: password) },
+                    onCancel: { showDeviceStepUp = false; deviceStepUpError = nil }
+                )
+            }
+        }
+    }
+
+    private func verifyThenRetry(password: String) {
+        deviceStepUpError = nil
+        deviceStepUpBusy = true
+        Task { @MainActor in
+            let result = await viewModel.verifyDevice(password: password)
+            deviceStepUpBusy = false
+            switch result {
+            case .success:
+                showDeviceStepUp = false
+                if case .amount(let accountNumber) = step {
+                    isSubmitting = true
+                    let retryResult = await viewModel.sendTransfer(recipientAccountNumber: accountNumber, amountRwf: pendingAmountRwf)
+                    isSubmitting = false
+                    if case .success = retryResult { onDone() }
+                    else if case .failure(let message) = retryResult { errorMessage = message }
+                }
+            case .failure(let message):
+                deviceStepUpError = message
+            case .queued, .deviceNotVerified:
+                break
+            }
+        }
     }
 
     private static func dismissKeyboard() {
@@ -86,6 +130,7 @@ struct TransferFlowContainer: View {
     // ItundaAppScreen.kt exactly.
     private func confirm(accountNumber: String, amountRwf: Int) {
         errorMessage = nil
+        pendingAmountRwf = amountRwf
         NIDABiometricAuth.shared.authenticateForTransaction(reason: "Confirm sending \(amountRwf) RWF") { success, error in
             guard success else {
                 errorMessage = error?.localizedDescription ?? "Couldn't verify. Try again."
@@ -106,6 +151,9 @@ struct TransferFlowContainer: View {
                     onDone()
                 case .failure(let message):
                     errorMessage = message
+                case .deviceNotVerified:
+                    deviceStepUpError = nil
+                    showDeviceStepUp = true
                 }
             }
         }

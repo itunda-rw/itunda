@@ -30,6 +30,11 @@ sealed interface MoneyActionResult {
     data class Success(val message: String) : MoneyActionResult
     data class Queued(val message: String) : MoneyActionResult
     data class Failure(val message: String) : MoneyActionResult
+    // Real device binding (2026-07-21 port) -- a real 403 DEVICE_NOT_VERIFIED (this
+    // device hasn't been step-up-verified yet) gets its own case, not a generic
+    // Failure, since the caller has a real, actionable next step (re-enter password,
+    // then retry). Mirrors bank-mfe's needsDeviceVerification handling exactly.
+    data object DeviceNotVerified : MoneyActionResult
 }
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -196,6 +201,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _notifications.value = notificationsRes.notifications
                     _unreadNotificationCount.value = notificationsRes.unreadCount
                 }
+
+                // Real device management (2026-07-21 port) -- see fetchDevices' own doc
+                // comment.
+                fetchDevices()
             } catch (_: Exception) {
                 // Settings screen just shows whatever it already had (or nothing) --
                 // not a money-moving action, no need for the offline-placeholder
@@ -237,7 +246,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             fetchData()
             MoneyActionResult.Success(res.message)
         } catch (e: retrofit2.HttpException) {
-            MoneyActionResult.Failure(backendErrorMessage(e))
+            if (isDeviceNotVerified(e)) MoneyActionResult.DeviceNotVerified else MoneyActionResult.Failure(backendErrorMessage(e))
         } catch (e: IOException) {
             MoneyActionResult.Failure("Couldn't reach itunda. Check your connection and try again.")
         }
@@ -263,7 +272,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             fetchData()
             MoneyActionResult.Success(res.message)
         } catch (e: retrofit2.HttpException) {
-            MoneyActionResult.Failure(backendErrorMessage(e))
+            if (isDeviceNotVerified(e)) MoneyActionResult.DeviceNotVerified else MoneyActionResult.Failure(backendErrorMessage(e))
         } catch (e: IOException) {
             offlineQueue.enqueue(
                 type = "SAVINGS_DEPOSIT",
@@ -320,10 +329,72 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             fetchData()
             MoneyActionResult.Success(res.message)
         } catch (e: retrofit2.HttpException) {
-            MoneyActionResult.Failure(backendErrorMessage(e))
+            if (isDeviceNotVerified(e)) MoneyActionResult.DeviceNotVerified else MoneyActionResult.Failure(backendErrorMessage(e))
         } catch (e: IOException) {
             MoneyActionResult.Failure("Couldn't reach itunda. Check your connection and try again.")
         }
+    }
+
+    // Real device binding (2026-07-21 port) -- every money-moving call above checks
+    // this before falling back to a generic Failure. A 403 alone isn't enough (other
+    // real 403s exist elsewhere in this backend); the real `ApiError.code` field in
+    // the response body is what DeviceVerificationFilter actually sets, so that's
+    // what's checked, not just the HTTP status. Mirrors bank-mfe's own
+    // `err.code === 'DEVICE_NOT_VERIFIED'` check on its ApiError exactly.
+    private fun isDeviceNotVerified(e: retrofit2.HttpException): Boolean {
+        if (e.code() != 403) return false
+        return try {
+            val body = e.response()?.errorBody()?.string() ?: return false
+            com.google.gson.JsonParser.parseString(body).asJsonObject.get("code")?.asString == "DEVICE_NOT_VERIFIED"
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    // Real step-up re-verification (2026-07-21 port) -- re-proves password ownership
+    // on THIS device (resolved server-side from the caller's own JWT deviceId claim)
+    // and marks it trusted, matching bank-mfe's verifyDevice() exactly. The caller is
+    // expected to retry whatever money-moving action returned DeviceNotVerified once
+    // this returns true.
+    suspend fun verifyDevice(password: String): MoneyActionResult {
+        return try {
+            NetworkClient.authApi.verifyDevice(rw.itunda.app.network.VerifyDeviceRequest(password))
+            MoneyActionResult.Success("Device verified")
+        } catch (e: retrofit2.HttpException) {
+            val message = if (e.code() == 400) "Incorrect password." else "Something went wrong. Please try again."
+            MoneyActionResult.Failure(message)
+        } catch (e: IOException) {
+            MoneyActionResult.Failure("Couldn't reach itunda. Check your connection and try again.")
+        }
+    }
+
+    private val _devices = MutableStateFlow<List<rw.itunda.app.network.TrustedDeviceDto>>(emptyList())
+    val devices: StateFlow<List<rw.itunda.app.network.TrustedDeviceDto>> = _devices
+
+    // Real self-service device management (2026-07-21 port) -- backs a Devices list
+    // in Settings, same real control Toss's own security settings page offers.
+    suspend fun fetchDevices() {
+        try {
+            _devices.value = NetworkClient.authApi.getMyDevices().devices
+        } catch (_: Exception) {
+            // Best-effort -- Settings already renders fine with an empty list; this
+            // isn't a money-moving action worth a dedicated error state for.
+        }
+    }
+
+    suspend fun revokeDevice(deviceId: String) {
+        try {
+            NetworkClient.authApi.revokeDevice(deviceId)
+            fetchDevices()
+        } catch (_: Exception) {
+            // Best-effort, same reasoning as fetchDevices above.
+        }
+    }
+
+    // Non-suspend wrapper for SettingsScreen's onClick, which has no coroutine scope
+    // of its own to launch revokeDevice (a suspend fun) from.
+    fun revokeDeviceFromSettings(deviceId: String) {
+        viewModelScope.launch { revokeDevice(deviceId) }
     }
 
     private fun backendErrorMessage(e: retrofit2.HttpException): String = when (e.code()) {

@@ -32,8 +32,17 @@ final class SessionManager: ObservableObject {
         }
     }
 
+    // deviceId/deviceName added 2026-07-21 -- real device binding (see
+    // DeviceStore.swift), mirrors bank-mfe's real login()/register() calls exactly.
     func login(phoneNumber: String, password: String) async -> AuthResult {
-        await runAuthCall { try await NetworkClient.shared.login(LoginRequest(phoneNumber: phoneNumber, password: password)) }
+        await runAuthCall {
+            try await NetworkClient.shared.login(
+                LoginRequest(
+                    phoneNumber: phoneNumber, password: password,
+                    deviceId: DeviceStore.shared.getOrCreateDeviceId(), deviceName: DeviceStore.shared.getDeviceName()
+                )
+            )
+        }
     }
 
     func register(
@@ -44,7 +53,8 @@ final class SessionManager: ObservableObject {
             try await NetworkClient.shared.register(
                 RegisterRequest(
                     phoneNumber: phoneNumber, email: email, firstName: firstName, lastName: lastName,
-                    password: password, referralCode: referralCode
+                    password: password, referralCode: referralCode,
+                    deviceId: DeviceStore.shared.getOrCreateDeviceId(), deviceName: DeviceStore.shared.getDeviceName()
                 )
             )
         }

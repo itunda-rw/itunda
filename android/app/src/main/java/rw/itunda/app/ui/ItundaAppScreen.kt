@@ -215,6 +215,16 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
         val activity = androidx.compose.ui.platform.LocalContext.current as androidx.fragment.app.FragmentActivity
         val biometricAuth = remember(activity) { rw.itunda.core.identity.NIDABiometricAuth(activity) }
 
+        // Real device binding step-up (2026-07-21 port) -- shared across every
+        // money-moving flow below (Transfer, Savings deposit, Interest claim) so a
+        // real 403 DEVICE_NOT_VERIFIED from any of them shows the same real dialog
+        // rather than three separate copies. See MainViewModel.verifyDevice /
+        // DeviceStepUpDialog's own doc comments for the full account.
+        var showDeviceStepUp by remember { mutableStateOf(false) }
+        var deviceStepUpBusy by remember { mutableStateOf(false) }
+        var deviceStepUpError by remember { mutableStateOf<String?>(null) }
+        var pendingDeviceRetry by remember { mutableStateOf<(suspend () -> Unit)?>(null) }
+
         val step = transferStep
         var isSendingTransfer by remember { mutableStateOf(false) }
         val coroutineScope = rememberCoroutineScope()
@@ -274,6 +284,18 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                                                 isSendingTransfer = false
                                                 biometricError = result.message
                                             }
+                                            is rw.itunda.app.ui.MoneyActionResult.DeviceNotVerified -> {
+                                                isSendingTransfer = false
+                                                deviceStepUpError = null
+                                                pendingDeviceRetry = {
+                                                    isSendingTransfer = true
+                                                    val retryResult = viewModel.sendTransfer(step.accountNumber, amountRwf)
+                                                    isSendingTransfer = false
+                                                    if (retryResult is rw.itunda.app.ui.MoneyActionResult.Success) transferStep = null
+                                                    else if (retryResult is rw.itunda.app.ui.MoneyActionResult.Failure) biometricError = retryResult.message
+                                                }
+                                                showDeviceStepUp = true
+                                            }
                                         }
                                     }
                                 } else {
@@ -290,6 +312,33 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                         )
                     }
                 }
+            }
+            if (showDeviceStepUp) {
+                rw.itunda.feature.payments.impl.DeviceStepUpDialog(
+                    busy = deviceStepUpBusy,
+                    error = deviceStepUpError,
+                    onCancel = { showDeviceStepUp = false; deviceStepUpError = null; pendingDeviceRetry = null },
+                    onVerify = { password ->
+                        deviceStepUpError = null
+                        deviceStepUpBusy = true
+                        coroutineScope.launch {
+                            when (val result = viewModel.verifyDevice(password)) {
+                                is rw.itunda.app.ui.MoneyActionResult.Success -> {
+                                    deviceStepUpBusy = false
+                                    showDeviceStepUp = false
+                                    val retry = pendingDeviceRetry
+                                    pendingDeviceRetry = null
+                                    retry?.invoke()
+                                }
+                                is rw.itunda.app.ui.MoneyActionResult.Failure -> {
+                                    deviceStepUpBusy = false
+                                    deviceStepUpError = result.message
+                                }
+                                else -> { deviceStepUpBusy = false }
+                            }
+                        }
+                    }
+                )
             }
             return@IdsTheme
         }
@@ -332,6 +381,18 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                                     isSavingsSubmitting = false
                                     savingsError = result.message
                                 }
+                                is rw.itunda.app.ui.MoneyActionResult.DeviceNotVerified -> {
+                                    isSavingsSubmitting = false
+                                    deviceStepUpError = null
+                                    pendingDeviceRetry = {
+                                        isSavingsSubmitting = true
+                                        val retryResult = viewModel.depositToSavingsGoal(savingsStep.goalId, amountRwf)
+                                        isSavingsSubmitting = false
+                                        if (retryResult is rw.itunda.app.ui.MoneyActionResult.Success || retryResult is rw.itunda.app.ui.MoneyActionResult.Queued) savingsFlowStep = null
+                                        else if (retryResult is rw.itunda.app.ui.MoneyActionResult.Failure) savingsError = retryResult.message
+                                    }
+                                    showDeviceStepUp = true
+                                }
                             }
                         }
                     }
@@ -361,6 +422,18 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                                     isSavingsSubmitting = false
                                     savingsError = result.message
                                 }
+                                is rw.itunda.app.ui.MoneyActionResult.DeviceNotVerified -> {
+                                    isSavingsSubmitting = false
+                                    deviceStepUpError = null
+                                    pendingDeviceRetry = {
+                                        isSavingsSubmitting = true
+                                        val retryResult = viewModel.claimInterest()
+                                        isSavingsSubmitting = false
+                                        if (retryResult is rw.itunda.app.ui.MoneyActionResult.Success) savingsFlowStep = null
+                                        else if (retryResult is rw.itunda.app.ui.MoneyActionResult.Failure) savingsError = retryResult.message
+                                    }
+                                    showDeviceStepUp = true
+                                }
                             }
                         }
                     }
@@ -371,6 +444,33 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                     text = message,
                     color = Ids.colors.danger,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                )
+            }
+            if (showDeviceStepUp) {
+                rw.itunda.feature.payments.impl.DeviceStepUpDialog(
+                    busy = deviceStepUpBusy,
+                    error = deviceStepUpError,
+                    onCancel = { showDeviceStepUp = false; deviceStepUpError = null; pendingDeviceRetry = null },
+                    onVerify = { password ->
+                        deviceStepUpError = null
+                        deviceStepUpBusy = true
+                        coroutineScope.launch {
+                            when (val result = viewModel.verifyDevice(password)) {
+                                is rw.itunda.app.ui.MoneyActionResult.Success -> {
+                                    deviceStepUpBusy = false
+                                    showDeviceStepUp = false
+                                    val retry = pendingDeviceRetry
+                                    pendingDeviceRetry = null
+                                    retry?.invoke()
+                                }
+                                is rw.itunda.app.ui.MoneyActionResult.Failure -> {
+                                    deviceStepUpBusy = false
+                                    deviceStepUpError = result.message
+                                }
+                                else -> { deviceStepUpBusy = false }
+                            }
+                        }
+                    }
                 )
             }
             return@IdsTheme

@@ -12,6 +12,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Fingerprint
+import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -40,16 +41,21 @@ import rw.itunda.core.identity.NIDABiometricAuth
  * (user-provided, 2026-07-12): "내 정보" (my info -- real name/phone from
  * /api/v1/auth/profile), a real notifications list (/api/v1/notifications, with
  * mark-as-read already real on the backend, just never surfaced anywhere), and
- * logout. "보안"-style rows (인증수단/안심차단서비스 등) are intentionally NOT rendered
- * as fake interactive rows -- there's no real 2FA/device-management backend behind
- * them yet, and a tappable row that goes nowhere is worse than not claiming the
- * feature at all.
+ * logout.
+ *
+ * Real device management added 2026-07-21 (see the Devices section below) --
+ * closes the "not rendered as fake interactive rows" gap this comment used to name:
+ * there IS now a real device-binding backend (DeviceService.kt, modeled on Toss's own
+ * published Gateway/Passport architecture), already shipped on web (bank-mfe's
+ * Devices tab) since 2026-07-20. This is the Android port, same real
+ * GET/POST/DELETE /api/v1/auth/devices endpoints, same real list/revoke actions.
  */
 @Composable
 fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () -> Unit) {
     val profile by viewModel.profile.collectAsState()
     val notifications by viewModel.notifications.collectAsState()
     val unreadCount by viewModel.unreadNotificationCount.collectAsState()
+    val devices by viewModel.devices.collectAsState()
 
     LaunchedEffect(Unit) { viewModel.loadSettingsData() }
 
@@ -142,6 +148,22 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                 }
             }
 
+            // Real device management (2026-07-21 port) -- see this screen's own header
+            // comment. Mirrors bank-mfe's Devices tab: every device this account has
+            // ever signed in from, whether it's trusted (can move money) or merely
+            // seen, and a real "Remove" action.
+            item {
+                Text("Devices", color = Ids.colors.textTertiary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            items(devices, key = { it.id }) { device ->
+                DeviceRow(device, onRevoke = { viewModel.revokeDeviceFromSettings(device.deviceId) })
+            }
+            item {
+                androidx.compose.material3.Divider(color = Ids.colors.divider)
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -189,6 +211,45 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
                 Spacer(modifier = Modifier.height(40.dp))
             }
         }
+    }
+}
+
+// Real device management row (2026-07-21 port) -- mirrors bank-mfe's Devices tab row
+// exactly: name/label, trusted-vs-untrusted status, and a real "Remove" action.
+@Composable
+private fun DeviceRow(device: rw.itunda.app.network.TrustedDeviceDto, onRevoke: () -> Unit) {
+    val isThisDevice = remember { device.deviceId == NetworkClient.currentDeviceStore().getOrCreateDeviceId() }
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier.size(44.dp).clip(CircleShape).background(Ids.colors.chip),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Outlined.PhoneAndroid, contentDescription = null, tint = Ids.colors.textPrimary)
+        }
+        Spacer(modifier = Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                (device.deviceName ?: "Unknown device") + if (isThisDevice) " (this device)" else "",
+                color = Ids.colors.textPrimary,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                if (device.trusted) "Trusted -- can send money" else "Not verified -- can't send money yet",
+                color = if (device.trusted) Ids.colors.textTertiary else Ids.colors.danger,
+                fontSize = 12.sp,
+            )
+        }
+        Text(
+            "Remove",
+            color = Ids.colors.danger,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.clickable(onClick = onRevoke),
+        )
     }
 }
 

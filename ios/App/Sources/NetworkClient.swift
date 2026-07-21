@@ -9,11 +9,21 @@ struct RegisterRequest: Encodable {
     let lastName: String
     let password: String
     let referralCode: String?
+    // Added 2026-07-21, same reasoning as LoginRequest's deviceId/deviceName -- the
+    // device that registers proves password ownership in the same request, so it's
+    // auto-trusted server-side (DeviceService.recordRegistrationDevice) with no
+    // separate step-up needed.
+    let deviceId: String?
+    let deviceName: String?
 }
 
+// deviceId/deviceName added 2026-07-21 -- mirrors bank-mfe's real device-binding
+// login call exactly. See DeviceStore.swift for how these are generated.
 struct LoginRequest: Encodable {
     let phoneNumber: String
     let password: String
+    let deviceId: String?
+    let deviceName: String?
 }
 
 struct RefreshRequest: Encodable {
@@ -54,6 +64,15 @@ struct AuthResponse: Decodable {
 enum NetworkError: Error {
     case invalidResponse
     case httpError(statusCode: Int)
+    // Real device binding (2026-07-21 port) -- a new, purely additive case rather
+    // than widening httpError's own arity (which every existing `catch let
+    // NetworkError.httpError(statusCode)` site across this target would need
+    // updating for -- exactly the "broader networking-layer change" TalkScreen.swift's
+    // own errorMessage doc comment (2026-07-19) already named and deliberately
+    // deferred). Thrown only from authenticatedPost's idempotency-keyed path below,
+    // mirroring the backend's own DeviceVerificationFilter, which only ever gates
+    // requests carrying a real Idempotency-Key header.
+    case deviceNotVerified
 }
 
 /// Real login/session flow (2026-07-11) -- this app previously had no networking
@@ -251,11 +270,22 @@ extension NetworkClient {
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         guard (200...299).contains(httpResponse.statusCode) else {
+            // Real device binding (2026-07-21 port) -- only checked when this call
+            // actually carries an Idempotency-Key, the same real signal the backend's
+            // own DeviceVerificationFilter gates on, so this never misclassifies an
+            // unrelated 403 on a non-money-moving call as device-not-verified.
+            if idempotencyKey != nil, httpResponse.statusCode == 403,
+               let errorBody = try? decoder.decode(ApiErrorBody.self, from: data),
+               errorBody.code == "DEVICE_NOT_VERIFIED" {
+                throw NetworkError.deviceNotVerified
+            }
             throw NetworkError.httpError(statusCode: httpResponse.statusCode)
         }
         return try decoder.decode(Response.self, from: data)
     }
 }
+
+private struct ApiErrorBody: Decodable { let code: String? }
 
 // Mirrors services/backend/wallet's WalletController.kt/TransferQuote.kt and
 // services/backend/savings's SavingsController.kt exactly (2026-07-12) -- wires
@@ -363,6 +393,38 @@ struct NotificationDto: Decodable, Identifiable {
 
 struct NotificationsResponse: Decodable { let success: Bool; let notifications: [NotificationDto]; let unreadCount: Int }
 struct MarkReadResponse: Decodable { let success: Bool }
+
+// Real device binding (2026-07-21 port) -- mirrors bank-mfe's lib/device.ts /
+// Android's TrustedDeviceDto exactly (same real endpoints, same shapes). See
+// AuthController.kt on the backend for the real contract: verify always re-verifies
+// the CURRENT device (resolved server-side from the caller's own JWT deviceId claim,
+// never a client-supplied one), so no id is passed in VerifyDeviceRequest.
+struct TrustedDeviceDto: Decodable, Identifiable {
+    let id: String
+    let userId: String
+    let deviceId: String
+    let deviceName: String?
+    let trusted: Bool
+    let firstSeenAt: String
+    let lastSeenAt: String
+    let verifiedAt: String?
+}
+struct DevicesResponse: Decodable { let success: Bool; let devices: [TrustedDeviceDto] }
+struct VerifyDeviceRequest: Encodable { let password: String }
+struct VerifyDeviceResponse: Decodable { let success: Bool; let device: TrustedDeviceDto }
+struct RevokeDeviceResponse: Decodable { let success: Bool }
+
+extension NetworkClient {
+    func getMyDevices() async throws -> DevicesResponse { try await get("api/v1/auth/devices") }
+
+    func verifyDevice(password: String) async throws -> VerifyDeviceResponse {
+        try await authenticatedPost("api/v1/auth/devices/verify", body: VerifyDeviceRequest(password: password))
+    }
+
+    func revokeDevice(deviceId: String) async throws -> RevokeDeviceResponse {
+        try await authenticatedDelete("api/v1/auth/devices/\(deviceId)")
+    }
+}
 
 extension NetworkClient {
     func quoteTransfer(amount: Double, recipient: String) async throws -> QuoteTransferResponse {

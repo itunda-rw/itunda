@@ -28,9 +28,17 @@ data class RegisterRequest(
     val lastName: String,
     val password: String,
     val referralCode: String? = null,
+    // Added 2026-07-21, same reasoning as LoginRequest's deviceId/deviceName -- the
+    // device that registers proves password ownership in the same request, so it's
+    // auto-trusted server-side (DeviceService.recordRegistrationDevice) with no
+    // separate step-up needed.
+    val deviceId: String? = null,
+    val deviceName: String? = null,
 )
 
-data class LoginRequest(val phoneNumber: String, val password: String)
+// deviceId/deviceName added 2026-07-21 -- mirrors bank-mfe's real device-binding login
+// call exactly (lib/api.ts's login()). See DeviceStore.kt for how these are generated.
+data class LoginRequest(val phoneNumber: String, val password: String, val deviceId: String? = null, val deviceName: String? = null)
 data class RefreshRequest(val refreshToken: String)
 data class LogoutRequest(val refreshToken: String?)
 
@@ -84,10 +92,41 @@ interface AuthApi {
     // mirrors exactly.
     @POST("api/v1/auth/profile/neighborhood")
     suspend fun setNeighborhood(@Body request: SetNeighborhoodRequest): ProfileResponse
+
+    // Real device binding (2026-07-21 port) -- mirrors bank-mfe's lib/device.ts
+    // fetchMyDevices/verifyDevice/revokeDevice exactly (same real endpoints, same
+    // shapes). See AuthController.kt on the backend for the real contract: verify
+    // always re-verifies the CURRENT device (resolved server-side from the caller's
+    // own JWT deviceId claim, never a client-supplied one), so no id is passed here.
+    @GET("api/v1/auth/devices")
+    suspend fun getMyDevices(): DevicesResponse
+
+    @POST("api/v1/auth/devices/verify")
+    suspend fun verifyDevice(@Body request: VerifyDeviceRequest): VerifyDeviceResponse
+
+    @DELETE("api/v1/auth/devices/{deviceId}")
+    suspend fun revokeDevice(@Path("deviceId") deviceId: String): RevokeDeviceResponse
 }
 
 data class ProfileResponse(val success: Boolean, val user: PublicUser)
 data class SetNeighborhoodRequest(val latitude: Double, val longitude: Double)
+
+// Mirrors services/backend/core/.../domain/TrustedDevice.kt exactly.
+data class TrustedDeviceDto(
+    val id: String,
+    val userId: String,
+    val deviceId: String,
+    val deviceName: String?,
+    val trusted: Boolean,
+    val firstSeenAt: String,
+    val lastSeenAt: String,
+    val verifiedAt: String?,
+)
+
+data class DevicesResponse(val success: Boolean, val devices: List<TrustedDeviceDto>)
+data class VerifyDeviceRequest(val password: String)
+data class VerifyDeviceResponse(val success: Boolean, val device: TrustedDeviceDto)
+data class RevokeDeviceResponse(val success: Boolean)
 
 // Mirrors services/backend/core/.../domain/Wallet.kt exactly (2026-07-11 fix) --
 // the previous shape (currency/balance/isPrimary only) didn't match the real
@@ -1207,12 +1246,20 @@ object NetworkClient {
     // whole app over it) just goes out unauthenticated instead of throwing.
     private var tokenStore: TokenStore? = null
 
+    // Real device binding (2026-07-21 port) -- same nullable-not-lateinit reasoning
+    // as tokenStore above.
+    private var deviceStore: DeviceStore? = null
+
     fun init(context: Context) {
         tokenStore = TokenStore(context.applicationContext)
+        deviceStore = DeviceStore(context.applicationContext)
     }
 
     fun currentTokenStore(): TokenStore =
         tokenStore ?: throw IllegalStateException("NetworkClient.init() was never called")
+
+    fun currentDeviceStore(): DeviceStore =
+        deviceStore ?: throw IllegalStateException("NetworkClient.init() was never called")
 
     // Real bearer-token injection (2026-07-11) -- previously commented out entirely
     // (see this file's git history / the removed "TODO: Inject Token" line), which is

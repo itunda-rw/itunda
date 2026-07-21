@@ -94,7 +94,7 @@ fun AgentCashScreen(onBack: () -> Unit, onFindNearbyAgent: () -> Unit) {
         error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
         item {
             Text(
-                "Your codes (${authorizations.count { it.status == \"ACTIVE\" }} active)",
+                "Your codes (${authorizations.count { it.status == "ACTIVE" }} active)",
                 style = MaterialTheme.typography.titleMedium,
             )
         }

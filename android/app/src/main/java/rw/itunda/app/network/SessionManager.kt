@@ -34,8 +34,17 @@ object SessionManager {
         }
     }
 
-    suspend fun login(phoneNumber: String, password: String): AuthResult =
-        runAuthCall { NetworkClient.authApi.login(LoginRequest(phoneNumber, password)) }
+    // deviceId/deviceName added 2026-07-21 -- real device binding (see DeviceStore.kt),
+    // mirrors bank-mfe's real login()/register() calls exactly. A stable per-install
+    // id, not a one-off random value per call -- DeviceStore persists it.
+    suspend fun login(phoneNumber: String, password: String): AuthResult {
+        val deviceStore = NetworkClient.currentDeviceStore()
+        return runAuthCall {
+            NetworkClient.authApi.login(
+                LoginRequest(phoneNumber, password, deviceStore.getOrCreateDeviceId(), deviceStore.getDeviceName()),
+            )
+        }
+    }
 
     suspend fun register(
         phoneNumber: String,
@@ -44,8 +53,16 @@ object SessionManager {
         lastName: String,
         email: String? = null,
         referralCode: String? = null,
-    ): AuthResult = runAuthCall {
-        NetworkClient.authApi.register(RegisterRequest(phoneNumber, email, firstName, lastName, password, referralCode))
+    ): AuthResult {
+        val deviceStore = NetworkClient.currentDeviceStore()
+        return runAuthCall {
+            NetworkClient.authApi.register(
+                RegisterRequest(
+                    phoneNumber, email, firstName, lastName, password, referralCode,
+                    deviceStore.getOrCreateDeviceId(), deviceStore.getDeviceName(),
+                ),
+            )
+        }
     }
 
     suspend fun logout() {
