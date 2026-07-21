@@ -106,6 +106,11 @@ include(":riderapp")
 // same independence rationale as :riderapp.
 include(":merchantapp")
 
+// Store-agent operations are a separate, least-privilege install.  This is not a
+// consumer-app mode: its API only derives the assigned agent from the signed-in
+// operator, so a cashier cannot select or operate another store's till.
+include(":agentapp")
+
 // Core Bounded Contexts
 include(":core:designsystem")
 include(":core:network")
