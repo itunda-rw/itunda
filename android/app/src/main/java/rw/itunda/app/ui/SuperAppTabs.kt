@@ -113,6 +113,7 @@ import rw.itunda.app.network.FavoriteListingDto
 import rw.itunda.app.network.FavoriteRestaurantDto
 import rw.itunda.app.network.AddressSuggestionDto
 import rw.itunda.app.network.CreateGroupRequest
+import rw.itunda.app.network.CreateHoodReportRequest
 import rw.itunda.app.network.EatsRatingResponse
 import rw.itunda.app.network.GroupMemberDto
 import rw.itunda.app.network.GroupMessageDto
@@ -2093,6 +2094,9 @@ private fun ListingCard(
                     ListingActionButton("Make an offer", busy, filled = true) { offering = true }
                 }
             }
+            if (!isMine && listing.status == "ACTIVE") {
+                HoodReportAction(targetType = "MARKETPLACE_LISTING", targetId = listing.id)
+            }
             if (!isMine && listing.status == "ACTIVE" && listing.latitude != null && listing.longitude != null) {
                 ListingActionButton(
                     if (locating) "Finding your real location…" else if (showRoute) "Hide directions" else "🚗 Directions to this seller",
@@ -2123,6 +2127,46 @@ private fun ListingActionButton(label: String, disabled: Boolean, filled: Boolea
             .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
         Text(label, color = if (filled) Color.White else TossText, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun HoodReportAction(targetType: String, targetId: String) {
+    var showChoices by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf<String?>(null) }
+    var sending by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    fun send(reason: String) {
+        showChoices = false
+        sending = true
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.reportHoodContent(CreateHoodReportRequest(targetType, targetId, reason))
+                message = "Thanks. Your report was sent for review."
+            } catch (e: HttpException) {
+                message = if (e.code() == 409) "You already reported this post." else superAppErrorMessage(e)
+            } catch (e: IOException) {
+                message = "Couldn't send the report. Check your connection and try again."
+            } finally {
+                sending = false
+            }
+        }
+    }
+    ListingActionButton(if (sending) "Reporting…" else "Report", sending) { showChoices = true }
+    message?.let { Text(it, color = if (it.startsWith("Thanks")) Ids.colors.success else Ids.colors.danger, fontSize = 12.sp) }
+    if (showChoices) {
+        AlertDialog(
+            onDismissRequest = { showChoices = false },
+            title = { Text("Report this content") },
+            text = { Text("Choose the best reason. Itunda’s review team will assess it.", color = TossSecondary) },
+            confirmButton = { TextButton(onClick = { send("Unsafe payment, contact request, or scam") }) { Text("Unsafe or scam") } },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { send("Misleading, unavailable, or spam content") }) { Text("Misleading or spam") }
+                    TextButton(onClick = { send("Harassment, hateful, illegal, or prohibited content") }) { Text("Abusive or illegal") }
+                }
+            },
+        )
     }
 }
 
@@ -2423,6 +2467,9 @@ private fun CommunityPostCard(post: CommunityPostDto, categoryLabel: String, isM
             Text(post.title, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Text(post.body, color = TossSecondary, fontSize = 13.sp, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             Text("❤️ ${post.likeCount} · 💬 ${post.commentCount}", color = TossSecondary, fontSize = 12.sp)
+            if (!isMine) {
+                HoodReportAction(targetType = "COMMUNITY_POST", targetId = post.id)
+            }
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         }
     }
@@ -2871,6 +2918,9 @@ private fun JobPostCard(post: JobPostDto, categoryLabel: String, isMine: Boolean
                     ListingActionButton("Message poster", busy, filled = true, onClick = onContact)
                 }
             }
+            if (!isMine && post.status == "OPEN") {
+                HoodReportAction(targetType = "JOB_POST", targetId = post.id)
+            }
         }
     }
 }
@@ -3294,6 +3344,9 @@ private fun PropertyListingCard(
                     ListingActionButton("Message lister", busy, onClick = onContact)
                     ListingActionButton("Make an offer", busy, filled = true) { offering = true }
                 }
+            }
+            if (!isMine && listing.status == "AVAILABLE") {
+                HoodReportAction(targetType = "PROPERTY_LISTING", targetId = listing.id)
             }
         }
     }

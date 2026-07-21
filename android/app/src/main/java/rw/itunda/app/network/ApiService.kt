@@ -533,6 +533,9 @@ data class RespondToPropertyOfferRequest(val action: String, val counterAmount: 
 data class PropertyPriceOfferResponse(val success: Boolean, val offer: PropertyPriceOfferDto)
 data class PropertyPriceOffersResponse(val success: Boolean, val offers: List<PropertyPriceOfferDto>)
 
+data class CreateHoodReportRequest(val targetType: String, val targetId: String, val reason: String)
+data class HoodReportResponse(val success: Boolean)
+
 // Mirrors services/backend/commerce's real DTOs exactly (2026-07-18) -- backs the new
 // "Shop" bottom-nav tab (Coupang-style multi-item checkout), replacing the old Shop
 // tab's Toss-Shopping-cashback content. See rw.itunda.commerce.OrderService's own doc
@@ -935,6 +938,9 @@ interface ApiService {
 
     @GET("api/v1/marketplace/listings/favorites")
     suspend fun getMyFavoriteListings(): FavoriteListingsResponse
+
+    @POST("api/v1/hood/reports")
+    suspend fun reportHoodContent(@Body request: CreateHoodReportRequest): HoodReportResponse
 
     // Real KakaoTalk-style gift send/claim (2026-07-20) -- see GiftService.
     @POST("api/v1/gifts/conversations/{id}")
