@@ -749,7 +749,7 @@ private struct ListingWishlistView: View {
 // ============================== COMMUNITY (동네생활) ==============================
 
 private struct CommunityContent: View {
-    private enum CommunityView { case browse, neighborhood, mine }
+    private enum CommunityView { case browse, nearby, neighborhood, mine }
 
     @State private var view: CommunityView = .browse
     @State private var categories: [CommunityCategoryDto] = []
@@ -760,6 +760,7 @@ private struct CommunityContent: View {
     @State private var openPostId: String?
     @State private var neighborhoodName: String?
     @State private var neighborhoodChecked = false
+    @StateObject private var locationFetcher = HoodLocationFetcher()
     private let currentUserId = KeychainTokenStore.shared.getUserId()
 
     var body: some View {
@@ -770,6 +771,7 @@ private struct CommunityContent: View {
                 VStack(spacing: IDS.Layout.cardGap) {
                     Picker("", selection: $view) {
                         Text("Feed").tag(CommunityView.browse)
+                        Text("Near me").tag(CommunityView.nearby)
                         Text("Neighborhood").tag(CommunityView.neighborhood)
                         Text("My posts").tag(CommunityView.mine)
                     }
@@ -831,6 +833,7 @@ private struct CommunityContent: View {
                     } else if posts!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
                         Text(
                             view == .browse ? "No posts yet."
+                                : view == .nearby ? "No posts near you yet."
                                 : view == .neighborhood ? "No posts in your neighborhood yet."
                                 : "You haven't posted anything yet."
                         ).foregroundColor(IDS.Colors.textSecondary)
@@ -855,15 +858,25 @@ private struct CommunityContent: View {
                 if categories.isEmpty {
                     categories = (try? await NetworkClient.shared.getCommunityCategories().categories) ?? []
                 }
+                locationFetcher.onLocation = { coordinate in Task { await loadNearby(coordinate) } }
                 await load()
             }
             .onChange(of: view) { _ in Task { await load() } }
             .onChange(of: activeCategory) { _ in Task { await load() } }
+            .onChange(of: locationFetcher.errorMessage) { message in
+                guard view == .nearby, let message else { return }
+                error = message + " You can still use Feed or Neighborhood."
+                posts = []
+            }
         }
     }
 
     private func load() async {
         posts = nil
+        if view == .nearby {
+            locationFetcher.requestLocation()
+            return
+        }
         if view == .neighborhood {
             neighborhoodChecked = false
             do {
@@ -888,6 +901,17 @@ private struct CommunityContent: View {
             error = nil
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func loadNearby(_ coordinate: CLLocationCoordinate2D) async {
+        do {
+            let res = try await NetworkClient.shared.getNearbyCommunityPosts(lat: coordinate.latitude, lng: coordinate.longitude)
+            posts = res.posts
+            error = nil
+        } catch {
+            self.error = "Couldn't load nearby posts. Check your connection and try again."
+            posts = []
         }
     }
 }
