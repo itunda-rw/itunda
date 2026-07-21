@@ -145,6 +145,15 @@ const EMPTY_ROUTE_GEOJSON: GeoJSON.FeatureCollection = { type: 'FeatureCollectio
 // shared browser localStorage the whole bank-mfe origin's other features also write into.
 const RECENT_SEARCHES_KEY = 'itunda_map_recent_searches';
 
+// Real bookmark-folder defaults/palette (2026-07-22) -- see MapsService.addBookmark's
+// own doc comment on the backend for DEFAULT_BOOKMARK_FOLDER/DEFAULT_BOOKMARK_COLOR
+// (kept in sync by hand, not imported, since this is a plain frontend literal the same
+// way CATEGORY_ICONS below already is). A small fixed palette rather than a full color
+// picker -- matches this app's own toss-* palette, not an arbitrary hex input a user
+// could fat-finger into an unreadable pin color.
+const DEFAULT_BOOKMARK_FOLDER = 'Saved places';
+const BOOKMARK_COLOR_PALETTE = ['#F5A623', '#3182F6', '#8B5CF6', '#E53935', '#22B07D', '#4E5968'];
+
 const CATEGORY_ICONS: Record<string, string> = {
   RESTAURANT: '🍽️', CAFE: '☕', HOSPITAL: '🏥', PHARMACY: '💊',
   BANK: '🏦', ATM: '🏧', HOTEL: '🏨', SUPERMARKET: '🛒',
@@ -210,6 +219,13 @@ export default function MapView() {
   const [categoryResults, setCategoryResults] = useState<NearbyPlace[] | null>(null);
   const [bookmarks, setBookmarks] = useState<MapBookmark[]>([]);
   const [bookmarking, setBookmarking] = useState(false);
+  // Real folder/color picker (2026-07-22) -- see lib/maps.ts's MapBookmark doc comment.
+  // `savingToFolder` holds whichever real place's picker is currently expanded (null =
+  // closed); tapping ☆ opens it instead of immediately saving with silent defaults, the
+  // same real "pick a list" step Naver/Kakao Maps' own save flow has.
+  const [savingToFolder, setSavingToFolder] = useState<PlaceSearchResult | null>(null);
+  const [folderNameInput, setFolderNameInput] = useState(DEFAULT_BOOKMARK_FOLDER);
+  const [folderColorInput, setFolderColorInput] = useState(BOOKMARK_COLOR_PALETTE[0]);
   // Real recent-searches list (2026-07-22) -- the other half of the same previously-
   // flagged "no autocomplete/recent-searches" gap the live-search-as-you-type pass just
   // closed the first half of. Naver/Kakao Maps' own real recent-searches list is a purely
@@ -450,6 +466,7 @@ export default function MapView() {
     setRoute(null);
     setRouteAlternatives(null);
     setSelectedRouteIndex(0);
+    setSavingToFolder(null);
     const map = mapRef.current;
     if (!map) return;
     map.flyTo({ center: [place.longitude, place.latitude], zoom: 15 });
@@ -481,16 +498,41 @@ export default function MapView() {
   }, []);
 
   const toggleBookmark = async (place: PlaceSearchResult) => {
+    if (isBookmarked(place)) {
+      setBookmarking(true);
+      setError(null);
+      try {
+        await removeMapBookmark(place.latitude, place.longitude);
+        setBookmarks((prev) => prev.filter((b) => !(b.latitude === place.latitude && b.longitude === place.longitude)));
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : 'Could not remove this place.');
+      } finally {
+        setBookmarking(false);
+      }
+      return;
+    }
+    // Real folder/color picker (2026-07-22) -- opens inline rather than saving straight
+    // to the default folder, defaulting to whichever real folder was used last (a real,
+    // small convenience: most saves in a session go to the same folder in a row).
+    setFolderNameInput(bookmarks[0]?.folderName ?? DEFAULT_BOOKMARK_FOLDER);
+    setFolderColorInput(bookmarks[0]?.color ?? BOOKMARK_COLOR_PALETTE[0]);
+    setSavingToFolder(place);
+  };
+
+  const confirmSaveToFolder = async () => {
+    if (!savingToFolder) return;
     setBookmarking(true);
     setError(null);
     try {
-      if (isBookmarked(place)) {
-        await removeMapBookmark(place.latitude, place.longitude);
-        setBookmarks((prev) => prev.filter((b) => !(b.latitude === place.latitude && b.longitude === place.longitude)));
-      } else {
-        const saved = await addMapBookmark(place.displayName, place.latitude, place.longitude);
-        setBookmarks((prev) => [saved, ...prev]);
-      }
+      const saved = await addMapBookmark(
+        savingToFolder.displayName,
+        savingToFolder.latitude,
+        savingToFolder.longitude,
+        folderNameInput.trim() || DEFAULT_BOOKMARK_FOLDER,
+        folderColorInput,
+      );
+      setBookmarks((prev) => [saved, ...prev]);
+      setSavingToFolder(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not save this place.');
     } finally {
@@ -841,6 +883,44 @@ export default function MapView() {
                   {isBookmarked(selectedPlace) ? '★' : '☆'}
                 </button>
               </div>
+              {/* Real folder/color picker (2026-07-22) -- only expanded for the place
+                  that's actually being saved right now, closes itself once saved or
+                  cancelled. See lib/maps.ts's MapBookmark doc comment for the real
+                  backend feature this is the front door onto. */}
+              {savingToFolder && savingToFolder.latitude === selectedPlace.latitude && savingToFolder.longitude === selectedPlace.longitude && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '8px', borderRadius: '8px', background: '#F9FAFB' }}>
+                  <input
+                    type="text"
+                    value={folderNameInput}
+                    onChange={(e) => setFolderNameInput(e.target.value)}
+                    placeholder="Folder name (e.g. Favorites)"
+                    maxLength={120}
+                    style={{ padding: '8px 10px', borderRadius: '8px', border: `1px solid ${MAP_CARD_DIVIDER}`, fontSize: '13px' }}
+                  />
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    {BOOKMARK_COLOR_PALETTE.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        aria-label={`Pin color ${c}`}
+                        onClick={() => setFolderColorInput(c)}
+                        style={{
+                          width: '22px', height: '22px', borderRadius: '50%', backgroundColor: c,
+                          border: folderColorInput === c ? '2px solid var(--toss-grey-900)' : '2px solid transparent',
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button type="button" className="toss-btn toss-btn-primary" disabled={bookmarking} onClick={confirmSaveToFolder} style={{ flex: 1 }}>
+                      {bookmarking ? 'Saving…' : 'Save'}
+                    </button>
+                    <button type="button" disabled={bookmarking} onClick={() => setSavingToFolder(null)} style={{ flex: 1, fontSize: '13px', color: MAP_CARD_TEXT_SECONDARY }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
               {/* Real driving/walking mode toggle (2026-07-22) -- same real Naver/Kakao
                   Maps convention of picking a travel mode before/after a route is drawn.
                   Switching mode while a route is already shown re-fetches it against
