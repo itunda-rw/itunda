@@ -118,7 +118,7 @@ class SeedDataRunner(
         if (contactRepository.findByUserId(user.id).isEmpty()) {
             contactRepository.saveAll(
                 listOf(
-                    Contact(id = "c1", userId = user.id, name = "Jean Paul", bank = "Bank of Kigali", acc = "0004 1234 5678", phoneNumber = "+250788111222", color = "#E8F3FF", letter = "J"),
+                    Contact(id = "c1", userId = user.id, name = "Jean Paul", bank = "Bank of Kigali", acc = "0004 1234 5678", phoneNumber = "+250788111222", color = "#F5FAFF", letter = "J"),
                     Contact(id = "c2", userId = user.id, name = "Marie Claire", bank = "MTN MoMo", acc = "0788 123 456", phoneNumber = "+250788222333", color = "#FFF4E5", letter = "M"),
                     Contact(id = "c3", userId = user.id, name = "David N.", bank = "Airtel Money", acc = "0733 908 123", phoneNumber = "+250733444555", color = "#FEECEE", letter = "D"),
                     Contact(id = "c4", userId = user.id, name = "Alice Uwimana", bank = "Equity Bank", acc = "1000 5678 9012", phoneNumber = "+250788666777", color = "#E8F8F0", letter = "A"),

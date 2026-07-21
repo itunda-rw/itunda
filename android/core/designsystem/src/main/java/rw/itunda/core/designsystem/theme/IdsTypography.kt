@@ -34,41 +34,69 @@ object IdsTypography {
     val Typography6 = TextStyle(fontFamily = defaultFontFamily, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 22.5.sp)
     val Typography7 = TextStyle(fontFamily = defaultFontFamily, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 19.5.sp)
 
+    // Title1 corrected 2026-07-21 from 24sp/34sp to 22sp/31sp -- was the one real
+    // outlier when checked against both the sourced TDS scale above (nearest steps
+    // are Typography2 at 26sp and Typography3 at 22sp, ambiguous by size alone) and
+    // iOS's already-shipped equivalent (IDS.Typography.title, IDS.swift:126, is
+    // scaledFont(size: 22, relativeTo: .title1)) -- iOS had already landed on 22,
+    // which resolves the ambiguity and matches Typography3 exactly, so this snaps
+    // Android to match rather than leaving a confirmed cross-platform drift.
     val Title1 = TextStyle(
         fontFamily = defaultFontFamily,
         fontWeight = FontWeight.Bold,
-        fontSize = 24.sp,
-        lineHeight = 34.sp
+        fontSize = 22.sp,
+        lineHeight = 31.sp
     )
-    
+
+    // Added 2026-07-21: Title1 was previously overloaded for two different roles --
+    // screen/section headlines (still Title1) and hero currency amounts (e.g.
+    // AgentHomeScreen.kt's TillSummary "RWF {expectedCash}", the single most
+    // important number on that screen). iOS already splits these: IDS.Typography.title
+    // (22pt) vs IDS.Typography.largeAmount (34pt, IDS.swift:131) -- Android had no
+    // equivalent of the second, so hero amounts rendered at the same size as a plain
+    // headline. 34sp matches iOS's value; TDS's own published scale doesn't have a
+    // native step this large (it tops out at Typography1's 30sp), so this mirrors
+    // iOS's own deliberate business decision to give money amounts extra emphasis,
+    // not an invented number.
+    val LargeAmount = TextStyle(
+        fontFamily = defaultFontFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 34.sp,
+        lineHeight = 41.sp
+    )
+
+    // lineHeight on the four styles below corrected 2026-07-21 to match the sourced
+    // TDS steps above exactly (Typography4/5/6/7) now that a direct audit found their
+    // fontSize already matched -- was off by rounding only (28 vs 29, 24 vs 25.5, 22
+    // vs 22.5, 18 vs 19.5), not a font-size or design change.
     val Title2 = TextStyle(
         fontFamily = defaultFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 20.sp,
-        lineHeight = 28.sp
+        lineHeight = 29.sp
     )
 
     val Subtitle1 = TextStyle(
         fontFamily = defaultFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 17.sp,
-        lineHeight = 24.sp
+        lineHeight = 25.5.sp
     )
 
     val Body1 = TextStyle(
         fontFamily = defaultFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 15.sp,
-        lineHeight = 22.sp
+        lineHeight = 22.5.sp
     )
 
     val Body2 = TextStyle(
         fontFamily = defaultFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 13.sp,
-        lineHeight = 18.sp
+        lineHeight = 19.5.sp
     )
-    
+
     val Button = TextStyle(
         fontFamily = defaultFontFamily,
         fontWeight = FontWeight.SemiBold,

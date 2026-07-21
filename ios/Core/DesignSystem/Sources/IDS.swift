@@ -77,19 +77,31 @@ public struct IDS {
     }
 
     public struct Colors {
-        public static let brand = Color(light: 0x3182F6, dark: 0x4C8FFF)
-        public static let backgroundPrimary = Color(light: 0xF2F4F6, dark: 0x000000)
-        public static let backgroundSecondary = Color(light: 0xFFFFFF, dark: 0x17181D)
-        public static let backgroundTertiary = Color(light: 0xEDF2F7, dark: 0x23242B)
-        public static let card = Color(light: 0xFFFFFF, dark: 0x17181D)
-        public static let raisedCard = Color(light: 0xFFFFFF, dark: 0x17181D)
+        // Dark values corrected 2026-07-21 (matches Android's
+        // IdsSemanticColors.kt, same date): the previous true-black/navy set was
+        // eyeballed from screenshots on 2026-07-10, which can't reliably tell true
+        // black from a very dark grey. Toss's actual currently-published
+        // `@toss/tds-colors@0.1.0` npm package ships the real adaptive dark values
+        // directly (`--adaptiveBackground: #17171c`, `--adaptiveBackgroundLevel01:
+        // #202027`, `--adaptiveBackgroundLevel02: #2c2c35`, `--adaptiveBlue500:
+        // #3485fa`, `--adaptiveHairlineBorder: #3c3c47`) -- mapped by role (Level01/02
+        // are named elevation steps above the base background, matching
+        // backgroundSecondary/backgroundTertiary here). `pressed` and the tint colors
+        // are left untouched since the real package doesn't expose which numbered
+        // step its own semantic roles point to.
+        public static let brand = Color(light: 0x3182F6, dark: 0x3485FA)
+        public static let backgroundPrimary = Color(light: 0xF2F4F6, dark: 0x17171C)
+        public static let backgroundSecondary = Color(light: 0xFFFFFF, dark: 0x202027)
+        public static let backgroundTertiary = Color(light: 0xEDF2F7, dark: 0x2C2C35)
+        public static let card = Color(light: 0xFFFFFF, dark: 0x202027)
+        public static let raisedCard = Color(light: 0xFFFFFF, dark: 0x202027)
         public static let pressed = Color(light: 0xEAF2FF, dark: 0x1F3053)
-        public static let divider = Color(light: 0xE5E8EB, dark: 0x2B2D35)
+        public static let divider = Color(light: 0xE5E8EB, dark: 0x3C3C47)
         public static let textPrimary = Color(light: 0x191F28, dark: 0xFFFFFF)
         public static let textSecondary = Color(light: 0x4E5968, dark: 0x989EAA)
         public static let textTertiary = Color(light: 0x8B95A1, dark: 0x575C66)
         public static let textBrand = brand
-        public static let successTint = Color(light: 0xE8F3FF, dark: 0x10321F)
+        public static let successTint = Color(light: 0xF5FAFF, dark: 0x10321F)
         public static let warningTint = Color(light: 0xFFF4D6, dark: 0x3A2E10)
         public static let dangerTint = Color(light: 0xFFECEB, dark: 0x3A1418)
         public static let iconPrimary = Color(light: 0x2C3643, dark: 0xE8EAED)
@@ -97,12 +109,12 @@ public struct IDS {
         // No Android IdsDarkSemanticColors counterpart to port -- extrapolated one
         // step up from `divider`'s dark value, not a direct reference-matched port.
         public static let iconTertiary = Color(light: 0xDDE3EA, dark: 0x3A3D45)
-        // Matches Android's IdsSemanticColors.chip / .surfaceSoft exactly -- both are
-        // the same two hex values (0xF2F4F6 / 0x23242B) under two different names on
-        // Android, so one token covers both roles here (chip pill backgrounds, soft
-        // icon-badge backgrounds). Added 2026-07-11 for the Benefits/Shop/All tab
-        // rebuild -- IDS.Colors had no chip/soft-surface role before this.
-        public static let chipBackground = Color(light: 0xF2F4F6, dark: 0x23242B)
+        // Matches Android's IdsSemanticColors.chip / .surfaceSoft -- one token covers
+        // both roles here (chip pill backgrounds, soft icon-badge backgrounds). Added
+        // 2026-07-11 for the Benefits/Shop/All tab rebuild -- IDS.Colors had no
+        // chip/soft-surface role before this. Dark value corrected 2026-07-21 along
+        // with backgroundTertiary/surfaceSoft (see IDS.Colors' own header comment).
+        public static let chipBackground = Color(light: 0xF2F4F6, dark: 0x2C2C35)
         // Android's dark shadow is ~25% opacity black (0x40000000) vs. light's 8%.
         public static let shadow = Color(uiColor: UIColor { traitCollection in
             traitCollection.userInterfaceStyle == .dark

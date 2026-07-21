@@ -15,11 +15,23 @@ import androidx.compose.ui.graphics.Color
  * Light values are the real Toss light palette -- IdsColors' Gray900/Gray700/
  * Gray500/Gray200/Gray100 and the separately-ported IDS.Colors arrived at the
  * same hex values independently, which is why they're used directly below
- * rather than invented. Dark values are the real palette already hand-tuned
- * in ItundaAppScreen.kt (kept for continuity) plus a true-black background,
- * matching the actual Toss app's dark mode (reference: user-provided Toss
- * Bank screenshots, 2026-07-10) rather than IdsDarkColors' previous navy
- * background (#191F28), which didn't match anything.
+ * rather than invented.
+ *
+ * Dark values corrected 2026-07-21, superseding the previous true-black
+ * background: the 2026-07-10 fix above was based on eyeballing user-provided
+ * screenshots, which can't reliably distinguish true black from a very dark
+ * grey (especially compressed/OLED). Toss's actual currently-published
+ * `@toss/tds-colors@0.1.0` npm package (registry.npmjs.org, real maintainers
+ * incl. toss-build-bot, updated through March 2026) ships raw adaptive dark
+ * values directly as CSS custom properties -- `--adaptiveBackground: #17171c`
+ * (not black), `--adaptiveBackgroundLevel01: #202027`, `--adaptiveBackgroundLevel02:
+ * #2c2c35`, `--adaptiveBlue500: #3485fa`, `--adaptiveHairlineBorder: #3c3c47`.
+ * Mapped by role, not guessed: Level01/02 are named elevation steps above the
+ * base background, matching this struct's surface/surfaceSoft split exactly.
+ * `pressed`/`success`/`warning`/`danger`/the tint colors are deliberately left
+ * untouched -- the real package only exposes the raw numbered scale, not which
+ * step its own semantic "danger"/"pressed" roles point to, and guessing would
+ * repeat the exact mistake this comment is fixing.
  */
 data class IdsSemanticColors(
     val background: Color,
@@ -57,7 +69,7 @@ val IdsLightSemanticColors = IdsSemanticColors(
     chip = Color(0xFFF2F4F6),
     pressed = Color(0xFFEAF2FF),
     success = Color(0xFF04C065),
-    successTint = Color(0xFFE8F3FF),
+    successTint = Color(0xFFF5FAFF),
     warning = Color(0xFFFFA000),
     warningTint = Color(0xFFFFF4D6),
     danger = Color(0xFFF04452),
@@ -68,16 +80,16 @@ val IdsLightSemanticColors = IdsSemanticColors(
 )
 
 val IdsDarkSemanticColors = IdsSemanticColors(
-    background = Color(0xFF000000),
-    surface = Color(0xFF17181D),
-    surfaceSoft = Color(0xFF23242B),
+    background = Color(0xFF17171C),
+    surface = Color(0xFF202027),
+    surfaceSoft = Color(0xFF2C2C35),
     textPrimary = Color(0xFFFFFFFF),
     textSecondary = Color(0xFF989EAA),
     textTertiary = Color(0xFF575C66),
-    brand = Color(0xFF4C8FFF),
-    textBrand = Color(0xFF4C8FFF),
-    divider = Color(0xFF2B2D35),
-    chip = Color(0xFF23242B),
+    brand = Color(0xFF3485FA),
+    textBrand = Color(0xFF3485FA),
+    divider = Color(0xFF3C3C47),
+    chip = Color(0xFF2C2C35),
     pressed = Color(0xFF1F3053),
     success = Color(0xFF20D394),
     successTint = Color(0xFF10321F),

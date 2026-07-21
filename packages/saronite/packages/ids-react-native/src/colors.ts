@@ -10,6 +10,6 @@ export const colors = {
   card: '#FFFFFF',
   textPrimary: '#191F28',
   textSecondary: '#4E5968',
-  positiveBackground: '#E8F3FF',
+  positiveBackground: '#F5FAFF',
   divider: '#E5E8EB',
 };

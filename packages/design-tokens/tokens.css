@@ -31,7 +31,7 @@
 :root {
   --toss-blue: #3182f6;
   --toss-blue-active: #1b64da;
-  --toss-blue-light: #e8f3ff;
+  --toss-blue-light: #f5faff;
   --toss-red: #f04452;
   --toss-green: #04c065;
 
@@ -63,34 +63,39 @@
  * (grey-100 is the app background; white is the card/raised-surface background;
  * grey-900/700/500 are primary/secondary/tertiary text; grey-200 is the divider),
  * not a blind per-token inversion. Roles that have a direct TdsDarkSemanticColors.kt
- * counterpart use its exact value (blue->brand #4C8FFF, red->danger #FF6B7A,
- * green->success #20D394, grey-100->background #000000 true black -- matching the
- * actual Toss app's dark mode, verified live on Android, not a guess -- white->surface
- * #17181D, grey-900->textPrimary #FFFFFF, grey-700->textSecondary #989EAA,
- * grey-500->textTertiary #575C66, grey-200->divider #2B2D35). grey-300/400/600/800
- * have no direct Android dark-semantic counterpart (Android's dark palette doesn't
- * carry a full 9-step ramp) -- extrapolated as a smooth step between their
- * neighbors, not independently sourced.
+ * counterpart use its exact value (blue->brand, red->danger, green->success,
+ * grey-100->background, white->surface, grey-900/700/500->text, grey-200->divider).
+ *
+ * grey-100/200/white/blue corrected 2026-07-21 (matches Android's
+ * IdsSemanticColors.kt / iOS's IDS.swift, same date): the previous true-black
+ * background and #4C8FFF blue were eyeballed from screenshots on 2026-07-10,
+ * which can't reliably tell true black from a very dark grey. Toss's actual
+ * currently-published `@toss/tds-colors@0.1.0` npm package ships the real
+ * adaptive dark values directly (`--adaptiveBackground: #17171c`,
+ * `--adaptiveBackgroundLevel01: #202027`, `--adaptiveHairlineBorder: #3c3c47`,
+ * `--adaptiveBlue500: #3485fa`). grey-300/400/600/800 still have no direct
+ * semantic counterpart -- re-interpolated as smooth steps between the corrected
+ * neighbors (grey-100/200/500), not independently sourced, same as before.
  */
 @media (prefers-color-scheme: dark) {
   :root {
-    --toss-blue: #4c8fff;
+    --toss-blue: #3485fa;
     --toss-blue-active: #1b64da;
     --toss-blue-light: #1f3053;
     --toss-red: #ff6b7a;
     --toss-green: #20d394;
 
-    --toss-grey-100: #000000;
-    --toss-grey-200: #2b2d35;
-    --toss-grey-300: #383a42;
-    --toss-grey-400: #4a4d57;
+    --toss-grey-100: #17171c;
+    --toss-grey-200: #3c3c47;
+    --toss-grey-300: #454751;
+    --toss-grey-400: #4e515c;
     --toss-grey-500: #575c66;
-    --toss-grey-600: #74798a;
+    --toss-grey-600: #787d88;
     --toss-grey-700: #989eaa;
     --toss-grey-800: #c4c9d1;
     --toss-grey-900: #ffffff;
 
-    --toss-white: #17181d;
+    --toss-white: #202027;
 
     --toss-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
     --toss-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.35);

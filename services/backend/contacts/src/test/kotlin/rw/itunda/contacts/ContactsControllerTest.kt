@@ -32,7 +32,7 @@ class ContactsControllerTest : BehaviorSpec({
 
         When("listing contacts") {
             val theirContacts = listOf(
-                Contact(id = "c_1", userId = "user_1", name = "Eric", bank = "MTN MoMo", acc = "+250788111222", phoneNumber = "+250788111222", color = "#E8F3FF", letter = "E"),
+                Contact(id = "c_1", userId = "user_1", name = "Eric", bank = "MTN MoMo", acc = "+250788111222", phoneNumber = "+250788111222", color = "#F5FAFF", letter = "E"),
             )
             every { contactRepository.findByUserId("user_1") } returns theirContacts
 

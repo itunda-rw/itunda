@@ -39,7 +39,7 @@ class ContactsController(private val contactRepository: ContactRepository) {
             Contact(
                 id = "c_${UUID.randomUUID()}", userId = currentUser.userId, name = request.name,
                 bank = request.bank ?: "MTN MoMo", acc = request.phoneNumber, phoneNumber = request.phoneNumber,
-                color = "#E8F3FF", letter = request.name.take(1).uppercase(),
+                color = "#F5FAFF", letter = request.name.take(1).uppercase(),
             ),
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "contact" to contact))

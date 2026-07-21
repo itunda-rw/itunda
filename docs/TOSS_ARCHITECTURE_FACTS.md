@@ -109,10 +109,52 @@ Source: [toss/granite (GitHub)](https://github.com/toss/granite), [토스가 꿈
     (its `Blue600`/`blue600` constant held the real TDS's blue700 value, `Blue100`/`blue100`
     held blue50) — independently drifted identically on both Android and iOS, fixed
     2026-07-13 (`android/.../TdsColors.kt`, `ios/.../TdsTheme.swift`). itunda's existing
-    semantic type scale (`Title1`/`Subtitle1`/etc.) does not match this real scale's exact
-    sizes and was deliberately left as-is (a visual-hierarchy change needs its own
-    live-verified pass) — the real scale was added alongside as `Typography1`-`7`/
-    `typography1`-`7` reference tokens instead.
+    semantic type scale (`Title1`/`Subtitle1`/etc.) didn't match this real scale's exact
+    sizes and was deliberately left as-is at the time (a visual-hierarchy change needing
+    its own live-verified pass) — the real scale was added alongside as `Typography1`-`7`/
+    `typography1`-`7` reference tokens instead. That deferred decision was resolved
+    2026-07-13→2026-07-21: `Title1` (24sp) was the one real outlier, and turned out
+    ambiguous by size alone (equidistant from `Typography2`'s 26sp and `Typography3`'s
+    22sp) until checked against iOS's already-shipped equivalent (`IDS.Typography.title`,
+    `IDS.swift:126`, already 22pt) — Android's `Title1` was snapped to 22sp/31sp to match
+    both. Auditing real call sites during that pass also found `Title1` had been
+    overloaded for two different roles (headlines *and* hero currency amounts, e.g.
+    `AgentHomeScreen.kt`'s till-cash display) where iOS already splits them
+    (`IDS.Typography.largeAmount`, 34pt) — Android gained the matching `LargeAmount`
+    (34sp) token rather than inheriting the merged role. `Title2`/`Subtitle1`/`Body1`/
+    `Body2`'s line-heights were also snapped to the sourced scale's exact values (their
+    font sizes already matched; only rounding was off).
+  - **A real, more authoritative source found 2026-07-21**: the docs site above is a
+    props/behavior reference (component pages like `button`/`table-row`/`list-row` document
+    variant names and CSS custom-property *names*, not their default pixel/color values — no
+    spacing, radius, elevation, or motion numbers are published anywhere on it, confirmed by
+    checking `foundation/` directly, which only lists `colors`/`typography`). But Toss also
+    publishes actual design-token *code*: `@toss/tds-colors` and `@toss/tds-typography` on the
+    public npm registry (real, actively maintained — `@toss/tds-colors@0.1.0` and
+    `@toss/tds-typography@0.0.3`, maintainers include `toss-build-bot`/`toss-public`, both
+    updated through March 2026), consumed internally by `@toss/tds-react-native@2.0.4`.
+    `@toss/tds-colors`'s `colors.light.css`/`colors.dark.css` ship the real adaptive scale as
+    plain CSS custom properties — **the light scale matches this repo's already-corrected
+    values exactly** (confirms the color-system-update findings above, not a new fact), but
+    the **dark scale is meaningfully different from what itunda had**: real
+    `--adaptiveBackground` is `#17171c` (a dark grey, not true black),
+    `--adaptiveBackgroundLevel01`/`Level02` are `#202027`/`#2c2c35` (named elevation steps),
+    `--adaptiveHairlineBorder` is `#3c3c47`, `--adaptiveBlue500` (dark) is `#3485fa`. itunda's
+    prior dark values (`#000000` background, `#4C8FFF` brand, etc.) were eyeballed from
+    screenshots on 2026-07-10 — screenshots can't reliably distinguish true black from a very
+    dark grey, and turned out wrong once a real source existed. Corrected 2026-07-21 across
+    `IdsSemanticColors.kt` (Android), `IDS.swift` (iOS), and `tokens.css` (web) —
+    background/surface/surfaceSoft/brand/textBrand/divider/chip only, mapped by matching
+    role name, not guessed. `pressed`/`success`/`warning`/`danger`/tint colors were
+    deliberately left untouched: the real package only exposes the raw numbered adaptive
+    scale, not which step Toss's own semantic "danger"/"pressed" roles actually point to, and
+    guessing that mapping would repeat the exact mistake being fixed here. Also confirmed
+    real (from `@toss/tds-react-native`'s shipped `tokens/token.js`): Toss's actual line-height
+    values are unitless ratios (`1.252`/`1.35`/`1.5`) applied per font size, not fixed px — a
+    structurally different (and more robust) approach than either TDS's own docs or itunda's
+    typography scale, both of which hardcode a fixed line-height per size step. Not adopted
+    here (would mean restructuring `IdsTypography.kt`'s whole shape, not a value swap), but
+    worth knowing if that scale is revisited.
 - Toss open-sources its own **frontend engineering principles** as
   [toss/frontend-fundamentals](https://github.com/toss/frontend-fundamentals): a rubric for
   code quality centered on readability/predictability/cohesion/coupling reasoning (not

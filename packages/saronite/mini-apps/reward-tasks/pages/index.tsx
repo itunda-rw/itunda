@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   panelButton: {
     marginTop: 8,
     alignSelf: 'flex-start',
-    backgroundColor: '#E8F3FF',
+    backgroundColor: '#F5FAFF',
     borderRadius: 8,
     paddingVertical: 8,
     paddingHorizontal: 14,

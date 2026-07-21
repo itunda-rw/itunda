@@ -98,7 +98,7 @@ private fun ActivityCard(entry: ActivityDto) = Card(Modifier.fillMaxWidth()) {
 private fun TillSummary(till: TillDto) = Card(Modifier.fillMaxWidth()) {
     Column(Modifier.padding(16.dp)) {
         Text("Cash expected in till", style = IdsTypography.Body2, color = Ids.colors.textSecondary)
-        Text("RWF ${till.expectedCash}", style = IdsTypography.Title1, color = Ids.colors.textPrimary)
+        Text("RWF ${till.expectedCash}", style = IdsTypography.LargeAmount, color = Ids.colors.textPrimary)
         Text("Today: RWF ${till.todayCashIn} in · RWF ${till.todayCashOut} out", style = IdsTypography.Body2, color = Ids.colors.textSecondary)
     }
 }
@@ -128,7 +128,7 @@ private fun CashOperationScreen(mode: TransactionMode, onBack: () -> Unit, onCom
     val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize().padding(20.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(when (mode) { TransactionMode.CASH_IN -> "Receive cash"; TransactionMode.CASH_OUT -> "Pay cash"; TransactionMode.COUNT_TILL -> "Cash count" }, style = MaterialTheme.typography.headlineSmall)
+            Text(when (mode) { TransactionMode.CASH_IN -> "Receive cash"; TransactionMode.CASH_OUT -> "Pay cash"; TransactionMode.COUNT_TILL -> "Cash count" }, style = IdsTypography.Title1, color = Ids.colors.textPrimary)
             TextButton(onClick = onBack, enabled = !busy) { Text("Back") }
         }
         if (mode == TransactionMode.COUNT_TILL) {
@@ -148,7 +148,7 @@ private fun CashOperationScreen(mode: TransactionMode, onBack: () -> Unit, onCom
         message?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp)) }
         successMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 8.dp)) }
         Spacer(Modifier.height(8.dp))
-        Button(enabled = !busy, modifier = Modifier.fillMaxWidth(), onClick = {
+        IdsButton(enabled = !busy, onClick = {
             val numericAmount = amount.toBigDecimalOrNull()
             val wholeRwf = numericAmount?.stripTrailingZeros()?.scale()?.let { it <= 0 } == true
             val validWithdrawalCode = code.matches(Regex("[0-9A-F]{12}"))
@@ -156,7 +156,7 @@ private fun CashOperationScreen(mode: TransactionMode, onBack: () -> Unit, onCom
                 message = if (mode == TransactionMode.CASH_OUT && !validWithdrawalCode) "Enter the 12-character withdrawal code exactly as shown to the customer."
                 else if (!wholeRwf) "RWF amounts must be whole numbers."
                 else "Complete all required fields and confirm the cash check."
-                return@Button
+                return@IdsButton
             }
             busy = true; message = null; successMessage = null
             scope.launch {
@@ -175,6 +175,6 @@ private fun CashOperationScreen(mode: TransactionMode, onBack: () -> Unit, onCom
                 } catch (_: Exception) { message = "Transaction was not completed. Check the details; do not give cash until confirmation succeeds." }
                 finally { busy = false }
             }
-        }) { Text(if (busy) "Submitting…" else when (mode) { TransactionMode.CASH_IN -> "Confirm cash received"; TransactionMode.CASH_OUT -> "Confirm cash paid"; TransactionMode.COUNT_TILL -> "Submit count" }) }
+        }, text = if (busy) "Submitting…" else when (mode) { TransactionMode.CASH_IN -> "Confirm cash received"; TransactionMode.CASH_OUT -> "Confirm cash paid"; TransactionMode.COUNT_TILL -> "Submit count" })
     }
 }
