@@ -86,9 +86,15 @@ class HoodReportService(
                 propertyListingRepository.save(listing)
             }
         }
-        report.status = HoodReportStatus.RESOLVED
-        report.reviewedBy = reviewerId
-        report.reviewedAt = Instant.now()
-        return repository.save(report)
+        val reviewedAt = Instant.now()
+        val relatedOpenReports = repository.findByTargetTypeAndTargetIdAndStatus(report.targetType, report.targetId, HoodReportStatus.OPEN)
+        val reportsToResolve = (relatedOpenReports + report).distinctBy { it.id }
+        reportsToResolve.forEach {
+            it.status = HoodReportStatus.RESOLVED
+            it.reviewedBy = reviewerId
+            it.reviewedAt = reviewedAt
+        }
+        repository.saveAll(reportsToResolve)
+        return report
     }
 }

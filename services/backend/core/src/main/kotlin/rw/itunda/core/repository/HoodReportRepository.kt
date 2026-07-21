@@ -10,4 +10,5 @@ import rw.itunda.core.domain.HoodReportTargetType
 interface HoodReportRepository : JpaRepository<HoodReport, String> {
     fun findByReporterUserIdAndTargetTypeAndTargetIdAndStatus(reporterUserId: String, targetType: HoodReportTargetType, targetId: String, status: HoodReportStatus): HoodReport?
     fun findByStatusOrderByCreatedAtAsc(status: HoodReportStatus, pageable: Pageable): Page<HoodReport>
+    fun findByTargetTypeAndTargetIdAndStatus(targetType: HoodReportTargetType, targetId: String, status: HoodReportStatus): List<HoodReport>
 }

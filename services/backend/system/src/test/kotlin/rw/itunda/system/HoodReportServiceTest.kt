@@ -95,7 +95,8 @@ class HoodReportServiceTest : BehaviorSpec({
             every { repository.findById("report_3") } returns Optional.of(report)
             every { jobs.findById("job_3") } returns Optional.of(job)
             every { jobs.save(any()) } answers { firstArg() }
-            every { repository.save(any()) } answers { firstArg() }
+            every { repository.findByTargetTypeAndTargetIdAndStatus(HoodReportTargetType.JOB_POST, "job_3", HoodReportStatus.OPEN) } returns listOf(report)
+            every { repository.saveAll(any<Iterable<HoodReport>>()) } answers { firstArg() }
             val resolved = service.removeTarget("report_3", "admin_1")
 
             Then("the job is hidden and the decision is audited") {
