@@ -169,7 +169,7 @@ private struct MarketplaceContent: View {
     // wishlist added 2026-07-21, porting bank-mfe's Marketplace wishlist (shipped
     // earlier the same day) to iOS -- see favoriteIds state and ListingWishlistView
     // below for the full account.
-    private enum HoodView { case browse, neighborhood, mine, wishlist }
+    private enum HoodView { case browse, nearby, neighborhood, mine, wishlist }
 
     @State private var view: HoodView = .browse
     @State private var listings: [ListingDto]?
@@ -177,6 +177,7 @@ private struct MarketplaceContent: View {
     @State private var showNewListing = false
     @State private var neighborhoodName: String?
     @State private var neighborhoodChecked = false
+    @StateObject private var locationFetcher = HoodLocationFetcher()
     private let currentUserId = KeychainTokenStore.shared.getUserId()
 
     // Real Marketplace listing wishlist (2026-07-21) -- porting bank-mfe's wishlist
@@ -194,6 +195,7 @@ private struct MarketplaceContent: View {
 
                 Picker("", selection: $view) {
                     Text("Browse").tag(HoodView.browse)
+                    Text("Near me").tag(HoodView.nearby)
                     Text("Neighborhood").tag(HoodView.neighborhood)
                     Text("My listings").tag(HoodView.mine)
                     Text("♡ Wishlist").tag(HoodView.wishlist)
@@ -241,6 +243,7 @@ private struct MarketplaceContent: View {
                 } else if listings!.isEmpty && (view != .neighborhood || neighborhoodName != nil) {
                     Text(
                         view == .browse ? "No listings yet."
+                            : view == .nearby ? "No listings near you yet."
                             : view == .neighborhood ? "No listings in your neighborhood yet."
                             : "You haven't listed anything yet."
                     )
@@ -265,9 +268,17 @@ private struct MarketplaceContent: View {
             .padding(.bottom, IDS.Layout.sectionSpacing)
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
-        .task { await load() }
+        .task {
+            locationFetcher.onLocation = { coordinate in Task { await loadNearby(coordinate) } }
+            await load()
+        }
         .task { await loadFavoriteIds() }
         .onChange(of: view) { _ in Task { await load() } }
+        .onChange(of: locationFetcher.errorMessage) { message in
+            guard view == .nearby, let message else { return }
+            error = message + " You can still use Browse or Neighborhood."
+            listings = []
+        }
     }
 
     private func load() async {
@@ -276,6 +287,10 @@ private struct MarketplaceContent: View {
             // ListingWishlistView below owns its own fetch (it needs title/price/
             // category straight from the favorites endpoint, not the ListingDto
             // shape) -- nothing to load into `listings` here.
+            return
+        }
+        if view == .nearby {
+            locationFetcher.requestLocation()
             return
         }
         if view == .neighborhood {
@@ -302,6 +317,17 @@ private struct MarketplaceContent: View {
             error = nil
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func loadNearby(_ coordinate: CLLocationCoordinate2D) async {
+        do {
+            let res = try await NetworkClient.shared.getNearbyListings(lat: coordinate.latitude, lng: coordinate.longitude)
+            listings = res.listings
+            error = nil
+        } catch {
+            self.error = "Couldn't load nearby listings. Check your connection and try again."
+            listings = []
         }
     }
 
