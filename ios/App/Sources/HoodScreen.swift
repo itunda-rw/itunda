@@ -1287,6 +1287,8 @@ private struct JobsContent: View {
     @State private var neighborhoodChecked = false
     @StateObject private var locationFetcher = HoodLocationFetcher()
     private let currentUserId = KeychainTokenStore.shared.getUserId()
+    @State private var favoriteIds: Set<String> = []
+    @State private var favoritingId: String?
 
     var body: some View {
         ScrollView {
