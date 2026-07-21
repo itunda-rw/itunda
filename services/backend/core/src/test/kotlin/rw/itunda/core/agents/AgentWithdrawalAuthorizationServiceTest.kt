@@ -91,4 +91,23 @@ class AgentWithdrawalAuthorizationServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("an expired authorization with otherwise matching payout details") {
+        val repository = mockk<AgentWithdrawalAuthorizationRepository>()
+        val service = AgentWithdrawalAuthorizationService(repository, mockk())
+        val expired = authorization(
+            id = "expired_1",
+            code = "EXPIRE000001",
+            expiresAt = Instant.now().minusSeconds(1),
+        )
+        every { repository.findByCode("EXPIRE000001") } returns expired
+
+        Then("it cannot debit the customer wallet after its ten-minute window") {
+            shouldThrow<WithdrawalAuthorizationInvalidException> {
+                service.consume("expire000001", "wallet_1", BigDecimal("5000"))
+            }
+            expired.consumedAt shouldBe null
+            verify(exactly = 0) { repository.save(any()) }
+        }
+    }
 })
