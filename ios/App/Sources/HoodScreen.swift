@@ -942,6 +942,7 @@ private struct CommunityPostCard: View {
 
     @State private var busy = false
     @State private var error: String?
+    @State private var showingReportOptions = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -955,6 +956,9 @@ private struct CommunityPostCard: View {
                             .background(IDS.Colors.chipBackground).cornerRadius(10)
                     }
                     .disabled(busy)
+                } else {
+                    Button("Report") { showingReportOptions = true }
+                        .font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
                 }
             }
             Text(post.title).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
@@ -967,6 +971,11 @@ private struct CommunityPostCard: View {
         .padding(18)
         .background(IDS.Colors.card)
         .cornerRadius(IDS.Layout.cardCornerRadius)
+        .confirmationDialog("Report this post", isPresented: $showingReportOptions, titleVisibility: .visible) {
+            Button("Harassment or hateful content") { Task { await report("The post contains harassment or hateful content") } }
+            Button("Spam or misleading information") { Task { await report("The post is spam or misleading information") } }
+            Button("Unsafe or illegal content") { Task { await report("The post appears unsafe or illegal") } }
+        } message: { Text("Reports go to Itunda’s review queue.") }
         .contentShape(Rectangle())
         .onTapGesture(perform: onOpen)
     }
@@ -979,6 +988,19 @@ private struct CommunityPostCard: View {
             onRemoved()
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func report(_ reason: String) async {
+        busy = true
+        defer { busy = false }
+        do {
+            _ = try await NetworkClient.shared.reportHoodContent(targetType: "COMMUNITY_POST", targetId: post.id, reason: reason)
+            error = "Thanks. Your report was sent for review."
+        } catch let NetworkError.httpError(statusCode) where statusCode == 409 {
+            error = "You already reported this post."
+        } catch {
+            error = "Couldn't send the report. Check your connection and try again."
         }
     }
 }
