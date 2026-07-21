@@ -13,6 +13,7 @@ import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Query
 import rw.itunda.agent.BuildConfig
+import java.math.BigDecimal
 import java.util.UUID
 
 data class LoginRequest(val phoneNumber: String, val password: String)
@@ -20,13 +21,13 @@ data class PublicUser(val id: String, val phoneNumber: String, val firstName: St
 data class AuthResponse(val message: String, val user: PublicUser, val accessToken: String, val refreshToken: String)
 data class OperatorDto(val id: String, val agentId: String, val userId: String, val isActive: Boolean)
 data class OperatorResponse(val success: Boolean, val operator: OperatorDto)
-data class TillDto(val agentId: String, val agentName: String, val expectedCash: Double, val todayCashIn: Double, val todayCashOut: Double)
+data class TillDto(val agentId: String, val agentName: String, val expectedCash: BigDecimal, val todayCashIn: BigDecimal, val todayCashOut: BigDecimal)
 data class TillResponse(val success: Boolean, val till: TillDto)
-data class ActivityDto(val id: String, val type: String, val amount: Double, val receiptNumber: String, val createdAt: String)
+data class ActivityDto(val id: String, val type: String, val amount: BigDecimal, val receiptNumber: String, val createdAt: String)
 data class ActivityResponse(val success: Boolean, val activity: List<ActivityDto>)
-data class CashInRequest(val accountNumber: String, val amount: Double, val receiptNumber: String)
-data class CashOutRequest(val accountNumber: String, val amount: Double, val receiptNumber: String, val authorizationCode: String)
-data class TillCountRequest(val countedCash: Double)
+data class CashInRequest(val accountNumber: String, val amount: BigDecimal, val receiptNumber: String)
+data class CashOutRequest(val accountNumber: String, val amount: BigDecimal, val receiptNumber: String, val authorizationCode: String)
+data class TillCountRequest(val countedCash: BigDecimal)
 
 interface AgentApi {
     @GET("api/v1/agent/me") suspend fun me(): OperatorResponse

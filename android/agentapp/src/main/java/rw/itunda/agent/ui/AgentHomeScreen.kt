@@ -31,6 +31,7 @@ import rw.itunda.agent.network.CashOutRequest
 import rw.itunda.agent.network.NetworkClient
 import rw.itunda.agent.network.TillCountRequest
 import rw.itunda.agent.network.TillDto
+import java.math.BigDecimal
 
 private enum class TransactionMode { CASH_IN, CASH_OUT, COUNT_TILL }
 
@@ -105,8 +106,8 @@ private fun CashOperationCard(onCompleted: () -> Unit) {
         message?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp)) }
         Spacer(Modifier.height(8.dp))
         Button(enabled = !busy, modifier = Modifier.fillMaxWidth(), onClick = {
-            val numericAmount = amount.toDoubleOrNull()
-            if (numericAmount == null || numericAmount <= 0.0 || (mode != TransactionMode.COUNT_TILL && (account.isBlank() || receipt.isBlank())) || (mode == TransactionMode.CASH_OUT && code.isBlank())) {
+            val numericAmount = amount.toBigDecimalOrNull()
+            if (numericAmount == null || numericAmount <= BigDecimal.ZERO || (mode != TransactionMode.COUNT_TILL && (account.isBlank() || receipt.isBlank())) || (mode == TransactionMode.CASH_OUT && code.isBlank())) {
                 message = "Complete all required fields with a valid positive amount."; return@Button
             }
             busy = true; message = null
