@@ -2611,7 +2611,7 @@ private fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
 
 // ============================== JOBS (당근알바) ==============================
 
-private enum class JobsView { BROWSE, NEARBY, NEIGHBORHOOD, MINE }
+private enum class JobsView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, SAVED }
 
 @Composable
 private fun JobsContent(onMessagePoster: (String) -> Unit) {
@@ -2623,6 +2623,8 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
     var showNewPost by remember { mutableStateOf(false) }
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
     var neighborhoodChecked by remember { mutableStateOf(false) }
+    var favoriteIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var favoritingId by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
     val requestNearbyLocation = rememberRealLocationRequester(
@@ -2648,10 +2650,12 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
 
     LaunchedEffect(Unit) {
         try { categories = NetworkClient.apiService.getJobCategories().categories } catch (e: Exception) { /* chips just won't render */ }
+        try { favoriteIds = NetworkClient.apiService.getMyFavoriteJobPosts().favorites.map { it.jobPostId }.toSet() } catch (e: Exception) { /* non-critical */ }
     }
 
     fun load() {
         posts = null
+        if (view == JobsView.SAVED) { posts = emptyList(); error = null; return }
         if (view == JobsView.NEARBY) {
             requestNearbyLocation()
             return
@@ -2705,7 +2709,7 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
     ) {
         item {
             Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TossCardSoft).padding(4.dp)) {
-                listOf(JobsView.BROWSE to "Find work", JobsView.NEARBY to "Near me", JobsView.NEIGHBORHOOD to "Neighborhood", JobsView.MINE to "My posts").forEach { (v, label) ->
+                listOf(JobsView.BROWSE to "Find work", JobsView.NEARBY to "Near me", JobsView.NEIGHBORHOOD to "Neighborhood", JobsView.MINE to "My posts", JobsView.SAVED to "Saved").forEach { (v, label) ->
                     val selected = v == view
                     Text(
                         label,
@@ -2760,7 +2764,9 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
         if (view == JobsView.NEIGHBORHOOD && neighborhoodName != null) {
             item { Text("Your neighborhood: $neighborhoodName", color = TossSecondary, fontSize = 13.sp) }
         }
-        if (error != null) {
+        if (view == JobsView.SAVED) {
+            item { JobPostWishlistView(onRemoved = { coroutineScope.launch { favoriteIds = NetworkClient.apiService.getMyFavoriteJobPosts().favorites.map { it.jobPostId }.toSet() } }) }
+        } else if (error != null) {
             item { ErrorCard(error!!, onRetry = ::load) }
         } else if (posts == null) {
             item { SkeletonBlock() }
@@ -2772,6 +2778,7 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
                         JobsView.NEARBY -> "No jobs near you yet."
                         JobsView.NEIGHBORHOOD -> "No jobs in your neighborhood yet."
                         JobsView.MINE -> "You haven't posted any jobs yet."
+                        JobsView.SAVED -> ""
                     },
                     color = TossSecondary, fontSize = 14.sp,
                 )
@@ -2795,7 +2802,57 @@ private fun JobsContent(onMessagePoster: (String) -> Unit) {
                             }
                         }
                     },
+                    favorited = post.id in favoriteIds,
+                    favoriteBusy = favoritingId == post.id,
+                    onToggleFavorite = {
+                        favoritingId = post.id
+                        coroutineScope.launch {
+                            try {
+                                if (post.id in favoriteIds) { NetworkClient.apiService.removeJobPostFavorite(post.id); favoriteIds = favoriteIds - post.id }
+                                else { NetworkClient.apiService.addJobPostFavorite(post.id); favoriteIds = favoriteIds + post.id }
+                            } catch (e: Exception) { error = "Couldn't update your saved jobs. Check your connection and try again." }
+                            finally { favoritingId = null }
+                        }
+                    },
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun JobPostWishlistView(onRemoved: () -> Unit) {
+    var favorites by remember { mutableStateOf<List<FavoriteJobPostDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var removingId by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    fun load() = scope.launch {
+        try { favorites = NetworkClient.apiService.getMyFavoriteJobPosts().favorites; error = null }
+        catch (e: Exception) { error = "Couldn't load your saved jobs. Check your connection and try again." }
+    }
+    LaunchedEffect(Unit) { load() }
+    when {
+        error != null -> ErrorCard(error!!, onRetry = ::load)
+        favorites == null -> SkeletonBlock()
+        favorites!!.isEmpty() -> Text("No saved jobs yet — tap ♡ on a job to keep it here.", color = TossSecondary, fontSize = 14.sp)
+        else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            favorites!!.forEach { favorite ->
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(favorite.title, color = TossText, fontWeight = FontWeight.Bold)
+                            Text("${favorite.category} · %,.0f RWF".format(favorite.payAmount), color = TossSecondary, fontSize = 12.sp)
+                        }
+                        Text("Remove", color = TossText, fontWeight = FontWeight.Bold, fontSize = 12.sp, modifier = Modifier.clickable(enabled = removingId == null) {
+                            removingId = favorite.jobPostId
+                            scope.launch {
+                                try { NetworkClient.apiService.removeJobPostFavorite(favorite.jobPostId); favorites = favorites!!.filterNot { it.jobPostId == favorite.jobPostId }; onRemoved() }
+                                catch (e: Exception) { error = "Couldn't remove this saved job. Check your connection and try again." }
+                                finally { removingId = null }
+                            }
+                        })
+                    }
+                }
             }
         }
     }
@@ -2900,7 +2957,7 @@ private fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> Un
 }
 
 @Composable
-private fun JobPostCard(post: JobPostDto, categoryLabel: String, isMine: Boolean, onChanged: () -> Unit, onContact: () -> Unit) {
+private fun JobPostCard(post: JobPostDto, categoryLabel: String, isMine: Boolean, onChanged: () -> Unit, onContact: () -> Unit, favorited: Boolean = false, favoriteBusy: Boolean = false, onToggleFavorite: () -> Unit = {}) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
@@ -2926,7 +2983,10 @@ private fun JobPostCard(post: JobPostDto, categoryLabel: String, isMine: Boolean
                         }
                     }
                 }
-                Text(payLabel, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (!isMine) Text(if (favorited) "♥" else "♡", color = if (favorited) Ids.colors.danger else TossSecondary, fontSize = 22.sp, modifier = Modifier.clickable(enabled = !favoriteBusy) { onToggleFavorite() }.padding(end = 8.dp))
+                    Text(payLabel, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                }
             }
             Text(post.title, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Text(post.description, color = TossSecondary, fontSize = 13.sp)

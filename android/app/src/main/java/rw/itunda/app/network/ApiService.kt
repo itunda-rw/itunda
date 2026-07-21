@@ -497,6 +497,8 @@ data class CreateJobPostRequest(
 data class JobPostResponse(val success: Boolean, val post: JobPostDto)
 data class JobPostsResponse(val success: Boolean, val posts: List<JobPostDto>)
 data class JobCategoriesResponse(val success: Boolean, val categories: List<JobCategoryDto>)
+data class FavoriteJobPostDto(val jobPostId: String, val title: String, val payAmount: Double, val category: String, val favoritedAt: String)
+data class FavoriteJobPostsResponse(val success: Boolean, val favorites: List<FavoriteJobPostDto>)
 data class ContactPosterResponse(val success: Boolean, val conversation: ConversationDto)
 
 // Real 당근부동산-style property listing (2026-07-19) -- see rw.itunda.realestate.web.PropertyListingController.
@@ -1016,6 +1018,15 @@ interface ApiService {
 
     @GET("api/v1/jobs/my-posts")
     suspend fun getMyJobPosts(): JobPostsResponse
+
+    @POST("api/v1/jobs/posts/{id}/favorite")
+    suspend fun addJobPostFavorite(@Path("id") jobPostId: String): SuccessResponse
+
+    @DELETE("api/v1/jobs/posts/{id}/favorite")
+    suspend fun removeJobPostFavorite(@Path("id") jobPostId: String): SuccessResponse
+
+    @GET("api/v1/jobs/posts/favorites")
+    suspend fun getMyFavoriteJobPosts(): FavoriteJobPostsResponse
 
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see AuthApi.setNeighborhood.
     @GET("api/v1/jobs/posts/my-neighborhood")
