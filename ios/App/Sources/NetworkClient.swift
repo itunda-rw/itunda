@@ -584,7 +584,14 @@ struct StartConversationRequest: Encodable {
     let otherUserId: String?
 }
 
-struct SendMessageRequest: Encodable { let body: String; let replyToMessageId: String? = nil }
+struct SendMessageRequest: Encodable {
+    let body: String
+    let replyToMessageId: String?
+    init(body: String, replyToMessageId: String? = nil) {
+        self.body = body
+        self.replyToMessageId = replyToMessageId
+    }
+}
 struct TalkContactDto: Decodable, Identifiable { let userId: String; let name: String; var id: String { userId } }
 struct TalkContactsResponse: Decodable { let success: Bool; let contacts: [TalkContactDto] }
 struct ConversationQuietResponse: Decodable { let success: Bool; let quiet: Bool }
