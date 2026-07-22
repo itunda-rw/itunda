@@ -142,6 +142,43 @@ class OsrmRoutingClient(
         requestRoutes(fromLat, fromLng, toLat, toLng, mode, alternatives = false).firstOrNull()
 
     /**
+     * Returns one real route through an ordered itinerary. OSRM accepts every stop in a
+     * single `/route` request and returns one continuous geometry plus legs/steps for
+     * the whole journey, so callers must not stitch together independently calculated
+     * routes (which can produce a misleading line or totals at each stop boundary).
+     *
+     * Input coordinates use itunda's normal `(latitude, longitude)` order. Bounds and
+     * regional policy belong to the calling domain; this low-level client deliberately
+     * keeps its never-fail `null` contract when OSRM is unavailable or finds no route.
+     */
+    fun routeThrough(waypoints: List<Pair<Double, Double>>, mode: TravelMode = TravelMode.DRIVING): RouteResult? {
+        if (waypoints.size < 2) return null
+        val client = (if (mode == TravelMode.WALKING) footRestClient else null) ?: restClient ?: return null
+        return try {
+            // OSRM requires `lng,lat;lng,lat`; construct its separators literally so
+            // Spring's URI templating cannot encode the semicolons in a variable path.
+            val coordinates = waypoints.joinToString(";") { (lat, lng) -> "$lng,$lat" }
+            @Suppress("UNCHECKED_CAST")
+            val response = client.get()
+                .uri("/route/v1/driving/$coordinates?overview=full&geometries=geojson&steps=true")
+                .retrieve()
+                .body(Map::class.java) as Map<String, Any?>?
+            val code = response?.get("code") as? String
+            @Suppress("UNCHECKED_CAST")
+            val routes = response?.get("routes") as? List<Map<String, Any?>>
+            if (code != "Ok" || routes.isNullOrEmpty()) {
+                logger.warn("OSRM itinerary request returned no usable route (code={})", code)
+                null
+            } else {
+                routes.firstNotNullOfOrNull { toRouteResult(it) }
+            }
+        } catch (e: RestClientException) {
+            logger.warn("OSRM itinerary request failed: {}", e.message)
+            null
+        }
+    }
+
+    /**
      * Real alternative routes (2026-07-22) -- Naver/Kakao Maps' own real "route options"
      * list under the main directions panel, letting a user pick a different real road
      * path (e.g. avoiding a particular route) rather than only ever seeing OSRM's single

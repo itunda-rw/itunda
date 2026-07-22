@@ -22,6 +22,7 @@ import rw.itunda.maps.InvalidBookmarkFolderException
 import rw.itunda.maps.InvalidBookmarkNameException
 import rw.itunda.maps.InvalidMapsCategoryException
 import rw.itunda.maps.InvalidMapsCoordinateException
+import rw.itunda.maps.InvalidMapsItineraryException
 import rw.itunda.maps.MapPlaceCategory
 import rw.itunda.maps.MapsService
 import rw.itunda.maps.RouteNotFoundException
@@ -50,6 +51,24 @@ class MapsController(private val mapsService: MapsService) {
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
         mapOf("success" to true, "route" to mapsService.getDirections(currentUser.userId, fromLat, fromLng, toLat, toLng, mode)),
+    )
+
+    // POST rather than encoding an arbitrary ordered array into query parameters. The
+    // server accepts a deliberately bounded itinerary (2–5 stops) and returns the same
+    // `route` shape as ordinary directions, so clients can reuse their route renderer.
+    @PostMapping("/directions/itinerary")
+    fun itineraryDirections(
+        @RequestBody request: ItineraryDirectionsRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
+        mapOf(
+            "success" to true,
+            "route" to mapsService.getItineraryDirections(
+                currentUser.userId,
+                request.waypoints.map { MapsService.ItineraryWaypoint(it.latitude, it.longitude) },
+                request.mode,
+            ),
+        ),
     )
 
     // Real alternative-routes list (2026-07-22) -- see MapsService.getDirectionsAlternatives'
@@ -136,6 +155,10 @@ class MapsController(private val mapsService: MapsService) {
     fun handleInvalidCoordinate(ex: InvalidMapsCoordinateException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_COORDINATES", ex.message ?: "Bad request"))
 
+    @ExceptionHandler(InvalidMapsItineraryException::class)
+    fun handleInvalidItinerary(ex: InvalidMapsItineraryException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_ITINERARY", ex.message ?: "Bad request"))
+
     @ExceptionHandler(InvalidMapsCategoryException::class)
     fun handleInvalidCategory(ex: InvalidMapsCategoryException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_CATEGORY", ex.message ?: "Bad request"))
@@ -182,3 +205,10 @@ data class AddBookmarkRequest(
 )
 
 data class MoveBookmarkRequest(val folderName: String, val color: String)
+
+data class ItineraryDirectionsRequest(
+    val waypoints: List<ItineraryWaypointRequest>,
+    val mode: TravelMode = TravelMode.DRIVING,
+)
+
+data class ItineraryWaypointRequest(val latitude: Double, val longitude: Double)

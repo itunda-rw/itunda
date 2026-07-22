@@ -16,6 +16,7 @@ import java.time.Duration
 import java.util.UUID
 
 class InvalidMapsCoordinateException(message: String) : RuntimeException(message)
+class InvalidMapsItineraryException(message: String) : RuntimeException(message)
 class RouteNotFoundException(message: String) : RuntimeException(message)
 class InvalidMapsCategoryException(message: String) : RuntimeException(message)
 class InvalidBookmarkNameException(message: String) : RuntimeException(message)
@@ -40,6 +41,9 @@ class MapsService(
     private val rateLimiter: RateLimiter,
     private val mapBookmarkRepository: MapBookmarkRepository,
 ) {
+    /** An ordered stop in an itinerary, using itunda's `[lat, lng]` convention. */
+    data class ItineraryWaypoint(val latitude: Double, val longitude: Double)
+
     // Real anti-spam limit -- same convention every other user-facing endpoint in this
     // codebase already has (search-as-you-type is easy to hammer otherwise).
     fun searchPlaces(userId: String, query: String): List<GeocodeSuggestion> {
@@ -64,6 +68,35 @@ class MapsService(
         }
         return osrmRoutingClient.route(fromLat, fromLng, toLat, toLng, mode)
             ?: throw RouteNotFoundException("No route could be found between these two points")
+    }
+
+    /**
+     * One real route through an ordered list of stops, for errands and delivery-style
+     * journeys. Five stops (origin + up to three stops + destination) is intentionally
+     * bounded: it keeps request URLs, OSRM CPU work, and a mobile itinerary legible.
+     * It is not a travelling-salesperson optimiser: user order is preserved exactly.
+     */
+    fun getItineraryDirections(
+        userId: String,
+        waypoints: List<ItineraryWaypoint>,
+        mode: TravelMode = TravelMode.DRIVING,
+    ): RouteResult {
+        if (waypoints.size !in MIN_ITINERARY_WAYPOINTS..MAX_ITINERARY_WAYPOINTS) {
+            throw InvalidMapsItineraryException(
+                "An itinerary needs between $MIN_ITINERARY_WAYPOINTS and $MAX_ITINERARY_WAYPOINTS stops including origin and destination",
+            )
+        }
+        if (waypoints.any { !GeoUtils.isValidCoordinate(it.latitude, it.longitude) }) {
+            throw InvalidMapsCoordinateException("Latitude must be between -90 and 90, longitude between -180 and 180")
+        }
+        // Share the normal directions bucket: an itinerary is more expensive than one
+        // route, so giving it a separate unlimited bucket would weaken the real limit.
+        rateLimiter.checkLimit("maps:directions:$userId", limit = 60, window = Duration.ofMinutes(1))
+        if (waypoints.any { !GeoUtils.isWithinRwanda(it.latitude, it.longitude) }) {
+            throw RouteNotFoundException("Directions are only available within Rwanda")
+        }
+        return osrmRoutingClient.routeThrough(waypoints.map { it.latitude to it.longitude }, mode)
+            ?: throw RouteNotFoundException("No route could be found through these stops")
     }
 
     // Real alternative routes (2026-07-22) -- see OsrmRoutingClient.routeAlternatives'
@@ -204,6 +237,8 @@ class MapsService(
     fun getMyBookmarks(userId: String): List<MapBookmark> = mapBookmarkRepository.findByUserIdOrderByCreatedAtDesc(userId)
 
     companion object {
+        const val MIN_ITINERARY_WAYPOINTS = 2
+        const val MAX_ITINERARY_WAYPOINTS = 5
         const val DEFAULT_BOOKMARK_FOLDER = "Saved places"
         const val DEFAULT_BOOKMARK_COLOR = "#F5A623"
         private val HEX_COLOR_REGEX = Regex("^#[0-9A-Fa-f]{6}$")

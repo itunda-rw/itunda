@@ -156,6 +156,67 @@ class MapsServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        When("an ordered itinerary has real in-Rwanda stops") {
+            val stop = MapsService.ItineraryWaypoint(-1.9536, 30.0606)
+            val waypoints = listOf(
+                MapsService.ItineraryWaypoint(fromLat, fromLng),
+                stop,
+                MapsService.ItineraryWaypoint(toLat, toLng),
+            )
+            val route = RouteResult(
+                distanceKm = 13.2,
+                durationMinutes = 23.0,
+                geometry = listOf(listOf(fromLat, fromLng), listOf(stop.latitude, stop.longitude), listOf(toLat, toLng)),
+            )
+            every { osrmRoutingClient.routeThrough(listOf(fromLat to fromLng, stop.latitude to stop.longitude, toLat to toLng), TravelMode.DRIVING) } returns route
+
+            val result = service.getItineraryDirections("user_1", waypoints)
+
+            Then("it sends every ordered stop through one real OSRM itinerary route") {
+                result shouldBe route
+                verify(exactly = 1) {
+                    osrmRoutingClient.routeThrough(
+                        listOf(fromLat to fromLng, stop.latitude to stop.longitude, toLat to toLng),
+                        TravelMode.DRIVING,
+                    )
+                }
+                verify(exactly = 1) { rateLimiter.checkLimit("maps:directions:user_1", limit = 60, window = Duration.ofMinutes(1)) }
+            }
+        }
+
+        When("an itinerary has more than the safe maximum of five stops") {
+            val waypoints = (0..5).map { MapsService.ItineraryWaypoint(-1.9441 - it * 0.001, 30.0619) }
+
+            Then("it rejects it before consuming routing capacity or contacting OSRM") {
+                try {
+                    service.getItineraryDirections("user_1", waypoints)
+                    error("expected InvalidMapsItineraryException")
+                } catch (e: InvalidMapsItineraryException) {
+                    // expected
+                }
+                verify(exactly = 0) { osrmRoutingClient.routeThrough(any(), any()) }
+                verify(exactly = 0) { rateLimiter.checkLimit(any(), any(), any()) }
+            }
+        }
+
+        When("one itinerary stop is outside Rwanda") {
+            val waypoints = listOf(
+                MapsService.ItineraryWaypoint(fromLat, fromLng),
+                MapsService.ItineraryWaypoint(0.0, 0.0),
+                MapsService.ItineraryWaypoint(toLat, toLng),
+            )
+
+            Then("it rejects it rather than allowing OSRM to snap it into Rwanda") {
+                try {
+                    service.getItineraryDirections("user_1", waypoints)
+                    error("expected RouteNotFoundException")
+                } catch (e: RouteNotFoundException) {
+                    // expected
+                }
+                verify(exactly = 0) { osrmRoutingClient.routeThrough(any(), any()) }
+            }
+        }
     }
 
     Given("a real user browsing nearby places by category") {
