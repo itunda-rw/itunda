@@ -20,7 +20,7 @@ import {
 } from './lib/stocks';
 import {
   connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages,
-  blockConversationParticipant, fetchPresence, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, startConversation, toggleGroupReaction, toggleReaction,
+  blockConversationParticipant, fetchPresence, fetchTalkContacts, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction,
   type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup,
 } from './lib/messaging';
@@ -1002,6 +1002,9 @@ function NewChatCard({ onStarted }: { onStarted: (conversationId: string) => voi
   const [phoneNumber, setPhoneNumber] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [contacts, setContacts] = useState<{ userId: string; name: string }[] | null>(null);
+
+  useEffect(() => { fetchTalkContacts().then(setContacts).catch(() => setContacts([])); }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1022,8 +1025,13 @@ function NewChatCard({ onStarted }: { onStarted: (conversationId: string) => voi
     <div className="toss-card" style={{ marginBottom: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>New chat</h3>
       <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '14px' }}>
-        Enter their phone number to start a conversation.
+        Start from an Itunda contact, or enter their phone number.
       </p>
+      {contacts && contacts.length > 0 && (
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+          {contacts.map((contact) => <button key={contact.userId} type="button" className="toss-btn toss-btn-secondary" onClick={async () => { setSubmitting(true); try { const c = await startConversationWithUser(contact.userId); onStarted(c.id); } catch { setError('Could not start this chat.'); } finally { setSubmitting(false); } }} disabled={submitting}>{contact.name}</button>)}
+        </div>
+      )}
       <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px' }}>
         <input
           type="tel"

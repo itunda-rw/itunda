@@ -15,6 +15,7 @@ export interface ConversationSummary {
   lastMessagePreview: string | null;
   unreadCount: number;
 }
+export interface TalkContact { userId: string; name: string }
 
 // Real emoji reactions (2026-07-19) -- see MessagingService.toggleReaction's own doc
 // comment for the real toggle semantics (tapping an active reaction removes it).
@@ -38,6 +39,9 @@ export const fetchConversations = () =>
     (r) => r.conversations,
   );
 
+export const fetchTalkContacts = () =>
+  apiFetch<{ success: boolean; contacts: TalkContact[] }>('/api/v1/messages/contacts').then((r) => r.contacts);
+
 // Real phone-number-based start -- the human-friendly entry point
 // MessagingService.startOrGetConversationByPhoneNumber added specifically for this UI
 // (a user only ever knows someone else's phone number, never their internal user id).
@@ -45,6 +49,11 @@ export const startConversation = (phoneNumber: string) =>
   apiFetch<{ success: boolean; conversation: { id: string } }>('/api/v1/messages/conversations', {
     method: 'POST',
     body: JSON.stringify({ phoneNumber }),
+  }).then((r) => r.conversation);
+
+export const startConversationWithUser = (otherUserId: string) =>
+  apiFetch<{ success: boolean; conversation: { id: string } }>('/api/v1/messages/conversations', {
+    method: 'POST', body: JSON.stringify({ otherUserId }),
   }).then((r) => r.conversation);
 
 // Newest-first from the real API (matches MessagingService.getMessages -- also what
