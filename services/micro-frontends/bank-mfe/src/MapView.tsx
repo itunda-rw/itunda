@@ -7,6 +7,7 @@ import {
   GLYPHS_URL,
   searchPlaces,
   getDirectionsAlternatives,
+  getItineraryDirections,
   searchNearbyPlaces,
   NEARBY_CATEGORIES,
   fetchMyMapBookmarks,
@@ -236,6 +237,10 @@ export default function MapView() {
   // (often just one -- OSRM itself decides whether a real alternative exists);
   // `selectedRouteIndex` is whichever one is currently drawn/reported above.
   const [routeAlternatives, setRouteAlternatives] = useState<RouteResult[] | null>(null);
+  // Stops for the currently displayed itinerary, in the exact user-selected order.
+  // Keeping these separately from the ruler's draft points lets a user inspect or
+  // re-run the real itinerary in another travel mode without losing their draft.
+  const [itineraryStops, setItineraryStops] = useState<[number, number][] | null>(null);
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
   const [showSteps, setShowSteps] = useState(false);
   const [routing, setRouting] = useState(false);
@@ -324,7 +329,7 @@ export default function MapView() {
     const map = mapRef.current;
     if (!map || !measuring) return;
     const handleClick = (e: maplibregl.MapMouseEvent) => {
-      setMeasurePoints((prev) => [...prev, [e.lngLat.lat, e.lngLat.lng]]);
+      setMeasurePoints((prev) => prev.length >= 5 ? prev : [...prev, [e.lngLat.lat, e.lngLat.lng]]);
     };
     map.on('click', handleClick);
     return () => {
@@ -765,11 +770,37 @@ export default function MapView() {
     try {
       const results = await getDirectionsAlternatives(origin[0], origin[1], place.latitude, place.longitude, mode);
       setTravelMode(mode);
+      setItineraryStops(null);
       setRouteAlternatives(results);
       setSelectedRouteIndex(0);
       applyRoute(results[0]);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not find directions to this place.');
+    } finally {
+      setRouting(false);
+    }
+  };
+
+  // Turns the ruler's ordered points into one real OSRM itinerary. The backend validates
+  // the same 2–5-stop boundary, but this guard keeps the action self-explanatory before
+  // making a network request. We intentionally preserve the ruler points afterward so
+  // users can undo/reorder by editing their selected stops and route again.
+  const handleRouteItinerary = async (mode: TravelMode = travelMode) => {
+    if (measurePoints.length < 2 || measurePoints.length > 5) return;
+    setRouting(true);
+    setError(null);
+    try {
+      const result = await getItineraryDirections(
+        measurePoints.map(([latitude, longitude]) => ({ latitude, longitude })),
+        mode,
+      );
+      setTravelMode(mode);
+      setRouteAlternatives(null);
+      setSelectedRouteIndex(0);
+      setItineraryStops(measurePoints);
+      applyRoute(result);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not find a route through these stops.');
     } finally {
       setRouting(false);
     }
@@ -791,6 +822,7 @@ export default function MapView() {
   const toggleMeasuring = () => {
     setMeasuring((prev) => !prev);
     setMeasurePoints([]);
+    setItineraryStops(null);
   };
 
   // Real straight-line distance (2026-07-22) -- the standard Haversine great-circle
@@ -1019,11 +1051,25 @@ export default function MapView() {
           }}
         >
           <span style={{ fontWeight: 700, color: MAP_CARD_TEXT }}>
-            {measurePoints.length < 2 ? 'Tap the map to start measuring' : `${measureTotalKm.toFixed(2)} km`}
+            {measurePoints.length === 0
+              ? 'Tap the map to add 2–5 stops'
+              : measurePoints.length === 1
+                ? 'Add 1 more stop to route it'
+                : `${measurePoints.length} stops · ${measureTotalKm.toFixed(2)} km straight-line`}
           </span>
           {measurePoints.length > 0 && (
             <button type="button" onClick={() => setMeasurePoints((prev) => prev.slice(0, -1))} style={{ fontSize: '12px', color: 'var(--toss-blue)', fontWeight: 700 }}>
               Undo
+            </button>
+          )}
+          {measurePoints.length >= 2 && (
+            <button
+              type="button"
+              disabled={routing}
+              onClick={() => handleRouteItinerary()}
+              style={{ fontSize: '12px', color: '#fff', background: 'var(--toss-blue)', borderRadius: '999px', padding: '6px 10px', fontWeight: 700 }}
+            >
+              {routing ? 'Routing…' : 'Route itinerary'}
             </button>
           )}
           <button type="button" onClick={() => { setMeasuring(false); setMeasurePoints([]); }} style={{ fontSize: '12px', color: MAP_CARD_TEXT_TERTIARY, fontWeight: 700 }}>
@@ -1058,6 +1104,31 @@ export default function MapView() {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 24px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {itineraryStops && route && (
+            <section style={{ padding: '10px', borderRadius: '10px', background: '#EEF6FF', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                <strong style={{ fontSize: '13px', color: MAP_CARD_TEXT }}>Itinerary · {itineraryStops.length} stops</strong>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-blue)' }}>
+                  {travelMode === 'DRIVING' ? '🚗' : '🚶'} {route.distanceKm.toFixed(1)} km · {Math.round(route.durationMinutes)} min
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                {itineraryStops.slice(1).map((_, index) => (
+                  <span key={index} style={{ fontSize: '12px', color: MAP_CARD_TEXT_SECONDARY }}>
+                    Leg {index + 1}: Stop {index + 1} → Stop {index + 2}
+                  </span>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button type="button" disabled={routing} onClick={() => handleRouteItinerary()} style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-blue)' }}>
+                  {routing ? 'Refreshing…' : 'Refresh route'}
+                </button>
+                <button type="button" onClick={() => setItineraryStops(null)} style={{ fontSize: '12px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY }}>
+                  Hide
+                </button>
+              </div>
+            </section>
+          )}
           {selectedPlace ? (
             <>
               {/* Real merchant-pin enrichment (2026-07-22) -- only rendered for a real
@@ -1161,7 +1232,9 @@ export default function MapView() {
                     disabled={routing}
                     onClick={() => {
                       if (m === travelMode) return;
-                      if (route) {
+                      if (itineraryStops) {
+                        handleRouteItinerary(m);
+                      } else if (route) {
                         handleGetDirections(m);
                       } else {
                         setTravelMode(m);

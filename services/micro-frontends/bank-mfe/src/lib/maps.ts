@@ -75,6 +75,21 @@ export const getDirectionsAlternatives = (fromLat: number, fromLng: number, toLa
     `/api/v1/maps/directions/alternatives?fromLat=${fromLat}&fromLng=${fromLng}&toLat=${toLat}&toLng=${toLng}&mode=${mode}`,
   ).then((r) => r.routes);
 
+// A real, ordered errand/delivery route through 2–5 Rwanda stops. This is deliberately
+// POST: an ordered list belongs in a validated request body, not in an unbounded query
+// string. The response retains the normal RouteResult shape so every map client can use
+// the same real road-line renderer it already uses for ordinary directions.
+export interface ItineraryWaypoint {
+  latitude: number;
+  longitude: number;
+}
+
+export const getItineraryDirections = (waypoints: ItineraryWaypoint[], mode: TravelMode = 'DRIVING') =>
+  apiFetch<{ success: boolean; route: RouteResult }>('/api/v1/maps/directions/itinerary', {
+    method: 'POST',
+    body: JSON.stringify({ waypoints, mode }),
+  }).then((r) => r.route);
+
 // Real "nearby places" category search (2026-07-19) -- Naver/Kakao's own category-chip
 // search (restaurants, cafes, hospitals, ...), backed by real OSM tag search over
 // itunda's self-hosted Nominatim, bounded to a real radius and sorted by real distance
