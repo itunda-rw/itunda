@@ -510,6 +510,16 @@ private struct GroupThreadScreen: View {
                 Text(error).font(.caption).foregroundColor(.red).padding(.horizontal, IDS.Layout.screenHorizontal)
             }
 
+            if let replyingTo {
+                HStack {
+                    Text("Replying to: \(replyingTo.body.prefix(80))")
+                        .font(.caption).foregroundColor(IDS.Colors.textSecondary).lineLimit(1)
+                    Spacer()
+                    Button("×") { self.replyingTo = nil }.foregroundColor(IDS.Colors.textSecondary)
+                }
+                .padding(.horizontal, IDS.Layout.screenHorizontal)
+                .padding(.bottom, 4)
+            }
             HStack {
                 TextField("Message", text: Binding(
                     get: { draft },
