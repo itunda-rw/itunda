@@ -896,6 +896,9 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
     var draft by remember { mutableStateOf("") }
     var sending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var blockConfirmationOpen by remember { mutableStateOf(false) }
+    var blocking by remember { mutableStateOf(false) }
+    var isBlocked by remember { mutableStateOf(false) }
     // Real device binding step-up (2026-07-21) -- Gift send/claim was a real gap:
     // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but
     // showed only a generic error, same fix already applied to Transfer/Savings/
@@ -1025,6 +1028,9 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
         BackTopBar(conversation.otherUserName, onBack)
+        TextButton(onClick = { blockConfirmationOpen = true }, enabled = !blocking && !isBlocked) {
+            Text(if (isBlocked) "Blocked" else if (blocking) "Blocking…" else "Block", color = Ids.colors.danger)
+        }
         otherOnline?.let { online ->
             Text(
                 if (online) "Online" else "Offline",
@@ -1117,6 +1123,25 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
             },
         )
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(vertical = 6.dp)) }
+        if (blockConfirmationOpen) {
+            AlertDialog(
+                onDismissRequest = { blockConfirmationOpen = false },
+                title = { Text("Block ${conversation.otherUserName}?") },
+                text = { Text("They will no longer be able to message you. You can unblock them later from this conversation.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        blockConfirmationOpen = false; blocking = true
+                        coroutineScope.launch {
+                            try { NetworkClient.apiService.blockConversationParticipant(conversation.conversationId); isBlocked = true; error = "${conversation.otherUserName} is blocked." }
+                            catch (e: HttpException) { error = superAppErrorMessage(e) }
+                            catch (_: IOException) { error = "Couldn't reach itunda. Check your connection and try again." }
+                            finally { blocking = false }
+                        }
+                    }) { Text("Block", color = Ids.colors.danger) }
+                },
+                dismissButton = { TextButton(onClick = { blockConfirmationOpen = false }) { Text("Cancel") } },
+            )
+        }
         if (giftComposerOpen) {
             Column(
                 modifier = Modifier
