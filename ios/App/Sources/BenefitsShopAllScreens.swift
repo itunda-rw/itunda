@@ -29,6 +29,7 @@
 import SwiftUI
 import UIKit
 import CoreDesignSystem
+import CoreNetwork
 
 // MARK: - Benefits tab
 

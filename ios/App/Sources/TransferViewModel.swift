@@ -1,4 +1,5 @@
 import Foundation
+import CoreNetwork
 
 enum MoneyActionResult {
     case success(String)

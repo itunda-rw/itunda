@@ -5,29 +5,29 @@ import Security
 /// UserDefaults: access/refresh tokens are real bearer credentials, same standard
 /// Android's TokenStore.kt holds itself to via EncryptedSharedPreferences. Plain
 /// Security-framework calls, no third-party dependency.
-final class KeychainTokenStore {
-    static let shared = KeychainTokenStore()
+public final class KeychainTokenStore {
+    public static let shared = KeychainTokenStore()
 
     private let service = "rw.itunda.app.session"
 
     private init() {}
 
-    func saveSession(userId: String, accessToken: String, refreshToken: String) {
+    public func saveSession(userId: String, accessToken: String, refreshToken: String) {
         set(userId, forKey: .userId)
         set(accessToken, forKey: .accessToken)
         set(refreshToken, forKey: .refreshToken)
     }
 
-    func clearSession() {
+    public func clearSession() {
         delete(.userId)
         delete(.accessToken)
         delete(.refreshToken)
     }
 
-    func getAccessToken() -> String? { get(.accessToken) }
-    func getRefreshToken() -> String? { get(.refreshToken) }
-    func getUserId() -> String? { get(.userId) }
-    func hasSession() -> Bool { getAccessToken() != nil }
+    public func getAccessToken() -> String? { get(.accessToken) }
+    public func getRefreshToken() -> String? { get(.refreshToken) }
+    public func getUserId() -> String? { get(.userId) }
+    public func hasSession() -> Bool { getAccessToken() != nil }
 
     private enum Key: String {
         case userId = "user_id"

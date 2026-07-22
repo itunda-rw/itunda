@@ -1,4 +1,5 @@
 import Foundation
+import CoreNetwork
 
 /// Real recent-searches list (2026-07-22) -- the other half of the same
 /// "no autocomplete/recent-searches" gap bank-mfe already closed on the web, ported here

@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreDesignSystem
+import CoreNetwork
 
 // Real Toss Securities-style stock investing UI (2026-07-20) -- the first Invest UI
 // this feature has ever had on any client, ported from bank-mfe/Android the same

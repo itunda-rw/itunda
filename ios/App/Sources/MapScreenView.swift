@@ -2,6 +2,7 @@ import SwiftUI
 import MapLibre
 import CoreLocation
 import CoreDesignSystem
+import CoreNetwork
 
 // Real itunda-hosted Rwanda coordinates -- Kigali, same default center every other real
 // coordinate fixture in this codebase (backend tests, bank-mfe's MapView.tsx, Android's

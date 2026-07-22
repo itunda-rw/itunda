@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreDesignSystem
+import CoreNetwork
 
 /// Real Coupang-style multi-item checkout (2026-07-18) -- iOS mirror of Android's
 /// (new) ShopTab (SuperAppTabs.kt), replacing the old Toss-Shopping-cashback

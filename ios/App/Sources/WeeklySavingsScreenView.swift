@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreDesignSystem
+import CoreNetwork
 
 // Real KakaoBank 26주적금 (26-week savings) equivalent (2026-07-21) -- the first iOS UI
 // this feature has ever had, direct sibling of InvestScreenView.swift (same top-bar

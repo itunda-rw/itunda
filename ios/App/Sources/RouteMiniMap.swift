@@ -2,6 +2,7 @@ import SwiftUI
 import MapLibre
 import CoreLocation
 import CoreDesignSystem
+import CoreNetwork
 
 // A real, compact, non-interactive drawn-route map -- reuses the exact same self-hosted
 // OSRM directions itunda's own Maps feature already exposes (see MapScreenView.swift and

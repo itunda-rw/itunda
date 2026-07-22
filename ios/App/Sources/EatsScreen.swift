@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreDesignSystem
+import CoreNetwork
 
 /// Real Coupang Eats-style food ordering + a real rider role, folded into ShopScreen's
 /// Shop/Eats toggle (2026-07-18) -- see rw.itunda.eats.EatsOrderService's own doc comment

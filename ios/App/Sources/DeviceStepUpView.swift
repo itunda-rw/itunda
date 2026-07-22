@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreNetwork
 
 /// Real device binding step-up dialog (2026-07-21 port) -- shown wherever a
 /// money-moving call real-403s with DEVICE_NOT_VERIFIED. Re-proves password

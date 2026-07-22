@@ -1,4 +1,5 @@
 import Foundation
+import CoreNetwork
 
 /// Real data backing SettingsScreen (2026-07-12) -- mirrors MainViewModel.kt's
 /// loadSettingsData/markNotificationRead/markAllNotificationsRead exactly.

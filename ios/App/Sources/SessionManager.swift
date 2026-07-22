@@ -1,4 +1,5 @@
 import Foundation
+import CoreNetwork
 
 enum SessionState: Equatable {
     case loggedOut

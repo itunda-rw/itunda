@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import CoreNetwork
 
 /// Real device binding client-side counterpart (2026-07-21) -- see the backend's
 /// TrustedDevice.kt / DeviceService.kt doc comments for the full account (modeled on

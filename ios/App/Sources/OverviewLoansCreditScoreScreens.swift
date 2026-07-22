@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreDesignSystem
+import CoreNetwork
 
 // Real Toss-style unified account overview, multi-lender loan marketplace, credit
 // score, digital certificate, personal KYC identity submission, and customer support

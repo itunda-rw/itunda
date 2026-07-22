@@ -152,6 +152,15 @@ appDependencies.append(.target(name: "CoreDesignSystem"))
 // (NIDABiometricAuth) -- App needs its own direct dependency declared, not just
 // transitive access through FeaturePayments's own internal use of the same module.
 appDependencies.append(.target(name: "CoreIdentity"))
+// Added 2026-07-23: NetworkClient.swift/KeychainTokenStore.swift promoted from App
+// to CoreNetwork (App/Sources -> Core/Network/Sources), mirroring Android's
+// ApiService relocation ([[itunda-feature-isolation]]) -- Feature modules can't
+// depend back on App, so any Feature that calls the network needs NetworkClient to
+// live somewhere Features can reach. App itself was previously getting CoreNetwork
+// only transitively (via CoreDesignSystem's own dependency on it); declare it
+// directly rather than relying on transitive linking, the same lesson the
+// CoreDesignSystem->CoreNetwork dependency comment above already documents.
+appDependencies.append(.target(name: "CoreNetwork"))
 
 allTargets.append(
     Target.target(

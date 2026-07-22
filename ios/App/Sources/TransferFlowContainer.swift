@@ -1,6 +1,7 @@
 import SwiftUI
 import FeaturePayments
 import CoreIdentity
+import CoreNetwork
 
 private enum TransferStep: Equatable {
     case recipient

@@ -1,6 +1,7 @@
 import SwiftUI
 import CoreLocation
 import CoreDesignSystem
+import CoreNetwork
 
 /// Real device-location fetch, shared by NewListingForm's "share my location" toggle and
 /// ListingCard's "directions to this seller" -- same runtime-permission-gated

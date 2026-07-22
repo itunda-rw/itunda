@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import React
+import CoreNetwork
 
 /// Direct iOS port of Android's `SaroniteBrownfieldModule`/`ItundaSaroniteHostBridge`
 /// (`android/app/.../miniapps/SaroniteBridge.kt`) -- itunda's own real, legacy
