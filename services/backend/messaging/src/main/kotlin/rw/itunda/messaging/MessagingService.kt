@@ -17,6 +17,7 @@ import rw.itunda.core.repository.MessageReactionRepository
 import rw.itunda.core.repository.MessageRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.repository.UserBlockRepository
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
@@ -29,6 +30,7 @@ class EmptyMessageException(message: String) : RuntimeException(message)
 class MessageTooLongException(message: String) : RuntimeException(message)
 class MessageNotFoundException(message: String) : RuntimeException(message)
 class InvalidReactionException(message: String) : RuntimeException(message)
+class UserBlockedException(message: String) : RuntimeException(message)
 
 data class ConversationSummary(
     val conversationId: String,
@@ -70,7 +72,14 @@ class MessagingService(
     private val messageReactionRepository: MessageReactionRepository,
     private val rateLimiter: RateLimiter,
     private val realtimeMessagePublisher: RealtimeMessagePublisher,
+    private val userBlockRepository: UserBlockRepository,
 ) {
+    private fun requireNotBlocked(userId: String, otherUserId: String) {
+        if (
+            userBlockRepository.existsByBlockerUserIdAndBlockedUserId(userId, otherUserId) ||
+            userBlockRepository.existsByBlockerUserIdAndBlockedUserId(otherUserId, userId)
+        ) throw UserBlockedException("This conversation is unavailable")
+    }
     /** Canonical ordering so a real DB unique constraint on (participantAId,
      * participantBId) can enforce "at most one conversation per pair" without a
      * racy check-then-insert -- whichever id sorts first is always stored as A. */
@@ -84,6 +93,7 @@ class MessagingService(
         }
         userRepository.findById(otherUserId)
             .orElseThrow { RecipientNotFoundException("No itunda account found for this user") }
+        requireNotBlocked(userId, otherUserId)
 
         val (a, b) = canonicalPair(userId, otherUserId)
         conversationRepository.findByParticipantAIdAndParticipantBId(a, b)?.let { return it }
@@ -143,13 +153,14 @@ class MessagingService(
         rateLimiter.checkLimit("messaging:send:$userId", limit = 30, window = Duration.ofMinutes(1))
 
         val conversation = requireParticipant(userId, conversationId)
+        val recipientId = if (conversation.participantAId == userId) conversation.participantBId else conversation.participantAId
+        requireNotBlocked(userId, recipientId)
         val message = messageRepository.save(
             Message(id = "message_${UUID.randomUUID()}", conversationId = conversationId, senderId = userId, body = trimmed),
         )
         conversation.lastMessageAt = message.sentAt
         conversationRepository.save(conversation)
 
-        val recipientId = if (conversation.participantAId == userId) conversation.participantBId else conversation.participantAId
         val senderName = userRepository.findById(userId).map { "${it.firstName} ${it.lastName}" }.orElse("Someone")
         notificationRepository.save(
             Notification(
@@ -162,6 +173,24 @@ class MessagingService(
         // persisted above regardless of whether anyone is listening right now.
         realtimeMessagePublisher.publishNewMessage(conversationId, recipientId, message)
         return message
+    }
+
+    @Transactional
+    fun blockConversationParticipant(userId: String, conversationId: String) {
+        val conversation = requireParticipant(userId, conversationId)
+        val otherUserId = if (conversation.participantAId == userId) conversation.participantBId else conversation.participantAId
+        if (!userBlockRepository.existsByBlockerUserIdAndBlockedUserId(userId, otherUserId)) {
+            userBlockRepository.save(rw.itunda.core.domain.UserBlock(
+                id = "user_block_${UUID.randomUUID()}", blockerUserId = userId, blockedUserId = otherUserId,
+            ))
+        }
+    }
+
+    @Transactional
+    fun unblockConversationParticipant(userId: String, conversationId: String) {
+        val conversation = requireParticipant(userId, conversationId)
+        val otherUserId = if (conversation.participantAId == userId) conversation.participantBId else conversation.participantAId
+        userBlockRepository.findByBlockerUserIdAndBlockedUserId(userId, otherUserId)?.let(userBlockRepository::delete)
     }
 
     // Real online/offline presence (2026-07-19) -- reads the real WebSocket session

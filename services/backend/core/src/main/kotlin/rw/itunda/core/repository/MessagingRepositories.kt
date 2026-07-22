@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.Message
 import rw.itunda.core.domain.MessageReaction
+import rw.itunda.core.domain.UserBlock
 
 interface ConversationRepository : JpaRepository<Conversation, String> {
     fun findByParticipantAIdAndParticipantBId(participantAId: String, participantBId: String): Conversation?
@@ -83,4 +84,9 @@ interface MessageReactionRepository : JpaRepository<MessageReaction, String> {
     // Real batch fetch (2026-07-19) -- backs attaching reaction summaries to a whole
     // page of messages in one query rather than one query per message.
     fun findByMessageIdIn(messageIds: List<String>): List<MessageReaction>
+}
+
+interface UserBlockRepository : JpaRepository<UserBlock, String> {
+    fun existsByBlockerUserIdAndBlockedUserId(blockerUserId: String, blockedUserId: String): Boolean
+    fun findByBlockerUserIdAndBlockedUserId(blockerUserId: String, blockedUserId: String): UserBlock?
 }

@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -26,6 +27,7 @@ import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.RecipientNotFoundException
 import rw.itunda.messaging.RecipientRequiredException
 import rw.itunda.messaging.SelfConversationException
+import rw.itunda.messaging.UserBlockedException
 
 // One of the two must be set. phoneNumber is the real human-friendly entry point (see
 // MessagingService.startOrGetConversationByPhoneNumber's own doc comment); otherUserId
@@ -109,6 +111,18 @@ class MessagingController(private val messagingService: MessagingService) {
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "message" to message))
     }
 
+    @PostMapping("/conversations/{conversationId}/block")
+    fun blockParticipant(@PathVariable conversationId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Boolean>> {
+        messagingService.blockConversationParticipant(currentUser.userId, conversationId)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    @DeleteMapping("/conversations/{conversationId}/block")
+    fun unblockParticipant(@PathVariable conversationId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Boolean>> {
+        messagingService.unblockConversationParticipant(currentUser.userId, conversationId)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
     // Real online/offline presence (2026-07-19) -- see MessagingService.getPresence's
     // own doc comment. Works for any set of user ids, not just 1:1 conversation
     // partners -- e.g. a group thread can pass every member's id.
@@ -151,4 +165,8 @@ class MessagingController(private val messagingService: MessagingService) {
     @ExceptionHandler(InvalidReactionException::class)
     fun handleInvalidReaction(ex: InvalidReactionException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_REACTION", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(UserBlockedException::class)
+    fun handleBlocked(ex: UserBlockedException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("CONVERSATION_BLOCKED", ex.message ?: "Unavailable"))
 }
