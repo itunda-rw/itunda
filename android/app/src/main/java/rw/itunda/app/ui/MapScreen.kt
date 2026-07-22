@@ -1084,6 +1084,12 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                                         modifier = Modifier.fillMaxWidth(),
                                     )
                                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        listOf("Home", "Work").forEach { preset ->
+                                            val active = folderNameInput.equals(preset, ignoreCase = true)
+                                            Text(preset, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) androidx.compose.ui.graphics.Color.White else TossText, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) TossBlue else TossCardSoft).clickable { folderNameInput = preset }.padding(horizontal = 10.dp, vertical = 6.dp))
+                                        }
+                                    }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                         BOOKMARK_COLOR_PALETTE.forEach { c ->
                                             val color = try { androidx.compose.ui.graphics.Color(AndroidColor.parseColor(c)) } catch (_: Exception) { androidx.compose.ui.graphics.Color(0xFFF5A623) }
                                             Box(

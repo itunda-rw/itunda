@@ -1115,6 +1115,9 @@ export default function MapView() {
                     maxLength={120}
                     style={{ padding: '8px 10px', borderRadius: '8px', border: `1px solid ${MAP_CARD_DIVIDER}`, fontSize: '13px' }}
                   />
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {['Home', 'Work'].map((preset) => <button key={preset} type="button" onClick={() => setFolderNameInput(preset)} style={{ borderRadius: '999px', padding: '6px 10px', fontSize: '12px', fontWeight: 700, background: folderNameInput.toLowerCase() === preset.toLowerCase() ? '#3182F6' : '#F2F4F6', color: folderNameInput.toLowerCase() === preset.toLowerCase() ? '#fff' : MAP_CARD_TEXT }}>{preset}</button>)}
+                  </div>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                     {BOOKMARK_COLOR_PALETTE.map((c) => (
                       <button
