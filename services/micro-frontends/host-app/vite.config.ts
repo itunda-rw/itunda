@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import federation from '@originjs/vite-plugin-federation'
 
+const remoteHost = process.env.VITE_REMOTE_HOST ?? 'localhost'
+
 export default defineConfig({
   plugins: [
     react(),
@@ -11,8 +13,8 @@ export default defineConfig({
     federation({
       name: 'host_app',
       remotes: {
-        kyc_mfe: 'http://localhost:5001/assets/remoteEntry.js',
-        bank_mfe: 'http://localhost:5002/assets/remoteEntry.js',
+        kyc_mfe: `http://${remoteHost}:5001/assets/remoteEntry.js`,
+        bank_mfe: `http://${remoteHost}:5002/assets/remoteEntry.js`,
       },
       shared: ['react', 'react-dom']
     })
@@ -24,6 +26,7 @@ export default defineConfig({
     cssCodeSplit: false
   },
   server: {
-    port: 5000
+    host: process.env.VITE_DEV_HOST ?? 'localhost',
+    port: Number(process.env.VITE_PORT ?? 5000)
   }
 })

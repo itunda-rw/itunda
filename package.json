@@ -14,6 +14,7 @@
   "scripts": {
     "dev": "bash ./scripts/local-ecosystem.sh web-dev",
     "dev:web": "bash ./scripts/local-ecosystem.sh web-dev",
+    "dev:lan": "bash ./scripts/local-ecosystem.sh web-lan",
     "dev:infra": "bash ./scripts/local-ecosystem.sh infra",
     "dev:backend": "bash ./scripts/local-ecosystem.sh backend",
     "dev:gateway": "bash ./scripts/local-ecosystem.sh gateway",

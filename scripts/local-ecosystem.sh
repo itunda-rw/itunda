@@ -47,11 +47,27 @@ run_workspace() {
   (cd "$ROOT_DIR" && "${PACKAGE_MANAGER[@]}" workspace "$workspace" "$script_name")
 }
 
+run_workspace_with_args() {
+  local workspace="$1"
+  shift
+
+  detect_package_manager
+  (cd "$ROOT_DIR" && "${PACKAGE_MANAGER[@]}" workspace "$workspace" "$@")
+}
+
 run_workspace_in_background() {
   local workspace="$1"
   local script_name="$2"
 
   run_workspace "$workspace" "$script_name" &
+  CHILD_PIDS+=("$!")
+}
+
+run_workspace_with_args_in_background() {
+  local workspace="$1"
+  shift
+
+  run_workspace_with_args "$workspace" "$@" &
   CHILD_PIDS+=("$!")
 }
 
@@ -134,6 +150,26 @@ start_web_dev() {
   wait
 }
 
+start_web_lan() {
+  local lan_ip
+  lan_ip="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
+
+  if [[ -z "$lan_ip" ]]; then
+    echo "Could not determine this Mac's LAN IP address." >&2
+    return 1
+  fi
+
+  run_workspace "kyc-mfe" "build"
+  run_workspace "bank-mfe" "build"
+  run_workspace "ops-mfe" "build"
+
+  VITE_DEV_HOST=0.0.0.0 VITE_PORT=5001 run_workspace_with_args_in_background "kyc-mfe" "preview" "--host" "0.0.0.0" "--port" "5001" "--strictPort"
+  VITE_DEV_HOST=0.0.0.0 VITE_PORT=5002 run_workspace_with_args_in_background "bank-mfe" "preview" "--host" "0.0.0.0" "--port" "5002" "--strictPort"
+  VITE_DEV_HOST=0.0.0.0 VITE_PORT=5003 run_workspace_with_args_in_background "ops-mfe" "preview" "--host" "0.0.0.0" "--port" "5003" "--strictPort"
+  VITE_DEV_HOST=0.0.0.0 VITE_PORT=5100 VITE_REMOTE_HOST="$lan_ip" run_workspace_in_background "host-app" "dev"
+  wait
+}
+
 build_web() {
   run_workspace "bank-mfe" "build"
   run_workspace "kyc-mfe" "build"
@@ -182,6 +218,7 @@ Commands:
   backend     Run the canonical Kotlin backend against the configured infra
   gateway     Run the API gateway against the canonical backend
   web-dev     Run bank-mfe, kyc-mfe, ops-mfe, and host-app together
+  web-lan     Run the web shell on this Mac's LAN address for phone testing
   web-build   Build bank-mfe, kyc-mfe, ops-mfe, and host-app
   web-lint    Lint bank-mfe, kyc-mfe, ops-mfe, and host-app
   all         Start backend, gateway, and web apps against existing infra
@@ -202,6 +239,10 @@ case "$MODE" in
   web-dev)
     trap 'terminate_children' EXIT INT TERM
     start_web_dev
+    ;;
+  web-lan)
+    trap 'terminate_children' EXIT INT TERM
+    start_web_lan
     ;;
   web-build)
     build_web

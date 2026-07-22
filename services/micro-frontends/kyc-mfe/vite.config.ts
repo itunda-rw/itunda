@@ -32,7 +32,8 @@ export default defineConfig({
     cssCodeSplit: false
   },
   server: {
-    port: 5001,
+    host: process.env.VITE_DEV_HOST ?? 'localhost',
+    port: Number(process.env.VITE_PORT ?? 5001),
     cors: true
   }
 })
