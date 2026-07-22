@@ -165,6 +165,10 @@ include(":features:talk:api")
 include(":features:talk:impl")
 include(":features:talk:testing")
 
+include(":features:maps:api")
+include(":features:maps:impl")
+include(":features:maps:testing")
+
 include(":features:bills:api")
 include(":features:bills:impl")
 include(":features:bills:testing")

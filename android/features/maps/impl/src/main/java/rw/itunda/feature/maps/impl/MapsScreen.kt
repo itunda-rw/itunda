@@ -1,4 +1,4 @@
-package rw.itunda.app.ui
+package rw.itunda.feature.maps.impl
 
 import android.Manifest
 import android.content.Intent
@@ -121,6 +121,7 @@ import rw.itunda.core.network.ItineraryDirectionsRequest
 import rw.itunda.core.network.ItineraryWaypointRequest
 import rw.itunda.core.network.NearbyPlaceDto
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.network.MapConfig
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.PlaceSearchResultDto
 import rw.itunda.core.network.RecentMapSearchesStore
@@ -128,8 +129,18 @@ import rw.itunda.core.network.RouteResultDto
 import rw.itunda.core.network.ShoppingMerchantDto
 import rw.itunda.core.network.superAppErrorMessage
 
-// Real itunda-hosted Rwanda coordinates -- Kigali, same default center every other real
-// coordinate fixture in this codebase (backend tests, bank-mfe's MapView.tsx) uses.
+// Eighth Feature extraction (2026-07-23), after the seven-module pass this same session
+// already completed -- see features/marketplace/impl/.../MarketplaceScreen.kt's own
+// header comment for the full account of the Toss Microfeatures pattern this follows.
+// MapScreen was fully self-contained already (confirmed via a dependency audit before
+// moving anything: no MainViewModel/:app-only coupling beyond Toss color tokens and two
+// BuildConfig fields) -- the only real blocker was rw.itunda.app.BuildConfig.
+// TILES_BASE_URL/GLYPHS_BASE_URL, closed the same way RouteMiniMap's identical blocker
+// was closed a moment earlier this session: MapConfig.kt (core/network) now holds both,
+// set once from :app's ItundaApplication.onCreate() alongside NetworkClient.init(). No
+// injected callback slots needed here at all -- unlike the Hood-mode/Shop/Eats/Talk
+// modules, Maps doesn't call into DeviceStepUpDialog or any other Feature module's UI.
+
 private const val RWANDA_CENTER_LAT = -1.9441
 private const val RWANDA_CENTER_LNG = 30.0619
 // Real bookmark-folder defaults/palette (2026-07-22) -- kept in sync by hand with
@@ -142,13 +153,13 @@ private val BOOKMARK_COLOR_PALETTE = listOf("#F5A623", "#3182F6", "#8B5CF6", "#E
 // internal-only 192.168.252.3 address -- see app/build.gradle.kts' TILES_BASE_URL/
 // GLYPHS_BASE_URL doc comment for why a physical device on the public HTTPS endpoint
 // got a permanently blank map otherwise.
-private val TILES_URL = "${rw.itunda.app.BuildConfig.TILES_BASE_URL}/rwanda/{z}/{x}/{y}.mvt"
+private val TILES_URL: String get() = "${MapConfig.tilesBaseUrl}/rwanda/{z}/{x}/{y}.mvt"
 // Real self-hosted glyphs (font PBF) server (2026-07-19) -- closes item 5, the last item
 // on the Maps "100%" roadmap. See bank-mfe's lib/maps.ts GLYPHS_URL doc comment for the
 // full account (real pre-generated Noto Sans Regular/Bold glyph PBFs, served statically
 // by nginx on itunda-dc-b, ~14MB RSS -- an order of magnitude lighter than OSRM/
 // Nominatim despite being this host's fourth persistent private-cloud service).
-private val GLYPHS_URL = "${rw.itunda.app.BuildConfig.GLYPHS_BASE_URL}/{fontstack}/{range}.pbf"
+private val GLYPHS_URL: String get() = "${MapConfig.glyphsBaseUrl}/{fontstack}/{range}.pbf"
 private const val MERCHANTS_SOURCE_ID = "merchants"
 private const val MERCHANTS_LAYER_ID = "merchants-circle"
 private const val MY_LOCATION_SOURCE_ID = "my-location"
@@ -227,7 +238,7 @@ private enum class MapSheetValue { Peek, Half, Full }
 // Declares the real, empty-until-populated `route` source the directions feature below
 // writes into (the merchants/my-location/destination sources are added at runtime once
 // the style loads, same as before).
-private val MAP_STYLE_JSON = """
+private val MAP_STYLE_JSON: String get() = """
 {
   "version": 8,
   "glyphs": "$GLYPHS_URL",
@@ -855,26 +866,26 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                     modifier = Modifier
                         .size(46.dp)
                         .shadow(3.dp, CircleShape)
-                        .background(TossCard, CircleShape)
+                        .background(Ids.colors.surface, CircleShape)
                         .clip(CircleShape)
                         .clickable(onClick = onBack),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Back", modifier = Modifier.size(16.dp), tint = TossText)
+                    Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Back", modifier = Modifier.size(16.dp), tint = Ids.colors.textPrimary)
                 }
 
                 Row(
                     modifier = Modifier
                         .weight(1f)
                         .shadow(3.dp, RoundedCornerShape(999.dp))
-                        .background(TossCard, RoundedCornerShape(999.dp))
+                        .background(Ids.colors.surface, RoundedCornerShape(999.dp))
                         .padding(start = 14.dp, end = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
                         Icons.Outlined.Search,
                         contentDescription = "Search",
-                        tint = if (searching) TossSecondary else TossBlue,
+                        tint = if (searching) Ids.colors.textSecondary else Ids.colors.brand,
                         modifier = Modifier.size(18.dp).clickable(enabled = !searching && query.isNotBlank()) { runSearch() },
                     )
                     OutlinedTextField(
@@ -897,7 +908,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                         Icon(
                             Icons.Outlined.Close,
                             contentDescription = "Clear search",
-                            tint = TossSecondary,
+                            tint = Ids.colors.textSecondary,
                             modifier = Modifier.size(16.dp).clickable { query = ""; searchResults = null },
                         )
                         Box(modifier = Modifier.width(6.dp))
@@ -920,7 +931,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier
                             .shadow(if (active) 3.dp else 1.dp, RoundedCornerShape(999.dp))
-                            .background(if (active) androidx.compose.ui.graphics.Color(0xFF8B5CF6) else TossCard, RoundedCornerShape(999.dp))
+                            .background(if (active) androidx.compose.ui.graphics.Color(0xFF8B5CF6) else Ids.colors.surface, RoundedCornerShape(999.dp))
                             .clickable(enabled = !categoryLoading || active) { searchNearbyCategory(category.id) }
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                     ) {
@@ -929,7 +940,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                             if (active && categoryLoading) "…" else category.label,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (active) androidx.compose.ui.graphics.Color.White else TossText,
+                            color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textPrimary,
                         )
                     }
                 }
@@ -942,7 +953,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .shadow(1.dp, RoundedCornerShape(999.dp))
-                    .background(TossCard, RoundedCornerShape(999.dp))
+                    .background(Ids.colors.surface, RoundedCornerShape(999.dp))
                     .clickable {
                         if (itineraryBuilding) {
                             itineraryBuilding = false
@@ -959,8 +970,8 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                     }
                     .padding(horizontal = 12.dp, vertical = 8.dp),
             ) {
-                Text(if (itineraryBuilding) "✓ Planning ${itineraryStops.size + 1} stops" else "＋ Plan multi-stop trip", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (itineraryBuilding) TossBlue else TossText)
-                if (itineraryBuilding) Text("Tap to cancel", fontSize = 11.sp, color = TossSecondary)
+                Text(if (itineraryBuilding) "✓ Planning ${itineraryStops.size + 1} stops" else "＋ Plan multi-stop trip", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (itineraryBuilding) Ids.colors.brand else Ids.colors.textPrimary)
+                if (itineraryBuilding) Text("Tap to cancel", fontSize = 11.sp, color = Ids.colors.textSecondary)
             }
 
             if ((activeCategory != null && categoryResults != null) || searchResults != null || error != null) {
@@ -968,7 +979,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                     modifier = Modifier
                         .fillMaxWidth()
                         .shadow(3.dp, RoundedCornerShape(Ids.layout.sectionCornerRadius))
-                        .background(TossCard, RoundedCornerShape(Ids.layout.sectionCornerRadius))
+                        .background(Ids.colors.surface, RoundedCornerShape(Ids.layout.sectionCornerRadius))
                         .padding(vertical = 4.dp),
                 ) {
                     if (activeCategory != null && categoryResults != null) {
@@ -978,7 +989,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                             else if (isAgentCashDiscovery && activeCategory == "ITUNDA_AGENT") {
                                 "${categoryResults!!.size} Itunda agents found nearby, closest first. Select one for directions."
                             } else "${categoryResults!!.size} real $label found nearby, closest first.",
-                            color = TossSecondary,
+                            color = Ids.colors.textSecondary,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                         )
@@ -986,13 +997,13 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
 
                     searchResults?.let { results ->
                         if (results.isEmpty()) {
-                            Text("No real places found for that search.", color = TossSecondary, fontSize = 13.sp, modifier = Modifier.padding(14.dp))
+                            Text("No real places found for that search.", color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(14.dp))
                         } else {
                             results.forEach { place ->
                                 Text(
                                     place.displayName,
                                     fontSize = 13.sp,
-                                    color = TossText,
+                                    color = Ids.colors.textPrimary,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
@@ -1030,7 +1041,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                     modifier = Modifier
                         .fillMaxWidth()
                         .shadow(3.dp, RoundedCornerShape(Ids.layout.sectionCornerRadius))
-                        .background(TossCard, RoundedCornerShape(Ids.layout.sectionCornerRadius))
+                        .background(Ids.colors.surface, RoundedCornerShape(Ids.layout.sectionCornerRadius))
                         .padding(vertical = 4.dp),
                 ) {
                     Row(
@@ -1038,9 +1049,9 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
                     ) {
-                        Text("Recent searches", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TossSecondary)
+                        Text("Recent searches", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textSecondary)
                         Text(
-                            "Clear", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TossBlue,
+                            "Clear", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
                             modifier = Modifier.clickable { recentSearchesStore.clear(); recentSearches = emptyList() },
                         )
                     }
@@ -1048,7 +1059,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                         Text(
                             "🕐 ${place.displayName}",
                             fontSize = 13.sp,
-                            color = TossText,
+                            color = Ids.colors.textPrimary,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
@@ -1090,27 +1101,27 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                 Column(
                     modifier = Modifier
                         .shadow(3.dp, RoundedCornerShape(14.dp))
-                        .background(TossCard, RoundedCornerShape(14.dp)),
+                        .background(Ids.colors.surface, RoundedCornerShape(14.dp)),
                 ) {
                     Box(
                         modifier = Modifier.size(44.dp).clickable {
                             mapView.getMapAsync { map -> map.easeCamera(CameraUpdateFactory.zoomIn()) }
                         },
                         contentAlignment = Alignment.Center,
-                    ) { Icon(Icons.Outlined.Add, contentDescription = "Zoom in", tint = TossText, modifier = Modifier.size(18.dp)) }
-                    Box(modifier = Modifier.width(44.dp).height(1.dp).background(TossLine))
+                    ) { Icon(Icons.Outlined.Add, contentDescription = "Zoom in", tint = Ids.colors.textPrimary, modifier = Modifier.size(18.dp)) }
+                    Box(modifier = Modifier.width(44.dp).height(1.dp).background(Ids.colors.divider))
                     Box(
                         modifier = Modifier.size(44.dp).clickable {
                             mapView.getMapAsync { map -> map.easeCamera(CameraUpdateFactory.zoomOut()) }
                         },
                         contentAlignment = Alignment.Center,
-                    ) { Icon(Icons.Outlined.Remove, contentDescription = "Zoom out", tint = TossText, modifier = Modifier.size(18.dp)) }
+                    ) { Icon(Icons.Outlined.Remove, contentDescription = "Zoom out", tint = Ids.colors.textPrimary, modifier = Modifier.size(18.dp)) }
                 }
                 Box(
                     modifier = Modifier
                         .size(46.dp)
                         .shadow(3.dp, CircleShape)
-                        .background(TossCard, CircleShape)
+                        .background(Ids.colors.surface, CircleShape)
                         .clip(CircleShape)
                         .clickable(enabled = !locating) { requestMyLocation() },
                     contentAlignment = Alignment.Center,
@@ -1118,7 +1129,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                     Icon(
                         Icons.Outlined.MyLocation,
                         contentDescription = "Find my real location",
-                        tint = if (locating) TossSecondary else TossBlue,
+                        tint = if (locating) Ids.colors.textSecondary else Ids.colors.brand,
                         modifier = Modifier.size(20.dp),
                     )
                 }
@@ -1149,7 +1160,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(TossCard, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
+                        .background(Ids.colors.surface, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
                 ) {
                     // Drag handle -- the real Naver Map/Kakao Map/iOS sheet convention
                     // signaling draggability at a glance, since nothing else about a
@@ -1160,7 +1171,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                             .padding(top = 10.dp, bottom = 6.dp)
                             .width(36.dp)
                             .height(4.dp)
-                            .background(TossSecondary.copy(alpha = 0.4f), RoundedCornerShape(2.dp)),
+                            .background(Ids.colors.textSecondary.copy(alpha = 0.4f), RoundedCornerShape(2.dp)),
                     )
 
                     Column(
@@ -1177,7 +1188,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                     place.displayName,
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                                     fontSize = 15.sp,
-                                    color = TossText,
+                                    color = Ids.colors.textPrimary,
                                     modifier = Modifier.weight(1f),
                                 )
                                 // Real "share this place" (2026-07-22) -- ported from
@@ -1200,7 +1211,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                 Text(
                                     if (isBookmarked(place)) "★" else "☆",
                                     fontSize = 20.sp,
-                                    color = if (isBookmarked(place)) androidx.compose.ui.graphics.Color(0xFFF5A623) else TossSecondary,
+                                    color = if (isBookmarked(place)) androidx.compose.ui.graphics.Color(0xFFF5A623) else Ids.colors.textSecondary,
                                     modifier = Modifier.clickable(enabled = !bookmarking) { toggleBookmark(place) },
                                 )
                             }
@@ -1226,7 +1237,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                         listOf("Home", "Work").forEach { preset ->
                                             val active = folderNameInput.equals(preset, ignoreCase = true)
-                                            Text(preset, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) androidx.compose.ui.graphics.Color.White else TossText, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) TossBlue else TossCardSoft).clickable { folderNameInput = preset }.padding(horizontal = 10.dp, vertical = 6.dp))
+                                            Text(preset, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textPrimary, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft).clickable { folderNameInput = preset }.padding(horizontal = 10.dp, vertical = 6.dp))
                                         }
                                     }
                                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -1237,7 +1248,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                                     .size(22.dp)
                                                     .background(color, CircleShape)
                                                     .then(
-                                                        if (folderColorInput == c) Modifier.border(2.dp, TossText, CircleShape) else Modifier,
+                                                        if (folderColorInput == c) Modifier.border(2.dp, Ids.colors.textPrimary, CircleShape) else Modifier,
                                                     )
                                                     .clickable { folderColorInput = c },
                                             )
@@ -1247,7 +1258,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                         Box(
                                             modifier = Modifier
                                                 .weight(1f)
-                                                .background(TossBlue, RoundedCornerShape(8.dp))
+                                                .background(Ids.colors.brand, RoundedCornerShape(8.dp))
                                                 .clickable(enabled = !bookmarking) { confirmSaveToFolder() }
                                                 .padding(vertical = 8.dp),
                                             contentAlignment = androidx.compose.ui.Alignment.Center,
@@ -1258,7 +1269,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                                 .clickable(enabled = !bookmarking) { savingToFolder = null }
                                                 .padding(vertical = 8.dp),
                                             contentAlignment = androidx.compose.ui.Alignment.Center,
-                                        ) { Text("Cancel", color = TossSecondary, fontSize = 13.sp) }
+                                        ) { Text("Cancel", color = Ids.colors.textSecondary, fontSize = 13.sp) }
                                     }
                                 }
                             }
@@ -1266,7 +1277,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                 Text(
                                     "This is an Itunda agent location. Confirm the cash is ready before showing your withdrawal code.",
                                     fontSize = 12.sp,
-                                    color = TossSecondary,
+                                    color = Ids.colors.textSecondary,
                                 )
                             }
                             // Real driving/walking mode toggle (2026-07-22) -- same real
@@ -1303,7 +1314,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                     Box(
                                         modifier = Modifier
                                             .weight(1f)
-                                            .background(if (active) TossBlue else androidx.compose.ui.graphics.Color(0xFFF2F4F6), RoundedCornerShape(8.dp))
+                                            .background(if (active) Ids.colors.brand else androidx.compose.ui.graphics.Color(0xFFF2F4F6), RoundedCornerShape(8.dp))
                                             .clickable(enabled = !routing) {
                                                 if (mode != travelMode) {
                                                     if (route != null) fetchDirections(mode) else travelMode = mode
@@ -1312,7 +1323,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                             .padding(vertical = 6.dp),
                                         contentAlignment = androidx.compose.ui.Alignment.Center,
                                     ) {
-                                        Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) androidx.compose.ui.graphics.Color.White else TossSecondary)
+                                        Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textSecondary)
                                     }
                                 }
                             }
@@ -1321,7 +1332,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                 Column {
                                     Text(
                                         "${if (travelMode == "DRIVING") "🚗" else "🚶"} ${"%.1f".format(currentRoute.route.distanceKm)} km · ${currentRoute.route.durationMinutes.toInt()} min by real road, via itunda's own self-hosted OSRM",
-                                        fontSize = 13.sp, color = TossSecondary,
+                                        fontSize = 13.sp, color = Ids.colors.textSecondary,
                                     )
                                     // Real alternative-route picker (2026-07-22) -- only
                                     // rendered when OSRM genuinely offered more than one
@@ -1335,7 +1346,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                                 Box(
                                                     modifier = Modifier
                                                         .weight(1f)
-                                                        .background(if (active) TossBlue else androidx.compose.ui.graphics.Color(0xFFF2F4F6), RoundedCornerShape(8.dp))
+                                                        .background(if (active) Ids.colors.brand else androidx.compose.ui.graphics.Color(0xFFF2F4F6), RoundedCornerShape(8.dp))
                                                         .clickable {
                                                             selectedRouteIndex = i
                                                             route = MapsDirectionsResponse(success = true, route = alt)
@@ -1346,7 +1357,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                                     Text(
                                                         "Route ${i + 1} · ${"%.1f".format(alt.distanceKm)}km · ${alt.durationMinutes.toInt()}min",
                                                         fontSize = 11.sp, fontWeight = FontWeight.Bold,
-                                                        color = if (active) androidx.compose.ui.graphics.Color.White else TossSecondary,
+                                                        color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textSecondary,
                                                     )
                                                 }
                                             }
@@ -1355,7 +1366,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                     if (currentRoute.route.steps.isNotEmpty()) {
                                         Text(
                                             if (showSteps) "Hide turn-by-turn directions" else "Show turn-by-turn directions (${currentRoute.route.steps.size} steps)",
-                                            fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TossBlue,
+                                            fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
                                             modifier = Modifier.padding(top = 4.dp).clickable { showSteps = !showSteps },
                                         )
                                     }
@@ -1364,7 +1375,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                             currentRoute.route.steps.forEachIndexed { i, step ->
                                                 Text(
                                                     "${i + 1}. ${step.instruction}" + if (step.distanceMeters >= 10) " (${step.distanceMeters.toInt()} m)" else "",
-                                                    fontSize = 12.sp, color = TossSecondary,
+                                                    fontSize = 12.sp, color = Ids.colors.textSecondary,
                                                 )
                                             }
                                         }
@@ -1373,7 +1384,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                             } else {
                                 Box(
                                     modifier = Modifier
-                                        .background(TossBlue, RoundedCornerShape(12.dp))
+                                        .background(Ids.colors.brand, RoundedCornerShape(12.dp))
                                         .clickable(enabled = !routing) { fetchDirections(travelMode) }
                                         .padding(horizontal = 16.dp, vertical = 10.dp),
                                 ) { Text(if (routing) "Finding real route…" else "Directions", color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp) }
@@ -1383,7 +1394,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                     "Back to cash-out codes",
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = TossBlue,
+                                    color = Ids.colors.brand,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable(onClick = onBack)
@@ -1402,19 +1413,19 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                         .padding(12.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
-                                    Text("Multi-stop trip", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TossText)
+                                    Text("Multi-stop trip", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
                                     Text(
                                         "Start: ${if (myLocation != null) "your current location" else "Kigali map center"}. Search and tap places in the order you want to visit them.",
                                         fontSize = 12.sp,
-                                        color = TossSecondary,
+                                        color = Ids.colors.textSecondary,
                                     )
                                     if (itineraryStops.isEmpty()) {
-                                        Text("Add 1–6 destinations to make a real road itinerary.", fontSize = 12.sp, color = TossSecondary)
+                                        Text("Add 1–6 destinations to make a real road itinerary.", fontSize = 12.sp, color = Ids.colors.textSecondary)
                                     } else {
                                         itineraryStops.forEachIndexed { index, stop ->
                                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                                                Text("${index + 2}. ${stop.displayName}", fontSize = 13.sp, color = TossText, modifier = Modifier.weight(1f))
-                                                Text("Remove", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TossBlue, modifier = Modifier.clickable {
+                                                Text("${index + 2}. ${stop.displayName}", fontSize = 13.sp, color = Ids.colors.textPrimary, modifier = Modifier.weight(1f))
+                                                Text("Remove", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand, modifier = Modifier.clickable {
                                                     itineraryStops = itineraryStops.filterIndexed { itemIndex, _ -> itemIndex != index }
                                                     route = null
                                                     showingItineraryRoute = false
@@ -1425,7 +1436,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .background(TossBlue, RoundedCornerShape(9.dp))
+                                            .background(Ids.colors.brand, RoundedCornerShape(9.dp))
                                             .clickable(enabled = itineraryStops.isNotEmpty() && !routing) { fetchItinerary() }
                                             .padding(vertical = 10.dp),
                                         contentAlignment = Alignment.Center,
@@ -1443,7 +1454,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                             Box(
                                                 modifier = Modifier
                                                     .weight(1f)
-                                                    .background(if (active) TossBlue else TossCardSoft, RoundedCornerShape(8.dp))
+                                                    .background(if (active) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(8.dp))
                                                     .clickable(enabled = !routing) {
                                                         if (mode != travelMode) {
                                                             if (showingItineraryRoute) fetchItinerary(mode) else travelMode = mode
@@ -1451,7 +1462,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                                     }
                                                     .padding(vertical = 6.dp),
                                                 contentAlignment = Alignment.Center,
-                                            ) { Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) androidx.compose.ui.graphics.Color.White else TossSecondary) }
+                                            ) { Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) androidx.compose.ui.graphics.Color.White else Ids.colors.textSecondary) }
                                         }
                                     }
                                     val itineraryRoute = route.takeIf { showingItineraryRoute }
@@ -1459,23 +1470,23 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                         Text(
                                             "${if (travelMode == "DRIVING") "🚗" else "🚶"} ${"%.1f".format(itineraryRoute.route.distanceKm)} km · ${itineraryRoute.route.durationMinutes.toInt()} min by real road",
                                             fontSize = 13.sp,
-                                            color = TossSecondary,
+                                            color = Ids.colors.textSecondary,
                                         )
-                                        Text("Legs", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TossText)
+                                        Text("Legs", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary)
                                         val legLabels = listOf(if (myLocation != null) "Your location" else "Kigali map center") + itineraryStops.map { it.displayName }
                                         legLabels.zipWithNext().forEachIndexed { index, (from, to) ->
-                                            Text("${index + 1}. $from → $to", fontSize = 12.sp, color = TossSecondary)
+                                            Text("${index + 1}. $from → $to", fontSize = 12.sp, color = Ids.colors.textSecondary)
                                         }
                                         if (itineraryRoute.route.steps.isNotEmpty()) {
                                             Text(
                                                 if (showSteps) "Hide turn-by-turn directions" else "Show turn-by-turn directions (${itineraryRoute.route.steps.size} steps)",
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = TossBlue,
+                                                color = Ids.colors.brand,
                                                 modifier = Modifier.clickable { showSteps = !showSteps },
                                             )
                                             if (showSteps) itineraryRoute.route.steps.forEachIndexed { index, step ->
-                                                Text("${index + 1}. ${step.instruction}", fontSize = 12.sp, color = TossSecondary)
+                                                Text("${index + 1}. ${step.instruction}", fontSize = 12.sp, color = Ids.colors.textSecondary)
                                             }
                                         }
                                     }
@@ -1490,25 +1501,25 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                             // has instead: the active category's real results (if any),
                             // a real merchant count, and real saved places -- honest
                             // functional content, not a fabricated curated feed.
-                            Text("Around you", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TossText)
+                            Text("Around you", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Ids.colors.textPrimary)
                             val home = bookmarks.firstOrNull { it.folderName.equals("Home", ignoreCase = true) }
                             val work = bookmarks.firstOrNull { it.folderName.equals("Work", ignoreCase = true) }
                             if (home != null || work != null) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    if (home != null) Text("⌂ Home", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TossText, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(TossCardSoft).clickable { selectAndRoute(PlaceSearchResultDto(home.displayName, home.latitude, home.longitude)) }.padding(horizontal = 12.dp, vertical = 8.dp))
-                                    if (work != null) Text("▣ Work", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TossText, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(TossCardSoft).clickable { selectAndRoute(PlaceSearchResultDto(work.displayName, work.latitude, work.longitude)) }.padding(horizontal = 12.dp, vertical = 8.dp))
+                                    if (home != null) Text("⌂ Home", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(Ids.colors.surfaceSoft).clickable { selectAndRoute(PlaceSearchResultDto(home.displayName, home.latitude, home.longitude)) }.padding(horizontal = 12.dp, vertical = 8.dp))
+                                    if (work != null) Text("▣ Work", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textPrimary, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(Ids.colors.surfaceSoft).clickable { selectAndRoute(PlaceSearchResultDto(work.displayName, work.latitude, work.longitude)) }.padding(horizontal = 12.dp, vertical = 8.dp))
                                 }
                             }
                             if (activeCategory != null && categoryResults != null) {
                                 val label = MAP_NEARBY_CATEGORIES.firstOrNull { it.id == activeCategory }?.label?.lowercase() ?: "places"
                                 if (categoryResults!!.isEmpty()) {
-                                    Text("No real matches found nearby for $label.", color = TossSecondary, fontSize = 13.sp)
+                                    Text("No real matches found nearby for $label.", color = Ids.colors.textSecondary, fontSize = 13.sp)
                                 } else {
                                     categoryResults!!.forEach { nearby ->
                                         Text(
                                             "${if (isAgentCashDiscovery && activeCategory == "ITUNDA_AGENT") "Itunda agent · " else ""}${nearby.displayName} · ${"%.1f".format(nearby.distanceKm)} km",
                                             fontSize = 13.sp,
-                                            color = TossText,
+                                            color = Ids.colors.textPrimary,
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .clickable {
@@ -1526,7 +1537,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                 Text(
                                     if (merchants.isEmpty()) "Search a real place or pick a category above to explore Rwanda."
                                     else "${merchants.size} real merchant${if (merchants.size == 1) "" else "s"} on the map. Search a place or pick a category above to explore.",
-                                    color = TossSecondary,
+                                    color = Ids.colors.textSecondary,
                                     fontSize = 13.sp,
                                 )
                             }
@@ -1535,11 +1546,11 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                 "★ Your saved places",
                                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                                 fontSize = 12.sp,
-                                color = TossSecondary,
+                                color = Ids.colors.textSecondary,
                                 modifier = Modifier.padding(top = 8.dp),
                             )
                             if (bookmarks.isEmpty()) {
-                                Text("No saved places yet -- tap ☆ on a place to save it.", fontSize = 12.sp, color = TossSecondary)
+                                Text("No saved places yet -- tap ☆ on a place to save it.", fontSize = 12.sp, color = Ids.colors.textSecondary)
                             } else {
                                 // Real "My Places" folder grouping (2026-07-22) --
                                 // ported from bank-mfe's own real grouping. groupBy
@@ -1551,7 +1562,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                 bookmarksByFolder.forEach { (folderName, folderBookmarks) ->
                                     if (bookmarksByFolder.size > 1) {
                                         Text(
-                                            folderName, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TossSecondary,
+                                            folderName, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textSecondary,
                                             modifier = Modifier.padding(top = 4.dp),
                                         )
                                     }
@@ -1578,9 +1589,9 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                                         CircleShape,
                                                     ),
                                             )
-                                            Text(bookmark.displayName, fontSize = 13.sp, color = TossText, modifier = Modifier.weight(1f))
+                                            Text(bookmark.displayName, fontSize = 13.sp, color = Ids.colors.textPrimary, modifier = Modifier.weight(1f))
                                             Text(
-                                                "Move", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TossSecondary,
+                                                "Move", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textSecondary,
                                                 modifier = Modifier.clickable {
                                                     if (movingBookmark?.let { it.latitude == bookmark.latitude && it.longitude == bookmark.longitude } == true) {
                                                         movingBookmark = null
@@ -1615,13 +1626,13 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                                             modifier = Modifier
                                                                 .size(22.dp)
                                                                 .background(color, CircleShape)
-                                                                .then(if (moveFolderColorInput == c) Modifier.border(2.dp, TossText, CircleShape) else Modifier)
+                                                                .then(if (moveFolderColorInput == c) Modifier.border(2.dp, Ids.colors.textPrimary, CircleShape) else Modifier)
                                                                 .clickable { moveFolderColorInput = c },
                                                         )
                                                     }
                                                 }
                                                 Text(
-                                                    "Save", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TossBlue,
+                                                    "Save", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
                                                     modifier = Modifier.clickable(enabled = moveFolderNameInput.isNotBlank()) {
                                                         val target = movingBookmark ?: return@clickable
                                                         coroutineScope.launch {

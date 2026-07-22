@@ -114,6 +114,7 @@ import androidx.compose.ui.unit.sp
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.feature.talk.impl.TalkTab
+import rw.itunda.feature.maps.impl.MapScreen
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsIconButton
