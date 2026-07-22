@@ -31,8 +31,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import rw.itunda.app.network.NetworkClient
-import rw.itunda.app.network.NotificationDto
+import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.NotificationDto
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.identity.NIDABiometricAuth
 
@@ -217,7 +217,7 @@ fun SettingsScreen(viewModel: MainViewModel, onBack: () -> Unit, onLogout: () ->
 // Real device management row (2026-07-21 port) -- mirrors bank-mfe's Devices tab row
 // exactly: name/label, trusted-vs-untrusted status, and a real "Remove" action.
 @Composable
-private fun DeviceRow(device: rw.itunda.app.network.TrustedDeviceDto, onRevoke: () -> Unit) {
+private fun DeviceRow(device: rw.itunda.core.network.TrustedDeviceDto, onRevoke: () -> Unit) {
     val isThisDevice = remember { device.deviceId == NetworkClient.currentDeviceStore().getOrCreateDeviceId() }
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),

@@ -45,7 +45,7 @@ import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
 import retrofit2.HttpException
-import rw.itunda.app.network.NetworkClient
+import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.designsystem.theme.Ids
 
 // Same override mechanism as MapScreen.kt's TILES_URL -- this used to hardcode the

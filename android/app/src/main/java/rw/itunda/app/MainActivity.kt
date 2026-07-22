@@ -10,9 +10,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import rw.itunda.app.network.NetworkClient
-import rw.itunda.app.network.SessionManager
-import rw.itunda.app.network.SessionState
+import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.SessionManager
+import rw.itunda.core.network.SessionState
 import rw.itunda.app.ui.AppLockScreen
 import rw.itunda.app.ui.ItundaAppScreen
 import rw.itunda.app.ui.LoginScreen

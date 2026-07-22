@@ -26,10 +26,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import rw.itunda.app.network.LinkAccountRequest
-import rw.itunda.app.network.LinkedAccountEntityDto
-import rw.itunda.app.network.NetworkClient
-import rw.itunda.app.network.OverviewResponse
+import rw.itunda.core.network.LinkAccountRequest
+import rw.itunda.core.network.LinkedAccountEntityDto
+import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.OverviewResponse
 
 // Real Toss-style unified account overview (2026-07-22) -- found fully built on the
 // backend (rw.itunda.overview) with zero client UI anywhere. Aggregates wallets,

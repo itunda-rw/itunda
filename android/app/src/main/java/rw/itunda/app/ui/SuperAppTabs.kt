@@ -99,72 +99,72 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.WebSocket
 import retrofit2.HttpException
-import rw.itunda.app.network.isDeviceNotVerifiedError
-import rw.itunda.app.network.AddGroupMemberRequest
-import rw.itunda.app.network.CreateSplitBillRequest
-import rw.itunda.app.network.SplitBillWithParticipants
-import rw.itunda.app.network.AddCommunityCommentRequest
-import rw.itunda.app.network.CommunityCategoryDto
-import rw.itunda.app.network.CommunityCommentWithAuthorDto
-import rw.itunda.app.network.CommunityPostDto
-import rw.itunda.app.network.ConversationSummaryDto
-import rw.itunda.app.network.CreateCommunityPostRequest
-import rw.itunda.app.network.CreateChatReportRequest
-import rw.itunda.app.network.CreateJobPostRequest
-import rw.itunda.app.network.CreateListingRequest
-import rw.itunda.app.network.CreatePropertyListingRequest
-import rw.itunda.app.network.JobCategoryDto
-import rw.itunda.app.network.JobPostDto
-import rw.itunda.app.network.PropertyListingDto
-import rw.itunda.app.network.PropertyTypeDto
-import rw.itunda.app.network.EatsOrderDto
-import rw.itunda.app.network.FavoriteListingDto
-import rw.itunda.app.network.FavoriteJobPostDto
-import rw.itunda.app.network.FavoritePropertyListingDto
-import rw.itunda.app.network.FavoriteRestaurantDto
-import rw.itunda.app.network.AddressSuggestionDto
-import rw.itunda.app.network.CreateGroupRequest
-import rw.itunda.app.network.CreateHoodReportRequest
-import rw.itunda.app.network.EatsRatingResponse
-import rw.itunda.app.network.GroupMemberDto
-import rw.itunda.app.network.GroupMessageDto
-import rw.itunda.app.network.GroupSummaryDto
-import rw.itunda.app.network.MessagingSocketPush
-import rw.itunda.app.network.SendGroupMessageRequest
-import rw.itunda.app.network.SubmitEatsReviewRequest
-import rw.itunda.app.network.EatsOrderItemRequest
-import rw.itunda.app.network.GiftDto
-import rw.itunda.app.network.SendGiftInConversationRequest
-import rw.itunda.app.network.ListingDto
-import rw.itunda.app.network.MakeOfferRequest
-import rw.itunda.app.network.SetNeighborhoodRequest
-import rw.itunda.app.network.SetConversationQuietRequest
-import rw.itunda.app.network.MerchantProductDto
-import rw.itunda.app.network.MessageDto
-import rw.itunda.app.network.NetworkClient
-import rw.itunda.app.network.OrderDto
-import rw.itunda.app.network.OrderItemDto
-import rw.itunda.app.network.OrderItemRequest
-import rw.itunda.app.network.PlaceEatsOrderRequest
-import rw.itunda.app.network.PlaceOrderRequest
-import rw.itunda.app.network.ProductRatingResponse
-import rw.itunda.app.network.ProductReviewDto
-import rw.itunda.app.network.SubmitProductReviewRequest
-import rw.itunda.app.network.MakePropertyOfferRequest
-import rw.itunda.app.network.PriceOfferDto
-import rw.itunda.app.network.PropertyPriceOfferDto
-import rw.itunda.app.network.RespondToPropertyOfferRequest
-import rw.itunda.app.network.ReactionGroupDto
-import rw.itunda.app.network.RespondToOfferRequest
-import rw.itunda.app.network.RiderDto
-import rw.itunda.app.network.SendMessageRequest
-import rw.itunda.app.network.SetRiderAvailabilityRequest
-import rw.itunda.app.network.ShoppingMerchantDto
-import rw.itunda.app.network.StartConversationRequest
-import rw.itunda.app.network.TokenStore
-import rw.itunda.app.network.ToggleReactionRequest
-import rw.itunda.app.network.TalkContactDto
-import rw.itunda.app.network.UpdateEatsOrderStatusRequest
+import rw.itunda.core.network.isDeviceNotVerifiedError
+import rw.itunda.core.network.AddGroupMemberRequest
+import rw.itunda.core.network.CreateSplitBillRequest
+import rw.itunda.core.network.SplitBillWithParticipants
+import rw.itunda.core.network.AddCommunityCommentRequest
+import rw.itunda.core.network.CommunityCategoryDto
+import rw.itunda.core.network.CommunityCommentWithAuthorDto
+import rw.itunda.core.network.CommunityPostDto
+import rw.itunda.core.network.ConversationSummaryDto
+import rw.itunda.core.network.CreateCommunityPostRequest
+import rw.itunda.core.network.CreateChatReportRequest
+import rw.itunda.core.network.CreateJobPostRequest
+import rw.itunda.core.network.CreateListingRequest
+import rw.itunda.core.network.CreatePropertyListingRequest
+import rw.itunda.core.network.JobCategoryDto
+import rw.itunda.core.network.JobPostDto
+import rw.itunda.core.network.PropertyListingDto
+import rw.itunda.core.network.PropertyTypeDto
+import rw.itunda.core.network.EatsOrderDto
+import rw.itunda.core.network.FavoriteListingDto
+import rw.itunda.core.network.FavoriteJobPostDto
+import rw.itunda.core.network.FavoritePropertyListingDto
+import rw.itunda.core.network.FavoriteRestaurantDto
+import rw.itunda.core.network.AddressSuggestionDto
+import rw.itunda.core.network.CreateGroupRequest
+import rw.itunda.core.network.CreateHoodReportRequest
+import rw.itunda.core.network.EatsRatingResponse
+import rw.itunda.core.network.GroupMemberDto
+import rw.itunda.core.network.GroupMessageDto
+import rw.itunda.core.network.GroupSummaryDto
+import rw.itunda.core.network.MessagingSocketPush
+import rw.itunda.core.network.SendGroupMessageRequest
+import rw.itunda.core.network.SubmitEatsReviewRequest
+import rw.itunda.core.network.EatsOrderItemRequest
+import rw.itunda.core.network.GiftDto
+import rw.itunda.core.network.SendGiftInConversationRequest
+import rw.itunda.core.network.ListingDto
+import rw.itunda.core.network.MakeOfferRequest
+import rw.itunda.core.network.SetNeighborhoodRequest
+import rw.itunda.core.network.SetConversationQuietRequest
+import rw.itunda.core.network.MerchantProductDto
+import rw.itunda.core.network.MessageDto
+import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.OrderDto
+import rw.itunda.core.network.OrderItemDto
+import rw.itunda.core.network.OrderItemRequest
+import rw.itunda.core.network.PlaceEatsOrderRequest
+import rw.itunda.core.network.PlaceOrderRequest
+import rw.itunda.core.network.ProductRatingResponse
+import rw.itunda.core.network.ProductReviewDto
+import rw.itunda.core.network.SubmitProductReviewRequest
+import rw.itunda.core.network.MakePropertyOfferRequest
+import rw.itunda.core.network.PriceOfferDto
+import rw.itunda.core.network.PropertyPriceOfferDto
+import rw.itunda.core.network.RespondToPropertyOfferRequest
+import rw.itunda.core.network.ReactionGroupDto
+import rw.itunda.core.network.RespondToOfferRequest
+import rw.itunda.core.network.RiderDto
+import rw.itunda.core.network.SendMessageRequest
+import rw.itunda.core.network.SetRiderAvailabilityRequest
+import rw.itunda.core.network.ShoppingMerchantDto
+import rw.itunda.core.network.StartConversationRequest
+import rw.itunda.core.network.TokenStore
+import rw.itunda.core.network.ToggleReactionRequest
+import rw.itunda.core.network.TalkContactDto
+import rw.itunda.core.network.UpdateEatsOrderStatusRequest
 import rw.itunda.core.designsystem.theme.Ids
 import java.io.IOException
 import java.time.Duration
@@ -2613,10 +2613,16 @@ private fun ListingCard(
                 }
             }
             val loc = myLocation
-            if (showRoute && loc != null && listing.latitude != null && listing.longitude != null) {
+            val listingLat = listing.latitude
+            val listingLng = listing.longitude
+            // Real cross-module smart-cast limitation (found 2026-07-22 while
+            // relocating ApiService.kt's DTOs into :core:network): Kotlin only
+            // smart-casts a nullable property after a null-check within the same
+            // module -- captured into local vals above instead.
+            if (showRoute && loc != null && listingLat != null && listingLng != null) {
                 RouteMiniMap(
                     fromLat = loc.first, fromLng = loc.second,
-                    toLat = listing.latitude, toLng = listing.longitude,
+                    toLat = listingLat, toLng = listingLng,
                     fromLabel = "You", toLabel = listing.title,
                 )
             }
@@ -3509,12 +3515,14 @@ private fun JobPostCard(post: JobPostDto, categoryLabel: String, isMine: Boolean
             if (!isMine && post.status == "OPEN") {
                 HoodReportAction(targetType = "JOB_POST", targetId = post.id)
             }
-            if (!isMine && post.status == "OPEN" && post.latitude != null && post.longitude != null) {
+            val postLat = post.latitude
+            val postLng = post.longitude
+            if (!isMine && post.status == "OPEN" && postLat != null && postLng != null) {
                 ListingActionButton(if (locating) "Finding your real location…" else if (showRoute) "Hide directions" else "🚗 Directions to this work", locating) {
                     if (showRoute) showRoute = false else if (myLocation != null) showRoute = true else requestLocation()
                 }
                 myLocation?.let { loc ->
-                    if (showRoute) RouteMiniMap(loc.first, loc.second, post.latitude, post.longitude, "You", post.title)
+                    if (showRoute) RouteMiniMap(loc.first, loc.second, postLat, postLng, "You", post.title)
                 }
             }
         }
@@ -3979,12 +3987,14 @@ private fun PropertyListingCard(
             if (!isMine && listing.status == "AVAILABLE") {
                 HoodReportAction(targetType = "PROPERTY_LISTING", targetId = listing.id)
             }
-            if (!isMine && listing.status == "AVAILABLE" && listing.latitude != null && listing.longitude != null) {
+            val propertyLat = listing.latitude
+            val propertyLng = listing.longitude
+            if (!isMine && listing.status == "AVAILABLE" && propertyLat != null && propertyLng != null) {
                 ListingActionButton(if (locating) "Finding your real location…" else if (showRoute) "Hide directions" else "🚗 Directions to this property", locating) {
                     if (showRoute) showRoute = false else if (myLocation != null) showRoute = true else requestLocation()
                 }
                 myLocation?.let { loc ->
-                    if (showRoute) RouteMiniMap(loc.first, loc.second, listing.latitude, listing.longitude, "You", listing.title)
+                    if (showRoute) RouteMiniMap(loc.first, loc.second, propertyLat, propertyLng, "You", listing.title)
                 }
             }
         }
@@ -4264,10 +4274,11 @@ private fun ProductImageThumb(imageUrl: String?, size: androidx.compose.ui.unit.
 // purely a rendering of numbers the server already validated.
 @Composable
 private fun ProductPriceRow(p: MerchantProductDto) {
-    if (p.originalPrice != null && p.discountPercent != null && p.discountPercent > 0) {
+    val discountPercent = p.discountPercent
+    if (p.originalPrice != null && discountPercent != null && discountPercent > 0) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "${p.discountPercent}%",
+                "$discountPercent%",
                 color = Ids.colors.danger,
                 fontWeight = FontWeight.Bold,
                 fontSize = 13.sp,
@@ -5621,8 +5632,11 @@ private fun EatsOrderConfirmationView(order: EatsOrderDto, onDone: () -> Unit) {
 @Composable
 private fun EatsOrderRow(order: EatsOrderDto, restaurant: ShoppingMerchantDto? = null, action: (@Composable () -> Unit)? = null) {
     var showRoute by remember { mutableStateOf(false) }
-    val canShowRoute = restaurant?.latitude != null && restaurant.longitude != null &&
-        order.deliveryLatitude != null && order.deliveryLongitude != null
+    val restaurantLat = restaurant?.latitude
+    val restaurantLng = restaurant?.longitude
+    val deliveryLat = order.deliveryLatitude
+    val deliveryLng = order.deliveryLongitude
+    val canShowRoute = restaurantLat != null && restaurantLng != null && deliveryLat != null && deliveryLng != null
     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
@@ -5649,12 +5663,10 @@ private fun EatsOrderRow(order: EatsOrderDto, restaurant: ShoppingMerchantDto? =
             if (canShowRoute) {
                 ListingActionButton(if (showRoute) "Hide route" else "🚗 View real delivery route", false) { showRoute = !showRoute }
             }
-            if (showRoute && restaurant?.latitude != null && restaurant.longitude != null &&
-                order.deliveryLatitude != null && order.deliveryLongitude != null
-            ) {
+            if (showRoute && restaurant != null && restaurantLat != null && restaurantLng != null && deliveryLat != null && deliveryLng != null) {
                 RouteMiniMap(
-                    fromLat = restaurant.latitude, fromLng = restaurant.longitude,
-                    toLat = order.deliveryLatitude, toLng = order.deliveryLongitude,
+                    fromLat = restaurantLat, fromLng = restaurantLng,
+                    toLat = deliveryLat, toLng = deliveryLng,
                     fromLabel = restaurant.businessName, toLabel = "Delivery address",
                 )
             }

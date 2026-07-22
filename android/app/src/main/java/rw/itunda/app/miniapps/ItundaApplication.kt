@@ -8,8 +8,8 @@ import com.facebook.react.ReactHost
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import rw.itunda.app.BuildConfig
-import rw.itunda.app.network.NetworkClient
-import rw.itunda.app.network.SessionManager
+import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.SessionManager
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -87,7 +87,7 @@ class ItundaApplication : Application(), ReactApplication {
         loadReactNative(this)
         // Real login/session flow (2026-07-11) -- must run before any screen can make
         // an authenticated request. See network/NetworkClient.kt/SessionManager.kt.
-        NetworkClient.init(this)
+        NetworkClient.init(this, rw.itunda.app.BuildConfig.API_BASE_URL)
         SessionManager.restoreSession()
     }
 }

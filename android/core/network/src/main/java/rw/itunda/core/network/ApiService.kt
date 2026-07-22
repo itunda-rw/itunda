@@ -1,4 +1,4 @@
-package rw.itunda.app.network
+package rw.itunda.core.network
 
 import android.content.Context
 import com.google.gson.Gson
@@ -18,7 +18,6 @@ import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
-import rw.itunda.app.BuildConfig
 
 // Mirrors services/backend/auth/src/main/kotlin/rw/itunda/auth/AuthDtos.kt exactly --
 // same field names/nullability, so Gson deserializes the real backend's JSON directly.
@@ -1627,11 +1626,15 @@ fun isKycRequiredError(e: retrofit2.HttpException): Boolean {
 // Network Client Singleton
 object NetworkClient {
     // Was hardcoded to "http://10.0.2.2:8080/" -- the emulator-only loopback alias, at
-    // the wrong port (services/backend listens on 4001). BuildConfig.API_BASE_URL
-    // defaults to the same emulator alias at the right port, overridable at build time
-    // for a physical device -- see app/build.gradle.kts's apiBaseUrl comment
-    // (2026-07-11 fix).
-    private const val BASE_URL = BuildConfig.API_BASE_URL
+    // the wrong port (services/backend listens on 4001). Real base URL is now passed
+    // in from :app's own real BuildConfig.API_BASE_URL via init() below (2026-07-22
+    // change, made while relocating this whole file from :app to :core:network so
+    // Feature modules can depend on it directly -- a Gradle library module can't read
+    // an application module's BuildConfig, and passing the value in at runtime avoids
+    // needing to relocate the buildConfigField/`-PapiBaseUrl=` override plumbing too).
+    // Overridable at build time for a physical device -- see app/build.gradle.kts's
+    // apiBaseUrl comment (2026-07-11 fix, still the actual place that's set).
+    private var BASE_URL: String = "http://10.0.2.2:4001/"
 
     // Must be initialized once, from ItundaApplication.onCreate(), before any request
     // fires -- see that file. Held nullable rather than lateinit so a request made
@@ -1643,7 +1646,8 @@ object NetworkClient {
     // as tokenStore above.
     private var deviceStore: DeviceStore? = null
 
-    fun init(context: Context) {
+    fun init(context: Context, baseUrl: String) {
+        BASE_URL = baseUrl
         tokenStore = TokenStore(context.applicationContext)
         deviceStore = DeviceStore(context.applicationContext)
     }

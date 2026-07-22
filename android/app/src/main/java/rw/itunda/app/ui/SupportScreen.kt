@@ -26,10 +26,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import rw.itunda.app.network.CreateSupportTicketRequest
-import rw.itunda.app.network.NetworkClient
-import rw.itunda.app.network.SupportTicketDto
-import rw.itunda.app.network.TransactionDto
+import rw.itunda.core.network.CreateSupportTicketRequest
+import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.SupportTicketDto
+import rw.itunda.core.network.TransactionDto
 
 // Real customer support tickets (2026-07-22) -- found fully built on the backend
 // (rw.itunda.support) with zero client UI anywhere; this app's "Support" section was

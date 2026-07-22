@@ -112,20 +112,20 @@ import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
 import kotlin.math.roundToInt
 import retrofit2.HttpException
-import rw.itunda.app.network.AddMapBookmarkRequest
-import rw.itunda.app.network.MAP_NEARBY_CATEGORIES
-import rw.itunda.app.network.MapBookmarkDto
-import rw.itunda.app.network.MoveMapBookmarkRequest
-import rw.itunda.app.network.MapsDirectionsResponse
-import rw.itunda.app.network.ItineraryDirectionsRequest
-import rw.itunda.app.network.ItineraryWaypointRequest
-import rw.itunda.app.network.NearbyPlaceDto
+import rw.itunda.core.network.AddMapBookmarkRequest
+import rw.itunda.core.network.MAP_NEARBY_CATEGORIES
+import rw.itunda.core.network.MapBookmarkDto
+import rw.itunda.core.network.MoveMapBookmarkRequest
+import rw.itunda.core.network.MapsDirectionsResponse
+import rw.itunda.core.network.ItineraryDirectionsRequest
+import rw.itunda.core.network.ItineraryWaypointRequest
+import rw.itunda.core.network.NearbyPlaceDto
 import rw.itunda.core.designsystem.theme.Ids
-import rw.itunda.app.network.NetworkClient
-import rw.itunda.app.network.PlaceSearchResultDto
-import rw.itunda.app.network.RecentMapSearchesStore
-import rw.itunda.app.network.RouteResultDto
-import rw.itunda.app.network.ShoppingMerchantDto
+import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.PlaceSearchResultDto
+import rw.itunda.core.network.RecentMapSearchesStore
+import rw.itunda.core.network.RouteResultDto
+import rw.itunda.core.network.ShoppingMerchantDto
 
 // Real itunda-hosted Rwanda coordinates -- Kigali, same default center every other real
 // coordinate fixture in this codebase (backend tests, bank-mfe's MapView.tsx) uses.

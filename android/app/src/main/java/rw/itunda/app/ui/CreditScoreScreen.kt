@@ -20,8 +20,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import rw.itunda.app.network.CreditScoreResponse
-import rw.itunda.app.network.NetworkClient
+import rw.itunda.core.network.CreditScoreResponse
+import rw.itunda.core.network.NetworkClient
 
 // Real "alternative data" credit score (2026-07-22) -- found fully built on the
 // backend (rw.itunda.creditscore / :core's CreditScoreService, already load-bearing

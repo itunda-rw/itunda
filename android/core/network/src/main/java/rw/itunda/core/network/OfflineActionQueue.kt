@@ -1,4 +1,4 @@
-package rw.itunda.app.network
+package rw.itunda.core.network
 
 import android.content.Context
 import android.content.SharedPreferences

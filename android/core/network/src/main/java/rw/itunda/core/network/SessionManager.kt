@@ -1,4 +1,4 @@
-package rw.itunda.app.network
+package rw.itunda.core.network
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

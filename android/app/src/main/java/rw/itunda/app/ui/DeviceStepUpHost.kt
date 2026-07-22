@@ -8,8 +8,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
-import rw.itunda.app.network.NetworkClient
-import rw.itunda.app.network.VerifyDeviceRequest
+import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.VerifyDeviceRequest
 import java.io.IOException
 
 /**

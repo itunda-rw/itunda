@@ -27,10 +27,10 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import rw.itunda.app.network.AgentWithdrawalAuthorizationDto
-import rw.itunda.app.network.CancelAgentWithdrawalAuthorizationRequest
-import rw.itunda.app.network.CreateAgentWithdrawalAuthorizationRequest
-import rw.itunda.app.network.NetworkClient
+import rw.itunda.core.network.AgentWithdrawalAuthorizationDto
+import rw.itunda.core.network.CancelAgentWithdrawalAuthorizationRequest
+import rw.itunda.core.network.CreateAgentWithdrawalAuthorizationRequest
+import rw.itunda.core.network.NetworkClient
 import java.math.BigDecimal
 import java.util.UUID
 

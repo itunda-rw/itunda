@@ -26,9 +26,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import rw.itunda.app.network.KycSubmissionDto
-import rw.itunda.app.network.NetworkClient
-import rw.itunda.app.network.SubmitIdentityRequest
+import rw.itunda.core.network.KycSubmissionDto
+import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.SubmitIdentityRequest
 
 // Real KYC identity submission (2026-07-22) -- found fully built on the backend
 // (rw.itunda.identity) with zero client UI anywhere. documentReference is a real,

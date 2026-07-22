@@ -26,11 +26,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import rw.itunda.app.network.ApplyLoanRequest
-import rw.itunda.app.network.LoanAccountDto
-import rw.itunda.app.network.LoanOfferDto
-import rw.itunda.app.network.NetworkClient
-import rw.itunda.app.network.RepayLoanRequest
+import rw.itunda.core.network.ApplyLoanRequest
+import rw.itunda.core.network.LoanAccountDto
+import rw.itunda.core.network.LoanOfferDto
+import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.RepayLoanRequest
 import java.math.BigDecimal
 import java.util.UUID
 

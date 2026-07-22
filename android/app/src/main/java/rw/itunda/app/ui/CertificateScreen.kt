@@ -23,9 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
-import rw.itunda.app.network.CertificateDto
-import rw.itunda.app.network.NetworkClient
-import rw.itunda.app.network.isKycRequiredError
+import rw.itunda.core.network.CertificateDto
+import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.isKycRequiredError
 
 // Real digital identity/signing certificate (2026-07-22 port) -- this feature was
 // already real and live-verified on bank-mfe (web) since 2026-07-17, but a full

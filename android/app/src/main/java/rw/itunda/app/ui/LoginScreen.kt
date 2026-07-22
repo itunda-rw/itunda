@@ -25,8 +25,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import rw.itunda.app.network.AuthResult
-import rw.itunda.app.network.SessionManager
+import rw.itunda.core.network.AuthResult
+import rw.itunda.core.network.SessionManager
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsTheme

@@ -11,9 +11,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import rw.itunda.app.MainActivity
-import rw.itunda.app.network.AuthResult
-import rw.itunda.app.network.PartnerMiniAppDto
-import rw.itunda.app.network.SessionManager
+import rw.itunda.core.network.AuthResult
+import rw.itunda.core.network.PartnerMiniAppDto
+import rw.itunda.core.network.SessionManager
 
 /**
  * Real, live, end-to-end verification of the Partner SDK mobile runtime loader

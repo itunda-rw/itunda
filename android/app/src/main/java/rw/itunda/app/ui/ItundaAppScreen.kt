@@ -266,9 +266,9 @@ fun ItundaAppScreen(
         // Real saved-contacts list (found 2026-07-22 fully built on the backend with
         // zero client UI anywhere) -- fetched when the recipient screen opens rather
         // than eagerly on app launch, since it's only ever needed here.
-        var contacts by remember { mutableStateOf<List<rw.itunda.app.network.ContactDto>>(emptyList()) }
+        var contacts by remember { mutableStateOf<List<rw.itunda.core.network.ContactDto>>(emptyList()) }
         suspend fun loadContacts() {
-            try { contacts = rw.itunda.app.network.NetworkClient.apiService.getContacts().contacts } catch (_: Exception) { }
+            try { contacts = rw.itunda.core.network.NetworkClient.apiService.getContacts().contacts } catch (_: Exception) { }
         }
         LaunchedEffect(step is TransferStep.Recipient) {
             if (step is TransferStep.Recipient) loadContacts()
@@ -293,8 +293,8 @@ fun ItundaAppScreen(
                     onAddContact = { name, phoneNumber ->
                         coroutineScope.launch {
                             try {
-                                rw.itunda.app.network.NetworkClient.apiService.addContact(
-                                    rw.itunda.app.network.AddContactRequest(name, phoneNumber = phoneNumber),
+                                rw.itunda.core.network.NetworkClient.apiService.addContact(
+                                    rw.itunda.core.network.AddContactRequest(name, phoneNumber = phoneNumber),
                                 )
                                 loadContacts()
                             } catch (_: Exception) {
@@ -559,7 +559,7 @@ fun ItundaAppScreen(
             SettingsScreen(
                 viewModel = viewModel,
                 onBack = { showSettings = false },
-                onLogout = { coroutineScope.launch { rw.itunda.app.network.SessionManager.logout() } },
+                onLogout = { coroutineScope.launch { rw.itunda.core.network.SessionManager.logout() } },
             )
             return@IdsTheme
         }
@@ -868,7 +868,7 @@ private fun HomeTab(
 }
 
 @Composable
-private fun DiscoverSection(items: List<rw.itunda.app.network.DiscoverItem>) {
+private fun DiscoverSection(items: List<rw.itunda.core.network.DiscoverItem>) {
     Column {
         Text("Discover", color = TossText, fontSize = 19.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 6.dp))
         items.forEach { discoverItem ->
@@ -1121,7 +1121,7 @@ private fun MenuScreen(
     onOpenIdentity: () -> Unit = {},
     onClaimInterest: () -> Unit = {},
     onSwitchToTalk: () -> Unit = {},
-    partnerMiniApps: List<rw.itunda.app.network.PartnerMiniAppDto>,
+    partnerMiniApps: List<rw.itunda.core.network.PartnerMiniAppDto>,
 ) {
     androidx.activity.compose.BackHandler(onBack = onBack)
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -1362,8 +1362,8 @@ private fun MyTab(
     onSwitchToShop: () -> Unit = {},
     onSwitchToHood: () -> Unit = {},
 ) {
-    var shopOrders by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<List<rw.itunda.app.network.OrderDto>>(emptyList()) }
-    var eatsOrders by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<List<rw.itunda.app.network.EatsOrderDto>>(emptyList()) }
+    var shopOrders by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<List<rw.itunda.core.network.OrderDto>>(emptyList()) }
+    var eatsOrders by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<List<rw.itunda.core.network.EatsOrderDto>>(emptyList()) }
     var favoriteListingsCount by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0) }
     var favoriteJobPostsCount by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0) }
     var favoritePropertyListingsCount by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0) }
@@ -1375,15 +1375,15 @@ private fun MyTab(
     LaunchedEffect(Unit) {
         // Each fetch independent and best-effort -- one product's API hiccup must
         // never blank the rest of this real personal-activity summary.
-        try { shopOrders = rw.itunda.app.network.NetworkClient.apiService.getMyOrders().orders } catch (_: Exception) { }
-        try { eatsOrders = rw.itunda.app.network.NetworkClient.apiService.getMyEatsOrders().orders } catch (_: Exception) { }
-        try { favoriteListingsCount = rw.itunda.app.network.NetworkClient.apiService.getMyFavoriteListings().favorites.size } catch (_: Exception) { }
-        try { favoriteJobPostsCount = rw.itunda.app.network.NetworkClient.apiService.getMyFavoriteJobPosts().favorites.size } catch (_: Exception) { }
-        try { favoritePropertyListingsCount = rw.itunda.app.network.NetworkClient.apiService.getMyFavoritePropertyListings().favorites.size } catch (_: Exception) { }
-        try { favoriteRestaurantsCount = rw.itunda.app.network.NetworkClient.apiService.getMyFavoriteRestaurants().favorites.size } catch (_: Exception) { }
-        try { myListingsCount = rw.itunda.app.network.NetworkClient.apiService.getMyListings().listings.size } catch (_: Exception) { }
-        try { myJobPostsCount = rw.itunda.app.network.NetworkClient.apiService.getMyJobPosts().posts.size } catch (_: Exception) { }
-        try { myPropertyListingsCount = rw.itunda.app.network.NetworkClient.apiService.getMyPropertyListings().listings.size } catch (_: Exception) { }
+        try { shopOrders = rw.itunda.core.network.NetworkClient.apiService.getMyOrders().orders } catch (_: Exception) { }
+        try { eatsOrders = rw.itunda.core.network.NetworkClient.apiService.getMyEatsOrders().orders } catch (_: Exception) { }
+        try { favoriteListingsCount = rw.itunda.core.network.NetworkClient.apiService.getMyFavoriteListings().favorites.size } catch (_: Exception) { }
+        try { favoriteJobPostsCount = rw.itunda.core.network.NetworkClient.apiService.getMyFavoriteJobPosts().favorites.size } catch (_: Exception) { }
+        try { favoritePropertyListingsCount = rw.itunda.core.network.NetworkClient.apiService.getMyFavoritePropertyListings().favorites.size } catch (_: Exception) { }
+        try { favoriteRestaurantsCount = rw.itunda.core.network.NetworkClient.apiService.getMyFavoriteRestaurants().favorites.size } catch (_: Exception) { }
+        try { myListingsCount = rw.itunda.core.network.NetworkClient.apiService.getMyListings().listings.size } catch (_: Exception) { }
+        try { myJobPostsCount = rw.itunda.core.network.NetworkClient.apiService.getMyJobPosts().posts.size } catch (_: Exception) { }
+        try { myPropertyListingsCount = rw.itunda.core.network.NetworkClient.apiService.getMyPropertyListings().listings.size } catch (_: Exception) { }
     }
 
     LazyColumn(

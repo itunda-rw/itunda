@@ -10,7 +10,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import rw.itunda.app.network.PartnerMiniAppDto
+import rw.itunda.core.network.PartnerMiniAppDto
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit

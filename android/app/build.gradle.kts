@@ -201,6 +201,10 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":core:risk"))
     implementation(project(":core:identity"))
+    // Real shared networking layer (2026-07-22) -- NetworkClient/ApiService/
+    // TokenStore/etc. relocated here from :app itself, see :core:network's own
+    // build.gradle.kts doc comment for why.
+    implementation(project(":core:network"))
     implementation(project(":features:payments:impl"))
     // features:banking:impl deliberately has no dependency here (2026-07-11): its
     // real screens (BankScreen.kt, MySpendingScreen.kt) were intentionally deleted

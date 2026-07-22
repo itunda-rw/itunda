@@ -19,7 +19,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import rw.itunda.app.BuildConfig
-import rw.itunda.app.network.NetworkClient
+import rw.itunda.core.network.NetworkClient
 import java.io.IOException
 import java.util.UUID
 import java.util.concurrent.TimeUnit

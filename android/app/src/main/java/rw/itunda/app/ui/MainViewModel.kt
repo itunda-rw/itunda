@@ -6,18 +6,18 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import rw.itunda.app.network.Wallet
-import rw.itunda.app.network.SavingsGoal
-import rw.itunda.app.network.InterestJar
-import rw.itunda.app.network.DiscoverItem
-import rw.itunda.app.network.NetworkClient
-import rw.itunda.app.network.SendDirectP2pRequest
-import rw.itunda.app.network.DepositRequest
-import rw.itunda.app.network.BatchActionRequest
-import rw.itunda.app.network.BatchRequest
-import rw.itunda.app.network.ConnectivityObserver
-import rw.itunda.app.network.OfflineActionQueue
-import rw.itunda.app.network.SessionManager
+import rw.itunda.core.network.Wallet
+import rw.itunda.core.network.SavingsGoal
+import rw.itunda.core.network.InterestJar
+import rw.itunda.core.network.DiscoverItem
+import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.SendDirectP2pRequest
+import rw.itunda.core.network.DepositRequest
+import rw.itunda.core.network.BatchActionRequest
+import rw.itunda.core.network.BatchRequest
+import rw.itunda.core.network.ConnectivityObserver
+import rw.itunda.core.network.OfflineActionQueue
+import rw.itunda.core.network.SessionManager
 import java.io.IOException
 import java.math.BigDecimal
 import java.util.UUID
@@ -60,14 +60,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _discoverItems = MutableStateFlow<List<DiscoverItem>>(emptyList())
     val discoverItems: StateFlow<List<DiscoverItem>> = _discoverItems
 
-    private val _transactions = MutableStateFlow<List<rw.itunda.app.network.TransactionDto>>(emptyList())
-    val transactions: StateFlow<List<rw.itunda.app.network.TransactionDto>> = _transactions
+    private val _transactions = MutableStateFlow<List<rw.itunda.core.network.TransactionDto>>(emptyList())
+    val transactions: StateFlow<List<rw.itunda.core.network.TransactionDto>> = _transactions
 
-    private val _profile = MutableStateFlow<rw.itunda.app.network.PublicUser?>(null)
-    val profile: StateFlow<rw.itunda.app.network.PublicUser?> = _profile
+    private val _profile = MutableStateFlow<rw.itunda.core.network.PublicUser?>(null)
+    val profile: StateFlow<rw.itunda.core.network.PublicUser?> = _profile
 
-    private val _notifications = MutableStateFlow<List<rw.itunda.app.network.NotificationDto>>(emptyList())
-    val notifications: StateFlow<List<rw.itunda.app.network.NotificationDto>> = _notifications
+    private val _notifications = MutableStateFlow<List<rw.itunda.core.network.NotificationDto>>(emptyList())
+    val notifications: StateFlow<List<rw.itunda.core.network.NotificationDto>> = _notifications
 
     private val _unreadNotificationCount = MutableStateFlow(0)
     val unreadNotificationCount: StateFlow<Int> = _unreadNotificationCount
@@ -75,8 +75,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // Real Partner SDK catalog (2026-07-17) -- approved third-party mini-apps a user can
     // actually tap into, closing the mobile half of docs/TOSS_PARITY_MATRIX.md's Partner
     // SDK row. See miniapps/PartnerMiniAppLoader.kt for the download/render mechanism.
-    private val _partnerMiniApps = MutableStateFlow<List<rw.itunda.app.network.PartnerMiniAppDto>>(emptyList())
-    val partnerMiniApps: StateFlow<List<rw.itunda.app.network.PartnerMiniAppDto>> = _partnerMiniApps
+    private val _partnerMiniApps = MutableStateFlow<List<rw.itunda.core.network.PartnerMiniAppDto>>(emptyList())
+    val partnerMiniApps: StateFlow<List<rw.itunda.core.network.PartnerMiniAppDto>> = _partnerMiniApps
 
     // Distinguishes "showing real data" from "backend unreachable, showing offline
     // placeholder" -- the UI should be honest about which one it's rendering rather
@@ -354,7 +354,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // every money-moving call site can reuse it, not just this ViewModel's original
     // three (sendTransfer/depositToSavingsGoal/claimInterest).
     private fun isDeviceNotVerified(e: retrofit2.HttpException): Boolean =
-        rw.itunda.app.network.isDeviceNotVerifiedError(e)
+        rw.itunda.core.network.isDeviceNotVerifiedError(e)
 
     // Real step-up re-verification (2026-07-21 port) -- re-proves password ownership
     // on THIS device (resolved server-side from the caller's own JWT deviceId claim)
@@ -363,7 +363,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // this returns true.
     suspend fun verifyDevice(password: String): MoneyActionResult {
         return try {
-            NetworkClient.authApi.verifyDevice(rw.itunda.app.network.VerifyDeviceRequest(password))
+            NetworkClient.authApi.verifyDevice(rw.itunda.core.network.VerifyDeviceRequest(password))
             MoneyActionResult.Success("Device verified")
         } catch (e: retrofit2.HttpException) {
             val message = if (e.code() == 400) "Incorrect password." else "Something went wrong. Please try again."
@@ -373,8 +373,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private val _devices = MutableStateFlow<List<rw.itunda.app.network.TrustedDeviceDto>>(emptyList())
-    val devices: StateFlow<List<rw.itunda.app.network.TrustedDeviceDto>> = _devices
+    private val _devices = MutableStateFlow<List<rw.itunda.core.network.TrustedDeviceDto>>(emptyList())
+    val devices: StateFlow<List<rw.itunda.core.network.TrustedDeviceDto>> = _devices
 
     // Real self-service device management (2026-07-21 port) -- backs a Devices list
     // in Settings, same real control Toss's own security settings page offers.
