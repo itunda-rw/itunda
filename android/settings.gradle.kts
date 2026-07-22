@@ -145,6 +145,10 @@ include(":features:jobs:api")
 include(":features:jobs:impl")
 include(":features:jobs:testing")
 
+include(":features:property:api")
+include(":features:property:impl")
+include(":features:property:testing")
+
 include(":features:bills:api")
 include(":features:bills:impl")
 include(":features:bills:testing")
