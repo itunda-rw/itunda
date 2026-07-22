@@ -321,6 +321,33 @@ class GroupMessagingServiceTest : BehaviorSpec({
             }
         }
 
+        When("the sender deletes a group message") {
+            val groupMessage = GroupMessage(id = "group_message_delete", groupConversationId = "group_1", senderId = "user_a", body = "remove this")
+            every { groupMessageRepository.findById("group_message_delete") } returns Optional.of(groupMessage)
+            every { groupConversationRepository.findById("group_1") } returns Optional.of(group)
+            every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "user_a") } returns members[0]
+            every { groupMessageRepository.save(any()) } answers { firstArg() }
+
+            service.deleteMessage("user_a", "group_1", "group_message_delete")
+
+            Then("it preserves the row but marks it deleted") {
+                (groupMessage.deletedAt != null) shouldBe true
+                groupMessage.deletedByUserId shouldBe "user_a"
+            }
+        }
+
+        When("a different group member tries to delete someone else's message") {
+            val groupMessage = GroupMessage(id = "group_message_owner", groupConversationId = "group_1", senderId = "user_b", body = "keep")
+            every { groupMessageRepository.findById("group_message_owner") } returns Optional.of(groupMessage)
+            every { groupConversationRepository.findById("group_1") } returns Optional.of(group)
+            every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "user_a") } returns members[0]
+
+            Then("it rejects the ownership violation") {
+                try { service.deleteMessage("user_a", "group_1", "group_message_owner"); error("expected GroupMessageDeleteForbiddenException") }
+                catch (_: GroupMessageDeleteForbiddenException) { }
+            }
+        }
+
         When("a non-member tries to react to a group message") {
             val groupMessage = GroupMessage(id = "group_message_1", groupConversationId = "group_1", senderId = "user_b", body = "hi all")
             every { groupMessageRepository.findById("group_message_1") } returns Optional.of(groupMessage)
