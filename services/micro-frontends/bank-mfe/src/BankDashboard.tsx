@@ -70,7 +70,7 @@ import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
 import LiveRiderMap from './LiveRiderMap';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'MAP' | 'DEVICES' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'IDENTITY' | 'SUPPORT';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'MAP' | 'DEVICES' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
@@ -990,6 +990,78 @@ function SupportView() {
             <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Filed: {t.createdAt}</p>
           </div>
         ))}
+    </div>
+  );
+}
+
+// Real Naver-style "My" personal hub (2026-07-22), at the user's direct request:
+// "My should be like Naver style My since we have shopping and eats and other
+// products where users need to easily get track of their orders, reservation,
+// favorites." bank-mfe's own nav is a flat always-visible tab bar (not a mobile
+// bottom-nav-plus-hamburger-menu), so the Android/iOS "split My from a KakaoPay-style
+// 전체 menu" half of this redesign doesn't map here -- every tab is already directly
+// reachable. This tab is purely additive: a real cross-product activity summary,
+// reusing each product tab's own existing fetch functions rather than duplicating
+// their per-product order/favorite views.
+function MyView() {
+  const [shopOrders, setShopOrders] = useState<CommerceOrder[]>([]);
+  const [eatsOrders, setEatsOrders] = useState<EatsOrder[]>([]);
+  const [favoriteListingsCount, setFavoriteListingsCount] = useState(0);
+  const [favoriteJobPostsCount, setFavoriteJobPostsCount] = useState(0);
+  const [favoritePropertyListingsCount, setFavoritePropertyListingsCount] = useState(0);
+  const [favoriteRestaurantsCount, setFavoriteRestaurantsCount] = useState(0);
+  const [myListingsCount, setMyListingsCount] = useState(0);
+  const [myJobPostsCount, setMyJobPostsCount] = useState(0);
+  const [myPropertyListingsCount, setMyPropertyListingsCount] = useState(0);
+
+  useEffect(() => {
+    // Each fetch independent and best-effort -- one product's API hiccup must never
+    // blank the rest of this real personal-activity summary.
+    fetchMyOrders().then(setShopOrders).catch(() => {});
+    fetchMyEatsOrders().then(setEatsOrders).catch(() => {});
+    fetchMyFavoriteListings().then((r) => setFavoriteListingsCount(r.length)).catch(() => {});
+    fetchMyFavoriteJobPosts().then((r) => setFavoriteJobPostsCount(r.length)).catch(() => {});
+    fetchMyFavoritePropertyListings().then((r) => setFavoritePropertyListingsCount(r.length)).catch(() => {});
+    fetchMyFavoriteRestaurants().then((r) => setFavoriteRestaurantsCount(r.length)).catch(() => {});
+    fetchMyListings().then((r) => setMyListingsCount(r.length)).catch(() => {});
+    fetchMyJobPosts().then((r) => setMyJobPostsCount(r.length)).catch(() => {});
+    fetchMyPropertyListings().then((r) => setMyPropertyListingsCount(r.length)).catch(() => {});
+  }, []);
+
+  const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: '13px' };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {(shopOrders.length > 0 || eatsOrders.length > 0) && (
+        <div className="toss-card" style={{ padding: '16px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>My orders</h3>
+          {shopOrders.slice(0, 3).map((order) => (
+            <div key={order.id} style={rowStyle}>
+              <span>Shop order · {order.status}</span>
+              <span>{order.totalAmount.toLocaleString()} RWF</span>
+            </div>
+          ))}
+          {eatsOrders.slice(0, 3).map((order) => (
+            <div key={order.id} style={rowStyle}>
+              <span>Eats order · {order.status}</span>
+              <span>{order.totalAmount.toLocaleString()} RWF</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="toss-card" style={{ padding: '16px' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>My favorites</h3>
+        <div style={rowStyle}><span>Marketplace wishlist</span><span>{favoriteListingsCount}</span></div>
+        <div style={rowStyle}><span>Jobs wishlist</span><span>{favoriteJobPostsCount}</span></div>
+        <div style={rowStyle}><span>Property wishlist</span><span>{favoritePropertyListingsCount}</span></div>
+        <div style={rowStyle}><span>Restaurant favorites</span><span>{favoriteRestaurantsCount}</span></div>
+      </div>
+      <div className="toss-card" style={{ padding: '16px' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>My listings</h3>
+        <div style={rowStyle}><span>Marketplace</span><span>{myListingsCount}</span></div>
+        <div style={rowStyle}><span>Jobs posted</span><span>{myJobPostsCount}</span></div>
+        <div style={rowStyle}><span>Property listed</span><span>{myPropertyListingsCount}</span></div>
+      </div>
     </div>
   );
 }
@@ -7616,6 +7688,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
 
   const TABS: { id: Tab; label: string }[] = [
     { id: 'HOME', label: 'Home' },
+    { id: 'MY', label: 'My' },
     { id: 'SHOP', label: 'Shop' },
     { id: 'EATS', label: 'Eats' },
     { id: 'STOCKS', label: 'Invest' },
@@ -7670,6 +7743,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       </div>
 
       {tab === 'HOME' && <HomeView />}
+      {tab === 'MY' && <MyView />}
       {tab === 'SHOP' && <ShopView />}
       {tab === 'EATS' && <EatsView />}
       {tab === 'STOCKS' && <StocksView />}
