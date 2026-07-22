@@ -332,6 +332,8 @@ data class MessageDto(
 
 data class StartConversationRequest(val phoneNumber: String? = null, val otherUserId: String? = null)
 data class SendMessageRequest(val body: String)
+data class TalkContactDto(val userId: String, val name: String)
+data class TalkContactsResponse(val success: Boolean, val contacts: List<TalkContactDto>)
 data class CreateChatReportRequest(val messageId: String, val reason: String)
 data class ToggleReactionRequest(val emoji: String)
 
@@ -859,6 +861,9 @@ interface ApiService {
 
     @GET("api/v1/messages/conversations")
     suspend fun getConversations(): ConversationsResponse
+
+    @GET("api/v1/messages/contacts")
+    suspend fun getTalkContacts(): TalkContactsResponse
 
     @GET("api/v1/messages/conversations/{id}/messages")
     suspend fun getMessages(@Path("id") conversationId: String): MessagesResponse

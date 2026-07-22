@@ -583,6 +583,8 @@ struct StartConversationRequest: Encodable {
 }
 
 struct SendMessageRequest: Encodable { let body: String }
+struct TalkContactDto: Decodable, Identifiable { let userId: String; let name: String; var id: String { userId } }
+struct TalkContactsResponse: Decodable { let success: Bool; let contacts: [TalkContactDto] }
 struct CreateChatReportRequest: Encodable { let messageId: String; let reason: String }
 struct EmptyRequest: Encodable {}
 struct ToggleReactionRequest: Encodable { let emoji: String }
@@ -1150,6 +1152,8 @@ extension NetworkClient {
     }
 
     func getConversations() async throws -> ConversationsResponse { try await get("api/v1/messages/conversations") }
+
+    func getTalkContacts() async throws -> TalkContactsResponse { try await get("api/v1/messages/contacts") }
 
     func getMessages(conversationId: String) async throws -> MessagesResponse {
         try await get("api/v1/messages/conversations/\(conversationId)/messages")
