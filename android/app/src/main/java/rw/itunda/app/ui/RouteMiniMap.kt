@@ -48,7 +48,12 @@ import retrofit2.HttpException
 import rw.itunda.app.network.NetworkClient
 import rw.itunda.core.designsystem.theme.Ids
 
-private const val ROUTE_MINI_TILES_URL = "http://192.168.252.3:8090/rwanda/{z}/{x}/{y}.mvt"
+// Same override mechanism as MapScreen.kt's TILES_URL -- this used to hardcode the
+// private cloud's internal-only 192.168.252.3 bridge address directly, bypassing
+// BuildConfig.TILES_BASE_URL entirely, so this mini-map stayed permanently blank on
+// a physical device even after the main MapScreen fix (2026-07-21) that introduced
+// the -PtilesBaseUrl override (found 2026-07-22 testing over the public endpoint).
+private val ROUTE_MINI_TILES_URL = "${rw.itunda.app.BuildConfig.TILES_BASE_URL}/rwanda/{z}/{x}/{y}.mvt"
 private val ROUTE_MINI_STYLE_JSON = """
 {
   "version": 8,

@@ -797,6 +797,80 @@ data class TradeStockResponse(val success: Boolean, val message: String)
 data class WatchStockResponse(val success: Boolean)
 data class UnwatchStockResponse(val success: Boolean)
 
+// Real Toss-style unified account overview (rw.itunda.overview.OverviewService) --
+// found 2026-07-22 fully built on the backend with zero client UI anywhere (Android,
+// iOS, or bank-mfe web). Aggregates wallets/savings/loans/investments/insurance/linked
+// external accounts in one call; see OverviewService.kt's own doc comment for why
+// insurance is excluded from netWorth (a sunk expense, not an asset).
+data class AccountSummaryDto(val id: String, val type: String, val name: String, val balance: java.math.BigDecimal, val currency: String)
+data class OverviewSavingsSummaryDto(val totalSaved: java.math.BigDecimal, val goalCount: Int)
+data class OverviewLoansSummaryDto(val totalOutstanding: java.math.BigDecimal, val activeCount: Int)
+data class OverviewInvestmentsSummaryDto(val totalCostBasis: java.math.BigDecimal, val holdingCount: Int)
+data class OverviewInsuranceSummaryDto(val activePolicyCount: Int, val totalMonthlyPremium: java.math.BigDecimal)
+data class LinkedAccountSummaryDto(
+    val id: String, val provider: String, val maskedAccountNumber: String, val status: String,
+    val demoBalance: java.math.BigDecimal?, val demoBalanceCurrency: String?, val isDemoBalance: Boolean,
+)
+data class OverviewResponse(
+    val success: Boolean,
+    val netWorth: java.math.BigDecimal,
+    val accounts: List<AccountSummaryDto>,
+    val savings: OverviewSavingsSummaryDto,
+    val loans: OverviewLoansSummaryDto,
+    val investments: OverviewInvestmentsSummaryDto,
+    val insurance: OverviewInsuranceSummaryDto,
+    val linkedAccounts: List<LinkedAccountSummaryDto>,
+)
+
+// Real external bank/MoMo account linking (rw.itunda.overview.LinkedAccountService) --
+// a real simulated per-rail verification (same ProviderConnector/RailCatalog
+// mechanism transfers/bills/airtime use), demo balance only generated when linking
+// actually succeeds. No live Open Banking access exists, so demoBalance is a real,
+// honestly-labeled demo value -- see LinkedAccount.kt's own doc comment. This is the
+// raw entity shape LinkedAccountController returns, distinct from the summary shape
+// OverviewResponse.linkedAccounts uses above (different field names: userId/
+// externalAccountNumberMasked/linkedAt/unlinkedAt here, no isDemoBalance).
+data class LinkAccountRequest(val provider: String, val externalAccountNumber: String)
+data class LinkedAccountEntityDto(
+    val id: String, val userId: String, val provider: String, val externalAccountNumberMasked: String,
+    val status: String, val failureReason: String?, val linkedAt: String, val unlinkedAt: String?,
+    val demoBalance: java.math.BigDecimal?, val demoBalanceCurrency: String?,
+)
+data class LinkAccountResponse(val success: Boolean, val linkedAccount: LinkedAccountEntityDto)
+data class LinkedAccountsResponse(val success: Boolean, val linkedAccounts: List<LinkedAccountEntityDto>)
+
+// Real multi-lender loan marketplace (rw.itunda.loans) -- BNR-licensed partner banks
+// (Bank of Kigali, Equity Bank Rwanda, Urwego Bank) alongside itunda's own book; only
+// itunda has a real underwriting/disbursement path, see LoanOffer.kt's own doc
+// comment. Found 2026-07-22 fully built on the backend, but every "Loan"/"Get a loan"
+// row in this app was 100% hardcoded static text with no API call at all.
+data class LoanOfferDto(val id: String, val lenderId: String, val lenderName: String, val name: String, val maxAmount: java.math.BigDecimal, val interestRate: Double, val term: String, val requirements: String)
+data class LenderDto(val id: String, val name: String, val kind: String)
+data class LoanOffersResponse(val success: Boolean, val offers: List<LoanOfferDto>)
+data class LendersResponse(val success: Boolean, val lenders: List<LenderDto>)
+data class LoanAccountDto(val id: String, val userId: String, val walletId: String, val offerId: String, val principal: java.math.BigDecimal, val outstanding: java.math.BigDecimal, val interestRate: Double, val status: String, val disbursedAt: String)
+data class MyLoansResponse(val success: Boolean, val loans: List<LoanAccountDto>)
+data class ApplyLoanRequest(val loanId: String, val amount: java.math.BigDecimal)
+data class ApplyLoanResponse(val success: Boolean, val message: String, val loan: LoanAccountDto)
+data class RepayLoanRequest(val loanId: String, val amount: java.math.BigDecimal)
+data class RepayLoanTransactionDto(val id: String, val amount: java.math.BigDecimal, val type: String, val status: String, val description: String, val completedAt: String)
+data class RepayLoanResponse(val success: Boolean, val message: String, val transaction: RepayLoanTransactionDto, val remaining: java.math.BigDecimal, val newBalance: java.math.BigDecimal)
+
+// Real customer support tickets, tied to a specific transaction (rw.itunda.support) --
+// found 2026-07-22 fully built on the backend with zero client UI anywhere; the
+// "Support" section in this app was five static rows (FAQ/Live chat/...) with no
+// backend behind any of them. category must be one of GENERAL/PAYMENT_DISPUTE/
+// ACCOUNT_TAKEOVER -- see SupportTicket.kt's own doc comment on why a ticket is always
+// tied to a specific transaction, not a free-floating complaint.
+data class CreateSupportTicketRequest(val transactionId: String, val category: String, val description: String)
+data class SupportTicketDto(
+    val id: String, val userId: String, val transactionId: String, val category: String, val description: String,
+    val status: String, val resolution: String?, val resolutionNotes: String?, val refundTransactionId: String?,
+    val frozeWalletId: String?, val dueBy: String, val reviewedBy: String?, val createdAt: String, val resolvedAt: String?,
+)
+data class CreateSupportTicketResponse(val success: Boolean, val ticket: SupportTicketDto)
+data class SupportTicketsResponse(val success: Boolean, val tickets: List<SupportTicketDto>)
+
 // Retrofit Interface to map to your Spring endpoints -- all require the real
 // Bearer token NetworkClient's authInterceptor now injects (2026-07-11).
 interface ApiService {
@@ -1352,6 +1426,39 @@ interface ApiService {
 
     @DELETE("api/v1/stocks/{id}/watch")
     suspend fun unwatchStock(@Path("id") stockId: String): UnwatchStockResponse
+
+    @GET("api/v1/overview")
+    suspend fun getOverview(): OverviewResponse
+
+    @POST("api/v1/accounts/link")
+    suspend fun linkAccount(@Body request: LinkAccountRequest): LinkAccountResponse
+
+    @GET("api/v1/accounts/linked")
+    suspend fun getLinkedAccounts(): LinkedAccountsResponse
+
+    @POST("api/v1/accounts/link/{accountId}/unlink")
+    suspend fun unlinkAccount(@Path("accountId") accountId: String): LinkAccountResponse
+
+    @GET("api/v1/loans/offers")
+    suspend fun getLoanOffers(@Query("lenderId") lenderId: String? = null): LoanOffersResponse
+
+    @GET("api/v1/loans/lenders")
+    suspend fun getLenders(): LendersResponse
+
+    @GET("api/v1/loans/my-loans")
+    suspend fun getMyLoans(): MyLoansResponse
+
+    @POST("api/v1/loans/apply")
+    suspend fun applyForLoan(@Header("Idempotency-Key") idempotencyKey: String, @Body request: ApplyLoanRequest): ApplyLoanResponse
+
+    @POST("api/v1/loans/repay")
+    suspend fun repayLoan(@Header("Idempotency-Key") idempotencyKey: String, @Body request: RepayLoanRequest): RepayLoanResponse
+
+    @POST("api/v1/support/tickets")
+    suspend fun createSupportTicket(@Body request: CreateSupportTicketRequest): CreateSupportTicketResponse
+
+    @GET("api/v1/support/tickets")
+    suspend fun getSupportTickets(): SupportTicketsResponse
 }
 
 data class TransactionHistoryResponse(val success: Boolean, val transactions: List<TransactionDto>)

@@ -17,6 +17,7 @@ import rw.itunda.app.network.BatchActionRequest
 import rw.itunda.app.network.BatchRequest
 import rw.itunda.app.network.ConnectivityObserver
 import rw.itunda.app.network.OfflineActionQueue
+import rw.itunda.app.network.SessionManager
 import java.io.IOException
 import java.math.BigDecimal
 import java.util.UUID
@@ -158,6 +159,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _partnerMiniApps.value = emptyList()
                 }
                 _isOffline.value = false
+            } catch (e: retrofit2.HttpException) {
+                // Real stale-session crash (found 2026-07-22): a cached access token
+                // that's no longer valid against the backend (e.g. after a DB reset or
+                // redeploy) makes this function's first call, getWallets() above, come
+                // back with a genuine 401. Every other HttpException status here still
+                // propagates and surfaces as a real crash on purpose (see the
+                // IOException comment below) -- but a 401 specifically just means "this
+                // session is dead," so the correct response is a real logout back to
+                // the login screen, not letting it fall through unhandled.
+                if (e.code() == 401) {
+                    SessionManager.logout()
+                } else {
+                    throw e
+                }
             } catch (e: IOException) {
                 // Genuinely can't reach the backend at all (no connectivity, wrong
                 // host) -- this is the only case that should show placeholder data,

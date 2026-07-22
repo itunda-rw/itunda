@@ -212,6 +212,13 @@ fun ItundaAppScreen(
         var mapSearchQueryForScreen by rememberSaveable { mutableStateOf<String?>(null) }
         var showAgentCash by rememberSaveable { mutableStateOf(false) }
         var showInvest by rememberSaveable { mutableStateOf(false) }
+        // Real Overview/Loans/Support screens (2026-07-22) -- these three backend
+        // modules (rw.itunda.overview, rw.itunda.loans, rw.itunda.support) were fully
+        // built with zero client UI anywhere until now; see OverviewScreen.kt/
+        // LoansScreen.kt/SupportScreen.kt's own doc comments for the full account.
+        var showOverview by rememberSaveable { mutableStateOf(false) }
+        var showLoans by rememberSaveable { mutableStateOf(false) }
+        var showSupport by rememberSaveable { mutableStateOf(false) }
         // Mirrors NAVER Maps' app-to-map handoff, but remains inside Itunda's own
         // authenticated map stack. Consume once so recomposition cannot reopen the map.
         LaunchedEffect(openMapFromDeepLink) {
@@ -567,6 +574,21 @@ fun ItundaAppScreen(
             InvestScreen(onBack = { showInvest = false })
             return@IdsTheme
         }
+        if (showOverview) {
+            BackHandler { showOverview = false }
+            OverviewScreen(onBack = { showOverview = false })
+            return@IdsTheme
+        }
+        if (showLoans) {
+            BackHandler { showLoans = false }
+            LoansScreen(onBack = { showLoans = false })
+            return@IdsTheme
+        }
+        if (showSupport) {
+            BackHandler { showSupport = false }
+            SupportScreen(onBack = { showSupport = false })
+            return@IdsTheme
+        }
 
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
@@ -607,6 +629,9 @@ fun ItundaAppScreen(
                         onOpenPay = { showPay = true },
                         onOpenMap = { showMap = true },
                         onOpenInvest = { showInvest = true },
+                        onOpenOverview = { showOverview = true },
+                        onOpenLoans = { showLoans = true },
+                        onOpenSupport = { showSupport = true },
                     )
                 }
             }
@@ -953,6 +978,9 @@ private fun AllTab(
     onOpenPay: () -> Unit = {},
     onOpenMap: () -> Unit = {},
     onOpenInvest: () -> Unit = {},
+    onOpenOverview: () -> Unit = {},
+    onOpenLoans: () -> Unit = {},
+    onOpenSupport: () -> Unit = {},
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
@@ -1057,8 +1085,8 @@ private fun AllTab(
         item {
             FlatSection("Financial services", listOf(
                 FlatRow("Open account", subtitle = "Itunda Wallet, other banks, RSE brokerage", icon = Icons.Outlined.AddCircleOutline, iconColor = AccentBlue),
-                FlatRow("My assets", subtitle = "Accounts, loans, RSE holdings, cards, points", icon = Icons.Outlined.PieChart, iconColor = AccentPurple),
-                FlatRow("Get a loan", subtitle = "Personal, salary-backed, SME working capital", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue),
+                FlatRow("My assets", subtitle = "Accounts, loans, RSE holdings, cards, points", icon = Icons.Outlined.PieChart, iconColor = AccentPurple, onClick = onOpenOverview),
+                FlatRow("Get a loan", subtitle = "Personal, salary-backed, SME working capital", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans),
                 FlatRow("Mobile plan", subtitle = "MTN, Airtel, broadband", icon = Icons.Outlined.Public, iconColor = AccentTeal)
             ))
         }
@@ -1117,8 +1145,8 @@ private fun AllTab(
         }
         item {
             FlatSection("Loans", listOf(
-                FlatRow("Check my max limit", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple),
-                FlatRow("Personal loan", trailing = "11% ~ 24%", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue)
+                FlatRow("Check my max limit", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenLoans),
+                FlatRow("Personal loan", trailing = "11% ~ 24%", trailingIsLink = true, icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans)
             ))
         }
         item {
@@ -1134,7 +1162,8 @@ private fun AllTab(
                 FlatRow("FAQ", showChevron = true),
                 FlatRow("Live chat", showChevron = true),
                 FlatRow("Call support", showChevron = true),
-                FlatRow("Report fraud", showChevron = true),
+                FlatRow("Report an issue with a transaction", showChevron = true, onClick = onOpenSupport),
+                FlatRow("My support tickets", showChevron = true, onClick = onOpenSupport),
                 FlatRow("Announcements", showChevron = true)
             ))
         }
