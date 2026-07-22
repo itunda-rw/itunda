@@ -214,6 +214,7 @@ dependencies {
     implementation(project(":features:community:impl"))
     implementation(project(":features:shop:impl"))
     implementation(project(":features:eats:impl"))
+    implementation(project(":features:talk:impl"))
     // features:banking:impl deliberately has no dependency here (2026-07-11): its
     // real screens (BankScreen.kt, MySpendingScreen.kt) were intentionally deleted
     // in 061cff6 as unreachable and superseded by ItundaAppScreen.kt's Home tab,

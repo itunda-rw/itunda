@@ -113,6 +113,7 @@ import androidx.compose.ui.unit.sp
 
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsButton
+import rw.itunda.feature.talk.impl.TalkTab
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
 import rw.itunda.core.designsystem.components.IdsIconButton
@@ -691,9 +692,16 @@ fun ItundaAppScreen(
                             selectedTab = TossTab.Talk
                         },
                     )
+                    // Seventh and final Feature extraction (2026-07-23) -- see
+                    // TalkScreen.kt's own header comment for why deviceStepUpHost is
+                    // injected (DeviceStepUpHost.kt wraps :features:payments:impl's
+                    // dialog, so it can't become a direct Feature-to-Feature dependency).
                     TossTab.Talk -> TalkTab(
                         initialConversationId = pendingConversationId,
                         onConsumedInitial = { pendingConversationId = null },
+                        deviceStepUpHost = { visible, onDismiss, onVerified ->
+                            DeviceStepUpHost(visible = visible, onDismiss = onDismiss, onVerified = onVerified)
+                        },
                     )
                     TossTab.My -> MyTab(
                         onOpenSettings = { showSettings = true },

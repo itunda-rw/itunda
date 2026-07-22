@@ -161,6 +161,10 @@ include(":features:eats:api")
 include(":features:eats:impl")
 include(":features:eats:testing")
 
+include(":features:talk:api")
+include(":features:talk:impl")
+include(":features:talk:testing")
+
 include(":features:bills:api")
 include(":features:bills:impl")
 include(":features:bills:testing")
