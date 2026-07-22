@@ -168,13 +168,18 @@ class MessagingService(
         conversationRepository.save(conversation)
 
         val senderName = userRepository.findById(userId).map { "${it.firstName} ${it.lastName}" }.orElse("Someone")
-        notificationRepository.save(
-            Notification(
-                id = "notif_${UUID.randomUUID()}", userId = recipientId, type = "NEW_MESSAGE",
-                title = senderName, body = trimmed.take(120),
-                isRead = false, createdAt = Instant.now(), dataJson = "{\"conversationId\":\"$conversationId\"}",
-            ),
-        )
+        // A quiet room is explicitly an auto-mute decision made by this recipient.
+        // Keep the message durable and live-delivered if they are already viewing it,
+        // but don't create a notification that would surface it outside the room.
+        if (conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, recipientId)?.quiet != true) {
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = recipientId, type = "NEW_MESSAGE",
+                    title = senderName, body = trimmed.take(120),
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"conversationId\":\"$conversationId\"}",
+                ),
+            )
+        }
         // Real live push, on a best-effort basis -- the message is already durably
         // persisted above regardless of whether anyone is listening right now.
         realtimeMessagePublisher.publishNewMessage(conversationId, recipientId, message)
