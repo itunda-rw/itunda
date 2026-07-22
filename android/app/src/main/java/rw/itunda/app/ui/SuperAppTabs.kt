@@ -694,7 +694,7 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
     var messages by remember { mutableStateOf<List<GroupMessageDto>?>(null) }
     var members by remember { mutableStateOf<List<GroupMemberDto>>(emptyList()) }
     var draft by remember { mutableStateOf("") }
-    var replyingTo by remember { mutableStateOf<MessageDto?>(null) }
+    var replyingTo by remember { mutableStateOf<GroupMessageDto?>(null) }
     var sending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var typingUserIds by remember { mutableStateOf<Map<String, Job>>(emptyMap()) }
@@ -805,6 +805,7 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                                 }
                             }
                         },
+                        onReply = { replyingTo = it },
                         onDelete = { messageId -> coroutineScope.launch {
                             try { NetworkClient.apiService.deleteGroupMessage(group.groupId, messageId); refresh() }
                             catch (_: Exception) { error = "Couldn't delete this message." }
@@ -823,6 +824,12 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
             )
         }
         error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(vertical = 6.dp)) }
+        replyingTo?.let { reply ->
+            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Replying to: ${reply.body.take(80)}", color = TossSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f), maxLines = 1)
+                TextButton(onClick = { replyingTo = null }) { Text("×") }
+            }
+        }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
             OutlinedTextField(
                 value = draft,
@@ -849,9 +856,10 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                         error = null
                         coroutineScope.launch {
                             try {
-                                val res = NetworkClient.apiService.sendGroupMessage(group.groupId, SendGroupMessageRequest(body))
+                                val res = NetworkClient.apiService.sendGroupMessage(group.groupId, SendGroupMessageRequest(body, replyingTo?.id))
                                 if (res.success) {
                                     draft = ""
+                                    replyingTo = null
                                     messages = (messages ?: emptyList()) + res.message
                                 }
                             } catch (e: HttpException) {
@@ -873,7 +881,7 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
 
 @Composable
 private fun GroupMessageBubble(
-    message: GroupMessageDto, isMine: Boolean, senderName: String, currentUserId: String?, onToggleReaction: (String) -> Unit, onDelete: (String) -> Unit = {},
+    message: GroupMessageDto, isMine: Boolean, senderName: String, currentUserId: String?, onToggleReaction: (String) -> Unit, onDelete: (String) -> Unit = {}, onReply: (GroupMessageDto) -> Unit = {},
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
@@ -890,6 +898,7 @@ private fun GroupMessageBubble(
             }
         }
         MessageReactionsRow(message.reactions, currentUserId, isMine, onToggleReaction)
+        TextButton(onClick = { onReply(message) }) { Text("Reply", color = TossSecondary, fontSize = 11.sp) }
         if (isMine && message.deletedAt == null) TextButton(onClick = { onDelete(message.id) }) { Text("Delete", color = TossSecondary, fontSize = 11.sp) }
         Text(
             chatMessageTime(message.sentAt),
