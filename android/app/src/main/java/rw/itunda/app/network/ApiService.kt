@@ -332,6 +332,7 @@ data class MessageDto(
 
 data class StartConversationRequest(val phoneNumber: String? = null, val otherUserId: String? = null)
 data class SendMessageRequest(val body: String)
+data class CreateChatReportRequest(val messageId: String, val reason: String)
 data class ToggleReactionRequest(val emoji: String)
 
 data class ConversationResponse(val success: Boolean, val conversation: ConversationDto)
@@ -870,6 +871,9 @@ interface ApiService {
 
     @DELETE("api/v1/messages/conversations/{id}/block")
     suspend fun unblockConversationParticipant(@Path("id") conversationId: String): SuccessResponse
+
+    @POST("api/v1/chat/reports")
+    suspend fun reportChatMessage(@Body request: CreateChatReportRequest): SuccessResponse
 
     // Real toggle -- tapping an already-active reaction removes it, same semantics as
     // MessagingService.toggleReaction on the backend.
