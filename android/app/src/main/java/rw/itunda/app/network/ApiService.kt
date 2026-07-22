@@ -372,6 +372,7 @@ data class GroupMessageDto(
     val senderId: String,
     val body: String,
     val sentAt: String,
+    val deletedAt: String? = null,
     val reactions: List<ReactionGroupDto> = emptyList(),
 )
 data class GroupResponse(val success: Boolean, val group: GroupSummaryDto)
@@ -926,6 +927,9 @@ interface ApiService {
 
     @POST("api/v1/messages/groups/{id}/messages")
     suspend fun sendGroupMessage(@Path("id") groupId: String, @Body request: SendGroupMessageRequest): GroupMessageResponse
+
+    @DELETE("api/v1/messages/groups/{id}/messages/{messageId}")
+    suspend fun deleteGroupMessage(@Path("id") groupId: String, @Path("messageId") messageId: String): SuccessResponse
 
     @POST("api/v1/messages/groups/messages/{id}/reactions")
     suspend fun toggleGroupReaction(@Path("id") groupMessageId: String, @Body request: ToggleReactionRequest): ReactionsResponse

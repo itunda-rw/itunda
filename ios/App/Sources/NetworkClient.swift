@@ -632,6 +632,7 @@ struct GroupMessageDto: Decodable, Identifiable {
     let senderId: String
     let body: String
     let sentAt: String
+    let deletedAt: String?
     let reactions: [ReactionGroupDto]
 
     // Explicit memberwise init -- see MessageDto's own identical note on why this is
@@ -642,6 +643,7 @@ struct GroupMessageDto: Decodable, Identifiable {
         self.senderId = senderId
         self.body = body
         self.sentAt = sentAt
+        self.deletedAt = nil
         self.reactions = reactions
     }
 
@@ -653,10 +655,11 @@ struct GroupMessageDto: Decodable, Identifiable {
         senderId = try container.decode(String.self, forKey: .senderId)
         body = try container.decode(String.self, forKey: .body)
         sentAt = try container.decode(String.self, forKey: .sentAt)
+        deletedAt = try container.decodeIfPresent(String.self, forKey: .deletedAt)
         reactions = try container.decodeIfPresent([ReactionGroupDto].self, forKey: .reactions) ?? []
     }
 
-    private enum CodingKeys: String, CodingKey { case id, groupConversationId, senderId, body, sentAt, reactions }
+    private enum CodingKeys: String, CodingKey { case id, groupConversationId, senderId, body, sentAt, deletedAt, reactions }
 }
 struct GroupResponse: Decodable { let success: Bool; let group: GroupSummaryDto }
 struct GroupsResponse: Decodable { let success: Bool; let groups: [GroupSummaryDto] }
@@ -1243,6 +1246,10 @@ extension NetworkClient {
 
     func sendGroupMessage(groupId: String, body: String) async throws -> GroupMessageResponse {
         try await authenticatedPost("api/v1/messages/groups/\(groupId)/messages", body: SendGroupMessageRequest(body: body))
+    }
+
+    func deleteGroupMessage(groupId: String, messageId: String) async throws -> SuccessResponse {
+        try await authenticatedDelete("api/v1/messages/groups/\(groupId)/messages/\(messageId)")
     }
 
     func toggleGroupReaction(groupMessageId: String, emoji: String) async throws -> ReactionsResponse {
