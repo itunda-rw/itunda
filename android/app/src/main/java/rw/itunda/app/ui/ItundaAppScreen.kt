@@ -111,6 +111,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.components.IdsButtonSize
 import rw.itunda.core.designsystem.components.IdsButtonVariant
@@ -1712,29 +1713,9 @@ private fun SearchBar(placeholder: String) {
     }
 }
 
-// Real back affordance for Benefits/Pay now that both are full-screen entry points
-// reached from My rather than top-level tabs (2026-07-18) -- BackHandler alone covers
-// hardware/gesture back but not a visible on-screen way back, same reasoning
-// SettingsScreen.kt's own back row already established (reuses its exact icon).
-@Composable
-internal fun BackTopBar(title: String, onBack: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(Ids.layout.minTouchTarget)
-                .clip(CircleShape)
-                .clickable(onClick = onBack),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Back", modifier = Modifier.size(18.dp), tint = TossText)
-        }
-        Text(title, color = TossText, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-    }
-}
+// BackTopBar relocated 2026-07-23 to core/designsystem/components/HoodShared.kt while
+// extracting Community into :features:community:impl -- every call site across :app
+// now imports it from there instead.
 
 @Composable
 private fun MapPlaceholder() {

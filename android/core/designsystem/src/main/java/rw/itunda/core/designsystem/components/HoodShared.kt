@@ -25,9 +25,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -297,5 +299,30 @@ fun NeighborhoodSetupPrompt(onDone: (String) -> Unit) {
             }
             error?.let { Spacer(modifier = Modifier.height(12.dp)); Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         }
+    }
+}
+
+// Relocated 2026-07-23 from app/ui/ItundaAppScreen.kt while extracting Community into
+// :features:community:impl -- not Hood-specific (IdentityScreen/SupportScreen/
+// CertificateScreen and others in :app already use it too), but colocated here rather
+// than a new file since it's the same "promoted so a Feature module can reach it"
+// story as everything else above.
+@Composable
+fun BackTopBar(title: String, onBack: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(Ids.layout.minTouchTarget)
+                .clip(CircleShape)
+                .clickable(onClick = onBack),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Outlined.ArrowBackIosNew, contentDescription = "Back", modifier = Modifier.size(18.dp), tint = Ids.colors.textPrimary)
+        }
+        Text(title, color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
     }
 }

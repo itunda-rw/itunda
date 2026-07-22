@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
+import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.isDeviceNotVerifiedError

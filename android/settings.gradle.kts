@@ -149,6 +149,10 @@ include(":features:property:api")
 include(":features:property:impl")
 include(":features:property:testing")
 
+include(":features:community:api")
+include(":features:community:impl")
+include(":features:community:testing")
+
 include(":features:bills:api")
 include(":features:bills:impl")
 include(":features:bills:testing")
