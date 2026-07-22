@@ -30,4 +30,9 @@ interface PropertyListingRepository : JpaRepository<PropertyListing, String> {
     // variants) -- an honest v1 scoping choice, named here not silently dropped, matching
     // this project's own "one new capability per turn" precedent.
     fun findByStatusAndNeighborhoodOrderByCreatedAtDesc(status: PropertyListingStatus, neighborhood: String, pageable: Pageable): Page<PropertyListing>
+
+    // Real Karrot-Score-style trust badge input (2026-07-21) -- see
+    // rw.itunda.core.trust.TrustScoreService's own doc comment; identical shape to
+    // ListingRepository.countBySellerIdAndStatus.
+    fun countByListerIdAndStatus(listerId: String, status: PropertyListingStatus): Long
 }

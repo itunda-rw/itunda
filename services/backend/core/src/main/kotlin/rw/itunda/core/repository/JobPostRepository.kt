@@ -24,4 +24,9 @@ interface JobPostRepository : JpaRepository<JobPost, String> {
         category: String,
         pageable: Pageable,
     ): Page<JobPost>
+
+    // Real Karrot-Score-style trust badge input (2026-07-21) -- see
+    // rw.itunda.core.trust.TrustScoreService's own doc comment; identical shape to
+    // ListingRepository.countBySellerIdAndStatus.
+    fun countByPosterIdAndStatus(posterId: String, status: JobPostStatus): Long
 }

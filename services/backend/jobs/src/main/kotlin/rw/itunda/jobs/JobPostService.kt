@@ -14,6 +14,7 @@ import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.repository.JobPostRepository
 import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.trust.TrustScoreService
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
 import java.math.BigDecimal
@@ -50,6 +51,7 @@ class JobPostService(
     private val messagingService: MessagingService,
     private val nominatimGeocodingClient: NominatimGeocodingClient,
     private val userRepository: UserRepository,
+    private val trustScoreService: TrustScoreService,
 ) {
     companion object {
         val CATEGORIES = listOf(
@@ -185,7 +187,11 @@ class JobPostService(
             throw JobPostNotOpenException("Only an open job post can be marked filled")
         }
         post.status = JobPostStatus.FILLED
-        return jobPostRepository.save(post)
+        val saved = jobPostRepository.save(post)
+        // Real Karrot-Score-style trust badge (2026-07-21) -- see TrustScoreService's own
+        // doc comment; identical shape to MarketplaceService.markSold.
+        trustScoreService.computeScore(posterId)
+        return saved
     }
 
     @Transactional

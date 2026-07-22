@@ -27,22 +27,29 @@ export interface Listing {
   meetingPlace?: string | null;
 }
 
+// Real Karrot-Score-style numeric trust/reputation badge (2026-07-21) -- see backend
+// TrustScoreService's own doc comment for the full account. A sellerId -> cached
+// User.trustScore map, resolved server-side in one batch call alongside the listing
+// page itself (see MarketplaceController's own doc comment) -- never fetched per-card.
+export type TrustScores = Record<string, number>;
+
 export const fetchListings = (category?: string) =>
-  apiFetch<{ success: boolean; listings: Listing[] }>(
+  apiFetch<{ success: boolean; listings: Listing[]; trustScores: TrustScores }>(
     `/api/v1/marketplace/listings${category ? `?category=${encodeURIComponent(category)}` : ''}`,
-  ).then((r) => r.listings);
+  ).then((r) => ({ listings: r.listings, trustScores: r.trustScores }));
 
 export const fetchMyListings = () =>
-  apiFetch<{ success: boolean; listings: Listing[] }>('/api/v1/marketplace/my-listings').then((r) => r.listings);
+  apiFetch<{ success: boolean; listings: Listing[]; trustScores: TrustScores }>('/api/v1/marketplace/my-listings')
+    .then((r) => ({ listings: r.listings, trustScores: r.trustScores }));
 
 // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see lib/neighborhood.ts's own
 // doc comment for the full account. Throws ApiError with code NEIGHBORHOOD_NOT_SET
 // (real 400) if the caller hasn't set one yet -- callers should catch that specific
 // code and prompt for setup, not treat it as a generic load failure.
 export const fetchListingsMyNeighborhood = (category?: string) =>
-  apiFetch<{ success: boolean; listings: Listing[] }>(
+  apiFetch<{ success: boolean; listings: Listing[]; trustScores: TrustScores }>(
     `/api/v1/marketplace/listings/my-neighborhood${category ? `?category=${encodeURIComponent(category)}` : ''}`,
-  ).then((r) => r.listings);
+  ).then((r) => ({ listings: r.listings, trustScores: r.trustScores }));
 
 export const createListing = (
   title: string,

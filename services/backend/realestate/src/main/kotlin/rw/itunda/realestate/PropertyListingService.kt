@@ -14,6 +14,7 @@ import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.repository.PropertyListingRepository
 import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.trust.TrustScoreService
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
 import java.math.BigDecimal
@@ -50,6 +51,7 @@ class PropertyListingService(
     private val messagingService: MessagingService,
     private val nominatimGeocodingClient: NominatimGeocodingClient,
     private val userRepository: UserRepository,
+    private val trustScoreService: TrustScoreService,
 ) {
     companion object {
         val PROPERTY_TYPES = listOf(
@@ -200,7 +202,11 @@ class PropertyListingService(
             throw PropertyListingNotAvailableException("Only an available listing can be marked taken")
         }
         listing.status = PropertyListingStatus.TAKEN
-        return propertyListingRepository.save(listing)
+        val saved = propertyListingRepository.save(listing)
+        // Real Karrot-Score-style trust badge (2026-07-21) -- see TrustScoreService's own
+        // doc comment; identical shape to MarketplaceService.markSold/JobPostService.markFilled.
+        trustScoreService.computeScore(listerId)
+        return saved
     }
 
     @Transactional

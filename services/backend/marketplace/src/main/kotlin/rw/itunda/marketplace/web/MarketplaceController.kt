@@ -15,9 +15,11 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
+import rw.itunda.core.web.trustScores
 import rw.itunda.marketplace.FavoriteListingNotFoundException
 import rw.itunda.marketplace.InvalidCoordinatesException
 import rw.itunda.marketplace.InvalidListingException
@@ -56,6 +58,7 @@ class MarketplaceController(
     private val marketplaceService: MarketplaceService,
     private val priceOfferService: PriceOfferService,
     private val listingFavoriteService: ListingFavoriteService,
+    private val userRepository: UserRepository,
 ) {
 
     @PostMapping("/listings")
@@ -76,7 +79,10 @@ class MarketplaceController(
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
         val page = marketplaceService.browse(pageable, category)
-        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content) + pageMeta(page))
+        // Real Karrot-Score-style trust badge (2026-07-21) -- see trustScores' own doc
+        // comment. One batch findAllById, not one query per listing's seller.
+        val scores = trustScores(userRepository, page.content.map { it.sellerId })
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
     }
 
     // Real proximity search (2026-07-18) -- see MarketplaceService.nearby's own doc
@@ -90,7 +96,8 @@ class MarketplaceController(
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
         val page = marketplaceService.nearby(latitude, longitude, radiusKm, pageable)
-        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content) + pageMeta(page))
+        val scores = trustScores(userRepository, page.content.map { it.sellerId })
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
     }
 
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see MarketplaceService.
@@ -102,12 +109,16 @@ class MarketplaceController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val page = marketplaceService.myNeighborhood(currentUser.userId, category, pageable)
-        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content) + pageMeta(page))
+        val scores = trustScores(userRepository, page.content.map { it.sellerId })
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
     }
 
     @GetMapping("/listings/{listingId}")
-    fun getListing(@PathVariable listingId: String): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "listing" to marketplaceService.getListing(listingId)))
+    fun getListing(@PathVariable listingId: String): ResponseEntity<Map<String, Any?>> {
+        val listing = marketplaceService.getListing(listingId)
+        val sellerTrustScore = trustScores(userRepository, listOf(listing.sellerId))[listing.sellerId]
+        return ResponseEntity.ok(mapOf("success" to true, "listing" to listing, "sellerTrustScore" to sellerTrustScore))
+    }
 
     @GetMapping("/my-listings")
     fun getMyListings(
@@ -115,7 +126,8 @@ class MarketplaceController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val page = marketplaceService.getMyListings(currentUser.userId, pageable)
-        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content) + pageMeta(page))
+        val scores = trustScores(userRepository, page.content.map { it.sellerId })
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
     }
 
     @PostMapping("/listings/{listingId}/mark-sold")
