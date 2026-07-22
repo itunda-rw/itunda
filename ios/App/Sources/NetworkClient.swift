@@ -803,15 +803,39 @@ struct ShoppingMerchantDto: Decodable, Identifiable {
     // Real optional location (2026-07-19) -- backs the real self-hosted Map view.
     let latitude: Double?
     let longitude: Double?
+    // Real browse-card enrichment (2026-07-21) -- ports Android/bank-mfe's own
+    // ShoppingMerchantDto fields (see their doc comments for the full account).
+    // photoUrl/minOrderAmount are real, merchant-set (nil when unset); rating/
+    // reviewCount are real, batch-aggregated from EatsReview. distanceKm/
+    // deliveryTimeMinutes are only present when the caller supplies its own real
+    // buyerLat/buyerLng -- like Android's own scoping, this screen doesn't wire those up
+    // yet (would need real GPS/location permission plumbing, out of scope this pass), so
+    // they render conditionally and are simply absent today, never a fabricated number.
+    let photoUrl: String?
+    let minOrderAmount: Double?
+    let rating: Double?
+    let reviewCount: Int?
+    let distanceKm: Double?
+    let deliveryTimeMinutes: Int?
     var id: String { merchantId }
 
-    init(merchantId: String, businessName: String, category: String?, cashbackRate: String, latitude: Double? = nil, longitude: Double? = nil) {
+    init(
+        merchantId: String, businessName: String, category: String?, cashbackRate: String, latitude: Double? = nil, longitude: Double? = nil,
+        photoUrl: String? = nil, minOrderAmount: Double? = nil, rating: Double? = nil, reviewCount: Int? = nil,
+        distanceKm: Double? = nil, deliveryTimeMinutes: Int? = nil
+    ) {
         self.merchantId = merchantId
         self.businessName = businessName
         self.category = category
         self.cashbackRate = cashbackRate
         self.latitude = latitude
         self.longitude = longitude
+        self.photoUrl = photoUrl
+        self.minOrderAmount = minOrderAmount
+        self.rating = rating
+        self.reviewCount = reviewCount
+        self.distanceKm = distanceKm
+        self.deliveryTimeMinutes = deliveryTimeMinutes
     }
 }
 struct ShoppingMerchantsResponse: Decodable { let success: Bool; let merchants: [ShoppingMerchantDto] }
@@ -854,6 +878,21 @@ let mapNearbyCategories: [MapPlaceCategory] = [
 // docs/DESIGN_REFERENCES.md Section 5 recommendation #4 -- see backend
 // MerchantProduct.kt's own doc comment for the full account (merchant-supplied external
 // URL, no upload/storage layer; discountPercent is server-computed, never client-set).
+// Real menu-item option groups (2026-07-21, v1: required single-select only) -- ports
+// bank-mfe's own MenuOptionChoice/MenuOptionGroup interfaces (lib/eats.ts). See
+// MenuOptionGroup.kt's own doc comment on the backend for the full, honestly-scoped
+// account.
+struct MenuOptionChoiceDto: Decodable, Identifiable {
+    let id: String
+    let name: String
+    let priceDelta: Double
+}
+struct MenuOptionGroupDto: Decodable, Identifiable {
+    let id: String
+    let name: String
+    let choices: [MenuOptionChoiceDto]
+}
+
 struct MerchantProductDto: Decodable, Identifiable {
     let id: String
     let merchantId: String
@@ -864,6 +903,9 @@ struct MerchantProductDto: Decodable, Identifiable {
     let imageUrl: String?
     let originalPrice: Double?
     let discountPercent: Int?
+    // Optional/absent on endpoints that don't fold it in (e.g. product search) --
+    // only ShoppingController.getMerchantProducts (Eats' menu) populates this today.
+    let optionGroups: [MenuOptionGroupDto]?
 }
 struct MerchantSummaryDto: Decodable { let id: String; let businessName: String }
 struct MerchantProductsResponse: Decodable { let success: Bool; let merchant: MerchantSummaryDto; let products: [MerchantProductDto] }
@@ -916,7 +958,11 @@ struct ProductRatingResponse: Decodable { let success: Bool; let average: Double
 /// browsing reuses ShoppingMerchantDto/MerchantProductDto above (a restaurant IS a
 /// Merchant, a menu item IS a MerchantProduct -- see rw.itunda.eats.EatsOrderService's
 /// own doc comment).
-struct EatsOrderItemRequest: Encodable { let menuItemId: String; let quantity: Int }
+// selectedChoiceIds added 2026-07-21 (v1: required single-select only) -- one choice
+// id per required option group on this menu item; omitted/nil for any item with no
+// option groups, the pre-existing, unaffected case. See MenuOptionGroup.kt's own doc
+// comment on the backend for the full account.
+struct EatsOrderItemRequest: Encodable { let menuItemId: String; let quantity: Int; let selectedChoiceIds: [String]? }
 struct PlaceEatsOrderRequest: Encodable {
     let restaurantId: String
     let items: [EatsOrderItemRequest]
@@ -983,7 +1029,13 @@ struct EatsOrderDto: Decodable, Identifiable {
     let distanceKm: Double?
     let deliveryNotes: String?
 }
-struct EatsOrderItemDto: Decodable, Identifiable { let id: String; let orderId: String; let productId: String; let productName: String; let unitPrice: Double; let quantity: Int }
+struct EatsOrderItemDto: Decodable, Identifiable {
+    let id: String; let orderId: String; let productId: String; let productName: String; let unitPrice: Double; let quantity: Int
+    // Real menu-options receipt breakdown (2026-07-21) -- unitPrice above already
+    // includes every selected choice's priceDelta; this is purely a human-readable
+    // summary, never a second pricing source. See EatsOrderItem.kt's own doc comment.
+    let selectedOptionsJson: String?
+}
 struct EatsOrderDetailResponse: Decodable { let success: Bool; let order: EatsOrderDto; let items: [EatsOrderItemDto] }
 struct EatsOrdersResponse: Decodable { let success: Bool; let orders: [EatsOrderDto] }
 
@@ -1368,8 +1420,15 @@ extension NetworkClient {
 
     // Real category/search filter (2026-07-19) -- both optional and combinable. See
     // ShoppingController.getEligibleMerchants's own doc comment on the backend.
-    func getShoppingMerchants(category: String? = nil, q: String? = nil) async throws -> ShoppingMerchantsResponse {
-        try await get("api/v1/shopping/merchants", query: [URLQueryItem(name: "category", value: category), URLQueryItem(name: "q", value: q)])
+    // buyerLat/buyerLng added 2026-07-21 (see ShoppingMerchantDto's own doc comment) --
+    // optional, mirroring Android's own getShoppingMerchants signature.
+    func getShoppingMerchants(category: String? = nil, q: String? = nil, buyerLat: Double? = nil, buyerLng: Double? = nil) async throws -> ShoppingMerchantsResponse {
+        try await get("api/v1/shopping/merchants", query: [
+            URLQueryItem(name: "category", value: category),
+            URLQueryItem(name: "q", value: q),
+            URLQueryItem(name: "buyerLat", value: buyerLat.map { String($0) }),
+            URLQueryItem(name: "buyerLng", value: buyerLng.map { String($0) }),
+        ])
     }
 
     // Real distinct category list -- see MerchantRepository.findDistinctCategories's own

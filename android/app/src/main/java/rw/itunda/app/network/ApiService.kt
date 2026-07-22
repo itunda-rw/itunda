@@ -551,6 +551,13 @@ val MAP_NEARBY_CATEGORIES = listOf(
 // docs/DESIGN_REFERENCES.md Section 5 recommendation #4 -- see backend
 // MerchantProduct.kt's own doc comment for the full account (merchant-supplied external
 // URL, no upload/storage layer; discountPercent is server-computed, never client-set).
+// Real menu-item option groups (2026-07-21, v1: required single-select only) -- ports
+// bank-mfe's own MenuOptionChoice/MenuOptionGroup interfaces (lib/eats.ts). See
+// MenuOptionGroup.kt's own doc comment on the backend for the full, honestly-scoped
+// account.
+data class EatsMenuOptionChoiceDto(val id: String, val name: String, val priceDelta: Double)
+data class EatsMenuOptionGroupDto(val id: String, val name: String, val choices: List<EatsMenuOptionChoiceDto> = emptyList())
+
 data class MerchantProductDto(
     val id: String,
     val merchantId: String,
@@ -561,6 +568,9 @@ data class MerchantProductDto(
     val imageUrl: String? = null,
     val originalPrice: Double? = null,
     val discountPercent: Int? = null,
+    // Absent/empty on endpoints that don't fold it in (e.g. product search) -- only
+    // ShoppingController.getMerchantProducts (Eats' menu) populates this today.
+    val optionGroups: List<EatsMenuOptionGroupDto> = emptyList(),
 )
 data class MerchantSummaryDto(val id: String, val businessName: String)
 data class MerchantProductsResponse(val success: Boolean, val merchant: MerchantSummaryDto, val products: List<MerchantProductDto>)
@@ -611,7 +621,11 @@ data class ProductRatingResponse(val success: Boolean, val average: Double?, val
 // folded into the Shop tab. Restaurant/menu browsing reuses ShoppingMerchantDto/
 // MerchantProductDto above (a restaurant IS a Merchant, a menu item IS a
 // MerchantProduct -- see rw.itunda.eats.EatsOrderService's own doc comment).
-data class EatsOrderItemRequest(val menuItemId: String, val quantity: Int)
+// selectedChoiceIds added 2026-07-21 (v1: required single-select only) -- one choice
+// id per required option group on this menu item; omitted/null for any item with no
+// option groups, the pre-existing, unaffected case. See MenuOptionGroup.kt's own doc
+// comment on the backend for the full account.
+data class EatsOrderItemRequest(val menuItemId: String, val quantity: Int, val selectedChoiceIds: List<String>? = null)
 data class PlaceEatsOrderRequest(
     val restaurantId: String,
     val items: List<EatsOrderItemRequest>,
@@ -674,7 +688,13 @@ data class EatsOrderDto(
     val deliveryNotes: String? = null,
 )
 
-data class EatsOrderItemDto(val id: String, val orderId: String, val productId: String, val productName: String, val unitPrice: Double, val quantity: Int)
+// selectedOptionsJson added 2026-07-21 -- unitPrice above already includes every
+// selected choice's priceDelta; this is purely a human-readable receipt summary, never
+// a second pricing source. See EatsOrderItem.kt's own doc comment.
+data class EatsOrderItemDto(
+    val id: String, val orderId: String, val productId: String, val productName: String, val unitPrice: Double, val quantity: Int,
+    val selectedOptionsJson: String? = null,
+)
 data class EatsOrderDetailResponse(val success: Boolean, val order: EatsOrderDto, val items: List<EatsOrderItemDto>)
 data class EatsOrdersResponse(val success: Boolean, val orders: List<EatsOrderDto>)
 

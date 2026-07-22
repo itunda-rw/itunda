@@ -183,6 +183,39 @@ export const removeProduct = (productId: string) =>
     method: 'DELETE',
   }).then((r) => r.product);
 
+// Real menu-item option groups (2026-07-21, v1: required single-select only) -- the
+// merchant-facing half of a gap the buyer side (bank-mfe's "Choose options" panel) has
+// had since the same day: this backend endpoint (MerchantProductController.kt's own
+// /{productId}/option-groups) previously had no UI anywhere, so a merchant could only
+// create/view/delete an option group via a direct API call. See MenuOptionGroup.kt's
+// own doc comment on the backend for the full account.
+export interface MenuOptionChoice {
+  id: string;
+  name: string;
+  priceDelta: number;
+}
+export interface MenuOptionGroup {
+  id: string;
+  name: string;
+  choices: MenuOptionChoice[];
+}
+
+export const getOptionGroups = (productId: string) =>
+  apiFetch<{ success: boolean; optionGroups: MenuOptionGroup[] }>(`/api/v1/merchant/products/${productId}/option-groups`).then(
+    (r) => r.optionGroups,
+  );
+
+export const addOptionGroup = (productId: string, name: string, choices: { name: string; priceDelta: number }[]) =>
+  apiFetch<{ success: boolean; optionGroup: MenuOptionGroup }>(`/api/v1/merchant/products/${productId}/option-groups`, {
+    method: 'POST',
+    body: JSON.stringify({ name, choices }),
+  }).then((r) => r.optionGroup);
+
+export const removeOptionGroup = (productId: string, groupId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/merchant/products/${productId}/option-groups/${groupId}`, {
+    method: 'DELETE',
+  });
+
 export const getReport = (from?: string, to?: string) => {
   const params = new URLSearchParams();
   if (from) params.set('from', from);
