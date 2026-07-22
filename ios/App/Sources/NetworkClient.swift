@@ -1172,8 +1172,8 @@ extension NetworkClient {
         return try await get("api/v1/messages/conversations/\(conversationId)/messages/search?query=\(encoded)")
     }
 
-    func sendMessage(conversationId: String, body: String) async throws -> MessageResponse {
-        try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/messages", body: SendMessageRequest(body: body))
+    func sendMessage(conversationId: String, body: String, replyToMessageId: String? = nil) async throws -> MessageResponse {
+        try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/messages", body: SendMessageRequest(body: body, replyToMessageId: replyToMessageId))
     }
 
     func blockConversationParticipant(conversationId: String) async throws -> SuccessResponse {
