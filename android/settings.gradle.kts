@@ -153,6 +153,10 @@ include(":features:community:api")
 include(":features:community:impl")
 include(":features:community:testing")
 
+include(":features:shop:api")
+include(":features:shop:impl")
+include(":features:shop:testing")
+
 include(":features:bills:api")
 include(":features:bills:impl")
 include(":features:bills:testing")

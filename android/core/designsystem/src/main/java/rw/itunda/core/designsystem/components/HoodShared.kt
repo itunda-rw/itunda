@@ -12,6 +12,8 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,11 +29,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.Inbox
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
-import androidx.compose.material3.Icon
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -325,4 +328,79 @@ fun BackTopBar(title: String, onBack: () -> Unit) {
         }
         Text(title, color = Ids.colors.textPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
     }
+}
+
+// Relocated 2026-07-23 from app/ui/SuperAppTabs.kt while extracting Shop/Commerce into
+// :features:shop:impl -- shared with Eats (still in :app), same "promoted so a Feature
+// module can reach it" story as everything above.
+val StarGold = Color(0xFFF5A623)
+
+@Composable
+fun StarRatingRow(value: Int, onChange: (Int) -> Unit) {
+    Row {
+        for (n in 1..5) {
+            Icon(
+                Icons.Outlined.Star,
+                contentDescription = "$n star${if (n == 1) "" else "s"}",
+                tint = if (n <= value) StarGold else Ids.colors.textTertiary,
+                modifier = Modifier.size(26.dp).clickable { onChange(n) },
+            )
+        }
+    }
+}
+
+// Real shared browse-header component (2026-07-21) -- extracted from Eats' OrderFoodContent
+// (the only place this pattern previously existed) so Shop's merchant browse can reuse the
+// identical search+chips interaction instead of a second bespoke implementation. Callers own
+// their own debounce/state; this just renders the field + optional chip row.
+@Composable
+fun SearchAndCategoryChips(
+    searchInput: String,
+    onSearchChange: (String) -> Unit,
+    placeholder: String,
+    categories: List<String>,
+    selectedCategory: String?,
+    onSelectCategory: (String?) -> Unit,
+) {
+    Column {
+        OutlinedTextField(
+            value = searchInput,
+            onValueChange = onSearchChange,
+            placeholder = { Text(placeholder) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (categories.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(Ids.layout.cardGap))
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf<String?>(null).plus(categories).forEach { c ->
+                    val selected = c == selectedCategory
+                    Text(
+                        c ?: "All",
+                        color = if (selected) Color.White else Ids.colors.textSecondary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
+                            .clickable { onSelectCategory(c) }
+                            .padding(horizontal = 14.dp, vertical = 6.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+// Relocated 2026-07-23 from app/ui/SuperAppTabs.kt while extracting Shop/Commerce into
+// :features:shop:impl -- shared with Eats (still in :app), same story as everything else.
+@Composable
+fun QtyButton(label: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier.size(30.dp).clip(CircleShape).background(Ids.colors.surfaceSoft).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { Text(label, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
 }
