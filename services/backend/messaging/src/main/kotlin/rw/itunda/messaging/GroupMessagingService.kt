@@ -166,7 +166,7 @@ class GroupMessagingService(
     fun getGroupForMember(userId: String, groupId: String): GroupConversation = requireMember(userId, groupId)
 
     @Transactional
-    fun sendMessage(userId: String, groupId: String, body: String): GroupMessage {
+    fun sendMessage(userId: String, groupId: String, body: String, replyToMessageId: String? = null): GroupMessage {
         val trimmed = body.trim()
         if (trimmed.isEmpty()) {
             throw EmptyGroupMessageException("Message body cannot be empty")
@@ -180,8 +180,12 @@ class GroupMessagingService(
         rateLimiter.checkLimit("messaging:group-send:$userId", limit = 30, window = Duration.ofMinutes(1))
 
         val group = requireMember(userId, groupId)
+        replyToMessageId?.let { replyId ->
+            val replied = groupMessageRepository.findById(replyId).orElseThrow { GroupMessageNotFoundException("Message not found") }
+            if (replied.groupConversationId != groupId) throw GroupMessageNotFoundException("Message not found")
+        }
         val message = groupMessageRepository.save(
-            GroupMessage(id = "group_message_${UUID.randomUUID()}", groupConversationId = groupId, senderId = userId, body = trimmed),
+            GroupMessage(id = "group_message_${UUID.randomUUID()}", groupConversationId = groupId, senderId = userId, body = trimmed, replyToMessageId = replyToMessageId),
         )
         group.lastMessageAt = message.sentAt
         groupConversationRepository.save(group)

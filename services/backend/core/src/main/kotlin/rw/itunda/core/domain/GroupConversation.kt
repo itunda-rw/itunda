@@ -95,6 +95,9 @@ class GroupMessage(
     @Column(nullable = false, length = 2000)
     val body: String,
 
+    @Column(name = "reply_to_message_id", length = 64)
+    val replyToMessageId: String? = null,
+
     @Column(name = "sent_at", nullable = false)
     val sentAt: Instant = Instant.now(),
 

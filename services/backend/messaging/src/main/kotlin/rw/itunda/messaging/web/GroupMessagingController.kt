@@ -34,7 +34,7 @@ import rw.itunda.messaging.InvalidGroupReactionException
 // StartConversationRequest.phoneNumber); memberUserIds stays available for a call site
 // that already resolved real user ids.
 data class CreateGroupRequest(val name: String, val memberUserIds: List<String> = emptyList(), val memberPhoneNumbers: List<String> = emptyList())
-data class SendGroupMessageRequest(val body: String)
+data class SendGroupMessageRequest(val body: String, val replyToMessageId: String? = null)
 data class AddGroupMemberRequest(val userId: String)
 data class ToggleGroupReactionRequest(val emoji: String)
 
@@ -79,7 +79,7 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
         val messages = page.content.map { m ->
             mapOf(
                 "id" to m.id, "groupConversationId" to m.groupConversationId, "senderId" to m.senderId, "body" to if (m.deletedAt == null) m.body else "This message was deleted",
-                "sentAt" to m.sentAt, "deletedAt" to m.deletedAt, "reactions" to (reactionsByMessageId[m.id] ?: emptyList()),
+                "sentAt" to m.sentAt, "deletedAt" to m.deletedAt, "replyToMessageId" to m.replyToMessageId, "reactions" to (reactionsByMessageId[m.id] ?: emptyList()),
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "messages" to messages) + pageMeta(page))
@@ -103,7 +103,7 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
         @RequestBody request: SendGroupMessageRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val message = groupMessagingService.sendMessage(currentUser.userId, groupId, request.body)
+        val message = groupMessagingService.sendMessage(currentUser.userId, groupId, request.body, request.replyToMessageId)
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "message" to message))
     }
 
