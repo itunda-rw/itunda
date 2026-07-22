@@ -20,7 +20,7 @@ import {
 } from './lib/stocks';
 import {
   connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages,
-  blockConversationParticipant, fetchPresence, reportChatMessage, sendGroupMessage, sendMessage, startConversation, toggleGroupReaction, toggleReaction,
+  blockConversationParticipant, fetchPresence, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, startConversation, toggleGroupReaction, toggleReaction,
   type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup,
 } from './lib/messaging';
@@ -1302,6 +1302,9 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   const [giftNote, setGiftNote] = useState('');
   const [sendingGift, setSendingGift] = useState(false);
   const [blocking, setBlocking] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Message[] | null>(null);
+  const [searching, setSearching] = useState(false);
   // Real device binding step-up (2026-07-21) -- covers Gift send/claim below.
   const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
   const [otherOnline, setOtherOnline] = useState<boolean | null>(null);
@@ -1366,6 +1369,15 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not send this report.');
     }
+  };
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim().length < 2) return;
+    setSearching(true); setError(null);
+    try { setSearchResults(await searchConversationMessages(conversation.conversationId, searchQuery.trim())); }
+    catch (err) { setError(err instanceof ApiError ? err.message : 'Could not search this conversation.'); }
+    finally { setSearching(false); }
   };
 
   const handleSendGift = async (e: React.FormEvent) => {
@@ -1533,6 +1545,13 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         </button>
       </div>
 
+      <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+        <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search this conversation" minLength={2} style={{ flex: 1, padding: '9px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)' }} />
+        <button type="submit" className="toss-btn toss-btn-secondary" disabled={searching || searchQuery.trim().length < 2}>{searching ? '…' : 'Search'}</button>
+        {searchResults !== null && <button type="button" className="toss-btn toss-btn-secondary" onClick={() => { setSearchResults(null); setSearchQuery(''); }}>Clear</button>}
+      </form>
+      {searchResults !== null && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '6px' }}>{searchResults.length} matching message{searchResults.length === 1 ? '' : 's'}</p>}
+
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px' }}>
         {messages === null && <div className="toss-card skeleton" style={{ height: '120px' }} />}
         {messages !== null && messages.length === 0 && (
@@ -1540,7 +1559,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
             Say hello — no messages yet.
           </p>
         )}
-        {messages?.map((m) => {
+        {(searchResults ?? messages)?.map((m) => {
           const isMine = m.senderId === currentUser?.id;
           const offer = offersByMessageId[m.id];
           const gift = giftsByMessageId[m.id];

@@ -56,6 +56,10 @@ export const fetchMessages = (conversationId: string) =>
     (r) => [...r.messages].reverse(),
   );
 
+export const searchConversationMessages = (conversationId: string, query: string) =>
+  apiFetch<{ success: boolean; messages: Message[] }>(`/api/v1/messages/conversations/${conversationId}/messages/search?query=${encodeURIComponent(query)}`)
+    .then((r) => r.messages);
+
 export const sendMessage = (conversationId: string, body: string) =>
   apiFetch<{ success: boolean; message: Message }>(`/api/v1/messages/conversations/${conversationId}/messages`, {
     method: 'POST',
