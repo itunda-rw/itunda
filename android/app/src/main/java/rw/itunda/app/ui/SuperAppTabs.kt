@@ -131,6 +131,7 @@ import rw.itunda.app.network.SendGiftInConversationRequest
 import rw.itunda.app.network.ListingDto
 import rw.itunda.app.network.MakeOfferRequest
 import rw.itunda.app.network.SetNeighborhoodRequest
+import rw.itunda.app.network.SetConversationQuietRequest
 import rw.itunda.app.network.MerchantProductDto
 import rw.itunda.app.network.MessageDto
 import rw.itunda.app.network.NetworkClient
@@ -955,6 +956,8 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
     var blockConfirmationOpen by remember { mutableStateOf(false) }
     var blocking by remember { mutableStateOf(false) }
     var isBlocked by remember { mutableStateOf(false) }
+    var quiet by remember { mutableStateOf(false) }
+    var updatingQuiet by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<MessageDto>?>(null) }
     var searching by remember { mutableStateOf(false) }
@@ -982,6 +985,9 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
             val res = NetworkClient.apiService.getPresence(listOf(conversation.otherUserId))
             if (res.success) otherOnline = res.presence[conversation.otherUserId]
         } catch (e: Exception) { /* real, non-critical -- only backs the header subtitle */ }
+    }
+    LaunchedEffect(conversation.conversationId) {
+        try { quiet = NetworkClient.apiService.getConversationQuiet(conversation.conversationId).quiet } catch (_: Exception) { }
     }
 
     // Real-fetches both Marketplace and Real Estate offer history for this conversation
@@ -1087,8 +1093,18 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
         BackTopBar(conversation.otherUserName, onBack)
-        TextButton(onClick = { blockConfirmationOpen = true }, enabled = !blocking && !isBlocked) {
-            Text(if (isBlocked) "Blocked" else if (blocking) "Blocking…" else "Block", color = Ids.colors.danger)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(onClick = { blockConfirmationOpen = true }, enabled = !blocking && !isBlocked) {
+                Text(if (isBlocked) "Blocked" else if (blocking) "Blocking…" else "Block", color = Ids.colors.danger)
+            }
+            TextButton(onClick = {
+                updatingQuiet = true
+                coroutineScope.launch {
+                    try { quiet = NetworkClient.apiService.setConversationQuiet(conversation.conversationId, SetConversationQuietRequest(!quiet)).quiet }
+                    catch (_: IOException) { error = "Couldn't update this quiet room. Check your connection and try again." }
+                    finally { updatingQuiet = false }
+                }
+            }, enabled = !updatingQuiet) { Text(if (updatingQuiet) "…" else if (quiet) "Resume alerts" else "Quiet room", color = TossSecondary) }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(value = searchQuery, onValueChange = { searchQuery = it; if (it.isBlank()) searchResults = null }, placeholder = { Text("Search this conversation") }, singleLine = true, modifier = Modifier.weight(1f))

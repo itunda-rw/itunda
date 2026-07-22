@@ -760,6 +760,8 @@ private struct ChatThreadScreen: View {
     @State private var showingBlockConfirmation = false
     @State private var blocking = false
     @State private var isBlocked = false
+    @State private var quiet = false
+    @State private var updatingQuiet = false
     @State private var searchQuery = ""
     @State private var searchResults: [MessageDto]?
     @State private var searching = false
@@ -792,6 +794,10 @@ private struct ChatThreadScreen: View {
                 Button(isBlocked ? "Blocked" : (blocking ? "Blocking…" : "Block")) { showingBlockConfirmation = true }
                     .disabled(isBlocked || blocking)
                     .foregroundColor(.red)
+                Button(updatingQuiet ? "…" : (quiet ? "Resume alerts" : "Quiet room")) { Task { await setQuietRoom() } }
+                    .disabled(updatingQuiet)
+                    .font(.caption)
+                    .foregroundColor(IDS.Colors.textSecondary)
             }
             .padding(.horizontal, 8)
             .alert("Block \(conversation.otherUserName)?", isPresented: $showingBlockConfirmation) {
@@ -943,6 +949,9 @@ private struct ChatThreadScreen: View {
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .task { await refresh() }
+        .task {
+            quiet = (try? await NetworkClient.shared.getConversationQuiet(conversationId: conversation.conversationId).quiet) ?? false
+        }
         // Real poll, kept as an always-correct fallback delivery path alongside the
         // real WebSocket push below -- matches bank-mfe/Android exactly (poll interval
         // unchanged, push appended live on top).
@@ -1105,6 +1114,16 @@ private struct ChatThreadScreen: View {
             error = "\(conversation.otherUserName) is blocked."
         } catch {
             self.error = "Couldn't block this person. Check your connection and try again."
+        }
+    }
+
+    private func setQuietRoom() async {
+        updatingQuiet = true
+        defer { updatingQuiet = false }
+        do {
+            quiet = try await NetworkClient.shared.setConversationQuiet(conversationId: conversation.conversationId, quiet: !quiet).quiet
+        } catch {
+            self.error = "Couldn't update this quiet room. Check your connection and try again."
         }
     }
 
