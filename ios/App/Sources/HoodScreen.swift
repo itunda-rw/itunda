@@ -64,6 +64,25 @@ private func hoodRelativeTime(_ isoTimestamp: String) -> String {
     }
 }
 
+/// The selected distance is sent to the existing nearby endpoints; it is not a
+/// cosmetic filter. Small preset choices keep the control usable on a phone.
+private struct HoodRadiusControl: View {
+    @Binding var radiusKm: Double
+    let onChanged: () -> Void
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach([1.0, 3.0, 5.0, 10.0], id: \.self) { radius in
+                let selected = radiusKm == radius
+                Button("\(Int(radius)) km") { radiusKm = radius; onChanged() }
+                    .font(.caption).bold().foregroundColor(selected ? .white : IDS.Colors.textPrimary)
+                    .padding(.horizontal, 12).padding(.vertical, 7)
+                    .background(selected ? IDS.Colors.brand : IDS.Colors.chipBackground).cornerRadius(999)
+            }
+            Spacer()
+        }
+    }
+}
+
 /// Real hyperlocal neighborhood setup (2026-07-20) -- shared across every Hood-mode
 /// content view (Marketplace/Community/Jobs/Property), mirroring bank-mfe's
 /// NeighborhoodSetupPrompt and Android's own composable of the same name exactly.
@@ -1291,6 +1310,7 @@ private struct JobsContent: View {
     @State private var favoriteIds: Set<String> = []
     @State private var favoritingId: String?
     @State private var favoriteNotice: String?
+    @State private var nearbyRadiusKm = 3.0
 
     var body: some View {
         ScrollView {
@@ -1305,6 +1325,8 @@ private struct JobsContent: View {
                 .pickerStyle(.segmented)
 
                 if let favoriteNotice { Text(favoriteNotice).font(.caption).foregroundColor(IDS.Colors.brand).frame(maxWidth: .infinity, alignment: .leading) }
+
+                if view == .nearby { HoodRadiusControl(radiusKm: $nearbyRadiusKm, onChanged: { locationFetcher.requestLocation() }) }
 
                 HStack(alignment: .top, spacing: 8) {
                     Text("Safe work")
@@ -1450,7 +1472,7 @@ private struct JobsContent: View {
 
     private func loadNearby(_ coordinate: CLLocationCoordinate2D) async {
         do {
-            let res = try await NetworkClient.shared.getNearbyJobPosts(lat: coordinate.latitude, lng: coordinate.longitude)
+            let res = try await NetworkClient.shared.getNearbyJobPosts(lat: coordinate.latitude, lng: coordinate.longitude, radiusKm: nearbyRadiusKm)
             posts = res.posts
             error = nil
         } catch {
