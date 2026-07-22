@@ -102,6 +102,7 @@ import rw.itunda.app.network.CommunityCommentWithAuthorDto
 import rw.itunda.app.network.CommunityPostDto
 import rw.itunda.app.network.ConversationSummaryDto
 import rw.itunda.app.network.CreateCommunityPostRequest
+import rw.itunda.app.network.CreateChatReportRequest
 import rw.itunda.app.network.CreateJobPostRequest
 import rw.itunda.app.network.CreateListingRequest
 import rw.itunda.app.network.CreatePropertyListingRequest
@@ -1105,6 +1106,13 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
                                 }
                             }
                         },
+                        onReportMessage = { messageId, reason ->
+                            coroutineScope.launch {
+                                try { NetworkClient.apiService.reportChatMessage(CreateChatReportRequest(messageId, reason)); error = "Thanks. Your report was sent for review." }
+                                catch (e: HttpException) { error = superAppErrorMessage(e) }
+                                catch (_: IOException) { error = "Couldn't reach itunda. Check your connection and try again." }
+                            }
+                        },
                     )
                 }
             }
@@ -1429,7 +1437,10 @@ private fun GiftBubble(gift: GiftDto, isMine: Boolean, currentUserId: String?, o
 private fun MessageBubble(
     message: MessageDto, isMine: Boolean, currentUserId: String?, offer: OfferBubbleData?, gift: GiftDto?,
     onToggleReaction: (String) -> Unit, onRespondToOffer: (String, String, Double?) -> Unit, onClaimGift: (String) -> Unit,
+    onReportMessage: (String, String) -> Unit = { _, _ -> },
 ) {
+    var reportOpen by remember { mutableStateOf(false) }
+    var reportReason by remember { mutableStateOf("") }
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
             if (gift != null) {
@@ -1448,7 +1459,17 @@ private fun MessageBubble(
             }
         }
         MessageReactionsRow(message.reactions, currentUserId, isMine, onToggleReaction)
+        if (!isMine) {
+            TextButton(onClick = { reportOpen = true }) { Text("Report message", color = TossSecondary, fontSize = 11.sp) }
+        }
     }
+    if (reportOpen) AlertDialog(
+        onDismissRequest = { reportOpen = false },
+        title = { Text("Report message") },
+        text = { OutlinedTextField(value = reportReason, onValueChange = { if (it.length <= 180) reportReason = it }, label = { Text("Reason") }) },
+        confirmButton = { TextButton(onClick = { if (reportReason.trim().length >= 3) { onReportMessage(message.id, reportReason.trim()); reportReason = ""; reportOpen = false } }) { Text("Send") } },
+        dismissButton = { TextButton(onClick = { reportOpen = false }) { Text("Cancel") } },
+    )
 }
 
 // ============================== HOOD (Marketplace) ==============================
