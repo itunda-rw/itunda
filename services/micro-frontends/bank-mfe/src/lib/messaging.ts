@@ -32,6 +32,7 @@ export interface Message {
   body: string;
   sentAt: string;
   readAt: string | null;
+  replyToMessageId: string | null;
   reactions: ReactionGroup[];
 }
 

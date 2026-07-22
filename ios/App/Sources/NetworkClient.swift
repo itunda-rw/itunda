@@ -516,6 +516,7 @@ struct MessageDto: Decodable, Identifiable {
     let body: String
     let sentAt: String
     let readAt: String?
+    let replyToMessageId: String? = nil
     let reactions: [ReactionGroupDto]
 
     // A custom init(from:) below suppresses Swift's automatic memberwise initializer,

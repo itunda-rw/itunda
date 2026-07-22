@@ -327,6 +327,7 @@ data class MessageDto(
     val body: String,
     val sentAt: String,
     val readAt: String?,
+    val replyToMessageId: String? = null,
     val reactions: List<ReactionGroupDto> = emptyList(),
 )
 
