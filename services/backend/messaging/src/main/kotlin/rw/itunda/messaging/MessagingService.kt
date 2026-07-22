@@ -43,6 +43,7 @@ data class ConversationSummary(
     val lastMessagePreview: String?,
     val unreadCount: Long,
     val quiet: Boolean,
+    val pinnedMessageId: String?,
 )
 data class TalkContact(val userId: String, val name: String)
 
@@ -250,6 +251,15 @@ class MessagingService(
         conversationRepository.save(conversation)
     }
 
+    /** Resolves the shared pin only after the usual non-disclosing membership check. */
+    fun getPinnedMessage(userId: String, conversationId: String): Message? {
+        val conversation = requireParticipant(userId, conversationId)
+        return conversation.pinnedMessageId?.let { messageId ->
+            // A stale legacy reference must not make the conversation inaccessible.
+            messageRepository.findById(messageId).orElse(null)?.takeIf { it.conversationId == conversationId }
+        }
+    }
+
     // Real online/offline presence (2026-07-19) -- reads the real WebSocket session
     // registry via RealtimeMessagePublisher.isOnline, never a fabricated status. No
     // participant/membership check on the requested ids -- presence is a real,
@@ -375,6 +385,7 @@ class MessagingService(
                 lastMessagePreview = lastMessageByConversationId[conversation.id]?.body,
                 unreadCount = unreadCountByConversationId[conversation.id] ?: 0L,
                 quiet = conversation.id in quietConversationIds,
+                pinnedMessageId = conversation.pinnedMessageId,
             )
         }
         return PageImpl(summaries, pageable, page.totalElements)

@@ -960,6 +960,8 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
     var giftsByMessageId by remember { mutableStateOf<Map<String, GiftDto>>(emptyMap()) }
     var draft by remember { mutableStateOf("") }
     var replyingTo by remember { mutableStateOf<MessageDto?>(null) }
+    var pinnedMessage by remember { mutableStateOf<MessageDto?>(null) }
+    var updatingPin by remember { mutableStateOf(false) }
     var sending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var blockConfirmationOpen by remember { mutableStateOf(false) }
@@ -997,6 +999,7 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
     }
     LaunchedEffect(conversation.conversationId) {
         try { quiet = NetworkClient.apiService.getConversationQuiet(conversation.conversationId).quiet } catch (_: Exception) { }
+        try { pinnedMessage = NetworkClient.apiService.getPinnedConversationMessage(conversation.conversationId).message } catch (_: Exception) { }
     }
 
     // Real-fetches both Marketplace and Real Estate offer history for this conversation
@@ -1129,6 +1132,15 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
             }, enabled = !searching) { Text(if (searching) "…" else "Search") }
         }
         searchResults?.let { Text("${it.size} matching message${if (it.size == 1) "" else "s"}", color = TossSecondary, fontSize = 12.sp) }
+        pinnedMessage?.let { pinned ->
+            Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(TossCardSoft).padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Text("📌 ${pinned.body}", color = TossText, fontSize = 12.sp, maxLines = 1, modifier = Modifier.weight(1f))
+                TextButton(onClick = {
+                    updatingPin = true
+                    coroutineScope.launch { try { NetworkClient.apiService.unpinConversationMessage(conversation.conversationId); pinnedMessage = null } catch (_: Exception) { error = "Couldn't unpin this message." } finally { updatingPin = false } }
+                }, enabled = !updatingPin) { Text("Unpin", fontSize = 11.sp) }
+            }
+        }
         otherOnline?.let { online ->
             Text(
                 if (online) "Online" else "Offline",
@@ -1153,6 +1165,10 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
                         offer = offersByMessageId[m.id],
                         gift = giftsByMessageId[m.id],
                         onReply = { replyingTo = it },
+                        onPin = { message ->
+                            updatingPin = true
+                            coroutineScope.launch { try { NetworkClient.apiService.pinConversationMessage(conversation.conversationId, message.id); pinnedMessage = message } catch (_: Exception) { error = "Couldn't pin this message." } finally { updatingPin = false } }
+                        },
                         onClaimGift = { giftId ->
                             coroutineScope.launch {
                                 try {
@@ -1543,6 +1559,7 @@ private fun MessageBubble(
     message: MessageDto, isMine: Boolean, currentUserId: String?, offer: OfferBubbleData?, gift: GiftDto?,
     onToggleReaction: (String) -> Unit, onRespondToOffer: (String, String, Double?) -> Unit, onClaimGift: (String) -> Unit,
     onReply: (MessageDto) -> Unit = {},
+    onPin: (MessageDto) -> Unit = {},
     onReportMessage: (String, String) -> Unit = { _, _ -> },
 ) {
     var reportOpen by remember { mutableStateOf(false) }
@@ -1566,6 +1583,7 @@ private fun MessageBubble(
         }
         MessageReactionsRow(message.reactions, currentUserId, isMine, onToggleReaction)
         TextButton(onClick = { onReply(message) }) { Text("Reply", color = TossSecondary, fontSize = 11.sp) }
+        TextButton(onClick = { onPin(message) }) { Text("Pin", color = TossSecondary, fontSize = 11.sp) }
         Text(
             "${if (isMine && message.readAt == null) "1 · " else ""}${chatMessageTime(message.sentAt)}",
             color = TossSecondary,

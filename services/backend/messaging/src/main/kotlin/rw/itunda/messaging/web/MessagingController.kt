@@ -154,6 +154,17 @@ class MessagingController(private val messagingService: MessagingService) {
         return ResponseEntity.ok(mapOf("success" to true))
     }
 
+    @GetMapping("/conversations/{conversationId}/pin")
+    fun getPinnedMessage(@PathVariable conversationId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val message = messagingService.getPinnedMessage(currentUser.userId, conversationId)
+        val payload = message?.let {
+            mapOf("id" to it.id, "conversationId" to it.conversationId, "senderId" to it.senderId,
+                "body" to it.body, "sentAt" to it.sentAt, "readAt" to it.readAt,
+                "replyToMessageId" to it.replyToMessageId, "reactions" to emptyList<Any>())
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "message" to payload))
+    }
+
     @PostMapping("/conversations/{conversationId}/quiet")
     fun setConversationQuiet(
         @PathVariable conversationId: String,

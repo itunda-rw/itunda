@@ -767,6 +767,8 @@ private struct ChatThreadScreen: View {
     @State private var giftsByMessageId: [String: GiftDto] = [:]
     @State private var draft = ""
     @State private var replyingTo: MessageDto?
+    @State private var pinnedMessage: MessageDto?
+    @State private var updatingPin = false
     @State private var sending = false
     @State private var error: String?
     @State private var socketTask: URLSessionWebSocketTask?
@@ -841,6 +843,17 @@ private struct ChatThreadScreen: View {
                     .padding(.horizontal, IDS.Layout.screenHorizontal)
             }
 
+            if let pinnedMessage {
+                HStack(spacing: 8) {
+                    Text("📌 \(pinnedMessage.body)").font(.caption).lineLimit(1)
+                    Spacer()
+                    Button("Unpin") { Task { await unpinMessage() } }
+                        .font(.caption).disabled(updatingPin)
+                }
+                .padding(8).background(IDS.Colors.chipBackground).cornerRadius(10)
+                .padding(.horizontal, IDS.Layout.screenHorizontal)
+            }
+
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 8) {
@@ -849,15 +862,20 @@ private struct ChatThreadScreen: View {
                                 Text("Say hello — no messages yet.").foregroundColor(IDS.Colors.textSecondary).padding(.top, 20)
                             }
                             ForEach(messages) { message in
+                                let reactionHandler: (String) -> Void = { emoji in Task { await toggleReaction(message.id, emoji) } }
+                                let offerHandler: (String, String, Double?) -> Void = { offerId, action, counterAmount in Task { await respondToOffer(offerId, action, counterAmount) } }
+                                let giftHandler: (String) -> Void = { giftId in Task { await claimGift(giftId) } }
+                                let reportHandler: (String, String) -> Void = { messageId, reason in Task { await reportMessage(messageId, reason) } }
                                 MessageBubble(
                                     message: message, isMine: message.senderId == currentUserId, currentUserId: currentUserId,
                                     offer: offersByMessageId[message.id],
                                     gift: giftsByMessageId[message.id],
-                                    onToggleReaction: { emoji in Task { await toggleReaction(message.id, emoji) } },
-                                    onRespondToOffer: { offerId, action, counterAmount in Task { await respondToOffer(offerId, action, counterAmount) } },
-                                    onClaimGift: { giftId in Task { await claimGift(giftId) } },
+                                    onToggleReaction: reactionHandler,
+                                    onRespondToOffer: offerHandler,
+                                    onClaimGift: giftHandler,
                                     onReply: { replyingTo = $0 },
-                                    onReportMessage: { messageId, reason in Task { await reportMessage(messageId, reason) } },
+                                    onPin: { pinned in Task { await pinMessage(pinned) } },
+                                    onReportMessage: reportHandler,
                                 )
                                 .id(message.id)
                             }
@@ -973,6 +991,7 @@ private struct ChatThreadScreen: View {
         .task { await refresh() }
         .task {
             quiet = (try? await NetworkClient.shared.getConversationQuiet(conversationId: conversation.conversationId).quiet) ?? false
+            pinnedMessage = try? await NetworkClient.shared.getPinnedConversationMessage(conversationId: conversation.conversationId).message
         }
         // Real poll, kept as an always-correct fallback delivery path alongside the
         // real WebSocket push below -- matches bank-mfe/Android exactly (poll interval
@@ -1125,6 +1144,24 @@ private struct ChatThreadScreen: View {
         } catch {
             // Best-effort -- a failed reaction toggle just leaves the badge as it was.
         }
+    }
+
+    private func pinMessage(_ message: MessageDto) async {
+        updatingPin = true
+        defer { updatingPin = false }
+        do {
+            _ = try await NetworkClient.shared.pinConversationMessage(conversationId: conversation.conversationId, messageId: message.id)
+            pinnedMessage = message
+        } catch { self.error = "Couldn't pin this message. Check your connection and try again." }
+    }
+
+    private func unpinMessage() async {
+        updatingPin = true
+        defer { updatingPin = false }
+        do {
+            _ = try await NetworkClient.shared.unpinConversationMessage(conversationId: conversation.conversationId)
+            pinnedMessage = nil
+        } catch { self.error = "Couldn't unpin this message. Check your connection and try again." }
     }
 
     private func blockParticipant() async {
@@ -1350,6 +1387,7 @@ private struct MessageBubble: View {
     let onRespondToOffer: (String, String, Double?) -> Void
     let onClaimGift: (String) -> Void
     let onReply: (MessageDto) -> Void
+    let onPin: (MessageDto) -> Void
     let onReportMessage: (String, String) -> Void
     @State private var reportOpen = false
     @State private var reportReason = ""
@@ -1375,6 +1413,8 @@ private struct MessageBubble: View {
             }
             MessageReactionsRow(reactions: message.reactions, currentUserId: currentUserId, isMine: isMine, onToggle: onToggleReaction)
             Button("Reply") { onReply(message) }
+                .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+            Button("Pin") { onPin(message) }
                 .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
             Text("\(isMine && message.readAt == nil ? "1 · " : "")\(chatMessageTime(message.sentAt))")
                 .font(.caption2)

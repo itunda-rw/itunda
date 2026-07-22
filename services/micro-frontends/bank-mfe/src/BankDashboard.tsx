@@ -19,8 +19,8 @@ import {
   type Portfolio, type PortfolioValuePoint, type PricePoint, type Stock,
 } from './lib/stocks';
 import {
-  connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages,
-  blockConversationParticipant, fetchConversationQuiet, fetchPresence, fetchTalkContacts, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationQuiet, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction,
+  connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages, fetchPinnedConversationMessage,
+  blockConversationParticipant, fetchConversationQuiet, fetchPresence, fetchTalkContacts, pinConversationMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationQuiet, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unpinConversationMessage,
   type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup,
 } from './lib/messaging';
@@ -1311,6 +1311,8 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [pinnedMessage, setPinnedMessage] = useState<Message | null>(null);
+  const [updatingPin, setUpdatingPin] = useState(false);
   const [sending, setSending] = useState(false);
   const [giftComposerOpen, setGiftComposerOpen] = useState(false);
   const [giftAmount, setGiftAmount] = useState('');
@@ -1340,6 +1342,10 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   useEffect(() => {
     fetchConversationQuiet(conversation.conversationId).then(setQuiet).catch(() => {});
   }, [conversation.conversationId]);
+
+  const loadPin = () => fetchPinnedConversationMessage(conversation.conversationId).then(setPinnedMessage).catch(() => {});
+
+  useEffect(() => { loadPin(); }, [conversation.conversationId]);
 
   // Real-fetches both Marketplace and Real Estate offer history for this conversation --
   // a given real conversation only ever carries one type in practice (a listing/property
@@ -1388,6 +1394,26 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not update this quiet room.');
     } finally { setUpdatingQuiet(false); }
+  };
+
+  const handlePin = async (message: Message) => {
+    setUpdatingPin(true);
+    try {
+      await pinConversationMessage(conversation.conversationId, message.id);
+      setPinnedMessage(message);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not pin this message.');
+    } finally { setUpdatingPin(false); }
+  };
+
+  const handleUnpin = async () => {
+    setUpdatingPin(true);
+    try {
+      await unpinConversationMessage(conversation.conversationId);
+      setPinnedMessage(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not unpin this message.');
+    } finally { setUpdatingPin(false); }
   };
 
   const handleReport = async (messageId: string) => {
@@ -1586,6 +1612,13 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       </form>
       {searchResults !== null && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '6px' }}>{searchResults.length} matching message{searchResults.length === 1 ? '' : 's'}</p>}
 
+      {pinnedMessage && (
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '8px 10px', marginBottom: '8px', borderRadius: '10px', background: 'var(--toss-grey-100)', fontSize: '12px' }}>
+          <span aria-hidden="true">📌</span><span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pinnedMessage.body}</span>
+          <button type="button" onClick={handleUnpin} disabled={updatingPin} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-600)', fontSize: '12px' }}>Unpin</button>
+        </div>
+      )}
+
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px' }}>
         {messages === null && <div className="toss-card skeleton" style={{ height: '120px' }} />}
         {messages !== null && messages.length === 0 && (
@@ -1627,6 +1660,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
                 {isMine && !m.readAt ? '1 · ' : ''}{chatMessageTime(m.sentAt)}
               </span>
               <button type="button" onClick={() => setReplyingTo(m)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Reply</button>
+              <button type="button" onClick={() => handlePin(m)} disabled={updatingPin} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>{pinnedMessage?.id === m.id ? 'Pinned' : 'Pin'}</button>
               {!isMine && (
                 <button type="button" onClick={() => handleReport(m.id)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>
                   Report message

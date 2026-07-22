@@ -315,6 +315,7 @@ data class ConversationSummaryDto(
     val lastMessagePreview: String?,
     val unreadCount: Int,
     val quiet: Boolean = false,
+    val pinnedMessageId: String? = null,
 )
 
 // Real emoji reactions (2026-07-19) -- see MessagingService.toggleReaction's own doc
@@ -345,6 +346,7 @@ data class ConversationResponse(val success: Boolean, val conversation: Conversa
 data class ConversationsResponse(val success: Boolean, val conversations: List<ConversationSummaryDto>)
 data class MessagesResponse(val success: Boolean, val messages: List<MessageDto>)
 data class MessageResponse(val success: Boolean, val message: MessageDto)
+data class PinnedMessageResponse(val success: Boolean, val message: MessageDto?)
 data class ReactionsResponse(val success: Boolean, val reactions: List<ReactionGroupDto>)
 
 // Real group chat (2026-07-18) -- see rw.itunda.messaging.web.GroupMessagingController.
@@ -878,6 +880,15 @@ interface ApiService {
 
     @POST("api/v1/messages/conversations/{id}/messages")
     suspend fun sendMessage(@Path("id") conversationId: String, @Body request: SendMessageRequest): MessageResponse
+
+    @GET("api/v1/messages/conversations/{id}/pin")
+    suspend fun getPinnedConversationMessage(@Path("id") conversationId: String): PinnedMessageResponse
+
+    @POST("api/v1/messages/conversations/{id}/pin/{messageId}")
+    suspend fun pinConversationMessage(@Path("id") conversationId: String, @Path("messageId") messageId: String): SuccessResponse
+
+    @DELETE("api/v1/messages/conversations/{id}/pin")
+    suspend fun unpinConversationMessage(@Path("id") conversationId: String): SuccessResponse
 
     @POST("api/v1/messages/conversations/{id}/block")
     suspend fun blockConversationParticipant(@Path("id") conversationId: String): SuccessResponse

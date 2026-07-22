@@ -502,6 +502,7 @@ struct ConversationSummaryDto: Decodable, Identifiable {
     let lastMessagePreview: String?
     let unreadCount: Int
     let quiet: Bool?
+    let pinnedMessageId: String?
     var id: String { conversationId }
 }
 
@@ -605,6 +606,7 @@ struct ConversationResponse: Decodable { let success: Bool; let conversation: Co
 struct ConversationsResponse: Decodable { let success: Bool; let conversations: [ConversationSummaryDto] }
 struct MessagesResponse: Decodable { let success: Bool; let messages: [MessageDto] }
 struct MessageResponse: Decodable { let success: Bool; let message: MessageDto }
+struct PinnedMessageResponse: Decodable { let success: Bool; let message: MessageDto? }
 
 // Real group chat (2026-07-18) -- see rw.itunda.messaging.web.GroupMessagingController.
 // memberPhoneNumbers is the real human-friendly entry point (same reasoning as
@@ -1181,6 +1183,18 @@ extension NetworkClient {
 
     func sendMessage(conversationId: String, body: String, replyToMessageId: String? = nil) async throws -> MessageResponse {
         try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/messages", body: SendMessageRequest(body: body, replyToMessageId: replyToMessageId))
+    }
+
+    func getPinnedConversationMessage(conversationId: String) async throws -> PinnedMessageResponse {
+        try await get("api/v1/messages/conversations/\(conversationId)/pin")
+    }
+
+    func pinConversationMessage(conversationId: String, messageId: String) async throws -> SuccessResponse {
+        try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/pin/\(messageId)", body: EmptyRequest())
+    }
+
+    func unpinConversationMessage(conversationId: String) async throws -> SuccessResponse {
+        try await authenticatedDelete("api/v1/messages/conversations/\(conversationId)/pin")
     }
 
     func blockConversationParticipant(conversationId: String) async throws -> SuccessResponse {

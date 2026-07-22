@@ -15,6 +15,7 @@ export interface ConversationSummary {
   lastMessagePreview: string | null;
   unreadCount: number;
   quiet: boolean;
+  pinnedMessageId: string | null;
 }
 export interface TalkContact { userId: string; name: string }
 
@@ -88,6 +89,9 @@ export const pinConversationMessage = (conversationId: string, messageId: string
 
 export const unpinConversationMessage = (conversationId: string) =>
   apiFetch<{ success: boolean }>(`/api/v1/messages/conversations/${conversationId}/pin`, { method: 'DELETE' });
+
+export const fetchPinnedConversationMessage = (conversationId: string) =>
+  apiFetch<{ success: boolean; message: Message | null }>(`/api/v1/messages/conversations/${conversationId}/pin`).then((r) => r.message);
 
 export const fetchConversationQuiet = (conversationId: string) =>
   apiFetch<{ success: boolean; quiet: boolean }>(`/api/v1/messages/conversations/${conversationId}/quiet`).then((r) => r.quiet);

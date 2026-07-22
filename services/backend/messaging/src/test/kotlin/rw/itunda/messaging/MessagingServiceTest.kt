@@ -3,6 +3,7 @@ package rw.itunda.messaging
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.assertions.throwables.shouldThrow
 import io.mockk.every
 import io.mockk.clearMocks
 import io.mockk.mockk
@@ -162,6 +163,34 @@ class MessagingServiceTest : BehaviorSpec({
 
             Then("it preserves delivery without creating a new-message alert") {
                 verify(exactly = 0) { notificationRepository.save(match { it.userId == "user_b" && it.type == "NEW_MESSAGE" }) }
+            }
+        }
+
+        When("a participant pins a message from their own conversation") {
+            val conversation = Conversation(id = "conversation_pin", participantAId = "user_a", participantBId = "user_b")
+            val message = Message(id = "message_pin", conversationId = "conversation_pin", senderId = "user_b", body = "Meet at 4")
+            every { conversationRepository.findById("conversation_pin") } returns Optional.of(conversation)
+            every { conversationRepository.save(any()) } answers { firstArg() }
+            every { messageRepository.findById("message_pin") } returns Optional.of(message)
+
+            service.setPinnedMessage("user_a", "conversation_pin", "message_pin")
+
+            Then("it stores and returns the shared pin only to a participant") {
+                conversation.pinnedMessageId shouldBe "message_pin"
+                service.getPinnedMessage("user_b", "conversation_pin")?.id shouldBe "message_pin"
+            }
+        }
+
+        When("a participant tries to pin a message from another conversation") {
+            val conversation = Conversation(id = "conversation_pin_safe", participantAId = "user_a", participantBId = "user_b")
+            val otherMessage = Message(id = "message_elsewhere", conversationId = "conversation_elsewhere", senderId = "user_b", body = "Private")
+            every { conversationRepository.findById("conversation_pin_safe") } returns Optional.of(conversation)
+            every { messageRepository.findById("message_elsewhere") } returns Optional.of(otherMessage)
+
+            Then("it rejects the cross-conversation reference") {
+                shouldThrow<MessageNotFoundException> {
+                    service.setPinnedMessage("user_a", "conversation_pin_safe", "message_elsewhere")
+                }
             }
         }
 
