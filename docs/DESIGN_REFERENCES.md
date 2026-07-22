@@ -105,7 +105,7 @@ they close in itunda's current implementation.
   deliberately does not present arrival predictions, congestion claims, crowd estimates, or
   panorama controls as if they were real. These need a first-party data collection programme or a
   licensed Rwanda data source before they become product work; routing, saved places, nearby
-  discovery, and itineraries remain fully self-hosted today.
+  discovery, and up-to-seven-stop itineraries remain fully self-hosted today.
 - Naver's autocomplete/recent-search behavior wasn't independently verified — only generic
   search-UX practice surfaced.
 - icunow.co.kr (Kakao filter/sort breakdown) was unreachable; only a search-snippet was usable.

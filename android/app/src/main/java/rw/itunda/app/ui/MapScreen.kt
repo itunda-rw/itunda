@@ -324,7 +324,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
     var routeAlternatives by remember { mutableStateOf<List<RouteResultDto>?>(null) }
     var selectedRouteIndex by remember { mutableStateOf(0) }
     // A deliberately bounded itinerary builder: the real Maps endpoint accepts the
-    // start plus one to four ordered places (2–5 stops total). Search results are used
+    // start plus one to six ordered places (2–7 stops total). Search results are used
     // as the picker so these are genuine geocoded Rwanda places, not typed coordinates.
     var itineraryBuilding by remember { mutableStateOf(false) }
     var itineraryStops by remember { mutableStateOf<List<PlaceSearchResultDto>>(emptyList()) }
@@ -571,8 +571,8 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
             error = "That stop is already in this itinerary."
             return
         }
-        if (itineraryStops.size >= 4) {
-            error = "An itinerary can have up to 5 stops including your start."
+        if (itineraryStops.size >= 6) {
+            error = "An itinerary can have up to 7 stops including your start."
             return
         }
         itineraryStops = itineraryStops + place

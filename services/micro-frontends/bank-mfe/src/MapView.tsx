@@ -329,7 +329,7 @@ export default function MapView() {
     const map = mapRef.current;
     if (!map || !measuring) return;
     const handleClick = (e: maplibregl.MapMouseEvent) => {
-      setMeasurePoints((prev) => prev.length >= 5 ? prev : [...prev, [e.lngLat.lat, e.lngLat.lng]]);
+      setMeasurePoints((prev) => prev.length >= 7 ? prev : [...prev, [e.lngLat.lat, e.lngLat.lng]]);
     };
     map.on('click', handleClick);
     return () => {
@@ -782,11 +782,11 @@ export default function MapView() {
   };
 
   // Turns the ruler's ordered points into one real OSRM itinerary. The backend validates
-  // the same 2–5-stop boundary, but this guard keeps the action self-explanatory before
+  // the same 2–7-stop boundary, but this guard keeps the action self-explanatory before
   // making a network request. We intentionally preserve the ruler points afterward so
   // users can undo/reorder by editing their selected stops and route again.
   const handleRouteItinerary = async (mode: TravelMode = travelMode) => {
-    if (measurePoints.length < 2 || measurePoints.length > 5) return;
+    if (measurePoints.length < 2 || measurePoints.length > 7) return;
     setRouting(true);
     setError(null);
     try {
@@ -1052,7 +1052,7 @@ export default function MapView() {
         >
           <span style={{ fontWeight: 700, color: MAP_CARD_TEXT }}>
             {measurePoints.length === 0
-              ? 'Tap the map to add 2–5 stops'
+              ? 'Tap the map to add 2–7 stops'
               : measurePoints.length === 1
                 ? 'Add 1 more stop to route it'
                 : `${measurePoints.length} stops · ${measureTotalKm.toFixed(2)} km straight-line`}

@@ -72,7 +72,7 @@ class MapsService(
 
     /**
      * One real route through an ordered list of stops, for errands and delivery-style
-     * journeys. Five stops (origin + up to three stops + destination) is intentionally
+     * journeys. Seven stops (origin + up to five intermediate stops + destination) is intentionally
      * bounded: it keeps request URLs, OSRM CPU work, and a mobile itinerary legible.
      * It is not a travelling-salesperson optimiser: user order is preserved exactly.
      */
@@ -238,7 +238,9 @@ class MapsService(
 
     companion object {
         const val MIN_ITINERARY_WAYPOINTS = 2
-        const val MAX_ITINERARY_WAYPOINTS = 5
+        // Match NAVER Maps' documented five intermediate waypoints while retaining a
+        // bounded request: origin + five waypoints + destination = seven total stops.
+        const val MAX_ITINERARY_WAYPOINTS = 7
         const val DEFAULT_BOOKMARK_FOLDER = "Saved places"
         const val DEFAULT_BOOKMARK_COLOR = "#F5A623"
         private val HEX_COLOR_REGEX = Regex("^#[0-9A-Fa-f]{6}$")

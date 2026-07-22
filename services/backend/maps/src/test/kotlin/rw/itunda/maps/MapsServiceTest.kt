@@ -185,8 +185,8 @@ class MapsServiceTest : BehaviorSpec({
             }
         }
 
-        When("an itinerary has more than the safe maximum of five stops") {
-            val waypoints = (0..5).map { MapsService.ItineraryWaypoint(-1.9441 - it * 0.001, 30.0619) }
+        When("an itinerary has more than the safe maximum of seven stops") {
+            val waypoints = (0..7).map { MapsService.ItineraryWaypoint(-1.9441 - it * 0.001, 30.0619) }
 
             Then("it rejects it before consuming routing capacity or contacting OSRM") {
                 try {

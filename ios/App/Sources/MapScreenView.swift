@@ -469,11 +469,11 @@ struct MapScreenView: View {
                                     }
                                     VStack(alignment: .leading, spacing: 6) {
                                         Button(itineraryStops.contains(where: { $0.latitude == place.latitude && $0.longitude == place.longitude }) ? "Already in itinerary" : "＋ Add stop to itinerary") {
-                                            guard itineraryStops.count < 5, !itineraryStops.contains(where: { $0.latitude == place.latitude && $0.longitude == place.longitude }) else { return }
+                                            guard itineraryStops.count < 7, !itineraryStops.contains(where: { $0.latitude == place.latitude && $0.longitude == place.longitude }) else { return }
                                             itineraryStops.append(place)
                                         }
                                         .font(.caption).bold().foregroundColor(IDS.Colors.brand)
-                                        .disabled(itineraryStops.count >= 5 || itineraryStops.contains(where: { $0.latitude == place.latitude && $0.longitude == place.longitude }))
+                                        .disabled(itineraryStops.count >= 7 || itineraryStops.contains(where: { $0.latitude == place.latitude && $0.longitude == place.longitude }))
                                         if itineraryStops.count >= 2 {
                                             Text("Itinerary: \(itineraryStops.map(\.displayName).joined(separator: " → "))").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
                                             Button(action: { Task { await getItineraryDirections() } }) { Text(routing ? "Routing itinerary…" : "Route \(itineraryStops.count) stops").font(.caption).bold().foregroundColor(.white).padding(.horizontal, 12).padding(.vertical, 8).background(IDS.Colors.brand).cornerRadius(10) }.disabled(routing)

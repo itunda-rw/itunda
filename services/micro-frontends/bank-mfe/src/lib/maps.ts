@@ -75,7 +75,7 @@ export const getDirectionsAlternatives = (fromLat: number, fromLng: number, toLa
     `/api/v1/maps/directions/alternatives?fromLat=${fromLat}&fromLng=${fromLng}&toLat=${toLat}&toLng=${toLng}&mode=${mode}`,
   ).then((r) => r.routes);
 
-// A real, ordered errand/delivery route through 2–5 Rwanda stops. This is deliberately
+// A real, ordered errand/delivery route through 2–7 Rwanda stops. This is deliberately
 // POST: an ordered list belongs in a validated request body, not in an unbounded query
 // string. The response retains the normal RouteResult shape so every map client can use
 // the same real road-line renderer it already uses for ordinary directions.

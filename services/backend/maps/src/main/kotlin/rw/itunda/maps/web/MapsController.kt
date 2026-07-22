@@ -54,7 +54,7 @@ class MapsController(private val mapsService: MapsService) {
     )
 
     // POST rather than encoding an arbitrary ordered array into query parameters. The
-    // server accepts a deliberately bounded itinerary (2–5 stops) and returns the same
+    // server accepts a deliberately bounded itinerary (2–7 stops) and returns the same
     // `route` shape as ordinary directions, so clients can reuse their route renderer.
     @PostMapping("/directions/itinerary")
     fun itineraryDirections(
