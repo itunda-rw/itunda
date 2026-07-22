@@ -3,6 +3,8 @@ package rw.itunda.feature.shop.impl
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -121,6 +123,7 @@ fun CommerceShopContent(
     var error by remember { mutableStateOf<String?>(null) }
     var selectedMerchant by remember { mutableStateOf<ShoppingMerchantDto?>(null) }
     var products by remember { mutableStateOf<List<MerchantProductDto>?>(null) }
+    var selectedProduct by remember { mutableStateOf<MerchantProductDto?>(null) }
     val cart = remember { mutableStateMapOf<String, CommerceCartLine>() }
     var showCart by remember { mutableStateOf(false) }
     var results by remember { mutableStateOf<List<CommerceCheckoutResult>?>(null) }
@@ -196,6 +199,17 @@ fun CommerceShopContent(
     }
 
     val merchant = selectedMerchant
+    val product = selectedProduct
+    if (merchant != null && product != null) {
+        ProductDetailScreen(
+            merchant = merchant,
+            product = product,
+            cart = cart,
+            onBack = { selectedProduct = null },
+            onViewCart = { selectedProduct = null; showCart = true },
+        )
+        return
+    }
     if (merchant != null) {
         MerchantDetailView(
             merchant = merchant,
@@ -203,6 +217,7 @@ fun CommerceShopContent(
             cart = cart,
             onBack = { selectedMerchant = null },
             onViewCart = { showCart = true },
+            onOpenProduct = { selectedProduct = it },
         )
         return
     }
@@ -364,6 +379,7 @@ private fun MerchantDetailView(
     cart: SnapshotStateMap<String, CommerceCartLine>,
     onBack: () -> Unit,
     onViewCart: () -> Unit,
+    onOpenProduct: (MerchantProductDto) -> Unit,
 ) {
     BackHandler(onBack = onBack)
     val totalItems = cart.values.sumOf { it.quantity }
@@ -395,11 +411,18 @@ private fun MerchantDetailView(
                     Column(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface).padding(12.dp),
                     ) {
-                        ProductImageThumb(p.imageUrl, size = 96.dp, corner = 12.dp)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(p.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 2)
-                        Spacer(modifier = Modifier.height(2.dp))
-                        ProductPriceRow(p)
+                        // Real tap-through to the dedicated product-detail screen
+                        // (2026-07-21) -- see ProductDetailScreen's own doc comment.
+                        // Only the image/name/price area is tappable so the qty
+                        // stepper below stays independently clickable for quick
+                        // add-to-cart.
+                        Column(modifier = Modifier.clickable { onOpenProduct(p) }) {
+                            ProductImageThumb(p.imageUrl, size = 96.dp, corner = 12.dp)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(p.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 2)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            ProductPriceRow(p)
+                        }
                         ProductRatingBadge(p.id)
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
@@ -409,6 +432,70 @@ private fun MerchantDetailView(
                         }
                     }
                 }
+            }
+        }
+        if (totalItems > 0) {
+            CartFab(totalItems, onClick = onViewCart)
+        }
+    }
+}
+
+// Real dedicated product-detail screen (2026-07-21), closing
+// docs/DESIGN_REFERENCES.md Section 5 recommendation #6 -- until now tapping a product
+// anywhere in Commerce only ever revealed the flat catalog grid's inline qty stepper;
+// there was no tap-through view showing the full-size image, discount breakdown, a
+// description, and written reviews together. Reuses already-proven pieces
+// (ProductImageThumb larger, ProductPriceRow, ProductRatingBadge which already lazily
+// expands into the written-review list, QtyButton) rather than inventing new ones --
+// this is a real second surface for the same real data, not new business logic.
+@Composable
+private fun ProductDetailScreen(
+    merchant: ShoppingMerchantDto,
+    product: MerchantProductDto,
+    cart: SnapshotStateMap<String, CommerceCartLine>,
+    onBack: () -> Unit,
+    onViewCart: () -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    val totalItems = cart.values.sumOf { it.quantity }
+    val key = "${merchant.merchantId}:${product.id}"
+    val qty = cart[key]?.quantity ?: 0
+    fun setQty(newQty: Int) {
+        if (newQty <= 0) cart.remove(key) else cart[key] = CommerceCartLine(merchant.merchantId, merchant.businessName, product, newQty)
+    }
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
+        BackTopBar(merchant.businessName, onBack)
+        Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                ProductImageThumb(product.imageUrl, size = 220.dp, corner = 16.dp)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(product.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Spacer(modifier = Modifier.height(6.dp))
+            ProductPriceRow(product)
+            Spacer(modifier = Modifier.height(6.dp))
+            ProductRatingBadge(product.id)
+            if (!product.description.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(product.description, color = Ids.colors.textSecondary, fontSize = 13.sp, lineHeight = 19.sp)
+            }
+            Spacer(modifier = Modifier.height(20.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                QtyButton("-") { setQty(qty - 1) }
+                Text(qty.toString(), modifier = Modifier.width(36.dp), textAlign = TextAlign.Center, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                QtyButton("+") { setQty(qty + 1) }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Ids.colors.brand)
+                    .clickable { setQty(maxOf(1, qty)) }
+                    .padding(vertical = 16.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(if (qty > 0) "Update cart" else "Add to cart", color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
         if (totalItems > 0) {

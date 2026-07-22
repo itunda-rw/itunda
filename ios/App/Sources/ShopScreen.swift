@@ -65,6 +65,7 @@ private struct CommerceShopContent: View {
     @State private var error: String?
     @State private var selectedMerchant: ShoppingMerchantDto?
     @State private var products: [MerchantProductDto]?
+    @State private var selectedProduct: MerchantProductDto?
     @State private var cart: [String: CommerceCartLine] = [:]
     @State private var showCart = false
     @State private var results: [CommerceCheckoutResult]?
@@ -92,13 +93,22 @@ private struct CommerceShopContent: View {
                         results = checkoutResults
                     }
                 )
+            } else if let merchant = selectedMerchant, let product = selectedProduct {
+                ProductDetailView(
+                    merchant: merchant,
+                    product: product,
+                    cart: $cart,
+                    onBack: { selectedProduct = nil },
+                    onViewCart: { selectedProduct = nil; showCart = true }
+                )
             } else if let merchant = selectedMerchant {
                 MerchantDetailView(
                     merchant: merchant,
                     products: products,
                     cart: $cart,
                     onBack: { selectedMerchant = nil },
-                    onViewCart: { showCart = true }
+                    onViewCart: { showCart = true },
+                    onOpenProduct: { selectedProduct = $0 }
                 )
             } else {
                 browseBody
@@ -253,6 +263,7 @@ private struct MerchantDetailView: View {
     @Binding var cart: [String: CommerceCartLine]
     let onBack: () -> Void
     let onViewCart: () -> Void
+    let onOpenProduct: (MerchantProductDto) -> Void
 
     private var totalItems: Int { cart.values.reduce(0) { $0 + $1.quantity } }
     private func qty(_ productId: String) -> Int { cart["\(merchant.merchantId):\(productId)"]?.quantity ?? 0 }
@@ -286,9 +297,18 @@ private struct MerchantDetailView: View {
                         LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
                             ForEach(products) { product in
                                 VStack(alignment: .leading, spacing: 6) {
-                                    ProductImageThumb(imageUrl: product.imageUrl, side: 96)
-                                    Text(product.name).font(IDS.Typography.bodyMedium).foregroundColor(IDS.Colors.textPrimary).lineLimit(2)
-                                    ProductPriceRow(product: product)
+                                    // Real tap-through to the new product-detail screen
+                                    // (2026-07-21) -- see ProductDetailView's own doc
+                                    // comment. Only image/name/price is tappable so the
+                                    // qty stepper below stays independently tappable.
+                                    Button(action: { onOpenProduct(product) }) {
+                                        VStack(alignment: .leading, spacing: 6) {
+                                            ProductImageThumb(imageUrl: product.imageUrl, side: 96)
+                                            Text(product.name).font(IDS.Typography.bodyMedium).foregroundColor(IDS.Colors.textPrimary).lineLimit(2)
+                                            ProductPriceRow(product: product)
+                                        }
+                                    }
+                                    .buttonStyle(.plain)
                                     ProductRatingBadge(productId: product.id)
                                     HStack(spacing: 10) {
                                         Spacer()

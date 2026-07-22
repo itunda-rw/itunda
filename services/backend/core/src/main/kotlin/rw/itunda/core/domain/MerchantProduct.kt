@@ -28,6 +28,12 @@ import java.time.Instant
  * `price`/`originalPrice` at write time and stored, so it can never drift from the two
  * prices it's derived from (the same "never trust the client with a derived number"
  * discipline `OrderService` already applies to price resolution at checkout).
+ *
+ * **`description` added 2026-07-21**, backing the new dedicated product-detail screen
+ * (all 3 clients) -- a merchant-entered free-text field, trimmed and bounded to 2000
+ * chars server-side (`MerchantProductService`), same "STRICT_TRANS_TABLES will genuinely
+ * throw on an over-length insert" discipline `ProductReviewService.submitReview` already
+ * established for its own comment field.
  */
 @Entity
 @Table(name = "merchant_products")
@@ -56,6 +62,14 @@ class MerchantProduct(
 
     @Column(name = "discount_percent")
     var discountPercent: Int? = null,
+
+    // Real merchant-entered description (2026-07-21) -- closes
+    // docs/DESIGN_REFERENCES.md Section 5 recommendation #6 (a dedicated product-detail
+    // screen needs something longer-form than the catalog card's name/price/image).
+    // Free text, nullable: an unset description just means the detail screen falls back
+    // to the name/price/image it already has, never a fabricated blurb.
+    @Column(length = 2000)
+    var description: String? = null,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),

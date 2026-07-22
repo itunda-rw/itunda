@@ -73,6 +73,15 @@ class MerchantProductService(
             .toInt()
     }
 
+    // Real, minimal description bounding (2026-07-21) -- this DB genuinely runs
+    // STRICT_TRANS_TABLES (confirmed live, see ProductReviewService.submitReview's own
+    // doc comment for the exact same real crash risk on an over-length insert), so this
+    // trims and hard-caps at the column's own 2000-char limit rather than letting an
+    // over-long value throw a raw DataIntegrityViolationException. Blank/absent is a
+    // valid, real "no description" state, not an error.
+    private fun validateDescription(description: String?): String? =
+        description?.trim()?.ifBlank { null }?.take(2000)
+
     @Transactional
     fun addProduct(
         ownerUserId: String,
@@ -80,6 +89,7 @@ class MerchantProductService(
         price: BigDecimal,
         imageUrl: String? = null,
         originalPrice: BigDecimal? = null,
+        description: String? = null,
     ): MerchantProduct {
         // Real anti-spam limit -- found missing in a 2026-07-19 security sweep. Not
         // money-moving (deliberately no Idempotency-Key, per the controller's own doc
@@ -100,6 +110,7 @@ class MerchantProductService(
             imageUrl = validatedImageUrl,
             originalPrice = originalPrice,
             discountPercent = discountPercent,
+            description = validateDescription(description),
         )
         return merchantProductRepository.save(product)
     }
@@ -117,6 +128,7 @@ class MerchantProductService(
         price: BigDecimal,
         imageUrl: String? = null,
         originalPrice: BigDecimal? = null,
+        description: String? = null,
     ): MerchantProduct {
         val merchant = getMyMerchant(ownerUserId)
         if (price <= BigDecimal.ZERO) {
@@ -134,6 +146,7 @@ class MerchantProductService(
         product.imageUrl = validatedImageUrl
         product.originalPrice = originalPrice
         product.discountPercent = discountPercent
+        product.description = validateDescription(description)
         return merchantProductRepository.save(product)
     }
 

@@ -164,6 +164,17 @@ class ShoppingController(
                 "price" to product.price,
                 "active" to product.active,
                 "createdAt" to product.createdAt,
+                // imageUrl/originalPrice/discountPercent/description -- real fields
+                // restored 2026-07-21. The 2026-07-21 menu-options merge had rebuilt this
+                // endpoint's response as a hand-built map (to fold in optionGroups) and, in
+                // doing so, silently dropped the image/discount fields the *same day's*
+                // product-images pass had added and depended on this exact endpoint to
+                // serve -- a real regression caught by re-reading this controller while
+                // building the product-detail screen, not a new gap. description is new.
+                "imageUrl" to product.imageUrl,
+                "originalPrice" to product.originalPrice,
+                "discountPercent" to product.discountPercent,
+                "description" to product.description,
                 "optionGroups" to (groupsByProduct[product.id] ?: emptyList()).map { group ->
                     mapOf(
                         "id" to group.id,
@@ -197,7 +208,9 @@ class ShoppingController(
                 // imageUrl/originalPrice/discountPercent added 2026-07-21 -- see
                 // MerchantProduct.kt's own doc comment; search results need the same
                 // real product-card fields the per-merchant catalog already exposes.
+                // description added 2026-07-21, backing the new product-detail screen.
                 "imageUrl" to p.imageUrl, "originalPrice" to p.originalPrice, "discountPercent" to p.discountPercent,
+                "description" to p.description,
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "products" to products) + pageMeta(page))
