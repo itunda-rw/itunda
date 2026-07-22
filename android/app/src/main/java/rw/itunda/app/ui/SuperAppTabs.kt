@@ -155,6 +155,7 @@ import rw.itunda.app.network.ShoppingMerchantDto
 import rw.itunda.app.network.StartConversationRequest
 import rw.itunda.app.network.TokenStore
 import rw.itunda.app.network.ToggleReactionRequest
+import rw.itunda.app.network.TalkContactDto
 import rw.itunda.app.network.UpdateEatsOrderStatusRequest
 import rw.itunda.core.designsystem.theme.Ids
 import java.io.IOException
@@ -458,7 +459,17 @@ private fun DirectMessagesList(
     var startPhoneNumber by remember { mutableStateOf("") }
     var startError by remember { mutableStateOf<String?>(null) }
     var starting by remember { mutableStateOf(false) }
+    var contacts by remember { mutableStateOf<List<TalkContactDto>?>(null) }
     val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        contacts = try {
+            NetworkClient.apiService.getTalkContacts().takeIf { it.success }?.contacts ?: emptyList()
+        } catch (_: Exception) {
+            // Starting by phone remains available when the contact directory cannot load.
+            emptyList()
+        }
+    }
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)) {
         item {
@@ -469,7 +480,41 @@ private fun DirectMessagesList(
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text("New chat", color = TossText, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text("Enter their phone number to start a conversation.", color = TossSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 12.dp))
+                    Text("Choose a saved contact, or enter their phone number.", color = TossSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp, bottom = 12.dp))
+                    if (!contacts.isNullOrEmpty()) {
+                        Text("Your contacts", color = TossSecondary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(top = 4.dp, bottom = 10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            contacts.orEmpty().forEach { contact ->
+                                TextButton(
+                                    enabled = !starting,
+                                    onClick = {
+                                        starting = true
+                                        startError = null
+                                        coroutineScope.launch {
+                                            try {
+                                                val res = NetworkClient.apiService.startConversation(
+                                                    StartConversationRequest(otherUserId = contact.userId),
+                                                )
+                                                if (res.success) onStarted(res.conversation.id)
+                                            } catch (e: HttpException) {
+                                                startError = superAppErrorMessage(e)
+                                            } catch (e: IOException) {
+                                                startError = "Couldn't reach itunda. Check your connection and try again."
+                                            } finally {
+                                                starting = false
+                                            }
+                                        }
+                                    },
+                                ) { Text(contact.name, maxLines = 1) }
+                            }
+                        }
+                    }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         OutlinedTextField(
                             value = startPhoneNumber,
