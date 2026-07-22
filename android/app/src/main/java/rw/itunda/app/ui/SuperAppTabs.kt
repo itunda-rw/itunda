@@ -464,6 +464,7 @@ private fun DirectMessagesList(
     var startError by remember { mutableStateOf<String?>(null) }
     var starting by remember { mutableStateOf(false) }
     var contacts by remember { mutableStateOf<List<TalkContactDto>?>(null) }
+    var showArchived by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
@@ -560,14 +561,20 @@ private fun DirectMessagesList(
                 }
             }
         }
+        val archivedCount = conversations?.count { it.quiet } ?: 0
+        if (archivedCount > 0) item {
+            TextButton(onClick = { showArchived = !showArchived }) {
+                Text(if (showArchived) "Show active chats" else "Archived ($archivedCount)", color = TossSecondary)
+            }
+        }
         if (error != null) {
             item { ErrorCard(error, onRetry = onRetry) }
         } else if (conversations == null) {
             item { SkeletonBlock() }
-        } else if (conversations.isEmpty()) {
+        } else if (conversations.filter { if (showArchived) it.quiet else !it.quiet }.isEmpty()) {
             item { EmptyState("No conversations yet.", icon = Icons.Outlined.ChatBubbleOutline) }
         } else {
-            items(conversations, key = { it.conversationId }) { c -> ConversationRow(c, online = presence[c.otherUserId] == true, onClick = { onOpen(c.conversationId) }) }
+            items(conversations.filter { if (showArchived) it.quiet else !it.quiet }, key = { it.conversationId }) { c -> ConversationRow(c, online = presence[c.otherUserId] == true, onClick = { onOpen(c.conversationId) }) }
         }
     }
 }
