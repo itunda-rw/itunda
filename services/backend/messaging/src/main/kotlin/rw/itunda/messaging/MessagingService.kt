@@ -19,6 +19,7 @@ import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.UserBlockRepository
 import rw.itunda.core.repository.ContactRepository
+import rw.itunda.core.repository.ConversationPreferenceRepository
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
@@ -77,6 +78,7 @@ class MessagingService(
     private val realtimeMessagePublisher: RealtimeMessagePublisher,
     private val userBlockRepository: UserBlockRepository,
     private val contactRepository: ContactRepository,
+    private val conversationPreferenceRepository: ConversationPreferenceRepository,
 ) {
     private fun requireNotBlocked(userId: String, otherUserId: String) {
         if (
@@ -195,6 +197,36 @@ class MessagingService(
         val conversation = requireParticipant(userId, conversationId)
         val otherUserId = if (conversation.participantAId == userId) conversation.participantBId else conversation.participantAId
         userBlockRepository.findByBlockerUserIdAndBlockedUserId(userId, otherUserId)?.let(userBlockRepository::delete)
+    }
+
+    /**
+     * A quiet room is private to one participant: it is removed from their active
+     * attention surface and notifications should be suppressed by clients, without
+     * leaving, deleting history, or affecting the other participant.
+     */
+    @Transactional
+    fun setConversationQuiet(userId: String, conversationId: String, quiet: Boolean) {
+        requireParticipant(userId, conversationId)
+        val preference = conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, userId)
+        if (preference == null) {
+            if (quiet) conversationPreferenceRepository.save(
+                rw.itunda.core.domain.ConversationPreference(
+                    id = "conversation_preference_${UUID.randomUUID()}",
+                    conversationId = conversationId,
+                    userId = userId,
+                    quiet = true,
+                ),
+            )
+        } else {
+            preference.quiet = quiet
+            preference.updatedAt = Instant.now()
+            conversationPreferenceRepository.save(preference)
+        }
+    }
+
+    fun isConversationQuiet(userId: String, conversationId: String): Boolean {
+        requireParticipant(userId, conversationId)
+        return conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, userId)?.quiet ?: false
     }
 
     // Real online/offline presence (2026-07-19) -- reads the real WebSocket session

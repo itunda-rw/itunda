@@ -37,6 +37,7 @@ import rw.itunda.messaging.InvalidMessageSearchException
 data class StartConversationRequest(val phoneNumber: String? = null, val otherUserId: String? = null)
 data class SendMessageRequest(val body: String)
 data class ToggleReactionRequest(val emoji: String)
+data class SetConversationQuietRequest(val quiet: Boolean)
 
 // Real 1:1 messaging -- see MessagingService's own doc comment for the full account.
 // Normal itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()),
@@ -140,6 +141,23 @@ class MessagingController(private val messagingService: MessagingService) {
         messagingService.unblockConversationParticipant(currentUser.userId, conversationId)
         return ResponseEntity.ok(mapOf("success" to true))
     }
+
+    @PostMapping("/conversations/{conversationId}/quiet")
+    fun setConversationQuiet(
+        @PathVariable conversationId: String,
+        @RequestBody request: SetConversationQuietRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> {
+        messagingService.setConversationQuiet(currentUser.userId, conversationId, request.quiet)
+        return ResponseEntity.ok(mapOf("success" to true, "quiet" to request.quiet))
+    }
+
+    @GetMapping("/conversations/{conversationId}/quiet")
+    fun getConversationQuiet(
+        @PathVariable conversationId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "quiet" to messagingService.isConversationQuiet(currentUser.userId, conversationId)))
 
     // Real online/offline presence (2026-07-19) -- see MessagingService.getPresence's
     // own doc comment. Works for any set of user ids, not just 1:1 conversation

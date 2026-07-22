@@ -10,6 +10,7 @@ import rw.itunda.core.domain.Message
 import rw.itunda.core.domain.MessageReaction
 import rw.itunda.core.domain.UserBlock
 import rw.itunda.core.domain.ChatReport
+import rw.itunda.core.domain.ConversationPreference
 
 interface ConversationRepository : JpaRepository<Conversation, String> {
     fun findByParticipantAIdAndParticipantBId(participantAId: String, participantBId: String): Conversation?
@@ -34,6 +35,10 @@ interface ConversationRepository : JpaRepository<Conversation, String> {
             "FROM Conversation c WHERE c.participantAId = :userId OR c.participantBId = :userId",
     )
     fun findPartnerUserIds(@Param("userId") userId: String): List<String>
+}
+
+interface ConversationPreferenceRepository : JpaRepository<ConversationPreference, String> {
+    fun findByConversationIdAndUserId(conversationId: String, userId: String): ConversationPreference?
 }
 
 // Real batch projection (2026-07-19) -- one row per conversation with an unread
