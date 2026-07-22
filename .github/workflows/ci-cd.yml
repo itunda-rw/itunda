@@ -81,8 +81,7 @@ jobs:
         run: ./gradlew build --no-daemon
 
   # android/: native Kotlin/Compose app (verified compiling and running on-device --
-  # see docs/ARCHITECTURE.md §3). iOS/Tuist needs a macOS runner and isn't build-verified
-  # yet even locally, so it isn't in CI as another green check that isn't real.
+  # see docs/ARCHITECTURE.md §3).
   android-build:
     runs-on: ubuntu-latest
     steps:
@@ -101,3 +100,42 @@ jobs:
       - name: Assemble debug APK
         working-directory: android
         run: ./gradlew :app:assembleDebug --no-daemon
+
+  # ios/: Tuist-generated Xcode project (real Feature/Interface/Testing microfeature
+  # split, see docs/MULTI_AGENT_ISOLATION.md) + CocoaPods-integrated React Native
+  # bridge for the Saronite mini-app host. Verified building locally 2026-07-23 (the
+  # `Target(...)` manifest calls needed updating to Tuist's current
+  # `Target.target(destinations:...)` API, and `pod install` must run after
+  # `tuist generate` -- see ios/Podfile's own comment) -- this is the first time
+  # that's been a real, run green check instead of an untested claim.
+  ios-build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Install Saronite JS dependencies (own npm workspace, not the root yarn workspace)
+        working-directory: packages/saronite
+        run: npm ci
+
+      - name: Install Tuist
+        run: brew install --cask tuist
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: tuist generate --no-open
+
+      - name: Install CocoaPods dependencies
+        working-directory: ios
+        run: pod install
+
+      - name: Build ItundaApp
+        working-directory: ios
+        run: |
+          xcodebuild -workspace Itunda.xcworkspace -scheme ItundaApp \
+            -destination 'generic/platform=iOS Simulator' build \
+            CODE_SIGNING_ALLOWED=NO

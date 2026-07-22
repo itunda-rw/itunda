@@ -294,7 +294,7 @@ private struct CreateWeeklySavingsPlanView: View {
             } catch let NetworkError.httpError(statusCode) {
                 error = Self.errorMessage(statusCode)
             } catch {
-                error = "Couldn't reach itunda. Check your connection and try again."
+                self.error = "Couldn't reach itunda. Check your connection and try again."
             }
             submitting = false
         }

@@ -55,13 +55,15 @@ modules, so two agents editing it concurrently is a known conflict risk.
 
 ### iOS (`ios/Project.swift`, Tuist)
 
-Mirrors the Android `Feature<Name>Interface / Feature<Name>` split on paper, but
-almost every feature target is a `Dummy.swift` placeholder and the whole Tuist
-graph is **not wired into CI** (`.github/workflows/ci-cd.yml` says so explicitly —
-no macOS runner yet). Treat iOS as scaffold-only for now: an agent claiming an iOS
-feature silo should say so explicitly since there's no CI safety net catching
-mistakes there yet. Boundary enforcement for iOS is deliberately deferred until
-the build is real (see "Out of scope" below).
+Mirrors the Android `Feature<Name>Interface / Feature<Name>` split, and as of
+2026-07-23 this is a real, CI-verified build (`ios-build` job on a `macos-15`
+runner: `tuist generate` + `pod install` + `xcodebuild ... ItundaApp`) — not
+just a paper structure. Most feature targets are still `Dummy.swift`
+placeholders content-wise (only Banking/Payments have a real `Example` app
+target), but the module graph itself compiles and links. Boundary
+*enforcement* (the Swift equivalent of Android's Konsist check) is still
+missing — nothing yet stops one `Feature<Name>` target from importing another
+feature's implementation module directly — tracked as the next open item.
 
 ### Backend (`services/backend/<module>`)
 
@@ -116,8 +118,12 @@ Boundaries above are backed by real CI checks, not just convention:
 
 ## Out of scope (tracked, not forgotten)
 
-- iOS boundary enforcement — deferred until the Tuist build is actually verified
-  in CI; enforcing rules on a graph that doesn't compile yet is premature.
-- Decomposing the remaining empty Android feature shells or `SuperAppTabs.kt`
-  itself — this doc only adds the guardrails so that decomposition, done by any
-  agent, in parallel, doesn't collide.
+- iOS boundary enforcement — the build is now real and CI-verified (see above),
+  so this is no longer blocked on that, just not built yet. A Swift-side
+  equivalent of the Android Konsist check (no `Feature<Name>` importing another
+  feature's `Feature<Name>` module directly, only `Feature<Name>Interface`) is
+  the natural next step.
+- Decomposing the remaining empty Android feature shells, the still-mostly-
+  `Dummy.swift` iOS feature targets, or `SuperAppTabs.kt` itself — this doc
+  only adds the guardrails so that decomposition, done by any agent, in
+  parallel, doesn't collide.

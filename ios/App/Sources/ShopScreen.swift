@@ -350,6 +350,96 @@ private struct MerchantDetailView: View {
     }
 }
 
+/// Real product-detail screen (2026-07-21), mirroring Android's
+/// ProductDetailScreen in features/shop/impl/ShopScreen.kt: full-size image,
+/// name, price row, rating badge, description, quantity stepper, and an
+/// add/update-cart action -- reached by tapping a product card in
+/// MerchantDetailView's grid (see that grid's own doc comment).
+private struct ProductDetailView: View {
+    let merchant: ShoppingMerchantDto
+    let product: MerchantProductDto
+    @Binding var cart: [String: CommerceCartLine]
+    let onBack: () -> Void
+    let onViewCart: () -> Void
+
+    private var totalItems: Int { cart.values.reduce(0) { $0 + $1.quantity } }
+    private var key: String { "\(merchant.merchantId):\(product.id)" }
+    private var qty: Int { cart[key]?.quantity ?? 0 }
+    private func setQty(_ quantity: Int) {
+        if quantity <= 0 { cart.removeValue(forKey: key) }
+        else { cart[key] = CommerceCartLine(merchantId: merchant.merchantId, businessName: merchant.businessName, product: product, quantity: quantity) }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Button(action: onBack) {
+                    Image(systemName: "chevron.left").font(.system(size: 18, weight: .medium)).frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Back")
+                Text(merchant.businessName).font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
+                Spacer()
+            }
+            .padding(.horizontal, 8)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Spacer()
+                        ProductImageThumb(imageUrl: product.imageUrl, side: 220)
+                        Spacer()
+                    }
+                    Spacer().frame(height: 16)
+                    Text(product.name).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                    Spacer().frame(height: 6)
+                    ProductPriceRow(product: product)
+                    Spacer().frame(height: 6)
+                    ProductRatingBadge(productId: product.id)
+                    if let description = product.description, !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Spacer().frame(height: 12)
+                        Text(description).font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                    }
+                    Spacer().frame(height: 20)
+                    HStack(spacing: 10) {
+                        Spacer()
+                        qtyButton("minus") { setQty(qty - 1) }
+                        Text("\(qty)").frame(width: 36).font(.headline).foregroundColor(IDS.Colors.textPrimary)
+                        qtyButton("plus") { setQty(qty + 1) }
+                        Spacer()
+                    }
+                    Spacer().frame(height: 16)
+                    Button(action: { setQty(max(1, qty)) }) {
+                        Text(qty > 0 ? "Update cart" : "Add to cart")
+                            .font(IDS.Typography.bodyBold)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(IDS.Colors.brand)
+                            .cornerRadius(16)
+                    }
+                }
+            }
+            .padding(.horizontal, IDS.Layout.screenHorizontal)
+            .padding(.top, 12)
+
+            if totalItems > 0 {
+                CartFab(totalItems: totalItems, onTap: onViewCart)
+            }
+        }
+        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+    }
+
+    private func qtyButton(_ symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            ZStack {
+                Circle().fill(IDS.Colors.chipBackground)
+                Image(systemName: symbol).font(.caption).foregroundColor(IDS.Colors.textPrimary)
+            }
+            .frame(width: 30, height: 30)
+        }
+    }
+}
+
 /// Real per-seller order splitting -- each merchant group becomes its own real,
 /// independent placeOrder() call. Sequential, not concurrent: these are real
 /// money-moving calls against the same buyer wallet, and a clear one-at-a-time

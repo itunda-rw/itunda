@@ -20,18 +20,18 @@ func makeMicroFeature(
     let hasRealExampleContent = exampleFiles.contains { $0 != "Dummy.swift" }
 
     var targets: [Target] = [
-        Target(
+        Target.target(
             name: "Feature\(name)Interface",
-            platform: .iOS,
+            destinations: .iOS,
             product: .framework,
             bundleId: "rw.itunda.feature.\(name.lowercased()).interface",
             infoPlist: .default,
             sources: ["Features/\(name)/Interface/Sources/**"],
             dependencies: []
         ),
-        Target(
+        Target.target(
             name: "Feature\(name)",
-            platform: .iOS,
+            destinations: .iOS,
             product: .framework,
             bundleId: "rw.itunda.feature.\(name.lowercased())",
             infoPlist: .default,
@@ -40,9 +40,9 @@ func makeMicroFeature(
                 .target(name: "Feature\(name)Interface")
             ] + dependencies
         ),
-        Target(
+        Target.target(
             name: "Feature\(name)Testing",
-            platform: .iOS,
+            destinations: .iOS,
             product: .framework,
             bundleId: "rw.itunda.feature.\(name.lowercased()).testing",
             infoPlist: .default,
@@ -51,9 +51,9 @@ func makeMicroFeature(
                 .target(name: "Feature\(name)Interface")
             ]
         ),
-        Target(
+        Target.target(
             name: "Feature\(name)Tests",
-            platform: .iOS,
+            destinations: .iOS,
             product: .unitTests,
             bundleId: "rw.itunda.feature.\(name.lowercased()).tests",
             infoPlist: .default,
@@ -67,9 +67,9 @@ func makeMicroFeature(
 
     if hasRealExampleContent {
         targets.append(
-            Target(
+            Target.target(
                 name: "Feature\(name)Example",
-                platform: .iOS,
+                destinations: .iOS,
                 product: .app,
                 bundleId: "rw.itunda.feature.\(name.lowercased()).example",
                 infoPlist: .default,
@@ -90,9 +90,9 @@ var allTargets: [Target] = []
 let coreModules = ["DesignSystem", "Network", "Testing", "Identity", "Consent", "Ledger", "Risk"]
 for core in coreModules {
     allTargets.append(
-        Target(
+        Target.target(
             name: "Core\(core)",
-            platform: .iOS,
+            destinations: .iOS,
             product: .framework,
             bundleId: "rw.itunda.core.\(core.lowercased())",
             infoPlist: .default,
@@ -127,9 +127,9 @@ for feature in featureModules {
 }
 
 allTargets.append(
-    Target(
+    Target.target(
         name: "ItundaPaymentsSDK",
-        platform: .iOS,
+        destinations: .iOS,
         product: .framework,
         bundleId: "rw.itunda.sdk.pay",
         infoPlist: .default,
@@ -154,9 +154,9 @@ appDependencies.append(.target(name: "CoreDesignSystem"))
 appDependencies.append(.target(name: "CoreIdentity"))
 
 allTargets.append(
-    Target(
+    Target.target(
         name: "ItundaApp",
-        platform: .iOS,
+        destinations: .iOS,
         product: .app,
         bundleId: "rw.itunda.app",
         // Real login/session flow (2026-07-11, see App/Sources/NetworkClient.swift)
@@ -204,9 +204,9 @@ allTargets.append(
 // for shared visual tokens, mirroring Android's own :riderapp -> :core:designsystem
 // dependency choice exactly.
 allTargets.append(
-    Target(
+    Target.target(
         name: "ItundaRiderApp",
-        platform: .iOS,
+        destinations: .iOS,
         product: .app,
         bundleId: "rw.itunda.rider",
         infoPlist: .extendingDefault(with: [
@@ -227,9 +227,9 @@ allTargets.append(
 // Same rationale as ItundaRiderApp: same workspace, no dependency on ItundaApp, no
 // Podfile entry (so none of its RN/Saronite/MapLibre pods), only CoreDesignSystem.
 allTargets.append(
-    Target(
+    Target.target(
         name: "ItundaMerchantApp",
-        platform: .iOS,
+        destinations: .iOS,
         product: .app,
         bundleId: "rw.itunda.merchant",
         infoPlist: .extendingDefault(with: [
@@ -250,9 +250,9 @@ allTargets.append(
 // leaving it as "no live device, can't check" indefinitely. See
 // App/UITests/FocusOrderTests.swift.
 allTargets.append(
-    Target(
+    Target.target(
         name: "ItundaAppUITests",
-        platform: .iOS,
+        destinations: .iOS,
         product: .uiTests,
         bundleId: "rw.itunda.app.uitests",
         infoPlist: .default,
