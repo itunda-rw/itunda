@@ -445,6 +445,7 @@ private struct GroupThreadScreen: View {
     @State private var messages: [GroupMessageDto]?
     @State private var members: [GroupMemberDto] = []
     @State private var draft = ""
+    @State private var replyingTo: MessageDto?
     @State private var sending = false
     @State private var error: String?
     @State private var socketTask: URLSessionWebSocketTask?
@@ -755,6 +756,7 @@ private struct ChatThreadScreen: View {
     @State private var offersByMessageId: [String: OfferBubbleData] = [:]
     @State private var giftsByMessageId: [String: GiftDto] = [:]
     @State private var draft = ""
+    @State private var replyingTo: MessageDto?
     @State private var sending = false
     @State private var error: String?
     @State private var socketTask: URLSessionWebSocketTask?
@@ -1161,8 +1163,9 @@ private struct ChatThreadScreen: View {
         error = nil
         defer { sending = false }
         do {
-            let res = try await NetworkClient.shared.sendMessage(conversationId: conversation.conversationId, body: body)
+            let res = try await NetworkClient.shared.sendMessage(conversationId: conversation.conversationId, body: body, replyToMessageId: replyingTo?.id)
             draft = ""
+            replyingTo = nil
             messages = (messages ?? []) + [res.message]
         } catch let NetworkError.httpError(statusCode) {
             error = TalkScreen.errorMessage(statusCode)
