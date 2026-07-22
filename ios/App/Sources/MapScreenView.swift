@@ -522,6 +522,14 @@ struct MapScreenView: View {
                                     // has: the active category's real results, a real
                                     // merchant count, and real saved places.
                                     Text("Around you").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                    let home = bookmarks.first { $0.folderName.caseInsensitiveCompare("Home") == .orderedSame }
+                                    let work = bookmarks.first { $0.folderName.caseInsensitiveCompare("Work") == .orderedSame }
+                                    if home != nil || work != nil {
+                                        HStack(spacing: 8) {
+                                            if let home { Button("⌂ Home") { selectPlace(PlaceSearchResultDto(displayName: home.displayName, latitude: home.latitude, longitude: home.longitude)) }.font(.caption).bold().padding(.horizontal, 12).padding(.vertical, 8).background(IDS.Colors.chipBackground).cornerRadius(999) }
+                                            if let work { Button("▣ Work") { selectPlace(PlaceSearchResultDto(displayName: work.displayName, latitude: work.latitude, longitude: work.longitude)) }.font(.caption).bold().padding(.horizontal, 12).padding(.vertical, 8).background(IDS.Colors.chipBackground).cornerRadius(999) }
+                                        }
+                                    }
                                     if let activeCategory, let categoryResults {
                                         let label = mapNearbyCategories.first { $0.id == activeCategory }?.label.lowercased() ?? "places"
                                         if categoryResults.isEmpty {
