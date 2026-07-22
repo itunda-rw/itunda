@@ -6,6 +6,7 @@ import {
   TILES_SOURCE_URL,
   GLYPHS_URL,
   searchPlaces,
+  reverseGeocode,
   getDirectionsAlternatives,
   getItineraryDirections,
   searchNearbyPlaces,
@@ -269,6 +270,8 @@ export default function MapView() {
   // file, in tap order.
   const [measuring, setMeasuring] = useState(false);
   const [measurePoints, setMeasurePoints] = useState<[number, number][]>([]);
+  const [lastMeasuredPlaceName, setLastMeasuredPlaceName] = useState<string | null>(null);
+  const latestMeasureReverseRequest = useRef(0);
   // Real recent-searches list (2026-07-22) -- the other half of the same previously-
   // flagged "no autocomplete/recent-searches" gap the live-search-as-you-type pass just
   // closed the first half of. Naver/Kakao Maps' own real recent-searches list is a purely
@@ -329,13 +332,25 @@ export default function MapView() {
     const map = mapRef.current;
     if (!map || !measuring) return;
     const handleClick = (e: maplibregl.MapMouseEvent) => {
-      setMeasurePoints((prev) => prev.length >= 7 ? prev : [...prev, [e.lngLat.lat, e.lngLat.lng]]);
+      if (measurePoints.length >= 7) return;
+      const latitude = e.lngLat.lat;
+      const longitude = e.lngLat.lng;
+      setMeasurePoints((prev) => [...prev, [latitude, longitude]]);
+      setLastMeasuredPlaceName('Finding area…');
+      const requestId = ++latestMeasureReverseRequest.current;
+      void reverseGeocode(latitude, longitude)
+        .then((placeName) => {
+          if (latestMeasureReverseRequest.current === requestId) setLastMeasuredPlaceName(placeName);
+        })
+        .catch(() => {
+          if (latestMeasureReverseRequest.current === requestId) setLastMeasuredPlaceName(null);
+        });
     };
     map.on('click', handleClick);
     return () => {
       map.off('click', handleClick);
     };
-  }, [measuring]);
+  }, [measuring, measurePoints.length]);
 
   // Real distance-measurement (ruler) tool -- keeps the `measure` GeoJSON source (a
   // dot per tapped point, a dashed line once there are 2+) in sync with real tapped
@@ -1057,8 +1072,13 @@ export default function MapView() {
                 ? 'Add 1 more stop to route it'
                 : `${measurePoints.length} stops · ${measureTotalKm.toFixed(2)} km straight-line`}
           </span>
+          {lastMeasuredPlaceName && (
+            <span style={{ color: MAP_CARD_TEXT_TERTIARY, maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {lastMeasuredPlaceName}
+            </span>
+          )}
           {measurePoints.length > 0 && (
-            <button type="button" onClick={() => setMeasurePoints((prev) => prev.slice(0, -1))} style={{ fontSize: '12px', color: 'var(--toss-blue)', fontWeight: 700 }}>
+            <button type="button" onClick={() => { setMeasurePoints((prev) => prev.slice(0, -1)); setLastMeasuredPlaceName(null); }} style={{ fontSize: '12px', color: 'var(--toss-blue)', fontWeight: 700 }}>
               Undo
             </button>
           )}
@@ -1072,7 +1092,7 @@ export default function MapView() {
               {routing ? 'Routing…' : 'Route itinerary'}
             </button>
           )}
-          <button type="button" onClick={() => { setMeasuring(false); setMeasurePoints([]); }} style={{ fontSize: '12px', color: MAP_CARD_TEXT_TERTIARY, fontWeight: 700 }}>
+          <button type="button" onClick={() => { setMeasuring(false); setMeasurePoints([]); setLastMeasuredPlaceName(null); }} style={{ fontSize: '12px', color: MAP_CARD_TEXT_TERTIARY, fontWeight: 700 }}>
             Done
           </button>
         </div>

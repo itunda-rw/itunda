@@ -37,6 +37,13 @@ export const searchPlaces = (query: string) =>
     (r) => r.results,
   );
 
+// Resolves a dropped pin using Itunda's own Rwanda-only Nominatim instance. `null`
+// means the source has no honest neighbourhood match for that coordinate.
+export const reverseGeocode = (latitude: number, longitude: number) =>
+  apiFetch<{ success: boolean; placeName: string | null }>(`/api/v1/maps/reverse?lat=${latitude}&lng=${longitude}`).then(
+    (r) => r.placeName,
+  );
+
 export interface RouteStep {
   instruction: string;
   distanceMeters: number;
