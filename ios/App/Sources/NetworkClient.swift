@@ -517,6 +517,7 @@ struct MessageDto: Decodable, Identifiable {
     let body: String
     let sentAt: String
     let readAt: String?
+    let deletedAt: String?
     let replyToMessageId: String? = nil
     let reactions: [ReactionGroupDto]
 
@@ -530,6 +531,7 @@ struct MessageDto: Decodable, Identifiable {
         self.body = body
         self.sentAt = sentAt
         self.readAt = readAt
+        self.deletedAt = nil
         self.reactions = reactions
     }
 
@@ -544,10 +546,11 @@ struct MessageDto: Decodable, Identifiable {
         body = try container.decode(String.self, forKey: .body)
         sentAt = try container.decode(String.self, forKey: .sentAt)
         readAt = try container.decodeIfPresent(String.self, forKey: .readAt)
+        deletedAt = try container.decodeIfPresent(String.self, forKey: .deletedAt)
         reactions = try container.decodeIfPresent([ReactionGroupDto].self, forKey: .reactions) ?? []
     }
 
-    private enum CodingKeys: String, CodingKey { case id, conversationId, senderId, body, sentAt, readAt, reactions }
+    private enum CodingKeys: String, CodingKey { case id, conversationId, senderId, body, sentAt, readAt, deletedAt, reactions }
 }
 
 // Real WebSocket push envelopes (2026-07-18) -- see
@@ -1183,6 +1186,10 @@ extension NetworkClient {
 
     func sendMessage(conversationId: String, body: String, replyToMessageId: String? = nil) async throws -> MessageResponse {
         try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/messages", body: SendMessageRequest(body: body, replyToMessageId: replyToMessageId))
+    }
+
+    func deleteMessage(conversationId: String, messageId: String) async throws -> SuccessResponse {
+        try await authenticatedDelete("api/v1/messages/conversations/\(conversationId)/messages/\(messageId)")
     }
 
     func getPinnedConversationMessage(conversationId: String) async throws -> PinnedMessageResponse {

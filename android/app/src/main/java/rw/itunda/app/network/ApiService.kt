@@ -329,6 +329,7 @@ data class MessageDto(
     val body: String,
     val sentAt: String,
     val readAt: String?,
+    val deletedAt: String? = null,
     val replyToMessageId: String? = null,
     val reactions: List<ReactionGroupDto> = emptyList(),
 )
@@ -880,6 +881,9 @@ interface ApiService {
 
     @POST("api/v1/messages/conversations/{id}/messages")
     suspend fun sendMessage(@Path("id") conversationId: String, @Body request: SendMessageRequest): MessageResponse
+
+    @DELETE("api/v1/messages/conversations/{id}/messages/{messageId}")
+    suspend fun deleteMessage(@Path("id") conversationId: String, @Path("messageId") messageId: String): SuccessResponse
 
     @GET("api/v1/messages/conversations/{id}/pin")
     suspend fun getPinnedConversationMessage(@Path("id") conversationId: String): PinnedMessageResponse

@@ -874,6 +874,7 @@ private struct ChatThreadScreen: View {
                                     onRespondToOffer: offerHandler,
                                     onClaimGift: giftHandler,
                                     onReply: { replyingTo = $0 },
+                                    onDelete: { messageId in Task { await deleteMessage(messageId) } },
                                     onPin: { pinned in Task { await pinMessage(pinned) } },
                                     onReportMessage: reportHandler,
                                 )
@@ -1155,6 +1156,11 @@ private struct ChatThreadScreen: View {
         } catch { self.error = "Couldn't pin this message. Check your connection and try again." }
     }
 
+    private func deleteMessage(_ messageId: String) async {
+        do { _ = try await NetworkClient.shared.deleteMessage(conversationId: conversation.conversationId, messageId: messageId); await refresh() }
+        catch { self.error = "Couldn't delete this message. Check your connection and try again." }
+    }
+
     private func unpinMessage() async {
         updatingPin = true
         defer { updatingPin = false }
@@ -1387,6 +1393,7 @@ private struct MessageBubble: View {
     let onRespondToOffer: (String, String, Double?) -> Void
     let onClaimGift: (String) -> Void
     let onReply: (MessageDto) -> Void
+    let onDelete: (String) -> Void
     let onPin: (MessageDto) -> Void
     let onReportMessage: (String, String) -> Void
     @State private var reportOpen = false
@@ -1414,6 +1421,10 @@ private struct MessageBubble: View {
             MessageReactionsRow(reactions: message.reactions, currentUserId: currentUserId, isMine: isMine, onToggle: onToggleReaction)
             Button("Reply") { onReply(message) }
                 .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+            if isMine && message.deletedAt == nil {
+                Button("Delete") { onDelete(message.id) }
+                    .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+            }
             Button("Pin") { onPin(message) }
                 .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
             Text("\(isMine && message.readAt == nil ? "1 · " : "")\(chatMessageTime(message.sentAt))")

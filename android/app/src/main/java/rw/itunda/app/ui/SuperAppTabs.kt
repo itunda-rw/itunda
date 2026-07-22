@@ -1165,6 +1165,10 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
                         offer = offersByMessageId[m.id],
                         gift = giftsByMessageId[m.id],
                         onReply = { replyingTo = it },
+                        onDelete = { messageId -> coroutineScope.launch {
+                            try { NetworkClient.apiService.deleteMessage(conversation.conversationId, messageId); refresh() }
+                            catch (_: Exception) { error = "Couldn't delete this message." }
+                        } },
                         onPin = { message ->
                             updatingPin = true
                             coroutineScope.launch { try { NetworkClient.apiService.pinConversationMessage(conversation.conversationId, message.id); pinnedMessage = message } catch (_: Exception) { error = "Couldn't pin this message." } finally { updatingPin = false } }
@@ -1559,6 +1563,7 @@ private fun MessageBubble(
     message: MessageDto, isMine: Boolean, currentUserId: String?, offer: OfferBubbleData?, gift: GiftDto?,
     onToggleReaction: (String) -> Unit, onRespondToOffer: (String, String, Double?) -> Unit, onClaimGift: (String) -> Unit,
     onReply: (MessageDto) -> Unit = {},
+    onDelete: (String) -> Unit = {},
     onPin: (MessageDto) -> Unit = {},
     onReportMessage: (String, String) -> Unit = { _, _ -> },
 ) {
@@ -1583,6 +1588,7 @@ private fun MessageBubble(
         }
         MessageReactionsRow(message.reactions, currentUserId, isMine, onToggleReaction)
         TextButton(onClick = { onReply(message) }) { Text("Reply", color = TossSecondary, fontSize = 11.sp) }
+        if (isMine && message.deletedAt == null) TextButton(onClick = { onDelete(message.id) }) { Text("Delete", color = TossSecondary, fontSize = 11.sp) }
         TextButton(onClick = { onPin(message) }) { Text("Pin", color = TossSecondary, fontSize = 11.sp) }
         Text(
             "${if (isMine && message.readAt == null) "1 · " else ""}${chatMessageTime(message.sentAt)}",
