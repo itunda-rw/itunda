@@ -904,6 +904,8 @@ struct MapsSearchResponse: Decodable { let success: Bool; let results: [PlaceSea
 struct RouteStepDto: Decodable { let instruction: String; let distanceMeters: Double; let streetName: String? }
 struct RouteResultDto: Decodable { let distanceKm: Double; let durationMinutes: Double; let geometry: [[Double]]; let steps: [RouteStepDto] }
 struct MapsDirectionsResponse: Decodable { let success: Bool; let route: RouteResultDto }
+struct ItineraryWaypointRequest: Encodable { let latitude: Double; let longitude: Double }
+struct ItineraryDirectionsRequest: Encodable { let waypoints: [ItineraryWaypointRequest]; let mode: String }
 // Real alternative routes (2026-07-22) -- see OsrmRoutingClient.routeAlternatives' own
 // doc comment on the backend. Often just a single-element array -- OSRM itself decides
 // whether a real alternative exists for a given trip.
@@ -1517,6 +1519,10 @@ extension NetworkClient {
             URLQueryItem(name: "toLng", value: String(toLng)),
             URLQueryItem(name: "mode", value: mode),
         ])
+    }
+
+    func getItineraryDirections(waypoints: [ItineraryWaypointRequest], mode: String = "DRIVING") async throws -> MapsDirectionsResponse {
+        try await authenticatedPost("api/v1/maps/directions/itinerary", body: ItineraryDirectionsRequest(waypoints: waypoints, mode: mode))
     }
 
     // Real alternative routes (2026-07-22) -- see MapsDirectionsAlternativesResponse's
