@@ -239,6 +239,17 @@ class MessagingService(
         return conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, userId)?.quiet ?: false
     }
 
+    @Transactional
+    fun setPinnedMessage(userId: String, conversationId: String, messageId: String?) {
+        val conversation = requireParticipant(userId, conversationId)
+        if (messageId != null) {
+            val message = messageRepository.findById(messageId).orElseThrow { MessageNotFoundException("Message not found") }
+            if (message.conversationId != conversationId) throw MessageNotFoundException("Message not found")
+        }
+        conversation.pinnedMessageId = messageId
+        conversationRepository.save(conversation)
+    }
+
     // Real online/offline presence (2026-07-19) -- reads the real WebSocket session
     // registry via RealtimeMessagePublisher.isOnline, never a fabricated status. No
     // participant/membership check on the requested ids -- presence is a real,
