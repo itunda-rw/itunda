@@ -178,15 +178,35 @@ private struct DirectMessagesList: View {
     @State private var newChatPhone = ""
     @State private var startError: String?
     @State private var starting = false
+    @State private var contacts: [TalkContactDto]?
 
     var body: some View {
         ScrollView {
             VStack(spacing: IDS.Layout.cardGap) {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("New chat").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                    Text("Enter their phone number to start a conversation.")
+                    Text("Choose a saved contact, or enter their phone number.")
                         .font(IDS.scaledFont(size: 12, weight: .regular, relativeTo: .caption1))
                         .foregroundColor(IDS.Colors.textSecondary)
+                    if let contacts, !contacts.isEmpty {
+                        Text("Your contacts")
+                            .font(IDS.scaledFont(size: 12, weight: .semibold, relativeTo: .caption1))
+                            .foregroundColor(IDS.Colors.textSecondary)
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(contacts) { contact in
+                                    Button(contact.name) { Task { await startConversation(contact: contact) } }
+                                        .font(IDS.Typography.bodyBold)
+                                        .lineLimit(1)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(IDS.Colors.chipBackground)
+                                        .cornerRadius(12)
+                                        .disabled(starting)
+                                }
+                            }
+                        }
+                    }
                     HStack {
                         TextField("+250788123456", text: $newChatPhone)
                             .keyboardType(.phonePad)
@@ -238,6 +258,17 @@ private struct DirectMessagesList: View {
             .padding(.top, 12)
             .padding(.bottom, IDS.Layout.sectionSpacing)
         }
+        .task { await loadContacts() }
+    }
+
+    private func loadContacts() async {
+        do {
+            let response = try await NetworkClient.shared.getTalkContacts()
+            contacts = response.success ? response.contacts : []
+        } catch {
+            // Phone-number entry remains available when the contact directory cannot load.
+            contacts = []
+        }
     }
 
     private func startConversation() async {
@@ -247,6 +278,20 @@ private struct DirectMessagesList: View {
         do {
             let res = try await NetworkClient.shared.startConversation(phoneNumber: newChatPhone.trimmingCharacters(in: .whitespaces))
             newChatPhone = ""
+            onStarted(res.conversation.id)
+        } catch let NetworkError.httpError(statusCode) {
+            startError = TalkScreen.errorMessage(statusCode)
+        } catch {
+            startError = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func startConversation(contact: TalkContactDto) async {
+        starting = true
+        startError = nil
+        defer { starting = false }
+        do {
+            let res = try await NetworkClient.shared.startConversation(otherUserId: contact.userId)
             onStarted(res.conversation.id)
         } catch let NetworkError.httpError(statusCode) {
             startError = TalkScreen.errorMessage(statusCode)

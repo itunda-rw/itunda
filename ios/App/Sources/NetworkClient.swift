@@ -1151,6 +1151,10 @@ extension NetworkClient {
         try await authenticatedPost("api/v1/messages/conversations", body: StartConversationRequest(phoneNumber: phoneNumber, otherUserId: nil))
     }
 
+    func startConversation(otherUserId: String) async throws -> ConversationResponse {
+        try await authenticatedPost("api/v1/messages/conversations", body: StartConversationRequest(phoneNumber: nil, otherUserId: otherUserId))
+    }
+
     func getConversations() async throws -> ConversationsResponse { try await get("api/v1/messages/conversations") }
 
     func getTalkContacts() async throws -> TalkContactsResponse { try await get("api/v1/messages/contacts") }
