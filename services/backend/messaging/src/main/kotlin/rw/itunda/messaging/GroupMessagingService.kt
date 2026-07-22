@@ -260,7 +260,7 @@ class GroupMessagingService(
                 name = group.name,
                 memberCount = (memberCountByGroupId[group.id] ?: 0L).toInt(),
                 lastMessageAt = group.lastMessageAt,
-                lastMessagePreview = lastMessageByGroupId[group.id]?.body,
+                lastMessagePreview = lastMessageByGroupId[group.id]?.let { if (it.deletedAt == null) it.body else "This message was deleted" },
                 unreadCount = groupMessageRepository.countUnread(group.id, userId, member.lastReadAt),
             )
         }

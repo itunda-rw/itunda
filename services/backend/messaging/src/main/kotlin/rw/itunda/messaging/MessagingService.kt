@@ -398,7 +398,7 @@ class MessagingService(
                 otherUserId = otherUserId,
                 otherUserName = otherUser?.let { "${it.firstName} ${it.lastName}" } ?: "Unknown user",
                 lastMessageAt = conversation.lastMessageAt,
-                lastMessagePreview = lastMessageByConversationId[conversation.id]?.body,
+                lastMessagePreview = lastMessageByConversationId[conversation.id]?.let { if (it.deletedAt == null) it.body else "This message was deleted" },
                 unreadCount = unreadCountByConversationId[conversation.id] ?: 0L,
                 quiet = conversation.id in quietConversationIds,
                 pinnedMessageId = conversation.pinnedMessageId,
