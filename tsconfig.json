@@ -1,7 +1,12 @@
 {
+  "// note": "packages/* and services/api-gateway have no tsconfig.json of their own (not TS-project-referenceable); only the micro-frontends do.",
   "files": [],
   "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
+    { "path": "./services/micro-frontends/bank-mfe" },
+    { "path": "./services/micro-frontends/kyc-mfe" },
+    { "path": "./services/micro-frontends/merchant-mfe" },
+    { "path": "./services/micro-frontends/ops-mfe" },
+    { "path": "./services/micro-frontends/pay-checkout" },
+    { "path": "./services/micro-frontends/host-app" }
   ]
 }
