@@ -707,6 +707,15 @@ struct MapScreenView: View {
                 .background(IdsPalette.white)
                 .cornerRadius(8)
             HStack(spacing: 6) {
+                ForEach(["Home", "Work"], id: \.self) { preset in
+                    Button(preset) { folderNameInput = preset }
+                        .font(.caption).bold().foregroundColor(folderNameInput.caseInsensitiveCompare(preset) == .orderedSame ? .white : IDS.Colors.textPrimary)
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(folderNameInput.caseInsensitiveCompare(preset) == .orderedSame ? IDS.Colors.brand : IDS.Colors.chipBackground)
+                        .cornerRadius(999)
+                }
+            }
+            HStack(spacing: 6) {
                 ForEach(bookmarkColorPalette, id: \.self) { hex in
                     let active = folderColorInput == hex
                     Circle()
