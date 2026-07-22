@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -37,6 +38,10 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.CurrencyExchange
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.outlined.Work
 import androidx.compose.material.icons.outlined.DynamicFeed
 import androidx.compose.material.icons.outlined.EventAvailable
 import androidx.compose.material.icons.outlined.Face
@@ -222,6 +227,9 @@ fun ItundaAppScreen(
         var showCreditScore by rememberSaveable { mutableStateOf(false) }
         var showCertificate by rememberSaveable { mutableStateOf(false) }
         var showIdentity by rememberSaveable { mutableStateOf(false) }
+        // Real 전체 (All services) menu (2026-07-22) -- separated from My per the
+        // user's direct request; see MenuScreen's own doc comment.
+        var showMenu by rememberSaveable { mutableStateOf(false) }
         // Mirrors NAVER Maps' app-to-map handoff, but remains inside Itunda's own
         // authenticated map stack. Consume once so recomposition cannot reopen the map.
         LaunchedEffect(openMapFromDeepLink) {
@@ -631,6 +639,26 @@ fun ItundaAppScreen(
             IdentityScreen(onBack = { showIdentity = false })
             return@IdsTheme
         }
+        if (showMenu) {
+            val partnerMiniApps by viewModel.partnerMiniApps.collectAsState()
+            MenuScreen(
+                onBack = { showMenu = false },
+                onOpenPay = { showPay = true },
+                onOpenBenefits = { showBenefits = true },
+                onOpenInvest = { showInvest = true },
+                onOpenMap = { showMap = true },
+                onOpenOverview = { showOverview = true },
+                onOpenLoans = { showLoans = true },
+                onOpenSupport = { showSupport = true },
+                onOpenCreditScore = { showCreditScore = true },
+                onOpenCertificate = { showCertificate = true },
+                onOpenIdentity = { showIdentity = true },
+                onClaimInterest = { showMenu = false; savingsFlowStep = SavingsFlowStep.ClaimInterest },
+                onSwitchToTalk = { showMenu = false; selectedTab = TossTab.Talk },
+                partnerMiniApps = partnerMiniApps,
+            )
+            return@IdsTheme
+        }
 
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
@@ -666,19 +694,21 @@ fun ItundaAppScreen(
                         initialConversationId = pendingConversationId,
                         onConsumedInitial = { pendingConversationId = null },
                     )
-                    TossTab.My -> AllTab(
-                        viewModel = viewModel,
+                    TossTab.My -> MyTab(
                         onOpenSettings = { showSettings = true },
-                        onOpenBenefits = { showBenefits = true },
+                        onOpenMenu = { showMenu = true },
                         onOpenPay = { showPay = true },
-                        onOpenMap = { showMap = true },
+                        onOpenBenefits = { showBenefits = true },
                         onOpenInvest = { showInvest = true },
+                        onOpenMap = { showMap = true },
                         onOpenOverview = { showOverview = true },
                         onOpenLoans = { showLoans = true },
                         onOpenSupport = { showSupport = true },
                         onOpenCreditScore = { showCreditScore = true },
                         onOpenCertificate = { showCertificate = true },
                         onOpenIdentity = { showIdentity = true },
+                        onSwitchToShop = { selectedTab = TossTab.Shop },
+                        onSwitchToHood = { selectedTab = TossTab.Hood },
                     )
                 }
             }
@@ -1070,35 +1100,39 @@ private fun PayTab(onBack: () -> Unit = {}) {
     }
 }
 
+// Real 전체 (KakaoPay-style "All services") menu (2026-07-22) -- separated out of what
+// used to be the single giant My-tab list, at the user's direct request ("My and All
+// screen should be separated like KakaoPay... accessed by click on menu icon in app
+// bar"). This screen is the exhaustive service catalog (every product/setting/legal
+// page itunda has, real or still-target); MyTab below is the new Naver-My-style
+// personal hub (orders/favorites/listings), reachable from the bottom nav directly.
 @Composable
-private fun AllTab(
-    viewModel: MainViewModel,
-    onOpenSettings: () -> Unit,
-    onOpenBenefits: () -> Unit = {},
+private fun MenuScreen(
+    onBack: () -> Unit,
     onOpenPay: () -> Unit = {},
-    onOpenMap: () -> Unit = {},
+    onOpenBenefits: () -> Unit = {},
     onOpenInvest: () -> Unit = {},
+    onOpenMap: () -> Unit = {},
     onOpenOverview: () -> Unit = {},
     onOpenLoans: () -> Unit = {},
     onOpenSupport: () -> Unit = {},
     onOpenCreditScore: () -> Unit = {},
     onOpenCertificate: () -> Unit = {},
     onOpenIdentity: () -> Unit = {},
+    onClaimInterest: () -> Unit = {},
+    onSwitchToTalk: () -> Unit = {},
+    partnerMiniApps: List<rw.itunda.app.network.PartnerMiniAppDto>,
 ) {
+    androidx.activity.compose.BackHandler(onBack = onBack)
     val context = androidx.compose.ui.platform.LocalContext.current
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
-    val partnerMiniApps by viewModel.partnerMiniApps.collectAsState()
     var partnerLoadError by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     var loadingPartnerAppId by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
-        // Real Settings screen (2026-07-12) -- previously this gear icon logged out
-        // immediately with no confirmation screen at all; now it opens a real
-        // settings screen (profile/notifications/logout), matching the Toss
-        // reference more faithfully -- logout is one row inside it, not the trigger.
-        item { AllTopBar(onOpenSettings = onOpenSettings) }
+        item { BackTopBar(title = "Menu", onBack = onBack) }
         item { SearchBar("Search") }
         // Benefits/Pay folded in here (2026-07-18) -- both lost their own top-level
         // tab when the bottom nav became Home/Shop/Hood/Talk/My, but stay just as
@@ -1228,10 +1262,16 @@ private fun AllTab(
                 FlatRow("Rent deposit protection", icon = Icons.Outlined.HomeWork, iconColor = AccentBlue),
                 FlatRow("Recurring payments", icon = Icons.Outlined.Description, iconColor = AccentBlue),
                 FlatRow("Import recurring payments", icon = Icons.Outlined.LocalShipping, iconColor = AccentGray),
-                FlatRow("REG & WASAC bills", icon = Icons.Outlined.Bolt, iconColor = AccentBlue),
-                FlatRow("Claim interest now", icon = Icons.Outlined.Bolt, iconColor = AccentPurple),
+                FlatRow("REG & WASAC bills", icon = Icons.Outlined.Bolt, iconColor = AccentBlue, onClick = {
+                    context.startActivity(android.content.Intent(context, rw.itunda.app.miniapps.PayBillsMiniAppActivity::class.java))
+                }),
+                FlatRow("Claim interest now", icon = Icons.Outlined.Bolt, iconColor = AccentPurple, onClick = onClaimInterest),
                 FlatRow("SME income tax estimate", icon = Icons.Outlined.Savings, iconColor = AccentOrange),
-                FlatRow("Split a bill with friends", icon = Icons.Outlined.Groups, iconColor = AccentBlue),
+                // Real split-bill (found 2026-07-22 fully built with zero UI anywhere)
+                // lives inside a specific group's own thread (Talk tab), not a
+                // standalone flow -- this row hands off there rather than duplicating
+                // a group picker.
+                FlatRow("Split a bill with friends", icon = Icons.Outlined.Groups, iconColor = AccentBlue, onClick = onSwitchToTalk),
                 FlatRow("Shared calendar", icon = Icons.Outlined.CalendarMonth, iconColor = AccentBlue),
                 FlatRow("Kids' allowance tasks", icon = Icons.Outlined.CheckCircle, iconColor = AccentOrange)
             ))
@@ -1295,6 +1335,151 @@ private fun AllTab(
                 androidx.compose.material3.TextButton(onClick = { partnerLoadError = null }) { Text("OK") }
             }
         )
+    }
+}
+
+// Real Naver-style "My" personal hub (2026-07-22), replacing what used to be this
+// bottom tab's entire content (the exhaustive service catalog, now MenuScreen above)
+// -- at the user's direct request: "My should be like Naver style My since we have
+// shopping and eats and other products where users need to easily get track of their
+// orders, reservation, favorites." Every number/row here is a real fetched count or
+// preview, not decoration -- the same "no fabricated numbers" discipline this whole
+// app already follows elsewhere.
+@Composable
+private fun MyTab(
+    onOpenSettings: () -> Unit,
+    onOpenMenu: () -> Unit,
+    onOpenPay: () -> Unit = {},
+    onOpenBenefits: () -> Unit = {},
+    onOpenInvest: () -> Unit = {},
+    onOpenMap: () -> Unit = {},
+    onOpenOverview: () -> Unit = {},
+    onOpenLoans: () -> Unit = {},
+    onOpenSupport: () -> Unit = {},
+    onOpenCreditScore: () -> Unit = {},
+    onOpenCertificate: () -> Unit = {},
+    onOpenIdentity: () -> Unit = {},
+    onSwitchToShop: () -> Unit = {},
+    onSwitchToHood: () -> Unit = {},
+) {
+    var shopOrders by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<List<rw.itunda.app.network.OrderDto>>(emptyList()) }
+    var eatsOrders by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<List<rw.itunda.app.network.EatsOrderDto>>(emptyList()) }
+    var favoriteListingsCount by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0) }
+    var favoriteJobPostsCount by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0) }
+    var favoritePropertyListingsCount by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0) }
+    var favoriteRestaurantsCount by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0) }
+    var myListingsCount by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0) }
+    var myJobPostsCount by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0) }
+    var myPropertyListingsCount by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        // Each fetch independent and best-effort -- one product's API hiccup must
+        // never blank the rest of this real personal-activity summary.
+        try { shopOrders = rw.itunda.app.network.NetworkClient.apiService.getMyOrders().orders } catch (_: Exception) { }
+        try { eatsOrders = rw.itunda.app.network.NetworkClient.apiService.getMyEatsOrders().orders } catch (_: Exception) { }
+        try { favoriteListingsCount = rw.itunda.app.network.NetworkClient.apiService.getMyFavoriteListings().favorites.size } catch (_: Exception) { }
+        try { favoriteJobPostsCount = rw.itunda.app.network.NetworkClient.apiService.getMyFavoriteJobPosts().favorites.size } catch (_: Exception) { }
+        try { favoritePropertyListingsCount = rw.itunda.app.network.NetworkClient.apiService.getMyFavoritePropertyListings().favorites.size } catch (_: Exception) { }
+        try { favoriteRestaurantsCount = rw.itunda.app.network.NetworkClient.apiService.getMyFavoriteRestaurants().favorites.size } catch (_: Exception) { }
+        try { myListingsCount = rw.itunda.app.network.NetworkClient.apiService.getMyListings().listings.size } catch (_: Exception) { }
+        try { myJobPostsCount = rw.itunda.app.network.NetworkClient.apiService.getMyJobPosts().posts.size } catch (_: Exception) { }
+        try { myPropertyListingsCount = rw.itunda.app.network.NetworkClient.apiService.getMyPropertyListings().listings.size } catch (_: Exception) { }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
+        verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
+    ) {
+        item { AllTopBar(onOpenSettings = onOpenSettings, onOpenMenu = onOpenMenu) }
+        item {
+            FlatSection(
+                "Quick links",
+                listOf(
+                    FlatRow("Pay", subtitle = "Scan or pay by code", icon = Icons.Outlined.QrCodeScanner, iconColor = AccentBlue, onClick = onOpenPay),
+                    FlatRow("Benefits", subtitle = "Points, coupons, rewards", icon = Icons.Outlined.CardGiftcard, iconColor = AccentOrange, onClick = onOpenBenefits),
+                    FlatRow("Invest", subtitle = "RSE stocks, real portfolio", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenInvest),
+                    FlatRow("Map", subtitle = "Real Rwanda map, self-hosted", icon = Icons.Outlined.Map, iconColor = AccentTeal, onClick = onOpenMap),
+                ),
+            )
+        }
+        // Real order tracking -- Naver Pay/Shopping's own "My" tab leads with recent
+        // orders across every product, not a settings list. Shows the real 3 most
+        // recent orders per product; tapping switches to that product's own tab where
+        // the full MyCommerceOrdersView/MyEatsOrdersView already lives.
+        if (shopOrders.isNotEmpty() || eatsOrders.isNotEmpty()) {
+            item { Text("My orders", color = TossText, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
+            items(shopOrders.take(3)) { order ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable(onClick = onSwitchToShop).padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column {
+                        Text("Shop order", color = TossText, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        Text(order.status, color = TossSecondary, fontSize = 13.sp)
+                    }
+                    Text("RWF %,.0f".format(order.totalAmount), color = TossText, fontSize = 15.sp)
+                }
+            }
+            items(eatsOrders.take(3)) { order ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable(onClick = onSwitchToShop).padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column {
+                        Text("Eats order", color = TossText, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        Text(order.status, color = TossSecondary, fontSize = 13.sp)
+                    }
+                    Text("RWF %,.0f".format(order.totalAmount), color = TossText, fontSize = 15.sp)
+                }
+            }
+        }
+        // Real favorites/wishlist tracking across every product with one -- counts are
+        // real (GET .../favorites on each module), tapping switches to the product's
+        // own tab where its dedicated WISHLIST view already lives (Marketplace/Jobs/
+        // Property under Hood, restaurants under Shop's Eats toggle) -- an honest,
+        // one-more-tap scope, not a full deep link into the nested sub-view.
+        item { Text("My favorites", color = TossText, fontSize = 19.sp, fontWeight = FontWeight.Bold) }
+        item {
+            FlatSection(
+                "",
+                listOf(
+                    FlatRow("Marketplace wishlist", trailing = "$favoriteListingsCount", icon = Icons.Outlined.FavoriteBorder, iconColor = AccentRed, onClick = onSwitchToHood),
+                    FlatRow("Jobs wishlist", trailing = "$favoriteJobPostsCount", icon = Icons.Outlined.FavoriteBorder, iconColor = AccentRed, onClick = onSwitchToHood),
+                    FlatRow("Property wishlist", trailing = "$favoritePropertyListingsCount", icon = Icons.Outlined.FavoriteBorder, iconColor = AccentRed, onClick = onSwitchToHood),
+                    FlatRow("Restaurant favorites", trailing = "$favoriteRestaurantsCount", icon = Icons.Outlined.FavoriteBorder, iconColor = AccentRed, onClick = onSwitchToShop),
+                ),
+            )
+        }
+        // Real "my own posts" tracking (Marketplace/Jobs/Property listings I created)
+        // -- the same Naver-style "track your own activity" pattern as orders/favorites
+        // above, not just a settings list.
+        item {
+            FlatSection(
+                "My listings",
+                listOf(
+                    FlatRow("Marketplace", trailing = "$myListingsCount", icon = Icons.Outlined.Storefront, iconColor = AccentBlue, onClick = onSwitchToHood),
+                    FlatRow("Jobs posted", trailing = "$myJobPostsCount", icon = Icons.Outlined.Work, iconColor = AccentBlue, onClick = onSwitchToHood),
+                    FlatRow("Property listed", trailing = "$myPropertyListingsCount", icon = Icons.Outlined.HomeWork, iconColor = AccentTeal, onClick = onSwitchToHood),
+                ),
+            )
+        }
+        // Personal-account items (distinct from the exhaustive product catalog now in
+        // MenuScreen) -- these are inherently "about my own account," matching Naver
+        // Pay's own My tab keeping points/coupons/membership here rather than in its
+        // separate "전체" menu.
+        item {
+            FlatSection(
+                "My account",
+                listOf(
+                    FlatRow("My assets", subtitle = "Accounts, loans, RSE holdings, cards, points", icon = Icons.Outlined.PieChart, iconColor = AccentPurple, onClick = onOpenOverview),
+                    FlatRow("Get a loan", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans),
+                    FlatRow("Credit score", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenCreditScore),
+                    FlatRow("Digital certificate", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenCertificate),
+                    FlatRow("Verify identity", icon = Icons.Outlined.CheckCircle, iconColor = AccentOrange, onClick = onOpenIdentity),
+                    FlatRow("Support", icon = Icons.Outlined.HelpOutline, iconColor = AccentGray, onClick = onOpenSupport),
+                ),
+            )
+        }
     }
 }
 
@@ -1608,12 +1793,21 @@ private fun PayFeatureCard() {
 // 전체 (All) tab top bar is just the user's name plus a single settings
 // icon button; support/ID live as rows further down the list, not up here.
 @Composable
-private fun AllTopBar(onOpenSettings: () -> Unit = {}) {
+private fun AllTopBar(onOpenSettings: () -> Unit = {}, onOpenMenu: (() -> Unit)? = null) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text("TUYIZERE ERIC", color = TossText, fontWeight = FontWeight.Bold, fontSize = 26.sp)
-        // Real Settings screen (2026-07-12, see SettingsScreen.kt) -- previously
-        // wired directly to logout with no screen behind it at all.
-        IdsIconButton(Icons.Outlined.Settings, contentDescription = "Settings", onClick = onOpenSettings)
+        Row {
+            // Real 전체 (All services) menu (2026-07-22) -- the exhaustive service
+            // catalog moved out of this tab into its own MenuScreen, at the user's
+            // direct request ("My and All screen should be separated like KakaoPay").
+            // Optional/nil so HomeTopBar's own reuse of a similar bar isn't affected.
+            if (onOpenMenu != null) {
+                IdsIconButton(Icons.Outlined.Menu, contentDescription = "All services", onClick = onOpenMenu)
+            }
+            // Real Settings screen (2026-07-12, see SettingsScreen.kt) -- previously
+            // wired directly to logout with no screen behind it at all.
+            IdsIconButton(Icons.Outlined.Settings, contentDescription = "Settings", onClick = onOpenSettings)
+        }
     }
 }
 
