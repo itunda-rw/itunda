@@ -8,6 +8,7 @@ import com.facebook.react.ReactHost
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import rw.itunda.app.BuildConfig
+import rw.itunda.core.network.MapConfig
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SessionManager
 import okhttp3.OkHttpClient
@@ -88,6 +89,8 @@ class ItundaApplication : Application(), ReactApplication {
         // Real login/session flow (2026-07-11) -- must run before any screen can make
         // an authenticated request. See network/NetworkClient.kt/SessionManager.kt.
         NetworkClient.init(this, rw.itunda.app.BuildConfig.API_BASE_URL)
+        // Real BuildConfig-avoidance (2026-07-23) -- see MapConfig.kt's own doc comment.
+        MapConfig.init(rw.itunda.app.BuildConfig.TILES_BASE_URL, rw.itunda.app.BuildConfig.GLYPHS_BASE_URL)
         SessionManager.restoreSession()
     }
 }

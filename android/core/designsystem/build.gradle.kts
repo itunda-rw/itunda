@@ -41,4 +41,9 @@ dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+
+    // Added 2026-07-23 for RouteMiniMap.kt -- relocated here from app/ui/RouteMiniMap.kt
+    // so Marketplace/Jobs/Property/Eats can render a real drawn route directly instead
+    // of receiving it as an injected routeMiniMap callback.
+    implementation("org.maplibre.gl:android-sdk:13.3.1")
 }

@@ -60,6 +60,7 @@ import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.QtyButton
+import rw.itunda.core.designsystem.components.RouteMiniMap
 import rw.itunda.core.designsystem.components.SearchAndCategoryChips
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.StarGold
@@ -92,12 +93,13 @@ import java.util.UUID
 // so splitting them into two Gradle modules would just recreate that coupling as a
 // forbidden Feature-to-Feature dependency instead of removing it.
 //
-// Two injected slots, same reasoning as every other extraction this session:
-// - routeMiniMap: MapLibre + :app's BuildConfig.TILES_BASE_URL, out of scope.
-// - deviceStepUpHost: wraps :features:payments:impl's DeviceStepUpDialog, so it bridges
-//   two Feature modules -- must stay an app-level composition (see ShopScreen.kt's own
-//   header comment for the fuller explanation of why this one is architectural, not just
-//   a build-scope convenience).
+// One injected slot remains, same reasoning as every other extraction this session:
+// deviceStepUpHost wraps :features:payments:impl's DeviceStepUpDialog, so it bridges two
+// Feature modules -- must stay an app-level composition (see ShopScreen.kt's own header
+// comment for the fuller explanation of why this one is architectural, not just a
+// build-scope convenience). RouteMiniMap itself no longer needs injecting -- MapConfig.kt
+// (2026-07-23) gave it the same BuildConfig-avoidance NetworkClient.init already had, so
+// it's imported directly from core/designsystem, same as every other shared UI atom.
 
 private val EATS_STATUS_LABEL = mapOf(
     "PLACED" to "Placed",
@@ -121,7 +123,6 @@ private enum class EatsMode { ORDER, DELIVER }
 
 @Composable
 fun EatsContent(
-    routeMiniMap: @Composable (fromLat: Double, fromLng: Double, toLat: Double, toLng: Double, fromLabel: String, toLabel: String) -> Unit,
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
 ) {
     var mode by remember { mutableStateOf(EatsMode.ORDER) }
@@ -145,8 +146,8 @@ fun EatsContent(
             }
         }
         when (mode) {
-            EatsMode.ORDER -> OrderFoodContent(routeMiniMap, deviceStepUpHost)
-            EatsMode.DELIVER -> DeliverContent(routeMiniMap)
+            EatsMode.ORDER -> OrderFoodContent(deviceStepUpHost)
+            EatsMode.DELIVER -> DeliverContent()
         }
     }
 }
@@ -155,7 +156,6 @@ private enum class OrderFoodView { BROWSE, FAVORITES, ORDERS }
 
 @Composable
 private fun OrderFoodContent(
-    routeMiniMap: @Composable (Double, Double, Double, Double, String, String) -> Unit,
     deviceStepUpHost: @Composable (Boolean, () -> Unit, suspend () -> Unit) -> Unit,
 ) {
     var view by remember { mutableStateOf(OrderFoodView.BROWSE) }
@@ -359,7 +359,7 @@ private fun OrderFoodContent(
         }
         if (view == OrderFoodView.ORDERS) {
             item {
-                MyEatsOrdersView(onReorder = ::handleReorder, reorderingId = reorderingId, restaurants = allRestaurants, routeMiniMap = routeMiniMap)
+                MyEatsOrdersView(onReorder = ::handleReorder, reorderingId = reorderingId, restaurants = allRestaurants)
                 val reorderErr = reorderError
                 if (reorderErr != null) {
                     Spacer(Modifier.height(8.dp))
@@ -945,7 +945,6 @@ private fun EatsOrderConfirmationView(order: EatsOrderDto, onDone: () -> Unit) {
 private fun EatsOrderRow(
     order: EatsOrderDto,
     restaurant: ShoppingMerchantDto? = null,
-    routeMiniMap: @Composable (Double, Double, Double, Double, String, String) -> Unit,
     action: (@Composable () -> Unit)? = null,
 ) {
     var showRoute by remember { mutableStateOf(false) }
@@ -976,12 +975,12 @@ private fun EatsOrderRow(
                 )
             }
             // Real "view delivery route" (2026-07-19, item 8 on the Maps "100%" roadmap)
-            // -- reuses itunda's own self-hosted OSRM directions via routeMiniMap.
+            // -- reuses itunda's own self-hosted OSRM directions.
             if (canShowRoute) {
                 ListingActionButton(if (showRoute) "Hide route" else "🚗 View real delivery route", false) { showRoute = !showRoute }
             }
             if (showRoute && restaurant != null && restaurantLat != null && restaurantLng != null && deliveryLat != null && deliveryLng != null) {
-                routeMiniMap(restaurantLat, restaurantLng, deliveryLat, deliveryLng, restaurant.businessName, "Delivery address")
+                RouteMiniMap(restaurantLat, restaurantLng, deliveryLat, deliveryLng, restaurant.businessName, "Delivery address")
             }
             action?.invoke()
         }
@@ -993,7 +992,6 @@ private fun MyEatsOrdersView(
     onReorder: (EatsOrderDto) -> Unit,
     reorderingId: String?,
     restaurants: List<ShoppingMerchantDto>?,
-    routeMiniMap: @Composable (Double, Double, Double, Double, String, String) -> Unit,
 ) {
     var orders by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -1048,7 +1046,7 @@ private fun MyEatsOrdersView(
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 orders!!.forEach { o ->
-                    EatsOrderRow(o, restaurant = restaurants?.find { it.merchantId == o.restaurantId }, routeMiniMap = routeMiniMap) {
+                    EatsOrderRow(o, restaurant = restaurants?.find { it.merchantId == o.restaurantId }) {
                         if (o.status == "PLACED") {
                             Box(
                                 modifier = Modifier
@@ -1098,7 +1096,7 @@ private fun ReorderButton(reordering: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun DeliverContent(routeMiniMap: @Composable (Double, Double, Double, Double, String, String) -> Unit) {
+private fun DeliverContent() {
     var rider by remember { mutableStateOf<RiderDto?>(null) }
     var loadedRider by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -1226,7 +1224,7 @@ private fun DeliverContent(routeMiniMap: @Composable (Double, Double, Double, Do
             item { Text("Your active deliveries", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
             items(activeDeliveries, key = { it.id }) { o ->
                 val next = nextRiderStatus(o.status)
-                EatsOrderRow(o, routeMiniMap = routeMiniMap) {
+                EatsOrderRow(o) {
                     if (next != null) {
                         Box(
                             modifier = Modifier
@@ -1267,7 +1265,7 @@ private fun DeliverContent(routeMiniMap: @Composable (Double, Double, Double, Do
                 item { EmptyState("No deliveries waiting right now.", icon = Icons.AutoMirrored.Outlined.ReceiptLong) }
             } else {
                 items(available!!, key = { it.id }) { o ->
-                    EatsOrderRow(o, routeMiniMap = routeMiniMap) {
+                    EatsOrderRow(o) {
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
@@ -1294,7 +1292,7 @@ private fun DeliverContent(routeMiniMap: @Composable (Double, Double, Double, Do
         }
         if (pastDeliveries.isNotEmpty()) {
             item { Text("Completed", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
-            items(pastDeliveries, key = { it.id }) { o -> EatsOrderRow(o, routeMiniMap = routeMiniMap) }
+            items(pastDeliveries, key = { it.id }) { o -> EatsOrderRow(o) }
         }
     }
 }

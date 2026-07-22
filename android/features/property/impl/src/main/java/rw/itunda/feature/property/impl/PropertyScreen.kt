@@ -45,6 +45,7 @@ import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
+import rw.itunda.core.designsystem.components.RouteMiniMap
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.relativeTimeAgo
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
@@ -61,15 +62,15 @@ import java.io.IOException
 
 // Third Feature extraction (2026-07-23) after Marketplace and Jobs, same template -- see
 // features/marketplace/impl/.../MarketplaceScreen.kt's own header comment for the full
-// account of why this module owns its own NetworkClient calls directly and why
-// routeMiniMap below stays an injected slot.
+// account of why this module owns its own NetworkClient calls directly. RouteMiniMap
+// imports directly from core/designsystem (see that file's own header comment) rather
+// than being injected.
 
 private enum class PropertyView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, SAVED }
 
 @Composable
 fun PropertyContent(
     onMessageLister: (String) -> Unit,
-    routeMiniMap: @Composable (fromLat: Double, fromLng: Double, toLat: Double, toLng: Double, fromLabel: String, toLabel: String) -> Unit,
 ) {
     var view by remember { mutableStateOf(PropertyView.BROWSE) }
     var propertyTypes by remember { mutableStateOf<List<PropertyTypeDto>>(emptyList()) }
@@ -300,7 +301,6 @@ fun PropertyContent(
                     },
                     favorited = listing.id in favoriteIds,
                     onToggleFavorite = { coroutineScope.launch { try { if (listing.id in favoriteIds) { NetworkClient.apiService.removePropertyListingFavorite(listing.id); favoriteIds = favoriteIds - listing.id; Toast.makeText(context, "Removed from saved properties", Toast.LENGTH_SHORT).show() } else { NetworkClient.apiService.addPropertyListingFavorite(listing.id); favoriteIds = favoriteIds + listing.id; Toast.makeText(context, "Saved to your properties list", Toast.LENGTH_SHORT).show() } } catch (e: Exception) { error = "Couldn't update your saved properties. Check your connection and try again." } } },
-                    routeMiniMap = routeMiniMap,
                 )
             }
         }
@@ -429,7 +429,6 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
 private fun PropertyListingCard(
     listing: PropertyListingDto, propertyTypeLabel: String, isMine: Boolean, onChanged: () -> Unit, onContact: () -> Unit,
     onMakeOffer: (String, Double) -> Unit, favorited: Boolean = false, onToggleFavorite: () -> Unit = {},
-    routeMiniMap: @Composable (Double, Double, Double, Double, String, String) -> Unit,
 ) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -532,7 +531,7 @@ private fun PropertyListingCard(
                     if (showRoute) showRoute = false else if (myLocation != null) showRoute = true else requestLocation()
                 }
                 myLocation?.let { loc ->
-                    if (showRoute) routeMiniMap(loc.first, loc.second, propertyLat, propertyLng, "You", listing.title)
+                    if (showRoute) RouteMiniMap(loc.first, loc.second, propertyLat, propertyLng, "You", listing.title)
                 }
             }
         }

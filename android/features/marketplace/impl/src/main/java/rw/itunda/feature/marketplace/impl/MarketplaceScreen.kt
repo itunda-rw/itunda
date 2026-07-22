@@ -48,6 +48,7 @@ import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
+import rw.itunda.core.designsystem.components.RouteMiniMap
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.TabHeader
 import rw.itunda.core.designsystem.components.relativeTimeAgo
@@ -70,11 +71,11 @@ import java.io.IOException
 // because :impl can't depend back on :app), Marketplace drives ~15 distinct API calls
 // directly from user interaction, so this module owns its own real NetworkClient calls
 // end-to-end rather than threading every one of them back up as a callback prop.
-// The one exception is `routeMiniMap` below: rendering a real drawn road route needs
-// MapLibre + :app's own BuildConfig.TILES_BASE_URL (RouteMiniMap.kt), which is out of
-// scope for this slice -- that one narrow, genuinely cross-cutting piece stays injected
-// from the app shell (HoodTab), the same "dumb view" shape Payments already established,
-// applied only where it's actually still needed.
+// RouteMiniMap (real drawn road route) used to be injected here for the same reason --
+// it needed MapLibre + :app's own BuildConfig.TILES_BASE_URL -- until MapConfig.kt
+// (2026-07-23) gave it the same BuildConfig-avoidance NetworkClient.init already had,
+// letting it move to core/designsystem and be imported directly, same as every other
+// shared UI atom.
 
 private enum class HoodView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, WISHLIST }
 
@@ -89,7 +90,6 @@ private fun HoodView.label() = when (this) {
 @Composable
 fun MarketplaceContent(
     onMessageSeller: (String) -> Unit,
-    routeMiniMap: @Composable (fromLat: Double, fromLng: Double, toLat: Double, toLng: Double, fromLabel: String, toLabel: String) -> Unit,
 ) {
     var view by remember { mutableStateOf(HoodView.BROWSE) }
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
@@ -320,7 +320,6 @@ fun MarketplaceContent(
                             }
                         }
                     },
-                    routeMiniMap = routeMiniMap,
                 )
             }
         }
@@ -497,7 +496,6 @@ private fun ListingCard(
     // lifted-favoriteIds pattern) so the heart stays correct across Browse/
     // Neighborhood/My-listings without a per-card refetch.
     favorited: Boolean = false, favoriteBusy: Boolean = false, onToggleFavorite: () -> Unit = {},
-    routeMiniMap: @Composable (Double, Double, Double, Double, String, String) -> Unit,
 ) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -506,9 +504,7 @@ private fun ListingCard(
     val coroutineScope = rememberCoroutineScope()
 
     // Real "directions to this seller" (2026-07-19, item 8 on the Maps "100%" roadmap) --
-    // reuses itunda's own self-hosted OSRM directions via the routeMiniMap slot passed
-    // down from HoodTab (see this file's own header comment for why this one piece stays
-    // injected rather than owned directly).
+    // reuses itunda's own self-hosted OSRM directions.
     var myLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     var showRoute by remember { mutableStateOf(false) }
     var locating by remember { mutableStateOf(false) }
@@ -629,7 +625,7 @@ private fun ListingCard(
             // smart-casts a nullable property after a null-check within the same
             // module -- captured into local vals above instead.
             if (showRoute && loc != null && listingLat != null && listingLng != null) {
-                routeMiniMap(loc.first, loc.second, listingLat, listingLng, "You", listing.title)
+                RouteMiniMap(loc.first, loc.second, listingLat, listingLng, "You", listing.title)
             }
         }
     }

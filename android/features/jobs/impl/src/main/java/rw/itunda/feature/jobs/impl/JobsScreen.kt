@@ -45,6 +45,7 @@ import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
+import rw.itunda.core.designsystem.components.RouteMiniMap
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.relativeTimeAgo
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
@@ -61,14 +62,14 @@ import java.io.IOException
 // Second Feature extraction (2026-07-23) after Marketplace, same template -- see
 // features/marketplace/impl/.../MarketplaceScreen.kt's own header comment for the full
 // account of why this module owns its own NetworkClient calls directly instead of a
-// "dumb view" shape, and why routeMiniMap below stays an injected slot.
+// "dumb view" shape. RouteMiniMap imports directly from core/designsystem (see that
+// file's own header comment) rather than being injected.
 
 private enum class JobsView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, SAVED }
 
 @Composable
 fun JobsContent(
     onMessagePoster: (String) -> Unit,
-    routeMiniMap: @Composable (fromLat: Double, fromLng: Double, toLat: Double, toLng: Double, fromLabel: String, toLabel: String) -> Unit,
 ) {
     var view by remember { mutableStateOf(JobsView.BROWSE) }
     var categories by remember { mutableStateOf<List<JobCategoryDto>>(emptyList()) }
@@ -277,7 +278,6 @@ fun JobsContent(
                             finally { favoritingId = null }
                         }
                     },
-                    routeMiniMap = routeMiniMap,
                 )
             }
         }
@@ -424,7 +424,6 @@ private fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> Un
 private fun JobPostCard(
     post: JobPostDto, categoryLabel: String, isMine: Boolean, onChanged: () -> Unit, onContact: () -> Unit,
     favorited: Boolean = false, favoriteBusy: Boolean = false, onToggleFavorite: () -> Unit = {},
-    routeMiniMap: @Composable (Double, Double, Double, Double, String, String) -> Unit,
 ) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -495,7 +494,7 @@ private fun JobPostCard(
                     if (showRoute) showRoute = false else if (myLocation != null) showRoute = true else requestLocation()
                 }
                 myLocation?.let { loc ->
-                    if (showRoute) routeMiniMap(loc.first, loc.second, postLat, postLng, "You", post.title)
+                    if (showRoute) RouteMiniMap(loc.first, loc.second, postLat, postLng, "You", post.title)
                 }
             }
         }

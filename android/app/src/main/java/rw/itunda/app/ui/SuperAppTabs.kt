@@ -291,33 +291,14 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit) {
         when (mode) {
             // Real proof-of-slice Feature extraction (2026-07-22/23) -- Marketplace now
             // lives in :features:marketplace:impl, the first Hood-mode section pulled out
-            // of this file to match Toss's real Microfeatures architecture. routeMiniMap
-            // is passed in because a real drawn road route needs MapLibre + :app's own
-            // BuildConfig.TILES_BASE_URL (RouteMiniMap.kt below), out of scope for this
-            // slice -- see MarketplaceScreen.kt's own header comment for the full account.
-            HoodMode.MARKETPLACE -> MarketplaceContent(
-                onMessageSeller = onMessageSeller,
-                routeMiniMap = { fromLat, fromLng, toLat, toLng, fromLabel, toLabel ->
-                    RouteMiniMap(fromLat, fromLng, toLat, toLng, fromLabel, toLabel)
-                },
-            )
-            // Fourth Feature extraction (2026-07-23), same pattern -- no routeMiniMap
-            // needed since Community has no lat/lng "directions" feature.
+            // of this file to match Toss's real Microfeatures architecture.
+            HoodMode.MARKETPLACE -> MarketplaceContent(onMessageSeller = onMessageSeller)
+            // Fourth Feature extraction (2026-07-23), same pattern.
             HoodMode.COMMUNITY -> CommunityContent()
             // Second Feature extraction (2026-07-23), same pattern as Marketplace above.
-            HoodMode.JOBS -> JobsContent(
-                onMessagePoster = onMessageSeller,
-                routeMiniMap = { fromLat, fromLng, toLat, toLng, fromLabel, toLabel ->
-                    RouteMiniMap(fromLat, fromLng, toLat, toLng, fromLabel, toLabel)
-                },
-            )
+            HoodMode.JOBS -> JobsContent(onMessagePoster = onMessageSeller)
             // Third Feature extraction (2026-07-23), same pattern as Marketplace/Jobs above.
-            HoodMode.PROPERTY -> PropertyContent(
-                onMessageLister = onMessageSeller,
-                routeMiniMap = { fromLat, fromLng, toLat, toLng, fromLabel, toLabel ->
-                    RouteMiniMap(fromLat, fromLng, toLat, toLng, fromLabel, toLabel)
-                },
-            )
+            HoodMode.PROPERTY -> PropertyContent(onMessageLister = onMessageSeller)
         }
     }
 }
@@ -380,11 +361,8 @@ internal fun ShopTab() {
             )
             // Sixth Feature extraction (2026-07-23) -- folds Deliver (rider role) in too;
             // see EatsScreen.kt's own header comment for why they share one module and
-            // for the routeMiniMap/deviceStepUpHost injection reasoning.
+            // for the deviceStepUpHost injection reasoning.
             ShopMode.EATS -> EatsContent(
-                routeMiniMap = { fromLat, fromLng, toLat, toLng, fromLabel, toLabel ->
-                    RouteMiniMap(fromLat, fromLng, toLat, toLng, fromLabel, toLabel)
-                },
                 deviceStepUpHost = { visible, onDismiss, onVerified ->
                     DeviceStepUpHost(visible = visible, onDismiss = onDismiss, onVerified = onVerified)
                 },
