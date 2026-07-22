@@ -60,10 +60,7 @@ Mirrors the Android `Feature<Name>Interface / Feature<Name>` split, and as of
 runner: `tuist generate` + `pod install` + `xcodebuild ... ItundaApp`) — not
 just a paper structure. Most feature targets are still `Dummy.swift`
 placeholders content-wise (only Banking/Payments have a real `Example` app
-target), but the module graph itself compiles and links. Boundary
-*enforcement* (the Swift equivalent of Android's Konsist check) is still
-missing — nothing yet stops one `Feature<Name>` target from importing another
-feature's implementation module directly — tracked as the next open item.
+target), but the module graph itself compiles and links.
 
 ### Backend (`services/backend/<module>`)
 
@@ -115,14 +112,14 @@ Boundaries above are backed by real CI checks, not just convention:
 - **Android**: `:architecture-test` (Konsist) asserts no feature's `impl` package
   imports another feature's `impl` package — only `*.api` is cross-feature-
   importable. Runs in CI (`android-build` job).
+- **iOS**: `scripts/ios-silo-boundary-check.py` (pure text scan, no Xcode/Tuist
+  needed) asserts no `Features/<Name>/Sources/**` file imports another
+  feature's `Feature<Name>` module directly — only `Feature<Name>Interface` is
+  cross-feature-importable. Runs in CI (`lint-and-typecheck` job, since it
+  needs no macOS runner).
 
 ## Out of scope (tracked, not forgotten)
 
-- iOS boundary enforcement — the build is now real and CI-verified (see above),
-  so this is no longer blocked on that, just not built yet. A Swift-side
-  equivalent of the Android Konsist check (no `Feature<Name>` importing another
-  feature's `Feature<Name>` module directly, only `Feature<Name>Interface`) is
-  the natural next step.
 - Decomposing the remaining empty Android feature shells, the still-mostly-
   `Dummy.swift` iOS feature targets, or `SuperAppTabs.kt` itself — this doc
   only adds the guardrails so that decomposition, done by any agent, in

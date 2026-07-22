@@ -30,6 +30,9 @@ jobs:
       - name: Silo boundary check (dependency-cruiser)
         run: yarn depcruise
 
+      - name: Silo boundary check (iOS Feature imports)
+        run: python3 scripts/ios-silo-boundary-check.py
+
   root-workspace-build:
     runs-on: ubuntu-latest
     needs: [lint-and-typecheck]
