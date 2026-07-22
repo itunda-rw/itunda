@@ -615,7 +615,14 @@ struct PinnedMessageResponse: Decodable { let success: Bool; let message: Messag
 // memberPhoneNumbers is the real human-friendly entry point (same reasoning as
 // StartConversationRequest.phoneNumber).
 struct CreateGroupRequest: Encodable { let name: String; let memberPhoneNumbers: [String] }
-struct SendGroupMessageRequest: Encodable { let body: String; let replyToMessageId: String? = nil }
+struct SendGroupMessageRequest: Encodable {
+    let body: String
+    let replyToMessageId: String?
+    init(body: String, replyToMessageId: String? = nil) {
+        self.body = body
+        self.replyToMessageId = replyToMessageId
+    }
+}
 
 struct GroupSummaryDto: Decodable, Identifiable {
     let groupId: String
@@ -1247,8 +1254,8 @@ extension NetworkClient {
         try await get("api/v1/messages/groups/\(groupId)/messages")
     }
 
-    func sendGroupMessage(groupId: String, body: String) async throws -> GroupMessageResponse {
-        try await authenticatedPost("api/v1/messages/groups/\(groupId)/messages", body: SendGroupMessageRequest(body: body))
+    func sendGroupMessage(groupId: String, body: String, replyToMessageId: String? = nil) async throws -> GroupMessageResponse {
+        try await authenticatedPost("api/v1/messages/groups/\(groupId)/messages", body: SendGroupMessageRequest(body: body, replyToMessageId: replyToMessageId))
     }
 
     func deleteGroupMessage(groupId: String, messageId: String) async throws -> SuccessResponse {

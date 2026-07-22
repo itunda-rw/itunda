@@ -445,7 +445,7 @@ private struct GroupThreadScreen: View {
     @State private var messages: [GroupMessageDto]?
     @State private var members: [GroupMemberDto] = []
     @State private var draft = ""
-    @State private var replyingTo: MessageDto?
+    @State private var replyingTo: GroupMessageDto?
     @State private var sending = false
     @State private var error: String?
     @State private var socketTask: URLSessionWebSocketTask?
@@ -481,6 +481,7 @@ private struct GroupThreadScreen: View {
                                     message: message, isMine: message.senderId == currentUserId, senderName: name(for: message.senderId),
                                     currentUserId: currentUserId,
                                     onToggleReaction: { emoji in Task { await toggleReaction(message.id, emoji) } },
+                                    onReply: { replyingTo = $0 },
                                     onDelete: { messageId in Task { await deleteGroupMessage(messageId) } },
                                 )
                                 .id(message.id)
@@ -636,8 +637,9 @@ private struct GroupThreadScreen: View {
         error = nil
         defer { sending = false }
         do {
-            let res = try await NetworkClient.shared.sendGroupMessage(groupId: group.groupId, body: body)
+            let res = try await NetworkClient.shared.sendGroupMessage(groupId: group.groupId, body: body, replyToMessageId: replyingTo?.id)
             draft = ""
+            replyingTo = nil
             messages = (messages ?? []) + [res.message]
         } catch let NetworkError.httpError(statusCode) {
             error = TalkScreen.errorMessage(statusCode)
@@ -696,6 +698,7 @@ private struct GroupMessageBubble: View {
     let senderName: String
     let currentUserId: String?
     let onToggleReaction: (String) -> Void
+    let onReply: (GroupMessageDto) -> Void
     let onDelete: (String) -> Void
 
     var body: some View {
@@ -717,6 +720,8 @@ private struct GroupMessageBubble: View {
                 if !isMine { Spacer() }
             }
             MessageReactionsRow(reactions: message.reactions, currentUserId: currentUserId, isMine: isMine, onToggle: onToggleReaction)
+            Button("Reply") { onReply(message) }
+                .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
             if isMine && message.deletedAt == nil { Button("Delete") { onDelete(message.id) }.font(.caption2).foregroundColor(IDS.Colors.textSecondary) }
             Text(chatMessageTime(message.sentAt))
                 .font(.caption2)
