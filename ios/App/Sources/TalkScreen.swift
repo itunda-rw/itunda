@@ -179,6 +179,7 @@ private struct DirectMessagesList: View {
     @State private var startError: String?
     @State private var starting = false
     @State private var contacts: [TalkContactDto]?
+    @State private var showArchived = false
 
     var body: some View {
         ScrollView {
@@ -232,6 +233,14 @@ private struct DirectMessagesList: View {
                 .background(IDS.Colors.card)
                 .cornerRadius(IDS.Layout.cardCornerRadius)
 
+                if let conversations {
+                    let archivedCount = conversations.filter { $0.quiet == true }.count
+                    if archivedCount > 0 {
+                        Button(showArchived ? "Show active chats" : "Archived (\(archivedCount))") { showArchived.toggle() }
+                            .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    }
+                }
+
                 if let error {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(error).foregroundColor(.red).font(.subheadline)
@@ -243,10 +252,10 @@ private struct DirectMessagesList: View {
                     .cornerRadius(IDS.Layout.cardCornerRadius)
                 } else if conversations == nil {
                     ProgressView().frame(maxWidth: .infinity, minHeight: 120)
-                } else if conversations!.isEmpty {
+                } else if conversations!.filter({ showArchived ? $0.quiet == true : $0.quiet != true }).isEmpty {
                     Text("No conversations yet.").foregroundColor(IDS.Colors.textSecondary)
                 } else {
-                    ForEach(conversations!) { conversation in
+                    ForEach(conversations!.filter { showArchived ? $0.quiet == true : $0.quiet != true }) { conversation in
                         Button(action: { onOpen(conversation) }) {
                             ConversationRow(conversation: conversation, online: presence[conversation.otherUserId] == true)
                         }
