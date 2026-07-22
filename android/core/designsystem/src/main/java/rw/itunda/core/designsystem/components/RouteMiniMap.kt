@@ -1,4 +1,4 @@
-package rw.itunda.app.ui
+package rw.itunda.core.designsystem.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -45,20 +45,25 @@ import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
 import retrofit2.HttpException
-import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.network.MapConfig
+import rw.itunda.core.network.NetworkClient
 
-// Same override mechanism as MapScreen.kt's TILES_URL -- this used to hardcode the
-// private cloud's internal-only 192.168.252.3 bridge address directly, bypassing
-// BuildConfig.TILES_BASE_URL entirely, so this mini-map stayed permanently blank on
-// a physical device even after the main MapScreen fix (2026-07-21) that introduced
-// the -PtilesBaseUrl override (found 2026-07-22 testing over the public endpoint).
-private val ROUTE_MINI_TILES_URL = "${rw.itunda.app.BuildConfig.TILES_BASE_URL}/rwanda/{z}/{x}/{y}.mvt"
-private val ROUTE_MINI_STYLE_JSON = """
+// Relocated 2026-07-23 from app/ui/RouteMiniMap.kt -- was previously injected into
+// Marketplace/Jobs/Property/Eats as a routeMiniMap callback param because it hardcoded
+// rw.itunda.app.BuildConfig.TILES_BASE_URL directly (unreachable from a Feature module).
+// Now reads MapConfig.tilesBaseUrl instead (see MapConfig.kt's own doc comment for the
+// same BuildConfig-avoidance technique NetworkClient.init already established), so this
+// composable is genuinely self-sufficient and every one of those Feature modules can
+// import it directly instead of receiving it as an injected slot.
+private val ROUTE_MINI_STYLE_JSON: String
+    get() {
+        val tilesUrl = "${MapConfig.tilesBaseUrl}/rwanda/{z}/{x}/{y}.mvt"
+        return """
 {
   "version": 8,
   "sources": {
-    "rwanda": { "type": "vector", "tiles": ["$ROUTE_MINI_TILES_URL"], "minzoom": 0, "maxzoom": 14 },
+    "rwanda": { "type": "vector", "tiles": ["$tilesUrl"], "minzoom": 0, "maxzoom": 14 },
     "route": { "type": "geojson", "data": { "type": "FeatureCollection", "features": [] } },
     "from": { "type": "geojson", "data": { "type": "FeatureCollection", "features": [] } },
     "to": { "type": "geojson", "data": { "type": "FeatureCollection", "features": [] } }
@@ -78,6 +83,7 @@ private val ROUTE_MINI_STYLE_JSON = """
   ]
 }
 """.trimIndent()
+    }
 
 /**
  * A real, compact, non-interactive drawn-route map -- reuses the exact same self-hosted
@@ -176,14 +182,14 @@ fun RouteMiniMap(fromLat: Double, fromLng: Double, toLat: Double, toLng: Double,
 
     Column {
         AndroidView(factory = { mapView }, modifier = Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(12.dp)))
-        if (loading) Text("Finding the real road route…", fontSize = 12.sp, color = TossSecondary)
+        if (loading) Text("Finding the real road route…", fontSize = 12.sp, color = Ids.colors.textSecondary)
         error?.let { Text(it, fontSize = 12.sp, color = Ids.colors.danger) }
         val km = distanceKm
         val min = durationMinutes
         if (km != null && min != null) {
             Text(
                 "🚗 ${"%.1f".format(km)} km · ${min.toInt()} min by real road, via itunda's own self-hosted OSRM",
-                fontSize = 12.sp, color = TossSecondary,
+                fontSize = 12.sp, color = Ids.colors.textSecondary,
             )
         }
     }
