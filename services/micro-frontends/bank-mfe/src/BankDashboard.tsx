@@ -20,7 +20,7 @@ import {
 } from './lib/stocks';
 import {
   connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages,
-  fetchPresence, sendGroupMessage, sendMessage, startConversation, toggleGroupReaction, toggleReaction,
+  blockConversationParticipant, fetchPresence, sendGroupMessage, sendMessage, startConversation, toggleGroupReaction, toggleReaction,
   type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup,
 } from './lib/messaging';
@@ -1301,6 +1301,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   const [giftAmount, setGiftAmount] = useState('');
   const [giftNote, setGiftNote] = useState('');
   const [sendingGift, setSendingGift] = useState(false);
+  const [blocking, setBlocking] = useState(false);
   // Real device binding step-up (2026-07-21) -- covers Gift send/claim below.
   const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
   const [otherOnline, setOtherOnline] = useState<boolean | null>(null);
@@ -1343,6 +1344,17 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this conversation.'));
     loadOffers();
     loadGifts();
+  };
+
+  const handleBlock = async () => {
+    if (!window.confirm(`Block ${conversation.otherUserName}? They will no longer be able to message you.`)) return;
+    setBlocking(true);
+    try {
+      await blockConversationParticipant(conversation.conversationId);
+      setError(`You blocked ${conversation.otherUserName}. You can unblock them later from this conversation.`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not block this person.');
+    } finally { setBlocking(false); }
   };
 
   const handleSendGift = async (e: React.FormEvent) => {
@@ -1505,6 +1517,9 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
             </p>
           )}
         </div>
+        <button type="button" className="toss-btn toss-btn-secondary" onClick={handleBlock} disabled={blocking} style={{ marginLeft: 'auto', padding: '8px 10px', fontSize: '12px' }}>
+          {blocking ? 'Blocking…' : 'Block'}
+        </button>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px' }}>

@@ -583,6 +583,7 @@ struct StartConversationRequest: Encodable {
 }
 
 struct SendMessageRequest: Encodable { let body: String }
+struct EmptyRequest: Encodable {}
 struct ToggleReactionRequest: Encodable { let emoji: String }
 struct ReactionsResponse: Decodable { let success: Bool; let reactions: [ReactionGroupDto] }
 
@@ -1155,6 +1156,14 @@ extension NetworkClient {
 
     func sendMessage(conversationId: String, body: String) async throws -> MessageResponse {
         try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/messages", body: SendMessageRequest(body: body))
+    }
+
+    func blockConversationParticipant(conversationId: String) async throws -> SuccessResponse {
+        try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/block", body: EmptyRequest())
+    }
+
+    func unblockConversationParticipant(conversationId: String) async throws -> SuccessResponse {
+        try await authenticatedDelete("api/v1/messages/conversations/\(conversationId)/block")
     }
 
     // Real toggle -- tapping an already-active reaction removes it, same semantics as

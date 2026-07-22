@@ -865,6 +865,12 @@ interface ApiService {
     @POST("api/v1/messages/conversations/{id}/messages")
     suspend fun sendMessage(@Path("id") conversationId: String, @Body request: SendMessageRequest): MessageResponse
 
+    @POST("api/v1/messages/conversations/{id}/block")
+    suspend fun blockConversationParticipant(@Path("id") conversationId: String): SuccessResponse
+
+    @DELETE("api/v1/messages/conversations/{id}/block")
+    suspend fun unblockConversationParticipant(@Path("id") conversationId: String): SuccessResponse
+
     // Real toggle -- tapping an already-active reaction removes it, same semantics as
     // MessagingService.toggleReaction on the backend.
     @POST("api/v1/messages/messages/{id}/reactions")

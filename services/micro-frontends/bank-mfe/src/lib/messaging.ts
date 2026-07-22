@@ -62,6 +62,12 @@ export const sendMessage = (conversationId: string, body: string) =>
     body: JSON.stringify({ body }),
   }).then((r) => r.message);
 
+export const blockConversationParticipant = (conversationId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/messages/conversations/${conversationId}/block`, { method: 'POST' });
+
+export const unblockConversationParticipant = (conversationId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/messages/conversations/${conversationId}/block`, { method: 'DELETE' });
+
 // Real toggle -- tapping an already-active reaction removes it (matches
 // MessagingService.toggleReaction's own toggle-off semantics), not add/remove as two
 // separate calls.
