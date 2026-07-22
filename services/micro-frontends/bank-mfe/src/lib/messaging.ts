@@ -188,6 +188,17 @@ export const fetchGroupMembers = (groupId: string) =>
     (r) => r.members,
   );
 
+// Real leave-group/add-member (found 2026-07-22 fully built on the backend with zero
+// client UI anywhere, despite group chat itself being fully wired).
+export const addGroupMember = (groupId: string, userId: string) =>
+  apiFetch<{ success: boolean; group: GroupSummary }>(`/api/v1/messages/groups/${groupId}/members`, {
+    method: 'POST',
+    body: JSON.stringify({ userId }),
+  }).then((r) => r.group);
+
+export const leaveGroup = (groupId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/messages/groups/${groupId}/members/me`, { method: 'DELETE' });
+
 interface MessagePushPayload {
   type: 'message';
   conversationId: string;

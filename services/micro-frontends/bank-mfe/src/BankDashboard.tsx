@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowUpRight, Bike, Heart, LogOut, MessageCircle, Plus, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Bike, Heart, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { fetchTransactions, fetchWallets, type Transaction, type Wallet } from './lib/wallet';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
@@ -12,6 +12,12 @@ import {
 import { collectWithFacePay, enrollFacePay, fetchFacePayStatus, revokeFacePay } from './lib/facepay';
 import { sendDirect } from './lib/p2p';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
+import { fetchLinkedAccounts, fetchOverview, linkAccount, unlinkAccount, type LinkedAccount, type Overview } from './lib/overview';
+import { applyForLoan, fetchLoanOffers, fetchMyLoans, repayLoan, type LoanAccount, type LoanOffer } from './lib/loans';
+import { fetchCreditScore, type CreditScoreResult } from './lib/creditScore';
+import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type KycSubmission } from './lib/identity';
+import { addContact, fetchContacts, type Contact } from './lib/contacts';
+import { createSupportTicket, fetchSupportTickets, type SupportTicket, type SupportTicketCategory } from './lib/support';
 import { collectPayment, fetchMerchantCategories, fetchShoppingCatalog, searchProducts, type CollectPaymentResult, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
 import {
   buyStock, fetchPortfolio, fetchPortfolioHistory, fetchStockHistory, fetchStocks, fetchWatchlist,
@@ -19,11 +25,12 @@ import {
   type Portfolio, type PortfolioValuePoint, type PricePoint, type Stock,
 } from './lib/stocks';
 import {
-  connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages, fetchPinnedConversationMessage,
-  blockConversationParticipant, deleteGroupMessage, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, pinConversationMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationQuiet, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unpinConversationMessage,
+  addGroupMember, connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages, fetchPinnedConversationMessage,
+  blockConversationParticipant, deleteGroupMessage, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, leaveGroup, pinConversationMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationQuiet, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unpinConversationMessage,
   type ConversationSummary, type GroupMember, type GroupMessage,
-  type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup,
+  type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup, type TalkContact,
 } from './lib/messaging';
+import { createSplitBill, fetchSplitBillsForGroup, paySplitBillShare, type SplitBillWithParticipants } from './lib/splitBill';
 import {
   addListingFavorite, contactSeller, createListing, fetchListings, fetchListingsMyNeighborhood, fetchMyFavoriteListings,
   fetchMyListings, fetchOffersForConversation, makeOffer, markListingSold, removeListing, removeListingFavorite,
@@ -63,7 +70,7 @@ import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
 import LiveRiderMap from './LiveRiderMap';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'MAP' | 'DEVICES';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'MAP' | 'DEVICES' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'IDENTITY' | 'SUPPORT';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
@@ -166,6 +173,27 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
   // hasn't been step-up-verified yet) gets its own real prompt, not just a generic
   // error string, since the user has a real, actionable next step.
   const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+  // Real saved-contacts list (found 2026-07-22 fully built on the backend with zero
+  // client UI anywhere) -- this form previously had no recipient picker at all, just
+  // a bare phone/account text field.
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [showAddContact, setShowAddContact] = useState(false);
+  const [newContactName, setNewContactName] = useState('');
+  const [newContactPhone, setNewContactPhone] = useState('');
+
+  const loadContacts = () => fetchContacts().then(setContacts).catch(() => {});
+  useEffect(() => { loadContacts(); }, []);
+
+  const handleAddContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await addContact(newContactName, newContactPhone);
+      setNewContactName(''); setNewContactPhone(''); setShowAddContact(false);
+      loadContacts();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not save that contact.');
+    }
+  };
 
   const handleReview = (e: React.FormEvent) => {
     e.preventDefault();
@@ -242,6 +270,40 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
         type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount (RWF)" required min="1"
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
       />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-500)' }}>Contacts</p>
+        <button type="button" onClick={() => setShowAddContact((v) => !v)} style={{ fontSize: '12px', color: 'var(--toss-blue)', fontWeight: 700, background: 'none', border: 'none' }}>
+          {showAddContact ? 'Cancel' : '+ Add'}
+        </button>
+      </div>
+      {showAddContact && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <input
+            type="text" value={newContactName} onChange={(e) => setNewContactName(e.target.value)} placeholder="Name"
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <input
+            type="text" value={newContactPhone} onChange={(e) => setNewContactPhone(e.target.value)} placeholder="Phone number"
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <button type="button" className="toss-btn toss-btn-secondary" disabled={!newContactName || !newContactPhone} onClick={handleAddContact}>
+            Save contact
+          </button>
+        </div>
+      )}
+      {contacts.length === 0 && !showAddContact && (
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No saved contacts yet.</p>
+      )}
+      {contacts.map((c) => (
+        <button
+          type="button" key={c.id}
+          onClick={() => setRecipient(c.phoneNumber)}
+          style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', background: 'none', border: 'none', textAlign: 'left' }}
+        >
+          <span style={{ fontSize: '13px', fontWeight: 700 }}>{c.name}</span>
+          <span style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{c.bank} · {c.phoneNumber}</span>
+        </button>
+      ))}
       <div style={{ display: 'flex', gap: '10px' }}>
         <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
         <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }}>Continue</button>
@@ -475,6 +537,459 @@ function CertificateView() {
       {error && (
         <p style={{ fontSize: '13px', color: '#E53935', marginTop: '16px' }} role="alert">{error}</p>
       )}
+    </div>
+  );
+}
+
+// Real Toss-style unified account overview (2026-07-22) -- found fully built on the
+// backend (rw.itunda.overview) with zero client UI anywhere until the Android port
+// the same day. See OverviewService.kt's own doc comment for why insurance is
+// excluded from net worth (a sunk expense, not an asset) and LinkedAccount.kt's for
+// why linked balances are honestly labeled demo -- itunda has no live Open Banking
+// access to fetch a real one.
+const LINK_PROVIDERS = ['MTN Mobile Money', 'Airtel Money', 'Bank of Kigali', 'Equity Bank Rwanda'];
+
+function OverviewView() {
+  const [overview, setOverview] = useState<Overview | null>(null);
+  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [showLinkForm, setShowLinkForm] = useState(false);
+  const [provider, setProvider] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+
+  const refresh = () => {
+    setError(null);
+    Promise.all([fetchOverview(), fetchLinkedAccounts()])
+      .then(([o, linked]) => { setOverview(o); setLinkedAccounts(linked); })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your overview.'));
+  };
+
+  useEffect(refresh, []);
+
+  const handleLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await linkAccount(provider, accountNumber);
+      setProvider(''); setAccountNumber(''); setShowLinkForm(false);
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not link that account.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleUnlink = async (id: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await unlinkAccount(id);
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not unlink this account.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!overview) {
+    return <div className="toss-card skeleton" style={{ height: '260px' }} />;
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div className="toss-card" style={{ padding: '24px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Net worth</p>
+        <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{overview.netWorth.toLocaleString()} RWF</h2>
+      </div>
+      <div className="toss-card" style={{ padding: '16px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Accounts</h3>
+        {overview.accounts.map((a) => (
+          <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
+            <span>{a.name} ({a.type})</span>
+            <span>{a.currency} {a.balance.toLocaleString()}</span>
+          </div>
+        ))}
+      </div>
+      <div className="toss-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <p style={{ fontSize: '13px' }}>Savings: {overview.savings.totalSaved.toLocaleString()} RWF across {overview.savings.goalCount} goal(s)</p>
+        <p style={{ fontSize: '13px' }}>Loans: {overview.loans.totalOutstanding.toLocaleString()} RWF outstanding, {overview.loans.activeCount} active</p>
+        <p style={{ fontSize: '13px' }}>Investments: {overview.investments.totalCostBasis.toLocaleString()} RWF cost basis, {overview.investments.holdingCount} holding(s)</p>
+        <p style={{ fontSize: '13px' }}>Insurance: {overview.insurance.activePolicyCount} active plan(s), {overview.insurance.totalMonthlyPremium.toLocaleString()} RWF/month</p>
+      </div>
+      <div className="toss-card" style={{ padding: '16px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Linked accounts</h3>
+        {linkedAccounts.map((a) => (
+          <div key={a.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--toss-grey-100)' }}>
+            <p style={{ fontSize: '13px', fontWeight: 700 }}>{a.provider}</p>
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{a.externalAccountNumberMasked} · {a.status}</p>
+            {a.demoBalance != null && (
+              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Demo balance: {a.demoBalanceCurrency} {a.demoBalance.toLocaleString()}</p>
+            )}
+            {a.status === 'LINKED' && (
+              <button className="toss-btn toss-btn-secondary" style={{ marginTop: '4px' }} disabled={busy} onClick={() => handleUnlink(a.id)}>Unlink</button>
+            )}
+          </div>
+        ))}
+        {!showLinkForm ? (
+          <button className="toss-btn toss-btn-primary" style={{ marginTop: '10px' }} onClick={() => setShowLinkForm(true)}>
+            Link a bank or mobile money account
+          </button>
+        ) : (
+          <form onSubmit={handleLink} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {LINK_PROVIDERS.map((p) => (
+                <button type="button" key={p} className="toss-btn toss-btn-secondary" onClick={() => setProvider(p)}>{p}</button>
+              ))}
+            </div>
+            <input
+              type="text" value={provider} onChange={(e) => setProvider(e.target.value)} placeholder="Provider name" required
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            />
+            <input
+              type="text" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} placeholder="Account / phone number" required
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            />
+            <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? 'Linking…' : 'Link account'}</button>
+          </form>
+        )}
+      </div>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
+// Real multi-lender loan marketplace (2026-07-22) -- found fully built on the backend
+// (rw.itunda.loans, BNR-licensed partner banks alongside itunda's own book, see
+// LoanOffer.kt's own doc comment) with zero client UI anywhere.
+function LoansView() {
+  const [mode, setMode] = useState<'OFFERS' | 'MY_LOANS'>('OFFERS');
+  const [offers, setOffers] = useState<LoanOffer[] | null>(null);
+  const [myLoans, setMyLoans] = useState<LoanAccount[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [repayAmounts, setRepayAmounts] = useState<Record<string, string>>({});
+
+  const refresh = () => {
+    setError(null);
+    Promise.all([fetchLoanOffers(), fetchMyLoans()])
+      .then(([o, l]) => { setOffers(o); setMyLoans(l); })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load loans.'));
+  };
+
+  useEffect(refresh, []);
+
+  const handleApply = async (offer: LoanOffer, amount: number) => {
+    setBusyId(offer.id);
+    setError(null);
+    try {
+      await applyForLoan(offer.id, amount);
+      setMode('MY_LOANS');
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'That loan application could not be completed.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleRepay = async (loan: LoanAccount) => {
+    const amount = Number(repayAmounts[loan.id] ?? '');
+    if (!amount || amount <= 0) { setError('Enter a valid repayment amount.'); return; }
+    setBusyId(loan.id);
+    setError(null);
+    try {
+      await repayLoan(loan.id, amount);
+      setRepayAmounts((prev) => { const next = { ...prev }; delete next[loan.id]; return next; });
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'That repayment could not be completed.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button className="toss-btn toss-btn-secondary" onClick={() => setMode('OFFERS')}>Offers</button>
+        <button className="toss-btn toss-btn-secondary" onClick={() => setMode('MY_LOANS')}>My loans ({myLoans?.length ?? 0})</button>
+      </div>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {mode === 'OFFERS' && (
+        offers === null ? <div className="toss-card skeleton" style={{ height: '160px' }} /> : offers.map((offer) => (
+          <LoanOfferCard key={offer.id} offer={offer} busy={busyId === offer.id} onApply={(amount) => handleApply(offer, amount)} />
+        ))
+      )}
+      {mode === 'MY_LOANS' && (
+        myLoans === null ? <div className="toss-card skeleton" style={{ height: '160px' }} /> :
+        myLoans.length === 0 ? <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>You have no loans yet.</p> :
+        myLoans.map((loan) => (
+          <div key={loan.id} className="toss-card" style={{ padding: '16px' }}>
+            <h4 style={{ fontSize: '14px', fontWeight: 700 }}>{loan.principal.toLocaleString()} RWF loan</h4>
+            <p style={{ fontSize: '13px' }}>Outstanding: {loan.outstanding.toLocaleString()} RWF</p>
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Status: {loan.status} · {loan.interestRate}%</p>
+            {loan.status === 'ACTIVE' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+                <input
+                  type="number" value={repayAmounts[loan.id] ?? ''}
+                  onChange={(e) => setRepayAmounts((prev) => ({ ...prev, [loan.id]: e.target.value }))}
+                  placeholder="Repay amount (RWF)"
+                  style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+                />
+                <button className="toss-btn toss-btn-primary" disabled={busyId === loan.id} onClick={() => handleRepay(loan)}>
+                  {busyId === loan.id ? 'Repaying…' : 'Repay'}
+                </button>
+              </div>
+            )}
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+function LoanOfferCard({ offer, busy, onApply }: { offer: LoanOffer; busy: boolean; onApply: (amount: number) => void }) {
+  const [amount, setAmount] = useState(String(offer.maxAmount));
+  return (
+    <div className="toss-card" style={{ padding: '16px' }}>
+      <h4 style={{ fontSize: '14px', fontWeight: 700 }}>{offer.name}</h4>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{offer.lenderName}</p>
+      <p style={{ fontSize: '13px' }}>Up to {offer.maxAmount.toLocaleString()} RWF · {offer.interestRate}% · {offer.term}</p>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{offer.requirements}</p>
+      <input
+        type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount (RWF)"
+        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', marginTop: '8px', width: '100%', boxSizing: 'border-box' }}
+      />
+      <button
+        className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busy}
+        onClick={() => { const n = Number(amount); if (n > 0) onApply(n); }}
+      >
+        {busy ? 'Applying…' : 'Apply'}
+      </button>
+    </div>
+  );
+}
+
+// Real "alternative data" credit score (2026-07-22) -- found fully built on the
+// backend (rw.itunda.creditscore) with zero client UI anywhere. Not a real bureau
+// score -- computed live from a user's own real transaction/loan/savings/KYC history.
+function CreditScoreView() {
+  const [result, setResult] = useState<CreditScoreResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchCreditScore()
+      .then(setResult)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your credit score.'));
+  }, []);
+
+  if (!result) {
+    return error ? <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div className="toss-card" style={{ padding: '24px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Your score</p>
+        <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{result.score} / 850</h2>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Based on your own account activity, not a bureau report.</p>
+      </div>
+      <div className="toss-card" style={{ padding: '16px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>What makes up your score</h3>
+        {result.factors.map((f) => (
+          <div key={f.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
+            <div>
+              <p>{f.name}</p>
+              <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{f.description}</p>
+            </div>
+            <span>+{f.points}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Real personal KYC identity submission (2026-07-22) -- found fully built on the
+// backend (rw.itunda.identity) with zero client UI anywhere; merchant-mfe already has
+// KYB submission and ops-mfe the review queue, but this ordinary personal
+// NATIONAL_ID/PASSPORT submission had zero UI on any client -- kyc-mfe, checked
+// directly, is an unwired mock shell with no real API calls at all.
+function IdentityView() {
+  const [submissions, setSubmissions] = useState<KycSubmission[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [documentType, setDocumentType] = useState<IdentityDocumentType>('NATIONAL_ID');
+  const [documentNumber, setDocumentNumber] = useState('');
+  const [documentReference, setDocumentReference] = useState('');
+
+  const refresh = () => {
+    setError(null);
+    fetchIdentityStatus()
+      .then(setSubmissions)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your identity status.'));
+  };
+
+  useEffect(refresh, []);
+
+  const hasPending = submissions?.some((s) => s.status === 'PENDING') ?? false;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await submitIdentity(documentType, documentNumber, documentReference);
+      setDocumentNumber(''); setDocumentReference('');
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'That submission could not be completed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Verify your identity</h2>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {hasPending ? (
+        <div className="toss-card" style={{ padding: '16px' }}>
+          <h4 style={{ fontSize: '14px', fontWeight: 700 }}>Submission pending review</h4>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>We'll update your status once it's reviewed.</p>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px' }}>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {(['NATIONAL_ID', 'PASSPORT'] as IdentityDocumentType[]).map((t) => (
+              <button
+                type="button" key={t}
+                className={documentType === t ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+                onClick={() => setDocumentType(t)}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+          <input
+            type="text" value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} placeholder="Document number" required
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <input
+            type="text" value={documentReference} onChange={(e) => setDocumentReference(e.target.value)} placeholder="Document reference (scan/photo reference)" required
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? 'Submitting…' : 'Submit for review'}</button>
+        </form>
+      )}
+      <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Your submissions</h3>
+      {submissions === null ? <div className="toss-card skeleton" style={{ height: '80px' }} /> :
+        submissions.length === 0 ? <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>You have no submissions yet.</p> :
+        submissions.map((s) => (
+          <div key={s.id} className="toss-card" style={{ padding: '16px' }}>
+            <h4 style={{ fontSize: '14px', fontWeight: 700 }}>{s.documentType} · {s.documentNumber}</h4>
+            <p style={{ fontSize: '13px' }}>Status: {s.status}</p>
+            {s.decisionReason && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{s.decisionReason}</p>}
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Filed: {s.submittedAt}</p>
+          </div>
+        ))}
+    </div>
+  );
+}
+
+// Real customer support tickets (2026-07-22) -- found fully built on the backend
+// (rw.itunda.support) with zero client UI anywhere. A ticket is always tied to a
+// specific transaction (see SupportTicket.kt's own doc comment for why), so this view
+// has the user pick one from their real transaction history rather than filing a
+// free-floating complaint.
+const SUPPORT_CATEGORIES: SupportTicketCategory[] = ['GENERAL', 'PAYMENT_DISPUTE', 'ACCOUNT_TAKEOVER'];
+
+function SupportView() {
+  const [tickets, setTickets] = useState<SupportTicket[] | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
+  const [category, setCategory] = useState<SupportTicketCategory>('GENERAL');
+  const [description, setDescription] = useState('');
+
+  const refresh = () => {
+    setError(null);
+    Promise.all([fetchSupportTickets(), fetchTransactions()])
+      .then(([t, tx]) => { setTickets(t); setTransactions(tx); })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load support tickets.'));
+  };
+
+  useEffect(refresh, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTransactionId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await createSupportTicket(selectedTransactionId, category, description);
+      setSelectedTransactionId(null); setDescription(''); setShowNewForm(false);
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'That ticket could not be submitted.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {!showNewForm ? (
+        <button className="toss-btn toss-btn-primary" onClick={() => setShowNewForm(true)}>Report an issue with a transaction</button>
+      ) : (
+        <form onSubmit={handleSubmit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px' }}>
+          <p style={{ fontSize: '12px', fontWeight: 700 }}>Which transaction?</p>
+          {transactions.slice(0, 10).map((tx) => (
+            <label key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+              {tx.description} · {tx.currency} {tx.amount.toLocaleString()}
+              <input type="radio" name="tx" checked={selectedTransactionId === tx.id} onChange={() => setSelectedTransactionId(tx.id)} />
+            </label>
+          ))}
+          <p style={{ fontSize: '12px', fontWeight: 700 }}>Category</p>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {SUPPORT_CATEGORIES.map((c) => (
+              <button
+                type="button" key={c}
+                className={category === c ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+                onClick={() => setCategory(c)}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+          <textarea
+            value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the issue" required
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy || !selectedTransactionId || !description}>
+            {busy ? 'Submitting…' : 'Submit ticket'}
+          </button>
+        </form>
+      )}
+      <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Your tickets</h3>
+      {tickets === null ? <div className="toss-card skeleton" style={{ height: '80px' }} /> :
+        tickets.length === 0 ? <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>You have no support tickets.</p> :
+        tickets.map((t) => (
+          <div key={t.id} className="toss-card" style={{ padding: '16px' }}>
+            <h4 style={{ fontSize: '14px', fontWeight: 700 }}>{t.category}</h4>
+            <p style={{ fontSize: '13px' }}>{t.description}</p>
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Status: {t.status}</p>
+            {t.resolution && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Resolution: {t.resolution}</p>}
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Filed: {t.createdAt}</p>
+          </div>
+        ))}
     </div>
   );
 }
@@ -1784,6 +2299,10 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
   const [replyingTo, setReplyingTo] = useState<GroupMessage | null>(null);
   const [sending, setSending] = useState(false);
   const [typingUserIds, setTypingUserIds] = useState<Record<string, boolean>>({});
+  // Real split-bill/manage-members (found 2026-07-22 fully built on the backend with
+  // zero UI anywhere) -- toggles a sibling view over this same thread.
+  const [showSplitBills, setShowSplitBills] = useState(false);
+  const [showManageMembers, setShowManageMembers] = useState(false);
   const currentUser = getStoredUser();
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const socketRef = useRef<MessagingSocketHandle | null>(null);
@@ -1899,15 +2418,48 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
     catch (err) { setError(err instanceof ApiError ? err.message : 'Could not delete this message.'); }
   };
 
+  if (showSplitBills) {
+    return (
+      <GroupSplitBillsView
+        groupConversationId={group.groupId}
+        members={members}
+        currentUserId={currentUser?.id ?? null}
+        onBack={() => setShowSplitBills(false)}
+      />
+    );
+  }
+  if (showManageMembers) {
+    return (
+      <GroupManageMembersView
+        group={group}
+        members={members}
+        currentUserId={currentUser?.id ?? null}
+        onMembersChanged={() => fetchGroupMembers(group.groupId).then(setMembers).catch(() => {})}
+        onLeft={() => { setShowManageMembers(false); onBack(); }}
+        onBack={() => setShowManageMembers(false)}
+      />
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100svh - 180px)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to conversations">
-          <ArrowLeft size={20} />
-        </button>
-        <div>
-          <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{group.name}</h3>
-          <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{group.memberCount} members</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to conversations">
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{group.name}</h3>
+            <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{group.memberCount} members</p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button type="button" onClick={() => setShowManageMembers(true)} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Manage members">
+            <Users size={20} />
+          </button>
+          <button type="button" onClick={() => setShowSplitBills(true)} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Split a bill">
+            <Receipt size={20} />
+          </button>
         </div>
       </div>
 
@@ -2116,6 +2668,216 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Real KakaoPay-style split bill (2026-07-22) -- found fully built on the backend
+// (rw.itunda.splitbill) with zero client UI anywhere, despite group chat itself being
+// fully wired. A flat, even split among picked group members (excluding the
+// organizer); each participant pays their own share directly to the organizer via a
+// real wallet-to-wallet push, no escrow -- see SplitBill.kt's own doc comment.
+function GroupSplitBillsView({
+  groupConversationId, members, currentUserId, onBack,
+}: { groupConversationId: string; members: GroupMember[]; currentUserId: string | null; onBack: () => void }) {
+  const [splitBills, setSplitBills] = useState<SplitBillWithParticipants[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const refresh = () =>
+    fetchSplitBillsForGroup(groupConversationId)
+      .then(setSplitBills)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load split bills.'));
+
+  useEffect(() => { refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [groupConversationId]);
+
+  const otherMembers = members.filter((m) => m.userId !== currentUserId);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusyId('new');
+    setError(null);
+    try {
+      await createSplitBill(groupConversationId, Number(amount), description, Array.from(selectedIds));
+      setAmount(''); setDescription(''); setSelectedIds(new Set()); setShowNewForm(false);
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'That split bill could not be created.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handlePay = async (splitBillId: string) => {
+    setBusyId(splitBillId);
+    setError(null);
+    try {
+      await paySplitBillShare(splitBillId);
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'That payment could not be completed.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to group">
+          <ArrowLeft size={20} />
+        </button>
+        <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Split bills</h3>
+      </div>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {!showNewForm ? (
+        <button className="toss-btn toss-btn-primary" onClick={() => setShowNewForm(true)}>Split a bill</button>
+      ) : (
+        <form onSubmit={handleCreate} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px' }}>
+          <input
+            type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Total amount (RWF)" required
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <input
+            type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What was it for?" required
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Split with</p>
+          {otherMembers.map((m) => (
+            <label key={m.userId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+              {m.name}
+              <input
+                type="checkbox"
+                checked={selectedIds.has(m.userId)}
+                onChange={(e) => {
+                  const next = new Set(selectedIds);
+                  if (e.target.checked) next.add(m.userId); else next.delete(m.userId);
+                  setSelectedIds(next);
+                }}
+              />
+            </label>
+          ))}
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setShowNewForm(false)}>Cancel</button>
+            <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busyId === 'new' || selectedIds.size === 0}>
+              {busyId === 'new' ? 'Creating…' : 'Create'}
+            </button>
+          </div>
+        </form>
+      )}
+      {splitBills === null && <div className="toss-card skeleton" style={{ height: '80px' }} />}
+      {splitBills !== null && splitBills.length === 0 && (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No split bills in this group yet.</p>
+      )}
+      {splitBills?.map(({ splitBill, participants }) => {
+        const myShare = participants.find((p) => p.userId === currentUserId);
+        return (
+          <div key={splitBill.id} className="toss-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <h4 style={{ fontSize: '14px', fontWeight: 700 }}>{splitBill.description}</h4>
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+              Total {splitBill.totalAmount.toLocaleString()} RWF · {splitBill.status}
+            </p>
+            {participants.map((p) => {
+              const name = members.find((m) => m.userId === p.userId)?.name ?? p.userId.slice(0, 8);
+              return (
+                <p key={p.id} style={{ fontSize: '12px' }}>
+                  {name}: {p.shareAmount.toLocaleString()} RWF ({p.status})
+                </p>
+              );
+            })}
+            {myShare && myShare.status === 'PENDING' && (
+              <button
+                className="toss-btn toss-btn-primary" style={{ marginTop: '6px' }}
+                disabled={busyId === splitBill.id}
+                onClick={() => handlePay(splitBill.id)}
+              >
+                {busyId === splitBill.id ? 'Paying…' : `Pay my share (${myShare.shareAmount.toLocaleString()} RWF)`}
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Real leave-group/add-member (2026-07-22) -- found fully built on the backend
+// (GroupMessagingController's POST/DELETE .../members) with zero client UI anywhere.
+// Add-member picks from the caller's real Talk contacts, same list used to start a
+// 1:1 chat, filtered to exclude people already in the group.
+function GroupManageMembersView({
+  group, members, currentUserId, onMembersChanged, onLeft, onBack,
+}: {
+  group: GroupSummary; members: GroupMember[]; currentUserId: string | null;
+  onMembersChanged: () => void; onLeft: () => void; onBack: () => void;
+}) {
+  const [contacts, setContacts] = useState<TalkContact[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [busyUserId, setBusyUserId] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
+
+  useEffect(() => {
+    fetchTalkContacts().then(setContacts).catch(() => {});
+  }, []);
+
+  const addable = contacts.filter((c) => !members.some((m) => m.userId === c.userId));
+
+  const handleLeave = async () => {
+    if (!window.confirm('Leave this group?')) return;
+    setLeaving(true);
+    setError(null);
+    try {
+      await leaveGroup(group.groupId);
+      onLeft();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not leave this group.');
+      setLeaving(false);
+    }
+  };
+
+  const handleAdd = async (contact: TalkContact) => {
+    setBusyUserId(contact.userId);
+    setError(null);
+    try {
+      await addGroupMember(group.groupId, contact.userId);
+      onMembersChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : `Could not add ${contact.name}.`);
+    } finally {
+      setBusyUserId(null);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to group">
+          <ArrowLeft size={20} />
+        </button>
+        <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Manage members</h3>
+      </div>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      <h4 style={{ fontSize: '13px', fontWeight: 700 }}>Members ({members.length})</h4>
+      {members.map((m) => (
+        <p key={m.userId} style={{ fontSize: '13px' }}>{m.userId === currentUserId ? `${m.name} (you)` : m.name}</p>
+      ))}
+      <button className="toss-btn toss-btn-secondary" disabled={leaving} onClick={handleLeave}>
+        {leaving ? 'Leaving…' : 'Leave group'}
+      </button>
+      <h4 style={{ fontSize: '13px', fontWeight: 700, marginTop: '8px' }}>Add from your contacts</h4>
+      {addable.length === 0 && <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No contacts left to add.</p>}
+      {addable.map((c) => (
+        <div key={c.userId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '13px' }}>{c.name}</span>
+          <button className="toss-btn toss-btn-secondary" disabled={busyUserId !== null} onClick={() => handleAdd(c)}>
+            {busyUserId === c.userId ? 'Adding…' : 'Add'}
+          </button>
+        </div>
+      ))}
     </div>
   );
 }
@@ -6867,6 +7629,11 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'CERTIFICATE', label: 'Certificate' },
     { id: 'SHOPPING', label: 'Shopping' },
     { id: 'DEVICES', label: 'Devices' },
+    { id: 'OVERVIEW', label: 'Overview' },
+    { id: 'LOANS', label: 'Loans' },
+    { id: 'CREDIT_SCORE', label: 'Credit score' },
+    { id: 'IDENTITY', label: 'Verify' },
+    { id: 'SUPPORT', label: 'Support' },
   ];
 
   return (
@@ -6921,6 +7688,11 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'CERTIFICATE' && <CertificateView />}
       {tab === 'SHOPPING' && <ShoppingView />}
       {tab === 'DEVICES' && <DevicesView />}
+      {tab === 'OVERVIEW' && <OverviewView />}
+      {tab === 'LOANS' && <LoansView />}
+      {tab === 'CREDIT_SCORE' && <CreditScoreView />}
+      {tab === 'IDENTITY' && <IdentityView />}
+      {tab === 'SUPPORT' && <SupportView />}
     </div>
   );
 }
