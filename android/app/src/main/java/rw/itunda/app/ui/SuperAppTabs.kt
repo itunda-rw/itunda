@@ -694,6 +694,7 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
     var messages by remember { mutableStateOf<List<GroupMessageDto>?>(null) }
     var members by remember { mutableStateOf<List<GroupMemberDto>>(emptyList()) }
     var draft by remember { mutableStateOf("") }
+    var replyingTo by remember { mutableStateOf<MessageDto?>(null) }
     var sending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var typingUserIds by remember { mutableStateOf<Map<String, Job>>(emptyMap()) }
@@ -1348,9 +1349,10 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
                         error = null
                         coroutineScope.launch {
                             try {
-                                val res = NetworkClient.apiService.sendMessage(conversation.conversationId, SendMessageRequest(body))
+                                val res = NetworkClient.apiService.sendMessage(conversation.conversationId, SendMessageRequest(body, replyingTo?.id))
                                 if (res.success) {
-                                    draft = ""
+                                draft = ""
+                                replyingTo = null
                                     messages = (messages ?: emptyList()) + res.message
                                 }
                             } catch (e: HttpException) {
