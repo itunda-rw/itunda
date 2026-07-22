@@ -197,6 +197,7 @@ private sealed class SavingsFlowStep : java.io.Serializable {
 fun ItundaAppScreen(
     viewModel: MainViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
     openMapFromDeepLink: Boolean = false,
+    initialMapSearchQuery: String? = null,
     onMapDeepLinkConsumed: () -> Unit = {},
 ) {
     IdsTheme {
@@ -208,6 +209,7 @@ fun ItundaAppScreen(
         var showBenefits by rememberSaveable { mutableStateOf(false) }
         var showPay by rememberSaveable { mutableStateOf(false) }
         var showMap by rememberSaveable { mutableStateOf(false) }
+        var mapSearchQueryForScreen by rememberSaveable { mutableStateOf<String?>(null) }
         var showAgentCash by rememberSaveable { mutableStateOf(false) }
         var showInvest by rememberSaveable { mutableStateOf(false) }
         // Mirrors NAVER Maps' app-to-map handoff, but remains inside Itunda's own
@@ -215,6 +217,7 @@ fun ItundaAppScreen(
         LaunchedEffect(openMapFromDeepLink) {
             if (openMapFromDeepLink) {
                 showMap = true
+                mapSearchQueryForScreen = initialMapSearchQuery
                 onMapDeepLinkConsumed()
             }
         }
@@ -542,6 +545,7 @@ fun ItundaAppScreen(
             MapScreen(
                 onBack = { showMap = false },
                 initialCategory = if (showAgentCash) "ITUNDA_AGENT" else null,
+                initialSearchQuery = mapSearchQueryForScreen,
             )
             return@IdsTheme
         }

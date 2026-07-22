@@ -33,10 +33,11 @@ private object AppUnlockState {
 // still supports Compose's setContent{} directly, no separate host needed.
 class MainActivity : FragmentActivity() {
     private var mapDeepLinkRequested by mutableStateOf(false)
+    private var mapSearchFromDeepLink by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        mapDeepLinkRequested = isMapsDeepLink(intent)
+        applyMapsDeepLink(intent)
 
         // Root/FDS gate on the real app entry point, ported from
         // mobile_clients/android's BankActivity (see docs/ARCHITECTURE.md §3) --
@@ -65,6 +66,7 @@ class MainActivity : FragmentActivity() {
                     } else {
                         ItundaAppScreen(
                             openMapFromDeepLink = mapDeepLinkRequested,
+                            initialMapSearchQuery = mapSearchFromDeepLink,
                             onMapDeepLinkConsumed = { mapDeepLinkRequested = false },
                         )
                     }
@@ -80,11 +82,18 @@ class MainActivity : FragmentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        mapDeepLinkRequested = isMapsDeepLink(intent)
+        applyMapsDeepLink(intent)
     }
 
-    private fun isMapsDeepLink(intent: Intent?): Boolean =
-        intent?.action == Intent.ACTION_VIEW &&
-            intent.data?.scheme.equals("itunda", ignoreCase = true) &&
-            intent.data?.host.equals("maps", ignoreCase = true)
+    private fun applyMapsDeepLink(intent: Intent?) {
+        val uri = intent?.data
+        mapDeepLinkRequested = intent?.action == Intent.ACTION_VIEW &&
+            uri?.scheme.equals("itunda", ignoreCase = true) &&
+            uri?.host.equals("maps", ignoreCase = true)
+        mapSearchFromDeepLink = if (mapDeepLinkRequested && uri?.path.equals("/search", ignoreCase = true)) {
+            uri?.getQueryParameter("query")?.trim()?.takeIf { it.isNotEmpty() }?.take(160)
+        } else {
+            null
+        }
+    }
 }

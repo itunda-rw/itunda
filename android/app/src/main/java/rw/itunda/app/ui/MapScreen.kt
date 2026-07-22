@@ -294,7 +294,7 @@ private val MAP_STYLE_JSON = """
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
+fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearchQuery: String? = null) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     // The cash-out flow deliberately arrives with the public agent network selected.
@@ -417,6 +417,13 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                 searching = false
             }
         }
+    }
+
+    // Authenticated app-to-map handoff (2026-07-22): `itunda://maps/search?query=`
+    // opens the same real Nominatim-backed search users get from the field, rather than
+    // making another Itunda surface recreate map search locally.
+    LaunchedEffect(initialSearchQuery) {
+        initialSearchQuery?.trim()?.takeIf { it.isNotEmpty() }?.let { query = it }
     }
 
     // Real search-as-you-type autocomplete (2026-07-22) -- ported from bank-mfe's own
