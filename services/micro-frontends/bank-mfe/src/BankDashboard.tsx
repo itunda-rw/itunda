@@ -2085,6 +2085,7 @@ function NewListingCard({ onCreated }: { onCreated: () => void }) {
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('');
+  const [meetingPlace, setMeetingPlace] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
@@ -2126,11 +2127,12 @@ function NewListingCard({ onCreated }: { onCreated: () => void }) {
     setSubmitting(true);
     try {
       const [lat, lng] = shareLocation && myLocation ? myLocation : [undefined, undefined];
-      await createListing(title, description, Number(price), category, lat, lng);
+      await createListing(title, description, Number(price), category, lat, lng, meetingPlace.trim() || undefined);
       setTitle('');
       setDescription('');
       setPrice('');
       setCategory('');
+      setMeetingPlace('');
       setShareLocation(false);
       setMyLocation(null);
       setOpen(false);
@@ -2171,6 +2173,13 @@ function NewListingCard({ onCreated }: { onCreated: () => void }) {
           style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
         />
       </div>
+      <input
+        type="text" value={meetingPlace} maxLength={120} onChange={(e) => setMeetingPlace(e.target.value)}
+        placeholder="Suggested meeting place (optional)"
+        aria-describedby="meeting-place-help"
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      />
+      <small id="meeting-place-help" style={{ color: 'var(--toss-grey-600)' }}>Use a public landmark, not a home address.</small>
       <button
         type="button"
         className="toss-btn toss-btn-secondary"
@@ -2313,6 +2322,9 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
         </div>
       </div>
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>{listing.description}</p>
+      {listing.meetingPlace && (
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-600)', margin: 0 }}>Suggested hand-off: {listing.meetingPlace}</p>
+      )}
       {offering && (
         <div style={{ display: 'flex', gap: '8px' }}>
           <input

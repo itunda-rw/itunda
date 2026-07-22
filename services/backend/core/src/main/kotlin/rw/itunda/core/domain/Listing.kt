@@ -71,6 +71,12 @@ class Listing(
     // honest fallback, never a fabricated neighborhood.
     @Column(nullable = true, length = 120)
     var neighborhood: String? = null,
+
+    // A seller-provided public landmark for arranging a hand-off. This is deliberately
+    // plain text rather than an address/identity assertion: itunda does not verify
+    // ownership of a home or safety of a meeting point.
+    @Column(name = "meeting_place", nullable = true, length = 120)
+    var meetingPlace: String? = null,
 ) {
     protected constructor() : this(
         id = "", sellerId = "", title = "", description = "", price = BigDecimal.ZERO, category = "",

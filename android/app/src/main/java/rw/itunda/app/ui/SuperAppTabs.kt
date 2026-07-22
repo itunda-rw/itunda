@@ -1905,6 +1905,7 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
     var description by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("") }
+    var meetingPlace by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var submitting by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
@@ -1930,6 +1931,14 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
                 OutlinedTextField(value = price, onValueChange = { price = it }, placeholder = { Text("Price (RWF)") }, singleLine = true, modifier = Modifier.weight(1f))
                 OutlinedTextField(value = category, onValueChange = { category = it }, placeholder = { Text("Category") }, singleLine = true, modifier = Modifier.weight(1f))
             }
+            OutlinedTextField(
+                value = meetingPlace,
+                onValueChange = { meetingPlace = it },
+                placeholder = { Text("Suggested meeting place (optional)") },
+                supportingText = { Text("Use a public landmark, not a home address.") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1966,7 +1975,7 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
                                 try {
                                     val loc = if (shareLocation) myLocation else null
                                     val res = NetworkClient.apiService.createListing(
-                                        CreateListingRequest(title, description, priceValue, category, loc?.first, loc?.second),
+                                        CreateListingRequest(title, description, priceValue, category, loc?.first, loc?.second, meetingPlace.trim().takeIf { it.isNotEmpty() }),
                                     )
                                     if (res.success) onCreated()
                                 } catch (e: HttpException) {
@@ -2065,6 +2074,9 @@ private fun ListingCard(
                 }
             }
             Text(listing.description, color = TossSecondary, fontSize = 13.sp)
+            listing.meetingPlace?.let {
+                Text("Suggested hand-off: $it", color = TossSecondary, fontSize = 12.sp)
+            }
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             if (offering) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

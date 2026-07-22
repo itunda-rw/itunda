@@ -22,6 +22,9 @@ export interface Listing {
   // Real hyperlocal neighborhood (2026-07-20), cached at creation time -- see
   // lib/neighborhood.ts's own doc comment for the full account.
   neighborhood?: string | null;
+  // Seller-provided public landmark only. It is not verified and is never an
+  // address or a safety guarantee.
+  meetingPlace?: string | null;
 }
 
 export const fetchListings = (category?: string) =>
@@ -48,10 +51,11 @@ export const createListing = (
   category: string,
   latitude?: number,
   longitude?: number,
+  meetingPlace?: string,
 ) =>
   apiFetch<{ success: boolean; listing: Listing }>('/api/v1/marketplace/listings', {
     method: 'POST',
-    body: JSON.stringify({ title, description, price, category, latitude, longitude }),
+    body: JSON.stringify({ title, description, price, category, latitude, longitude, meetingPlace }),
   }).then((r) => r.listing);
 
 export const markListingSold = (listingId: string) =>

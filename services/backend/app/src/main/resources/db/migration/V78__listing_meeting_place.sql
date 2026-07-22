@@ -1,0 +1,1 @@
+ALTER TABLE listings ADD COLUMN meeting_place VARCHAR(120) NULL;

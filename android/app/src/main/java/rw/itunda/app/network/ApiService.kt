@@ -396,6 +396,7 @@ data class ListingDto(
     // search and, 2026-07-19, "Directions to this seller".
     val latitude: Double? = null,
     val longitude: Double? = null,
+    val meetingPlace: String? = null,
 )
 
 data class CreateListingRequest(
@@ -405,6 +406,7 @@ data class CreateListingRequest(
     val category: String,
     val latitude: Double? = null,
     val longitude: Double? = null,
+    val meetingPlace: String? = null,
 )
 data class ListingResponse(val success: Boolean, val listing: ListingDto)
 data class ListingsResponse(val success: Boolean, val listings: List<ListingDto>)

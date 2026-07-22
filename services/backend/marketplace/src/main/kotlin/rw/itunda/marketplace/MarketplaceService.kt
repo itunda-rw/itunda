@@ -74,6 +74,7 @@ class MarketplaceService(
         category: String,
         latitude: Double? = null,
         longitude: Double? = null,
+        meetingPlace: String? = null,
     ): Listing {
         val trimmedTitle = title.trim()
         val trimmedDescription = description.trim()
@@ -99,6 +100,10 @@ class MarketplaceService(
         if (latitude != null && longitude != null && !GeoUtils.isValidCoordinate(latitude, longitude)) {
             throw InvalidCoordinatesException("Latitude must be between -90 and 90, longitude between -180 and 180")
         }
+        val trimmedMeetingPlace = meetingPlace?.trim()?.takeIf { it.isNotEmpty() }
+        if (trimmedMeetingPlace != null && trimmedMeetingPlace.length > 120) {
+            throw InvalidListingException("Suggested meeting place must be 120 characters or fewer")
+        }
         // Real anti-spam limit on user-generated listings -- same convention this
         // session's own security review already established for every other
         // content/money-creation endpoint (Partner SDK, Certificate, chargeCard,
@@ -123,6 +128,7 @@ class MarketplaceService(
                 id = "listing_${UUID.randomUUID()}", sellerId = sellerId, title = trimmedTitle,
                 description = trimmedDescription, price = price, category = trimmedCategory,
                 latitude = latitude, longitude = longitude, neighborhood = neighborhood,
+                meetingPlace = trimmedMeetingPlace,
             ),
         )
     }

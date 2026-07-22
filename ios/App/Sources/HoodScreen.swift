@@ -463,6 +463,7 @@ private struct NewListingForm: View {
     @State private var description = ""
     @State private var price = ""
     @State private var category = ""
+    @State private var meetingPlace = ""
     @State private var error: String?
     @State private var submitting = false
 
@@ -482,6 +483,10 @@ private struct NewListingForm: View {
                 TextField("Price (RWF)", text: $price).keyboardType(.numberPad).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
                 TextField("Category", text: $category).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
             }
+            TextField("Suggested meeting place (optional)", text: $meetingPlace)
+                .padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
+            Text("Use a public landmark, not a home address.")
+                .font(.caption).foregroundColor(IDS.Colors.textSecondary)
             Button(action: {
                 if shareLocation { shareLocation = false } else { locationFetcher.requestLocation() }
             }) {
@@ -540,6 +545,7 @@ private struct NewListingForm: View {
             _ = try await NetworkClient.shared.createListing(
                 title: title, description: description, price: priceValue, category: category,
                 latitude: loc?.latitude, longitude: loc?.longitude,
+                meetingPlace: meetingPlace.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : meetingPlace.trimmingCharacters(in: .whitespacesAndNewlines),
             )
             onCreated()
         } catch let NetworkError.httpError(statusCode) {
@@ -607,6 +613,10 @@ private struct ListingCard: View {
                 Text("\(Int(listing.price)) RWF").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
             }
             Text(listing.description).font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
+            if let meetingPlace = listing.meetingPlace {
+                Text("Suggested hand-off: \(meetingPlace)")
+                    .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            }
             Button(action: { showingSafetyChecklist.toggle() }) {
                 Text(showingSafetyChecklist ? "Hide safety tips" : "Before you pay: safety tips")
                     .font(IDS.Typography.caption).foregroundColor(IDS.Colors.brand)
