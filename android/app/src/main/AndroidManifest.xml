@@ -25,6 +25,15 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Authenticated map handoff for Itunda surfaces and partner apps. The
+                 only public action today is `itunda://maps`; route/place parameters
+                 are deliberately not claimed until their complete contract exists. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="itunda" android:host="maps" />
+            </intent-filter>
         </activity>
 
         <!-- Apps-in-Itunda mini-app host activities, see miniapps/MiniAppActivity.kt -->

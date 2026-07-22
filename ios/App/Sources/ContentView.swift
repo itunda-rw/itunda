@@ -49,6 +49,7 @@ struct ContentView: View {
     @State private var showTransactionHistory = false
     // Real account settings screen (2026-07-12) -- see SettingsScreen.swift.
     @State private var showSettings = false
+    @State private var showMapFromDeepLink = false
 
     // Real Savings section rows with real tap targets (2026-07-12) -- built here,
     // not inside BankViewModel, because triggering savingsFlowStep needs
@@ -170,6 +171,14 @@ struct ContentView: View {
                 .tag(4)
         }
         .accentColor(.primary)
+        .fullScreenCover(isPresented: $showMapFromDeepLink) {
+            MapScreenView()
+        }
+        .onOpenURL { url in
+            guard url.scheme?.caseInsensitiveCompare("itunda") == .orderedSame,
+                  url.host?.caseInsensitiveCompare("maps") == .orderedSame else { return }
+            showMapFromDeepLink = true
+        }
     }
 }
 

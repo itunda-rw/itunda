@@ -1,5 +1,6 @@
 package rw.itunda.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.material3.Text
@@ -31,8 +32,11 @@ private object AppUnlockState {
 // below it -- see core/identity/NIDABiometricAuth.kt. FragmentActivity itself
 // still supports Compose's setContent{} directly, no separate host needed.
 class MainActivity : FragmentActivity() {
+    private var mapDeepLinkRequested by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        mapDeepLinkRequested = isMapsDeepLink(intent)
 
         // Root/FDS gate on the real app entry point, ported from
         // mobile_clients/android's BankActivity (see docs/ARCHITECTURE.md §3) --
@@ -59,7 +63,10 @@ class MainActivity : FragmentActivity() {
                             unlocked = true
                         }
                     } else {
-                        ItundaAppScreen()
+                        ItundaAppScreen(
+                            openMapFromDeepLink = mapDeepLinkRequested,
+                            onMapDeepLinkConsumed = { mapDeepLinkRequested = false },
+                        )
                     }
                 }
                 is SessionState.LoggedOut -> {
@@ -69,4 +76,15 @@ class MainActivity : FragmentActivity() {
             }
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        mapDeepLinkRequested = isMapsDeepLink(intent)
+    }
+
+    private fun isMapsDeepLink(intent: Intent?): Boolean =
+        intent?.action == Intent.ACTION_VIEW &&
+            intent.data?.scheme.equals("itunda", ignoreCase = true) &&
+            intent.data?.host.equals("maps", ignoreCase = true)
 }

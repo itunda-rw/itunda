@@ -172,6 +172,12 @@ allTargets.append(
             // requested via CLLocationManager, never assumed granted -- see
             // MapScreenView.swift's own doc comment.
             "NSLocationWhenInUseUsageDescription": "itunda uses your real location to show it on the map and give you directions.",
+            // `itunda://maps` opens Itunda's authenticated, self-hosted map from
+            // another Itunda surface or a partner app. Do not advertise unsupported
+            // route/place parameters before their complete contract exists.
+            "CFBundleURLTypes": [[
+                "CFBundleURLSchemes": ["itunda"],
+            ]],
         ]),
         sources: ["App/Sources/**"],
         dependencies: appDependencies,

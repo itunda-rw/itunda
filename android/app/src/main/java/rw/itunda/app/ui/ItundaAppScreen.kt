@@ -86,6 +86,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -193,7 +194,11 @@ private sealed class SavingsFlowStep : java.io.Serializable {
 }
 
 @Composable
-fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.compose.viewModel()) {
+fun ItundaAppScreen(
+    viewModel: MainViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+    openMapFromDeepLink: Boolean = false,
+    onMapDeepLinkConsumed: () -> Unit = {},
+) {
     IdsTheme {
         var selectedTab by rememberSaveable { mutableStateOf(TossTab.Home) }
         var transferStep by rememberSaveable { mutableStateOf<TransferStep?>(null) }
@@ -205,6 +210,14 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
         var showMap by rememberSaveable { mutableStateOf(false) }
         var showAgentCash by rememberSaveable { mutableStateOf(false) }
         var showInvest by rememberSaveable { mutableStateOf(false) }
+        // Mirrors NAVER Maps' app-to-map handoff, but remains inside Itunda's own
+        // authenticated map stack. Consume once so recomposition cannot reopen the map.
+        LaunchedEffect(openMapFromDeepLink) {
+            if (openMapFromDeepLink) {
+                showMap = true
+                onMapDeepLinkConsumed()
+            }
+        }
         // Real "message seller" hand-off from Hood to Talk (2026-07-18) -- mirrors
         // bank-mfe's BankDashboard.tsx pendingConversationId/onConsumedInitial pattern
         // exactly: HoodTab's contactSeller() switches the selected tab AND stashes the
