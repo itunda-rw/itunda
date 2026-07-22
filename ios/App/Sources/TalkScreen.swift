@@ -690,6 +690,9 @@ private struct GroupMessageBubble: View {
                 if !isMine { Spacer() }
             }
             MessageReactionsRow(reactions: message.reactions, currentUserId: currentUserId, isMine: isMine, onToggle: onToggleReaction)
+            Text(chatMessageTime(message.sentAt))
+                .font(.caption2)
+                .foregroundColor(IDS.Colors.textSecondary)
         }
     }
 }
@@ -1101,7 +1104,7 @@ private struct ChatThreadScreen: View {
             isBlocked = true
             error = "\(conversation.otherUserName) is blocked."
         } catch {
-            error = "Couldn't block this person. Check your connection and try again."
+            self.error = "Couldn't block this person. Check your connection and try again."
         }
     }
 
@@ -1110,7 +1113,7 @@ private struct ChatThreadScreen: View {
             _ = try await NetworkClient.shared.reportChatMessage(messageId: messageId, reason: reason)
             error = "Thanks. Your report was sent for review."
         } catch {
-            error = "Couldn't send this report. Check your connection and try again."
+            self.error = "Couldn't send this report. Check your connection and try again."
         }
     }
 
@@ -1120,7 +1123,7 @@ private struct ChatThreadScreen: View {
         searching = true
         defer { searching = false }
         do { searchResults = try await NetworkClient.shared.searchMessages(conversationId: conversation.conversationId, query: query).messages }
-        catch { error = "Couldn't search this conversation. Check your connection and try again." }
+        catch { self.error = "Couldn't search this conversation. Check your connection and try again." }
     }
 
     private func send() async {
@@ -1286,6 +1289,15 @@ extension ISO8601DateFormatter {
     }
 }
 
+private func chatMessageTime(_ sentAt: String) -> String {
+    let date = ISO8601DateFormatter(withFractionalSeconds: true).date(from: sentAt)
+        ?? ISO8601DateFormatter().date(from: sentAt)
+    guard let date else { return "" }
+    let formatter = DateFormatter()
+    formatter.dateFormat = "h:mm a"
+    return formatter.string(from: date)
+}
+
 private struct MessageBubble: View {
     let message: MessageDto
     let isMine: Bool
@@ -1319,6 +1331,9 @@ private struct MessageBubble: View {
                 if !isMine { Spacer() }
             }
             MessageReactionsRow(reactions: message.reactions, currentUserId: currentUserId, isMine: isMine, onToggle: onToggleReaction)
+            Text("\(isMine && message.readAt == nil ? "1 · " : "")\(chatMessageTime(message.sentAt))")
+                .font(.caption2)
+                .foregroundColor(IDS.Colors.textSecondary)
             if !isMine {
                 Button("Report message") { reportOpen = true }
                     .font(.caption2).foregroundColor(IDS.Colors.textSecondary)

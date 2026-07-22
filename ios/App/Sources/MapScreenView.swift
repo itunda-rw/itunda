@@ -731,7 +731,7 @@ struct MapScreenView: View {
         do {
             let response = try await NetworkClient.shared.getItineraryDirections(waypoints: itineraryStops.map { ItineraryWaypointRequest(latitude: $0.latitude, longitude: $0.longitude) }, mode: travelMode)
             route = response.route; routeAlternatives = nil; selectedRouteIndex = 0; showSteps = false
-        } catch { error = "Could not find a route for this itinerary." }
+        } catch { self.error = "Could not find a route for this itinerary." }
     }
 
     // Real folder/color picker (2026-07-22) -- ported from bank-mfe's own real save-time
