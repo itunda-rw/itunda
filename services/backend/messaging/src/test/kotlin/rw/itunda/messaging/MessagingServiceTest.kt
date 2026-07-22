@@ -4,6 +4,7 @@ import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
+import io.mockk.clearMocks
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
@@ -12,6 +13,7 @@ import org.springframework.data.domain.PageRequest
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Conversation
+import rw.itunda.core.domain.ConversationPreference
 import rw.itunda.core.domain.Message
 import rw.itunda.core.domain.MessageReaction
 import rw.itunda.core.domain.Notification
@@ -143,6 +145,23 @@ class MessagingServiceTest : BehaviorSpec({
 
             Then("it real-time-pushes the trimmed message to the OTHER participant, not the sender") {
                 verify { realtimeMessagePublisher.publishNewMessage("conversation_1", "user_b", message) }
+            }
+        }
+
+        When("the recipient has made a room quiet") {
+            clearMocks(notificationRepository, answers = false)
+            val conversation = Conversation(id = "conversation_quiet", participantAId = "user_a", participantBId = "user_b")
+            every { conversationRepository.findById("conversation_quiet") } returns Optional.of(conversation)
+            every { conversationRepository.save(any()) } answers { firstArg() }
+            every { userRepository.findById("user_a") } returns Optional.of(user("user_a", "Alice"))
+            every { messageRepository.save(any()) } answers { firstArg() }
+            every { conversationPreferenceRepository.findByConversationIdAndUserId("conversation_quiet", "user_b") } returns
+                ConversationPreference("preference_1", "conversation_quiet", "user_b", quiet = true)
+
+            service.sendMessage("user_a", "conversation_quiet", "No alert please")
+
+            Then("it preserves delivery without creating a new-message alert") {
+                verify(exactly = 0) { notificationRepository.save(match { it.userId == "user_b" && it.type == "NEW_MESSAGE" }) }
             }
         }
 
