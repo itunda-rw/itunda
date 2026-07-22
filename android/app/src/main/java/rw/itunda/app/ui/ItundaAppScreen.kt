@@ -230,6 +230,10 @@ fun ItundaAppScreen(
         var showCreditScore by rememberSaveable { mutableStateOf(false) }
         var showCertificate by rememberSaveable { mutableStateOf(false) }
         var showIdentity by rememberSaveable { mutableStateOf(false) }
+        // Real 26-week savings plan screen (2026-07-21) -- this feature's ledger-backed
+        // backend (WeeklySavingsController/WeeklySavingsService) never had ANY mobile UI
+        // before now.
+        var showWeeklySavings by rememberSaveable { mutableStateOf(false) }
         // Real 전체 (All services) menu (2026-07-22) -- separated from My per the
         // user's direct request; see MenuScreen's own doc comment.
         var showMenu by rememberSaveable { mutableStateOf(false) }
@@ -642,6 +646,14 @@ fun ItundaAppScreen(
             IdentityScreen(onBack = { showIdentity = false })
             return@IdsTheme
         }
+        // Real 26-week savings plan screen (2026-07-21) -- same Quick-links full-screen
+        // pattern as Invest/Map/Pay/Benefits above; this feature's ledger-backed backend
+        // (WeeklySavingsController/WeeklySavingsService) never had ANY mobile UI before now.
+        if (showWeeklySavings) {
+            BackHandler { showWeeklySavings = false }
+            WeeklySavingsScreen(onBack = { showWeeklySavings = false })
+            return@IdsTheme
+        }
         if (showMenu) {
             val partnerMiniApps by viewModel.partnerMiniApps.collectAsState()
             MenuScreen(
@@ -656,6 +668,7 @@ fun ItundaAppScreen(
                 onOpenCreditScore = { showCreditScore = true },
                 onOpenCertificate = { showCertificate = true },
                 onOpenIdentity = { showIdentity = true },
+                onOpenWeeklySavings = { showWeeklySavings = true },
                 onClaimInterest = { showMenu = false; savingsFlowStep = SavingsFlowStep.ClaimInterest },
                 onSwitchToTalk = { showMenu = false; selectedTab = TossTab.Talk },
                 partnerMiniApps = partnerMiniApps,
@@ -717,6 +730,7 @@ fun ItundaAppScreen(
                         onOpenCreditScore = { showCreditScore = true },
                         onOpenCertificate = { showCertificate = true },
                         onOpenIdentity = { showIdentity = true },
+                        onOpenWeeklySavings = { showWeeklySavings = true },
                         onSwitchToShop = { selectedTab = TossTab.Shop },
                         onSwitchToHood = { selectedTab = TossTab.Hood },
                     )
@@ -1129,6 +1143,7 @@ private fun MenuScreen(
     onOpenCreditScore: () -> Unit = {},
     onOpenCertificate: () -> Unit = {},
     onOpenIdentity: () -> Unit = {},
+    onOpenWeeklySavings: () -> Unit = {},
     onClaimInterest: () -> Unit = {},
     onSwitchToTalk: () -> Unit = {},
     partnerMiniApps: List<rw.itunda.core.network.PartnerMiniAppDto>,
@@ -1154,6 +1169,7 @@ private fun MenuScreen(
                     FlatRow("Pay", subtitle = "Scan or pay by code", icon = Icons.Outlined.QrCodeScanner, iconColor = AccentBlue, onClick = onOpenPay),
                     FlatRow("Benefits", subtitle = "Points, coupons, rewards", icon = Icons.Outlined.CardGiftcard, iconColor = AccentOrange, onClick = onOpenBenefits),
                     FlatRow("Invest", subtitle = "RSE stocks, real portfolio", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenInvest),
+                    FlatRow("26-Week Savings", subtitle = "Escalating auto-save, streak bonus", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
                     FlatRow("Map", subtitle = "Real Rwanda map, self-hosted", icon = Icons.Outlined.Map, iconColor = AccentTeal, onClick = onOpenMap),
                 ),
             )
@@ -1244,6 +1260,7 @@ private fun MenuScreen(
                 FlatRow("Get a loan", subtitle = "Personal, salary-backed, SME working capital", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans),
                 FlatRow("Credit score", subtitle = "Free check, alternative data", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenCreditScore),
                 FlatRow("Digital certificate", subtitle = "Sign agreements in Itunda", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenCertificate),
+                FlatRow("26-week savings", subtitle = "Escalating weekly deposit plan", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
                 FlatRow("Mobile plan", subtitle = "MTN, Airtel, broadband", icon = Icons.Outlined.Public, iconColor = AccentTeal)
             ))
         }
@@ -1369,6 +1386,7 @@ private fun MyTab(
     onOpenCreditScore: () -> Unit = {},
     onOpenCertificate: () -> Unit = {},
     onOpenIdentity: () -> Unit = {},
+    onOpenWeeklySavings: () -> Unit = {},
     onSwitchToShop: () -> Unit = {},
     onSwitchToHood: () -> Unit = {},
 ) {
@@ -1486,6 +1504,7 @@ private fun MyTab(
                     FlatRow("Credit score", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenCreditScore),
                     FlatRow("Digital certificate", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenCertificate),
                     FlatRow("Verify identity", icon = Icons.Outlined.CheckCircle, iconColor = AccentOrange, onClick = onOpenIdentity),
+                    FlatRow("26-week savings", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
                     FlatRow("Support", icon = Icons.Outlined.HelpOutline, iconColor = AccentGray, onClick = onOpenSupport),
                 ),
             )

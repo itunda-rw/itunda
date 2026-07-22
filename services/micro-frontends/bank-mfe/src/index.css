@@ -73,6 +73,15 @@ button:active {
   color: var(--toss-grey-800);
 }
 
+/* Referenced by DevicesView's "Remove" button and, since 2026-07-21, weekly
+   savings' "Cancel plan" button -- both real destructive actions that were
+   silently falling back to unstyled default button chrome (no color rule ever
+   existed for this class, even though it was already in use). */
+.toss-btn-danger {
+  background-color: #E53935;
+  color: var(--toss-white);
+}
+
 /* Animations */
 @keyframes shimmer {
   0% { background-position: -400px 0; }

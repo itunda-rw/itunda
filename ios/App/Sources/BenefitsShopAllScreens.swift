@@ -198,6 +198,10 @@ struct EntireMenuScreen: View {
     @State private var showCertificate = false
     @State private var showIdentity = false
     @State private var showSupport = false
+    // Real 26-week savings screen (2026-07-21) -- same Quick-links pattern as Invest
+    // above; this feature's backend has been real (ledger-backed, scheduler-driven)
+    // since day one but had zero iOS UI until now.
+    @State private var showWeeklySavings = false
 
     var body: some View {
         ScrollView {
@@ -223,6 +227,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Pay", subtitle: "Scan or pay by code", symbol: "qrcode", tint: .accentBlue, action: { showPay = true }),
                         FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", symbol: "gift.fill", tint: .accentOrange, action: { showBenefits = true }),
                         FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showInvest = true }),
+                        FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", symbol: "calendar.badge.clock", tint: .accentOrange, action: { showWeeklySavings = true }),
                         FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", symbol: "map.fill", tint: .accentTeal, action: { showMap = true }),
                     ])
                     IdsSearchBar(placeholder: "Search")
@@ -375,6 +380,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showSupport) {
             SupportScreenView(onBack: { showSupport = false })
+        }
+        .sheet(isPresented: $showWeeklySavings) {
+            WeeklySavingsScreenView(onBack: { showWeeklySavings = false })
         }
     }
 }

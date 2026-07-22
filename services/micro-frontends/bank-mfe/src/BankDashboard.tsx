@@ -9,6 +9,11 @@ import {
   createGroupAccount, depositToGroupAccount, fetchGroupAccount, fetchMyGroupAccounts, inviteGroupAccountMember, withdrawFromGroupAccount,
   type GroupAccount, type GroupAccountDetail,
 } from './lib/groupAccounts';
+import {
+  cancelWeeklySavingsPlan, createWeeklySavingsPlan, fetchWeeklySavingsPlan, fetchWeeklySavingsPlans, withdrawWeeklySavingsPlan,
+  WEEKLY_SAVINGS_ESCALATION_RATES, WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS, WEEKLY_SAVINGS_TERM_WEEKS,
+  type WeeklySavingsPlan, type WeeklySavingsPlanDetail,
+} from './lib/weeklySavings';
 import { collectWithFacePay, enrollFacePay, fetchFacePayStatus, revokeFacePay } from './lib/facepay';
 import { sendDirect } from './lib/p2p';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
@@ -7635,6 +7640,302 @@ function GroupAccountsSection() {
   );
 }
 
+// Real KakaoBank 26주적금 (26-week savings) -- see lib/weeklySavings.ts's own doc
+// comment. Sibling to GroupAccountDetailView/CreateGroupAccountForm/
+// GroupAccountsSection above, same list -> detail shape, but this product's real
+// differentiator (escalating auto-debit, streak-gated bonus rate) is surfaced
+// explicitly in copy rather than looking like a generic savings account.
+function escalationLabel(rate: number): string {
+  return rate === 0 ? 'Flat (no step-up)' : `+${Math.round(rate * 100)}% every ${WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS} weeks`;
+}
+
+function WeeklySavingsPlanDetailView({ id, onBack }: { id: string; onBack: () => void }) {
+  const [detail, setDetail] = useState<WeeklySavingsPlanDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+
+  const load = () => {
+    setError(null);
+    fetchWeeklySavingsPlan(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this plan.'));
+  };
+  useEffect(load, []);
+
+  // Same real device step-up gate as GroupAccountDetailView/GoalCard's deposit/
+  // withdraw handlers above -- cancel/withdraw both move real money out of this
+  // plan's wallet, so an untrusted device hits the same DEVICE_NOT_VERIFIED 403.
+  const handleCancel = async () => {
+    setBusy(true);
+    setError(null);
+    setNeedsDeviceVerification(false);
+    try {
+      const result = await cancelWeeklySavingsPlan(id);
+      setMessage(result.message);
+      setConfirmingCancel(false);
+      load();
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') setNeedsDeviceVerification(true);
+      else setError(err instanceof ApiError ? err.message : 'Could not cancel this plan.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    setBusy(true);
+    setError(null);
+    setNeedsDeviceVerification(false);
+    try {
+      const result = await withdrawWeeklySavingsPlan(id);
+      setMessage(result.message);
+      load();
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') setNeedsDeviceVerification(true);
+      else setError(err instanceof ApiError ? err.message : 'Could not withdraw this plan.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (error && !detail) {
+    return (
+      <div className="toss-card">
+        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <button className="toss-btn toss-btn-secondary" onClick={onBack} style={{ marginTop: '12px' }}>Back</button>
+      </div>
+    );
+  }
+  if (detail === null) return <div className="toss-card skeleton" style={{ height: '260px' }} />;
+
+  const { plan, walletBalance, installments } = detail;
+  const pct = Math.min(100, Math.round((plan.weeksElapsed / WEEKLY_SAVINGS_TERM_WEEKS) * 100));
+  const currentRate = plan.streakBroken ? plan.baseRate : plan.baseRate + plan.bonusRate;
+
+  return (
+    <div>
+      <button className="toss-btn toss-btn-secondary" onClick={onBack} style={{ marginBottom: '12px' }}>← Back to 26-week savings</button>
+
+      <div className="toss-card" style={{ marginBottom: '16px', background: 'linear-gradient(135deg, var(--toss-blue) 0%, #4A90E2 100%)', color: '#fff' }}>
+        <p style={{ fontSize: '13px', opacity: 0.85 }}>{plan.name} · Week {plan.weeksElapsed} of {WEEKLY_SAVINGS_TERM_WEEKS}</p>
+        <p style={{ fontSize: '28px', fontWeight: 800, margin: '6px 0' }}>{walletBalance.toLocaleString()} RWF</p>
+        <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.3)', marginTop: '6px', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${pct}%`, backgroundColor: '#fff' }} />
+        </div>
+        <p style={{ fontSize: '12px', marginTop: '10px', opacity: 0.9 }}>
+          {plan.installmentsCollected} installment{plan.installmentsCollected === 1 ? '' : 's'} collected · earning {currentRate}% real annual rate
+        </p>
+        <p style={{ fontSize: '12px', opacity: 0.9 }}>
+          {plan.streakBroken
+            ? 'Streak broken — bonus rate forfeited for the rest of this plan'
+            : `On streak — stay unbroken to keep the +${plan.bonusRate}% bonus at maturity`}
+        </p>
+      </div>
+
+      <div className="toss-card" style={{ marginBottom: '16px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Plan details</h3>
+        <Row label="Status" value={plan.status} />
+        <Row label="Base weekly amount" value={`${plan.baseWeeklyAmount.toLocaleString()} RWF`} />
+        <Row label="Escalation" value={escalationLabel(plan.escalationRate)} />
+        <Row label="Base rate + streak bonus" value={`${plan.baseRate}% + ${plan.bonusRate}%`} />
+        {plan.status === 'ACTIVE' && <Row label="Next installment due" value={new Date(plan.nextInstallmentDueAt).toLocaleDateString()} />}
+        {plan.totalInterestPaid != null && <Row label="Interest paid" value={`${plan.totalInterestPaid.toLocaleString()} RWF`} />}
+      </div>
+
+      {installments.length > 0 && (
+        <div className="toss-card" style={{ marginBottom: '16px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Installments</h3>
+          {installments.map((inst) => (
+            <div key={inst.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: '13px' }}>
+              <span style={{ color: 'var(--toss-grey-500)' }}>Week {inst.weekNumber}</span>
+              <span style={{ fontWeight: 600 }}>{inst.amount.toLocaleString()} RWF</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)', marginBottom: '10px' }}>{message}</p>}
+      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '10px' }} role="alert">{error}</p>}
+
+      {needsDeviceVerification ? (
+        <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => { setNeedsDeviceVerification(false); setConfirmingCancel(false); }} />
+      ) : (
+        <>
+          {plan.status === 'ACTIVE' && (
+            <div className="toss-card">
+              {confirmingCancel ? (
+                <div>
+                  <p style={{ fontSize: '13px', marginBottom: '10px' }}>
+                    Cancelling now pays out your principal plus base-rate interest, but permanently forfeits the +{plan.bonusRate}% streak bonus. Continue?
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmingCancel(false)} disabled={busy}>Keep saving</button>
+                    <button className="toss-btn toss-btn-danger" style={{ flex: 1 }} onClick={handleCancel} disabled={busy}>{busy ? '…' : 'Cancel plan'}</button>
+                  </div>
+                </div>
+              ) : (
+                <button className="toss-btn toss-btn-secondary" style={{ width: '100%' }} onClick={() => setConfirmingCancel(true)} disabled={busy}>
+                  Cancel plan (early withdrawal)
+                </button>
+              )}
+            </div>
+          )}
+
+          {plan.status === 'MATURED' && !plan.withdrawnAt && (
+            <button className="toss-btn toss-btn-primary" style={{ width: '100%' }} onClick={handleWithdraw} disabled={busy}>
+              {busy ? '…' : `Withdraw ${walletBalance.toLocaleString()} RWF to main wallet`}
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '13px' }}>
+      <span style={{ color: 'var(--toss-grey-500)' }}>{label}</span>
+      <span style={{ fontWeight: 600 }}>{value}</span>
+    </div>
+  );
+}
+
+function CreateWeeklySavingsPlanForm({ onCreated }: { onCreated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [baseWeeklyAmount, setBaseWeeklyAmount] = useState('');
+  const [escalationRate, setEscalationRate] = useState(0.10);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!open) {
+    return (
+      <button
+        className="toss-btn toss-btn-secondary"
+        style={{ width: '100%', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+        onClick={() => setOpen(true)}
+      >
+        <Plus size={16} /> New 26-week savings plan
+      </button>
+    );
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await createWeeklySavingsPlan(name, Number(baseWeeklyAmount), escalationRate);
+      setName('');
+      setBaseWeeklyAmount('');
+      setEscalationRate(0.10);
+      setOpen(false);
+      onCreated();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not create this plan.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+        A real 26-week term deposit, like KakaoBank's 26주적금: your weekly amount auto-debits from your main wallet
+        and can step up every {WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS} weeks. Stay unbroken all 26 weeks to earn a bonus interest rate on top of the base rate.
+      </p>
+      <input
+        type="text" required placeholder="Plan name (e.g. New Laptop Fund)" value={name} onChange={(e) => setName(e.target.value)}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      />
+      <input
+        type="number" min="1" required placeholder="Base weekly amount (RWF)" value={baseWeeklyAmount} onChange={(e) => setBaseWeeklyAmount(e.target.value)}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      />
+      <div>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '6px' }}>Escalation rate (steps up every {WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS} weeks)</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+          {WEEKLY_SAVINGS_ESCALATION_RATES.map((rate) => (
+            <button
+              key={rate}
+              type="button"
+              onClick={() => setEscalationRate(rate)}
+              className={escalationRate === rate ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+              style={{ padding: '6px 12px', fontSize: '12px' }}
+            >
+              {rate === 0 ? 'Flat' : `+${Math.round(rate * 100)}%`}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy}>{busy ? 'Creating…' : 'Create'}</button>
+      </div>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+    </form>
+  );
+}
+
+function WeeklySavingsSection() {
+  const [plans, setPlans] = useState<WeeklySavingsPlan[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchWeeklySavingsPlans().then(setPlans).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your 26-week savings plans.'));
+  };
+  useEffect(load, []);
+
+  if (openId) {
+    return <WeeklySavingsPlanDetailView id={openId} onBack={() => { setOpenId(null); load(); }} />;
+  }
+
+  return (
+    <div>
+      <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '4px 4px 10px' }}>26-week savings</h3>
+      <CreateWeeklySavingsPlanForm onCreated={load} />
+      {error && (
+        <div className="toss-card" style={{ marginBottom: '16px' }}>
+          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        </div>
+      )}
+      {plans === null ? (
+        <div className="toss-card skeleton" style={{ height: '64px' }} />
+      ) : plans.length === 0 ? (
+        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No 26-week savings plans yet — start one with an escalating weekly auto-debit and a streak-gated bonus rate.</p></div>
+      ) : (
+        plans.map((p) => {
+          const pct = Math.min(100, Math.round((p.weeksElapsed / WEEKLY_SAVINGS_TERM_WEEKS) * 100));
+          return (
+            <button
+              key={p.id}
+              onClick={() => setOpenId(p.id)}
+              className="toss-card"
+              style={{ display: 'block', width: '100%', textAlign: 'left', marginBottom: '10px', border: 'none' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <p style={{ fontSize: '14px', fontWeight: 700 }}>{p.name}</p>
+                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{p.status}</p>
+              </div>
+              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+                {p.currentAmount.toLocaleString()} RWF · week {p.weeksElapsed}/{WEEKLY_SAVINGS_TERM_WEEKS}
+                {p.streakBroken ? ' · streak broken' : ' · on streak'}
+              </p>
+              <div style={{ height: '5px', borderRadius: '3px', backgroundColor: 'var(--toss-grey-100)', marginTop: '6px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${pct}%`, backgroundColor: p.streakBroken ? 'var(--toss-grey-500)' : 'var(--toss-blue)' }} />
+              </div>
+            </button>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
 function SavingsView() {
   const [goals, setGoals] = useState<SavingsGoal[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -7663,6 +7964,9 @@ function SavingsView() {
       )}
       <div style={{ marginTop: '24px' }}>
         <GroupAccountsSection />
+      </div>
+      <div style={{ marginTop: '24px' }}>
+        <WeeklySavingsSection />
       </div>
     </div>
   );

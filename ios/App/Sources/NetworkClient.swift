@@ -2029,3 +2029,101 @@ extension NetworkClient {
         try await authenticatedDelete("api/v1/messages/groups/\(groupId)/members/me")
     }
 }
+
+// Real KakaoBank 26주적금 (26-week savings) equivalent (2026-07-21) -- the first iOS UI
+// this feature has ever had; mirrors WeeklySavingsController.kt/WeeklySavingsPlan.kt/
+// WeeklySavingsInstallment.kt exactly, same field names, so JSONDecoder reads the real
+// backend's JSON directly. Distinct from SavingsGoal/InterestJar above: the weekly
+// auto-debit amount escalates on a real schedule, interest accrues per-installment, and
+// a streak-gated bonus rate only survives an unbroken run to real 26-week maturity --
+// see WeeklySavingsService.kt's own doc comment for the full sourced mechanics. No
+// Idempotency-Key on any of these calls -- unlike buyStock/sellStock, this controller
+// genuinely doesn't declare that header.
+struct WeeklySavingsPlanDto: Decodable, Identifiable {
+    let id: String
+    let userId: String
+    let walletId: String
+    let name: String
+    let baseWeeklyAmount: Double
+    let escalationRate: Double
+    let openingWeekday: Int
+    let baseRate: Double
+    let bonusRate: Double
+    let installmentsCollected: Int
+    let weeksElapsed: Int
+    let currentAmount: Double
+    let streakBroken: Bool
+    let status: String
+    let nextInstallmentDueAt: String
+    let createdAt: String
+    let maturedAt: String?
+    let cancelledAt: String?
+    let withdrawnAt: String?
+    let totalInterestPaid: Double?
+}
+
+struct WeeklySavingsInstallmentDto: Decodable, Identifiable {
+    let id: String
+    let planId: String
+    let weekNumber: Int
+    let amount: Double
+    let depositedAt: String
+}
+
+struct WeeklySavingsPlansResponse: Decodable { let success: Bool; let plans: [WeeklySavingsPlanDto] }
+
+struct WeeklySavingsPlanDetailResponse: Decodable {
+    let success: Bool
+    let plan: WeeklySavingsPlanDto
+    let walletBalance: Double
+    let installments: [WeeklySavingsInstallmentDto]
+}
+
+struct CreateWeeklySavingsPlanRequest: Encodable {
+    let name: String
+    let baseWeeklyAmount: Double
+    let escalationRate: Double
+}
+
+struct WeeklySavingsActionResponse: Decodable {
+    let success: Bool
+    let message: String
+    let plan: WeeklySavingsPlanDto
+    let walletBalance: Double
+    let installments: [WeeklySavingsInstallmentDto]
+}
+
+// Real display-only constants (2026-07-21) -- mirror WeeklySavingsService's own
+// TERM_WEEKS/ESCALATION_STEP_WEEKS exactly (there's no endpoint for these; the backend
+// is still the actual source of truth for every real number returned per-plan).
+enum WeeklySavingsConstants {
+    static let termWeeks = 26
+    static let escalationStepWeeks = 4
+    // Real KakaoBank step-up presets -- must match
+    // WeeklySavingsService.allowedEscalationRates exactly, or plan creation real-400s
+    // with INVALID_ESCALATION_RATE.
+    static let escalationRates: [Double] = [0.00, 0.10, 0.20, 0.30, 0.50, 1.00]
+}
+
+extension NetworkClient {
+    func getWeeklySavingsPlans() async throws -> WeeklySavingsPlansResponse { try await get("api/v1/weekly-savings/plans") }
+
+    func getWeeklySavingsPlan(id: String) async throws -> WeeklySavingsPlanDetailResponse {
+        try await get("api/v1/weekly-savings/plans/\(id)")
+    }
+
+    func createWeeklySavingsPlan(name: String, baseWeeklyAmount: Double, escalationRate: Double) async throws -> WeeklySavingsActionResponse {
+        try await authenticatedPost(
+            "api/v1/weekly-savings/plans",
+            body: CreateWeeklySavingsPlanRequest(name: name, baseWeeklyAmount: baseWeeklyAmount, escalationRate: escalationRate)
+        )
+    }
+
+    func cancelWeeklySavingsPlan(id: String) async throws -> WeeklySavingsActionResponse {
+        try await authenticatedPost("api/v1/weekly-savings/plans/\(id)/cancel", body: EmptyBody())
+    }
+
+    func withdrawWeeklySavingsPlan(id: String) async throws -> WeeklySavingsActionResponse {
+        try await authenticatedPost("api/v1/weekly-savings/plans/\(id)/withdraw", body: EmptyBody())
+    }
+}

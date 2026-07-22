@@ -939,6 +939,74 @@ data class ContactDto(val id: String, val userId: String, val name: String, val 
 data class ContactsResponse(val success: Boolean, val contacts: List<ContactDto>)
 data class AddContactResponse(val success: Boolean, val contact: ContactDto)
 
+// Real KakaoBank 26주적금-style escalating 26-week savings plan (2026-07-21) -- the
+// first mobile UI this feature has ever had; see WeeklySavingsController.kt/
+// WeeklySavingsService.kt and the domain entities they wrap
+// (services/backend/core/.../domain/WeeklySavingsPlan.kt / WeeklySavingsInstallment.kt)
+// for the real ledger-backed mechanics. TERM_WEEKS=26 and ESCALATION_STEP_WEEKS=4 are
+// display-only constants mirrored from WeeklySavingsService.kt below -- no endpoint
+// exposes them since they never change.
+data class WeeklySavingsPlanDto(
+    val id: String,
+    val userId: String,
+    val walletId: String,
+    val name: String,
+    val baseWeeklyAmount: Double,
+    val escalationRate: Double,
+    val openingWeekday: Int,
+    val baseRate: Double,
+    val bonusRate: Double,
+    val installmentsCollected: Int,
+    val weeksElapsed: Int,
+    val currentAmount: Double,
+    val streakBroken: Boolean,
+    val status: String,
+    val nextInstallmentDueAt: String,
+    val createdAt: String,
+    val maturedAt: String? = null,
+    val cancelledAt: String? = null,
+    val withdrawnAt: String? = null,
+    val totalInterestPaid: Double? = null,
+)
+
+data class WeeklySavingsInstallmentDto(
+    val id: String,
+    val planId: String,
+    val weekNumber: Int,
+    val amount: Double,
+    val depositedAt: String,
+)
+
+data class WeeklySavingsPlansResponse(val success: Boolean, val plans: List<WeeklySavingsPlanDto>)
+
+data class WeeklySavingsPlanDetailResponse(
+    val success: Boolean,
+    val plan: WeeklySavingsPlanDto,
+    val walletBalance: Double,
+    val installments: List<WeeklySavingsInstallmentDto>,
+)
+
+data class CreateWeeklySavingsPlanRequest(
+    val name: String,
+    val baseWeeklyAmount: java.math.BigDecimal,
+    val escalationRate: java.math.BigDecimal,
+)
+
+// POST /plans's real response shape is just {success, plan} -- unlike get/cancel/
+// withdraw it never returns walletBalance/installments (a brand-new plan's wallet is
+// always empty and has no installments yet), so this gets its own response type
+// rather than reusing WeeklySavingsPlanDetailResponse with fields that would silently
+// come back null/0.0 via Gson's reflection-based construction.
+data class CreateWeeklySavingsPlanResponse(val success: Boolean, val plan: WeeklySavingsPlanDto)
+
+data class WeeklySavingsActionResponse(
+    val success: Boolean,
+    val message: String,
+    val plan: WeeklySavingsPlanDto,
+    val walletBalance: Double,
+    val installments: List<WeeklySavingsInstallmentDto>,
+)
+
 // Retrofit Interface to map to your Spring endpoints -- all require the real
 // Bearer token NetworkClient's authInterceptor now injects (2026-07-11).
 interface ApiService {
@@ -1567,6 +1635,25 @@ interface ApiService {
 
     @POST("api/v1/contacts")
     suspend fun addContact(@Body request: AddContactRequest): AddContactResponse
+
+    // Real 26-week savings plan (2026-07-21) -- see WeeklySavingsPlanDto's own doc
+    // comment. No Idempotency-Key header on any of these -- WeeklySavingsController
+    // genuinely doesn't declare that header for this feature, unlike deposit/
+    // claimInterest/sendDirect above.
+    @GET("api/v1/weekly-savings/plans")
+    suspend fun getWeeklySavingsPlans(): WeeklySavingsPlansResponse
+
+    @GET("api/v1/weekly-savings/plans/{id}")
+    suspend fun getWeeklySavingsPlan(@Path("id") id: String): WeeklySavingsPlanDetailResponse
+
+    @POST("api/v1/weekly-savings/plans")
+    suspend fun createWeeklySavingsPlan(@Body request: CreateWeeklySavingsPlanRequest): CreateWeeklySavingsPlanResponse
+
+    @POST("api/v1/weekly-savings/plans/{id}/cancel")
+    suspend fun cancelWeeklySavingsPlan(@Path("id") id: String): WeeklySavingsActionResponse
+
+    @POST("api/v1/weekly-savings/plans/{id}/withdraw")
+    suspend fun withdrawWeeklySavingsPlan(@Path("id") id: String): WeeklySavingsActionResponse
 }
 
 data class TransactionHistoryResponse(val success: Boolean, val transactions: List<TransactionDto>)
