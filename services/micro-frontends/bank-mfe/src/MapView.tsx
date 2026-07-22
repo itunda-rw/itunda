@@ -1231,8 +1231,17 @@ export default function MapView() {
                   appearing once a place is selected. itunda has no editorial "today's
                   pick" feed to curate, so this surfaces real data it already has: the
                   active category's real results, a real merchant count, and real
-                  saved places -- honest functional content, not a fabricated feed. */}
+              saved places -- honest functional content, not a fabricated feed. */}
               <p style={{ fontSize: '14px', fontWeight: 700, color: MAP_CARD_TEXT }}>Around you</p>
+              {(() => {
+                const home = bookmarks.find((bookmark) => bookmark.folderName.toLowerCase() === 'home')
+                const work = bookmarks.find((bookmark) => bookmark.folderName.toLowerCase() === 'work')
+                if (!home && !work) return null
+                return <div style={{ display: 'flex', gap: '8px' }}>
+                  {home && <button onClick={() => selectPlace({ displayName: home.displayName, latitude: home.latitude, longitude: home.longitude })} style={{ borderRadius: '999px', padding: '8px 12px', fontSize: '12px', fontWeight: 700, background: '#F2F4F6', color: MAP_CARD_TEXT }}>⌂ Home</button>}
+                  {work && <button onClick={() => selectPlace({ displayName: work.displayName, latitude: work.latitude, longitude: work.longitude })} style={{ borderRadius: '999px', padding: '8px 12px', fontSize: '12px', fontWeight: 700, background: '#F2F4F6', color: MAP_CARD_TEXT }}>▣ Work</button>}
+                </div>
+              })()}
               {activeCategory && categoryResults !== null ? (
                 categoryResults.length === 0 ? (
                   <p style={{ fontSize: '13px', color: MAP_CARD_TEXT_TERTIARY }}>
