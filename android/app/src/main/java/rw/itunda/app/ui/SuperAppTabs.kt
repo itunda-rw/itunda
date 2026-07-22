@@ -57,6 +57,7 @@ import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Storefront
+import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -99,6 +100,7 @@ import kotlinx.coroutines.launch
 import okhttp3.WebSocket
 import retrofit2.HttpException
 import rw.itunda.app.network.isDeviceNotVerifiedError
+import rw.itunda.app.network.AddGroupMemberRequest
 import rw.itunda.app.network.CreateSplitBillRequest
 import rw.itunda.app.network.SplitBillWithParticipants
 import rw.itunda.app.network.AddCommunityCommentRequest
@@ -709,6 +711,9 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
     // with zero UI anywhere) -- toggles a sibling view over this same group thread,
     // same pattern MarketplaceView/JobsView use for their own WISHLIST tab.
     var showSplitBills by remember { mutableStateOf(false) }
+    // Real leave-group/add-member (found 2026-07-22: POST/DELETE .../members already
+    // existed on the backend with zero UI anywhere -- same toggle pattern as above.
+    var showManageMembers by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val listState: LazyListState = rememberLazyListState()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
@@ -787,12 +792,33 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             BackTopBar(group.name, onBack)
-            IconButton(onClick = { showSplitBills = true }) {
-                Icon(Icons.Outlined.Receipt, contentDescription = "Split a bill")
+            Row {
+                IconButton(onClick = { showManageMembers = true }) {
+                    Icon(Icons.Outlined.Group, contentDescription = "Manage members")
+                }
+                IconButton(onClick = { showSplitBills = true }) {
+                    Icon(Icons.Outlined.Receipt, contentDescription = "Split a bill")
+                }
             }
         }
         if (showSplitBills) {
             GroupSplitBillsView(groupConversationId = group.groupId, members = members, currentUserId = currentUserId, onBack = { showSplitBills = false })
+            return@Column
+        }
+        if (showManageMembers) {
+            GroupManageMembersView(
+                group = group,
+                members = members,
+                currentUserId = currentUserId,
+                onMembersChanged = { coroutineScope.launch {
+                    try {
+                        val res = NetworkClient.apiService.getGroupMembers(group.groupId)
+                        if (res.success) members = res.members
+                    } catch (_: Exception) { }
+                } },
+                onLeft = { showManageMembers = false; onBack() },
+                onBack = { showManageMembers = false },
+            )
             return@Column
         }
         Spacer(modifier = Modifier.height(8.dp))
@@ -1019,6 +1045,92 @@ private fun GroupSplitBillsView(
                                 },
                             ) { Text(if (busyId == entry.splitBill.id) "Paying…" else "Pay my share (RWF ${myShare.shareAmount})") }
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Real leave-group/add-member (2026-07-22) -- found fully built on the backend
+// (GroupMessagingController's POST/DELETE .../members) with zero client UI anywhere,
+// despite group chat itself being fully wired. Add-member picks from the caller's
+// real Talk contacts (GET /api/v1/messages/contacts), same list DirectMessagesList
+// already uses to start a 1:1 chat, filtered to exclude people already in the group.
+@Composable
+private fun GroupManageMembersView(
+    group: GroupSummaryDto,
+    members: List<GroupMemberDto>,
+    currentUserId: String?,
+    onMembersChanged: () -> Unit,
+    onLeft: () -> Unit,
+    onBack: () -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    var contacts by remember { mutableStateOf<List<TalkContactDto>>(emptyList()) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busyUserId by remember { mutableStateOf<String?>(null) }
+    var leaving by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        try { contacts = NetworkClient.apiService.getTalkContacts().contacts } catch (_: Exception) { }
+    }
+
+    val addableContacts = contacts.filter { contact -> members.none { it.userId == contact.userId } }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        BackTopBar("Manage members", onBack)
+        Spacer(modifier = Modifier.height(8.dp))
+        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            error?.let { item { Text(it, color = Ids.colors.danger, fontSize = 13.sp) } }
+            item { Text("Members (${members.size})", fontWeight = FontWeight.SemiBold, fontSize = 15.sp) }
+            items(members, key = { it.userId }) { member ->
+                Text(if (member.userId == currentUserId) "${member.name} (you)" else member.name, fontSize = 14.sp, modifier = Modifier.padding(vertical = 4.dp))
+            }
+            item {
+                Button(
+                    enabled = !leaving,
+                    onClick = {
+                        leaving = true
+                        coroutineScope.launch {
+                            try {
+                                NetworkClient.apiService.leaveGroup(group.groupId)
+                                onLeft()
+                            } catch (_: Exception) {
+                                error = "Could not leave this group."
+                                leaving = false
+                            }
+                        }
+                    },
+                ) { Text(if (leaving) "Leaving…" else "Leave group") }
+            }
+            item { Spacer(modifier = Modifier.height(8.dp)) }
+            item { Text("Add from your contacts", fontWeight = FontWeight.SemiBold, fontSize = 15.sp) }
+            if (addableContacts.isEmpty()) {
+                item { Text("No contacts left to add.", color = TossSecondary, fontSize = 13.sp) }
+            } else {
+                items(addableContacts, key = { it.userId }) { contact ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(contact.name, fontSize = 14.sp)
+                        Button(
+                            enabled = busyUserId == null,
+                            onClick = {
+                                busyUserId = contact.userId
+                                coroutineScope.launch {
+                                    try {
+                                        NetworkClient.apiService.addGroupMember(group.groupId, AddGroupMemberRequest(contact.userId))
+                                        onMembersChanged()
+                                    } catch (_: Exception) {
+                                        error = "Could not add ${contact.name}."
+                                    } finally { busyUserId = null }
+                                }
+                            },
+                        ) { Text(if (busyUserId == contact.userId) "Adding…" else "Add") }
                     }
                 }
             }

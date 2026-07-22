@@ -115,6 +115,7 @@ import retrofit2.HttpException
 import rw.itunda.app.network.AddMapBookmarkRequest
 import rw.itunda.app.network.MAP_NEARBY_CATEGORIES
 import rw.itunda.app.network.MapBookmarkDto
+import rw.itunda.app.network.MoveMapBookmarkRequest
 import rw.itunda.app.network.MapsDirectionsResponse
 import rw.itunda.app.network.ItineraryDirectionsRequest
 import rw.itunda.app.network.ItineraryWaypointRequest
@@ -349,6 +350,12 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
     var savingToFolder by remember { mutableStateOf<PlaceSearchResultDto?>(null) }
     var folderNameInput by remember { mutableStateOf(DEFAULT_BOOKMARK_FOLDER) }
     var folderColorInput by remember { mutableStateOf(BOOKMARK_COLOR_PALETTE[0]) }
+    // Real "move to folder" (found 2026-07-22 fully built on the backend,
+    // PATCH /api/v1/maps/bookmarks, with zero UI anywhere) -- movingBookmark holds
+    // whichever real bookmark's move-picker is currently expanded (null = closed).
+    var movingBookmark by remember { mutableStateOf<MapBookmarkDto?>(null) }
+    var moveFolderNameInput by remember { mutableStateOf("") }
+    var moveFolderColorInput by remember { mutableStateOf(BOOKMARK_COLOR_PALETTE[0]) }
 
     // Real draggable bottom-sheet state (peek/half/full) -- see `MapSheetValue`'s own
     // doc comment. `density` is needed both here (for the velocity threshold, in real
@@ -1570,7 +1577,67 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                                         CircleShape,
                                                     ),
                                             )
-                                            Text(bookmark.displayName, fontSize = 13.sp, color = TossText)
+                                            Text(bookmark.displayName, fontSize = 13.sp, color = TossText, modifier = Modifier.weight(1f))
+                                            Text(
+                                                "Move", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TossSecondary,
+                                                modifier = Modifier.clickable {
+                                                    if (movingBookmark?.let { it.latitude == bookmark.latitude && it.longitude == bookmark.longitude } == true) {
+                                                        movingBookmark = null
+                                                    } else {
+                                                        movingBookmark = bookmark
+                                                        moveFolderNameInput = bookmark.folderName
+                                                        moveFolderColorInput = bookmark.color
+                                                    }
+                                                },
+                                            )
+                                        }
+                                        if (movingBookmark?.let { it.latitude == bookmark.latitude && it.longitude == bookmark.longitude } == true) {
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .background(androidx.compose.ui.graphics.Color(0xFFF9FAFB), RoundedCornerShape(8.dp))
+                                                    .padding(8.dp),
+                                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                            ) {
+                                                OutlinedTextField(
+                                                    value = moveFolderNameInput,
+                                                    onValueChange = { moveFolderNameInput = it },
+                                                    placeholder = { Text("Folder name", fontSize = 12.sp) },
+                                                    singleLine = true,
+                                                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp),
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                )
+                                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                    BOOKMARK_COLOR_PALETTE.forEach { c ->
+                                                        val color = try { androidx.compose.ui.graphics.Color(AndroidColor.parseColor(c)) } catch (_: Exception) { androidx.compose.ui.graphics.Color(0xFFF5A623) }
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .size(22.dp)
+                                                                .background(color, CircleShape)
+                                                                .then(if (moveFolderColorInput == c) Modifier.border(2.dp, TossText, CircleShape) else Modifier)
+                                                                .clickable { moveFolderColorInput = c },
+                                                        )
+                                                    }
+                                                }
+                                                Text(
+                                                    "Save", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TossBlue,
+                                                    modifier = Modifier.clickable(enabled = moveFolderNameInput.isNotBlank()) {
+                                                        val target = movingBookmark ?: return@clickable
+                                                        coroutineScope.launch {
+                                                            try {
+                                                                NetworkClient.apiService.moveMapBookmark(
+                                                                    target.latitude, target.longitude,
+                                                                    MoveMapBookmarkRequest(moveFolderNameInput, moveFolderColorInput),
+                                                                )
+                                                                bookmarks = NetworkClient.apiService.getMyMapBookmarks().bookmarks
+                                                                movingBookmark = null
+                                                            } catch (_: Exception) {
+                                                                // Best-effort -- leaves the picker open so the user can retry.
+                                                            }
+                                                        }
+                                                    },
+                                                )
+                                            }
                                         }
                                     }
                                 }
