@@ -907,6 +907,39 @@ data class KycSubmissionDto(
 data class SubmitIdentityResponse(val success: Boolean, val submission: KycSubmissionDto)
 data class IdentityStatusResponse(val success: Boolean, val submissions: List<KycSubmissionDto>)
 
+// Real KakaoPay-style "정산하기" (chat-embedded split-bill), rw.itunda.splitbill --
+// found 2026-07-22 fully built on the backend, tied to an existing real group
+// conversation, with zero client UI anywhere despite group chat itself being fully
+// wired. See SplitBill.kt's own doc comment: a flat, even split with the rounding
+// remainder silently absorbed into one participant's share so shares always sum
+// exactly to totalAmount; each participant pays their own share directly to the
+// organizer via a real wallet-to-wallet push, no escrow.
+data class CreateSplitBillRequest(val totalAmount: java.math.BigDecimal, val description: String, val participantUserIds: List<String>)
+data class SplitBillDto(
+    val id: String, val organizerId: String, val groupConversationId: String, val messageId: String,
+    val totalAmount: java.math.BigDecimal, val description: String, val status: String,
+    val settledAt: String?, val createdAt: String,
+)
+data class SplitBillParticipantDto(
+    val id: String, val splitBillId: String, val userId: String, val shareAmount: java.math.BigDecimal,
+    val status: String, val paidTransactionId: String?, val paidAt: String?, val createdAt: String,
+)
+data class CreateSplitBillResponse(val success: Boolean, val splitBill: SplitBillDto, val participants: List<SplitBillParticipantDto>)
+data class SplitBillResponse(val success: Boolean, val splitBill: SplitBillDto, val participants: List<SplitBillParticipantDto>)
+data class SplitBillWithParticipants(val splitBill: SplitBillDto, val participants: List<SplitBillParticipantDto>)
+data class SplitBillsForGroupResponse(val success: Boolean, val splitBills: List<SplitBillWithParticipants>)
+data class PaySplitBillShareResponse(val success: Boolean, val participant: SplitBillParticipantDto)
+
+// Real saved-contacts list for quick transfers (rw.itunda.contacts) -- found
+// 2026-07-22 fully built on the backend (a real IDOR fix ported from the original
+// Express controller, see ContactsController.kt's own doc comment) with zero client
+// UI anywhere. RecipientEntryScreen.kt's "Recent" row was a single hardcoded demo
+// name ("TUYIZERE Eric"), not backed by any real data.
+data class AddContactRequest(val name: String, val bank: String? = null, val phoneNumber: String)
+data class ContactDto(val id: String, val userId: String, val name: String, val bank: String, val acc: String, val phoneNumber: String, val color: String, val letter: String)
+data class ContactsResponse(val success: Boolean, val contacts: List<ContactDto>)
+data class AddContactResponse(val success: Boolean, val contact: ContactDto)
+
 // Retrofit Interface to map to your Spring endpoints -- all require the real
 // Bearer token NetworkClient's authInterceptor now injects (2026-07-11).
 interface ApiService {
@@ -1513,6 +1546,28 @@ interface ApiService {
 
     @GET("api/v1/identity/status")
     suspend fun getIdentityStatus(): IdentityStatusResponse
+
+    @POST("api/v1/split-bills/conversations/{groupConversationId}")
+    suspend fun createSplitBill(
+        @Path("groupConversationId") groupConversationId: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body request: CreateSplitBillRequest,
+    ): CreateSplitBillResponse
+
+    @GET("api/v1/split-bills/conversations/{groupConversationId}")
+    suspend fun getSplitBillsForGroup(@Path("groupConversationId") groupConversationId: String): SplitBillsForGroupResponse
+
+    @GET("api/v1/split-bills/{id}")
+    suspend fun getSplitBill(@Path("id") splitBillId: String): SplitBillResponse
+
+    @POST("api/v1/split-bills/{id}/pay")
+    suspend fun paySplitBillShare(@Path("id") splitBillId: String, @Header("Idempotency-Key") idempotencyKey: String): PaySplitBillShareResponse
+
+    @GET("api/v1/contacts")
+    suspend fun getContacts(): ContactsResponse
+
+    @POST("api/v1/contacts")
+    suspend fun addContact(@Body request: AddContactRequest): AddContactResponse
 }
 
 data class TransactionHistoryResponse(val success: Boolean, val transactions: List<TransactionDto>)

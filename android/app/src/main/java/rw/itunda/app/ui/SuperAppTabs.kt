@@ -57,11 +57,14 @@ import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Storefront
+import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -96,6 +99,8 @@ import kotlinx.coroutines.launch
 import okhttp3.WebSocket
 import retrofit2.HttpException
 import rw.itunda.app.network.isDeviceNotVerifiedError
+import rw.itunda.app.network.CreateSplitBillRequest
+import rw.itunda.app.network.SplitBillWithParticipants
 import rw.itunda.app.network.AddCommunityCommentRequest
 import rw.itunda.app.network.CommunityCategoryDto
 import rw.itunda.app.network.CommunityCommentWithAuthorDto
@@ -700,6 +705,10 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
     var typingUserIds by remember { mutableStateOf<Map<String, Job>>(emptyMap()) }
     var socket by remember { mutableStateOf<WebSocket?>(null) }
     var lastTypingSentAt by remember { mutableStateOf(0L) }
+    // Real KakaoPay-style split bill (found 2026-07-22 fully built on the backend
+    // with zero UI anywhere) -- toggles a sibling view over this same group thread,
+    // same pattern MarketplaceView/JobsView use for their own WISHLIST tab.
+    var showSplitBills by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val listState: LazyListState = rememberLazyListState()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
@@ -776,7 +785,16 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
-        BackTopBar(group.name, onBack)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            BackTopBar(group.name, onBack)
+            IconButton(onClick = { showSplitBills = true }) {
+                Icon(Icons.Outlined.Receipt, contentDescription = "Split a bill")
+            }
+        }
+        if (showSplitBills) {
+            GroupSplitBillsView(groupConversationId = group.groupId, members = members, currentUserId = currentUserId, onBack = { showSplitBills = false })
+            return@Column
+        }
         Spacer(modifier = Modifier.height(8.dp))
         LazyColumn(state = listState, modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             val msgs = messages
@@ -874,6 +892,135 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(Icons.Outlined.Send, contentDescription = "Send", tint = Color.White, modifier = Modifier.size(18.dp))
+            }
+        }
+    }
+}
+
+// Real KakaoPay-style split bill (2026-07-22) -- found fully built on the backend
+// (rw.itunda.splitbill) with zero client UI anywhere, despite group chat itself
+// being fully wired. A flat, even split among picked group members (excluding the
+// organizer); each participant pays their own share directly to the organizer via a
+// real wallet-to-wallet push, no escrow -- see SplitBill.kt's own doc comment.
+@Composable
+private fun GroupSplitBillsView(
+    groupConversationId: String,
+    members: List<GroupMemberDto>,
+    currentUserId: String?,
+    onBack: () -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    var splitBills by remember { mutableStateOf<List<SplitBillWithParticipants>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busyId by remember { mutableStateOf<String?>(null) }
+    var showNewForm by remember { mutableStateOf(false) }
+    var amountText by remember { mutableStateOf("") }
+    var descriptionText by remember { mutableStateOf("") }
+    var selectedParticipantIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val coroutineScope = rememberCoroutineScope()
+
+    suspend fun refresh() {
+        try {
+            splitBills = NetworkClient.apiService.getSplitBillsForGroup(groupConversationId).splitBills
+            error = null
+        } catch (_: Exception) {
+            error = "Could not load split bills."
+        }
+    }
+    LaunchedEffect(groupConversationId) { refresh() }
+
+    val otherMembers = members.filter { it.userId != currentUserId }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        BackTopBar("Split bills", onBack)
+        Spacer(modifier = Modifier.height(8.dp))
+        LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            error?.let { item { Text(it, color = Ids.colors.danger, fontSize = 13.sp) } }
+            item {
+                if (!showNewForm) {
+                    Button(onClick = { showNewForm = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Split a bill")
+                    }
+                } else {
+                    Column {
+                        OutlinedTextField(amountText, { amountText = it }, label = { Text("Total amount (RWF)") }, modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(descriptionText, { descriptionText = it }, label = { Text("What was it for?") }, modifier = Modifier.fillMaxWidth())
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Split with", fontSize = 13.sp, color = TossSecondary)
+                        otherMembers.forEach { member ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    selectedParticipantIds = if (member.userId in selectedParticipantIds) {
+                                        selectedParticipantIds - member.userId
+                                    } else {
+                                        selectedParticipantIds + member.userId
+                                    }
+                                }.padding(vertical = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(member.name, fontSize = 14.sp)
+                                Text(if (member.userId in selectedParticipantIds) "Selected" else "Tap to add", fontSize = 12.sp, color = TossSecondary)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            enabled = busyId == null && amountText.toBigDecimalOrNull()?.let { it > java.math.BigDecimal.ZERO } == true &&
+                                descriptionText.isNotBlank() && selectedParticipantIds.isNotEmpty(),
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = {
+                                val amount = amountText.toBigDecimalOrNull() ?: return@Button
+                                busyId = "new"
+                                coroutineScope.launch {
+                                    try {
+                                        NetworkClient.apiService.createSplitBill(
+                                            groupConversationId,
+                                            UUID.randomUUID().toString(),
+                                            CreateSplitBillRequest(amount, descriptionText, selectedParticipantIds.toList()),
+                                        )
+                                        amountText = ""; descriptionText = ""; selectedParticipantIds = emptySet(); showNewForm = false
+                                        refresh()
+                                    } catch (_: Exception) {
+                                        error = "That split bill could not be created."
+                                    } finally { busyId = null }
+                                }
+                            },
+                        ) { Text(if (busyId == "new") "Creating…" else "Create split bill") }
+                    }
+                }
+            }
+            val current = splitBills
+            if (current == null) item { Text("Loading…") }
+            else if (current.isEmpty()) item { Text("No split bills in this group yet.", color = TossSecondary, fontSize = 13.sp) }
+            else items(current, key = { it.splitBill.id }) { entry ->
+                val myShare = entry.participants.find { it.userId == currentUserId }
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(entry.splitBill.description, fontWeight = FontWeight.SemiBold)
+                        Text("Total RWF ${entry.splitBill.totalAmount} · ${entry.splitBill.status}", fontSize = 13.sp, color = TossSecondary)
+                        entry.participants.forEach { participant ->
+                            val name = members.find { it.userId == participant.userId }?.name ?: participant.userId.take(8)
+                            Text("$name: RWF ${participant.shareAmount} (${participant.status})", fontSize = 13.sp)
+                        }
+                        if (myShare != null && myShare.status == "PENDING") {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                enabled = busyId == null,
+                                onClick = {
+                                    busyId = entry.splitBill.id
+                                    coroutineScope.launch {
+                                        try {
+                                            NetworkClient.apiService.paySplitBillShare(entry.splitBill.id, UUID.randomUUID().toString())
+                                            refresh()
+                                        } catch (_: Exception) {
+                                            error = "That payment could not be completed."
+                                        } finally { busyId = null }
+                                    }
+                                },
+                            ) { Text(if (busyId == entry.splitBill.id) "Paying…" else "Pay my share (RWF ${myShare.shareAmount})") }
+                        }
+                    }
+                }
             }
         }
     }

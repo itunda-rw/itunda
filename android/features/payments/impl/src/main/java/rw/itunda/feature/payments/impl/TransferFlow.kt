@@ -52,12 +52,24 @@ import java.util.Locale
 
 internal val rwfFormatter = NumberFormat.getNumberInstance(Locale.US)
 
+// Real saved-contacts list (2026-07-22) -- see rw.itunda.contacts.ContactsController's
+// own doc comment on the backend. This tiny UI-facing shape (not the app module's own
+// ContactDto) keeps this feature module's existing independence from :app's
+// NetworkClient -- the actual fetch/add calls happen in ItundaAppScreen.kt, which
+// already has API access, and are passed down here as plain data + callbacks.
+data class ContactUi(val name: String, val phoneNumber: String, val bank: String)
+
 @Composable
 fun RecipientEntryScreen(
     onBack: () -> Unit,
-    onNext: (accountNumber: String) -> Unit
+    onNext: (accountNumber: String) -> Unit,
+    contacts: List<ContactUi> = emptyList(),
+    onAddContact: (name: String, phoneNumber: String) -> Unit = { _, _ -> },
 ) {
     var accountNumber by rememberSaveable { mutableStateOf("") }
+    var showAddContactForm by rememberSaveable { mutableStateOf(false) }
+    var newContactName by rememberSaveable { mutableStateOf("") }
+    var newContactPhone by rememberSaveable { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -141,12 +153,60 @@ fun RecipientEntryScreen(
             // in ItundaAppScreen.kt's CashbackChanceCard -- and is, per that
             // screenshot's own visible "TUYIZERE E" recent-recipient row, the real
             // reference identity, not an arbitrary placeholder.
+            // Real saved contacts (2026-07-22), replacing the single hardcoded demo
+            // row this section used to show -- see rw.itunda.contacts.
+            // ContactsController's own doc comment; this was a real, live-fetched
+            // GET /api/v1/contacts with zero client UI anywhere until now.
             if (accountNumber.isEmpty()) {
                 Spacer(modifier = Modifier.height(28.dp))
-                Text("Recent", color = Ids.colors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Contacts", color = Ids.colors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        if (showAddContactForm) "Cancel" else "+ Add",
+                        color = Ids.colors.brand,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable { showAddContactForm = !showAddContactForm },
+                    )
+                }
                 Spacer(modifier = Modifier.height(12.dp))
-                RecentRecipientRow(name = "TUYIZERE Eric", bankAndAccount = "BK - 201-452385-18-277") {
-                    accountNumber = "2014523851827".take(16)
+                if (showAddContactForm) {
+                    BasicTextField(
+                        value = newContactName,
+                        onValueChange = { newContactName = it },
+                        textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 16.sp),
+                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Contact name" },
+                        decorationBox = { inner -> if (newContactName.isEmpty()) Text("Name", color = Ids.colors.textTertiary, fontSize = 16.sp); inner() },
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    BasicTextField(
+                        value = newContactPhone,
+                        onValueChange = { input -> newContactPhone = input.filter { it.isDigit() || it == '+' } },
+                        textStyle = TextStyle(color = Ids.colors.textPrimary, fontSize = 16.sp),
+                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Contact phone number" },
+                        decorationBox = { inner -> if (newContactPhone.isEmpty()) Text("Phone number", color = Ids.colors.textTertiary, fontSize = 16.sp); inner() },
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Save contact",
+                        color = if (newContactName.isNotBlank() && newContactPhone.isNotBlank()) Ids.colors.brand else Ids.colors.textTertiary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable(enabled = newContactName.isNotBlank() && newContactPhone.isNotBlank()) {
+                            onAddContact(newContactName, newContactPhone)
+                            newContactName = ""; newContactPhone = ""; showAddContactForm = false
+                        },
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+                if (contacts.isEmpty() && !showAddContactForm) {
+                    Text("No saved contacts yet.", color = Ids.colors.textTertiary, fontSize = 13.sp)
+                } else {
+                    contacts.forEach { contact ->
+                        RecentRecipientRow(name = contact.name, bankAndAccount = "${contact.bank} - ${contact.phoneNumber}") {
+                            accountNumber = contact.phoneNumber.filter { it.isDigit() }.take(16)
+                        }
+                    }
                 }
             }
         }

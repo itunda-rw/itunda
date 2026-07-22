@@ -255,6 +255,16 @@ fun ItundaAppScreen(
         var isSendingTransfer by remember { mutableStateOf(false) }
         val coroutineScope = rememberCoroutineScope()
         val primaryWalletForTransfer by viewModel.primaryWallet.collectAsState()
+        // Real saved-contacts list (found 2026-07-22 fully built on the backend with
+        // zero client UI anywhere) -- fetched when the recipient screen opens rather
+        // than eagerly on app launch, since it's only ever needed here.
+        var contacts by remember { mutableStateOf<List<rw.itunda.app.network.ContactDto>>(emptyList()) }
+        suspend fun loadContacts() {
+            try { contacts = rw.itunda.app.network.NetworkClient.apiService.getContacts().contacts } catch (_: Exception) { }
+        }
+        LaunchedEffect(step is TransferStep.Recipient) {
+            if (step is TransferStep.Recipient) loadContacts()
+        }
         if (step != null) {
             // Without this, system/gesture back during a transfer falls through to
             // the Activity's default back behavior (there's no NavHost here) and
@@ -270,7 +280,21 @@ fun ItundaAppScreen(
             when (step) {
                 is TransferStep.Recipient -> rw.itunda.feature.payments.impl.RecipientEntryScreen(
                     onBack = { transferStep = null },
-                    onNext = { accountNumber -> transferStep = TransferStep.Amount(accountNumber) }
+                    onNext = { accountNumber -> transferStep = TransferStep.Amount(accountNumber) },
+                    contacts = contacts.map { rw.itunda.feature.payments.impl.ContactUi(it.name, it.phoneNumber, it.bank) },
+                    onAddContact = { name, phoneNumber ->
+                        coroutineScope.launch {
+                            try {
+                                rw.itunda.app.network.NetworkClient.apiService.addContact(
+                                    rw.itunda.app.network.AddContactRequest(name, phoneNumber = phoneNumber),
+                                )
+                                loadContacts()
+                            } catch (_: Exception) {
+                                // Best-effort -- a failed save just leaves the form's
+                                // input in place for the user to retry.
+                            }
+                        }
+                    },
                 )
                 is TransferStep.Amount -> {
                     rw.itunda.feature.payments.impl.TransferAmountScreen(
