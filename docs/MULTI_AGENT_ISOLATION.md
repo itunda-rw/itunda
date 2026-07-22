@@ -58,9 +58,17 @@ modules, so two agents editing it concurrently is a known conflict risk.
 Mirrors the Android `Feature<Name>Interface / Feature<Name>` split, and as of
 2026-07-23 this is a real, CI-verified build (`ios-build` job on a `macos-15`
 runner: `tuist generate` + `pod install` + `xcodebuild ... ItundaApp`) — not
-just a paper structure. Most feature targets are still `Dummy.swift`
-placeholders content-wise (only Banking/Payments have a real `Example` app
-target), but the module graph itself compiles and links.
+just a paper structure. `CoreNetwork` now holds the real `NetworkClient`/
+`KeychainTokenStore` (promoted from `App`, mirroring Android's own
+`:core:network` relocation), so a Feature module can call the backend
+directly. Most feature targets are still `Dummy.swift` placeholders content-
+wise — Banking, Payments, and now Credit (`CreditScoreScreenView`) have real
+code — but the module graph itself compiles and links for all of them.
+Reminder for whoever extracts the rest: iOS's 9 Feature modules don't map
+1:1 to Android's 8, and at least Bills/Insurance are intentionally Saronite
+(React Native) mini-apps, not native gaps — trace `BenefitsShopAllScreens.swift`
+(the iOS equivalent of `SuperAppTabs.kt`) before assuming there's native code
+to move for any given feature.
 
 ### Backend (`services/backend/<module>`)
 
