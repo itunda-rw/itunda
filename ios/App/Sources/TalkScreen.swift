@@ -481,6 +481,7 @@ private struct GroupThreadScreen: View {
                                     message: message, isMine: message.senderId == currentUserId, senderName: name(for: message.senderId),
                                     currentUserId: currentUserId,
                                     onToggleReaction: { emoji in Task { await toggleReaction(message.id, emoji) } },
+                                    onDelete: { messageId in Task { await deleteGroupMessage(messageId) } },
                                 )
                                 .id(message.id)
                             }
@@ -623,6 +624,11 @@ private struct GroupThreadScreen: View {
         }
     }
 
+    private func deleteGroupMessage(_ messageId: String) async {
+        do { _ = try await NetworkClient.shared.deleteGroupMessage(groupId: group.groupId, messageId: messageId); await refresh() }
+        catch { self.error = "Couldn't delete this message. Check your connection and try again." }
+    }
+
     private func send() async {
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !body.isEmpty else { return }
@@ -690,6 +696,7 @@ private struct GroupMessageBubble: View {
     let senderName: String
     let currentUserId: String?
     let onToggleReaction: (String) -> Void
+    let onDelete: (String) -> Void
 
     var body: some View {
         VStack(alignment: isMine ? .trailing : .leading, spacing: 2) {
@@ -710,6 +717,7 @@ private struct GroupMessageBubble: View {
                 if !isMine { Spacer() }
             }
             MessageReactionsRow(reactions: message.reactions, currentUserId: currentUserId, isMine: isMine, onToggle: onToggleReaction)
+            if isMine && message.deletedAt == nil { Button("Delete") { onDelete(message.id) }.font(.caption2).foregroundColor(IDS.Colors.textSecondary) }
             Text(chatMessageTime(message.sentAt))
                 .font(.caption2)
                 .foregroundColor(IDS.Colors.textSecondary)

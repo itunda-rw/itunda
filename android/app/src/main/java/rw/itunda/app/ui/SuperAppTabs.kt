@@ -805,6 +805,10 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                                 }
                             }
                         },
+                        onDelete = { messageId -> coroutineScope.launch {
+                            try { NetworkClient.apiService.deleteGroupMessage(group.groupId, messageId); refresh() }
+                            catch (_: Exception) { error = "Couldn't delete this message." }
+                        } },
                     )
                 }
             }
@@ -869,7 +873,7 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
 
 @Composable
 private fun GroupMessageBubble(
-    message: GroupMessageDto, isMine: Boolean, senderName: String, currentUserId: String?, onToggleReaction: (String) -> Unit,
+    message: GroupMessageDto, isMine: Boolean, senderName: String, currentUserId: String?, onToggleReaction: (String) -> Unit, onDelete: (String) -> Unit = {},
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
@@ -886,6 +890,7 @@ private fun GroupMessageBubble(
             }
         }
         MessageReactionsRow(message.reactions, currentUserId, isMine, onToggleReaction)
+        if (isMine && message.deletedAt == null) TextButton(onClick = { onDelete(message.id) }) { Text("Delete", color = TossSecondary, fontSize = 11.sp) }
         Text(
             chatMessageTime(message.sentAt),
             color = TossSecondary,
