@@ -1937,6 +1937,7 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
   const [error, setError] = useState<string | null>(null);
   const [openConversationId, setOpenConversationId] = useState<string | null>(null);
   const [presence, setPresence] = useState<Record<string, boolean>>({});
+  const [showArchived, setShowArchived] = useState(false);
 
   const load = () => {
     setError(null);
@@ -2000,16 +2001,24 @@ function DirectMessagesList({ initialConversationId, onConsumedInitial }: { init
     return <div className="toss-card skeleton" style={{ height: '220px' }} />;
   }
 
+  const visibleConversations = conversations.filter((conversation) => showArchived ? conversation.quiet : !conversation.quiet);
+  const archivedCount = conversations.filter((conversation) => conversation.quiet).length;
+
   return (
     <div>
       <NewChatCard onStarted={(id) => { load(); setOpenConversationId(id); }} />
+      {archivedCount > 0 && (
+        <button type="button" className="toss-btn toss-btn-secondary" onClick={() => setShowArchived((value) => !value)} style={{ marginBottom: '10px' }}>
+          {showArchived ? 'Show active chats' : `Archived (${archivedCount})`}
+        </button>
+      )}
       {conversations.length === 0 ? (
         <div className="toss-card">
           <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No conversations yet.</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {conversations.map((c) => (
+          {visibleConversations.map((c) => (
             <button
               key={c.conversationId}
               onClick={() => setOpenConversationId(c.conversationId)}
