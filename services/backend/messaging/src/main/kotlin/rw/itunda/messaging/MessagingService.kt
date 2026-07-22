@@ -18,6 +18,7 @@ import rw.itunda.core.repository.MessageRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.UserBlockRepository
+import rw.itunda.core.repository.ContactRepository
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
@@ -41,6 +42,7 @@ data class ConversationSummary(
     val lastMessagePreview: String?,
     val unreadCount: Long,
 )
+data class TalkContact(val userId: String, val name: String)
 
 /**
  * Real 1:1 messaging -- the foundational Kakao-style chat primitive named in the
@@ -74,6 +76,7 @@ class MessagingService(
     private val rateLimiter: RateLimiter,
     private val realtimeMessagePublisher: RealtimeMessagePublisher,
     private val userBlockRepository: UserBlockRepository,
+    private val contactRepository: ContactRepository,
 ) {
     private fun requireNotBlocked(userId: String, otherUserId: String) {
         if (
@@ -201,6 +204,14 @@ class MessagingService(
     // dot without requiring an existing conversation first).
     fun getPresence(userIds: List<String>): Map<String, Boolean> =
         userIds.distinct().associateWith { realtimeMessagePublisher.isOnline(it) }
+
+    /** A contact directory based only on the caller's own saved contacts, never a public user search. */
+    fun listTalkContacts(userId: String): List<TalkContact> {
+        val contacts = contactRepository.findByUserId(userId)
+        val usersByPhone = userRepository.findAllByPhoneNumberIn(contacts.map { it.phoneNumber }.distinct()).associateBy { it.phoneNumber }
+        return contacts.mapNotNull { contact -> usersByPhone[contact.phoneNumber]?.takeIf { it.id != userId }?.let { TalkContact(it.id, contact.name) } }
+            .distinctBy { it.userId }.sortedBy { it.name.lowercase() }
+    }
 
     // Real emoji reactions (2026-07-19) -- closes the "message reactions" item on the
     // Talk polish roadmap. Deliberately a toggle: tapping an already-active reaction

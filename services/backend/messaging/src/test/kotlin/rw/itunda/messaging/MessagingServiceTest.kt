@@ -24,6 +24,7 @@ import rw.itunda.core.repository.MessageRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.UserBlockRepository
+import rw.itunda.core.repository.ContactRepository
 import java.time.Duration
 import java.util.Optional
 
@@ -41,7 +42,8 @@ class MessagingServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
         val userBlockRepository = mockk<UserBlockRepository>(relaxed = true)
-        val service = MessagingService(conversationRepository, messageRepository, userRepository, notificationRepository, messageReactionRepository, rateLimiter, realtimeMessagePublisher, userBlockRepository)
+        val contactRepository = mockk<ContactRepository>(relaxed = true)
+        val service = MessagingService(conversationRepository, messageRepository, userRepository, notificationRepository, messageReactionRepository, rateLimiter, realtimeMessagePublisher, userBlockRepository, contactRepository)
 
         When("starting a conversation between user_a and user_b for the first time") {
             every { userRepository.findById("user_b") } returns Optional.of(user("user_b", "Beata"))

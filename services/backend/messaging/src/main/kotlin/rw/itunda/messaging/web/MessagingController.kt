@@ -69,6 +69,10 @@ class MessagingController(private val messagingService: MessagingService) {
         return ResponseEntity.ok(mapOf("success" to true, "conversations" to page.content) + pageMeta(page))
     }
 
+    @GetMapping("/contacts")
+    fun listTalkContacts(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "contacts" to messagingService.listTalkContacts(currentUser.userId)))
+
     @GetMapping("/conversations/{conversationId}/messages")
     fun getMessages(
         @PathVariable conversationId: String,
