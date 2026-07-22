@@ -38,6 +38,10 @@ plugins {
     // React Native itself requires.
     id("org.jetbrains.kotlin.android") version "2.1.20" apply false
     id("org.jetbrains.kotlin.plugin.compose") version "2.1.20" apply false
+    // Plain Kotlin/JVM (no Android Gradle Plugin) for :architecture-test -- that
+    // module only statically parses Kotlin source files via Konsist, it never
+    // compiles or runs against an Android SDK.
+    id("org.jetbrains.kotlin.jvm") version "2.1.20" apply false
     // Real React Native Gradle Plugin (2026-07-12, granite-adoption stage 2) -- no
     // version string here since it's resolved via settings.gradle.kts's
     // includeBuild composite-build substitution, not a published Maven coordinate.

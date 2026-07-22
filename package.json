@@ -82,9 +82,11 @@
     "build": "bash ./scripts/local-ecosystem.sh web-build",
     "build:web": "bash ./scripts/local-ecosystem.sh web-build",
     "lint": "oxlint",
-    "lint:web": "bash ./scripts/local-ecosystem.sh web-lint"
+    "lint:web": "bash ./scripts/local-ecosystem.sh web-lint",
+    "depcruise": "depcruise --config .dependency-cruiser.cjs \"services/micro-frontends/**/src/**/*.{ts,tsx}\" \"packages/*/src/**/*.{ts,tsx}\" \"services/api-gateway/**/*.{ts,tsx}\""
   },
   "devDependencies": {
+    "dependency-cruiser": "^16.10.0",
     "oxlint": "^1.69.0",
     "typescript": "~6.0.2"
   },

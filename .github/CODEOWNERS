@@ -1,0 +1,91 @@
+# Silo map for multi-agent isolation — see docs/MULTI_AGENT_ISOLATION.md
+#
+# Every path below is one "silo": a slice an agent can own outright without
+# needing to coordinate with any other slice. Paths NOT listed here (packages/*,
+# android/core/*, services/backend/core, SuperAppTabs.kt) are tightly-aligned
+# shared surface — see the doc for why those need explicit call-outs instead of
+# a fixed owner.
+#
+# All silos currently map to the sole maintainer; the value of this file today
+# is the machine-readable boundary list itself, not reviewer routing.
+
+# --- Android feature silos ---
+/android/features/payments/       @partoftrue
+/android/features/marketplace/    @partoftrue
+/android/features/community/      @partoftrue
+/android/features/eats/           @partoftrue
+/android/features/jobs/           @partoftrue
+/android/features/maps/           @partoftrue
+/android/features/property/       @partoftrue
+/android/features/shop/           @partoftrue
+/android/features/talk/           @partoftrue
+/android/features/assets/         @partoftrue
+/android/features/banking/        @partoftrue
+/android/features/bills/          @partoftrue
+/android/features/credit/         @partoftrue
+/android/features/engagement/     @partoftrue
+/android/features/insurance/      @partoftrue
+/android/features/merchant/       @partoftrue
+/android/features/wealth/         @partoftrue
+
+# --- Android standalone apps ---
+/android/app/                     @partoftrue
+/android/riderapp/                @partoftrue
+/android/merchantapp/             @partoftrue
+/android/agentapp/                @partoftrue
+/android/sdk/pay/                 @partoftrue
+
+# --- iOS feature silos (scaffold only — see doc: not CI-verified yet) ---
+/ios/Features/                    @partoftrue
+
+# --- Backend module silos (services/backend) ---
+/services/backend/auth/           @partoftrue
+/services/backend/wallet/         @partoftrue
+/services/backend/bills/          @partoftrue
+/services/backend/loans/          @partoftrue
+/services/backend/marketplace/    @partoftrue
+/services/backend/eats/           @partoftrue
+/services/backend/community/      @partoftrue
+/services/backend/certificate/    @partoftrue
+/services/backend/insurance/      @partoftrue
+/services/backend/gift/           @partoftrue
+/services/backend/jobs/           @partoftrue
+/services/backend/maps/           @partoftrue
+/services/backend/messaging/      @partoftrue
+/services/backend/merchant/       @partoftrue
+/services/backend/realestate/     @partoftrue
+/services/backend/partners/       @partoftrue
+/services/backend/splitbill/      @partoftrue
+/services/backend/p2p/            @partoftrue
+/services/backend/overview/       @partoftrue
+/services/backend/savings/        @partoftrue
+/services/backend/stocks/         @partoftrue
+/services/backend/discover/       @partoftrue
+/services/backend/contacts/       @partoftrue
+/services/backend/system/         @partoftrue
+/services/backend/agents/         @partoftrue
+/services/backend/commerce/       @partoftrue
+/services/backend/creditscore/    @partoftrue
+/services/backend/identity/       @partoftrue
+/services/backend/notifications/  @partoftrue
+/services/backend/offline/        @partoftrue
+/services/backend/rewards/        @partoftrue
+/services/backend/support/        @partoftrue
+/services/backend/trustscore/     @partoftrue
+
+# --- Independently-deployable microservices ---
+/services/microservices/ledger-service/   @partoftrue
+/services/microservices/payment-service/  @partoftrue
+
+# --- Micro-frontend silos ---
+/services/micro-frontends/bank-mfe/       @partoftrue
+/services/micro-frontends/kyc-mfe/        @partoftrue
+/services/micro-frontends/merchant-mfe/   @partoftrue
+/services/micro-frontends/ops-mfe/        @partoftrue
+/services/micro-frontends/pay-checkout/   @partoftrue
+/services/micro-frontends/host-app/       @partoftrue
+
+# --- Shared packages: tightly-aligned, flag changes explicitly in the PR ---
+/packages/shared-utils/           @partoftrue
+/packages/design-tokens/          @partoftrue
+/packages/itunda-pay-widget/      @partoftrue

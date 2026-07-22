@@ -203,3 +203,9 @@ include(":features:banking:testing")
 
 // Itunda Pay SDK (For 3rd party integrations)
 include(":sdk:pay")
+
+// Real static-analysis guardrail (2026-07-23) for docs/MULTI_AGENT_ISOLATION.md's
+// silo model -- a standalone Kotlin/JVM module (Konsist parses source files
+// directly off disk, so it needs no dependency on any feature module) asserting
+// no feature's `impl` package imports another feature's `impl` package.
+include(":architecture-test")

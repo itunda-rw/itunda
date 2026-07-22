@@ -475,9 +475,10 @@ private fun ProductDetailScreen(
             ProductPriceRow(product)
             Spacer(modifier = Modifier.height(6.dp))
             ProductRatingBadge(product.id)
-            if (!product.description.isNullOrBlank()) {
+            val description = product.description
+            if (!description.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(product.description, color = Ids.colors.textSecondary, fontSize = 13.sp, lineHeight = 19.sp)
+                Text(description, color = Ids.colors.textSecondary, fontSize = 13.sp, lineHeight = 19.sp)
             }
             Spacer(modifier = Modifier.height(20.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
