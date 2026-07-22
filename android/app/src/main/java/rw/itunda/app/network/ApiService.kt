@@ -871,6 +871,42 @@ data class SupportTicketDto(
 data class CreateSupportTicketResponse(val success: Boolean, val ticket: SupportTicketDto)
 data class SupportTicketsResponse(val success: Boolean, val tickets: List<SupportTicketDto>)
 
+// Real "alternative data" credit score (rw.itunda.creditscore, computation lives in
+// :core's CreditScoreService so LoansService's real risk-gating can share it) --
+// found 2026-07-22 fully built on the backend with zero client UI anywhere. Not a
+// real bureau score (no regulatory access exists for one) -- computed live from
+// itunda's own real transaction/loan/savings/KYC history on every call.
+data class CreditScoreFactorDto(val name: String, val points: Int, val description: String)
+data class CreditScoreResponse(val success: Boolean, val score: Int, val factors: List<CreditScoreFactorDto>, val computedAt: String)
+
+// Real digital identity/signing certificate (rw.itunda.certificate) -- already real
+// and wired into bank-mfe (web) since 2026-07-17, but found 2026-07-22 completely
+// absent from the Android app, a platform-parity gap rather than a never-built
+// feature. Mirrors bank-mfe's lib/certificate.ts field-for-field.
+data class CertificateDto(
+    val id: String, val userId: String, val serialNumber: String, val publicKeyBase64: String,
+    val algorithm: String, val status: String, val issuedAt: String, val expiresAt: String, val revokedAt: String?,
+)
+data class IssueCertificateResponse(val success: Boolean, val certificate: CertificateDto, val privateKey: String)
+data class MyCertificateResponse(val success: Boolean, val certificate: CertificateDto?)
+data class RevokeCertificateResponse(val success: Boolean, val certificate: CertificateDto)
+
+// Real KYC identity submission (rw.itunda.identity) -- found 2026-07-22 fully built on
+// the backend with zero client UI anywhere. documentReference is a real, honest
+// demo-mode stand-in for an uploaded ID scan/selfie (no file-storage layer exists in
+// this backend, see KycSubmission.kt's own doc comment) -- a free-text reference
+// string, not an actual image upload. documentType must be NATIONAL_ID or PASSPORT for
+// a personal submission (BUSINESS_TIN/KYB is a separate merchant-onboarding concern,
+// out of scope for this consumer-app screen).
+data class SubmitIdentityRequest(val documentType: String, val documentNumber: String, val documentReference: String)
+data class KycSubmissionDto(
+    val id: String, val userId: String, val documentType: String, val documentNumber: String, val documentReference: String,
+    val status: String, val submittedAt: String, val reviewedBy: String?, val reviewedAt: String?, val decisionReason: String?,
+    val autoVerificationStatus: String?, val autoVerificationDetail: String?,
+)
+data class SubmitIdentityResponse(val success: Boolean, val submission: KycSubmissionDto)
+data class IdentityStatusResponse(val success: Boolean, val submissions: List<KycSubmissionDto>)
+
 // Retrofit Interface to map to your Spring endpoints -- all require the real
 // Bearer token NetworkClient's authInterceptor now injects (2026-07-11).
 interface ApiService {
@@ -1459,6 +1495,24 @@ interface ApiService {
 
     @GET("api/v1/support/tickets")
     suspend fun getSupportTickets(): SupportTicketsResponse
+
+    @GET("api/v1/credit-score")
+    suspend fun getCreditScore(): CreditScoreResponse
+
+    @POST("api/v1/certificate/issue")
+    suspend fun issueCertificate(): IssueCertificateResponse
+
+    @GET("api/v1/certificate/me")
+    suspend fun getMyCertificate(): MyCertificateResponse
+
+    @POST("api/v1/certificate/revoke")
+    suspend fun revokeCertificate(): RevokeCertificateResponse
+
+    @POST("api/v1/identity/submit")
+    suspend fun submitIdentity(@Body request: SubmitIdentityRequest): SubmitIdentityResponse
+
+    @GET("api/v1/identity/status")
+    suspend fun getIdentityStatus(): IdentityStatusResponse
 }
 
 data class TransactionHistoryResponse(val success: Boolean, val transactions: List<TransactionDto>)
@@ -1496,6 +1550,20 @@ fun isDeviceNotVerifiedError(e: retrofit2.HttpException): Boolean {
     return try {
         val body = e.response()?.errorBody()?.string() ?: return false
         com.google.gson.JsonParser.parseString(body).asJsonObject.get("code")?.asString == "DEVICE_NOT_VERIFIED"
+    } catch (_: Exception) {
+        false
+    }
+}
+
+// Same pattern as isDeviceNotVerifiedError above -- CertificateController's
+// /certificate/issue real-403s with code KYC_REQUIRED when the caller's identity
+// isn't verified yet (CertificateUserNotVerifiedException), so CreditScoreScreen/
+// CertificateScreen can show a real, specific message instead of a generic failure.
+fun isKycRequiredError(e: retrofit2.HttpException): Boolean {
+    if (e.code() != 403) return false
+    return try {
+        val body = e.response()?.errorBody()?.string() ?: return false
+        com.google.gson.JsonParser.parseString(body).asJsonObject.get("code")?.asString == "KYC_REQUIRED"
     } catch (_: Exception) {
         false
     }

@@ -219,6 +219,9 @@ fun ItundaAppScreen(
         var showOverview by rememberSaveable { mutableStateOf(false) }
         var showLoans by rememberSaveable { mutableStateOf(false) }
         var showSupport by rememberSaveable { mutableStateOf(false) }
+        var showCreditScore by rememberSaveable { mutableStateOf(false) }
+        var showCertificate by rememberSaveable { mutableStateOf(false) }
+        var showIdentity by rememberSaveable { mutableStateOf(false) }
         // Mirrors NAVER Maps' app-to-map handoff, but remains inside Itunda's own
         // authenticated map stack. Consume once so recomposition cannot reopen the map.
         LaunchedEffect(openMapFromDeepLink) {
@@ -589,6 +592,21 @@ fun ItundaAppScreen(
             SupportScreen(onBack = { showSupport = false })
             return@IdsTheme
         }
+        if (showCreditScore) {
+            BackHandler { showCreditScore = false }
+            CreditScoreScreen(onBack = { showCreditScore = false })
+            return@IdsTheme
+        }
+        if (showCertificate) {
+            BackHandler { showCertificate = false }
+            CertificateScreen(onBack = { showCertificate = false })
+            return@IdsTheme
+        }
+        if (showIdentity) {
+            BackHandler { showIdentity = false }
+            IdentityScreen(onBack = { showIdentity = false })
+            return@IdsTheme
+        }
 
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
@@ -610,6 +628,8 @@ fun ItundaAppScreen(
                         onClaimInterest = { savingsFlowStep = SavingsFlowStep.ClaimInterest },
                         onOpenTransactionHistory = { showTransactionHistory = true },
                         onCashOutAtAgent = { showAgentCash = true },
+                        onOpenPay = { showPay = true },
+                        onOpenNotifications = { showSettings = true },
                     )
                     TossTab.Shop -> ShopTab()
                     TossTab.Hood -> HoodTab(
@@ -632,6 +652,9 @@ fun ItundaAppScreen(
                         onOpenOverview = { showOverview = true },
                         onOpenLoans = { showLoans = true },
                         onOpenSupport = { showSupport = true },
+                        onOpenCreditScore = { showCreditScore = true },
+                        onOpenCertificate = { showCertificate = true },
+                        onOpenIdentity = { showIdentity = true },
                     )
                 }
             }
@@ -694,11 +717,14 @@ private fun HomeTab(
     onClaimInterest: () -> Unit,
     onOpenTransactionHistory: () -> Unit,
     onCashOutAtAgent: () -> Unit,
+    onOpenPay: () -> Unit = {},
+    onOpenNotifications: () -> Unit = {},
 ) {
     val primaryWallet by viewModel.primaryWallet.collectAsState()
     val balanceText = primaryWallet?.let { "${it.currency} %,.0f".format(it.balance) } ?: "RWF 0"
     val savingsGoals by viewModel.savingsGoals.collectAsState()
     val interestJar by viewModel.interestJar.collectAsState()
+    val discoverItems by viewModel.discoverItems.collectAsState()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -710,7 +736,7 @@ private fun HomeTab(
         contentPadding = PaddingValues(start = Ids.layout.screenHorizontal, top = 14.dp, end = Ids.layout.screenHorizontal, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
-        item { HomeTopBar() }
+        item { HomeTopBar(onOpenPay = onOpenPay, onOpenNotifications = onOpenNotifications) }
         item { WalletHeroCard(balanceText, onSend, onCashOutAtAgent) }
         item {
             ShellSection(
@@ -777,11 +803,56 @@ private fun HomeTab(
                 )
             }
         }
+        // Real Discover feed (found 2026-07-22) -- MainViewModel already fetched this
+        // from GET /api/v1/discover on every launch, but it was never rendered
+        // anywhere in the app: a real, live data flow with no UI consumer. See
+        // DiscoverController.kt's own promotional-item catalog on the backend.
+        if (discoverItems.isNotEmpty()) {
+            item { DiscoverSection(discoverItems) }
+        }
     }
 }
 
 @Composable
-private fun HomeTopBar() {
+private fun DiscoverSection(items: List<rw.itunda.app.network.DiscoverItem>) {
+    Column {
+        Text("Discover", color = TossText, fontSize = 19.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 6.dp))
+        items.forEach { discoverItem ->
+            val accentColor = try {
+                Color(android.graphics.Color.parseColor(discoverItem.color))
+            } catch (_: IllegalArgumentException) {
+                AccentBlue
+            }
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = TossCard),
+                elevation = CardDefaults.cardElevation(defaultElevation = Ids.layout.cardElevation),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+            ) {
+                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(accentColor))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(discoverItem.title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = TossText)
+                            if (discoverItem.isNew) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("NEW", color = accentColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Text(discoverItem.subtitle, fontSize = 14.sp, color = TossSecondary)
+                    }
+                    discoverItem.badge?.let { badge ->
+                        Text(badge, color = accentColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeTopBar(onOpenPay: () -> Unit = {}, onOpenNotifications: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -802,8 +873,13 @@ private fun HomeTopBar() {
         ) {
             Text("Search", color = TossSecondary, fontSize = 15.sp)
         }
-        IdsIconButton(Icons.Outlined.QrCodeScanner, contentDescription = "Scan QR code", onClick = {})
-        IdsIconButton(Icons.Outlined.Notifications, contentDescription = "Notifications", onClick = {})
+        // Both icons were real no-op taps (found 2026-07-22 audit) despite their own
+        // real destinations already existing elsewhere in this file: QR scan opens
+        // the same real "Pay" screen (scan-or-pay-by-code) the My tab's Pay row
+        // already reaches; Notifications opens Settings, which already renders a
+        // real notifications list against GET /api/v1/notifications.
+        IdsIconButton(Icons.Outlined.QrCodeScanner, contentDescription = "Scan QR code", onClick = onOpenPay)
+        IdsIconButton(Icons.Outlined.Notifications, contentDescription = "Notifications", onClick = onOpenNotifications)
     }
 }
 
@@ -981,6 +1057,9 @@ private fun AllTab(
     onOpenOverview: () -> Unit = {},
     onOpenLoans: () -> Unit = {},
     onOpenSupport: () -> Unit = {},
+    onOpenCreditScore: () -> Unit = {},
+    onOpenCertificate: () -> Unit = {},
+    onOpenIdentity: () -> Unit = {},
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
@@ -1071,22 +1150,32 @@ private fun AllTab(
             }
         }
         item {
-            IconGridSection("Recent services", listOf(
-                "Open acct" to Icons.Outlined.AddCircleOutline,
-                "Photo transfer" to Icons.Outlined.CameraAlt,
-                "Verify" to Icons.Outlined.VerifiedUser,
-                "Send" to Icons.Outlined.Send,
-                "Group" to Icons.Outlined.Group,
-                "Property" to Icons.Outlined.HomeWork,
-                "Insurance" to Icons.Outlined.Shield,
-                "More" to Icons.Outlined.MoreHoriz
-            ))
+            IconGridSection(
+                "Recent services",
+                listOf(
+                    "Open acct" to Icons.Outlined.AddCircleOutline,
+                    "Photo transfer" to Icons.Outlined.CameraAlt,
+                    "Verify" to Icons.Outlined.VerifiedUser,
+                    "Send" to Icons.Outlined.Send,
+                    "Group" to Icons.Outlined.Group,
+                    "Property" to Icons.Outlined.HomeWork,
+                    "Insurance" to Icons.Outlined.Shield,
+                    "More" to Icons.Outlined.MoreHoriz
+                ),
+                // Real KYC submission screen (found 2026-07-22 fully built on the
+                // backend with zero UI anywhere) -- "Verify" was previously a
+                // decorative icon with no click behavior at all, same as every other
+                // item in this grid; only this one now has a real destination.
+                onItemClick = { label -> if (label == "Verify") onOpenIdentity() },
+            )
         }
         item {
             FlatSection("Financial services", listOf(
                 FlatRow("Open account", subtitle = "Itunda Wallet, other banks, RSE brokerage", icon = Icons.Outlined.AddCircleOutline, iconColor = AccentBlue),
                 FlatRow("My assets", subtitle = "Accounts, loans, RSE holdings, cards, points", icon = Icons.Outlined.PieChart, iconColor = AccentPurple, onClick = onOpenOverview),
                 FlatRow("Get a loan", subtitle = "Personal, salary-backed, SME working capital", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans),
+                FlatRow("Credit score", subtitle = "Free check, alternative data", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenCreditScore),
+                FlatRow("Digital certificate", subtitle = "Sign agreements in Itunda", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenCertificate),
                 FlatRow("Mobile plan", subtitle = "MTN, Airtel, broadband", icon = Icons.Outlined.Public, iconColor = AccentTeal)
             ))
         }
@@ -1509,14 +1598,21 @@ private fun AllTopBar(onOpenSettings: () -> Unit = {}) {
 // showed as plain letters M/G/B/P). Real icons per item now; this is the
 // single biggest reason the app read as a wireframe rather than Toss.
 @Composable
-private fun IconGridSection(title: String, items: List<Pair<String, androidx.compose.ui.graphics.vector.ImageVector>>) {
+private fun IconGridSection(
+    title: String,
+    items: List<Pair<String, androidx.compose.ui.graphics.vector.ImageVector>>,
+    onItemClick: (String) -> Unit = {},
+) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text(title, color = TossSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         val chunked = items.chunked(4)
         chunked.forEach { rowItems ->
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 rowItems.forEach { (label, icon) ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.weight(1f).clickable { onItemClick(label) },
+                    ) {
                         Box(modifier = Modifier.size(54.dp).clip(RoundedCornerShape(18.dp)).background(TossCardSoft), contentAlignment = Alignment.Center) {
                             Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = TossText)
                         }
