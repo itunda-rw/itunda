@@ -1258,6 +1258,14 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                             // a real merchant count, and real saved places -- honest
                             // functional content, not a fabricated curated feed.
                             Text("Around you", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TossText)
+                            val home = bookmarks.firstOrNull { it.folderName.equals("Home", ignoreCase = true) }
+                            val work = bookmarks.firstOrNull { it.folderName.equals("Work", ignoreCase = true) }
+                            if (home != null || work != null) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    if (home != null) Text("⌂ Home", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TossText, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(TossCardSoft).clickable { selectedPlace = PlaceSearchResultDto(home.displayName, home.latitude, home.longitude); route = null; routeAlternatives = null }.padding(horizontal = 12.dp, vertical = 8.dp))
+                                    if (work != null) Text("▣ Work", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TossText, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(TossCardSoft).clickable { selectedPlace = PlaceSearchResultDto(work.displayName, work.latitude, work.longitude); route = null; routeAlternatives = null }.padding(horizontal = 12.dp, vertical = 8.dp))
+                                }
+                            }
                             if (activeCategory != null && categoryResults != null) {
                                 val label = MAP_NEARBY_CATEGORIES.firstOrNull { it.id == activeCategory }?.label?.lowercase() ?: "places"
                                 if (categoryResults!!.isEmpty()) {
