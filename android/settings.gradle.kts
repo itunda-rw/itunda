@@ -141,6 +141,10 @@ include(":features:marketplace:api")
 include(":features:marketplace:impl")
 include(":features:marketplace:testing")
 
+include(":features:jobs:api")
+include(":features:jobs:impl")
+include(":features:jobs:testing")
+
 include(":features:bills:api")
 include(":features:bills:impl")
 include(":features:bills:testing")
