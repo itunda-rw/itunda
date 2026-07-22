@@ -765,6 +765,7 @@ private struct ChatThreadScreen: View {
                                     onToggleReaction: { emoji in Task { await toggleReaction(message.id, emoji) } },
                                     onRespondToOffer: { offerId, action, counterAmount in Task { await respondToOffer(offerId, action, counterAmount) } },
                                     onClaimGift: { giftId in Task { await claimGift(giftId) } },
+                                    onReportMessage: { messageId, reason in Task { await reportMessage(messageId, reason) } },
                                 )
                                 .id(message.id)
                             }
@@ -1043,6 +1044,15 @@ private struct ChatThreadScreen: View {
         }
     }
 
+    private func reportMessage(_ messageId: String, _ reason: String) async {
+        do {
+            _ = try await NetworkClient.shared.reportChatMessage(messageId: messageId, reason: reason)
+            error = "Thanks. Your report was sent for review."
+        } catch {
+            error = "Couldn't send this report. Check your connection and try again."
+        }
+    }
+
     private func send() async {
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !body.isEmpty else { return }
@@ -1215,6 +1225,9 @@ private struct MessageBubble: View {
     let onToggleReaction: (String) -> Void
     let onRespondToOffer: (String, String, Double?) -> Void
     let onClaimGift: (String) -> Void
+    let onReportMessage: (String, String) -> Void
+    @State private var reportOpen = false
+    @State private var reportReason = ""
 
     var body: some View {
         VStack(alignment: isMine ? .trailing : .leading, spacing: 2) {
@@ -1236,6 +1249,18 @@ private struct MessageBubble: View {
                 if !isMine { Spacer() }
             }
             MessageReactionsRow(reactions: message.reactions, currentUserId: currentUserId, isMine: isMine, onToggle: onToggleReaction)
+            if !isMine {
+                Button("Report message") { reportOpen = true }
+                    .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+            }
         }
+        .alert("Report message", isPresented: $reportOpen) {
+            TextField("Reason", text: $reportReason)
+            Button("Send") {
+                let trimmed = reportReason.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.count >= 3 { onReportMessage(message.id, trimmed); reportReason = "" }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { Text("Explain why this selected message should be reviewed.") }
     }
 }
