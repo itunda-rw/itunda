@@ -9,6 +9,7 @@ import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.Message
 import rw.itunda.core.domain.MessageReaction
 import rw.itunda.core.domain.UserBlock
+import rw.itunda.core.domain.ChatReport
 
 interface ConversationRepository : JpaRepository<Conversation, String> {
     fun findByParticipantAIdAndParticipantBId(participantAId: String, participantBId: String): Conversation?
@@ -89,4 +90,9 @@ interface MessageReactionRepository : JpaRepository<MessageReaction, String> {
 interface UserBlockRepository : JpaRepository<UserBlock, String> {
     fun existsByBlockerUserIdAndBlockedUserId(blockerUserId: String, blockedUserId: String): Boolean
     fun findByBlockerUserIdAndBlockedUserId(blockerUserId: String, blockedUserId: String): UserBlock?
+}
+
+interface ChatReportRepository : JpaRepository<ChatReport, String> {
+    fun findByReporterUserIdAndMessageIdAndStatus(reporterUserId: String, messageId: String, status: rw.itunda.core.domain.HoodReportStatus): ChatReport?
+    fun findByStatusOrderByCreatedAtAsc(status: rw.itunda.core.domain.HoodReportStatus, pageable: Pageable): Page<ChatReport>
 }
