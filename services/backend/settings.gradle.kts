@@ -19,6 +19,7 @@ include(
     ":certificate",
     ":rewards",
     ":creditscore",
+    ":trustscore",
     ":overview",
     ":p2p",
     ":offline",

@@ -2442,6 +2442,7 @@ function ListingWishlistView() {
 function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId: string) => void }) {
   const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD' | 'WISHLIST'>('BROWSE');
   const [listings, setListings] = useState<Listing[] | null>(null);
+  const [trustScores, setTrustScores] = useState<TrustScores>({});
   const [error, setError] = useState<string | null>(null);
   const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
@@ -2460,9 +2461,10 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
     loadFavoriteIds();
     if (view === 'NEIGHBORHOOD') {
       Promise.all([fetchProfile(), fetchListingsMyNeighborhood()])
-        .then(([profile, items]) => {
+        .then(([profile, result]) => {
           setNeighborhoodName(profile.neighborhood);
-          setListings(items);
+          setListings(result.listings);
+          setTrustScores(result.trustScores);
         })
         .catch((err) => {
           if (err instanceof ApiError && err.code === 'NEIGHBORHOOD_NOT_SET') {
@@ -2477,7 +2479,10 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
     if (view === 'WISHLIST') return;
     const fetcher = view === 'BROWSE' ? fetchListings() : fetchMyListings();
     fetcher
-      .then(setListings)
+      .then((result) => {
+        setListings(result.listings);
+        setTrustScores(result.trustScores);
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load listings.'));
   };
 

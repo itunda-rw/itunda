@@ -16,9 +16,11 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.domain.PropertyListingType
+import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
+import rw.itunda.core.web.trustScores
 import rw.itunda.realestate.InvalidPropertyCoordinatesException
 import rw.itunda.realestate.InvalidPropertyListingException
 import rw.itunda.realestate.InvalidPropertyOfferAmountException
@@ -58,6 +60,7 @@ data class RespondToPropertyOfferRequest(val action: PropertyOfferResponseAction
 class PropertyListingController(
     private val propertyListingService: PropertyListingService,
     private val propertyPriceOfferService: PropertyPriceOfferService,
+    private val userRepository: UserRepository,
 ) {
 
     @GetMapping("/property-types")
@@ -83,7 +86,10 @@ class PropertyListingController(
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
         val page = propertyListingService.browse(pageable, listingType, propertyType)
-        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content) + pageMeta(page))
+        // Real Karrot-Score-style trust badge (2026-07-21) -- see trustScores' own doc
+        // comment. One batch findAllById, not one query per listing's lister.
+        val scores = trustScores(userRepository, page.content.map { it.listerId })
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
     }
 
     @GetMapping("/listings/nearby")
@@ -94,7 +100,8 @@ class PropertyListingController(
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
         val page = propertyListingService.nearby(latitude, longitude, radiusKm, pageable)
-        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content) + pageMeta(page))
+        val scores = trustScores(userRepository, page.content.map { it.listerId })
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
     }
 
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see
@@ -105,7 +112,8 @@ class PropertyListingController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val page = propertyListingService.myNeighborhood(currentUser.userId, pageable)
-        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content) + pageMeta(page))
+        val scores = trustScores(userRepository, page.content.map { it.listerId })
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
     }
 
     @GetMapping("/my-listings")
@@ -114,12 +122,16 @@ class PropertyListingController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val page = propertyListingService.getMyListings(currentUser.userId, pageable)
-        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content) + pageMeta(page))
+        val scores = trustScores(userRepository, page.content.map { it.listerId })
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
     }
 
     @GetMapping("/listings/{propertyListingId}")
-    fun getListing(@PathVariable propertyListingId: String): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "listing" to propertyListingService.getListing(propertyListingId)))
+    fun getListing(@PathVariable propertyListingId: String): ResponseEntity<Map<String, Any?>> {
+        val listing = propertyListingService.getListing(propertyListingId)
+        val listerTrustScore = trustScores(userRepository, listOf(listing.listerId))[listing.listerId]
+        return ResponseEntity.ok(mapOf("success" to true, "listing" to listing, "listerTrustScore" to listerTrustScore))
+    }
 
     @PostMapping("/listings/{propertyListingId}/mark-taken")
     fun markTaken(

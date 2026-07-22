@@ -19,6 +19,7 @@ import rw.itunda.core.domain.User
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.repository.JobPostRepository
 import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.trust.TrustScoreService
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
 import java.math.BigDecimal
@@ -33,7 +34,8 @@ class JobPostServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = JobPostService(jobPostRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val service = JobPostService(jobPostRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository, trustScoreService)
 
         When("posting with valid fields") {
             val savedSlot = slot<JobPost>()
@@ -131,7 +133,8 @@ class JobPostServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = JobPostService(jobPostRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val service = JobPostService(jobPostRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository, trustScoreService)
         val post = JobPost(
             id = "job_post_1", posterId = "poster_1", category = "delivery", title = "T", description = "D",
             payType = JobPayType.FIXED, payAmount = BigDecimal("5000"),
@@ -145,6 +148,9 @@ class JobPostServiceTest : BehaviorSpec({
 
             Then("its status flips to FILLED") {
                 result.status shouldBe JobPostStatus.FILLED
+            }
+            Then("the real Karrot-Score-style trust badge is recomputed for the poster immediately") {
+                verify(exactly = 1) { trustScoreService.computeScore("poster_1") }
             }
         }
 
@@ -238,7 +244,8 @@ class JobPostServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = JobPostService(jobPostRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val service = JobPostService(jobPostRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository, trustScoreService)
 
         When("no category filter is given") {
             val page = PageImpl(listOf<JobPost>())
@@ -269,7 +276,8 @@ class JobPostServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = JobPostService(jobPostRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val service = JobPostService(jobPostRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository, trustScoreService)
 
         val near = JobPost(
             id = "job_near", posterId = "a", category = "cleaning", title = "T", description = "D",
@@ -308,7 +316,8 @@ class JobPostServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = JobPostService(jobPostRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val service = JobPostService(jobPostRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository, trustScoreService)
 
         When("the caller has a real neighborhood set") {
             val caller = User(id = "user_1", phoneNumber = "+250780000001", firstName = "A", lastName = "B", passwordHash = "x", neighborhood = "Kimironko")

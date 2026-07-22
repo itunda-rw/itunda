@@ -16,9 +16,11 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.domain.JobPayType
+import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
+import rw.itunda.core.web.trustScores
 import rw.itunda.jobs.InvalidJobCoordinatesException
 import rw.itunda.jobs.InvalidJobPostException
 import rw.itunda.jobs.JobPostNotFoundException
@@ -42,7 +44,10 @@ data class CreateJobPostRequest(
 // itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
 @RestController
 @RequestMapping("/api/v1/jobs")
-class JobPostController(private val jobPostService: JobPostService) {
+class JobPostController(
+    private val jobPostService: JobPostService,
+    private val userRepository: UserRepository,
+) {
 
     @GetMapping("/categories")
     fun categories(): ResponseEntity<Map<String, Any?>> =
@@ -66,7 +71,10 @@ class JobPostController(private val jobPostService: JobPostService) {
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
         val page = jobPostService.browse(pageable, category)
-        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content) + pageMeta(page))
+        // Real Karrot-Score-style trust badge (2026-07-21) -- see trustScores' own doc
+        // comment. One batch findAllById, not one query per post's poster.
+        val scores = trustScores(userRepository, page.content.map { it.posterId })
+        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content, "trustScores" to scores) + pageMeta(page))
     }
 
     @GetMapping("/posts/nearby")
@@ -77,7 +85,8 @@ class JobPostController(private val jobPostService: JobPostService) {
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
         val page = jobPostService.nearby(latitude, longitude, radiusKm, pageable)
-        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content) + pageMeta(page))
+        val scores = trustScores(userRepository, page.content.map { it.posterId })
+        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content, "trustScores" to scores) + pageMeta(page))
     }
 
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see JobPostService.
@@ -89,7 +98,8 @@ class JobPostController(private val jobPostService: JobPostService) {
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val page = jobPostService.myNeighborhood(currentUser.userId, category, pageable)
-        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content) + pageMeta(page))
+        val scores = trustScores(userRepository, page.content.map { it.posterId })
+        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content, "trustScores" to scores) + pageMeta(page))
     }
 
     @GetMapping("/my-posts")
@@ -98,12 +108,16 @@ class JobPostController(private val jobPostService: JobPostService) {
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val page = jobPostService.getMyPosts(currentUser.userId, pageable)
-        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content) + pageMeta(page))
+        val scores = trustScores(userRepository, page.content.map { it.posterId })
+        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content, "trustScores" to scores) + pageMeta(page))
     }
 
     @GetMapping("/posts/{jobPostId}")
-    fun getPost(@PathVariable jobPostId: String): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "post" to jobPostService.getPost(jobPostId)))
+    fun getPost(@PathVariable jobPostId: String): ResponseEntity<Map<String, Any?>> {
+        val post = jobPostService.getPost(jobPostId)
+        val posterTrustScore = trustScores(userRepository, listOf(post.posterId))[post.posterId]
+        return ResponseEntity.ok(mapOf("success" to true, "post" to post, "posterTrustScore" to posterTrustScore))
+    }
 
     @PostMapping("/posts/{jobPostId}/mark-filled")
     fun markFilled(

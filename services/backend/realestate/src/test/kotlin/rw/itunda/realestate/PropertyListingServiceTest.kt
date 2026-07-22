@@ -19,6 +19,7 @@ import rw.itunda.core.domain.User
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.repository.PropertyListingRepository
 import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.trust.TrustScoreService
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
 import java.math.BigDecimal
@@ -33,7 +34,8 @@ class PropertyListingServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository, trustScoreService)
 
         When("listing with valid fields") {
             val savedSlot = slot<PropertyListing>()
@@ -132,7 +134,8 @@ class PropertyListingServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository, trustScoreService)
         val listing = PropertyListing(
             id = "property_listing_1", listerId = "lister_1", listingType = PropertyListingType.RENT,
             propertyType = "apartment", title = "T", description = "D", price = BigDecimal("250000"),
@@ -146,6 +149,9 @@ class PropertyListingServiceTest : BehaviorSpec({
 
             Then("its status flips to TAKEN") {
                 result.status shouldBe PropertyListingStatus.TAKEN
+            }
+            Then("the real Karrot-Score-style trust badge is recomputed for the lister immediately") {
+                verify(exactly = 1) { trustScoreService.computeScore("lister_1") }
             }
         }
 
@@ -225,7 +231,8 @@ class PropertyListingServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository, trustScoreService)
 
         When("no filter is given") {
             val page = PageImpl(listOf<PropertyListing>())
@@ -277,7 +284,8 @@ class PropertyListingServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository, trustScoreService)
 
         val near = PropertyListing(
             id = "property_near", listerId = "a", listingType = PropertyListingType.RENT, propertyType = "house",
@@ -316,7 +324,8 @@ class PropertyListingServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository, trustScoreService)
 
         When("the caller has a real neighborhood set") {
             val caller = User(id = "user_1", phoneNumber = "+250780000001", firstName = "A", lastName = "B", passwordHash = "x", neighborhood = "Kimironko")

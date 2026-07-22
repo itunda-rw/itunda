@@ -17,6 +17,7 @@ import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.repository.ListingRepository
 import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.trust.TrustScoreService
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
 import java.math.BigDecimal
@@ -31,7 +32,8 @@ class MarketplaceServiceTest : BehaviorSpec({
         val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService)
 
         When("creating a listing with valid fields") {
             val savedSlot = slot<Listing>()
@@ -88,7 +90,8 @@ class MarketplaceServiceTest : BehaviorSpec({
         val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService)
         val listing = Listing(
             id = "listing_1", sellerId = "seller_1", title = "Bicycle", description = "desc",
             price = BigDecimal("15000"), category = "sports",
@@ -102,6 +105,9 @@ class MarketplaceServiceTest : BehaviorSpec({
 
             Then("its status flips to SOLD") {
                 result.status shouldBe ListingStatus.SOLD
+            }
+            Then("the real Karrot-Score-style trust badge is recomputed for the seller immediately") {
+                io.mockk.verify(exactly = 1) { trustScoreService.computeScore("seller_1") }
             }
         }
 
@@ -165,7 +171,8 @@ class MarketplaceServiceTest : BehaviorSpec({
         val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService)
 
         When("no category filter is given") {
             every { listingRepository.findByStatusOrderByCreatedAtDesc(ListingStatus.ACTIVE, any()) } returns
@@ -186,7 +193,8 @@ class MarketplaceServiceTest : BehaviorSpec({
         val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService)
 
         When("only one of latitude/longitude is given") {
             Then("it throws InvalidCoordinatesException") {
@@ -230,7 +238,8 @@ class MarketplaceServiceTest : BehaviorSpec({
         val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService)
 
         // Searcher at (-1.9441, 30.0619). Same longitude as both listings, only latitude
         // differs, so a real Haversine distance along a meridian is exact:
@@ -293,7 +302,8 @@ class MarketplaceServiceTest : BehaviorSpec({
         val osrmRoutingClient = mockk<OsrmRoutingClient>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService)
 
         // Both within Rwanda's bounding envelope, both within a real 5km straight-line
         // radius of the searcher -- Haversine says listingA is closer.
@@ -369,7 +379,8 @@ class MarketplaceServiceTest : BehaviorSpec({
         val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val userRepository = mockk<UserRepository>()
-        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService)
 
         When("the real coordinates reverse-geocode to a real neighborhood") {
             val savedSlot = slot<Listing>()
@@ -403,7 +414,8 @@ class MarketplaceServiceTest : BehaviorSpec({
         val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val userRepository = mockk<UserRepository>()
-        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val service = MarketplaceService(listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService)
 
         When("the caller has a real neighborhood set, no category filter") {
             val caller = User(id = "user_1", phoneNumber = "+250780000001", firstName = "A", lastName = "B", passwordHash = "x", neighborhood = "Kimironko")

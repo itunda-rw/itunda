@@ -30,6 +30,7 @@ dependencies {
     implementation(project(":certificate"))
     implementation(project(":rewards"))
     implementation(project(":creditscore"))
+    implementation(project(":trustscore"))
     implementation(project(":overview"))
     implementation(project(":p2p"))
     implementation(project(":offline"))

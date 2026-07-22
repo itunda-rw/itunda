@@ -74,6 +74,23 @@ class User(
     // free text, so it can't drift from where the user actually is.
     @Column(name = "neighborhood", length = 120)
     var neighborhood: String? = null,
+
+    // Real Karrot-Score-style numeric trust/reputation badge (2026-07-21) -- closes
+    // the "Hood cards show no seller/poster reputation at all" gap docs/
+    // DESIGN_REFERENCES.md's Hood research names directly. Deliberately a plain
+    // 0-1000 score starting at 30, NOT a literal manner-temperature/Celsius metaphor:
+    // Karrot's own real localization research (same doc) found the temperature
+    // framing confusing and low scores insulting for non-Korean users, and replaced
+    // it with exactly this neutral scale for its own global markets -- Rwanda gets
+    // that already-localized version directly. Kept simple and honest for v1: bumped
+    // by a fixed amount (see rw.itunda.core.trust.TrustScore) each time one of this
+    // user's own Hood listings/job posts/property listings completes a real
+    // transaction (mark-sold/mark-filled/mark-taken), capped at 1000 -- a function of
+    // real completed transactions, not a self-reported or free-text claim. No review
+    // system exists yet to also weight into this (see docs/TOSS_PARITY_MATRIX.md's
+    // Marketplace/Jobs/RealEstate rows), a named v1 scope, not a hidden omission.
+    @Column(name = "trust_score", nullable = false)
+    var trustScore: Int = 30,
 ) {
     // JPA requires a no-arg constructor; Kotlin generates one only when every
     // property has a default, which id/phoneNumber/etc. intentionally don't.

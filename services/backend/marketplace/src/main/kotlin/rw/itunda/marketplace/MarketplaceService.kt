@@ -14,6 +14,7 @@ import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.repository.ListingRepository
 import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.trust.TrustScoreService
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
 import java.math.BigDecimal
@@ -46,6 +47,7 @@ class MarketplaceService(
     private val osrmRoutingClient: OsrmRoutingClient,
     private val nominatimGeocodingClient: NominatimGeocodingClient,
     private val userRepository: UserRepository,
+    private val trustScoreService: TrustScoreService,
 ) {
     companion object {
         // Bounds a single OSRM /table request's URL length and the private cloud's
@@ -228,7 +230,12 @@ class MarketplaceService(
             throw ListingNotActiveException("Only an active listing can be marked sold")
         }
         listing.status = ListingStatus.SOLD
-        return listingRepository.save(listing)
+        val saved = listingRepository.save(listing)
+        // Real Karrot-Score-style trust badge (2026-07-21) -- see TrustScoreService's own
+        // doc comment. Recomputed right here, not lazily on next view, so the seller's
+        // badge reflects this completed sale immediately.
+        trustScoreService.computeScore(sellerId)
+        return saved
     }
 
     @Transactional
