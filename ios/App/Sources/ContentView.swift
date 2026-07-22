@@ -50,6 +50,7 @@ struct ContentView: View {
     // Real account settings screen (2026-07-12) -- see SettingsScreen.swift.
     @State private var showSettings = false
     @State private var showMapFromDeepLink = false
+    @State private var mapSearchFromDeepLink: String?
 
     // Real Savings section rows with real tap targets (2026-07-12) -- built here,
     // not inside BankViewModel, because triggering savingsFlowStep needs
@@ -172,13 +173,25 @@ struct ContentView: View {
         }
         .accentColor(.primary)
         .fullScreenCover(isPresented: $showMapFromDeepLink) {
-            MapScreenView()
+            MapScreenView(initialSearchQuery: mapSearchFromDeepLink)
         }
         .onOpenURL { url in
             guard url.scheme?.caseInsensitiveCompare("itunda") == .orderedSame,
                   url.host?.caseInsensitiveCompare("maps") == .orderedSame else { return }
+            mapSearchFromDeepLink = url.path.caseInsensitiveCompare("/search") == .orderedSame
+                ? url.queryValue(named: "query")?.trimmingCharacters(in: .whitespacesAndNewlines).prefix(160).description
+                : nil
             showMapFromDeepLink = true
         }
+    }
+}
+
+private extension URL {
+    func queryValue(named name: String) -> String? {
+        URLComponents(url: self, resolvingAgainstBaseURL: false)?
+            .queryItems?
+            .first(where: { $0.name == name })?
+            .value
     }
 }
 

@@ -177,6 +177,14 @@ private final class LocationFetcher: NSObject, ObservableObject, CLLocationManag
 /// module), a real blue dot via `CLLocationManager`, and real turn-by-turn-capable
 /// directions drawing the actual road-following route via itunda's self-hosted OSRM.
 struct MapScreenView: View {
+    /// Optional authenticated handoff from another Itunda surface. It only seeds the
+    /// existing self-hosted search field; all result fetching remains in `search()`.
+    let initialSearchQuery: String?
+
+    init(initialSearchQuery: String? = nil) {
+        self.initialSearchQuery = initialSearchQuery?.trimmingCharacters(in: .whitespacesAndNewlines).prefix(160).description
+    }
+
     @Environment(\.dismiss) private var dismiss
     @State private var merchants: [ShoppingMerchantDto] = []
     @State private var query = ""
@@ -658,6 +666,10 @@ struct MapScreenView: View {
             .onChange(of: locationFetcher.errorMessage) { newValue in
                 if let newValue { error = newValue }
             }
+        }
+        .task(id: initialSearchQuery) {
+            guard let initialSearchQuery, !initialSearchQuery.isEmpty else { return }
+            query = initialSearchQuery
         }
     }
 
