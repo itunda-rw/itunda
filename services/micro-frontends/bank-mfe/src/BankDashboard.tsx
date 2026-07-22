@@ -5135,14 +5135,111 @@ function ProductPriceBlock({ price, originalPrice, discountPercent }: { price: n
   return <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{price.toLocaleString()} RWF</p>;
 }
 
+// Real dedicated product-detail screen (2026-07-21), closing
+// docs/DESIGN_REFERENCES.md Section 5 recommendation #6 -- until now tapping a product
+// anywhere in Commerce only ever revealed the flat catalog grid's inline qty stepper;
+// there was no tap-through view showing the full-size image, the discount breakdown, a
+// description, and the written reviews together. Reuses every already-proven piece
+// rather than inventing new ones: ProductImageThumb (larger), ProductPriceBlock,
+// ProductRatingBadge (which already lazily expands into the real written-review list),
+// and the same wishlist toggle/qty-stepper/add-to-cart plumbing ProductCatalogView
+// already has -- this is a real second surface for the same real data, not new business
+// logic.
+function ProductDetailView({
+  merchant, product, cart, onSetQty, onBack, onViewCart,
+}: {
+  merchant: ShoppingMerchant;
+  product: CommerceProduct;
+  cart: CommerceCart;
+  onSetQty: (merchant: ShoppingMerchant, product: CommerceProduct, quantity: number) => void;
+  onBack: () => void;
+  onViewCart: () => void;
+}) {
+  const [favorited, setFavorited] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    fetchMyFavoriteProducts()
+      .then((favorites) => setFavorited(favorites.some((f) => f.productId === product.id)))
+      .catch(() => {
+        // Real, non-critical -- a wishlist-status fetch failure shouldn't block viewing.
+      });
+  }, [product.id]);
+
+  const toggleFavorite = async () => {
+    setBusy(true);
+    try {
+      if (favorited) {
+        await removeProductFavorite(product.id);
+        setFavorited(false);
+      } else {
+        await addProductFavorite(product.id);
+        setFavorited(true);
+      }
+    } catch {
+      // Real, non-critical -- a wishlist toggle failure shouldn't block viewing.
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const qty = cart[merchant.merchantId]?.lines[product.id]?.quantity ?? 0;
+  const totalCartItems = cartTotalItems(cart);
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+        <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to catalog">
+          <ArrowLeft size={20} />
+        </button>
+        <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{merchant.businessName}</h3>
+      </div>
+      <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: totalCartItems > 0 ? '80px' : 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <ProductImageThumb imageUrl={product.imageUrl} size={220} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+          <div>
+            <p style={{ fontSize: '18px', fontWeight: 700 }}>{product.name}</p>
+            <ProductPriceBlock price={product.price} originalPrice={product.originalPrice} discountPercent={product.discountPercent} />
+          </div>
+          <WishlistButton favorited={favorited} busy={busy} onToggle={toggleFavorite} />
+        </div>
+        <ProductRatingBadge productId={product.id} />
+        {product.description && (
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{product.description}</p>
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', paddingTop: '4px', borderTop: '1px solid var(--toss-grey-100)' }}>
+          <button onClick={() => onSetQty(merchant, product, Math.max(0, qty - 1))} className="toss-btn toss-btn-secondary" style={{ padding: '8px 16px' }}>−</button>
+          <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 700, fontSize: '16px' }}>{qty}</span>
+          <button onClick={() => onSetQty(merchant, product, qty + 1)} className="toss-btn toss-btn-secondary" style={{ padding: '8px 16px' }}>+</button>
+        </div>
+        <button className="toss-btn toss-btn-primary" onClick={() => onSetQty(merchant, product, Math.max(1, qty))}>
+          {qty > 0 ? 'Update cart' : 'Add to cart'}
+        </button>
+      </div>
+      {totalCartItems > 0 && (
+        <button
+          className="toss-btn toss-btn-primary"
+          style={{ position: 'fixed', bottom: '24px', left: '20px', right: '20px', maxWidth: '440px', margin: '0 auto' }}
+          onClick={onViewCart}
+        >
+          View cart ({totalCartItems} item{totalCartItems === 1 ? '' : 's'})
+        </button>
+      )}
+    </div>
+  );
+}
+
 function ProductCatalogView({
-  merchant, cart, onSetQty, onBack, onViewCart,
+  merchant, cart, onSetQty, onBack, onViewCart, onOpenProduct,
 }: {
   merchant: ShoppingMerchant;
   cart: CommerceCart;
   onSetQty: (merchant: ShoppingMerchant, product: CommerceProduct, quantity: number) => void;
   onBack: () => void;
   onViewCart: () => void;
+  onOpenProduct: (product: CommerceProduct) => void;
 }) {
   const [catalog, setCatalog] = useState<{ businessName: string; products: CommerceProduct[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -5215,17 +5312,27 @@ function ProductCatalogView({
         // a detail-page visit -- recommendation #7).
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: totalCartItems > 0 ? '80px' : 0 }}>
           {catalog.products.map((item) => (
-            <div key={item.id} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <ProductImageThumb imageUrl={item.imageUrl} />
+            <div key={item.id} className="toss-card" style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 1 }}>
                 <WishlistButton
                   favorited={favoritedIds.has(item.id)}
                   busy={togglingId === item.id}
                   onToggle={() => toggleFavorite(item.id)}
                 />
               </div>
-              <p style={{ fontSize: '14px', fontWeight: 700, lineHeight: 1.3 }}>{item.name}</p>
-              <ProductPriceBlock price={item.price} originalPrice={item.originalPrice} discountPercent={item.discountPercent} />
+              {/* Real tap-through to the new product-detail screen (2026-07-21) -- see
+                  ProductDetailView's own doc comment. Wraps only the image/name/price so
+                  the wishlist heart above stays independently tappable. */}
+              <button
+                type="button"
+                onClick={() => onOpenProduct(item)}
+                aria-label={`View ${item.name}`}
+                style={{ display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'left', width: '100%', padding: 0 }}
+              >
+                <ProductImageThumb imageUrl={item.imageUrl} />
+                <p style={{ fontSize: '14px', fontWeight: 700, lineHeight: 1.3 }}>{item.name}</p>
+                <ProductPriceBlock price={item.price} originalPrice={item.originalPrice} discountPercent={item.discountPercent} />
+              </button>
               <ProductRatingBadge productId={item.id} />
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginTop: '4px' }}>
                 <button onClick={() => onSetQty(merchant, item, qtyFor(item.id) - 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>−</button>
@@ -5585,6 +5692,7 @@ function ShopView() {
   const [debouncedMerchantSearch, setDebouncedMerchantSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<ShoppingMerchant | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<CommerceProduct | null>(null);
   const [cart, setCart] = useState<CommerceCart>({});
   const [showCart, setShowCart] = useState(false);
   const [results, setResults] = useState<CommerceCheckoutResult[] | null>(null);
@@ -5689,6 +5797,19 @@ function ShopView() {
     return <MultiCartView cart={cart} onBack={() => setShowCart(false)} onSetQty={setQtyByIds} onCheckedOut={handleCheckedOut} />;
   }
 
+  if (selected && selectedProduct) {
+    return (
+      <ProductDetailView
+        merchant={selected}
+        product={selectedProduct}
+        cart={cart}
+        onSetQty={setQtyByMerchant}
+        onBack={() => setSelectedProduct(null)}
+        onViewCart={() => { setSelectedProduct(null); setShowCart(true); }}
+      />
+    );
+  }
+
   if (selected) {
     return (
       <ProductCatalogView
@@ -5697,6 +5818,7 @@ function ShopView() {
         onSetQty={setQtyByMerchant}
         onBack={() => setSelected(null)}
         onViewCart={() => setShowCart(true)}
+        onOpenProduct={setSelectedProduct}
       />
     );
   }

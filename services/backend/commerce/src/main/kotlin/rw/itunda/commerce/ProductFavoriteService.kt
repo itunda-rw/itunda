@@ -27,6 +27,9 @@ data class FavoriteProduct(
     val imageUrl: String? = null,
     val originalPrice: BigDecimal? = null,
     val discountPercent: Int? = null,
+    // description added 2026-07-21, backing the new product-detail screen -- see
+    // MerchantProduct.kt's own doc comment.
+    val description: String? = null,
 )
 
 /**
@@ -80,6 +83,7 @@ class ProductFavoriteService(
                 imageUrl = product?.imageUrl,
                 originalPrice = product?.originalPrice,
                 discountPercent = product?.discountPercent,
+                description = product?.description,
             )
         }
     }

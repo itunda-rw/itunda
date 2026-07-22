@@ -9,6 +9,9 @@ import { randomUUID } from './uuid';
 // docs/DESIGN_REFERENCES.md Section 5 recommendation #4 -- see backend
 // MerchantProduct.kt's own doc comment for the full account (merchant-supplied external
 // URL, no upload/storage layer; discountPercent is server-computed, never client-set).
+// description added 2026-07-21, backing the new dedicated product-detail screen (closes
+// docs/DESIGN_REFERENCES.md Section 5 recommendation #6) -- merchant-entered free text,
+// optional.
 export interface CommerceProduct {
   id: string;
   merchantId: string;
@@ -19,6 +22,7 @@ export interface CommerceProduct {
   imageUrl?: string | null;
   originalPrice?: number | null;
   discountPercent?: number | null;
+  description?: string | null;
 }
 
 export const fetchMerchantProducts = (merchantId: string) =>
@@ -120,6 +124,7 @@ export interface FavoriteProduct {
   imageUrl?: string | null;
   originalPrice?: number | null;
   discountPercent?: number | null;
+  description?: string | null;
 }
 
 export const addProductFavorite = (productId: string) =>

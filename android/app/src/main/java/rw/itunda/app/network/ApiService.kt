@@ -561,6 +561,9 @@ data class MerchantProductDto(
     val imageUrl: String? = null,
     val originalPrice: Double? = null,
     val discountPercent: Int? = null,
+    // description added 2026-07-21, backing the new dedicated product-detail screen
+    // (closes docs/DESIGN_REFERENCES.md Section 5 recommendation #6).
+    val description: String? = null,
 )
 data class MerchantSummaryDto(val id: String, val businessName: String)
 data class MerchantProductsResponse(val success: Boolean, val merchant: MerchantSummaryDto, val products: List<MerchantProductDto>)

@@ -864,6 +864,9 @@ struct MerchantProductDto: Decodable, Identifiable {
     let imageUrl: String?
     let originalPrice: Double?
     let discountPercent: Int?
+    // description added 2026-07-21, backing the new dedicated product-detail screen
+    // (closes docs/DESIGN_REFERENCES.md Section 5 recommendation #6).
+    let description: String?
 }
 struct MerchantSummaryDto: Decodable { let id: String; let businessName: String }
 struct MerchantProductsResponse: Decodable { let success: Bool; let merchant: MerchantSummaryDto; let products: [MerchantProductDto] }

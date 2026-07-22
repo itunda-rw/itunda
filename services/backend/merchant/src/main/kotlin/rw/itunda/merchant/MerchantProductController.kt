@@ -19,12 +19,14 @@ import java.math.BigDecimal
 
 // imageUrl/originalPrice added 2026-07-21 (see MerchantProduct.kt's own doc comment) --
 // both optional; discountPercent is deliberately NOT part of this request, it's always
-// server-computed from price/originalPrice, never trusted from the client.
+// server-computed from price/originalPrice, never trusted from the client. description
+// added 2026-07-21, also optional, backing the new product-detail screen.
 data class AddProductRequest(
     val name: String,
     val price: BigDecimal,
     val imageUrl: String? = null,
     val originalPrice: BigDecimal? = null,
+    val description: String? = null,
 )
 data class AddMenuOptionGroupRequest(val name: String, val choices: List<MenuOptionChoiceRequest>)
 
@@ -44,7 +46,9 @@ class MerchantProductController(
         @RequestBody request: AddProductRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val product = merchantProductService.addProduct(currentUser.userId, request.name, request.price, request.imageUrl, request.originalPrice)
+        val product = merchantProductService.addProduct(
+            currentUser.userId, request.name, request.price, request.imageUrl, request.originalPrice, request.description,
+        )
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "product" to product))
     }
 
@@ -58,7 +62,9 @@ class MerchantProductController(
         @RequestBody request: AddProductRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val product = merchantProductService.updateProduct(currentUser.userId, productId, request.name, request.price, request.imageUrl, request.originalPrice)
+        val product = merchantProductService.updateProduct(
+            currentUser.userId, productId, request.name, request.price, request.imageUrl, request.originalPrice, request.description,
+        )
         return ResponseEntity.ok(mapOf("success" to true, "product" to product))
     }
 
