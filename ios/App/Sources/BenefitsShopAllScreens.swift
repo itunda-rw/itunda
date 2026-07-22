@@ -30,6 +30,7 @@ import SwiftUI
 import UIKit
 import CoreDesignSystem
 import CoreNetwork
+import FeatureCredit
 
 // MARK: - Benefits tab
 
