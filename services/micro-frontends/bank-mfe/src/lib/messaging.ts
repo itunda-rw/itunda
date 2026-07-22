@@ -81,6 +81,14 @@ export const blockConversationParticipant = (conversationId: string) =>
 export const unblockConversationParticipant = (conversationId: string) =>
   apiFetch<{ success: boolean }>(`/api/v1/messages/conversations/${conversationId}/block`, { method: 'DELETE' });
 
+export const fetchConversationQuiet = (conversationId: string) =>
+  apiFetch<{ success: boolean; quiet: boolean }>(`/api/v1/messages/conversations/${conversationId}/quiet`).then((r) => r.quiet);
+
+export const setConversationQuiet = (conversationId: string, quiet: boolean) =>
+  apiFetch<{ success: boolean; quiet: boolean }>(`/api/v1/messages/conversations/${conversationId}/quiet`, {
+    method: 'POST', body: JSON.stringify({ quiet }),
+  }).then((r) => r.quiet);
+
 export const reportChatMessage = (messageId: string, reason: string) =>
   apiFetch<{ success: boolean }>('/api/v1/chat/reports', {
     method: 'POST', body: JSON.stringify({ messageId, reason }),

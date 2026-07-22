@@ -20,7 +20,7 @@ import {
 } from './lib/stocks';
 import {
   connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages,
-  blockConversationParticipant, fetchPresence, fetchTalkContacts, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction,
+  blockConversationParticipant, fetchConversationQuiet, fetchPresence, fetchTalkContacts, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationQuiet, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction,
   type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup,
 } from './lib/messaging';
@@ -1316,6 +1316,8 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   const [giftNote, setGiftNote] = useState('');
   const [sendingGift, setSendingGift] = useState(false);
   const [blocking, setBlocking] = useState(false);
+  const [quiet, setQuiet] = useState(false);
+  const [updatingQuiet, setUpdatingQuiet] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Message[] | null>(null);
   const [searching, setSearching] = useState(false);
@@ -1333,6 +1335,10 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     fetchPresence([conversation.otherUserId]).then((p) => setOtherOnline(p[conversation.otherUserId] ?? null)).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation.otherUserId]);
+
+  useEffect(() => {
+    fetchConversationQuiet(conversation.conversationId).then(setQuiet).catch(() => {});
+  }, [conversation.conversationId]);
 
   // Real-fetches both Marketplace and Real Estate offer history for this conversation --
   // a given real conversation only ever carries one type in practice (a listing/property
@@ -1372,6 +1378,15 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not block this person.');
     } finally { setBlocking(false); }
+  };
+
+  const handleQuiet = async () => {
+    setUpdatingQuiet(true);
+    try {
+      setQuiet(await setConversationQuiet(conversation.conversationId, !quiet));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update this quiet room.');
+    } finally { setUpdatingQuiet(false); }
   };
 
   const handleReport = async (messageId: string) => {
@@ -1556,6 +1571,9 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         </div>
         <button type="button" className="toss-btn toss-btn-secondary" onClick={handleBlock} disabled={blocking} style={{ marginLeft: 'auto', padding: '8px 10px', fontSize: '12px' }}>
           {blocking ? 'Blocking…' : 'Block'}
+        </button>
+        <button type="button" className="toss-btn toss-btn-secondary" onClick={handleQuiet} disabled={updatingQuiet} style={{ padding: '8px 10px', fontSize: '12px' }}>
+          {updatingQuiet ? '…' : quiet ? 'Resume alerts' : 'Quiet room'}
         </button>
       </div>
 

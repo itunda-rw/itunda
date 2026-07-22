@@ -585,7 +585,9 @@ struct StartConversationRequest: Encodable {
 struct SendMessageRequest: Encodable { let body: String }
 struct TalkContactDto: Decodable, Identifiable { let userId: String; let name: String; var id: String { userId } }
 struct TalkContactsResponse: Decodable { let success: Bool; let contacts: [TalkContactDto] }
+struct ConversationQuietResponse: Decodable { let success: Bool; let quiet: Bool }
 struct CreateChatReportRequest: Encodable { let messageId: String; let reason: String }
+struct SetConversationQuietRequest: Encodable { let quiet: Bool }
 struct EmptyRequest: Encodable {}
 struct ToggleReactionRequest: Encodable { let emoji: String }
 struct ReactionsResponse: Decodable { let success: Bool; let reactions: [ReactionGroupDto] }
@@ -1178,6 +1180,14 @@ extension NetworkClient {
 
     func unblockConversationParticipant(conversationId: String) async throws -> SuccessResponse {
         try await authenticatedDelete("api/v1/messages/conversations/\(conversationId)/block")
+    }
+
+    func getConversationQuiet(conversationId: String) async throws -> ConversationQuietResponse {
+        try await get("api/v1/messages/conversations/\(conversationId)/quiet")
+    }
+
+    func setConversationQuiet(conversationId: String, quiet: Bool) async throws -> ConversationQuietResponse {
+        try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/quiet", body: SetConversationQuietRequest(quiet: quiet))
     }
 
     func reportChatMessage(messageId: String, reason: String) async throws -> SuccessResponse {
