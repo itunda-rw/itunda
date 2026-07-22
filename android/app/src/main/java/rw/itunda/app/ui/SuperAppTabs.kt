@@ -900,6 +900,9 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
     var blockConfirmationOpen by remember { mutableStateOf(false) }
     var blocking by remember { mutableStateOf(false) }
     var isBlocked by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<MessageDto>?>(null) }
+    var searching by remember { mutableStateOf(false) }
     // Real device binding step-up (2026-07-21) -- Gift send/claim was a real gap:
     // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but
     // showed only a generic error, same fix already applied to Transfer/Savings/
@@ -1032,6 +1035,20 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
         TextButton(onClick = { blockConfirmationOpen = true }, enabled = !blocking && !isBlocked) {
             Text(if (isBlocked) "Blocked" else if (blocking) "Blocking…" else "Block", color = Ids.colors.danger)
         }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            OutlinedTextField(value = searchQuery, onValueChange = { searchQuery = it; if (it.isBlank()) searchResults = null }, placeholder = { Text("Search this conversation") }, singleLine = true, modifier = Modifier.weight(1f))
+            TextButton(onClick = {
+                val query = searchQuery.trim(); if (query.length < 2) { error = "Enter at least 2 characters to search."; return@TextButton }
+                searching = true
+                coroutineScope.launch {
+                    try { searchResults = NetworkClient.apiService.searchMessages(conversation.conversationId, query).messages }
+                    catch (e: HttpException) { error = superAppErrorMessage(e) }
+                    catch (_: IOException) { error = "Couldn't search this conversation. Check your connection and try again." }
+                    finally { searching = false }
+                }
+            }, enabled = !searching) { Text(if (searching) "…" else "Search") }
+        }
+        searchResults?.let { Text("${it.size} matching message${if (it.size == 1) "" else "s"}", color = TossSecondary, fontSize = 12.sp) }
         otherOnline?.let { online ->
             Text(
                 if (online) "Online" else "Offline",
@@ -1042,7 +1059,7 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
         }
         Spacer(modifier = Modifier.height(8.dp))
         LazyColumn(state = listState, modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            val msgs = messages
+            val msgs = searchResults ?: messages
             if (msgs == null) {
                 item { SkeletonBlock(height = 72.dp) }
             } else if (msgs.isEmpty()) {
