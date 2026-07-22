@@ -1310,6 +1310,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   const [giftsByMessageId, setGiftsByMessageId] = useState<Record<string, Gift>>({});
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [sending, setSending] = useState(false);
   const [giftComposerOpen, setGiftComposerOpen] = useState(false);
   const [giftAmount, setGiftAmount] = useState('');
@@ -1535,9 +1536,10 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     setSending(true);
     setError(null);
     try {
-      const sent = await sendMessage(conversation.conversationId, body);
+      const sent = await sendMessage(conversation.conversationId, body, replyingTo?.id);
       setMessages((prev) => [...(prev ?? []), sent]);
       setDraft('');
+      setReplyingTo(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not send this message.');
     } finally {
@@ -1624,6 +1626,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
               <span style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>
                 {isMine && !m.readAt ? '1 · ' : ''}{chatMessageTime(m.sentAt)}
               </span>
+              <button type="button" onClick={() => setReplyingTo(m)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Reply</button>
               {!isMine && (
                 <button type="button" onClick={() => handleReport(m.id)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>
                   Report message
@@ -1696,6 +1699,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         </form>
       )}
 
+      {replyingTo && <div style={{ fontSize: '12px', color: 'var(--toss-grey-600)', padding: '8px', borderLeft: '3px solid var(--toss-blue)', marginBottom: '6px' }}>Replying to: {replyingTo.body.slice(0, 80)} <button type="button" onClick={() => setReplyingTo(null)}>×</button></div>}
       <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px' }}>
         <button
           type="button"
