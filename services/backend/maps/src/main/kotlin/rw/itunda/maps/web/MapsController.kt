@@ -37,6 +37,15 @@ class MapsController(private val mapsService: MapsService) {
     fun search(@RequestParam q: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "results" to mapsService.searchPlaces(currentUser.userId, q)))
 
+    @GetMapping("/reverse")
+    fun reverse(
+        @RequestParam lat: Double,
+        @RequestParam lng: Double,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> = ResponseEntity.ok(
+        mapOf("success" to true, "placeName" to mapsService.reverseGeocode(currentUser.userId, lat, lng)),
+    )
+
     // mode added 2026-07-22 (default DRIVING, matching the pre-existing behavior for
     // every caller that doesn't pass it) -- see MapsService.getDirections' own doc
     // comment. An unrecognized value real-400s via the enum-conversion failure handler

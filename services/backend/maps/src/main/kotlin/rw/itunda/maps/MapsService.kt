@@ -51,6 +51,24 @@ class MapsService(
         return nominatimGeocodingClient.search(query, limit = 8)
     }
 
+    /**
+     * Resolves a point the user selected on Itunda's map into a real Rwanda
+     * neighbourhood name. This is intentionally a separate, coordinate-only endpoint:
+     * clients can use it for a long-press, dropped pin, delivery handoff, or a future
+     * map URL without inventing an address locally. A missing Nominatim match is an
+     * honest null, never a synthetic place name.
+     */
+    fun reverseGeocode(userId: String, latitude: Double, longitude: Double): String? {
+        if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
+            throw InvalidMapsCoordinateException("Latitude must be between -90 and 90, longitude between -180 and 180")
+        }
+        if (!GeoUtils.isWithinRwanda(latitude, longitude)) {
+            throw RouteNotFoundException("Map places are only available within Rwanda")
+        }
+        rateLimiter.checkLimit("maps:reverse:$userId", limit = 60, window = Duration.ofMinutes(1))
+        return nominatimGeocodingClient.reverseGeocode(latitude, longitude)
+    }
+
     // mode added 2026-07-22 -- see OsrmRoutingClient.route's own doc comment for the
     // full account of the real, separately-deployed foot-profile OSRM instance this
     // now lets a caller actually reach.

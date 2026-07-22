@@ -403,6 +403,38 @@ class MapsServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("a user selecting a point on the Rwanda map") {
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
+        val osrmRoutingClient = mockk<OsrmRoutingClient>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val mapBookmarkRepository = mockk<MapBookmarkRepository>(relaxed = true)
+        val service = MapsService(nominatimGeocodingClient, osrmRoutingClient, rateLimiter, mapBookmarkRepository)
+        val latitude = -1.9441; val longitude = 30.0619
+
+        When("self-hosted Nominatim resolves the selected point") {
+            every { nominatimGeocodingClient.reverseGeocode(latitude, longitude) } returns "Nyarugenge"
+
+            val result = service.reverseGeocode("user_1", latitude, longitude)
+
+            Then("it returns the real neighbourhood and applies a bounded rate limit") {
+                result shouldBe "Nyarugenge"
+                verify(exactly = 1) { rateLimiter.checkLimit("maps:reverse:user_1", limit = 60, window = Duration.ofMinutes(1)) }
+            }
+        }
+
+        When("the point lies outside Rwanda") {
+            Then("it rejects it before spending reverse-geocoder capacity") {
+                try {
+                    service.reverseGeocode("user_1", 0.0, 0.0)
+                    error("expected RouteNotFoundException")
+                } catch (e: RouteNotFoundException) {
+                    // expected
+                }
+                verify(exactly = 0) { nominatimGeocodingClient.reverseGeocode(any(), any()) }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }
