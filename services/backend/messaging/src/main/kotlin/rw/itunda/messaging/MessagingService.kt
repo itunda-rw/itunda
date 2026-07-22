@@ -261,7 +261,7 @@ class MessagingService(
         val conversation = requireParticipant(userId, conversationId)
         if (messageId != null) {
             val message = messageRepository.findById(messageId).orElseThrow { MessageNotFoundException("Message not found") }
-            if (message.conversationId != conversationId) throw MessageNotFoundException("Message not found")
+            if (message.conversationId != conversationId || message.deletedAt != null) throw MessageNotFoundException("Message not found")
         }
         conversation.pinnedMessageId = messageId
         conversationRepository.save(conversation)

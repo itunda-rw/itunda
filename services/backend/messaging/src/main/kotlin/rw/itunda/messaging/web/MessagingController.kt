@@ -166,7 +166,7 @@ class MessagingController(private val messagingService: MessagingService) {
         val message = messagingService.getPinnedMessage(currentUser.userId, conversationId)
         val payload = message?.let {
             mapOf("id" to it.id, "conversationId" to it.conversationId, "senderId" to it.senderId,
-                "body" to it.body, "sentAt" to it.sentAt, "readAt" to it.readAt,
+                "body" to if (it.deletedAt == null) it.body else "This message was deleted", "sentAt" to it.sentAt, "readAt" to it.readAt,
                 "replyToMessageId" to it.replyToMessageId, "reactions" to emptyList<Any>())
         }
         return ResponseEntity.ok(mapOf("success" to true, "message" to payload))
