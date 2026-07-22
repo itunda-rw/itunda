@@ -354,7 +354,7 @@ data class ReactionsResponse(val success: Boolean, val reactions: List<ReactionG
 // memberPhoneNumbers is the real human-friendly entry point (same reasoning as
 // StartConversationRequest.phoneNumber).
 data class CreateGroupRequest(val name: String, val memberUserIds: List<String> = emptyList(), val memberPhoneNumbers: List<String> = emptyList())
-data class SendGroupMessageRequest(val body: String)
+data class SendGroupMessageRequest(val body: String, val replyToMessageId: String? = null)
 data class AddGroupMemberRequest(val userId: String)
 
 data class GroupSummaryDto(
@@ -373,6 +373,7 @@ data class GroupMessageDto(
     val body: String,
     val sentAt: String,
     val deletedAt: String? = null,
+    val replyToMessageId: String? = null,
     val reactions: List<ReactionGroupDto> = emptyList(),
 )
 data class GroupResponse(val success: Boolean, val group: GroupSummaryDto)

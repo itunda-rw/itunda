@@ -615,7 +615,7 @@ struct PinnedMessageResponse: Decodable { let success: Bool; let message: Messag
 // memberPhoneNumbers is the real human-friendly entry point (same reasoning as
 // StartConversationRequest.phoneNumber).
 struct CreateGroupRequest: Encodable { let name: String; let memberPhoneNumbers: [String] }
-struct SendGroupMessageRequest: Encodable { let body: String }
+struct SendGroupMessageRequest: Encodable { let body: String; let replyToMessageId: String? = nil }
 
 struct GroupSummaryDto: Decodable, Identifiable {
     let groupId: String
@@ -633,6 +633,7 @@ struct GroupMessageDto: Decodable, Identifiable {
     let body: String
     let sentAt: String
     let deletedAt: String?
+    let replyToMessageId: String?
     let reactions: [ReactionGroupDto]
 
     // Explicit memberwise init -- see MessageDto's own identical note on why this is
@@ -644,6 +645,7 @@ struct GroupMessageDto: Decodable, Identifiable {
         self.body = body
         self.sentAt = sentAt
         self.deletedAt = nil
+        self.replyToMessageId = nil
         self.reactions = reactions
     }
 
@@ -656,10 +658,11 @@ struct GroupMessageDto: Decodable, Identifiable {
         body = try container.decode(String.self, forKey: .body)
         sentAt = try container.decode(String.self, forKey: .sentAt)
         deletedAt = try container.decodeIfPresent(String.self, forKey: .deletedAt)
+        replyToMessageId = try container.decodeIfPresent(String.self, forKey: .replyToMessageId)
         reactions = try container.decodeIfPresent([ReactionGroupDto].self, forKey: .reactions) ?? []
     }
 
-    private enum CodingKeys: String, CodingKey { case id, groupConversationId, senderId, body, sentAt, deletedAt, reactions }
+    private enum CodingKeys: String, CodingKey { case id, groupConversationId, senderId, body, sentAt, deletedAt, replyToMessageId, reactions }
 }
 struct GroupResponse: Decodable { let success: Bool; let group: GroupSummaryDto }
 struct GroupsResponse: Decodable { let success: Bool; let groups: [GroupSummaryDto] }

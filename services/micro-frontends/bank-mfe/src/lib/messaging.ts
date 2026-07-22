@@ -32,6 +32,7 @@ export interface Message {
   senderId: string;
   body: string;
   sentAt: string;
+  replyToMessageId?: string | null;
   readAt: string | null;
   deletedAt?: string | null;
   replyToMessageId: string | null;
@@ -159,10 +160,10 @@ export const fetchGroupMessages = (groupId: string) =>
     (r) => [...r.messages].reverse(),
   );
 
-export const sendGroupMessage = (groupId: string, body: string) =>
+export const sendGroupMessage = (groupId: string, body: string, replyToMessageId?: string) =>
   apiFetch<{ success: boolean; message: GroupMessage }>(`/api/v1/messages/groups/${groupId}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ body }),
+    body: JSON.stringify({ body, replyToMessageId }),
   }).then((r) => r.message);
 
 export const deleteGroupMessage = (groupId: string, messageId: string) =>
