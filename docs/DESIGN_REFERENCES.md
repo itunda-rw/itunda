@@ -206,6 +206,33 @@ they close in itunda's current implementation.
 
 ### Recommendations (ranked)
 
+1. **[implemented]** Talk now has a privacy-preserving saved-contacts directory across web, Android, and iOS. It resolves only the caller's own saved contacts, never a public user search.
+
+2. **[implemented]** Direct messages now show a Kakao-style pending-read `1` and message timestamps across all clients. Group receipts still need a true per-member model.
+
+3. **[sourced]** Add a long-press message menu: reply/thread, forward, pin, delete. itunda's only
+   per-message interaction today is tap-to-toggle a reaction (`MessageReactionsRow`). Kakao's
+   confirmed 2025 toolkit is Copy/Reply (→ thread)/Forward (≤10 destinations)/Pin/Delete/@mention
+   — none of this exists in `ChatThreadView`/`GroupThreadView`.
+
+4. **[partially implemented]** Talk has private, durable quiet-room controls and suppresses notifications for the participant who enables one. Recoverable archive/list placement and conversation-list swipe actions remain.
+
+5. **[sourced]** Add a per-thread shared-media gallery (Chat Room Drawer). itunda has zero
+   aggregation of media/files/links shared in a conversation. Directly relevant to itunda's
+   Hood-to-Talk handoff flows (listing photos, offer/gift bubbles).
+
+6. **[sourced]** Add a real attach ("+") menu to the composer. Both thread composers are just a
+   text field + send button (plus a gift icon on `ChatThreadView`, `~1016-1027`) — no photo, file,
+   or sticker send at all. Kakao's emoticon picker alone is core, monetized product surface (~1/3
+   of 2020 revenue), not a nice-to-have.
+
+7. **[sourced]** Add @mention support in group chats. No mention parsing exists anywhere; Kakao's
+   own message-toolkit coverage lists mention alongside pin/forward/delete as shipped.
+   *Target: `GroupThreadView` header/composer, `GroupMessageBubble` (~500-676)*
+
+8. **[implemented]** Per-message timestamps now appear in direct and group threads across all clients.
+
+<!-- Historical pre-implementation audit retained below for source provenance.
 1. **[sourced]** Give Talk a real Friends/contacts directory, not just a Direct/Groups
    chat-*history* toggle. `TalkTab` (`SuperAppTabs.kt:~200-312`) only switches between two
    chat-history lists — no way to browse contacts you haven't messaged, no favorites, no
@@ -252,7 +279,7 @@ they close in itunda's current implementation.
 
 9. **[inferred, low priority]** Consider Kakao's newer inline-dots typing indicator. itunda's
    existing text-line typing indicator ("X is typing…", 3s auto-clear) already covers the core
-   need — this is visual polish, not a missing capability.
+   need — this is visual polish, not a missing capability. -->
 
 ### Unresolved / worth a follow-up
 
