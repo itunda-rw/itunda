@@ -1118,6 +1118,12 @@ function NewGroupCard({ onCreated }: { onCreated: (groupId: string) => void }) {
 // since this web client has no native emoji-keyboard integration to lean on.
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢'];
 
+function chatMessageTime(sentAt: string) {
+  const timestamp = new Date(sentAt);
+  if (Number.isNaN(timestamp.getTime())) return '';
+  return timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
 // Real emoji reactions (2026-07-19) -- shared between 1:1 and group threads, which
 // differ only in which toggle call they make. Tapping an existing reaction badge
 // toggles the current user's own reaction for that emoji (the fast, one-tap path real
@@ -1597,6 +1603,9 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
                 isMine={isMine}
                 onToggle={(emoji) => handleToggleReaction(m.id, emoji)}
               />
+              <span style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>
+                {isMine && !m.readAt ? '1 · ' : ''}{chatMessageTime(m.sentAt)}
+              </span>
               {!isMine && (
                 <button type="button" onClick={() => handleReport(m.id)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>
                   Report message
@@ -1863,6 +1872,9 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
                 isMine={isMine}
                 onToggle={(emoji) => handleToggleReaction(m.id, emoji)}
               />
+              <span style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>
+                {chatMessageTime(m.sentAt)}
+              </span>
             </div>
           );
         })}
