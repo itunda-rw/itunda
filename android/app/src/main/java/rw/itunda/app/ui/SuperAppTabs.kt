@@ -161,6 +161,9 @@ import rw.itunda.core.designsystem.theme.Ids
 import java.io.IOException
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.util.UUID
 
 /**
@@ -874,6 +877,13 @@ private fun GroupMessageBubble(
             }
         }
         MessageReactionsRow(message.reactions, currentUserId, isMine, onToggleReaction)
+        Text(
+            chatMessageTime(message.sentAt),
+            color = TossSecondary,
+            fontSize = 10.sp,
+            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+            textAlign = if (isMine) androidx.compose.ui.text.style.TextAlign.End else androidx.compose.ui.text.style.TextAlign.Start,
+        )
     }
 }
 
@@ -1521,6 +1531,13 @@ private fun MessageBubble(
             }
         }
         MessageReactionsRow(message.reactions, currentUserId, isMine, onToggleReaction)
+        Text(
+            "${if (isMine && message.readAt == null) "1 · " else ""}${chatMessageTime(message.sentAt)}",
+            color = TossSecondary,
+            fontSize = 10.sp,
+            modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+            textAlign = if (isMine) androidx.compose.ui.text.style.TextAlign.End else androidx.compose.ui.text.style.TextAlign.Start,
+        )
         if (!isMine) {
             TextButton(onClick = { reportOpen = true }) { Text("Report message", color = TossSecondary, fontSize = 11.sp) }
         }
@@ -2123,6 +2140,14 @@ private fun relativeTimeAgo(isoTimestamp: String): String {
         elapsed.toDays() < 7 -> "${elapsed.toDays()}d ago"
         else -> "${elapsed.toDays() / 7}w ago"
     }
+}
+
+private fun chatMessageTime(isoTimestamp: String): String = try {
+    DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
+        .withZone(ZoneId.systemDefault())
+        .format(Instant.parse(isoTimestamp))
+} catch (_: Exception) {
+    ""
 }
 
 @Composable
