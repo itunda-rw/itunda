@@ -541,6 +541,22 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
         }
     }
 
+    fun selectAndRoute(place: PlaceSearchResultDto) {
+        selectedPlace = place
+        route = null; routeAlternatives = null; selectedRouteIndex = 0; savingToFolder = null
+        coroutineScope.launch {
+            routing = true; error = null
+            try {
+                val origin = myLocation ?: (RWANDA_CENTER_LAT to RWANDA_CENTER_LNG)
+                val response = NetworkClient.apiService.getDirectionsAlternatives(origin.first, origin.second, place.latitude, place.longitude, travelMode)
+                routeAlternatives = response.routes; selectedRouteIndex = 0
+                route = MapsDirectionsResponse(success = true, route = response.routes[0]); showSteps = false
+            } catch (e: HttpException) { error = superAppErrorMessage(e) }
+            catch (e: Exception) { error = "Couldn't reach itunda. Check your connection and try again." }
+            finally { routing = false }
+        }
+    }
+
     // A cash-out customer arrives here with the store network already selected.
     // This is intentionally the same nearby-search path as the map chips, so it
     // uses the public agent-discovery API rather than a duplicate client-side list.
@@ -1268,8 +1284,8 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                             val work = bookmarks.firstOrNull { it.folderName.equals("Work", ignoreCase = true) }
                             if (home != null || work != null) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    if (home != null) Text("⌂ Home", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TossText, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(TossCardSoft).clickable { selectedPlace = PlaceSearchResultDto(home.displayName, home.latitude, home.longitude); route = null; routeAlternatives = null }.padding(horizontal = 12.dp, vertical = 8.dp))
-                                    if (work != null) Text("▣ Work", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TossText, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(TossCardSoft).clickable { selectedPlace = PlaceSearchResultDto(work.displayName, work.latitude, work.longitude); route = null; routeAlternatives = null }.padding(horizontal = 12.dp, vertical = 8.dp))
+                                    if (home != null) Text("⌂ Home", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TossText, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(TossCardSoft).clickable { selectAndRoute(PlaceSearchResultDto(home.displayName, home.latitude, home.longitude)) }.padding(horizontal = 12.dp, vertical = 8.dp))
+                                    if (work != null) Text("▣ Work", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TossText, modifier = Modifier.clip(RoundedCornerShape(999.dp)).background(TossCardSoft).clickable { selectAndRoute(PlaceSearchResultDto(work.displayName, work.latitude, work.longitude)) }.padding(horizontal = 12.dp, vertical = 8.dp))
                                 }
                             }
                             if (activeCategory != null && categoryResults != null) {
