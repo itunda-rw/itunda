@@ -83,6 +83,12 @@ export const blockConversationParticipant = (conversationId: string) =>
 export const unblockConversationParticipant = (conversationId: string) =>
   apiFetch<{ success: boolean }>(`/api/v1/messages/conversations/${conversationId}/block`, { method: 'DELETE' });
 
+export const pinConversationMessage = (conversationId: string, messageId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/messages/conversations/${conversationId}/pin/${messageId}`, { method: 'POST' });
+
+export const unpinConversationMessage = (conversationId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/messages/conversations/${conversationId}/pin`, { method: 'DELETE' });
+
 export const fetchConversationQuiet = (conversationId: string) =>
   apiFetch<{ success: boolean; quiet: boolean }>(`/api/v1/messages/conversations/${conversationId}/quiet`).then((r) => r.quiet);
 
