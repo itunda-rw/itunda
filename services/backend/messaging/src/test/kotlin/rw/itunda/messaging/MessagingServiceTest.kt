@@ -194,6 +194,34 @@ class MessagingServiceTest : BehaviorSpec({
             }
         }
 
+        When("the sender deletes a direct message") {
+            val conversation = Conversation(id = "conversation_delete", participantAId = "user_a", participantBId = "user_b")
+            val message = Message(id = "message_delete", conversationId = "conversation_delete", senderId = "user_a", body = "remove this")
+            every { conversationRepository.findById("conversation_delete") } returns Optional.of(conversation)
+            every { messageRepository.findById("message_delete") } returns Optional.of(message)
+            every { messageRepository.save(any()) } answers { firstArg() }
+
+            service.deleteMessage("user_a", "conversation_delete", "message_delete")
+
+            Then("it retains the auditable row but marks its content deleted") {
+                (message.deletedAt != null) shouldBe true
+                message.deletedByUserId shouldBe "user_a"
+            }
+        }
+
+        When("a recipient tries to delete another person's direct message") {
+            val conversation = Conversation(id = "conversation_delete_owner", participantAId = "user_a", participantBId = "user_b")
+            val message = Message(id = "message_delete_owner", conversationId = "conversation_delete_owner", senderId = "user_a", body = "keep")
+            every { conversationRepository.findById("conversation_delete_owner") } returns Optional.of(conversation)
+            every { messageRepository.findById("message_delete_owner") } returns Optional.of(message)
+
+            Then("it rejects the ownership violation") {
+                shouldThrow<MessageDeleteForbiddenException> {
+                    service.deleteMessage("user_b", "conversation_delete_owner", "message_delete_owner")
+                }
+            }
+        }
+
         When("sending an empty/whitespace-only message") {
             Then("it throws EmptyMessageException before even looking up the conversation") {
                 try {
