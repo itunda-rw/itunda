@@ -526,8 +526,8 @@ struct MapScreenView: View {
                                     let work = bookmarks.first { $0.folderName.caseInsensitiveCompare("Work") == .orderedSame }
                                     if home != nil || work != nil {
                                         HStack(spacing: 8) {
-                                            if let home { Button("⌂ Home") { selectPlace(PlaceSearchResultDto(displayName: home.displayName, latitude: home.latitude, longitude: home.longitude)) }.font(.caption).bold().padding(.horizontal, 12).padding(.vertical, 8).background(IDS.Colors.chipBackground).cornerRadius(999) }
-                                            if let work { Button("▣ Work") { selectPlace(PlaceSearchResultDto(displayName: work.displayName, latitude: work.latitude, longitude: work.longitude)) }.font(.caption).bold().padding(.horizontal, 12).padding(.vertical, 8).background(IDS.Colors.chipBackground).cornerRadius(999) }
+                                            if let home { Button("⌂ Home") { selectAndRoute(PlaceSearchResultDto(displayName: home.displayName, latitude: home.latitude, longitude: home.longitude)) }.font(.caption).bold().padding(.horizontal, 12).padding(.vertical, 8).background(IDS.Colors.chipBackground).cornerRadius(999) }
+                                            if let work { Button("▣ Work") { selectAndRoute(PlaceSearchResultDto(displayName: work.displayName, latitude: work.latitude, longitude: work.longitude)) }.font(.caption).bold().padding(.horizontal, 12).padding(.vertical, 8).background(IDS.Colors.chipBackground).cornerRadius(999) }
                                         }
                                     }
                                     if let activeCategory, let categoryResults {
@@ -671,11 +671,16 @@ struct MapScreenView: View {
         savingToFolder = nil
     }
 
+    private func selectAndRoute(_ place: PlaceSearchResultDto) {
+        selectPlace(place)
+        Task { await getDirections(to: place) }
+    }
+
     // mode defaults to the currently-selected travelMode (2026-07-22) -- called both by
     // the initial "Directions" tap and by the driving/walking toggle when a route is
     // already shown, mirroring bank-mfe's own applyRoute/handleGetDirections split.
-    private func getDirections(mode: String? = nil) async {
-        guard let place = selectedPlace else { return }
+    private func getDirections(mode: String? = nil, to destination: PlaceSearchResultDto? = nil) async {
+        guard let place = destination ?? selectedPlace else { return }
         let requestedMode = mode ?? travelMode
         routing = true
         error = nil
