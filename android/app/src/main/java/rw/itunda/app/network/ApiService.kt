@@ -863,6 +863,9 @@ interface ApiService {
     @GET("api/v1/messages/conversations/{id}/messages")
     suspend fun getMessages(@Path("id") conversationId: String): MessagesResponse
 
+    @GET("api/v1/messages/conversations/{id}/messages/search")
+    suspend fun searchMessages(@Path("id") conversationId: String, @Query("query") query: String): MessagesResponse
+
     @POST("api/v1/messages/conversations/{id}/messages")
     suspend fun sendMessage(@Path("id") conversationId: String, @Body request: SendMessageRequest): MessageResponse
 

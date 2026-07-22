@@ -1155,6 +1155,11 @@ extension NetworkClient {
         try await get("api/v1/messages/conversations/\(conversationId)/messages")
     }
 
+    func searchMessages(conversationId: String, query: String) async throws -> MessagesResponse {
+        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        return try await get("api/v1/messages/conversations/\(conversationId)/messages/search?query=\(encoded)")
+    }
+
     func sendMessage(conversationId: String, body: String) async throws -> MessageResponse {
         try await authenticatedPost("api/v1/messages/conversations/\(conversationId)/messages", body: SendMessageRequest(body: body))
     }
