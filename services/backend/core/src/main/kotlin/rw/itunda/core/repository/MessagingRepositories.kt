@@ -54,6 +54,16 @@ interface MessageRepository : JpaRepository<Message, String> {
 
     fun findByConversationIdAndSenderIdNotAndReadAtIsNull(conversationId: String, senderId: String): List<Message>
 
+    @Query(
+        "SELECT m FROM Message m WHERE m.conversationId = :conversationId " +
+            "AND LOWER(m.body) LIKE LOWER(CONCAT('%', :query, '%')) ORDER BY m.sentAt DESC",
+    )
+    fun searchByConversationIdAndBody(
+        @Param("conversationId") conversationId: String,
+        @Param("query") query: String,
+        pageable: Pageable,
+    ): Page<Message>
+
     // Real batch fetch (2026-07-19) -- see MessagingService.listConversations' own doc
     // comment for the real N+1 this replaces (was one query per conversation for the
     // other user, last message, and unread count each -- up to 3x the page size).

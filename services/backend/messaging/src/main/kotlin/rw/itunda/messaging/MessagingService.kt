@@ -30,6 +30,7 @@ class EmptyMessageException(message: String) : RuntimeException(message)
 class MessageTooLongException(message: String) : RuntimeException(message)
 class MessageNotFoundException(message: String) : RuntimeException(message)
 class InvalidReactionException(message: String) : RuntimeException(message)
+class InvalidMessageSearchException(message: String) : RuntimeException(message)
 class UserBlockedException(message: String) : RuntimeException(message)
 
 data class ConversationSummary(
@@ -242,6 +243,16 @@ class MessagingService(
         return messageReactionRepository.findByMessageIdIn(messageIds)
             .groupBy { it.messageId }
             .mapValues { (_, reactions) -> groupReactions(reactions.map { it.emoji to it.userId }) }
+    }
+
+    /** Search stays strictly inside one conversation after the normal participant check. */
+    fun searchMessages(userId: String, conversationId: String, query: String, pageable: Pageable): Page<Message> {
+        requireParticipant(userId, conversationId)
+        val trimmed = query.trim()
+        if (trimmed.length < 2 || trimmed.length > 120) {
+            throw InvalidMessageSearchException("Search must be between 2 and 120 characters")
+        }
+        return messageRepository.searchByConversationIdAndBody(conversationId, trimmed, pageable)
     }
 
     private fun groupReactions(emojiAndUserIds: List<Pair<String, String>>): List<ReactionGroup> =

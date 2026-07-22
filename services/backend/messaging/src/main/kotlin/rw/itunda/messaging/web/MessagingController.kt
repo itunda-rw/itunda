@@ -28,6 +28,7 @@ import rw.itunda.messaging.RecipientNotFoundException
 import rw.itunda.messaging.RecipientRequiredException
 import rw.itunda.messaging.SelfConversationException
 import rw.itunda.messaging.UserBlockedException
+import rw.itunda.messaging.InvalidMessageSearchException
 
 // One of the two must be set. phoneNumber is the real human-friendly entry point (see
 // MessagingService.startOrGetConversationByPhoneNumber's own doc comment); otherUserId
@@ -85,6 +86,19 @@ class MessagingController(private val messagingService: MessagingService) {
                 "sentAt" to m.sentAt, "readAt" to m.readAt, "reactions" to (reactionsByMessageId[m.id] ?: emptyList()),
             )
         }
+        return ResponseEntity.ok(mapOf("success" to true, "messages" to messages) + pageMeta(page))
+    }
+
+    @GetMapping("/conversations/{conversationId}/messages/search")
+    fun searchMessages(
+        @PathVariable conversationId: String,
+        @RequestParam query: String,
+        @PageableDefault(size = 30) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = messagingService.searchMessages(currentUser.userId, conversationId, query, pageable)
+        val reactions = messagingService.getReactionSummaries(page.content.map { it.id })
+        val messages = page.content.map { m -> mapOf("id" to m.id, "conversationId" to m.conversationId, "senderId" to m.senderId, "body" to m.body, "sentAt" to m.sentAt, "readAt" to m.readAt, "reactions" to (reactions[m.id] ?: emptyList())) }
         return ResponseEntity.ok(mapOf("success" to true, "messages" to messages) + pageMeta(page))
     }
 
@@ -169,4 +183,8 @@ class MessagingController(private val messagingService: MessagingService) {
     @ExceptionHandler(UserBlockedException::class)
     fun handleBlocked(ex: UserBlockedException) =
         ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("CONVERSATION_BLOCKED", ex.message ?: "Unavailable"))
+
+    @ExceptionHandler(InvalidMessageSearchException::class)
+    fun handleInvalidSearch(ex: InvalidMessageSearchException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MESSAGE_SEARCH", ex.message ?: "Bad request"))
 }
