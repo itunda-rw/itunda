@@ -1152,6 +1152,7 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
                         currentUserId = currentUserId,
                         offer = offersByMessageId[m.id],
                         gift = giftsByMessageId[m.id],
+                        onReply = { replyingTo = it },
                         onClaimGift = { giftId ->
                             coroutineScope.launch {
                                 try {
@@ -1535,6 +1536,7 @@ private fun GiftBubble(gift: GiftDto, isMine: Boolean, currentUserId: String?, o
 private fun MessageBubble(
     message: MessageDto, isMine: Boolean, currentUserId: String?, offer: OfferBubbleData?, gift: GiftDto?,
     onToggleReaction: (String) -> Unit, onRespondToOffer: (String, String, Double?) -> Unit, onClaimGift: (String) -> Unit,
+    onReply: (MessageDto) -> Unit = {},
     onReportMessage: (String, String) -> Unit = { _, _ -> },
 ) {
     var reportOpen by remember { mutableStateOf(false) }
@@ -1557,6 +1559,7 @@ private fun MessageBubble(
             }
         }
         MessageReactionsRow(message.reactions, currentUserId, isMine, onToggleReaction)
+        TextButton(onClick = { onReply(message) }) { Text("Reply", color = TossSecondary, fontSize = 11.sp) }
         Text(
             "${if (isMine && message.readAt == null) "1 · " else ""}${chatMessageTime(message.sentAt)}",
             color = TossSecondary,
