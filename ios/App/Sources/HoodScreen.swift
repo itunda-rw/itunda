@@ -1511,7 +1511,7 @@ private struct JobsContent: View {
                 favoriteNotice = "Saved to your jobs list."
             }
         } catch {
-            error = "Couldn't update your saved jobs. Check your connection and try again."
+            self.error = "Couldn't update your saved jobs. Check your connection and try again."
         }
     }
 
@@ -1576,7 +1576,7 @@ private struct JobPostWishlistView: View {
             favorites = try await NetworkClient.shared.getMyFavoriteJobPosts().favorites
             error = nil
         } catch {
-            error = "Couldn't load your saved jobs. Check your connection and try again."
+            self.error = "Couldn't load your saved jobs. Check your connection and try again."
         }
     }
 
@@ -1588,7 +1588,7 @@ private struct JobPostWishlistView: View {
             favorites?.removeAll { $0.jobPostId == jobPostId }
             onRemoved()
         } catch {
-            error = "Couldn't remove this saved job. Check your connection and try again."
+            self.error = "Couldn't remove this saved job. Check your connection and try again."
         }
     }
 }
@@ -1954,16 +1954,7 @@ private struct PropertyContent: View {
                     ).foregroundColor(IDS.Colors.textSecondary)
                 } else if !listings!.isEmpty {
                     ForEach(listings!) { listing in
-                        PropertyListingCard(
-                            listing: listing,
-                            propertyTypeLabel: propertyTypes.first(where: { $0.id == listing.propertyType })?.label ?? listing.propertyType,
-                            isMine: view == .mine || listing.listerId == currentUserId,
-                            onChanged: { Task { await load() } },
-                            favorited: favoriteIds.contains(listing.id), favoriteBusy: favoritingId == listing.id,
-                            onToggleFavorite: { Task { await toggleFavorite(listing.id) } },
-                            onContact: { Task { await contact(listing.id) } },
-                            onMakeOffer: { id, amount in Task { await makeOffer(id, amount) } }
-                        )
+                        propertyListingRow(for: listing)
                     }
                 }
             }
@@ -1988,6 +1979,28 @@ private struct PropertyContent: View {
             error = message + " You can still use Browse or Neighborhood."
             listings = []
         }
+    }
+
+    // Extracted (2026-07-22) -- the previous inline ForEach body (computing
+    // propertyTypeLabel/isMine/favorited/favoriteBusy directly inside
+    // PropertyListingCard's own call, nested in this large PropertyContent.body) made
+    // real Swift type-checking time out ("unable to type-check this expression in
+    // reasonable time") -- a real build failure found live via xcodebuild against a
+    // real Simulator, not assumed. A concrete, explicitly-typed function the ForEach
+    // closure just calls resolves it, the standard fix for this class of SwiftUI
+    // compiler timeout.
+    private func propertyListingRow(for listing: PropertyListingDto) -> some View {
+        PropertyListingRow(
+            listing: listing,
+            propertyTypeLabel: propertyTypes.first(where: { $0.id == listing.propertyType })?.label ?? listing.propertyType,
+            isMine: view == .mine || listing.listerId == currentUserId,
+            favorited: favoriteIds.contains(listing.id),
+            favoriteBusy: favoritingId == listing.id,
+            onChanged: { Task { await load() } },
+            onToggleFavorite: { Task { await toggleFavorite(listing.id) } },
+            onContact: { Task { await contact(listing.id) } },
+            onMakeOffer: { id, amount in Task { await makeOffer(id, amount) } }
+        )
     }
 
     private func load() async {
@@ -2027,7 +2040,7 @@ private struct PropertyContent: View {
     }
 
     private func loadFavoriteIds() async { if let result = try? await NetworkClient.shared.getMyFavoritePropertyListings().favorites { favoriteIds = Set(result.map(\.propertyListingId)) } }
-    private func toggleFavorite(_ id: String) async { favoritingId = id; defer { favoritingId = nil }; do { if favoriteIds.contains(id) { _ = try await NetworkClient.shared.removePropertyListingFavorite(id); favoriteIds.remove(id); favoriteNotice = "Removed from saved properties." } else { _ = try await NetworkClient.shared.addPropertyListingFavorite(id); favoriteIds.insert(id); favoriteNotice = "Saved to your properties list." } } catch { error = "Couldn't update your saved properties. Check your connection and try again." } }
+    private func toggleFavorite(_ id: String) async { favoritingId = id; defer { favoritingId = nil }; do { if favoriteIds.contains(id) { _ = try await NetworkClient.shared.removePropertyListingFavorite(id); favoriteIds.remove(id); favoriteNotice = "Removed from saved properties." } else { _ = try await NetworkClient.shared.addPropertyListingFavorite(id); favoriteIds.insert(id); favoriteNotice = "Saved to your properties list." } } catch { self.error = "Couldn't update your saved properties. Check your connection and try again." } }
 
     private func loadNearby(_ coordinate: CLLocationCoordinate2D) async {
         do {
@@ -2186,8 +2199,42 @@ private struct PropertyWishlistView: View {
             else { ForEach(favorites!) { favorite in HStack { VStack(alignment: .leading) { Text(favorite.title).font(IDS.Typography.bodyBold); Text("\(favorite.listingType == "RENT" ? "For rent" : "For sale") · \(Int(favorite.price)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary) }; Spacer(); Button("Remove") { Task { await remove(favorite.propertyListingId) } }.font(.caption).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8) }.padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius) } }
         }.task { await load() }
     }
-    private func load() async { do { favorites = try await NetworkClient.shared.getMyFavoritePropertyListings().favorites; error = nil } catch { error = "Couldn't load your saved properties. Check your connection and try again." } }
-    private func remove(_ id: String) async { do { _ = try await NetworkClient.shared.removePropertyListingFavorite(id); favorites?.removeAll { $0.propertyListingId == id }; onRemoved() } catch { error = "Couldn't remove this saved property. Check your connection and try again." } }
+    private func load() async { do { favorites = try await NetworkClient.shared.getMyFavoritePropertyListings().favorites; error = nil } catch { self.error = "Couldn't load your saved properties. Check your connection and try again." } }
+    private func remove(_ id: String) async { do { _ = try await NetworkClient.shared.removePropertyListingFavorite(id); favorites?.removeAll { $0.propertyListingId == id }; onRemoved() } catch { self.error = "Couldn't remove this saved property. Check your connection and try again." } }
+}
+
+// Extracted into its own concretely-typed View (2026-07-22) -- the previous inline
+// ForEach body (computing propertyTypeLabel/isMine inline via .first(where:)/??/||
+// directly inside PropertyListingCard's call) made the surrounding PropertyView.body
+// (a large ScrollView/VStack with many conditional branches) time out real Swift
+// type-checking ("unable to type-check this expression in reasonable time") -- a real
+// build failure found live via xcodebuild against a real Simulator, not assumed.
+// Wrapping the row in its own struct with a concrete initializer resolves it, the
+// standard fix for this class of SwiftUI compiler timeout.
+private struct PropertyListingRow: View {
+    let listing: PropertyListingDto
+    let propertyTypeLabel: String
+    let isMine: Bool
+    let favorited: Bool
+    let favoriteBusy: Bool
+    let onChanged: () -> Void
+    let onToggleFavorite: () -> Void
+    let onContact: () -> Void
+    let onMakeOffer: (String, Double) -> Void
+
+    var body: some View {
+        PropertyListingCard(
+            listing: listing,
+            propertyTypeLabel: propertyTypeLabel,
+            isMine: isMine,
+            onChanged: onChanged,
+            onContact: onContact,
+            onMakeOffer: onMakeOffer,
+            favorited: favorited,
+            favoriteBusy: favoriteBusy,
+            onToggleFavorite: onToggleFavorite
+        )
+    }
 }
 
 private struct PropertyListingCard: View {

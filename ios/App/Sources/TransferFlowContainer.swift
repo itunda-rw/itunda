@@ -26,8 +26,20 @@ struct TransferFlowContainer: View {
     // round trip -- `step` only carries the recipient's account number, not the
     // amount being sent.
     @State private var pendingAmountRwf = 0
+    // Real saved-contacts list (found 2026-07-22 fully built on the backend with zero
+    // client UI anywhere) -- fetched here rather than eagerly on app launch, since
+    // it's only ever needed on this screen.
+    @State private var contacts: [ContactUi] = []
     let availableBalance: Double
     let onDone: () -> Void
+
+    private func loadContacts() {
+        Task {
+            if let fetched = try? await NetworkClient.shared.getContacts().contacts {
+                contacts = fetched.map { ContactUi(id: $0.id, name: $0.name, phoneNumber: $0.phoneNumber, bank: $0.bank) }
+            }
+        }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -35,6 +47,13 @@ struct TransferFlowContainer: View {
             case .recipient:
                 RecipientEntryScreen(
                     onBack: onDone,
+                    contacts: contacts,
+                    onAddContact: { name, phoneNumber in
+                        Task {
+                            _ = try? await NetworkClient.shared.addContact(name: name, phoneNumber: phoneNumber)
+                            loadContacts()
+                        }
+                    },
                     onNext: { accountNumber in
                         // Found live on-device (2026-07-12): the account-number
                         // field's real software keyboard was still first responder

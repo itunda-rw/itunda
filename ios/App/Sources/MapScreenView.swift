@@ -217,12 +217,19 @@ struct MapScreenView: View {
     @State private var categoryResults: [NearbyPlaceDto]?
     @State private var bookmarks: [MapBookmarkDto] = []
     @State private var bookmarking = false
+    @State private var moving = false
     // Real folder/color picker (2026-07-22) -- ported from bank-mfe's own real save-time
     // picker. `savingToFolder` holds whichever real place's picker is currently expanded
     // (nil = closed).
     @State private var savingToFolder: PlaceSearchResultDto?
     @State private var folderNameInput = defaultBookmarkFolder
     @State private var folderColorInput = bookmarkColorPalette[0]
+    // Real "move to folder" (found 2026-07-22: NetworkClient.moveMapBookmark already
+    // existed with zero UI calling it anywhere) -- movingBookmark holds whichever real
+    // bookmark's move-picker is currently expanded (nil = closed).
+    @State private var movingBookmark: MapBookmarkDto?
+    @State private var moveFolderNameInput = ""
+    @State private var moveFolderColorInput = bookmarkColorPalette[0]
     @StateObject private var locationFetcher = LocationFetcher()
 
     // Real draggable peek/half/full bottom sheet (2026-07-21) -- see
@@ -588,11 +595,26 @@ struct MapScreenView: View {
                                                     Circle().fill(colorFromHex(bookmark.color)).frame(width: 8, height: 8)
                                                     Text(bookmark.displayName)
                                                         .font(.caption).foregroundColor(IDS.Colors.textPrimary)
+                                                    Spacer()
+                                                    Text("Move")
+                                                        .font(.caption2).bold().foregroundColor(IDS.Colors.textSecondary)
+                                                        .onTapGesture {
+                                                            if movingBookmark?.latitude == bookmark.latitude && movingBookmark?.longitude == bookmark.longitude {
+                                                                movingBookmark = nil
+                                                            } else {
+                                                                movingBookmark = bookmark
+                                                                moveFolderNameInput = bookmark.folderName
+                                                                moveFolderColorInput = bookmark.color
+                                                            }
+                                                        }
                                                 }
                                                 .frame(maxWidth: .infinity, alignment: .leading)
                                                 .padding(.vertical, 6)
                                                 .onTapGesture {
                                                     selectPlace(PlaceSearchResultDto(displayName: bookmark.displayName, latitude: bookmark.latitude, longitude: bookmark.longitude))
+                                                }
+                                                if movingBookmark?.latitude == bookmark.latitude && movingBookmark?.longitude == bookmark.longitude {
+                                                    moveFolderPicker()
                                                 }
                                             }
                                         }
@@ -894,6 +916,56 @@ struct MapScreenView: View {
         } catch {
             self.error = "Could not save this place."
         }
+    }
+
+    // Real "move to folder" (found 2026-07-22: NetworkClient.moveMapBookmark already
+    // existed with zero UI calling it anywhere).
+    private func confirmMoveBookmark() async {
+        guard let target = movingBookmark else { return }
+        moving = true
+        error = nil
+        defer { moving = false }
+        do {
+            let updated = try await NetworkClient.shared.moveMapBookmark(
+                latitude: target.latitude, longitude: target.longitude,
+                folderName: moveFolderNameInput, color: moveFolderColorInput
+            ).bookmark
+            bookmarks = try await NetworkClient.shared.getMyMapBookmarks().bookmarks
+            _ = updated
+            movingBookmark = nil
+        } catch {
+            self.error = "Could not move this bookmark."
+        }
+    }
+
+    @ViewBuilder
+    private func moveFolderPicker() -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            TextField("Folder name", text: $moveFolderNameInput)
+                .font(.caption)
+                .padding(8)
+                .background(IdsPalette.white)
+                .cornerRadius(8)
+            HStack(spacing: 6) {
+                ForEach(bookmarkColorPalette, id: \.self) { hex in
+                    let active = moveFolderColorInput == hex
+                    Circle()
+                        .fill(colorFromHex(hex))
+                        .frame(width: 22, height: 22)
+                        .overlay(Circle().stroke(IDS.Colors.textPrimary, lineWidth: active ? 2 : 0))
+                        .onTapGesture { moveFolderColorInput = hex }
+                }
+            }
+            Button(action: { Task { await confirmMoveBookmark() } }) {
+                Text(moving ? "Saving…" : "Save")
+                    .font(.subheadline).bold().foregroundColor(.white)
+                    .frame(maxWidth: .infinity).padding(.vertical, 8)
+                    .background(IDS.Colors.brand).cornerRadius(8)
+            }
+        }
+        .padding(8)
+        .background(IDS.Colors.chipBackground)
+        .cornerRadius(8)
     }
 
     // Real "My Places" folder grouping (2026-07-22) -- ported from bank-mfe's own real

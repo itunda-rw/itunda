@@ -451,6 +451,10 @@ private struct GroupThreadScreen: View {
     @State private var socketTask: URLSessionWebSocketTask?
     @State private var typingUserIds: [String: Task<Void, Never>] = [:]
     @State private var lastTypingSentAt: Date = .distantPast
+    // Real split-bill/manage-members (found 2026-07-22 fully built on the backend
+    // with zero UI anywhere) -- opens as a sibling sheet over this same thread.
+    @State private var showSplitBills = false
+    @State private var showManageMembers = false
     private let currentUserId = KeychainTokenStore.shared.getUserId()
 
     private func name(for senderId: String) -> String {
@@ -466,6 +470,14 @@ private struct GroupThreadScreen: View {
                 .accessibilityLabel("Back")
                 Text(group.name).font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()
+                Button(action: { showManageMembers = true }) {
+                    Image(systemName: "person.2").font(.system(size: 18)).frame(width: 40, height: 40)
+                }
+                .accessibilityLabel("Manage members")
+                Button(action: { showSplitBills = true }) {
+                    Image(systemName: "receipt").font(.system(size: 18)).frame(width: 40, height: 40)
+                }
+                .accessibilityLabel("Split a bill")
             }
             .padding(.horizontal, 8)
 
@@ -603,6 +615,16 @@ private struct GroupThreadScreen: View {
         .onDisappear {
             socketTask?.cancel(with: .goingAway, reason: nil)
             typingUserIds.values.forEach { $0.cancel() }
+        }
+        .sheet(isPresented: $showSplitBills) {
+            GroupSplitBillsView(groupConversationId: group.groupId, members: members, currentUserId: currentUserId)
+        }
+        .sheet(isPresented: $showManageMembers) {
+            GroupManageMembersView(
+                group: group, members: members, currentUserId: currentUserId,
+                onMembersChanged: { Task { members = (try? await NetworkClient.shared.getGroupMembers(groupId: group.groupId).members) ?? members } },
+                onLeft: { showManageMembers = false; onBack() }
+            )
         }
     }
 
@@ -768,6 +790,200 @@ private struct ConversationRow: View {
         .padding(18)
         .background(IDS.Colors.card)
         .cornerRadius(IDS.Layout.cardCornerRadius)
+    }
+}
+
+// Real KakaoPay-style split bill (2026-07-22) -- found fully built on the backend
+// (rw.itunda.splitbill) with zero client UI anywhere, despite group chat itself being
+// fully wired. A flat, even split among picked group members (excluding the
+// organizer); each participant pays their own share directly to the organizer via a
+// real wallet-to-wallet push, no escrow -- see SplitBill.kt's own doc comment.
+private struct GroupSplitBillsView: View {
+    let groupConversationId: String
+    let members: [GroupMemberDto]
+    let currentUserId: String?
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var splitBills: [SplitBillWithParticipants]?
+    @State private var error: String?
+    @State private var busyId: String?
+    @State private var showNewForm = false
+    @State private var amountText = ""
+    @State private var descriptionText = ""
+    @State private var selectedIds: Set<String> = []
+
+    private var otherMembers: [GroupMemberDto] { members.filter { $0.userId != currentUserId } }
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if let error { Text(error).font(.caption).foregroundColor(.red) }
+                    if !showNewForm {
+                        Button(action: { showNewForm = true }) {
+                            Text("Split a bill").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(12).background(IDS.Colors.brand).cornerRadius(10)
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            TextField("Total amount (RWF)", text: $amountText).keyboardType(.numberPad).padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
+                            TextField("What was it for?", text: $descriptionText).padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
+                            Text("Split with").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            ForEach(otherMembers) { member in
+                                HStack {
+                                    Text(member.name)
+                                    Spacer()
+                                    Image(systemName: selectedIds.contains(member.userId) ? "checkmark.square.fill" : "square")
+                                }
+                                .onTapGesture {
+                                    if selectedIds.contains(member.userId) { selectedIds.remove(member.userId) } else { selectedIds.insert(member.userId) }
+                                }
+                            }
+                            Button(action: { Task { await create() } }) {
+                                Text(busyId == "new" ? "Creating…" : "Create").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(12)
+                                    .background(selectedIds.isEmpty ? IDS.Colors.textTertiary : IDS.Colors.brand).cornerRadius(10)
+                            }
+                            .disabled(busyId == "new" || selectedIds.isEmpty || amountText.isEmpty || descriptionText.isEmpty)
+                        }
+                        .padding(12).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                    }
+                    if let splitBills {
+                        if splitBills.isEmpty {
+                            Text("No split bills in this group yet.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                        ForEach(splitBills) { entry in
+                            let myShare = entry.participants.first { $0.userId == currentUserId }
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(entry.splitBill.description).bold()
+                                Text("Total \(Int(entry.splitBill.totalAmount)) RWF · \(entry.splitBill.status)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                ForEach(entry.participants) { p in
+                                    let name = members.first(where: { $0.userId == p.userId })?.name ?? String(p.userId.prefix(8))
+                                    Text("\(name): \(Int(p.shareAmount)) RWF (\(p.status))").font(.caption)
+                                }
+                                if let myShare, myShare.status == "PENDING" {
+                                    Button(action: { Task { await pay(entry.splitBill.id) } }) {
+                                        Text(busyId == entry.splitBill.id ? "Paying…" : "Pay my share (\(Int(myShare.shareAmount)) RWF)")
+                                            .bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(10).background(IDS.Colors.brand).cornerRadius(8)
+                                    }
+                                    .disabled(busyId != nil)
+                                }
+                            }
+                            .padding(12).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        }
+                    } else {
+                        ProgressView()
+                    }
+                }
+                .padding(IDS.Layout.screenHorizontal)
+            }
+            .navigationTitle("Split bills")
+            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Close") { dismiss() } } }
+            .task { await refresh() }
+        }
+    }
+
+    private func refresh() async {
+        do { splitBills = try await NetworkClient.shared.getSplitBillsForGroup(groupConversationId: groupConversationId).splitBills }
+        catch { self.error = "Could not load split bills." }
+    }
+
+    private func create() async {
+        guard let amount = Double(amountText) else { return }
+        busyId = "new"; error = nil
+        defer { busyId = nil }
+        do {
+            _ = try await NetworkClient.shared.createSplitBill(groupConversationId: groupConversationId, totalAmount: amount, description: descriptionText, participantUserIds: Array(selectedIds))
+            amountText = ""; descriptionText = ""; selectedIds = []; showNewForm = false
+            await refresh()
+        } catch { self.error = "That split bill could not be created." }
+    }
+
+    private func pay(_ splitBillId: String) async {
+        busyId = splitBillId; error = nil
+        defer { busyId = nil }
+        do {
+            _ = try await NetworkClient.shared.paySplitBillShare(splitBillId: splitBillId)
+            await refresh()
+        } catch { self.error = "That payment could not be completed." }
+    }
+}
+
+// Real leave-group/add-member (2026-07-22) -- found fully built on the backend
+// (GroupMessagingController's POST/DELETE .../members) with zero client UI anywhere.
+// Add-member picks from the caller's real Talk contacts, filtered to exclude people
+// already in the group.
+private struct GroupManageMembersView: View {
+    let group: GroupSummaryDto
+    let members: [GroupMemberDto]
+    let currentUserId: String?
+    let onMembersChanged: () -> Void
+    let onLeft: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var contacts: [TalkContactDto] = []
+    @State private var error: String?
+    @State private var busyUserId: String?
+    @State private var leaving = false
+
+    private var addable: [TalkContactDto] { contacts.filter { contact in !members.contains { $0.userId == contact.userId } } }
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if let error { Text(error).font(.caption).foregroundColor(.red) }
+                    Text("Members (\(members.count))").bold()
+                    ForEach(members) { m in
+                        Text(m.userId == currentUserId ? "\(m.name) (you)" : m.name).font(.subheadline)
+                    }
+                    Button(action: { Task { await leave() } }) {
+                        Text(leaving ? "Leaving…" : "Leave group").bold().frame(maxWidth: .infinity).padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
+                    }
+                    .disabled(leaving)
+                    Text("Add from your contacts").bold().padding(.top, 8)
+                    if addable.isEmpty {
+                        Text("No contacts left to add.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    }
+                    ForEach(addable) { contact in
+                        HStack {
+                            Text(contact.name)
+                            Spacer()
+                            Button(action: { Task { await add(contact) } }) {
+                                Text(busyUserId == contact.userId ? "Adding…" : "Add").bold()
+                            }
+                            .disabled(busyUserId != nil)
+                        }
+                    }
+                }
+                .padding(IDS.Layout.screenHorizontal)
+            }
+            .navigationTitle("Manage members")
+            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Close") { dismiss() } } }
+            .task {
+                contacts = (try? await NetworkClient.shared.getTalkContacts().contacts) ?? []
+            }
+        }
+    }
+
+    private func leave() async {
+        leaving = true; error = nil
+        do {
+            _ = try await NetworkClient.shared.leaveGroup(groupId: group.groupId)
+            onLeft()
+        } catch {
+            self.error = "Could not leave this group."
+            leaving = false
+        }
+    }
+
+    private func add(_ contact: TalkContactDto) async {
+        busyUserId = contact.userId; error = nil
+        defer { busyUserId = nil }
+        do {
+            _ = try await NetworkClient.shared.addGroupMember(groupId: group.groupId, userId: contact.userId)
+            onMembersChanged()
+        } catch {
+            self.error = "Could not add \(contact.name)."
+        }
     }
 }
 

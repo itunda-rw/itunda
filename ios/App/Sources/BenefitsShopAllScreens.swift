@@ -180,6 +180,15 @@ struct EntireMenuScreen: View {
     // Benefits/Map above; this feature never had ANY mobile UI before now, not even
     // the original buy/sell/portfolio.
     @State private var showInvest = false
+    // Real Overview/Loans/Credit score/Certificate/Identity/Support (2026-07-22 port)
+    // -- every one of these was found fully built on the backend with zero client UI
+    // anywhere until the same-day Android/bank-mfe ports that preceded this one.
+    @State private var showOverview = false
+    @State private var showLoans = false
+    @State private var showCreditScore = false
+    @State private var showCertificate = false
+    @State private var showIdentity = false
+    @State private var showSupport = false
 
     var body: some View {
         ScrollView {
@@ -216,20 +225,29 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Reward tasks", showChevron: true, action: { showRewardTasksMiniApp = true }),
                         FlatRow(title: "Insurance", showChevron: true, action: { showInsuranceMiniApp = true }),
                     ])
-                    IconGridSection(title: "Recent services", items: [
-                        ("Open acct", "plus.circle"),
-                        ("Photo transfer", "camera.fill"),
-                        ("Verify", "checkmark.seal.fill"),
-                        ("Send", "paperplane.fill"),
-                        ("Group", "person.2.fill"),
-                        ("Property", "house.fill"),
-                        ("Insurance", "shield.fill"),
-                        ("More", "ellipsis"),
-                    ])
+                    // "Verify" now opens the real Identity screen (found 2026-07-22
+                    // fully built on the backend with zero UI); every other item here
+                    // stays purely decorative, unchanged.
+                    IconGridSection(
+                        title: "Recent services",
+                        items: [
+                            ("Open acct", "plus.circle"),
+                            ("Photo transfer", "camera.fill"),
+                            ("Verify", "checkmark.seal.fill"),
+                            ("Send", "paperplane.fill"),
+                            ("Group", "person.2.fill"),
+                            ("Property", "house.fill"),
+                            ("Insurance", "shield.fill"),
+                            ("More", "ellipsis"),
+                        ],
+                        onItemClick: { label in if label == "Verify" { showIdentity = true } }
+                    )
                     FlatSection(title: "Financial services", rows: [
                         FlatRow(title: "Open account", subtitle: "Itunda Wallet, other banks, RSE brokerage", symbol: "plus.circle", tint: .accentBlue),
-                        FlatRow(title: "My assets", subtitle: "Accounts, loans, RSE holdings, cards, points", symbol: "chart.pie.fill", tint: .accentPurple),
-                        FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "wallet.pass.fill", tint: .accentBlue),
+                        FlatRow(title: "My assets", subtitle: "Accounts, loans, RSE holdings, cards, points", symbol: "chart.pie.fill", tint: .accentPurple, action: { showOverview = true }),
+                        FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
+                        FlatRow(title: "Credit score", subtitle: "Free check, alternative data", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showCreditScore = true }),
+                        FlatRow(title: "Digital certificate", subtitle: "Sign agreements in Itunda", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showCertificate = true }),
                         FlatRow(title: "Mobile plan", subtitle: "MTN, Airtel, broadband", symbol: "globe", tint: .accentTeal),
                     ])
                     // Everything below is modeled directly on the real Toss Bank
@@ -273,8 +291,8 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Pension products", symbol: "percent", tint: .accentBlue),
                     ])
                     FlatSection(title: "Loans", rows: [
-                        FlatRow(title: "Check my max limit", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple),
-                        FlatRow(title: "Personal loan", trailing: "11% ~ 24%", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentBlue),
+                        FlatRow(title: "Check my max limit", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showLoans = true }),
+                        FlatRow(title: "Personal loan", trailing: "11% ~ 24%", trailingIsLink: true, symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
                     ])
                     FlatSection(title: "Notifications & consent", rows: [
                         FlatRow(title: "Notifications", showChevron: true),
@@ -286,7 +304,8 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "FAQ", showChevron: true),
                         FlatRow(title: "Live chat", showChevron: true),
                         FlatRow(title: "Call support", showChevron: true),
-                        FlatRow(title: "Report fraud", showChevron: true),
+                        FlatRow(title: "Report an issue with a transaction", showChevron: true, action: { showSupport = true }),
+                        FlatRow(title: "My support tickets", showChevron: true, action: { showSupport = true }),
                         FlatRow(title: "Announcements", showChevron: true),
                     ])
                 }
@@ -319,6 +338,24 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showInvest) {
             InvestScreenView(onBack: { showInvest = false })
+        }
+        .sheet(isPresented: $showOverview) {
+            OverviewScreenView(onBack: { showOverview = false })
+        }
+        .sheet(isPresented: $showLoans) {
+            LoansScreenView(onBack: { showLoans = false })
+        }
+        .sheet(isPresented: $showCreditScore) {
+            CreditScoreScreenView(onBack: { showCreditScore = false })
+        }
+        .sheet(isPresented: $showCertificate) {
+            CertificateScreenView(onBack: { showCertificate = false })
+        }
+        .sheet(isPresented: $showIdentity) {
+            IdentityScreenView(onBack: { showIdentity = false })
+        }
+        .sheet(isPresented: $showSupport) {
+            SupportScreenView(onBack: { showSupport = false })
         }
     }
 }
@@ -502,6 +539,10 @@ struct FlatSection: View {
 struct IconGridSection: View {
     let title: String
     let items: [(String, String)]
+    // Real click support (2026-07-22) -- optional, defaulting nil, so every existing
+    // call site (purely decorative) is unaffected. Only "Verify" (EntireMenuScreen)
+    // passes one, to open the real Identity screen.
+    var onItemClick: ((String) -> Void)? = nil
 
     private var rows: [[(String, String)]] {
         stride(from: 0, to: items.count, by: 4).map { Array(items[$0..<min($0 + 4, items.count)]) }
@@ -528,6 +569,8 @@ struct IconGridSection: View {
                                 .foregroundColor(IDS.Colors.textSecondary)
                         }
                         .frame(maxWidth: .infinity)
+                        .contentShape(Rectangle())
+                        .onTapGesture { onItemClick?(label) }
                     }
                 }
             }

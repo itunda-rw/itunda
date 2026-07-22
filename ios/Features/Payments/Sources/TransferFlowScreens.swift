@@ -14,13 +14,40 @@ import CoreDesignSystem
 /// own note on the same constraint). TransferViewModel (App/Sources) owns the real
 /// quoteTransfer/confirmTransfer calls and is the only caller.
 
+// Real saved-contacts list (2026-07-22) -- see rw.itunda.contacts.ContactsController's
+// own doc comment on the backend. This tiny UI-facing shape (not NetworkClient's own
+// ContactDto) keeps this Feature module's existing independence from App's
+// NetworkClient -- the actual fetch/add calls happen in TransferFlowContainer.swift
+// (App/Sources), which already has API access, and are passed down here as plain
+// data + callbacks.
+public struct ContactUi: Identifiable {
+    public let id: String
+    public let name: String
+    public let phoneNumber: String
+    public let bank: String
+    public init(id: String, name: String, phoneNumber: String, bank: String) {
+        self.id = id; self.name = name; self.phoneNumber = phoneNumber; self.bank = bank
+    }
+}
+
 public struct RecipientEntryScreen: View {
     @State private var accountNumber = ""
+    @State private var showAddContact = false
+    @State private var newContactName = ""
+    @State private var newContactPhone = ""
     let onBack: () -> Void
+    let contacts: [ContactUi]
+    let onAddContact: (String, String) -> Void
     let onNext: (String) -> Void
 
-    public init(onBack: @escaping () -> Void, onNext: @escaping (String) -> Void) {
+    public init(
+        onBack: @escaping () -> Void,
+        contacts: [ContactUi] = [], onAddContact: @escaping (String, String) -> Void = { _, _ in },
+        onNext: @escaping (String) -> Void
+    ) {
         self.onBack = onBack
+        self.contacts = contacts
+        self.onAddContact = onAddContact
         self.onNext = onNext
     }
 
@@ -80,14 +107,45 @@ public struct RecipientEntryScreen: View {
                 }
                 .padding(.vertical, 14)
 
+                // Real saved contacts (2026-07-22), replacing the single hardcoded demo
+                // row this section used to show -- see ContactUi's own doc comment
+                // above; GET /api/v1/contacts had zero client UI anywhere until now.
                 if accountNumber.isEmpty {
                     Spacer().frame(height: 28)
-                    Text("Recent")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(IDS.Colors.textSecondary)
+                    HStack {
+                        Text("Contacts")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(IDS.Colors.textSecondary)
+                        Spacer()
+                        Button(showAddContact ? "Cancel" : "+ Add") { showAddContact.toggle() }
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(IDS.Colors.brand)
+                    }
                     Spacer().frame(height: 12)
-                    RecentRecipientRow(name: "TUYIZERE Eric", bankAndAccount: "BK - 201-452385-18-277") {
-                        accountNumber = String("2014523851827".prefix(16))
+                    if showAddContact {
+                        VStack(alignment: .leading, spacing: 8) {
+                            TextField("Name", text: $newContactName)
+                                .padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
+                            TextField("Phone number", text: $newContactPhone)
+                                .keyboardType(.phonePad)
+                                .padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
+                            Button("Save contact") {
+                                onAddContact(newContactName, newContactPhone)
+                                newContactName = ""; newContactPhone = ""; showAddContact = false
+                            }
+                            .disabled(newContactName.isEmpty || newContactPhone.isEmpty)
+                            .font(.system(size: 14, weight: .semibold))
+                        }
+                        Spacer().frame(height: 12)
+                    }
+                    if contacts.isEmpty && !showAddContact {
+                        Text("No saved contacts yet.")
+                            .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    }
+                    ForEach(contacts) { contact in
+                        RecentRecipientRow(name: contact.name, bankAndAccount: "\(contact.bank) - \(contact.phoneNumber)") {
+                            accountNumber = String(contact.phoneNumber.filter(\.isNumber).prefix(16))
+                        }
                     }
                 }
             }

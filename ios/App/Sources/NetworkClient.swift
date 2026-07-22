@@ -1846,3 +1846,186 @@ extension NetworkClient {
         return try decoder.decode(Response.self, from: data)
     }
 }
+
+// MARK: - Overview / Linked accounts, Loans, Credit score, Certificate, Identity,
+// Support, Split bill, Contacts, group leave/add-member (2026-07-22 port)
+//
+// Every one of these was found fully built on the backend during a full
+// backend-vs-app audit, with zero client UI on Android/bank-mfe either until the
+// same-day ports that preceded this one -- see docs/TOSS_PARITY_MATRIX.md's own
+// per-row notes for the full account of each gap. DTOs mirror the Android/bank-mfe
+// ports field-for-field against the same real backend contracts.
+
+struct AccountSummaryDto: Decodable, Identifiable { let id: String; let type: String; let name: String; let balance: Double; let currency: String }
+struct OverviewSavingsSummaryDto: Decodable { let totalSaved: Double; let goalCount: Int }
+struct OverviewLoansSummaryDto: Decodable { let totalOutstanding: Double; let activeCount: Int }
+struct OverviewInvestmentsSummaryDto: Decodable { let totalCostBasis: Double; let holdingCount: Int }
+struct OverviewInsuranceSummaryDto: Decodable { let activePolicyCount: Int; let totalMonthlyPremium: Double }
+struct LinkedAccountSummaryDto: Decodable, Identifiable { let id: String; let provider: String; let maskedAccountNumber: String; let status: String; let demoBalance: Double?; let demoBalanceCurrency: String?; let isDemoBalance: Bool }
+struct OverviewResponse: Decodable {
+    let success: Bool
+    let netWorth: Double
+    let accounts: [AccountSummaryDto]
+    let savings: OverviewSavingsSummaryDto
+    let loans: OverviewLoansSummaryDto
+    let investments: OverviewInvestmentsSummaryDto
+    let insurance: OverviewInsuranceSummaryDto
+    let linkedAccounts: [LinkedAccountSummaryDto]
+}
+
+struct LinkAccountRequest: Encodable { let provider: String; let externalAccountNumber: String }
+struct LinkedAccountDto: Decodable, Identifiable {
+    let id: String; let userId: String; let provider: String; let externalAccountNumberMasked: String
+    let status: String; let failureReason: String?; let linkedAt: String; let unlinkedAt: String?
+    let demoBalance: Double?; let demoBalanceCurrency: String?
+}
+struct LinkAccountResponse: Decodable { let success: Bool; let linkedAccount: LinkedAccountDto }
+struct LinkedAccountsResponse: Decodable { let success: Bool; let linkedAccounts: [LinkedAccountDto] }
+
+struct LoanOfferDto: Decodable, Identifiable { let id: String; let lenderId: String; let lenderName: String; let name: String; let maxAmount: Double; let interestRate: Double; let term: String; let requirements: String }
+struct LenderDto: Decodable, Identifiable { let id: String; let name: String; let kind: String }
+struct LoanOffersResponse: Decodable { let success: Bool; let offers: [LoanOfferDto] }
+struct LendersResponse: Decodable { let success: Bool; let lenders: [LenderDto] }
+struct LoanAccountDto: Decodable, Identifiable { let id: String; let userId: String; let walletId: String; let offerId: String; let principal: Double; let outstanding: Double; let interestRate: Double; let status: String; let disbursedAt: String }
+struct MyLoansResponse: Decodable { let success: Bool; let loans: [LoanAccountDto] }
+struct ApplyLoanRequest: Encodable { let loanId: String; let amount: Double }
+struct ApplyLoanResponse: Decodable { let success: Bool; let message: String; let loan: LoanAccountDto }
+struct RepayLoanRequest: Encodable { let loanId: String; let amount: Double }
+struct RepayLoanResponse: Decodable { let success: Bool; let message: String; let remaining: Double; let newBalance: Double }
+
+struct CreditScoreFactorDto: Decodable, Identifiable { let name: String; let points: Int; let description: String; var id: String { name } }
+struct CreditScoreResponse: Decodable { let success: Bool; let score: Int; let factors: [CreditScoreFactorDto]; let computedAt: String }
+
+struct CertificateDto: Decodable {
+    let id: String; let userId: String; let serialNumber: String; let publicKeyBase64: String
+    let algorithm: String; let status: String; let issuedAt: String; let expiresAt: String; let revokedAt: String?
+}
+struct IssueCertificateResponse: Decodable { let success: Bool; let certificate: CertificateDto; let privateKey: String }
+struct MyCertificateResponse: Decodable { let success: Bool; let certificate: CertificateDto? }
+struct RevokeCertificateResponse: Decodable { let success: Bool; let certificate: CertificateDto }
+
+struct SubmitIdentityRequest: Encodable { let documentType: String; let documentNumber: String; let documentReference: String }
+struct KycSubmissionDto: Decodable, Identifiable {
+    let id: String; let userId: String; let documentType: String; let documentNumber: String; let documentReference: String
+    let status: String; let submittedAt: String; let reviewedBy: String?; let reviewedAt: String?; let decisionReason: String?
+    let autoVerificationStatus: String?; let autoVerificationDetail: String?
+}
+struct SubmitIdentityResponse: Decodable { let success: Bool; let submission: KycSubmissionDto }
+struct IdentityStatusResponse: Decodable { let success: Bool; let submissions: [KycSubmissionDto] }
+
+struct CreateSupportTicketRequest: Encodable { let transactionId: String; let category: String; let description: String }
+struct SupportTicketDto: Decodable, Identifiable {
+    let id: String; let userId: String; let transactionId: String; let category: String; let description: String
+    let status: String; let resolution: String?; let resolutionNotes: String?; let refundTransactionId: String?
+    let frozeWalletId: String?; let dueBy: String; let reviewedBy: String?; let createdAt: String; let resolvedAt: String?
+}
+struct CreateSupportTicketResponse: Decodable { let success: Bool; let ticket: SupportTicketDto }
+struct SupportTicketsResponse: Decodable { let success: Bool; let tickets: [SupportTicketDto] }
+
+struct CreateSplitBillRequest: Encodable { let totalAmount: Double; let description: String; let participantUserIds: [String] }
+struct SplitBillDto: Decodable, Identifiable {
+    let id: String; let organizerId: String; let groupConversationId: String; let messageId: String
+    let totalAmount: Double; let description: String; let status: String; let settledAt: String?; let createdAt: String
+}
+struct SplitBillParticipantDto: Decodable, Identifiable {
+    let id: String; let splitBillId: String; let userId: String; let shareAmount: Double
+    let status: String; let paidTransactionId: String?; let paidAt: String?; let createdAt: String
+}
+struct SplitBillWithParticipants: Decodable, Identifiable { let splitBill: SplitBillDto; let participants: [SplitBillParticipantDto]; var id: String { splitBill.id } }
+struct CreateSplitBillResponse: Decodable { let success: Bool; let splitBill: SplitBillDto; let participants: [SplitBillParticipantDto] }
+struct SplitBillsForGroupResponse: Decodable { let success: Bool; let splitBills: [SplitBillWithParticipants] }
+struct PaySplitBillShareResponse: Decodable { let success: Bool; let participant: SplitBillParticipantDto }
+
+struct AddContactRequest: Encodable { let name: String; let bank: String?; let phoneNumber: String }
+struct ContactDto: Decodable, Identifiable { let id: String; let userId: String; let name: String; let bank: String; let acc: String; let phoneNumber: String; let color: String; let letter: String }
+struct ContactsResponse: Decodable { let success: Bool; let contacts: [ContactDto] }
+struct AddContactResponse: Decodable { let success: Bool; let contact: ContactDto }
+
+struct AddGroupMemberRequest: Encodable { let userId: String }
+
+extension NetworkClient {
+    func getOverview() async throws -> OverviewResponse { try await get("api/v1/overview") }
+
+    func getLinkedAccounts() async throws -> LinkedAccountsResponse { try await get("api/v1/accounts/linked") }
+
+    func linkAccount(provider: String, externalAccountNumber: String) async throws -> LinkAccountResponse {
+        try await authenticatedPost("api/v1/accounts/link", body: LinkAccountRequest(provider: provider, externalAccountNumber: externalAccountNumber))
+    }
+
+    func unlinkAccount(accountId: String) async throws -> LinkAccountResponse {
+        try await authenticatedPost("api/v1/accounts/link/\(accountId)/unlink", body: EmptyRequest())
+    }
+
+    func getLoanOffers(lenderId: String? = nil) async throws -> LoanOffersResponse {
+        if let lenderId { return try await get("api/v1/loans/offers", query: [URLQueryItem(name: "lenderId", value: lenderId)]) }
+        return try await get("api/v1/loans/offers")
+    }
+
+    func getLenders() async throws -> LendersResponse { try await get("api/v1/loans/lenders") }
+
+    func getMyLoans() async throws -> MyLoansResponse { try await get("api/v1/loans/my-loans") }
+
+    func applyForLoan(loanId: String, amount: Double) async throws -> ApplyLoanResponse {
+        try await authenticatedPost("api/v1/loans/apply", body: ApplyLoanRequest(loanId: loanId, amount: amount), idempotencyKey: UUID().uuidString)
+    }
+
+    func repayLoan(loanId: String, amount: Double) async throws -> RepayLoanResponse {
+        try await authenticatedPost("api/v1/loans/repay", body: RepayLoanRequest(loanId: loanId, amount: amount), idempotencyKey: UUID().uuidString)
+    }
+
+    func getCreditScore() async throws -> CreditScoreResponse { try await get("api/v1/credit-score") }
+
+    func issueCertificate() async throws -> IssueCertificateResponse {
+        try await authenticatedPost("api/v1/certificate/issue", body: EmptyRequest())
+    }
+
+    func getMyCertificate() async throws -> MyCertificateResponse { try await get("api/v1/certificate/me") }
+
+    func revokeCertificate() async throws -> RevokeCertificateResponse {
+        try await authenticatedPost("api/v1/certificate/revoke", body: EmptyRequest())
+    }
+
+    func submitIdentity(documentType: String, documentNumber: String, documentReference: String) async throws -> SubmitIdentityResponse {
+        try await authenticatedPost("api/v1/identity/submit", body: SubmitIdentityRequest(documentType: documentType, documentNumber: documentNumber, documentReference: documentReference))
+    }
+
+    func getIdentityStatus() async throws -> IdentityStatusResponse { try await get("api/v1/identity/status") }
+
+    func createSupportTicket(transactionId: String, category: String, description: String) async throws -> CreateSupportTicketResponse {
+        try await authenticatedPost("api/v1/support/tickets", body: CreateSupportTicketRequest(transactionId: transactionId, category: category, description: description))
+    }
+
+    func getSupportTickets() async throws -> SupportTicketsResponse { try await get("api/v1/support/tickets") }
+
+    func createSplitBill(groupConversationId: String, totalAmount: Double, description: String, participantUserIds: [String]) async throws -> CreateSplitBillResponse {
+        try await authenticatedPost(
+            "api/v1/split-bills/conversations/\(groupConversationId)",
+            body: CreateSplitBillRequest(totalAmount: totalAmount, description: description, participantUserIds: participantUserIds),
+            idempotencyKey: UUID().uuidString
+        )
+    }
+
+    func getSplitBillsForGroup(groupConversationId: String) async throws -> SplitBillsForGroupResponse {
+        try await get("api/v1/split-bills/conversations/\(groupConversationId)")
+    }
+
+    func paySplitBillShare(splitBillId: String) async throws -> PaySplitBillShareResponse {
+        try await authenticatedPost("api/v1/split-bills/\(splitBillId)/pay", body: EmptyRequest(), idempotencyKey: UUID().uuidString)
+    }
+
+    func getContacts() async throws -> ContactsResponse { try await get("api/v1/contacts") }
+
+    func addContact(name: String, phoneNumber: String, bank: String? = nil) async throws -> AddContactResponse {
+        try await authenticatedPost("api/v1/contacts", body: AddContactRequest(name: name, bank: bank, phoneNumber: phoneNumber))
+    }
+
+    // Real leave-group/add-member (found 2026-07-22 fully built on the backend with
+    // zero UI anywhere, despite group chat itself being fully wired).
+    func addGroupMember(groupId: String, userId: String) async throws -> GroupResponse {
+        try await authenticatedPost("api/v1/messages/groups/\(groupId)/members", body: AddGroupMemberRequest(userId: userId))
+    }
+
+    func leaveGroup(groupId: String) async throws -> SuccessResponse {
+        try await authenticatedDelete("api/v1/messages/groups/\(groupId)/members/me")
+    }
+}
