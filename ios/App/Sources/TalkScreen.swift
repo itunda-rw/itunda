@@ -709,6 +709,9 @@ private struct ChatThreadScreen: View {
     @State private var giftAmount = ""
     @State private var giftNote = ""
     @State private var sendingGift = false
+    @State private var showingBlockConfirmation = false
+    @State private var blocking = false
+    @State private var isBlocked = false
     // Real device binding step-up (2026-07-21) -- Gift send/claim was a real gap:
     // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but a
     // bare `catch { }` swallowed it into a generic error, same fix already applied to
@@ -735,8 +738,17 @@ private struct ChatThreadScreen: View {
                     }
                 }
                 Spacer()
+                Button(isBlocked ? "Blocked" : (blocking ? "Blocking…" : "Block")) { showingBlockConfirmation = true }
+                    .disabled(isBlocked || blocking)
+                    .foregroundColor(.red)
             }
             .padding(.horizontal, 8)
+            .alert("Block \(conversation.otherUserName)?", isPresented: $showingBlockConfirmation) {
+                Button("Block", role: .destructive) { Task { await blockParticipant() } }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("They will no longer be able to message you. You can unblock them later from this conversation.")
+            }
 
             ScrollViewReader { proxy in
                 ScrollView {
@@ -1016,6 +1028,18 @@ private struct ChatThreadScreen: View {
             messages = messages?.map { $0.id == messageId ? MessageDto(id: $0.id, conversationId: $0.conversationId, senderId: $0.senderId, body: $0.body, sentAt: $0.sentAt, readAt: $0.readAt, reactions: res.reactions) : $0 }
         } catch {
             // Best-effort -- a failed reaction toggle just leaves the badge as it was.
+        }
+    }
+
+    private func blockParticipant() async {
+        blocking = true
+        defer { blocking = false }
+        do {
+            _ = try await NetworkClient.shared.blockConversationParticipant(conversationId: conversation.conversationId)
+            isBlocked = true
+            error = "\(conversation.otherUserName) is blocked."
+        } catch {
+            error = "Couldn't block this person. Check your connection and try again."
         }
     }
 
