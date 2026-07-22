@@ -101,6 +101,7 @@ import org.maplibre.android.style.layers.PropertyFactory.iconImage
 import org.maplibre.android.style.layers.PropertyFactory.iconSize
 import org.maplibre.android.style.layers.PropertyFactory.lineCap
 import org.maplibre.android.style.layers.PropertyFactory.lineColor
+import org.maplibre.android.style.layers.PropertyFactory.lineDasharray
 import org.maplibre.android.style.layers.PropertyFactory.lineJoin
 import org.maplibre.android.style.layers.PropertyFactory.lineOpacity
 import org.maplibre.android.style.layers.PropertyFactory.lineWidth
@@ -173,6 +174,13 @@ private const val NEARBY_LAYER_ID = "nearby-places-circle"
 private const val MERCHANT_ICON_ID = "merchant-pin"
 private const val DESTINATION_ICON_ID = "destination-pin"
 private const val NEARBY_ICON_ID = "nearby-pin"
+// Real distance-measurement (ruler) tool (2026-07-23) -- ported from bank-mfe's own
+// real MapView.tsx tool. A dashed line, deliberately a different color from the real
+// drawn road route above, so the two are never visually confused: one is a real OSRM
+// road route, the other a plain straight-line measurement between tapped points.
+private const val MEASURE_SOURCE_ID = "measure"
+private const val MEASURE_POINTS_LAYER_ID = "measure-points"
+private const val MEASURE_LINE_LAYER_ID = "measure-line"
 
 // Real per-category glyphs for the chip row (2026-07-21) -- plain emoji, matching this
 // screen's own existing convention of emoji over icon-font glyphs for real content (the
@@ -369,6 +377,12 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
     var moveFolderNameInput by remember { mutableStateOf("") }
     var moveFolderColorInput by remember { mutableStateOf(BOOKMARK_COLOR_PALETTE[0]) }
 
+    // Real distance-measurement (ruler) tool state (2026-07-23) -- plain (lat, lng)
+    // pairs in tap order, same convention bank-mfe's own MapView.tsx uses.
+    var measuring by remember { mutableStateOf(false) }
+    var measurePoints by remember { mutableStateOf<List<Pair<Double, Double>>>(emptyList()) }
+    var lastMeasuredPlaceName by remember { mutableStateOf<String?>(null) }
+
     // Real draggable bottom-sheet state (peek/half/full) -- see `MapSheetValue`'s own
     // doc comment. `density` is needed both here (for the velocity threshold, in real
     // pixels) and again below once `BoxWithConstraints` supplies the real measured
@@ -493,6 +507,9 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
         }
     }
     val currentMerchants by rememberUpdatedState(merchants)
+    val currentCategoryResults by rememberUpdatedState(categoryResults)
+    val currentMeasuring by rememberUpdatedState(measuring)
+    val currentMeasurePoints by rememberUpdatedState(measurePoints)
 
     fun isBookmarked(place: PlaceSearchResultDto): Boolean =
         bookmarks.any { it.latitude == place.latitude && it.longitude == place.longitude }
@@ -575,6 +592,23 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
         }
     }
 
+    // Real "just select, don't auto-route" (2026-07-23) -- the same lighter behavior
+    // bank-mfe's own MapView.tsx selectPlace already has, factored out of the two
+    // inline copies already in this file (search results, recent searches) so a third
+    // real call site (tapping a merchant/nearby pin directly on the map) doesn't need a
+    // fourth copy. Unlike selectAndRoute below, this never fetches directions --
+    // tapping an already-visible pin shouldn't immediately start routing to it.
+    fun selectPlace(place: PlaceSearchResultDto) {
+        showingItineraryRoute = false
+        selectedPlace = place
+        searchResults = null
+        route = null
+        routeAlternatives = null
+        selectedRouteIndex = 0
+        showSteps = false
+        savingToFolder = null
+    }
+
     fun selectAndRoute(place: PlaceSearchResultDto) {
         showingItineraryRoute = false
         selectedPlace = place
@@ -639,6 +673,66 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                 error = superAppErrorMessage(e)
             } catch (e: Exception) {
                 error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                routing = false
+            }
+        }
+    }
+
+    // Real distance-measurement (ruler) tool (2026-07-23) -- ported from bank-mfe's own
+    // real MapView.tsx toggleMeasuring/handleRouteItinerary. Genuinely distinct from
+    // Directions: no road route, no OSRM call to enter/build it -- just the plain
+    // straight-line distance between tapped points, until "Route itinerary" is tapped.
+    fun toggleMeasuring() {
+        measuring = !measuring
+        measurePoints = emptyList()
+        lastMeasuredPlaceName = null
+        itineraryStops = emptyList()
+    }
+
+    // Real straight-line distance -- the same Haversine great-circle formula
+    // rw.itunda.core.geo.GeoUtils.haversineKm implements on the backend, kept as a
+    // plain local function here since a ruler tool needs to update live as a user
+    // taps, not once per API call.
+    fun haversineKm(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
+        val r = 6371.0
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLng = Math.toRadians(lng2 - lng1)
+        val a = kotlin.math.sin(dLat / 2).let { it * it } +
+            kotlin.math.cos(Math.toRadians(lat1)) * kotlin.math.cos(Math.toRadians(lat2)) *
+            kotlin.math.sin(dLng / 2).let { it * it }
+        return r * 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
+    }
+
+    val measureTotalKm = measurePoints.zipWithNext().sumOf { (a, b) -> haversineKm(a.first, a.second, b.first, b.second) }
+
+    // Converts the ruler's tapped points directly into a real driving/walking route --
+    // unlike fetchItinerary above, this does NOT prepend myLocation as an implicit
+    // origin: the ruler's own first tapped point IS the start, matching bank-mfe's own
+    // handleRouteItinerary exactly.
+    fun routeMeasuredItinerary(mode: String = travelMode) {
+        if (measurePoints.size < 2 || measurePoints.size > 7) return
+        coroutineScope.launch {
+            routing = true
+            error = null
+            try {
+                val response = NetworkClient.apiService.getItineraryDirections(
+                    ItineraryDirectionsRequest(
+                        waypoints = measurePoints.map { ItineraryWaypointRequest(it.first, it.second) },
+                        mode = mode,
+                    ),
+                )
+                travelMode = mode
+                route = MapsDirectionsResponse(success = response.success, route = response.route)
+                routeAlternatives = null
+                selectedRouteIndex = 0
+                itineraryStops = measurePoints.map { PlaceSearchResultDto("Measured point", it.first, it.second) }
+                showingItineraryRoute = true
+                showSteps = false
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: Exception) {
+                error = "Could not find a route through these stops."
             } finally {
                 routing = false
             }
@@ -734,6 +828,70 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                         currentMerchants.map { m -> Feature.fromGeometry(Point.fromLngLat(m.longitude!!, m.latitude!!)) },
                     )
                     (style.getSourceAs<GeoJsonSource>(MERCHANTS_SOURCE_ID))?.setGeoJson(featureCollection)
+
+                    // Real distance-measurement (ruler) tool line -- dashed, and a
+                    // deliberately different color from ROUTE_LAYER_ID above, so a real
+                    // OSRM road route and a plain straight-line measurement are never
+                    // visually confused.
+                    style.addSource(GeoJsonSource(MEASURE_SOURCE_ID, FeatureCollection.fromFeatures(emptyArray())))
+                    style.addLayer(
+                        LineLayer(MEASURE_LINE_LAYER_ID, MEASURE_SOURCE_ID).withProperties(
+                            lineColor("#E53935"), lineWidth(3f), lineDasharray(arrayOf(2f, 1.5f)),
+                            lineCap(Property.LINE_CAP_ROUND), lineJoin(Property.LINE_JOIN_ROUND),
+                        ),
+                    )
+                    style.addLayer(
+                        CircleLayer(MEASURE_POINTS_LAYER_ID, MEASURE_SOURCE_ID).withProperties(
+                            circleRadius(6f), circleColor("#E53935"), circleStrokeWidth(2f), circleStrokeColor("#ffffff"),
+                        ),
+                    )
+                }
+
+                // Real map-tap infrastructure (2026-07-23) -- MapLibre has no per-marker
+                // click handler for GeoJsonSource-backed pins (unlike bank-mfe's own web
+                // maplibregl.Marker, a real DOM element per merchant with its own click
+                // listener) -- a tap must query which rendered feature, if any, sits under
+                // it. Two real behaviors share this one listener: while measuring, every
+                // tap adds a ruler point; otherwise a tap that lands on a real merchant or
+                // nearby-place pin opens the same detail sheet a search result tap does
+                // (matched back to the loaded list by coordinate, the same technique
+                // bank-mfe's own selectedMerchant lookup already uses).
+                map.addOnMapClickListener { latLng ->
+                    if (currentMeasuring) {
+                        if (currentMeasurePoints.size < 7) {
+                            val newPoint = latLng.latitude to latLng.longitude
+                            measurePoints = currentMeasurePoints + newPoint
+                            lastMeasuredPlaceName = "Finding area…"
+                            coroutineScope.launch {
+                                try {
+                                    val name = NetworkClient.apiService.reverseGeocode(newPoint.first, newPoint.second).placeName
+                                    if (measurePoints.lastOrNull() == newPoint) lastMeasuredPlaceName = name
+                                } catch (e: Exception) {
+                                    if (measurePoints.lastOrNull() == newPoint) lastMeasuredPlaceName = null
+                                }
+                            }
+                        }
+                        true
+                    } else {
+                        val screenPoint = map.projection.toScreenLocation(latLng)
+                        val tapped = map.queryRenderedFeatures(screenPoint, MERCHANTS_LAYER_ID, NEARBY_LAYER_ID).firstOrNull()
+                        val point = tapped?.geometry() as? Point
+                        if (point != null) {
+                            val lat = point.latitude()
+                            val lng = point.longitude()
+                            val merchant = currentMerchants.find { it.latitude == lat && it.longitude == lng }
+                            val nearby = currentCategoryResults?.find { it.latitude == lat && it.longitude == lng }
+                            val place = when {
+                                merchant != null -> PlaceSearchResultDto(merchant.businessName, lat, lng)
+                                nearby != null -> PlaceSearchResultDto(nearby.displayName, lat, lng)
+                                else -> null
+                            }
+                            if (place != null) selectPlace(place)
+                            place != null
+                        } else {
+                            false
+                        }
+                    }
                 }
             }
             onDispose {
@@ -741,6 +899,22 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                 mapView.onPause()
                 mapView.onStop()
                 mapView.onDestroy()
+            }
+        }
+        // Real distance-measurement (ruler) tool -- keeps the measure GeoJSON source (a
+        // dot per tapped point, a dashed line once there are 2+) in sync with real
+        // tapped points, and clears it whenever measuring is turned off.
+        LaunchedEffect(measurePoints) {
+            mapView.getMapAsync { map ->
+                val style = map.style ?: return@getMapAsync
+                val source = style.getSourceAs<GeoJsonSource>(MEASURE_SOURCE_ID) ?: return@getMapAsync
+                val points = measurePoints.map { (lat, lng) -> Feature.fromGeometry(Point.fromLngLat(lng, lat)) }
+                val line = if (measurePoints.size > 1) {
+                    listOf(Feature.fromGeometry(LineString.fromLngLats(measurePoints.map { (lat, lng) -> Point.fromLngLat(lng, lat) })))
+                } else {
+                    emptyList()
+                }
+                source.setGeoJson(FeatureCollection.fromFeatures(points + line))
             }
         }
         // Real merchants loading after the style is already built re-populates the
@@ -1011,14 +1185,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                             if (itineraryBuilding) {
                                                 addItineraryStop(place)
                                             } else {
-                                                showingItineraryRoute = false
-                                                selectedPlace = place
-                                                searchResults = null
-                                                route = null
-                                                routeAlternatives = null
-                                                selectedRouteIndex = 0
-                                                showSteps = false
-                                                savingToFolder = null
+                                                selectPlace(place)
                                             }
                                         }
                                         .padding(horizontal = 14.dp, vertical = 10.dp),
@@ -1067,14 +1234,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                                     if (itineraryBuilding) {
                                         addItineraryStop(place)
                                     } else {
-                                        showingItineraryRoute = false
-                                        selectedPlace = place
-                                        searchResults = null
-                                        route = null
-                                        routeAlternatives = null
-                                        selectedRouteIndex = 0
-                                        showSteps = false
-                                        savingToFolder = null
+                                        selectPlace(place)
                                     }
                                 }
                                 .padding(horizontal = 14.dp, vertical = 10.dp),
@@ -1083,6 +1243,54 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                 }
             }
             } // end floating top panel
+
+            // Real distance-measurement (ruler) tool info badge (2026-07-23) -- only
+            // shown while active, floats below the search chrome so it never fights the
+            // docked bottom sheet for space. Ported from bank-mfe's own real version.
+            if (measuring) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 76.dp)
+                        .shadow(3.dp, RoundedCornerShape(999.dp))
+                        .background(Ids.colors.surface, RoundedCornerShape(999.dp))
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        when {
+                            measurePoints.isEmpty() -> "Tap the map to add 2–7 stops"
+                            measurePoints.size == 1 -> "Add 1 more stop to route it"
+                            else -> "${measurePoints.size} stops · ${"%.2f".format(measureTotalKm)} km straight-line"
+                        },
+                        fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Ids.colors.textPrimary,
+                    )
+                    lastMeasuredPlaceName?.let {
+                        Text(it, fontSize = 12.sp, color = Ids.colors.textSecondary, maxLines = 1)
+                    }
+                    if (measurePoints.isNotEmpty()) {
+                        Text(
+                            "Undo", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.brand,
+                            modifier = Modifier.clickable { measurePoints = measurePoints.dropLast(1); lastMeasuredPlaceName = null },
+                        )
+                    }
+                    if (measurePoints.size >= 2) {
+                        Text(
+                            if (routing) "Routing…" else "Route itinerary",
+                            fontSize = 12.sp, fontWeight = FontWeight.Bold, color = androidx.compose.ui.graphics.Color.White,
+                            modifier = Modifier
+                                .background(Ids.colors.brand, RoundedCornerShape(999.dp))
+                                .clickable(enabled = !routing) { routeMeasuredItinerary() }
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                        )
+                    }
+                    Text(
+                        "Done", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Ids.colors.textTertiary,
+                        modifier = Modifier.clickable { measuring = false; measurePoints = emptyList(); lastMeasuredPlaceName = null },
+                    )
+                }
+            }
 
             // Real floating right-side controls (2026-07-21) -- zoom +/- and a dedicated
             // "locate me" button, matching the standard Google Maps/Naver Map/Kakao Map
@@ -1132,6 +1340,21 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null, initialSearch
                         tint = if (locating) Ids.colors.textSecondary else Ids.colors.brand,
                         modifier = Modifier.size(20.dp),
                     )
+                }
+                // Real distance-measurement (ruler) tool toggle (2026-07-23) -- Naver/
+                // Kakao Maps' own real "measure distance" action, ported from bank-mfe's
+                // own real MapView.tsx. Tap to enter measure mode, then tap points on the
+                // map to build a straight-line path and see the real cumulative distance.
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .shadow(3.dp, CircleShape)
+                        .background(if (measuring) androidx.compose.ui.graphics.Color(0xFFE53935) else Ids.colors.surface, CircleShape)
+                        .clip(CircleShape)
+                        .clickable { toggleMeasuring() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("📏", fontSize = 18.sp, color = if (measuring) androidx.compose.ui.graphics.Color.White else Ids.colors.textSecondary)
                 }
             }
 

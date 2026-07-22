@@ -586,6 +586,7 @@ data class ShoppingMerchantsResponse(val success: Boolean, val merchants: List<S
 // onto itunda's already-deployed self-hosted Nominatim/OSRM.
 data class PlaceSearchResultDto(val displayName: String, val latitude: Double, val longitude: Double)
 data class MapsSearchResponse(val success: Boolean, val results: List<PlaceSearchResultDto>)
+data class MapsReverseGeocodeResponse(val success: Boolean, val placeName: String?)
 data class RouteStepDto(val instruction: String, val distanceMeters: Double, val streetName: String?)
 data class RouteResultDto(val distanceKm: Double, val durationMinutes: Double, val geometry: List<List<Double>>, val steps: List<RouteStepDto> = emptyList())
 data class MapsDirectionsResponse(val success: Boolean, val route: RouteResultDto)
@@ -1400,6 +1401,11 @@ interface ApiService {
     // Real "search this map" + "directions" (2026-07-19) -- see MapsService.
     @GET("api/v1/maps/search")
     suspend fun searchPlaces(@Query("q") q: String): MapsSearchResponse
+
+    // Backs the ruler (distance-measurement) tool's "what's here" label -- ported from
+    // bank-mfe's own real reverseGeocode call, 2026-07-23.
+    @GET("api/v1/maps/reverse")
+    suspend fun reverseGeocode(@Query("lat") lat: Double, @Query("lng") lng: Double): MapsReverseGeocodeResponse
 
     // mode added 2026-07-22 (default "DRIVING") -- see OsrmRoutingClient.route's own doc
     // comment on the backend for the real, separately-deployed foot-profile OSRM

@@ -966,6 +966,7 @@ public struct ShoppingMerchantsResponse: Decodable { public let success: Bool; p
 // this back to JSON for local UserDefaults persistence, not just decode it from the API.
 public struct PlaceSearchResultDto: Codable {  public let displayName: String; public let latitude: Double; public let longitude: Double; public init(displayName: String, latitude: Double, longitude: Double) { self.displayName = displayName; self.latitude = latitude; self.longitude = longitude } }
 public struct MapsSearchResponse: Decodable { public let success: Bool; public let results: [PlaceSearchResultDto] }
+public struct MapsReverseGeocodeResponse: Decodable { public let success: Bool; public let placeName: String? }
 public struct RouteStepDto: Decodable { public let instruction: String; public let distanceMeters: Double; public let streetName: String? }
 public struct RouteResultDto: Decodable { public let distanceKm: Double; public let durationMinutes: Double; public let geometry: [[Double]]; public let steps: [RouteStepDto] }
 public struct MapsDirectionsResponse: Decodable { public let success: Bool; public let route: RouteResultDto }
@@ -1662,6 +1663,15 @@ extension NetworkClient {
     // Real "search this map" + "directions" (2026-07-19) -- see MapsService.
     public func searchPlaces(query: String) async throws -> MapsSearchResponse {
         try await get("api/v1/maps/search", query: [URLQueryItem(name: "q", value: query)])
+    }
+
+    // Backs the ruler (distance-measurement) tool's "what's here" label -- ported from
+    // bank-mfe's own real reverseGeocode call, 2026-07-23.
+    public func reverseGeocode(lat: Double, lng: Double) async throws -> MapsReverseGeocodeResponse {
+        try await get("api/v1/maps/reverse", query: [
+            URLQueryItem(name: "lat", value: String(lat)),
+            URLQueryItem(name: "lng", value: String(lng)),
+        ])
     }
 
     // mode added 2026-07-22 (default "DRIVING") -- see OsrmRoutingClient.route's own doc

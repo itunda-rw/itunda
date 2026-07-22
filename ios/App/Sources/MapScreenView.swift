@@ -123,6 +123,17 @@ private final class MapController: ObservableObject {
     weak var mapView: MLNMapView?
     func zoomIn() { mapView.map { $0.setZoomLevel($0.zoomLevel + 1, animated: true) } }
     func zoomOut() { mapView.map { $0.setZoomLevel($0.zoomLevel - 1, animated: true) } }
+
+    // Real map-tap infrastructure (2026-07-23) -- bridges SwiftUI state into the plain
+    // NSObject Coordinator below, the same "class instance both sides can reach" role
+    // `mapView` already plays here for zoom. `onSelectPlace` backs a real tap on a
+    // merchant/nearby-place pin (MLNPointAnnotation already supports native tap-select
+    // via `didSelect`, unlike Android's GeoJsonSource-backed circles, which need a real
+    // queryRenderedFeatures call); `onMeasureTap`/`isMeasuring` back the ruler tool,
+    // which needs a raw tap anywhere on the map, not just on an existing annotation.
+    var onSelectPlace: ((PlaceSearchResultDto) -> Void)?
+    var isMeasuring = false
+    var onMeasureTap: ((CLLocationCoordinate2D) -> Void)?
 }
 
 /// Real "my location" via Apple's own CLLocationManager, runtime-permission-gated,
@@ -246,6 +257,14 @@ struct MapScreenView: View {
     @State private var sheetSettledY: CGFloat = 0
     @StateObject private var mapController = MapController()
 
+    // Real distance-measurement (ruler) tool state (2026-07-23) -- ported from
+    // bank-mfe's own real MapView.tsx. Plain (lat, lng) pairs in tap order, matching
+    // Android's own identical port.
+    @State private var measuring = false
+    @State private var measurePoints: [(Double, Double)] = []
+    @State private var lastMeasuredPlaceName: String?
+    @State private var measureReverseGeocodeTask: Task<Void, Never>?
+
     private func isBookmarked(_ place: PlaceSearchResultDto) -> Bool {
         bookmarks.contains { $0.latitude == place.latitude && $0.longitude == place.longitude }
     }
@@ -271,7 +290,8 @@ struct MapScreenView: View {
                 ZStack(alignment: .top) {
                     MapLibreMapRepresentable(
                         merchants: merchants, myLocation: locationFetcher.coordinate, destination: selectedPlace,
-                        routeGeometry: route?.geometry, nearbyPlaces: categoryResults, controller: mapController,
+                        routeGeometry: route?.geometry, nearbyPlaces: categoryResults, measurePoints: measurePoints,
+                        controller: mapController,
                     )
                         .ignoresSafeArea()
 
@@ -434,11 +454,60 @@ struct MapScreenView: View {
                                 .clipShape(Circle())
                                 .shadow(color: .black.opacity(0.14), radius: 8, y: 2)
                         }
+
+                        // Real distance-measurement (ruler) tool toggle (2026-07-23) --
+                        // Naver/Kakao Maps' own real "measure distance" action, ported
+                        // from bank-mfe's own real MapView.tsx.
+                        Button(action: { toggleMeasuring() }) {
+                            Text("📏")
+                                .font(.system(size: 18))
+                                .frame(width: 46, height: 46)
+                                .background(measuring ? Color(red: 0.898, green: 0.224, blue: 0.208) : IdsPalette.white)
+                                .clipShape(Circle())
+                                .shadow(color: .black.opacity(0.14), radius: 8, y: 2)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .trailing)
                     .padding(.trailing, 16)
                     .padding(.bottom, peekHeight + 16)
                     .frame(maxHeight: .infinity, alignment: .bottom)
+
+                    // Real distance-measurement (ruler) tool info badge (2026-07-23) --
+                    // only shown while active, floats below the search chrome so it never
+                    // fights the docked bottom sheet for space. Ported from bank-mfe's own
+                    // real version.
+                    if measuring {
+                        HStack(spacing: 10) {
+                            Text(
+                                measurePoints.isEmpty ? "Tap the map to add 2–7 stops"
+                                    : measurePoints.count == 1 ? "Add 1 more stop to route it"
+                                    : "\(measurePoints.count) stops · \(String(format: "%.2f", measureTotalKm)) km straight-line"
+                            )
+                            .font(.caption).bold().foregroundColor(IdsPalette.gray900)
+                            if let lastMeasuredPlaceName {
+                                Text(lastMeasuredPlaceName).font(.caption2).foregroundColor(IdsPalette.gray500).lineLimit(1)
+                            }
+                            if !measurePoints.isEmpty {
+                                Button("Undo") { measurePoints.removeLast(); lastMeasuredPlaceName = nil }
+                                    .font(.caption).bold().foregroundColor(IdsPalette.blue500)
+                            }
+                            if measurePoints.count >= 2 {
+                                Button(routing ? "Routing…" : "Route itinerary") { Task { await routeMeasuredItinerary() } }
+                                    .disabled(routing)
+                                    .font(.caption).bold().foregroundColor(.white)
+                                    .padding(.horizontal, 10).padding(.vertical, 6)
+                                    .background(IDS.Colors.brand).cornerRadius(999)
+                            }
+                            Button("Done") { measuring = false; mapController.isMeasuring = false; measurePoints = []; lastMeasuredPlaceName = nil }
+                                .font(.caption).bold().foregroundColor(IdsPalette.gray500)
+                        }
+                        .padding(.horizontal, 16).padding(.vertical, 8)
+                        .background(IdsPalette.white)
+                        .cornerRadius(999)
+                        .shadow(color: .black.opacity(0.14), radius: 8, y: 2)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.top, 80)
+                    }
 
                     // Real draggable peek/half/full bottom sheet (2026-07-21) -- a
                     // persistent, non-modal panel docked over the map. `DragGesture`
@@ -650,6 +719,21 @@ struct MapScreenView: View {
                             sheetY = peekAnchorY
                             sheetSettledY = peekAnchorY
                         }
+                        // Real map-tap infrastructure (2026-07-23) -- see MapController's
+                        // own doc comment. Wired once here since mapController itself is a
+                        // stable @StateObject instance for this view's whole lifetime.
+                        mapController.onSelectPlace = selectPlace
+                        mapController.onMeasureTap = { coordinate in
+                            guard measurePoints.count < 7 else { return }
+                            let newPoint = (coordinate.latitude, coordinate.longitude)
+                            measurePoints.append(newPoint)
+                            lastMeasuredPlaceName = "Finding area…"
+                            measureReverseGeocodeTask?.cancel()
+                            measureReverseGeocodeTask = Task {
+                                let name = try? await NetworkClient.shared.reverseGeocode(lat: newPoint.0, lng: newPoint.1).placeName
+                                if !Task.isCancelled { lastMeasuredPlaceName = name ?? nil }
+                            }
+                        }
                     }
                     // A newly-selected place should be immediately visible without a
                     // manual drag -- expands to Half; clearing the selection relaxes
@@ -755,6 +839,48 @@ struct MapScreenView: View {
             let response = try await NetworkClient.shared.getItineraryDirections(waypoints: itineraryStops.map { ItineraryWaypointRequest(latitude: $0.latitude, longitude: $0.longitude) }, mode: travelMode)
             route = response.route; routeAlternatives = nil; selectedRouteIndex = 0; showSteps = false
         } catch { self.error = "Could not find a route for this itinerary." }
+    }
+
+    // Real distance-measurement (ruler) tool (2026-07-23) -- ported from bank-mfe's own
+    // real MapView.tsx toggleMeasuring/handleRouteItinerary. Genuinely distinct from
+    // Directions: no road route, no OSRM call to enter/build it -- just the plain
+    // straight-line distance between tapped points, until "Route itinerary" is tapped.
+    private func toggleMeasuring() {
+        measuring.toggle()
+        mapController.isMeasuring = measuring
+        measurePoints = []
+        lastMeasuredPlaceName = nil
+        itineraryStops = []
+    }
+
+    // Real straight-line distance -- the same Haversine great-circle formula
+    // rw.itunda.core.geo.GeoUtils.haversineKm implements on the backend, kept as a
+    // plain local function since a ruler tool needs to update live as a user taps, not
+    // once per API call.
+    private func haversineKm(_ lat1: Double, _ lng1: Double, _ lat2: Double, _ lng2: Double) -> Double {
+        let r = 6371.0
+        let dLat = (lat2 - lat1) * .pi / 180
+        let dLng = (lng2 - lng1) * .pi / 180
+        let a = sin(dLat / 2) * sin(dLat / 2) + cos(lat1 * .pi / 180) * cos(lat2 * .pi / 180) * sin(dLng / 2) * sin(dLng / 2)
+        return r * 2 * atan2(sqrt(a), sqrt(1 - a))
+    }
+
+    private var measureTotalKm: Double {
+        guard measurePoints.count > 1 else { return 0 }
+        return zip(measurePoints, measurePoints.dropFirst()).reduce(0) { total, pair in
+            total + haversineKm(pair.0.0, pair.0.1, pair.1.0, pair.1.1)
+        }
+    }
+
+    // Converts the ruler's tapped points directly into a real driving/walking route via
+    // the existing getItineraryDirections() -- it already treats itineraryStops as the
+    // complete waypoint list with no implicit "from my location" prepend, exactly the
+    // semantics bank-mfe's own handleRouteItinerary needs: the ruler's own first tapped
+    // point IS the start.
+    private func routeMeasuredItinerary() async {
+        guard measurePoints.count >= 2, measurePoints.count <= 7 else { return }
+        itineraryStops = measurePoints.map { PlaceSearchResultDto(displayName: "Measured point", latitude: $0.0, longitude: $0.1) }
+        await getItineraryDirections()
     }
 
     // Real folder/color picker (2026-07-22) -- ported from bank-mfe's own real save-time
@@ -989,6 +1115,13 @@ struct MapScreenView: View {
 
 private let routeSourceIdentifier = "itunda-route"
 private let routeLayerIdentifier = "itunda-route-line"
+// Real distance-measurement (ruler) tool (2026-07-23) -- same real GeoJSON-source +
+// line-layer technique as the route above, dashed and a deliberately different color
+// so a real OSRM road route and a plain straight-line measurement are never visually
+// confused. See Android's MapsScreen.kt for the field-for-field mirror.
+private let measureSourceIdentifier = "itunda-measure"
+private let measureLineLayerIdentifier = "itunda-measure-line"
+private let measurePointsLayerIdentifier = "itunda-measure-points"
 
 private let nearbyAnnotationTitlePrefix = "itunda-nearby:"
 
@@ -998,6 +1131,7 @@ private struct MapLibreMapRepresentable: UIViewRepresentable {
     let destination: PlaceSearchResultDto?
     let routeGeometry: [[Double]]?
     let nearbyPlaces: [NearbyPlaceDto]?
+    let measurePoints: [(Double, Double)]
     let controller: MapController
 
     private let myLocationAnnotationTitle = "itunda-my-location"
@@ -1010,6 +1144,15 @@ private struct MapLibreMapRepresentable: UIViewRepresentable {
             zoomLevel: 12,
             animated: false,
         )
+        // Real map-tap infrastructure (2026-07-23) -- the ruler tool needs a raw tap
+        // anywhere on the map, not just on an existing annotation (unlike merchant/
+        // nearby-pin selection, which MLNPointAnnotation already supports natively via
+        // `didSelect` below). `shouldRecognizeSimultaneously` lets this coexist with
+        // MLNMapView's own built-in pan/zoom/annotation-select gestures rather than
+        // stealing them.
+        let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
+        tap.delegate = context.coordinator
+        mapView.addGestureRecognizer(tap)
         controller.mapView = mapView
         return mapView
     }
@@ -1050,14 +1193,21 @@ private struct MapLibreMapRepresentable: UIViewRepresentable {
         mapView.addAnnotations(points)
         context.coordinator.pendingRouteGeometry = routeGeometry
         context.coordinator.applyRoute(to: mapView)
+        context.coordinator.pendingMeasurePoints = measurePoints
+        context.coordinator.applyMeasure(to: mapView)
     }
 
-    func makeCoordinator() -> Coordinator { Coordinator(myLocationAnnotationTitle: myLocationAnnotationTitle) }
+    func makeCoordinator() -> Coordinator { Coordinator(myLocationAnnotationTitle: myLocationAnnotationTitle, controller: controller) }
 
-    final class Coordinator: NSObject, MLNMapViewDelegate {
+    final class Coordinator: NSObject, MLNMapViewDelegate, UIGestureRecognizerDelegate {
         let myLocationAnnotationTitle: String
+        let controller: MapController
         var pendingRouteGeometry: [[Double]]?
-        init(myLocationAnnotationTitle: String) { self.myLocationAnnotationTitle = myLocationAnnotationTitle }
+        var pendingMeasurePoints: [(Double, Double)] = []
+        init(myLocationAnnotationTitle: String, controller: MapController) {
+            self.myLocationAnnotationTitle = myLocationAnnotationTitle
+            self.controller = controller
+        }
 
         func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
             // Real drawn route (2026-07-19) -- same real GeoJSON-source + line-layer
@@ -1073,6 +1223,24 @@ private struct MapLibreMapRepresentable: UIViewRepresentable {
             layer.lineJoin = NSExpression(forConstantValue: "round")
             style.addLayer(layer)
             applyRoute(to: mapView)
+
+            // Real distance-measurement (ruler) tool source/layers (2026-07-23).
+            let measureSource = MLNShapeSource(identifier: measureSourceIdentifier, shape: nil, options: nil)
+            style.addSource(measureSource)
+            let measureLine = MLNLineStyleLayer(identifier: measureLineLayerIdentifier, source: measureSource)
+            measureLine.lineColor = NSExpression(forConstantValue: UIColor(red: 0.898, green: 0.224, blue: 0.208, alpha: 1))
+            measureLine.lineWidth = NSExpression(forConstantValue: 3)
+            measureLine.lineDashPattern = NSExpression(forConstantValue: [2, 1.5])
+            measureLine.lineCap = NSExpression(forConstantValue: "round")
+            measureLine.lineJoin = NSExpression(forConstantValue: "round")
+            style.addLayer(measureLine)
+            let measurePointsLayer = MLNCircleStyleLayer(identifier: measurePointsLayerIdentifier, source: measureSource)
+            measurePointsLayer.circleRadius = NSExpression(forConstantValue: 6)
+            measurePointsLayer.circleColor = NSExpression(forConstantValue: UIColor(red: 0.898, green: 0.224, blue: 0.208, alpha: 1))
+            measurePointsLayer.circleStrokeWidth = NSExpression(forConstantValue: 2)
+            measurePointsLayer.circleStrokeColor = NSExpression(forConstantValue: UIColor.white)
+            style.addLayer(measurePointsLayer)
+            applyMeasure(to: mapView)
         }
 
         func applyRoute(to mapView: MLNMapView) {
@@ -1083,6 +1251,53 @@ private struct MapLibreMapRepresentable: UIViewRepresentable {
             }
             let coordinates = geometry.map { CLLocationCoordinate2D(latitude: $0[0], longitude: $0[1]) }
             source.shape = MLNPolylineFeature(coordinates: coordinates, count: UInt(coordinates.count))
+        }
+
+        // Real distance-measurement (ruler) tool -- keeps the measure GeoJSON source (a
+        // dot per tapped point, a dashed line once there are 2+) in sync with real
+        // tapped points, matching the real route-drawing technique above.
+        func applyMeasure(to mapView: MLNMapView) {
+            guard let style = mapView.style, let source = style.source(withIdentifier: measureSourceIdentifier) as? MLNShapeSource else { return }
+            guard !pendingMeasurePoints.isEmpty else {
+                source.shape = nil
+                return
+            }
+            let coordinates = pendingMeasurePoints.map { CLLocationCoordinate2D(latitude: $0.0, longitude: $0.1) }
+            var shapes: [MLNShape] = coordinates.map { coordinate in
+                let point = MLNPointFeature()
+                point.coordinate = coordinate
+                return point
+            }
+            if coordinates.count > 1 {
+                shapes.append(MLNPolylineFeature(coordinates: coordinates, count: UInt(coordinates.count)))
+            }
+            source.shape = MLNShapeCollectionFeature(shapes: shapes)
+        }
+
+        // Real map-tap infrastructure (2026-07-23) -- see MapController's own doc
+        // comment. Only acts while the ruler tool is active; otherwise this is a no-op
+        // and MLNMapView's own built-in gestures (pan/zoom/annotation-select) handle the
+        // tap as normal.
+        @objc func handleTap(_ gesture: UITapGestureRecognizer) {
+            guard controller.isMeasuring, let mapView = gesture.view as? MLNMapView else { return }
+            let point = gesture.location(in: mapView)
+            let coordinate = mapView.convert(point, toCoordinateFrom: mapView)
+            controller.onMeasureTap?(coordinate)
+        }
+
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            true
+        }
+
+        // Real map-tap-to-select infrastructure (2026-07-23) -- a merchant/nearby-place
+        // pin is a real MLNPointAnnotation, which MapLibre iOS already supports tapping
+        // natively (unlike Android's GeoJsonSource-backed circles, which need a real
+        // queryRenderedFeatures call to identify what was tapped). Routes through to the
+        // same selectPlace the search results/bookmarks already use.
+        func mapView(_ mapView: MLNMapView, didSelect annotation: MLNAnnotation) {
+            guard let title = annotation.title ?? nil, title != myLocationAnnotationTitle else { return }
+            let displayName = title.hasPrefix(nearbyAnnotationTitlePrefix) ? String(title.dropFirst(nearbyAnnotationTitlePrefix.count)) : title
+            controller.onSelectPlace?(PlaceSearchResultDto(displayName: displayName, latitude: annotation.coordinate.latitude, longitude: annotation.coordinate.longitude))
         }
 
         // Real distinct "my location" blue dot, styled differently from the default red
