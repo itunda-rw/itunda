@@ -501,6 +501,7 @@ struct ConversationSummaryDto: Decodable, Identifiable {
     let lastMessageAt: String
     let lastMessagePreview: String?
     let unreadCount: Int
+    let quiet: Bool?
     var id: String { conversationId }
 }
 

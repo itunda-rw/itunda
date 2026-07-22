@@ -359,6 +359,7 @@ data class GroupSummaryDto(
     val lastMessageAt: String,
     val lastMessagePreview: String?,
     val unreadCount: Long,
+    val quiet: Boolean = false,
 )
 data class GroupMessageDto(
     val id: String,

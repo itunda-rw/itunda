@@ -39,6 +39,7 @@ interface ConversationRepository : JpaRepository<Conversation, String> {
 
 interface ConversationPreferenceRepository : JpaRepository<ConversationPreference, String> {
     fun findByConversationIdAndUserId(conversationId: String, userId: String): ConversationPreference?
+    fun findByUserIdAndConversationIdIn(userId: String, conversationIds: List<String>): List<ConversationPreference>
 }
 
 // Real batch projection (2026-07-19) -- one row per conversation with an unread

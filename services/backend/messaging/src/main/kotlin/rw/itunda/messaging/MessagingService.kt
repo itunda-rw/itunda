@@ -42,6 +42,7 @@ data class ConversationSummary(
     val lastMessageAt: Instant,
     val lastMessagePreview: String?,
     val unreadCount: Long,
+    val quiet: Boolean,
 )
 data class TalkContact(val userId: String, val name: String)
 
@@ -345,6 +346,8 @@ class MessagingService(
             .mapValues { (_, messages) -> messages.first() }
         val unreadCountByConversationId = messageRepository.countUnreadByConversationIds(conversationIds, userId)
             .associate { it.conversationId to it.unreadCount }
+        val quietConversationIds = conversationPreferenceRepository.findByUserIdAndConversationIdIn(userId, conversationIds)
+            .filter { it.quiet }.map { it.conversationId }.toSet()
 
         val summaries = conversations.map { conversation ->
             val otherUserId = otherUserIdByConversationId.getValue(conversation.id)
@@ -356,6 +359,7 @@ class MessagingService(
                 lastMessageAt = conversation.lastMessageAt,
                 lastMessagePreview = lastMessageByConversationId[conversation.id]?.body,
                 unreadCount = unreadCountByConversationId[conversation.id] ?: 0L,
+                quiet = conversation.id in quietConversationIds,
             )
         }
         return PageImpl(summaries, pageable, page.totalElements)

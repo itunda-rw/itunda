@@ -14,6 +14,7 @@ export interface ConversationSummary {
   lastMessageAt: string;
   lastMessagePreview: string | null;
   unreadCount: number;
+  quiet: boolean;
 }
 export interface TalkContact { userId: string; name: string }
 
