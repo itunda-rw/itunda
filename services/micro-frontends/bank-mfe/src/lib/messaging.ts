@@ -71,10 +71,10 @@ export const searchConversationMessages = (conversationId: string, query: string
   apiFetch<{ success: boolean; messages: Message[] }>(`/api/v1/messages/conversations/${conversationId}/messages/search?query=${encodeURIComponent(query)}`)
     .then((r) => r.messages);
 
-export const sendMessage = (conversationId: string, body: string) =>
+export const sendMessage = (conversationId: string, body: string, replyToMessageId?: string) =>
   apiFetch<{ success: boolean; message: Message }>(`/api/v1/messages/conversations/${conversationId}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ body }),
+    body: JSON.stringify({ body, replyToMessageId }),
   }).then((r) => r.message);
 
 export const blockConversationParticipant = (conversationId: string) =>

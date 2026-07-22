@@ -332,7 +332,7 @@ data class MessageDto(
 )
 
 data class StartConversationRequest(val phoneNumber: String? = null, val otherUserId: String? = null)
-data class SendMessageRequest(val body: String)
+data class SendMessageRequest(val body: String, val replyToMessageId: String? = null)
 data class TalkContactDto(val userId: String, val name: String)
 data class TalkContactsResponse(val success: Boolean, val contacts: List<TalkContactDto>)
 data class ConversationQuietResponse(val success: Boolean, val quiet: Boolean)
