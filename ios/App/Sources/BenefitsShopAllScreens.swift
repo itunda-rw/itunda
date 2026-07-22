@@ -153,8 +153,17 @@ private struct CashbackChanceCard: View {
 
 // MARK: - All tab
 
+// Real 전체 (KakaoPay-style "All services") menu (2026-07-22) -- separated from the My
+// tab at the user's direct request: "My and All screen should be separated like
+// KakaoPay... accessed by click on menu icon in app bar." Presented as a
+// fullScreenCover from MyTabView's own hamburger icon, not the tab's direct content
+// anymore -- see MyTabView's own doc comment for the new personal-hub content that
+// replaced this as tab 4's actual body.
 struct EntireMenuScreen: View {
+    var onBack: () -> Void = {}
     var onOpenSettings: () -> Void = {}
+    var onClaimInterest: () -> Void = {}
+    var onSwitchToTalk: () -> Void = {}
 
     // Real granite mini-app launch, closing this file's own "MiniAppsSection... plain,
     // non-functional list rows" gap for real -- the CocoaPods/Tuist bridge plus the real
@@ -203,7 +212,13 @@ struct EntireMenuScreen: View {
                 // workaround, each Group still contributes its children directly
                 // to the VStack's layout.
                 Group {
-                    IdsAllTopBar(onOpenSettings: onOpenSettings)
+                    HStack {
+                        Button(action: onBack) { Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary) }
+                        Spacer()
+                        Text("Menu").font(IDS.scaledFont(size: 20, weight: .bold, relativeTo: .title2)).foregroundColor(IDS.Colors.textPrimary)
+                        Spacer()
+                        Color.clear.frame(width: 20)
+                    }
                     FlatSection(title: "Quick links", rows: [
                         FlatRow(title: "Pay", subtitle: "Scan or pay by code", symbol: "qrcode", tint: .accentBlue, action: { showPay = true }),
                         FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", symbol: "gift.fill", tint: .accentOrange, action: { showBenefits = true }),
@@ -269,10 +284,14 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Rent deposit protection", symbol: "house.fill", tint: .accentBlue),
                         FlatRow(title: "Recurring payments", symbol: "doc.text.fill", tint: .accentBlue),
                         FlatRow(title: "Import recurring payments", symbol: "shippingbox.fill", tint: .accentGray),
-                        FlatRow(title: "REG & WASAC bills", symbol: "bolt.fill", tint: .accentBlue),
-                        FlatRow(title: "Claim interest now", symbol: "bolt.fill", tint: .accentPurple),
+                        FlatRow(title: "REG & WASAC bills", symbol: "bolt.fill", tint: .accentBlue, action: { showPayBillsMiniApp = true }),
+                        FlatRow(title: "Claim interest now", symbol: "bolt.fill", tint: .accentPurple, action: onClaimInterest),
                         FlatRow(title: "SME income tax estimate", symbol: "banknote.fill", tint: .accentOrange),
-                        FlatRow(title: "Split a bill with friends", symbol: "person.3.fill", tint: .accentBlue),
+                        // Real split-bill (found 2026-07-22 fully built with zero UI
+                        // anywhere) lives inside a specific group's own thread (Talk
+                        // tab), not a standalone flow -- hand off there instead of
+                        // duplicating a group picker.
+                        FlatRow(title: "Split a bill with friends", symbol: "person.3.fill", tint: .accentBlue, action: onSwitchToTalk),
                         FlatRow(title: "Shared calendar", symbol: "calendar", tint: .accentBlue),
                         FlatRow(title: "Kids' allowance tasks", symbol: "checkmark.circle.fill", tint: .accentOrange),
                     ])
@@ -360,8 +379,150 @@ struct EntireMenuScreen: View {
     }
 }
 
+// Real Naver-style "My" personal hub (2026-07-22), replacing EntireMenuScreen as tab
+// 4's actual content -- at the user's direct request: "My should be like Naver style
+// My since we have shopping and eats and other products where users need to easily
+// get track of their orders, reservation, favorites." Every number/row here is a real
+// fetched count or preview, not decoration -- the same "no fabricated numbers"
+// discipline this app already follows elsewhere. Mirrors Android's MyTab exactly.
+struct MyTabView: View {
+    var onOpenSettings: () -> Void = {}
+    var onOpenMenu: () -> Void = {}
+    var onSwitchToShop: () -> Void = {}
+    var onSwitchToHood: () -> Void = {}
+
+    // Self-contained sheet-trigger state, same pattern EntireMenuScreen already uses
+    // for its own rows -- only Settings/Menu/tab-switching are cross-cutting enough
+    // to need ContentView's own state (see MyTabView's call site in ContentView.swift).
+    @State private var showPay = false
+    @State private var showBenefits = false
+    @State private var showInvest = false
+    @State private var showMap = false
+    @State private var showOverview = false
+    @State private var showLoans = false
+    @State private var showSupport = false
+    @State private var showCreditScore = false
+    @State private var showCertificate = false
+    @State private var showIdentity = false
+
+    @State private var shopOrders: [OrderDto] = []
+    @State private var eatsOrders: [EatsOrderDto] = []
+    @State private var favoriteListingsCount = 0
+    @State private var favoriteJobPostsCount = 0
+    @State private var favoritePropertyListingsCount = 0
+    @State private var favoriteRestaurantsCount = 0
+    @State private var myListingsCount = 0
+    @State private var myJobPostsCount = 0
+    @State private var myPropertyListingsCount = 0
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: IDS.Layout.sectionSpacing) {
+                IdsAllTopBar(onOpenSettings: onOpenSettings, onOpenMenu: onOpenMenu)
+                FlatSection(title: "Quick links", rows: [
+                    FlatRow(title: "Pay", subtitle: "Scan or pay by code", symbol: "qrcode", tint: .accentBlue, action: { showPay = true }),
+                    FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", symbol: "gift.fill", tint: .accentOrange, action: { showBenefits = true }),
+                    FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showInvest = true }),
+                    FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", symbol: "map.fill", tint: .accentTeal, action: { showMap = true }),
+                ])
+                // Real order tracking -- Naver Pay/Shopping's own "My" tab leads with
+                // recent orders across every product, not a settings list. Tapping
+                // switches to that product's own tab where the full order-history view
+                // already lives.
+                if !shopOrders.isEmpty || !eatsOrders.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("My orders").font(IDS.scaledFont(size: 19, weight: .bold, relativeTo: .title2)).foregroundColor(IDS.Colors.textPrimary)
+                        ForEach(shopOrders.prefix(3)) { order in
+                            orderRow(label: "Shop order", status: order.status, amount: order.totalAmount, action: onSwitchToShop)
+                        }
+                        ForEach(eatsOrders.prefix(3)) { order in
+                            orderRow(label: "Eats order", status: order.status, amount: order.totalAmount, action: onSwitchToShop)
+                        }
+                    }
+                }
+                // Real favorites/wishlist tracking across every product with one --
+                // counts are real (GET .../favorites on each module); tapping switches
+                // to the product's own tab where its dedicated wishlist view already
+                // lives (Marketplace/Jobs/Property under Hood, restaurants under
+                // Shop's Eats toggle) -- an honest one-more-tap scope, not a full deep
+                // link into the nested sub-view.
+                FlatSection(title: "My favorites", rows: [
+                    FlatRow(title: "Marketplace wishlist", trailing: "\(favoriteListingsCount)", symbol: "heart", tint: .accentRed, action: onSwitchToHood),
+                    FlatRow(title: "Jobs wishlist", trailing: "\(favoriteJobPostsCount)", symbol: "heart", tint: .accentRed, action: onSwitchToHood),
+                    FlatRow(title: "Property wishlist", trailing: "\(favoritePropertyListingsCount)", symbol: "heart", tint: .accentRed, action: onSwitchToHood),
+                    FlatRow(title: "Restaurant favorites", trailing: "\(favoriteRestaurantsCount)", symbol: "heart", tint: .accentRed, action: onSwitchToShop),
+                ])
+                // Real "my own posts" tracking (Marketplace/Jobs/Property listings I
+                // created) -- same Naver-style "track your own activity" pattern.
+                FlatSection(title: "My listings", rows: [
+                    FlatRow(title: "Marketplace", trailing: "\(myListingsCount)", symbol: "storefront.fill", tint: .accentBlue, action: onSwitchToHood),
+                    FlatRow(title: "Jobs posted", trailing: "\(myJobPostsCount)", symbol: "briefcase.fill", tint: .accentBlue, action: onSwitchToHood),
+                    FlatRow(title: "Property listed", trailing: "\(myPropertyListingsCount)", symbol: "house.fill", tint: .accentTeal, action: onSwitchToHood),
+                ])
+                // Personal-account items (distinct from the exhaustive product catalog
+                // now in EntireMenuScreen) -- inherently "about my own account,"
+                // matching Naver Pay's own My tab keeping points/coupons/membership
+                // here rather than in its separate 전체 menu.
+                FlatSection(title: "My account", rows: [
+                    FlatRow(title: "My assets", subtitle: "Accounts, loans, RSE holdings, cards, points", symbol: "chart.pie.fill", tint: .accentPurple, action: { showOverview = true }),
+                    FlatRow(title: "Get a loan", symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
+                    FlatRow(title: "Credit score", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showCreditScore = true }),
+                    FlatRow(title: "Digital certificate", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showCertificate = true }),
+                    FlatRow(title: "Verify identity", symbol: "checkmark.circle.fill", tint: .accentOrange, action: { showIdentity = true }),
+                    FlatRow(title: "Support", symbol: "questionmark.circle.fill", tint: .accentGray, action: { showSupport = true }),
+                ])
+            }
+            .padding(.horizontal, IDS.Layout.screenHorizontal)
+            .padding(.top, IDS.Layout.screenTop)
+            .padding(.bottom, IDS.Layout.sectionSpacing)
+        }
+        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+        .sheet(isPresented: $showPay) { PayScreen() }
+        .sheet(isPresented: $showBenefits) { BenefitsScreen() }
+        .sheet(isPresented: $showInvest) { InvestScreenView(onBack: { showInvest = false }) }
+        .sheet(isPresented: $showMap) { MapScreenView() }
+        .sheet(isPresented: $showOverview) { OverviewScreenView(onBack: { showOverview = false }) }
+        .sheet(isPresented: $showLoans) { LoansScreenView(onBack: { showLoans = false }) }
+        .sheet(isPresented: $showSupport) { SupportScreenView(onBack: { showSupport = false }) }
+        .sheet(isPresented: $showCreditScore) { CreditScoreScreenView(onBack: { showCreditScore = false }) }
+        .sheet(isPresented: $showCertificate) { CertificateScreenView(onBack: { showCertificate = false }) }
+        .sheet(isPresented: $showIdentity) { IdentityScreenView(onBack: { showIdentity = false }) }
+        .task {
+            // Each fetch independent and best-effort -- one product's API hiccup must
+            // never blank the rest of this real personal-activity summary.
+            if let res = try? await NetworkClient.shared.getMyOrders() { shopOrders = res.orders }
+            if let res = try? await NetworkClient.shared.getMyEatsOrders() { eatsOrders = res.orders }
+            if let res = try? await NetworkClient.shared.getMyFavoriteListings() { favoriteListingsCount = res.favorites.count }
+            if let res = try? await NetworkClient.shared.getMyFavoriteJobPosts() { favoriteJobPostsCount = res.favorites.count }
+            if let res = try? await NetworkClient.shared.getMyFavoritePropertyListings() { favoritePropertyListingsCount = res.favorites.count }
+            if let res = try? await NetworkClient.shared.getMyFavoriteRestaurants() { favoriteRestaurantsCount = res.favorites.count }
+            if let res = try? await NetworkClient.shared.getMyListings() { myListingsCount = res.listings.count }
+            if let res = try? await NetworkClient.shared.getMyJobPosts() { myJobPostsCount = res.posts.count }
+            if let res = try? await NetworkClient.shared.getMyPropertyListings() { myPropertyListingsCount = res.listings.count }
+        }
+    }
+
+    @ViewBuilder
+    private func orderRow(label: String, status: String, amount: Double, action: @escaping () -> Void) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label).font(IDS.scaledFont(size: 15, weight: .semibold, relativeTo: .subheadline)).foregroundColor(IDS.Colors.textPrimary)
+                Text(status).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            }
+            Spacer()
+            Text("RWF \(Int(amount))").foregroundColor(IDS.Colors.textPrimary)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(perform: action)
+        .padding(.vertical, 6)
+    }
+}
+
 private struct IdsAllTopBar: View {
     var onOpenSettings: () -> Void = {}
+    // Real 전체 (All services) menu (2026-07-22) -- optional, nil default so this
+    // bar's only other real caller is unaffected. See MyTabView's own doc comment.
+    var onOpenMenu: (() -> Void)? = nil
 
     var body: some View {
         HStack {
@@ -369,6 +530,14 @@ private struct IdsAllTopBar: View {
                 .font(IDS.scaledFont(size: 26, weight: .bold, relativeTo: .largeTitle))
                 .foregroundColor(IDS.Colors.textPrimary)
             Spacer()
+            if let onOpenMenu {
+                Button(action: onOpenMenu) {
+                    Image(systemName: "line.3.horizontal")
+                        .font(IDS.scaledFont(size: 20, weight: .regular, relativeTo: .body))
+                        .foregroundColor(IDS.Colors.textPrimary)
+                }
+                .accessibilityLabel("All services")
+            }
             // Real Settings screen (2026-07-12, see SettingsScreen.swift) --
             // previously wired directly to logout with no screen behind it at all,
             // same fix as Android's AllTopBar.

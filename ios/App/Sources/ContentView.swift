@@ -51,6 +51,8 @@ struct ContentView: View {
     @State private var showSettings = false
     @State private var showMapFromDeepLink = false
     @State private var mapSearchFromDeepLink: String?
+    // Real 전체 (All services) menu (2026-07-22) -- see MyTabView's own doc comment.
+    @State private var showMenu = false
 
     // Real Savings section rows with real tap targets (2026-07-12) -- built here,
     // not inside BankViewModel, because triggering savingsFlowStep needs
@@ -161,9 +163,22 @@ struct ContentView: View {
                 }
                 .tag(3)
 
-            EntireMenuScreen(onOpenSettings: { showSettings = true })
+            MyTabView(
+                onOpenSettings: { showSettings = true },
+                onOpenMenu: { showMenu = true },
+                onSwitchToShop: { selectedTab = 1 },
+                onSwitchToHood: { selectedTab = 2 }
+            )
                 .fullScreenCover(isPresented: $showSettings) {
                     SettingsScreen(onDone: { showSettings = false })
+                }
+                .fullScreenCover(isPresented: $showMenu) {
+                    EntireMenuScreen(
+                        onBack: { showMenu = false },
+                        onOpenSettings: { showSettings = true },
+                        onClaimInterest: { showMenu = false; savingsFlowStep = .claimInterest },
+                        onSwitchToTalk: { showMenu = false; selectedTab = 3 }
+                    )
                 }
                 .tabItem {
                     Image(systemName: "person.fill")
