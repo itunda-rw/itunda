@@ -20,7 +20,7 @@ import {
 } from './lib/stocks';
 import {
   connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages,
-  blockConversationParticipant, fetchPresence, sendGroupMessage, sendMessage, startConversation, toggleGroupReaction, toggleReaction,
+  blockConversationParticipant, fetchPresence, reportChatMessage, sendGroupMessage, sendMessage, startConversation, toggleGroupReaction, toggleReaction,
   type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup,
 } from './lib/messaging';
@@ -1357,6 +1357,17 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     } finally { setBlocking(false); }
   };
 
+  const handleReport = async (messageId: string) => {
+    const reason = window.prompt('Why are you reporting this message? (3–180 characters)');
+    if (!reason) return;
+    try {
+      await reportChatMessage(messageId, reason);
+      setError('Thanks. Your report was sent for review.');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send this report.');
+    }
+  };
+
   const handleSendGift = async (e: React.FormEvent) => {
     e.preventDefault();
     const amount = Number(giftAmount);
@@ -1559,6 +1570,11 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
                 isMine={isMine}
                 onToggle={(emoji) => handleToggleReaction(m.id, emoji)}
               />
+              {!isMine && (
+                <button type="button" onClick={() => handleReport(m.id)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>
+                  Report message
+                </button>
+              )}
             </div>
           );
         })}
