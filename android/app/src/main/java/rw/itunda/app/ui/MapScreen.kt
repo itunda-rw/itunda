@@ -1394,7 +1394,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                                         color = TossSecondary,
                                     )
                                     if (itineraryStops.isEmpty()) {
-                                        Text("Add 1–4 destinations to make a real road itinerary.", fontSize = 12.sp, color = TossSecondary)
+                                        Text("Add 1–6 destinations to make a real road itinerary.", fontSize = 12.sp, color = TossSecondary)
                                     } else {
                                         itineraryStops.forEachIndexed { index, stop ->
                                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
