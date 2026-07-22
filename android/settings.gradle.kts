@@ -157,6 +157,10 @@ include(":features:shop:api")
 include(":features:shop:impl")
 include(":features:shop:testing")
 
+include(":features:eats:api")
+include(":features:eats:impl")
+include(":features:eats:testing")
+
 include(":features:bills:api")
 include(":features:bills:impl")
 include(":features:bills:testing")
