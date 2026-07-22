@@ -206,6 +206,9 @@ dependencies {
     // build.gradle.kts doc comment for why.
     implementation(project(":core:network"))
     implementation(project(":features:payments:impl"))
+    // Real proof-of-slice Feature extraction (2026-07-22/23) -- Marketplace pulled out
+    // of app/ui/SuperAppTabs.kt, see MarketplaceScreen.kt's own header comment.
+    implementation(project(":features:marketplace:impl"))
     // features:banking:impl deliberately has no dependency here (2026-07-11): its
     // real screens (BankScreen.kt, MySpendingScreen.kt) were intentionally deleted
     // in 061cff6 as unreachable and superseded by ItundaAppScreen.kt's Home tab,

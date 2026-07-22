@@ -133,6 +133,14 @@ include(":features:payments:api")
 include(":features:payments:impl")
 include(":features:payments:testing")
 
+// Real proof-of-slice Feature extraction (2026-07-22/23) -- Marketplace pulled out of
+// app/ui/SuperAppTabs.kt into its own Feature module, matching Toss's real published
+// Microfeatures architecture (toss.tech/article/slash23-iOS). See
+// features/marketplace/impl/.../MarketplaceScreen.kt's own header comment.
+include(":features:marketplace:api")
+include(":features:marketplace:impl")
+include(":features:marketplace:testing")
+
 include(":features:bills:api")
 include(":features:bills:impl")
 include(":features:bills:testing")

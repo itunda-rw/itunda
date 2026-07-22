@@ -126,6 +126,7 @@ import rw.itunda.core.network.PlaceSearchResultDto
 import rw.itunda.core.network.RecentMapSearchesStore
 import rw.itunda.core.network.RouteResultDto
 import rw.itunda.core.network.ShoppingMerchantDto
+import rw.itunda.core.network.superAppErrorMessage
 
 // Real itunda-hosted Rwanda coordinates -- Kigali, same default center every other real
 // coordinate fixture in this codebase (backend tests, bank-mfe's MapView.tsx) uses.

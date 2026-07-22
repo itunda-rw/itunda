@@ -53,6 +53,7 @@ import rw.itunda.core.network.StockHoldingDto
 import rw.itunda.core.network.StockPortfolioDto
 import rw.itunda.core.network.StockPricePointDto
 import rw.itunda.core.network.TradeStockRequest
+import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
 import java.util.UUID
 import kotlin.math.max
