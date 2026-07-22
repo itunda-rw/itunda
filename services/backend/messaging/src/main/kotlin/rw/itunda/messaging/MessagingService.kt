@@ -140,7 +140,7 @@ class MessagingService(
         requireParticipant(userId, conversationId)
 
     @Transactional
-    fun sendMessage(userId: String, conversationId: String, body: String): Message {
+    fun sendMessage(userId: String, conversationId: String, body: String, replyToMessageId: String? = null): Message {
         val trimmed = body.trim()
         if (trimmed.isEmpty()) {
             throw EmptyMessageException("Message body cannot be empty")
@@ -160,10 +160,14 @@ class MessagingService(
         rateLimiter.checkLimit("messaging:send:$userId", limit = 30, window = Duration.ofMinutes(1))
 
         val conversation = requireParticipant(userId, conversationId)
+        replyToMessageId?.let { replyId ->
+            val repliedMessage = messageRepository.findById(replyId).orElseThrow { MessageNotFoundException("Message not found") }
+            if (repliedMessage.conversationId != conversationId) throw MessageNotFoundException("Message not found")
+        }
         val recipientId = if (conversation.participantAId == userId) conversation.participantBId else conversation.participantAId
         requireNotBlocked(userId, recipientId)
         val message = messageRepository.save(
-            Message(id = "message_${UUID.randomUUID()}", conversationId = conversationId, senderId = userId, body = trimmed),
+            Message(id = "message_${UUID.randomUUID()}", conversationId = conversationId, senderId = userId, body = trimmed, replyToMessageId = replyToMessageId),
         )
         conversation.lastMessageAt = message.sentAt
         conversationRepository.save(conversation)

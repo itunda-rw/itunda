@@ -35,7 +35,7 @@ import rw.itunda.messaging.InvalidMessageSearchException
 // stays available for a future call site that already resolved a real user id (e.g. a
 // "message this merchant" action from a merchant's own profile screen).
 data class StartConversationRequest(val phoneNumber: String? = null, val otherUserId: String? = null)
-data class SendMessageRequest(val body: String)
+data class SendMessageRequest(val body: String, val replyToMessageId: String? = null)
 data class ToggleReactionRequest(val emoji: String)
 data class SetConversationQuietRequest(val quiet: Boolean)
 
@@ -126,7 +126,7 @@ class MessagingController(private val messagingService: MessagingService) {
         @RequestBody request: SendMessageRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val message = messagingService.sendMessage(currentUser.userId, conversationId, request.body)
+        val message = messagingService.sendMessage(currentUser.userId, conversationId, request.body, request.replyToMessageId)
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "message" to message))
     }
 
