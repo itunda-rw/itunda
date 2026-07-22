@@ -88,7 +88,7 @@ class MessagingController(private val messagingService: MessagingService) {
         val messages = page.content.map { m ->
             mapOf(
                 "id" to m.id, "conversationId" to m.conversationId, "senderId" to m.senderId, "body" to m.body,
-                "sentAt" to m.sentAt, "readAt" to m.readAt, "reactions" to (reactionsByMessageId[m.id] ?: emptyList()),
+                "sentAt" to m.sentAt, "readAt" to m.readAt, "replyToMessageId" to m.replyToMessageId, "reactions" to (reactionsByMessageId[m.id] ?: emptyList()),
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "messages" to messages) + pageMeta(page))
@@ -103,7 +103,7 @@ class MessagingController(private val messagingService: MessagingService) {
     ): ResponseEntity<Map<String, Any?>> {
         val page = messagingService.searchMessages(currentUser.userId, conversationId, query, pageable)
         val reactions = messagingService.getReactionSummaries(page.content.map { it.id })
-        val messages = page.content.map { m -> mapOf("id" to m.id, "conversationId" to m.conversationId, "senderId" to m.senderId, "body" to m.body, "sentAt" to m.sentAt, "readAt" to m.readAt, "reactions" to (reactions[m.id] ?: emptyList())) }
+        val messages = page.content.map { m -> mapOf("id" to m.id, "conversationId" to m.conversationId, "senderId" to m.senderId, "body" to m.body, "sentAt" to m.sentAt, "readAt" to m.readAt, "replyToMessageId" to m.replyToMessageId, "reactions" to (reactions[m.id] ?: emptyList())) }
         return ResponseEntity.ok(mapOf("success" to true, "messages" to messages) + pageMeta(page))
     }
 
