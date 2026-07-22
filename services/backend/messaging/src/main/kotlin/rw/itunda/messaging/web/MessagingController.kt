@@ -22,6 +22,7 @@ import rw.itunda.messaging.ConversationNotFoundException
 import rw.itunda.messaging.EmptyMessageException
 import rw.itunda.messaging.InvalidReactionException
 import rw.itunda.messaging.MessageNotFoundException
+import rw.itunda.messaging.MessageDeleteForbiddenException
 import rw.itunda.messaging.MessageTooLongException
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.RecipientNotFoundException
@@ -87,8 +88,8 @@ class MessagingController(private val messagingService: MessagingService) {
         val reactionsByMessageId = messagingService.getReactionSummaries(page.content.map { it.id })
         val messages = page.content.map { m ->
             mapOf(
-                "id" to m.id, "conversationId" to m.conversationId, "senderId" to m.senderId, "body" to m.body,
-                "sentAt" to m.sentAt, "readAt" to m.readAt, "replyToMessageId" to m.replyToMessageId, "reactions" to (reactionsByMessageId[m.id] ?: emptyList()),
+                "id" to m.id, "conversationId" to m.conversationId, "senderId" to m.senderId, "body" to if (m.deletedAt == null) m.body else "This message was deleted",
+                "sentAt" to m.sentAt, "readAt" to m.readAt, "deletedAt" to m.deletedAt, "replyToMessageId" to m.replyToMessageId, "reactions" to (reactionsByMessageId[m.id] ?: emptyList()),
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "messages" to messages) + pageMeta(page))
@@ -103,7 +104,7 @@ class MessagingController(private val messagingService: MessagingService) {
     ): ResponseEntity<Map<String, Any?>> {
         val page = messagingService.searchMessages(currentUser.userId, conversationId, query, pageable)
         val reactions = messagingService.getReactionSummaries(page.content.map { it.id })
-        val messages = page.content.map { m -> mapOf("id" to m.id, "conversationId" to m.conversationId, "senderId" to m.senderId, "body" to m.body, "sentAt" to m.sentAt, "readAt" to m.readAt, "replyToMessageId" to m.replyToMessageId, "reactions" to (reactions[m.id] ?: emptyList())) }
+        val messages = page.content.map { m -> mapOf("id" to m.id, "conversationId" to m.conversationId, "senderId" to m.senderId, "body" to m.body, "sentAt" to m.sentAt, "readAt" to m.readAt, "deletedAt" to m.deletedAt, "replyToMessageId" to m.replyToMessageId, "reactions" to (reactions[m.id] ?: emptyList())) }
         return ResponseEntity.ok(mapOf("success" to true, "messages" to messages) + pageMeta(page))
     }
 
@@ -128,6 +129,12 @@ class MessagingController(private val messagingService: MessagingService) {
     ): ResponseEntity<Map<String, Any?>> {
         val message = messagingService.sendMessage(currentUser.userId, conversationId, request.body, request.replyToMessageId)
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "message" to message))
+    }
+
+    @DeleteMapping("/conversations/{conversationId}/messages/{messageId}")
+    fun deleteMessage(@PathVariable conversationId: String, @PathVariable messageId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Boolean>> {
+        messagingService.deleteMessage(currentUser.userId, conversationId, messageId)
+        return ResponseEntity.ok(mapOf("success" to true))
     }
 
     @PostMapping("/conversations/{conversationId}/block")
@@ -232,4 +239,8 @@ class MessagingController(private val messagingService: MessagingService) {
     @ExceptionHandler(InvalidMessageSearchException::class)
     fun handleInvalidSearch(ex: InvalidMessageSearchException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MESSAGE_SEARCH", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(MessageDeleteForbiddenException::class)
+    fun handleDeleteForbidden(ex: MessageDeleteForbiddenException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("MESSAGE_DELETE_FORBIDDEN", ex.message ?: "Forbidden"))
 }

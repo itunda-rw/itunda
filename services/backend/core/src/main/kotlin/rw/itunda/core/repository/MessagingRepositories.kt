@@ -62,7 +62,7 @@ interface MessageRepository : JpaRepository<Message, String> {
 
     @Query(
         "SELECT m FROM Message m WHERE m.conversationId = :conversationId " +
-            "AND LOWER(m.body) LIKE LOWER(CONCAT('%', :query, '%')) ORDER BY m.sentAt DESC",
+            "AND m.deletedAt IS NULL AND LOWER(m.body) LIKE LOWER(CONCAT('%', :query, '%')) ORDER BY m.sentAt DESC",
     )
     fun searchByConversationIdAndBody(
         @Param("conversationId") conversationId: String,

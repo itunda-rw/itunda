@@ -20,7 +20,7 @@ import {
 } from './lib/stocks';
 import {
   connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages, fetchPinnedConversationMessage,
-  blockConversationParticipant, fetchConversationQuiet, fetchPresence, fetchTalkContacts, pinConversationMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationQuiet, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unpinConversationMessage,
+  blockConversationParticipant, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, pinConversationMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationQuiet, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unpinConversationMessage,
   type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup,
 } from './lib/messaging';
@@ -1427,6 +1427,14 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     }
   };
 
+  const handleDelete = async (messageId: string) => {
+    if (!window.confirm('Delete this message for everyone?')) return;
+    try {
+      await deleteMessage(conversation.conversationId, messageId);
+      setMessages((prev) => prev?.map((m) => m.id === messageId ? { ...m, body: 'This message was deleted', deletedAt: new Date().toISOString(), reactions: [] } : m) ?? prev);
+    } catch (err) { setError(err instanceof ApiError ? err.message : 'Could not delete this message.'); }
+  };
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim().length < 2) return;
@@ -1660,6 +1668,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
                 {isMine && !m.readAt ? '1 · ' : ''}{chatMessageTime(m.sentAt)}
               </span>
               <button type="button" onClick={() => setReplyingTo(m)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Reply</button>
+              {isMine && !m.deletedAt && <button type="button" onClick={() => handleDelete(m.id)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Delete</button>}
               <button type="button" onClick={() => handlePin(m)} disabled={updatingPin} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>{pinnedMessage?.id === m.id ? 'Pinned' : 'Pin'}</button>
               {!isMine && (
                 <button type="button" onClick={() => handleReport(m.id)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>

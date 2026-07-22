@@ -36,6 +36,12 @@ class Message(
 
     @Column(name = "read_at")
     var readAt: Instant? = null,
+
+    @Column(name = "deleted_at")
+    var deletedAt: Instant? = null,
+
+    @Column(name = "deleted_by_user_id", length = 64)
+    var deletedByUserId: String? = null,
 ) {
     protected constructor() : this(id = "", conversationId = "", senderId = "", body = "")
 }

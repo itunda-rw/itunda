@@ -34,6 +34,7 @@ class MessageNotFoundException(message: String) : RuntimeException(message)
 class InvalidReactionException(message: String) : RuntimeException(message)
 class InvalidMessageSearchException(message: String) : RuntimeException(message)
 class UserBlockedException(message: String) : RuntimeException(message)
+class MessageDeleteForbiddenException(message: String) : RuntimeException(message)
 
 data class ConversationSummary(
     val conversationId: String,
@@ -190,6 +191,21 @@ class MessagingService(
         // persisted above regardless of whether anyone is listening right now.
         realtimeMessagePublisher.publishNewMessage(conversationId, recipientId, message)
         return message
+    }
+
+    /** Delete-for-everyone is a soft delete: only its author may invoke it; the original
+     * body stays in the protected datastore for compliance, but is never returned again. */
+    @Transactional
+    fun deleteMessage(userId: String, conversationId: String, messageId: String) {
+        requireParticipant(userId, conversationId)
+        val message = messageRepository.findById(messageId).orElseThrow { MessageNotFoundException("Message not found") }
+        if (message.conversationId != conversationId) throw MessageNotFoundException("Message not found")
+        if (message.senderId != userId) throw MessageDeleteForbiddenException("Only the sender can delete this message")
+        if (message.deletedAt == null) {
+            message.deletedAt = Instant.now()
+            message.deletedByUserId = userId
+            messageRepository.save(message)
+        }
     }
 
     @Transactional

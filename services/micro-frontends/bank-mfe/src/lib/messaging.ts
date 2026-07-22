@@ -33,6 +33,7 @@ export interface Message {
   body: string;
   sentAt: string;
   readAt: string | null;
+  deletedAt?: string | null;
   replyToMessageId: string | null;
   reactions: ReactionGroup[];
 }
@@ -77,6 +78,9 @@ export const sendMessage = (conversationId: string, body: string, replyToMessage
     method: 'POST',
     body: JSON.stringify({ body, replyToMessageId }),
   }).then((r) => r.message);
+
+export const deleteMessage = (conversationId: string, messageId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/messages/conversations/${conversationId}/messages/${messageId}`, { method: 'DELETE' });
 
 export const blockConversationParticipant = (conversationId: string) =>
   apiFetch<{ success: boolean }>(`/api/v1/messages/conversations/${conversationId}/block`, { method: 'POST' });
