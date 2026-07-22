@@ -165,6 +165,9 @@ export const sendGroupMessage = (groupId: string, body: string) =>
     body: JSON.stringify({ body }),
   }).then((r) => r.message);
 
+export const deleteGroupMessage = (groupId: string, messageId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/messages/groups/${groupId}/messages/${messageId}`, { method: 'DELETE' });
+
 export const toggleGroupReaction = (groupMessageId: string, emoji: string) =>
   apiFetch<{ success: boolean; reactions: ReactionGroup[] }>(`/api/v1/messages/groups/messages/${groupMessageId}/reactions`, {
     method: 'POST',

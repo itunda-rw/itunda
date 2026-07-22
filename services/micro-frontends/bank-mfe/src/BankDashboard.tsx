@@ -20,7 +20,7 @@ import {
 } from './lib/stocks';
 import {
   connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages, fetchPinnedConversationMessage,
-  blockConversationParticipant, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, pinConversationMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationQuiet, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unpinConversationMessage,
+  blockConversationParticipant, deleteGroupMessage, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, pinConversationMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationQuiet, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unpinConversationMessage,
   type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup,
 } from './lib/messaging';
@@ -1891,6 +1891,12 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
     }
   };
 
+  const handleDelete = async (messageId: string) => {
+    if (!window.confirm('Delete this message for everyone?')) return;
+    try { await deleteGroupMessage(group.groupId, messageId); load(); }
+    catch (err) { setError(err instanceof ApiError ? err.message : 'Could not delete this message.'); }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100svh - 180px)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
@@ -1937,6 +1943,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
                 isMine={isMine}
                 onToggle={(emoji) => handleToggleReaction(m.id, emoji)}
               />
+              {isMine && !(m as GroupMessage & { deletedAt?: string | null }).deletedAt && <button type="button" onClick={() => handleDelete(m.id)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Delete</button>}
               <span style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>
                 {chatMessageTime(m.sentAt)}
               </span>
