@@ -1312,6 +1312,12 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
             }
             Spacer(modifier = Modifier.height(8.dp))
         }
+        replyingTo?.let { reply ->
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Text("Replying to: ${reply.body.take(80)}", color = TossSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f), maxLines = 1)
+                TextButton(onClick = { replyingTo = null }) { Text("×", color = TossSecondary) }
+            }
+        }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
             Box(
                 modifier = Modifier
