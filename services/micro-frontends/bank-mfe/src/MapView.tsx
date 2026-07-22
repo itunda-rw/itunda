@@ -562,6 +562,11 @@ export default function MapView() {
     source?.setData(EMPTY_ROUTE_GEOJSON);
   };
 
+  const selectAndRoute = (place: PlaceSearchResult) => {
+    selectPlace(place);
+    void handleGetDirections(travelMode, place);
+  };
+
   const isBookmarked = (place: PlaceSearchResult) =>
     bookmarks.some((b) => b.latitude === place.latitude && b.longitude === place.longitude);
 
@@ -750,14 +755,15 @@ export default function MapView() {
     map.fitBounds(bounds, { padding: 60 });
   };
 
-  const handleGetDirections = async (mode: TravelMode = travelMode) => {
+  const handleGetDirections = async (mode: TravelMode = travelMode, destination: PlaceSearchResult | null = null) => {
     const map = mapRef.current;
-    if (!map || !selectedPlace) return;
+    const place = destination ?? selectedPlace;
+    if (!map || !place) return;
     const origin = myLocationRef.current ?? [map.getCenter().lat, map.getCenter().lng];
     setRouting(true);
     setError(null);
     try {
-      const results = await getDirectionsAlternatives(origin[0], origin[1], selectedPlace.latitude, selectedPlace.longitude, mode);
+      const results = await getDirectionsAlternatives(origin[0], origin[1], place.latitude, place.longitude, mode);
       setTravelMode(mode);
       setRouteAlternatives(results);
       setSelectedRouteIndex(0);
@@ -1241,8 +1247,8 @@ export default function MapView() {
                 const work = bookmarks.find((bookmark) => bookmark.folderName.toLowerCase() === 'work')
                 if (!home && !work) return null
                 return <div style={{ display: 'flex', gap: '8px' }}>
-                  {home && <button onClick={() => selectPlace({ displayName: home.displayName, latitude: home.latitude, longitude: home.longitude })} style={{ borderRadius: '999px', padding: '8px 12px', fontSize: '12px', fontWeight: 700, background: '#F2F4F6', color: MAP_CARD_TEXT }}>⌂ Home</button>}
-                  {work && <button onClick={() => selectPlace({ displayName: work.displayName, latitude: work.latitude, longitude: work.longitude })} style={{ borderRadius: '999px', padding: '8px 12px', fontSize: '12px', fontWeight: 700, background: '#F2F4F6', color: MAP_CARD_TEXT }}>▣ Work</button>}
+                  {home && <button onClick={() => selectAndRoute({ displayName: home.displayName, latitude: home.latitude, longitude: home.longitude })} style={{ borderRadius: '999px', padding: '8px 12px', fontSize: '12px', fontWeight: 700, background: '#F2F4F6', color: MAP_CARD_TEXT }}>⌂ Home</button>}
+                  {work && <button onClick={() => selectAndRoute({ displayName: work.displayName, latitude: work.latitude, longitude: work.longitude })} style={{ borderRadius: '999px', padding: '8px 12px', fontSize: '12px', fontWeight: 700, background: '#F2F4F6', color: MAP_CARD_TEXT }}>▣ Work</button>}
                 </div>
               })()}
               {activeCategory && categoryResults !== null ? (
