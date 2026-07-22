@@ -1853,6 +1853,7 @@ private struct PropertyContent: View {
     @State private var favoriteIds: Set<String> = []
     @State private var favoritingId: String?
     @State private var favoriteNotice: String?
+    @State private var nearbyRadiusKm = 3.0
 
     var body: some View {
         ScrollView {
@@ -1867,6 +1868,8 @@ private struct PropertyContent: View {
                 .pickerStyle(.segmented)
 
                 if let favoriteNotice { Text(favoriteNotice).font(.caption).foregroundColor(IDS.Colors.brand).frame(maxWidth: .infinity, alignment: .leading) }
+
+                if view == .nearby { HoodRadiusControl(radiusKm: $nearbyRadiusKm, onChanged: { locationFetcher.requestLocation() }) }
 
                 if view == .browse {
                     HStack(spacing: 6) {
@@ -2018,7 +2021,7 @@ private struct PropertyContent: View {
 
     private func loadNearby(_ coordinate: CLLocationCoordinate2D) async {
         do {
-            let res = try await NetworkClient.shared.getNearbyPropertyListings(lat: coordinate.latitude, lng: coordinate.longitude)
+            let res = try await NetworkClient.shared.getNearbyPropertyListings(lat: coordinate.latitude, lng: coordinate.longitude, radiusKm: nearbyRadiusKm)
             listings = res.listings
             error = nil
         } catch {
