@@ -712,6 +712,9 @@ private struct ChatThreadScreen: View {
     @State private var showingBlockConfirmation = false
     @State private var blocking = false
     @State private var isBlocked = false
+    @State private var searchQuery = ""
+    @State private var searchResults: [MessageDto]?
+    @State private var searching = false
     // Real device binding step-up (2026-07-21) -- Gift send/claim was a real gap:
     // already correctly enforced server-side (a real 403 DEVICE_NOT_VERIFIED) but a
     // bare `catch { }` swallowed it into a generic error, same fix already applied to
@@ -750,10 +753,23 @@ private struct ChatThreadScreen: View {
                 Text("They will no longer be able to message you. You can unblock them later from this conversation.")
             }
 
+            HStack(spacing: 8) {
+                TextField("Search this conversation", text: $searchQuery)
+                    .padding(9).background(IDS.Colors.chipBackground).cornerRadius(8)
+                Button(searching ? "…" : "Search") { Task { await search() } }
+                    .disabled(searching || searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).count < 2)
+            }
+            .padding(.horizontal, IDS.Layout.screenHorizontal)
+            if let searchResults {
+                Text("\(searchResults.count) matching message\(searchResults.count == 1 ? "" : "s")")
+                    .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    .padding(.horizontal, IDS.Layout.screenHorizontal)
+            }
+
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 8) {
-                        if let messages {
+                        if let messages = searchResults ?? messages {
                             if messages.isEmpty {
                                 Text("Say hello — no messages yet.").foregroundColor(IDS.Colors.textSecondary).padding(.top, 20)
                             }
@@ -1051,6 +1067,15 @@ private struct ChatThreadScreen: View {
         } catch {
             error = "Couldn't send this report. Check your connection and try again."
         }
+    }
+
+    private func search() async {
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard query.count >= 2 else { return }
+        searching = true
+        defer { searching = false }
+        do { searchResults = try await NetworkClient.shared.searchMessages(conversationId: conversation.conversationId, query: query).messages }
+        catch { error = "Couldn't search this conversation. Check your connection and try again." }
     }
 
     private func send() async {
