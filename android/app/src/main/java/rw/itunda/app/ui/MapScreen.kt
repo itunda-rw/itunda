@@ -116,6 +116,8 @@ import rw.itunda.app.network.AddMapBookmarkRequest
 import rw.itunda.app.network.MAP_NEARBY_CATEGORIES
 import rw.itunda.app.network.MapBookmarkDto
 import rw.itunda.app.network.MapsDirectionsResponse
+import rw.itunda.app.network.ItineraryDirectionsRequest
+import rw.itunda.app.network.ItineraryWaypointRequest
 import rw.itunda.app.network.NearbyPlaceDto
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.app.network.NetworkClient
@@ -321,6 +323,12 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
     // itself decides whether a real alternative exists for a given trip.
     var routeAlternatives by remember { mutableStateOf<List<RouteResultDto>?>(null) }
     var selectedRouteIndex by remember { mutableStateOf(0) }
+    // A deliberately bounded itinerary builder: the real Maps endpoint accepts the
+    // start plus one to four ordered places (2–5 stops total). Search results are used
+    // as the picker so these are genuine geocoded Rwanda places, not typed coordinates.
+    var itineraryBuilding by remember { mutableStateOf(false) }
+    var itineraryStops by remember { mutableStateOf<List<PlaceSearchResultDto>>(emptyList()) }
+    var showingItineraryRoute by remember { mutableStateOf(false) }
     // Real driving/walking toggle (2026-07-22) -- see OsrmRoutingClient.route's own doc
     // comment on the backend for the real, separately-deployed foot-profile OSRM
     // instance this reaches.
@@ -542,6 +550,7 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
     }
 
     fun selectAndRoute(place: PlaceSearchResultDto) {
+        showingItineraryRoute = false
         selectedPlace = place
         route = null; routeAlternatives = null; selectedRouteIndex = 0; savingToFolder = null
         coroutineScope.launch {
@@ -554,6 +563,59 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
             } catch (e: HttpException) { error = superAppErrorMessage(e) }
             catch (e: Exception) { error = "Couldn't reach itunda. Check your connection and try again." }
             finally { routing = false }
+        }
+    }
+
+    fun addItineraryStop(place: PlaceSearchResultDto) {
+        if (itineraryStops.any { it.latitude == place.latitude && it.longitude == place.longitude }) {
+            error = "That stop is already in this itinerary."
+            return
+        }
+        if (itineraryStops.size >= 4) {
+            error = "An itinerary can have up to 5 stops including your start."
+            return
+        }
+        itineraryStops = itineraryStops + place
+        selectedPlace = null
+        route = null
+        routeAlternatives = null
+        showingItineraryRoute = false
+        searchResults = null
+        query = ""
+        searchFocused = false
+        error = null
+    }
+
+    fun fetchItinerary(mode: String = travelMode) {
+        if (itineraryStops.isEmpty()) {
+            error = "Add at least one destination to plan an itinerary."
+            return
+        }
+        coroutineScope.launch {
+            routing = true
+            error = null
+            try {
+                val origin = myLocation ?: (RWANDA_CENTER_LAT to RWANDA_CENTER_LNG)
+                val response = NetworkClient.apiService.getItineraryDirections(
+                    ItineraryDirectionsRequest(
+                        waypoints = listOf(ItineraryWaypointRequest(origin.first, origin.second)) +
+                            itineraryStops.map { ItineraryWaypointRequest(it.latitude, it.longitude) },
+                        mode = mode,
+                    ),
+                )
+                travelMode = mode
+                route = MapsDirectionsResponse(success = response.success, route = response.route)
+                routeAlternatives = null
+                selectedRouteIndex = 0
+                showingItineraryRoute = true
+                showSteps = false
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: Exception) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                routing = false
+            }
         }
     }
 
@@ -677,12 +739,21 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                 map.easeCamera(org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(LatLng(location.first, location.second), 14.0))
             }
         }
-        LaunchedEffect(selectedPlace) {
+        LaunchedEffect(selectedPlace, itineraryStops, itineraryBuilding) {
             val place = selectedPlace
             mapView.getMapAsync { map ->
                 val style = map.style ?: return@getMapAsync
                 val source = style.getSourceAs<GeoJsonSource>(DESTINATION_SOURCE_ID) ?: return@getMapAsync
-                if (place == null) {
+                val itineraryPins = if (itineraryBuilding) itineraryStops else emptyList()
+                if (itineraryPins.isNotEmpty()) {
+                    source.setGeoJson(
+                        FeatureCollection.fromFeatures(
+                            itineraryPins.map { stop -> Feature.fromGeometry(Point.fromLngLat(stop.longitude, stop.latitude)) },
+                        ),
+                    )
+                    val finalStop = itineraryPins.last()
+                    map.easeCamera(org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(LatLng(finalStop.latitude, finalStop.longitude), 14.0))
+                } else if (place == null) {
                     source.setGeoJson(FeatureCollection.fromFeatures(emptyArray()))
                 } else {
                     source.setGeoJson(FeatureCollection.fromFeatures(arrayOf(Feature.fromGeometry(Point.fromLngLat(place.longitude, place.latitude)))))
@@ -849,6 +920,34 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                 }
             }
 
+            // A real multi-stop planner, not a second fake map mode. While active,
+            // search results become ordered stops for the bounded OSRM itinerary API.
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .shadow(1.dp, RoundedCornerShape(999.dp))
+                    .background(TossCard, RoundedCornerShape(999.dp))
+                    .clickable {
+                        if (itineraryBuilding) {
+                            itineraryBuilding = false
+                            itineraryStops = emptyList()
+                            showingItineraryRoute = false
+                            route = null
+                        } else {
+                            itineraryBuilding = true
+                            selectedPlace = null
+                            route = null
+                            routeAlternatives = null
+                            showingItineraryRoute = false
+                        }
+                    }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            ) {
+                Text(if (itineraryBuilding) "✓ Planning ${itineraryStops.size + 1} stops" else "＋ Plan multi-stop trip", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (itineraryBuilding) TossBlue else TossText)
+                if (itineraryBuilding) Text("Tap to cancel", fontSize = 11.sp, color = TossSecondary)
+            }
+
             if ((activeCategory != null && categoryResults != null) || searchResults != null || error != null) {
                 Column(
                     modifier = Modifier
@@ -883,13 +982,18 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                                         .fillMaxWidth()
                                         .clickable {
                                             recentSearches = recentSearchesStore.add(place)
-                                            selectedPlace = place
-                                            searchResults = null
-                                            route = null
-                                            routeAlternatives = null
-                                            selectedRouteIndex = 0
-                                            showSteps = false
-                                            savingToFolder = null
+                                            if (itineraryBuilding) {
+                                                addItineraryStop(place)
+                                            } else {
+                                                showingItineraryRoute = false
+                                                selectedPlace = place
+                                                searchResults = null
+                                                route = null
+                                                routeAlternatives = null
+                                                selectedRouteIndex = 0
+                                                showSteps = false
+                                                savingToFolder = null
+                                            }
                                         }
                                         .padding(horizontal = 14.dp, vertical = 10.dp),
                                 )
@@ -934,13 +1038,18 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                                 .fillMaxWidth()
                                 .clickable {
                                     recentSearches = recentSearchesStore.add(place)
-                                    selectedPlace = place
-                                    searchResults = null
-                                    route = null
-                                    routeAlternatives = null
-                                    selectedRouteIndex = 0
-                                    showSteps = false
-                                    savingToFolder = null
+                                    if (itineraryBuilding) {
+                                        addItineraryStop(place)
+                                    } else {
+                                        showingItineraryRoute = false
+                                        selectedPlace = place
+                                        searchResults = null
+                                        route = null
+                                        routeAlternatives = null
+                                        selectedRouteIndex = 0
+                                        showSteps = false
+                                        savingToFolder = null
+                                    }
                                 }
                                 .padding(horizontal = 14.dp, vertical = 10.dp),
                         )
@@ -1270,6 +1379,93 @@ fun MapScreen(onBack: () -> Unit, initialCategory: String? = null) {
                             // doesn't cut the last line off against the screen edge.
                             Box(modifier = Modifier.height(24.dp))
                         } else {
+                            if (itineraryBuilding) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(androidx.compose.ui.graphics.Color(0xFFF2F7FF), RoundedCornerShape(12.dp))
+                                        .padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Text("Multi-stop trip", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TossText)
+                                    Text(
+                                        "Start: ${if (myLocation != null) "your current location" else "Kigali map center"}. Search and tap places in the order you want to visit them.",
+                                        fontSize = 12.sp,
+                                        color = TossSecondary,
+                                    )
+                                    if (itineraryStops.isEmpty()) {
+                                        Text("Add 1–4 destinations to make a real road itinerary.", fontSize = 12.sp, color = TossSecondary)
+                                    } else {
+                                        itineraryStops.forEachIndexed { index, stop ->
+                                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                                Text("${index + 2}. ${stop.displayName}", fontSize = 13.sp, color = TossText, modifier = Modifier.weight(1f))
+                                                Text("Remove", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TossBlue, modifier = Modifier.clickable {
+                                                    itineraryStops = itineraryStops.filterIndexed { itemIndex, _ -> itemIndex != index }
+                                                    route = null
+                                                    showingItineraryRoute = false
+                                                })
+                                            }
+                                        }
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(TossBlue, RoundedCornerShape(9.dp))
+                                            .clickable(enabled = itineraryStops.isNotEmpty() && !routing) { fetchItinerary() }
+                                            .padding(vertical = 10.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            if (routing) "Finding real itinerary…" else "Route ${itineraryStops.size + 1} stops",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = androidx.compose.ui.graphics.Color.White,
+                                        )
+                                    }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                                        listOf("DRIVING" to "🚗 Driving", "WALKING" to "🚶 Walking").forEach { (mode, label) ->
+                                            val active = travelMode == mode
+                                            Box(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .background(if (active) TossBlue else TossCardSoft, RoundedCornerShape(8.dp))
+                                                    .clickable(enabled = !routing) {
+                                                        if (mode != travelMode) {
+                                                            if (showingItineraryRoute) fetchItinerary(mode) else travelMode = mode
+                                                        }
+                                                    }
+                                                    .padding(vertical = 6.dp),
+                                                contentAlignment = Alignment.Center,
+                                            ) { Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (active) androidx.compose.ui.graphics.Color.White else TossSecondary) }
+                                        }
+                                    }
+                                    val itineraryRoute = route.takeIf { showingItineraryRoute }
+                                    if (itineraryRoute != null) {
+                                        Text(
+                                            "${if (travelMode == "DRIVING") "🚗" else "🚶"} ${"%.1f".format(itineraryRoute.route.distanceKm)} km · ${itineraryRoute.route.durationMinutes.toInt()} min by real road",
+                                            fontSize = 13.sp,
+                                            color = TossSecondary,
+                                        )
+                                        Text("Legs", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TossText)
+                                        val legLabels = listOf(if (myLocation != null) "Your location" else "Kigali map center") + itineraryStops.map { it.displayName }
+                                        legLabels.zipWithNext().forEachIndexed { index, (from, to) ->
+                                            Text("${index + 1}. $from → $to", fontSize = 12.sp, color = TossSecondary)
+                                        }
+                                        if (itineraryRoute.route.steps.isNotEmpty()) {
+                                            Text(
+                                                if (showSteps) "Hide turn-by-turn directions" else "Show turn-by-turn directions (${itineraryRoute.route.steps.size} steps)",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = TossBlue,
+                                                modifier = Modifier.clickable { showSteps = !showSteps },
+                                            )
+                                            if (showSteps) itineraryRoute.route.steps.forEachIndexed { index, step ->
+                                                Text("${index + 1}. ${step.instruction}", fontSize = 12.sp, color = TossSecondary)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                             // Real default "around me" state (2026-07-21) -- Naver Map's
                             // own Smart Around sheet keeps a non-modal panel permanently
                             // docked with real curated content even before any search,

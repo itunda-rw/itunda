@@ -579,6 +579,12 @@ data class MapsDirectionsResponse(val success: Boolean, val route: RouteResultDt
 // doc comment on the backend. Often just a single-element list -- OSRM itself decides
 // whether a real alternative exists for a given trip.
 data class MapsDirectionsAlternativesResponse(val success: Boolean, val routes: List<RouteResultDto>)
+// Ordered multi-stop directions (2026-07-22). The backend deliberately accepts only
+// 2–5 Rwanda waypoints so the self-hosted OSRM request and the mobile itinerary stay
+// legible. The returned RouteResultDto is one continuous road route through that order.
+data class ItineraryWaypointRequest(val latitude: Double, val longitude: Double)
+data class ItineraryDirectionsRequest(val waypoints: List<ItineraryWaypointRequest>, val mode: String = "DRIVING")
+data class MapsItineraryResponse(val success: Boolean, val route: RouteResultDto)
 data class MerchantCategoriesResponse(val success: Boolean, val categories: List<String>)
 
 // Real "nearby places" category search + bookmarked/favorite places (2026-07-19) -- see
@@ -1133,6 +1139,11 @@ interface ApiService {
         @Query("toLng") toLng: Double,
         @Query("mode") mode: String = "DRIVING",
     ): MapsDirectionsAlternativesResponse
+
+    @POST("api/v1/maps/directions/itinerary")
+    suspend fun getItineraryDirections(
+        @Body request: ItineraryDirectionsRequest,
+    ): MapsItineraryResponse
 
     // Real "nearby places" category search + bookmarked/favorite places (2026-07-19) --
     // see rw.itunda.maps.MapsService's own doc comment on the backend.
