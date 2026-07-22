@@ -190,6 +190,7 @@ struct MapScreenView: View {
     @State private var recentSearches: [PlaceSearchResultDto] = RecentMapSearchesStore.shared.getAll()
     @FocusState private var searchFocused: Bool
     @State private var selectedPlace: PlaceSearchResultDto?
+    @State private var itineraryStops: [PlaceSearchResultDto] = []
     @State private var route: RouteResultDto?
     // Real alternative routes (2026-07-22) -- see MapsDirectionsAlternativesResponse's
     // own doc comment on the network client. Often just a single-element array -- OSRM
@@ -466,6 +467,18 @@ struct MapScreenView: View {
                                     if let savingToFolder, savingToFolder.latitude == place.latitude, savingToFolder.longitude == place.longitude {
                                         folderPicker()
                                     }
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Button(itineraryStops.contains(where: { $0.latitude == place.latitude && $0.longitude == place.longitude }) ? "Already in itinerary" : "＋ Add stop to itinerary") {
+                                            guard itineraryStops.count < 5, !itineraryStops.contains(where: { $0.latitude == place.latitude && $0.longitude == place.longitude }) else { return }
+                                            itineraryStops.append(place)
+                                        }
+                                        .font(.caption).bold().foregroundColor(IDS.Colors.brand)
+                                        .disabled(itineraryStops.count >= 5 || itineraryStops.contains(where: { $0.latitude == place.latitude && $0.longitude == place.longitude }))
+                                        if itineraryStops.count >= 2 {
+                                            Text("Itinerary: \(itineraryStops.map(\.displayName).joined(separator: " → "))").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                            Button(action: { Task { await getItineraryDirections() } }) { Text(routing ? "Routing itinerary…" : "Route \(itineraryStops.count) stops").font(.caption).bold().foregroundColor(.white).padding(.horizontal, 12).padding(.vertical, 8).background(IDS.Colors.brand).cornerRadius(10) }.disabled(routing)
+                                        }
+                                    }
                                     // Real driving/walking mode toggle (2026-07-22) --
                                     // same real Naver/Kakao Maps convention of picking a
                                     // travel mode before/after a route is drawn. Extracted
@@ -698,6 +711,15 @@ struct MapScreenView: View {
         } catch {
             self.error = "Could not find directions to this place."
         }
+    }
+
+    private func getItineraryDirections() async {
+        guard itineraryStops.count >= 2 else { return }
+        routing = true; error = nil; defer { routing = false }
+        do {
+            let response = try await NetworkClient.shared.getItineraryDirections(waypoints: itineraryStops.map { ItineraryWaypointRequest(latitude: $0.latitude, longitude: $0.longitude) }, mode: travelMode)
+            route = response.route; routeAlternatives = nil; selectedRouteIndex = 0; showSteps = false
+        } catch { error = "Could not find a route for this itinerary." }
     }
 
     // Real folder/color picker (2026-07-22) -- ported from bank-mfe's own real save-time
