@@ -846,6 +846,7 @@ private struct ChatThreadScreen: View {
                                     onToggleReaction: { emoji in Task { await toggleReaction(message.id, emoji) } },
                                     onRespondToOffer: { offerId, action, counterAmount in Task { await respondToOffer(offerId, action, counterAmount) } },
                                     onClaimGift: { giftId in Task { await claimGift(giftId) } },
+                                    onReply: { replyingTo = $0 },
                                     onReportMessage: { messageId, reason in Task { await reportMessage(messageId, reason) } },
                                 )
                                 .id(message.id)
@@ -1338,6 +1339,7 @@ private struct MessageBubble: View {
     let onToggleReaction: (String) -> Void
     let onRespondToOffer: (String, String, Double?) -> Void
     let onClaimGift: (String) -> Void
+    let onReply: (MessageDto) -> Void
     let onReportMessage: (String, String) -> Void
     @State private var reportOpen = false
     @State private var reportReason = ""
@@ -1362,6 +1364,8 @@ private struct MessageBubble: View {
                 if !isMine { Spacer() }
             }
             MessageReactionsRow(reactions: message.reactions, currentUserId: currentUserId, isMine: isMine, onToggle: onToggleReaction)
+            Button("Reply") { onReply(message) }
+                .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
             Text("\(isMine && message.readAt == nil ? "1 · " : "")\(chatMessageTime(message.sentAt))")
                 .font(.caption2)
                 .foregroundColor(IDS.Colors.textSecondary)
