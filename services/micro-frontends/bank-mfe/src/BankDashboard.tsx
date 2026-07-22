@@ -1781,6 +1781,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
+  const [replyingTo, setReplyingTo] = useState<GroupMessage | null>(null);
   const [sending, setSending] = useState(false);
   const [typingUserIds, setTypingUserIds] = useState<Record<string, boolean>>({});
   const currentUser = getStoredUser();
@@ -1871,9 +1872,10 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
     setSending(true);
     setError(null);
     try {
-      const sent = await sendGroupMessage(group.groupId, body);
+      const sent = await sendGroupMessage(group.groupId, body, replyingTo?.id);
       setMessages((prev) => [...(prev ?? []), sent]);
       setDraft('');
+      setReplyingTo(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not send this message.');
     } finally {
@@ -1943,6 +1945,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
                 isMine={isMine}
                 onToggle={(emoji) => handleToggleReaction(m.id, emoji)}
               />
+              <button type="button" onClick={() => setReplyingTo(m)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Reply</button>
               {isMine && !(m as GroupMessage & { deletedAt?: string | null }).deletedAt && <button type="button" onClick={() => handleDelete(m.id)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Delete</button>}
               <span style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>
                 {chatMessageTime(m.sentAt)}
@@ -1963,6 +1966,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
         <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>
       )}
 
+      {replyingTo && <div style={{ fontSize: '12px', color: 'var(--toss-grey-600)', padding: '8px', borderLeft: '3px solid var(--toss-blue)', marginBottom: '6px' }}>Replying to: {replyingTo.body.slice(0, 80)} <button type="button" onClick={() => setReplyingTo(null)}>×</button></div>}
       <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px' }}>
         <input
           type="text"

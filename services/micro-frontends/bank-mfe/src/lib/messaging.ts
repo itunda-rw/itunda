@@ -32,7 +32,6 @@ export interface Message {
   senderId: string;
   body: string;
   sentAt: string;
-  replyToMessageId?: string | null;
   readAt: string | null;
   deletedAt?: string | null;
   replyToMessageId: string | null;
@@ -140,6 +139,7 @@ export interface GroupMessage {
   senderId: string;
   body: string;
   sentAt: string;
+  replyToMessageId?: string | null;
   reactions: ReactionGroup[];
 }
 
