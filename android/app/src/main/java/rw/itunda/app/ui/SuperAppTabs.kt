@@ -959,6 +959,7 @@ private fun ChatThreadView(conversation: ConversationSummaryDto, onBack: () -> U
     var offersByMessageId by remember { mutableStateOf<Map<String, OfferBubbleData>>(emptyMap()) }
     var giftsByMessageId by remember { mutableStateOf<Map<String, GiftDto>>(emptyMap()) }
     var draft by remember { mutableStateOf("") }
+    var replyingTo by remember { mutableStateOf<MessageDto?>(null) }
     var sending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var blockConfirmationOpen by remember { mutableStateOf(false) }

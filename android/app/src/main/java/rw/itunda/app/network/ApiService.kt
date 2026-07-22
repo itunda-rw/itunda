@@ -314,6 +314,7 @@ data class ConversationSummaryDto(
     val lastMessageAt: String,
     val lastMessagePreview: String?,
     val unreadCount: Int,
+    val quiet: Boolean = false,
 )
 
 // Real emoji reactions (2026-07-19) -- see MessagingService.toggleReaction's own doc
