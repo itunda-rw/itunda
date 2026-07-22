@@ -26,6 +26,35 @@ private func nextRiderStatus(_ current: String) -> String? {
     return riderStatusChain[idx + 1]
 }
 
+// Real per-configuration cart line (2026-07-21) -- ports bank-mfe's own EatsCartLine
+// (BankDashboard.tsx) 1:1. `choiceIds` is empty for any item with no option groups --
+// the pre-existing, unaffected case. Two lines for the same productId with DIFFERENT
+// choiceIds are genuinely distinct cart entries (e.g. a Regular and a Large of the same
+// burger, side by side) -- closes docs/DESIGN_REFERENCES.md's Eats recommendation #6.
+struct EatsCartLine {
+    let productId: String
+    var quantity: Int
+    let choiceIds: [String]
+}
+
+private func eatsCartKey(_ productId: String, _ choiceIds: [String]) -> String {
+    choiceIds.isEmpty ? productId : "\(productId)::\(choiceIds.sorted().joined(separator: ","))"
+}
+
+// Real, human-readable summary of a resolved cart line's selected options -- mirrors
+// the backend's own EatsOrderService.buildSelectedOptionsJson, but purely for display;
+// pricing always comes from the real menu item + real choice deltas, never this string.
+private func eatsOptionsSummary(_ item: MerchantProductDto, _ choiceIds: [String]) -> String {
+    guard !choiceIds.isEmpty else { return "" }
+    let names = (item.optionGroups ?? []).flatMap { $0.choices }.filter { choiceIds.contains($0.id) }.map { $0.name }
+    return names.isEmpty ? "" : " (\(names.joined(separator: ", ")))"
+}
+
+private func eatsLineUnitPrice(_ item: MerchantProductDto, _ choiceIds: [String]) -> Double {
+    let delta = (item.optionGroups ?? []).flatMap { $0.choices }.filter { choiceIds.contains($0.id) }.reduce(0.0) { $0 + $1.priceDelta }
+    return item.price + delta
+}
+
 private enum EatsMode { case order, deliver }
 
 struct EatsContent: View {
@@ -64,7 +93,7 @@ private struct OrderFoodContent: View {
     @State private var error: String?
     @State private var selectedRestaurant: ShoppingMerchantDto?
     @State private var menu: [MerchantProductDto]?
-    @State private var cart: [String: Int] = [:]
+    @State private var cart: [String: EatsCartLine] = [:]
     @State private var showCheckout = false
     @State private var confirmedOrder: EatsOrderDto?
     @State private var reorderingId: String?
@@ -213,14 +242,44 @@ private struct OrderFoodContent: View {
                     } else {
                         ForEach(restaurants!) { restaurant in
                             HStack(spacing: 14) {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 14).fill(IDS.Colors.chipBackground)
-                                    Image(systemName: "fork.knife").foregroundColor(IDS.Colors.brand)
-                                }
-                                .frame(width: 44, height: 44)
+                                RestaurantPhotoThumb(imageUrl: restaurant.photoUrl)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(restaurant.businessName).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
-                                    Text(restaurant.category.map { "\($0) · Real menu, real delivery" } ?? "Real menu, real delivery").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                    // Real fix, 2026-07-21 (porting Android's own fix): every
+                                    // restaurant card previously showed the exact same generic
+                                    // "Real menu, real delivery" filler regardless of which
+                                    // restaurant it was -- not real per-restaurant info a user
+                                    // could actually scan and compare. ShoppingMerchantDto
+                                    // already carries a real cashbackRate; show that instead.
+                                    Text(restaurant.category.map { "\($0) · \(restaurant.cashbackRate) cashback" } ?? "\(restaurant.cashbackRate) cashback")
+                                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                    // Real browse-card enrichment (2026-07-21) -- closes
+                                    // docs/DESIGN_REFERENCES.md's Eats recommendations #1/#2:
+                                    // rating previously sat one tap deeper inside
+                                    // RestaurantMenuView only, and there was no distance/
+                                    // delivery-time/min-order signal on the browse card at
+                                    // all. Every clause conditionally rendered on real data
+                                    // being present -- never a fabricated placeholder.
+                                    if restaurant.rating != nil || restaurant.distanceKm != nil || restaurant.minOrderAmount != nil {
+                                        let detailLine = [
+                                            restaurant.distanceKm.map { String(format: "%.1f km", $0) },
+                                            restaurant.deliveryTimeMinutes.map { "~\($0) min" },
+                                            restaurant.minOrderAmount.map { "Min \(Int($0)) RWF" },
+                                        ].compactMap { $0 }.joined(separator: " · ")
+                                        HStack(spacing: 4) {
+                                            if let rating = restaurant.rating {
+                                                Image(systemName: "star.fill").font(.caption2).foregroundColor(.yellow)
+                                                Text(String(format: "%.1f (%d)", rating, restaurant.reviewCount ?? 0))
+                                                    .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                                if !detailLine.isEmpty {
+                                                    Text("·").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                                }
+                                            }
+                                            if !detailLine.isEmpty {
+                                                Text(detailLine).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                            }
+                                        }
+                                    }
                                 }
                                 Spacer()
                                 Button(action: { toggleFavorite(restaurant.merchantId) }) {
@@ -284,10 +343,17 @@ private struct OrderFoodContent: View {
             async let orderDetailReq = NetworkClient.shared.getEatsOrder(order.id)
             async let menuReq = NetworkClient.shared.getMerchantProducts(merchantId: order.restaurantId)
             let (orderDetail, menuRes) = try await (orderDetailReq, menuReq)
-            let activeProductIds = Set(menuRes.products.filter { $0.active }.map { $0.id })
-            var newCart: [String: Int] = [:]
-            for item in orderDetail.items where activeProductIds.contains(item.productId) {
-                newCart[item.productId, default: 0] += item.quantity
+            let activeProducts = Dictionary(uniqueKeysWithValues: menuRes.products.filter { $0.active }.map { ($0.id, $0) })
+            // Real reorder-cart sanitization (2026-07-21) -- a reordered past order carries
+            // no option selections. If the item now genuinely requires one, that bare line
+            // can never check out -- drop it rather than let checkout silently 422, same
+            // "discontinued item silently dropped" precedent already established below for
+            // a menu item that's gone entirely.
+            var newCart: [String: EatsCartLine] = [:]
+            for item in orderDetail.items {
+                guard let product = activeProducts[item.productId], (product.optionGroups?.isEmpty ?? true) else { continue }
+                let key = eatsCartKey(item.productId, [])
+                newCart[key] = EatsCartLine(productId: item.productId, quantity: (newCart[key]?.quantity ?? 0) + item.quantity, choiceIds: [])
             }
             if newCart.isEmpty {
                 reorderError = "None of the items from that order are on the menu anymore."
@@ -317,6 +383,45 @@ private struct StarRatingRow: View {
                         .foregroundColor(n <= value ? .yellow : IDS.Colors.textTertiary)
                 }
             }
+        }
+    }
+}
+
+// Real restaurant-photo thumbnail (2026-07-21) -- photoUrl is a merchant-supplied
+// external URL (see backend Merchant.kt's own doc comment: no upload/storage layer
+// exists in this backend, same "bring your own URL" convention ShopScreen's own
+// ProductImageThumb already established for product images). AsyncImage (native
+// SwiftUI, no third-party dependency) handles the nil/broken-URL case itself via its
+// placeholder closure -- same fallback icon for "no photo set" and "photo failed to
+// load," both real, valid states.
+private struct RestaurantPhotoThumb: View {
+    let imageUrl: String?
+    var side: CGFloat = 44
+
+    var body: some View {
+        Group {
+            if let imageUrl, let url = URL(string: imageUrl) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().scaledToFill()
+                    default:
+                        placeholder
+                    }
+                }
+            } else {
+                placeholder
+            }
+        }
+        .frame(width: side, height: side)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .background(IDS.Colors.chipBackground)
+    }
+
+    private var placeholder: some View {
+        ZStack {
+            IDS.Colors.chipBackground
+            Image(systemName: "fork.knife").foregroundColor(IDS.Colors.brand)
         }
     }
 }
@@ -436,11 +541,18 @@ private struct ReviewOrderCard: View {
 private struct RestaurantMenuView: View {
     let restaurant: ShoppingMerchantDto
     let menu: [MerchantProductDto]?
-    @Binding var cart: [String: Int]
+    @Binding var cart: [String: EatsCartLine]
     let onBack: () -> Void
     let onCheckout: () -> Void
 
-    private var cartCount: Int { cart.values.reduce(0, +) }
+    // Real menu-options selection UI (2026-07-21, v1: required single-select only) --
+    // ports bank-mfe's own MenuView 1:1. Only one item's option panel is expanded at a
+    // time, matching this file's own established "inline-card-replaces-trigger"
+    // convention (no modal-overlay pattern exists anywhere in this app).
+    @State private var expandedProductId: String?
+    @State private var pendingChoices: [String: String] = [:]
+
+    private var cartCount: Int { cart.values.reduce(0) { $0 + $1.quantity } }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -464,21 +576,7 @@ private struct RestaurantMenuView: View {
                             Text("No menu items yet.").foregroundColor(IDS.Colors.textSecondary).padding(.top, 20)
                         }
                         ForEach(menu) { item in
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(item.name).font(IDS.Typography.bodyMedium).foregroundColor(IDS.Colors.textPrimary)
-                                    Text("\(Int(item.price)) RWF").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
-                                }
-                                Spacer()
-                                HStack(spacing: 12) {
-                                    qtyButton("minus") { if (cart[item.id] ?? 0) > 0 { cart[item.id]! -= 1 } }
-                                    Text("\(cart[item.id] ?? 0)").frame(width: 24).font(.subheadline).bold()
-                                    qtyButton("plus") { cart[item.id] = (cart[item.id] ?? 0) + 1 }
-                                }
-                            }
-                            .padding(16)
-                            .background(IDS.Colors.card)
-                            .cornerRadius(IDS.Layout.cardCornerRadius)
+                            menuItemCard(item)
                         }
                     } else {
                         ProgressView().padding(.top, 20)
@@ -505,6 +603,98 @@ private struct RestaurantMenuView: View {
             }
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+    }
+
+    private func menuItemCard(_ item: MerchantProductDto) -> some View {
+        let groups = item.optionGroups ?? []
+        let hasOptions = !groups.isEmpty
+        let simpleKey = eatsCartKey(item.id, [])
+        let simpleQty = hasOptions ? 0 : (cart[simpleKey]?.quantity ?? 0)
+        let isExpanded = expandedProductId == item.id
+        let allGroupsChosen = groups.allSatisfy { pendingChoices[$0.id] != nil }
+
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.name).font(IDS.Typography.bodyMedium).foregroundColor(IDS.Colors.textPrimary)
+                    Text("\(Int(item.price)) RWF\(hasOptions ? " · options required" : "")").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
+                }
+                Spacer()
+                if hasOptions {
+                    Button(action: { toggleExpand(item.id) }) {
+                        Text(isExpanded ? "Close" : "Choose options")
+                            .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(IDS.Colors.chipBackground).cornerRadius(10)
+                    }
+                } else {
+                    HStack(spacing: 12) {
+                        qtyButton("minus") { if simpleQty > 0 { setSimpleQty(item.id, simpleQty - 1) } }
+                        Text("\(simpleQty)").frame(width: 24).font(.subheadline).bold()
+                        qtyButton("plus") { setSimpleQty(item.id, simpleQty + 1) }
+                    }
+                }
+            }
+
+            if hasOptions && isExpanded {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(groups) { group in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("\(group.name)").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                + Text(" · choose 1").font(.caption).foregroundColor(IDS.Colors.textTertiary)
+                            VStack(alignment: .leading, spacing: 8) {
+                                ForEach(group.choices) { choice in
+                                    Button(action: { pendingChoices[group.id] = choice.id }) {
+                                        HStack(spacing: 8) {
+                                            Image(systemName: pendingChoices[group.id] == choice.id ? "largecircle.fill.circle" : "circle")
+                                                .foregroundColor(pendingChoices[group.id] == choice.id ? IDS.Colors.brand : IDS.Colors.textTertiary)
+                                            Text(choice.name + (choice.priceDelta > 0 ? " (+\(Int(choice.priceDelta)) RWF)" : ""))
+                                                .font(.caption)
+                                                .foregroundColor(IDS.Colors.textPrimary)
+                                        }
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                    }
+                    Button(action: { addConfiguredToCart(item) }) {
+                        Text("Add to cart")
+                            .font(IDS.Typography.bodyBold).foregroundColor(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(allGroupsChosen ? IDS.Colors.brand : IDS.Colors.textTertiary)
+                            .cornerRadius(12)
+                    }
+                    .disabled(!allGroupsChosen)
+                }
+                .padding(.top, 14)
+            }
+        }
+        .padding(16)
+        .background(IDS.Colors.card)
+        .cornerRadius(IDS.Layout.cardCornerRadius)
+    }
+
+    // For a no-option item only -- the original single-stepper interaction, completely
+    // unchanged for the overwhelming majority of menu items that have no option groups.
+    private func setSimpleQty(_ productId: String, _ qty: Int) {
+        let key = eatsCartKey(productId, [])
+        cart[key] = EatsCartLine(productId: productId, quantity: max(0, qty), choiceIds: [])
+    }
+
+    private func toggleExpand(_ productId: String) {
+        pendingChoices = [:]
+        expandedProductId = (expandedProductId == productId) ? nil : productId
+    }
+
+    private func addConfiguredToCart(_ item: MerchantProductDto) {
+        let groups = item.optionGroups ?? []
+        let choiceIds = groups.compactMap { pendingChoices[$0.id] }
+        guard choiceIds.count == groups.count else { return } // one real required choice per group, enforced client-side too
+        let key = eatsCartKey(item.id, choiceIds)
+        cart[key] = EatsCartLine(productId: item.id, quantity: (cart[key]?.quantity ?? 0) + 1, choiceIds: choiceIds)
+        pendingChoices = [:]
+        expandedProductId = nil
     }
 
     private func qtyButton(_ symbol: String, action: @escaping () -> Void) -> some View {
@@ -587,7 +777,7 @@ private struct AddressAutocompleteField: View {
 
 private struct EatsCheckoutView: View {
     let restaurant: ShoppingMerchantDto
-    let cart: [String: Int]
+    let cart: [String: EatsCartLine]
     let menu: [MerchantProductDto]
     let onBack: () -> Void
     let onOrderPlaced: (EatsOrderDto) -> Void
@@ -603,13 +793,13 @@ private struct EatsCheckoutView: View {
     // showed only a generic error, same fix already applied to Transfer/Savings.
     @State private var needsDeviceVerification = false
 
-    private var lines: [(MerchantProductDto, Int)] {
-        cart.compactMap { productId, qty in
-            guard qty > 0, let item = menu.first(where: { $0.id == productId }) else { return nil }
-            return (item, qty)
+    private var lines: [(key: String, item: MerchantProductDto, line: EatsCartLine)] {
+        cart.compactMap { key, line in
+            guard line.quantity > 0, let item = menu.first(where: { $0.id == line.productId }) else { return nil }
+            return (key, item, line)
         }
     }
-    private var subtotal: Double { lines.reduce(0) { $0 + $1.0.price * Double($1.1) } }
+    private var subtotal: Double { lines.reduce(0) { $0 + eatsLineUnitPrice($1.item, $1.line.choiceIds) * Double($1.line.quantity) } }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -625,11 +815,11 @@ private struct EatsCheckoutView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
-                    ForEach(lines, id: \.0.id) { item, qty in
+                    ForEach(lines, id: \.key) { _, item, line in
                         HStack {
-                            Text("\(item.name) x\(qty)").foregroundColor(IDS.Colors.textPrimary)
+                            Text("\(item.name)\(eatsOptionsSummary(item, line.choiceIds)) x\(line.quantity)").foregroundColor(IDS.Colors.textPrimary)
                             Spacer()
-                            Text("\(Int(item.price * Double(qty))) RWF").foregroundColor(IDS.Colors.textPrimary)
+                            Text("\(Int(eatsLineUnitPrice(item, line.choiceIds) * Double(line.quantity))) RWF").foregroundColor(IDS.Colors.textPrimary)
                         }
                     }
                     Divider()
@@ -697,7 +887,7 @@ private struct EatsCheckoutView: View {
         do {
             let res = try await NetworkClient.shared.placeEatsOrder(PlaceEatsOrderRequest(
                 restaurantId: restaurant.merchantId,
-                items: lines.map { EatsOrderItemRequest(menuItemId: $0.0.id, quantity: $0.1) },
+                items: lines.map { EatsOrderItemRequest(menuItemId: $0.item.id, quantity: $0.line.quantity, selectedChoiceIds: $0.line.choiceIds.isEmpty ? nil : $0.line.choiceIds) },
                 deliveryAddress: address.trimmingCharacters(in: .whitespaces),
                 deliveryLatitude: addressLatitude,
                 deliveryLongitude: addressLongitude,

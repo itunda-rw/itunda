@@ -152,6 +152,30 @@ fun EatsContent(
     }
 }
 
+// Real per-configuration cart line (2026-07-21) -- ports bank-mfe's own EatsCartLine
+// (BankDashboard.tsx) 1:1. `choiceIds` is empty for any item with no option groups --
+// the pre-existing, unaffected case. Two lines for the same productId with DIFFERENT
+// choiceIds are genuinely distinct cart entries (e.g. a Regular and a Large of the same
+// burger, side by side) -- closes docs/DESIGN_REFERENCES.md's Eats recommendation #6.
+private data class EatsCartLine(val productId: String, val quantity: Int, val choiceIds: List<String> = emptyList())
+
+private fun eatsCartKey(productId: String, choiceIds: List<String>): String =
+    if (choiceIds.isEmpty()) productId else "$productId::${choiceIds.sorted().joinToString(",")}"
+
+// Real, human-readable summary of a resolved cart line's selected options -- mirrors
+// the backend's own EatsOrderService.buildSelectedOptionsJson, but purely for display;
+// pricing always comes from the real menu item + real choice deltas, never this string.
+private fun eatsOptionsSummary(item: MerchantProductDto, choiceIds: List<String>): String {
+    if (choiceIds.isEmpty()) return ""
+    val names = item.optionGroups.flatMap { it.choices }.filter { it.id in choiceIds }.map { it.name }
+    return if (names.isEmpty()) "" else " (${names.joinToString(", ")})"
+}
+
+private fun eatsLineUnitPrice(item: MerchantProductDto, choiceIds: List<String>): Double {
+    val delta = item.optionGroups.flatMap { it.choices }.filter { it.id in choiceIds }.sumOf { it.priceDelta }
+    return item.price + delta
+}
+
 private enum class OrderFoodView { BROWSE, FAVORITES, ORDERS }
 
 @Composable
@@ -169,7 +193,7 @@ private fun OrderFoodContent(
     var error by remember { mutableStateOf<String?>(null) }
     var selectedRestaurant by remember { mutableStateOf<ShoppingMerchantDto?>(null) }
     var menu by remember { mutableStateOf<List<MerchantProductDto>?>(null) }
-    val cart = remember { mutableStateMapOf<String, Int>() }
+    val cart = remember { mutableStateMapOf<String, EatsCartLine>() }
     var showCheckout by remember { mutableStateOf(false) }
     var confirmedOrder by remember { mutableStateOf<EatsOrderDto?>(null) }
     var reorderingId by remember { mutableStateOf<String?>(null) }
@@ -274,11 +298,18 @@ private fun OrderFoodContent(
                     reorderError = "Could not reorder."
                     return@launch
                 }
-                val activeProductIds = menuRes.products.filter { it.active }.map { it.id }.toSet()
-                val newCart = mutableMapOf<String, Int>()
+                val activeProducts = menuRes.products.filter { it.active }.associateBy { it.id }
+                // Real reorder-cart sanitization (2026-07-21) -- a reordered past order carries
+                // no option selections. If the item now genuinely requires one, that bare line
+                // can never check out -- drop it rather than let checkout silently 422, same
+                // "discontinued item silently dropped" precedent already established above for
+                // a menu item that's gone entirely.
+                val newCart = mutableMapOf<String, EatsCartLine>()
                 orderDetail.items.forEach { item ->
-                    if (item.productId in activeProductIds) {
-                        newCart[item.productId] = (newCart[item.productId] ?: 0) + item.quantity
+                    val product = activeProducts[item.productId]
+                    if (product != null && product.optionGroups.isEmpty()) {
+                        val key = eatsCartKey(item.productId, emptyList())
+                        newCart[key] = EatsCartLine(item.productId, (newCart[key]?.quantity ?: 0) + item.quantity)
                     }
                 }
                 if (newCart.isEmpty()) {
@@ -668,12 +699,39 @@ private fun ReviewOrderCard(order: EatsOrderDto) {
 private fun RestaurantMenuView(
     restaurant: ShoppingMerchantDto,
     menu: List<MerchantProductDto>?,
-    cart: SnapshotStateMap<String, Int>,
+    cart: SnapshotStateMap<String, EatsCartLine>,
     onBack: () -> Unit,
     onCheckout: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
-    val cartCount = cart.values.sum()
+    // Real menu-options selection UI (2026-07-21, v1: required single-select only) --
+    // ports bank-mfe's own MenuView 1:1. Only one item's option panel is expanded at a
+    // time, matching this file's own established "inline-card-replaces-trigger"
+    // convention (no modal-overlay pattern exists anywhere in this app).
+    var expandedProductId by remember { mutableStateOf<String?>(null) }
+    val pendingChoices = remember { mutableStateMapOf<String, String>() }
+    val cartCount = cart.values.sumOf { it.quantity }
+
+    fun setSimpleQty(productId: String, qty: Int) {
+        val key = eatsCartKey(productId, emptyList())
+        cart[key] = EatsCartLine(productId, maxOf(0, qty))
+    }
+
+    fun toggleExpand(productId: String) {
+        pendingChoices.clear()
+        expandedProductId = if (expandedProductId == productId) null else productId
+    }
+
+    fun addConfiguredToCart(item: MerchantProductDto) {
+        val groups = item.optionGroups
+        val choiceIds = groups.mapNotNull { pendingChoices[it.id] }
+        if (choiceIds.size != groups.size) return // one real required choice per group, enforced client-side too
+        val key = eatsCartKey(item.id, choiceIds)
+        cart[key] = EatsCartLine(item.id, (cart[key]?.quantity ?: 0) + 1, choiceIds)
+        pendingChoices.clear()
+        expandedProductId = null
+    }
+
     Column(modifier = Modifier.fillMaxSize().padding(vertical = Ids.layout.screenVertical)) {
         BackTopBar(restaurant.businessName, onBack)
         RestaurantRatingBadge(restaurant.merchantId)
@@ -684,19 +742,72 @@ private fun RestaurantMenuView(
                 item { EmptyState("No menu items yet.", icon = Icons.Outlined.RestaurantMenu) }
             } else {
                 items(menu, key = { it.id }) { p ->
-                    val qty = cart[p.id] ?: 0
-                    Row(
+                    val hasOptions = p.optionGroups.isNotEmpty()
+                    val simpleKey = eatsCartKey(p.id, emptyList())
+                    val simpleQty = if (hasOptions) 0 else (cart[simpleKey]?.quantity ?: 0)
+                    val isExpanded = expandedProductId == p.id
+                    val allGroupsChosen = p.optionGroups.all { pendingChoices[it.id] != null }
+                    Column(
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface).padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(p.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            Text("%,.0f RWF".format(p.price), color = Ids.colors.textSecondary, fontSize = 13.sp)
+                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(p.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                Text(
+                                    "%,.0f RWF".format(p.price) + if (hasOptions) " · options required" else "",
+                                    color = Ids.colors.textSecondary, fontSize = 13.sp,
+                                )
+                            }
+                            if (hasOptions) {
+                                Box(
+                                    modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).clickable { toggleExpand(p.id) }.padding(horizontal = 12.dp, vertical = 8.dp),
+                                ) {
+                                    Text(if (isExpanded) "Close" else "Choose options", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                }
+                            } else {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    QtyButton("-") { if (simpleQty > 0) setSimpleQty(p.id, simpleQty - 1) }
+                                    Text(simpleQty.toString(), modifier = Modifier.width(28.dp), textAlign = TextAlign.Center, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
+                                    QtyButton("+") { setSimpleQty(p.id, simpleQty + 1) }
+                                }
+                            }
                         }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            QtyButton("-") { if (qty > 0) cart[p.id] = qty - 1 }
-                            Text(qty.toString(), modifier = Modifier.width(28.dp), textAlign = TextAlign.Center, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
-                            QtyButton("+") { cart[p.id] = qty + 1 }
+                        if (hasOptions && isExpanded) {
+                            Column(modifier = Modifier.padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                p.optionGroups.forEach { group ->
+                                    Column {
+                                        Row {
+                                            Text(group.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("· choose 1", color = Ids.colors.textTertiary, fontSize = 13.sp)
+                                        }
+                                        Column(modifier = Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            group.choices.forEach { choice ->
+                                                val selected = pendingChoices[group.id] == choice.id
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    modifier = Modifier.fillMaxWidth().clickable { pendingChoices[group.id] = choice.id },
+                                                ) {
+                                                    androidx.compose.material3.RadioButton(selected = selected, onClick = { pendingChoices[group.id] = choice.id })
+                                                    Text(
+                                                        choice.name + if (choice.priceDelta > 0) " (+%,.0f RWF)".format(choice.priceDelta) else "",
+                                                        color = Ids.colors.textPrimary, fontSize = 13.sp,
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (allGroupsChosen) Ids.colors.brand else Ids.colors.textTertiary)
+                                        .clickable(enabled = allGroupsChosen) { addConfiguredToCart(p) }
+                                        .padding(vertical = 12.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) { Text("Add to cart", color = Color.White, fontWeight = FontWeight.Bold) }
+                            }
                         }
                     }
                 }
@@ -790,7 +901,7 @@ private fun AddressAutocompleteField(
 @Composable
 private fun EatsCheckoutView(
     restaurant: ShoppingMerchantDto,
-    cart: Map<String, Int>,
+    cart: Map<String, EatsCartLine>,
     menu: List<MerchantProductDto>,
     onBack: () -> Unit,
     onOrderPlaced: (EatsOrderDto) -> Unit,
@@ -810,16 +921,16 @@ private fun EatsCheckoutView(
     val coroutineScope = rememberCoroutineScope()
     val idempotencyKey = remember { UUID.randomUUID().toString() }
 
-    val lines = cart.filter { it.value > 0 }.mapNotNull { (productId, qty) -> menu.find { it.id == productId }?.let { it to qty } }
-    val total = lines.sumOf { (p, qty) -> p.price * qty }
+    val lines = cart.values.filter { it.quantity > 0 }.mapNotNull { line -> menu.find { it.id == line.productId }?.let { it to line } }
+    val total = lines.sumOf { (p, line) -> eatsLineUnitPrice(p, line.choiceIds) * line.quantity }
 
     Column(modifier = Modifier.fillMaxSize().padding(vertical = Ids.layout.screenVertical)) {
         BackTopBar("Checkout", onBack)
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
-            items(lines) { (p, qty) ->
+            items(lines, key = { (p, line) -> eatsCartKey(p.id, line.choiceIds) }) { (p, line) ->
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("${p.name} x$qty", color = Ids.colors.textPrimary, fontSize = 14.sp)
-                    Text("%,.0f RWF".format(p.price * qty), color = Ids.colors.textPrimary, fontSize = 14.sp)
+                    Text("${p.name}${eatsOptionsSummary(p, line.choiceIds)} x${line.quantity}", color = Ids.colors.textPrimary, fontSize = 14.sp)
+                    Text("%,.0f RWF".format(eatsLineUnitPrice(p, line.choiceIds) * line.quantity), color = Ids.colors.textPrimary, fontSize = 14.sp)
                 }
             }
             item { Divider(color = Ids.colors.divider, modifier = Modifier.padding(vertical = 10.dp)) }
@@ -870,7 +981,7 @@ private fun EatsCheckoutView(
                                 idempotencyKey = idempotencyKey,
                                 request = PlaceEatsOrderRequest(
                                     restaurantId = restaurant.merchantId,
-                                    items = lines.map { (p, qty) -> EatsOrderItemRequest(p.id, qty) },
+                                    items = lines.map { (p, line) -> EatsOrderItemRequest(p.id, line.quantity, line.choiceIds.ifEmpty { null }) },
                                     deliveryAddress = address.trim(),
                                     deliveryLatitude = addressLatitude,
                                     deliveryLongitude = addressLongitude,
@@ -905,7 +1016,7 @@ private fun EatsCheckoutView(
                         idempotencyKey = idempotencyKey,
                         request = PlaceEatsOrderRequest(
                             restaurantId = restaurant.merchantId,
-                            items = lines.map { (p, qty) -> EatsOrderItemRequest(p.id, qty) },
+                            items = lines.map { (p, line) -> EatsOrderItemRequest(p.id, line.quantity, line.choiceIds.ifEmpty { null }) },
                             deliveryAddress = address.trim(),
                             deliveryLatitude = addressLatitude,
                             deliveryLongitude = addressLongitude,

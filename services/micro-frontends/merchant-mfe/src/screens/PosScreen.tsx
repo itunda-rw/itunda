@@ -1,15 +1,19 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import { CreditCard, Minus, Plus, RefreshCw, Store, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, CreditCard, Minus, Plus, RefreshCw, Store, Trash2 } from 'lucide-react';
 import { ApiError } from '../lib/api';
 import {
+  addOptionGroup,
   addProduct,
   chargeCard,
   generateQr,
+  getOptionGroups,
   getProductCatalog,
   paymentIntentQrPayload,
+  removeOptionGroup,
   removeProduct,
   type CardChargeResult,
+  type MenuOptionGroup,
   type MerchantProduct,
   type PaymentIntent,
 } from '../lib/merchant';
@@ -370,6 +374,10 @@ function CatalogView() {
   const [price, setPrice] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Real menu-item option groups management (2026-07-21) -- only one product's panel
+  // expanded at a time, same "inline-card-replaces-trigger" convention bank-mfe's own
+  // buyer-side option UI already established.
+  const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
 
   const load = () => {
     getProductCatalog()
@@ -442,24 +450,184 @@ function CatalogView() {
               </tr>
             </thead>
             <tbody>
-              {products.map((product) => (
-                <tr key={product.id} style={{ borderTop: '1px solid var(--toss-grey-200)' }}>
-                  <td style={{ padding: '10px 20px', fontWeight: 600 }}>{product.name}</td>
-                  <td style={{ padding: '10px 20px' }}>{product.price.toLocaleString()} RWF</td>
-                  <td style={{ padding: '10px 20px', textAlign: 'right' }}>
-                    <button
-                      onClick={() => removeProduct(product.id).then(load)}
-                      style={{ color: 'var(--toss-grey-500)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}
-                    >
-                      <Trash2 size={14} /> Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {products.map((product) => {
+                const isExpanded = expandedProductId === product.id;
+                return (
+                  <Fragment key={product.id}>
+                    <tr style={{ borderTop: '1px solid var(--toss-grey-200)' }}>
+                      <td style={{ padding: '10px 20px', fontWeight: 600 }}>{product.name}</td>
+                      <td style={{ padding: '10px 20px' }}>{product.price.toLocaleString()} RWF</td>
+                      <td style={{ padding: '10px 20px', textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '14px' }}>
+                          <button
+                            onClick={() => setExpandedProductId(isExpanded ? null : product.id)}
+                            style={{ color: 'var(--toss-blue)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
+                          >
+                            Options {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                          <button
+                            onClick={() => removeProduct(product.id).then(load)}
+                            style={{ color: 'var(--toss-grey-500)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}
+                          >
+                            <Trash2 size={14} /> Remove
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr style={{ borderTop: '1px solid var(--toss-grey-200)', backgroundColor: 'var(--toss-grey-100)' }}>
+                        <td colSpan={3} style={{ padding: '16px 20px' }}>
+                          <ProductOptionsPanel productId={product.id} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+interface ChoiceDraft {
+  name: string;
+  priceDelta: string;
+}
+
+// Real menu-item option-group management (2026-07-21) -- the merchant-facing half of
+// docs/DESIGN_REFERENCES.md's Eats recommendation #3 (the buyer half, bank-mfe's own
+// "Choose options" panel in MenuView, already existed). Before this, the only way to
+// create an option group at all was a direct API call -- no UI anywhere. v1: required
+// single-select only, matching MenuOptionGroup.kt's own real, honestly-scoped backend
+// constraint (at least 2 choices per group, enforced server-side too).
+function ProductOptionsPanel({ productId }: { productId: string }) {
+  const [groups, setGroups] = useState<MenuOptionGroup[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [groupName, setGroupName] = useState('');
+  const [choices, setChoices] = useState<ChoiceDraft[]>([{ name: '', priceDelta: '0' }, { name: '', priceDelta: '0' }]);
+  const [submitting, setSubmitting] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  const load = () => {
+    getOptionGroups(productId)
+      .then(setGroups)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load option groups.'));
+  };
+
+  useEffect(load, [productId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const updateChoice = (index: number, field: keyof ChoiceDraft, value: string) => {
+    setChoices((prev) => prev.map((c, i) => (i === index ? { ...c, [field]: value } : c)));
+  };
+
+  const addChoiceRow = () => setChoices((prev) => [...prev, { name: '', priceDelta: '0' }]);
+  const removeChoiceRow = (index: number) => setChoices((prev) => prev.filter((_, i) => i !== index));
+
+  const handleAddGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      const validChoices = choices
+        .map((c) => ({ name: c.name.trim(), priceDelta: Number(c.priceDelta || 0) }))
+        .filter((c) => c.name.length > 0);
+      await addOptionGroup(productId, groupName.trim(), validChoices);
+      setGroupName('');
+      setChoices([{ name: '', priceDelta: '0' }, { name: '', priceDelta: '0' }]);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not add this option group.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRemoveGroup = async (groupId: string) => {
+    setRemovingId(groupId);
+    try {
+      await removeOptionGroup(productId, groupId);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not remove this option group.');
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div>
+        <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '8px' }}>Existing option groups</p>
+        {groups === null ? (
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+        ) : groups.length === 0 ? (
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+            No option groups yet -- a buyer will see a plain +/- stepper for this item until you add one (e.g. "Size" with Small/Regular/Large choices).
+          </p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {groups.map((group) => (
+              <div key={group.id} className="toss-card" style={{ padding: '12px 16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <p style={{ fontSize: '13px', fontWeight: 700 }}>{group.name}</p>
+                    <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>
+                      {group.choices.map((c) => `${c.name}${c.priceDelta > 0 ? ` (+${c.priceDelta.toLocaleString()} RWF)` : ''}`).join(', ')}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveGroup(group.id)}
+                    disabled={removingId === group.id}
+                    style={{ color: 'var(--toss-grey-500)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}
+                  >
+                    <Trash2 size={12} /> {removingId === group.id ? 'Removing…' : 'Remove'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <form onSubmit={handleAddGroup} style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid var(--toss-grey-200)', paddingTop: '14px' }}>
+        <p style={{ fontSize: '13px', fontWeight: 700 }}>Add an option group</p>
+        <input
+          type="text" value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Group name (e.g. Size)" required
+          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', maxWidth: '320px' }}
+        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {choices.map((choice, i) => (
+            <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="text" value={choice.name} onChange={(e) => updateChoice(i, 'name', e.target.value)}
+                placeholder={`Choice ${i + 1} (e.g. ${i === 0 ? 'Small' : 'Large'})`}
+                style={{ flex: 2, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+              />
+              <input
+                type="number" value={choice.priceDelta} onChange={(e) => updateChoice(i, 'priceDelta', e.target.value)}
+                placeholder="+RWF" style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+              />
+              {choices.length > 2 && (
+                <button type="button" onClick={() => removeChoiceRow(i)} style={{ color: 'var(--toss-grey-500)' }} aria-label="Remove choice">
+                  <Minus size={14} />
+                </button>
+              )}
+            </div>
+          ))}
+          <button type="button" onClick={addChoiceRow} style={{ alignSelf: 'flex-start', color: 'var(--toss-blue)', fontSize: '12px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <Plus size={12} /> Add another choice
+          </button>
+        </div>
+        {error && (
+          <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>
+        )}
+        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting} style={{ alignSelf: 'flex-start' }}>
+          {submitting ? 'Adding…' : 'Add option group'}
+        </button>
+      </form>
     </div>
   );
 }
