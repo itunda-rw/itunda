@@ -14,6 +14,7 @@ import {
   fetchMyMapBookmarks,
   addMapBookmark,
   removeMapBookmark,
+  moveMapBookmark,
   type PlaceSearchResult,
   type NearbyPlace,
   type MapBookmark,
@@ -261,6 +262,13 @@ export default function MapView() {
   const [savingToFolder, setSavingToFolder] = useState<PlaceSearchResult | null>(null);
   const [folderNameInput, setFolderNameInput] = useState(DEFAULT_BOOKMARK_FOLDER);
   const [folderColorInput, setFolderColorInput] = useState(BOOKMARK_COLOR_PALETTE[0]);
+  // Real "move to folder" (2026-07-23) -- moveMapBookmark already existed in lib/maps.ts
+  // with zero UI calling it on this platform, the one honestly-open gap left on the
+  // "100% Naver/Kakao Maps" roadmap (Android/iOS already had this real picker).
+  // `movingBookmark` holds whichever real bookmark's move-picker is currently expanded.
+  const [movingBookmark, setMovingBookmark] = useState<MapBookmark | null>(null);
+  const [moveFolderNameInput, setMoveFolderNameInput] = useState('');
+  const [moveFolderColorInput, setMoveFolderColorInput] = useState(BOOKMARK_COLOR_PALETTE[0]);
   // Real "share this place" clipboard-fallback confirmation (2026-07-22) -- only used on
   // browsers without the native Web Share API (navigator.share), see shareLocation's own
   // doc comment.
@@ -1386,14 +1394,71 @@ export default function MapView() {
                         <p style={{ fontSize: '11px', fontWeight: 700, color: MAP_CARD_TEXT_TERTIARY, padding: '4px 0' }}>{folderName}</p>
                       )}
                       {folderBookmarks.map((b) => (
-                        <button
-                          key={b.id}
-                          onClick={() => selectPlace({ displayName: b.displayName, latitude: b.latitude, longitude: b.longitude })}
-                          style={{ textAlign: 'left', padding: '6px 0', fontSize: '13px', color: MAP_CARD_TEXT, display: 'flex', alignItems: 'center', gap: '6px' }}
-                        >
-                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: b.color, flexShrink: 0 }} />
-                          {b.displayName}
-                        </button>
+                        <div key={b.id}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 0' }}>
+                            <button
+                              onClick={() => selectPlace({ displayName: b.displayName, latitude: b.latitude, longitude: b.longitude })}
+                              style={{ textAlign: 'left', fontSize: '13px', color: MAP_CARD_TEXT, display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}
+                            >
+                              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: b.color, flexShrink: 0 }} />
+                              {b.displayName}
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (movingBookmark && movingBookmark.latitude === b.latitude && movingBookmark.longitude === b.longitude) {
+                                  setMovingBookmark(null);
+                                } else {
+                                  setMovingBookmark(b);
+                                  setMoveFolderNameInput(b.folderName);
+                                  setMoveFolderColorInput(b.color);
+                                }
+                              }}
+                              style={{ fontSize: '11px', fontWeight: 700, color: MAP_CARD_TEXT_SECONDARY }}
+                            >
+                              Move
+                            </button>
+                          </div>
+                          {movingBookmark && movingBookmark.latitude === b.latitude && movingBookmark.longitude === b.longitude && (
+                            <div style={{ background: '#F9FAFB', borderRadius: '8px', padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <input
+                                type="text"
+                                value={moveFolderNameInput}
+                                onChange={(e) => setMoveFolderNameInput(e.target.value)}
+                                placeholder="Folder name"
+                                style={{ fontSize: '13px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #e5e8eb' }}
+                              />
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                {BOOKMARK_COLOR_PALETTE.map((c) => (
+                                  <button
+                                    key={c}
+                                    onClick={() => setMoveFolderColorInput(c)}
+                                    style={{
+                                      width: '22px', height: '22px', borderRadius: '50%', backgroundColor: c,
+                                      border: moveFolderColorInput === c ? `2px solid ${MAP_CARD_TEXT}` : '2px solid transparent',
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                              <button
+                                disabled={!moveFolderNameInput.trim()}
+                                onClick={async () => {
+                                  const target = movingBookmark;
+                                  if (!target) return;
+                                  try {
+                                    await moveMapBookmark(target.latitude, target.longitude, moveFolderNameInput.trim() || DEFAULT_BOOKMARK_FOLDER, moveFolderColorInput);
+                                    setBookmarks(await fetchMyMapBookmarks());
+                                    setMovingBookmark(null);
+                                  } catch {
+                                    // Best-effort -- leaves the picker open so the user can retry.
+                                  }
+                                }}
+                                style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-blue)', alignSelf: 'flex-start' }}
+                              >
+                                Save
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       ))}
                     </div>
                   ))}
