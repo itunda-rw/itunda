@@ -21,6 +21,7 @@ import rw.itunda.messaging.AlreadyGroupMemberException
 import rw.itunda.messaging.EmptyGroupMessageException
 import rw.itunda.messaging.GroupMemberNotFoundException
 import rw.itunda.messaging.GroupMessageNotFoundException
+import rw.itunda.messaging.GroupMessageDeleteForbiddenException
 import rw.itunda.messaging.GroupMessagingService
 import rw.itunda.messaging.GroupMessageTooLongException
 import rw.itunda.messaging.GroupNameRequiredException
@@ -77,8 +78,8 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
         val reactionsByMessageId = groupMessagingService.getReactionSummaries(page.content.map { it.id })
         val messages = page.content.map { m ->
             mapOf(
-                "id" to m.id, "groupConversationId" to m.groupConversationId, "senderId" to m.senderId, "body" to m.body,
-                "sentAt" to m.sentAt, "reactions" to (reactionsByMessageId[m.id] ?: emptyList()),
+                "id" to m.id, "groupConversationId" to m.groupConversationId, "senderId" to m.senderId, "body" to if (m.deletedAt == null) m.body else "This message was deleted",
+                "sentAt" to m.sentAt, "deletedAt" to m.deletedAt, "reactions" to (reactionsByMessageId[m.id] ?: emptyList()),
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "messages" to messages) + pageMeta(page))
@@ -104,6 +105,12 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
     ): ResponseEntity<Map<String, Any?>> {
         val message = groupMessagingService.sendMessage(currentUser.userId, groupId, request.body)
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "message" to message))
+    }
+
+    @DeleteMapping("/{groupId}/messages/{messageId}")
+    fun deleteMessage(@PathVariable groupId: String, @PathVariable messageId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Boolean>> {
+        groupMessagingService.deleteMessage(currentUser.userId, groupId, messageId)
+        return ResponseEntity.ok(mapOf("success" to true))
     }
 
     // Real member list with real resolved display names (2026-07-18) -- see
@@ -175,6 +182,10 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
     @ExceptionHandler(GroupMessageNotFoundException::class)
     fun handleGroupMessageNotFound(ex: GroupMessageNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MESSAGE_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(GroupMessageDeleteForbiddenException::class)
+    fun handleDeleteForbidden(ex: GroupMessageDeleteForbiddenException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("MESSAGE_DELETE_FORBIDDEN", ex.message ?: "Forbidden"))
 
     @ExceptionHandler(InvalidGroupReactionException::class)
     fun handleInvalidReaction(ex: InvalidGroupReactionException) =

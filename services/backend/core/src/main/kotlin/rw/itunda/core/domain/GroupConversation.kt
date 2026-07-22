@@ -97,6 +97,12 @@ class GroupMessage(
 
     @Column(name = "sent_at", nullable = false)
     val sentAt: Instant = Instant.now(),
+
+    @Column(name = "deleted_at")
+    var deletedAt: Instant? = null,
+
+    @Column(name = "deleted_by_user_id", length = 64)
+    var deletedByUserId: String? = null,
 ) {
     protected constructor() : this(id = "", groupConversationId = "", senderId = "", body = "")
 }

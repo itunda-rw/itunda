@@ -32,6 +32,7 @@ class EmptyGroupMessageException(message: String) : RuntimeException(message)
 class GroupMessageTooLongException(message: String) : RuntimeException(message)
 class GroupNameTooLongException(message: String) : RuntimeException(message)
 class GroupMessageNotFoundException(message: String) : RuntimeException(message)
+class GroupMessageDeleteForbiddenException(message: String) : RuntimeException(message)
 class InvalidGroupReactionException(message: String) : RuntimeException(message)
 
 data class GroupSummary(
@@ -203,6 +204,19 @@ class GroupMessagingService(
         )
         realtimeMessagePublisher.publishNewGroupMessage(groupId, recipientIds, message)
         return message
+    }
+
+    @Transactional
+    fun deleteMessage(userId: String, groupId: String, messageId: String) {
+        requireMember(userId, groupId)
+        val message = groupMessageRepository.findById(messageId).orElseThrow { GroupMessageNotFoundException("Message not found") }
+        if (message.groupConversationId != groupId) throw GroupMessageNotFoundException("Message not found")
+        if (message.senderId != userId) throw GroupMessageDeleteForbiddenException("Only the sender can delete this message")
+        if (message.deletedAt == null) {
+            message.deletedAt = Instant.now()
+            message.deletedByUserId = userId
+            groupMessageRepository.save(message)
+        }
     }
 
     @Transactional
