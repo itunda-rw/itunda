@@ -204,6 +204,7 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
         var showPay by rememberSaveable { mutableStateOf(false) }
         var showMap by rememberSaveable { mutableStateOf(false) }
         var showInvest by rememberSaveable { mutableStateOf(false) }
+        var showWeeklySavings by rememberSaveable { mutableStateOf(false) }
         // Real "message seller" hand-off from Hood to Talk (2026-07-18) -- mirrors
         // bank-mfe's BankDashboard.tsx pendingConversationId/onConsumedInitial pattern
         // exactly: HoodTab's contactSeller() switches the selected tab AND stashes the
@@ -436,6 +437,14 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
             InvestScreen(onBack = { showInvest = false })
             return@IdsTheme
         }
+        // Real 26-week savings plan screen (2026-07-21) -- same Quick-links full-screen
+        // pattern as Invest/Map/Pay/Benefits above; this feature's ledger-backed backend
+        // (WeeklySavingsController/WeeklySavingsService) never had ANY mobile UI before now.
+        if (showWeeklySavings) {
+            BackHandler { showWeeklySavings = false }
+            WeeklySavingsScreen(onBack = { showWeeklySavings = false })
+            return@IdsTheme
+        }
 
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
@@ -475,6 +484,7 @@ fun ItundaAppScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.comp
                         onOpenPay = { showPay = true },
                         onOpenMap = { showMap = true },
                         onOpenInvest = { showInvest = true },
+                        onOpenWeeklySavings = { showWeeklySavings = true },
                     )
                 }
             }
@@ -820,6 +830,7 @@ private fun AllTab(
     onOpenPay: () -> Unit = {},
     onOpenMap: () -> Unit = {},
     onOpenInvest: () -> Unit = {},
+    onOpenWeeklySavings: () -> Unit = {},
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
@@ -846,6 +857,7 @@ private fun AllTab(
                     FlatRow("Pay", subtitle = "Scan or pay by code", icon = Icons.Outlined.QrCodeScanner, iconColor = AccentBlue, onClick = onOpenPay),
                     FlatRow("Benefits", subtitle = "Points, coupons, rewards", icon = Icons.Outlined.CardGiftcard, iconColor = AccentOrange, onClick = onOpenBenefits),
                     FlatRow("Invest", subtitle = "RSE stocks, real portfolio", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenInvest),
+                    FlatRow("26-Week Savings", subtitle = "Escalating auto-save, streak bonus", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
                     FlatRow("Map", subtitle = "Real Rwanda map, self-hosted", icon = Icons.Outlined.Map, iconColor = AccentTeal, onClick = onOpenMap),
                 ),
             )
