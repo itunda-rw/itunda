@@ -61,6 +61,22 @@ app.use('/api/v1', createProxyMiddleware({
     changeOrigin: true
 }));
 
+// Real self-hosted Maps geo-stack proxy (2026-07-24) -- rides this same gateway's
+// existing public tunnel instead of needing a separate bore.pub tunnel per service.
+// OSRM/Nominatim/tiles/glyphs all listen on itunda-dc-a's own host network (not a
+// k8s Service), reachable from this pod via the node's IP.
+const TILES_URL = process.env.TILES_URL || 'http://192.168.252.4:8090';
+const GLYPHS_URL = process.env.GLYPHS_URL || 'http://192.168.252.4:8091';
+const OSRM_CAR_URL = process.env.OSRM_CAR_URL || 'http://192.168.252.4:5000';
+const OSRM_FOOT_URL = process.env.OSRM_FOOT_URL || 'http://192.168.252.4:5001';
+const NOMINATIM_URL = process.env.NOMINATIM_URL || 'http://192.168.252.4:8088';
+
+app.use('/tiles', createProxyMiddleware({ target: TILES_URL, changeOrigin: true, pathRewrite: { '^/tiles': '' } }));
+app.use('/glyphs', createProxyMiddleware({ target: GLYPHS_URL, changeOrigin: true, pathRewrite: { '^/glyphs': '' } }));
+app.use('/osrm/foot', createProxyMiddleware({ target: OSRM_FOOT_URL, changeOrigin: true, pathRewrite: { '^/osrm/foot': '' } }));
+app.use('/osrm', createProxyMiddleware({ target: OSRM_CAR_URL, changeOrigin: true, pathRewrite: { '^/osrm': '' } }));
+app.use('/geocode', createProxyMiddleware({ target: NOMINATIM_URL, changeOrigin: true, pathRewrite: { '^/geocode': '' } }));
+
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'UP', service: 'Itunda API Gateway (Node.js)' });
 });

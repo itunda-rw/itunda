@@ -1786,7 +1786,21 @@ object NetworkClient {
         chain.proceed(newRequest)
     }
 
+    private val diagnosticLoggingInterceptor = Interceptor { chain ->
+        val request = chain.request()
+        android.util.Log.d("ITUNDA_NET", "--> ${request.method} ${request.url}")
+        try {
+            val response = chain.proceed(request)
+            android.util.Log.d("ITUNDA_NET", "<-- ${response.code} ${request.url}")
+            response
+        } catch (e: Exception) {
+            android.util.Log.e("ITUNDA_NET", "<-- FAILED ${request.url}: ${e.javaClass.simpleName}: ${e.message}")
+            throw e
+        }
+    }
+
     private val okHttpClient = OkHttpClient.Builder()
+        .addInterceptor(diagnosticLoggingInterceptor)
         .addInterceptor(authInterceptor)
         .build()
 
