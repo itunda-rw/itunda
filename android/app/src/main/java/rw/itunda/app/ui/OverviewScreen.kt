@@ -1,6 +1,7 @@
 package rw.itunda.app.ui
 
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -72,7 +73,7 @@ fun OverviewScreen(onBack: () -> Unit) {
             val current = overview
             if (current == null) {
                 if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
-                else item { Text("Loading…") }
+                else item { SkeletonBlock() }
             } else {
                 item {
                     Card(Modifier.fillMaxWidth()) {

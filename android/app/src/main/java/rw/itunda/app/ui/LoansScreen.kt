@@ -1,6 +1,7 @@
 package rw.itunda.app.ui
 
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -77,7 +78,7 @@ fun LoansScreen(onBack: () -> Unit) {
             error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
             if (mode == LoansMode.OFFERS) {
                 val currentOffers = offers
-                if (currentOffers == null) item { Text("Loading…") }
+                if (currentOffers == null) item { SkeletonBlock() }
                 else items(currentOffers, key = { it.id }) { offer ->
                     OfferCard(offer, busyId == offer.id) { amount ->
                         busyId = offer.id
@@ -97,7 +98,7 @@ fun LoansScreen(onBack: () -> Unit) {
                 }
             } else {
                 val currentLoans = myLoans
-                if (currentLoans == null) item { Text("Loading…") }
+                if (currentLoans == null) item { SkeletonBlock() }
                 else if (currentLoans.isEmpty()) item { Text("You have no loans yet.") }
                 else items(currentLoans, key = { it.id }) { loan ->
                     MyLoanCard(

@@ -1,6 +1,7 @@
 package rw.itunda.app.ui
 
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -122,7 +123,7 @@ fun IdentityScreen(onBack: () -> Unit) {
             }
             item { Text("Your submissions", style = MaterialTheme.typography.titleMedium) }
             val current = submissions
-            if (current == null) item { Text("Loading…") }
+            if (current == null) item { SkeletonBlock() }
             else if (current.isEmpty()) item { Text("No submissions yet.") }
             else items(current, key = { it.id }) { submission -> SubmissionCard(submission) }
         }

@@ -1,6 +1,7 @@
 package rw.itunda.app.ui
 
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -128,7 +129,7 @@ fun SupportScreen(onBack: () -> Unit) {
             }
             item { Text("Your tickets", style = MaterialTheme.typography.titleMedium) }
             val currentTickets = tickets
-            if (currentTickets == null) item { Text("Loading…") }
+            if (currentTickets == null) item { SkeletonBlock() }
             else if (currentTickets.isEmpty()) item { Text("You have no support tickets.") }
             else items(currentTickets, key = { it.id }) { ticket -> TicketCard(ticket) }
         }

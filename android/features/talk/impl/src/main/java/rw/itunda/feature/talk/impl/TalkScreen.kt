@@ -800,7 +800,7 @@ private fun GroupSplitBillsView(
                 }
             }
             val current = splitBills
-            if (current == null) item { Text("Loading…") }
+            if (current == null) item { SkeletonBlock() }
             else if (current.isEmpty()) item { Text("No split bills in this group yet.", color = Ids.colors.textSecondary, fontSize = 13.sp) }
             else items(current, key = { it.splitBill.id }) { entry ->
                 val myShare = entry.participants.find { it.userId == currentUserId }

@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.merchant.network.ChargeCardRequest
 import rw.itunda.merchant.network.GenerateQrRequest
 import rw.itunda.merchant.network.MerchantProductDto
@@ -73,7 +74,7 @@ fun PosTab() {
         Column(modifier = Modifier.weight(2f)) {
             val list = products
             if (list == null) {
-                Text("Loading…")
+                SkeletonBlock()
             } else if (list.isEmpty()) {
                 Text("No products yet — add some in the Catalog tab first.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {

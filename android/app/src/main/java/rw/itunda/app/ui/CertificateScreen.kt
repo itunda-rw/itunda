@@ -1,6 +1,7 @@
 package rw.itunda.app.ui
 
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -63,7 +64,7 @@ fun CertificateScreen(onBack: () -> Unit) {
         }
         Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
             if (!loaded) {
-                Text("Loading…")
+                SkeletonBlock()
             } else {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp)) {

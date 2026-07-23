@@ -1,6 +1,7 @@
 package rw.itunda.app.ui
 
 import rw.itunda.core.designsystem.components.BackTopBar
+import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -52,7 +53,7 @@ fun CreditScoreScreen(onBack: () -> Unit) {
             error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
             val current = score
             if (current == null) {
-                if (error == null) item { Text("Loading…") }
+                if (error == null) item { SkeletonBlock() }
             } else {
                 item {
                     Card(Modifier.fillMaxWidth()) {
