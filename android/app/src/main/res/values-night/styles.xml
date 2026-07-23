@@ -1,0 +1,10 @@
+<resources>
+    <!-- Dark match for values/styles.xml's Theme.Itunda, matching
+         IdsDarkSemanticColors.background (0xFF17171C) exactly; see that file's
+         header comment for why this is real black, not navy. -->
+    <style name="Theme.Itunda" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">#17171C</item>
+        <item name="android:navigationBarColor">#17171C</item>
+        <item name="android:statusBarColor">#17171C</item>
+    </style>
+</resources>

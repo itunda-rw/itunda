@@ -6,4 +6,19 @@
       theme is untouched.
     -->
     <style name="Theme.Itunda.MiniApp" parent="Theme.AppCompat.Light.NoActionBar" />
+
+    <!-- Real day/night-aware app theme (2026-07-24), fixing a real bug: the
+         application element in AndroidManifest.xml hardcoded
+         Theme.Material.Light.NoActionBar regardless of system dark mode, while
+         IdsTheme's own Compose-level dark/light logic (isSystemInDarkTheme())
+         was completely independent of it. Any screen that forgot to paint its
+         own background fell through to this hardcoded light windowBackground
+         even in dark mode, showing a cream flash instead of
+         Ids.colors.background, matching IdsLightSemanticColors.background
+         (0xFFF2F4F6) exactly; see values-night/styles.xml for the dark match. -->
+    <style name="Theme.Itunda" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">#F2F4F6</item>
+        <item name="android:navigationBarColor">#F2F4F6</item>
+        <item name="android:statusBarColor">#F2F4F6</item>
+    </style>
 </resources>
