@@ -127,23 +127,23 @@ fun EatsContent(
 ) {
     var mode by remember { mutableStateOf(EatsMode.ORDER) }
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal)) {
-        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft).padding(4.dp)) {
-            listOf(EatsMode.ORDER to "Order food", EatsMode.DELIVER to "Deliver").forEach { (m, label) ->
-                val selected = m == mode
-                Text(
-                    label,
-                    color = if (selected) Color.White else Ids.colors.textSecondary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (selected) Ids.colors.brand else Color.Transparent)
-                        .clickable { mode = m }
-                        .padding(vertical = 8.dp),
-                )
-            }
+        // Real de-emphasis (2026-07-24) -- "Deliver" (the rider role) previously got
+        // equal 50% visual weight next to "Order food" as a full segmented toggle,
+        // even though itunda already ships a dedicated, separate riderapp
+        // (rw.itunda.rider) for exactly this role. Stacked on top of Shop/Eats' own
+        // toggle above and Restaurants/Favorites/My orders below, that read as three
+        // full tiers of chrome before any real content -- most people opening Eats
+        // are ordering, not delivering. Kept reachable (a rider without the separate
+        // app installed can still use it here) as a small secondary link instead of
+        // an equal peer tab.
+        Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End) {
+            Text(
+                text = if (mode == EatsMode.ORDER) "Deliver instead" else "Back to ordering",
+                color = Ids.colors.textBrand,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.sp,
+                modifier = Modifier.clickable { mode = if (mode == EatsMode.ORDER) EatsMode.DELIVER else EatsMode.ORDER },
+            )
         }
         when (mode) {
             EatsMode.ORDER -> OrderFoodContent(deviceStepUpHost)
