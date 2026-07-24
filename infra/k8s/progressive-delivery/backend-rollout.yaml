@@ -80,6 +80,24 @@ spec:
         sidecar.istio.io/proxyCPULimit: "200m"
         sidecar.istio.io/proxyMemory: "64Mi"
         sidecar.istio.io/proxyMemoryLimit: "128Mi"
+        # Makes istio-init block app container start until Envoy is actually
+        # ready to accept traffic, closing a real (if narrow) race window.
+        # Investigated as a candidate fix for a long 2026-07-24 crash-loop
+        # that turned out to have a different root cause (see excludeOutboundPorts
+        # below and SeedDataRunner.kt's git history for the real story) -- kept
+        # anyway since it's correct, standard hygiene on its own merits.
+        proxy.istio.io/config: '{ "holdApplicationUntilProxyStarts": true }'
+        # MySQL/Redis/Kafka run as plain Docker containers on the node, not as
+        # mesh services -- routing that traffic through Envoy buys nothing (no
+        # mTLS, no mesh-aware LB target) for no reason. Also investigated
+        # during the same 2026-07-24 incident and also not the actual cause
+        # (a `kubectl patch --type merge` on this container's array had silently
+        # wiped DB_HOST/DB_PORT/etc, so the app was really just connecting to
+        # `localhost` -- "Connection refused" was 100% accurate, just not for
+        # the reason assumed at the time). Kept as legitimate hygiene: it
+        # removes needless mesh overhead for traffic that was never going to a
+        # mesh member.
+        traffic.sidecar.istio.io/excludeOutboundPorts: "3306,6379,9092"
     spec:
       enableServiceLinks: false
       terminationGracePeriodSeconds: 30
@@ -148,9 +166,14 @@ spec:
         - name: uploads
           mountPath: /uploads
         resources:
+          # cpu request lowered 500m->200m (2026-07-24): this single-node,
+          # 2-vCPU cluster runs at ~100% CPU *requests* just from system pods
+          # (kube-apiserver/etcd/controller-manager/istiod) plus the other
+          # itunda services -- 500m left zero headroom and caused real
+          # "Insufficient cpu" FailedScheduling on this exact redeploy.
           requests:
             memory: "512Mi"
-            cpu: "500m"
+            cpu: "200m"
           limits:
             memory: "1Gi"
             cpu: "1000m"

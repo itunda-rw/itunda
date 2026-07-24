@@ -42,6 +42,18 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    # Cheap insurance against real (if brief) DB-not-ready-yet races at pod
+    # startup on this single-node cluster -- exactly the scenario
+    # connect-retries exists for. Investigated at length during a 2026-07-24
+    # crash-loop that first looked like exactly this, but wasn't: a
+    # `kubectl patch --type merge` had silently wiped this container's
+    # DB_HOST/DB_PORT env vars, so it was really retrying a connection to
+    # `localhost` that could never succeed no matter the budget (see
+    # infra/k8s/progressive-delivery/backend-rollout.yaml's own note on the
+    # same incident). Kept anyway since a longer retry budget is legitimate
+    # defense against the real, narrower version of this race.
+    connect-retries: 120
+    connect-retries-interval: 2
   task:
     scheduling:
       # Real bug found live (2026-07-13): Spring Boot's default is a single-threaded

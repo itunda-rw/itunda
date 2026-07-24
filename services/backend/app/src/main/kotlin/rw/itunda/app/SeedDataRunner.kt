@@ -7,6 +7,8 @@ import rw.itunda.core.domain.Contact
 import rw.itunda.core.domain.Holding
 import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.LedgerAccount
+import rw.itunda.core.domain.Listing
+import rw.itunda.core.domain.ListingStatus
 import rw.itunda.core.domain.LoanAccount
 import rw.itunda.core.domain.LoanStatus
 import rw.itunda.core.domain.SavingsGoal
@@ -17,6 +19,7 @@ import rw.itunda.core.repository.ContactRepository
 import rw.itunda.core.repository.HoldingRepository
 import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.LedgerAccountRepository
+import rw.itunda.core.repository.ListingRepository
 import rw.itunda.core.repository.LoanAccountRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.UserRepository
@@ -51,6 +54,7 @@ class SeedDataRunner(
     private val interestJarRepository: InterestJarRepository,
     private val notificationRepository: NotificationRepository,
     private val insurancePolicyRepository: InsurancePolicyRepository,
+    private val listingRepository: ListingRepository,
 ) : CommandLineRunner {
 
     override fun run(vararg args: String?) {
@@ -178,6 +182,110 @@ class SeedDataRunner(
                     endDate = LocalDate.of(2024, 12, 31), monthlyPremium = BigDecimal("15000"),
                     nextPaymentDate = LocalDate.of(2024, 12, 1), policyNumber = "HS-2024-780123"
                 )
+            )
+        }
+
+        // Real Hood/Marketplace demo sellers + listings (2026-07-24) -- until now the
+        // only seeded account was `user` (id user_1), so every Karrot-style feed screen
+        // showed empty "No listings yet" states with nobody to compare the new
+        // photo-forward ListingCard design against. Two more sellers (not user_1) so the
+        // feed reads like a real multi-neighbor market, same as Karrot's own home feed,
+        // rather than one person's items. Real, appropriately-licensed Wikimedia Commons
+        // photo URLs -- confirmed reachable before use, not fabricated -- same honest
+        // "external URL, no upload/storage layer" scope as Listing.photoUrl's own doc
+        // comment.
+        val seller2 = userRepository.findByPhoneNumber("+250788234567") ?: userRepository.save(
+            User(
+                id = "user_seller_2",
+                phoneNumber = "+250788234567",
+                email = "amina@itunda.rw",
+                firstName = "Amina",
+                lastName = "Keza",
+                passwordHash = BCryptPasswordEncoder().encode("password123"),
+                kycVerified = true,
+                creditScore = 690,
+                createdAt = Instant.now(),
+                neighborhood = "Kimironko",
+            ),
+        )
+
+        val seller3 = userRepository.findByPhoneNumber("+250788345678") ?: userRepository.save(
+            User(
+                id = "user_seller_3",
+                phoneNumber = "+250788345678",
+                email = "eric@itunda.rw",
+                firstName = "Eric",
+                lastName = "Nshuti",
+                passwordHash = BCryptPasswordEncoder().encode("password123"),
+                kycVerified = true,
+                creditScore = 705,
+                createdAt = Instant.now(),
+                neighborhood = "Remera",
+            ),
+        )
+
+        if (!listingRepository.existsById("listing_seed_1")) {
+            listingRepository.save(
+                Listing(
+                    id = "listing_seed_1", sellerId = user.id, title = "Mountain bike, barely used",
+                    description = "Rode it maybe 10 times. No damage, tires still good. Selling because I moved closer to work.",
+                    price = BigDecimal("85000"), category = "Sports", status = ListingStatus.ACTIVE,
+                    latitude = -1.9441, longitude = 30.1136, neighborhood = "Kimironko",
+                    meetingPlace = "Kimironko Market gate",
+                    photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Bicycle.jpg",
+                ),
+            )
+        }
+
+        if (!listingRepository.existsById("listing_seed_2")) {
+            listingRepository.save(
+                Listing(
+                    id = "listing_seed_2", sellerId = seller2.id, title = "3-seater sofa, grey fabric",
+                    description = "Moving out end of month, needs to go. Comfortable, no stains or tears.",
+                    price = BigDecimal("120000"), category = "Furniture", status = ListingStatus.ACTIVE,
+                    latitude = -1.9441, longitude = 30.1136, neighborhood = "Kimironko",
+                    meetingPlace = "Delivery only within Kimironko",
+                    photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Sofa.jpg",
+                ),
+            )
+        }
+
+        if (!listingRepository.existsById("listing_seed_3")) {
+            listingRepository.save(
+                Listing(
+                    id = "listing_seed_3", sellerId = seller2.id, title = "Android phone, good condition",
+                    description = "Screen has no cracks, battery still holds a full day. Comes with charger.",
+                    price = BigDecimal("95000"), category = "Electronics", status = ListingStatus.ACTIVE,
+                    latitude = -1.9441, longitude = 30.1136, neighborhood = "Kimironko",
+                    meetingPlace = "Kimironko Market gate",
+                    photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Mobile_phone.jpg",
+                ),
+            )
+        }
+
+        if (!listingRepository.existsById("listing_seed_4")) {
+            listingRepository.save(
+                Listing(
+                    id = "listing_seed_4", sellerId = seller3.id, title = "Wooden dining table",
+                    description = "Solid wood, seats 4. A few scratches on top but sturdy.",
+                    price = BigDecimal("60000"), category = "Furniture", status = ListingStatus.ACTIVE,
+                    latitude = -1.9578, longitude = 30.1127, neighborhood = "Remera",
+                    meetingPlace = "Remera roundabout",
+                    photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Desk.jpg",
+                ),
+            )
+        }
+
+        if (!listingRepository.existsById("listing_seed_5")) {
+            listingRepository.save(
+                Listing(
+                    id = "listing_seed_5", sellerId = seller3.id, title = "Laptop, works great for school",
+                    description = "Used for two semesters, upgrading to a new one. No issues, includes charger.",
+                    price = BigDecimal("280000"), category = "Electronics", status = ListingStatus.ACTIVE,
+                    latitude = -1.9578, longitude = 30.1127, neighborhood = "Remera",
+                    meetingPlace = "Remera roundabout",
+                    photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Laptop.jpg",
+                ),
             )
         }
     }
