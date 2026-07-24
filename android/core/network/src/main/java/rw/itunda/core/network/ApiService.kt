@@ -14,8 +14,10 @@ import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -408,7 +410,9 @@ data class ListingDto(
     // search and, 2026-07-19, "Directions to this seller".
     val latitude: Double? = null,
     val longitude: Double? = null,
+    val neighborhood: String? = null,
     val meetingPlace: String? = null,
+    val photoUrl: String? = null,
 )
 
 data class CreateListingRequest(
@@ -419,7 +423,9 @@ data class CreateListingRequest(
     val latitude: Double? = null,
     val longitude: Double? = null,
     val meetingPlace: String? = null,
+    val photoUrl: String? = null,
 )
+data class UploadResponse(val success: Boolean, val url: String)
 data class ListingResponse(val success: Boolean, val listing: ListingDto)
 data class ListingsResponse(val success: Boolean, val listings: List<ListingDto>)
 
@@ -1183,6 +1189,11 @@ interface ApiService {
     // conversation partners -- e.g. a group thread can pass every member's id.
     @GET("api/v1/messages/presence")
     suspend fun getPresence(@Query("userIds") userIds: List<String>): PresenceResponse
+
+    // Real photo upload (2026-07-24) -- see rw.itunda.marketplace.web.UploadController.
+    @Multipart
+    @POST("api/v1/uploads")
+    suspend fun uploadPhoto(@Part file: okhttp3.MultipartBody.Part): UploadResponse
 
     // Real 당근마켓-style marketplace (2026-07-18) -- see rw.itunda.marketplace.web.MarketplaceController.
     @POST("api/v1/marketplace/listings")

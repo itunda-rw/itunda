@@ -1,6 +1,9 @@
 package rw.itunda.feature.marketplace.impl
 
+import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -8,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -35,14 +39,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
@@ -406,6 +416,45 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
     var submitting by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
+    // Real photo picker + upload (2026-07-24) -- see UploadController's own doc
+    // comment on why "paste a URL" wasn't good enough. photoUrl holds the real
+    // server-returned URL once upload succeeds; pickedImageUri is the local preview
+    // shown immediately (before/during upload) so the seller isn't staring at a blank
+    // box while a real network call happens.
+    var photoUrl by remember { mutableStateOf<String?>(null) }
+    var pickedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var uploadingPhoto by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        pickedImageUri = uri
+        photoUrl = null
+        uploadingPhoto = true
+        error = null
+        coroutineScope.launch {
+            try {
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                if (bytes == null) {
+                    error = "Couldn't read that photo."
+                    pickedImageUri = null
+                    return@launch
+                }
+                val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+                val body = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
+                val part = MultipartBody.Part.createFormData("file", "photo.jpg", body)
+                photoUrl = NetworkClient.apiService.uploadPhoto(part).url
+            } catch (e: HttpException) {
+                pickedImageUri = null
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                pickedImageUri = null
+                error = "Couldn't upload that photo. Check your connection and try again."
+            } finally {
+                uploadingPhoto = false
+            }
+        }
+    }
+
     // Real optional seller location (2026-07-19) -- powers real proximity search and
     // "Directions to this seller"; a listing without it simply doesn't appear in either,
     // an honest opt-in, never assumed.
@@ -423,6 +472,33 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
             Text("List an item", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             OutlinedTextField(value = title, onValueChange = { title = it }, placeholder = { Text("What are you selling?") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = description, onValueChange = { description = it }, placeholder = { Text("Description") }, modifier = Modifier.fillMaxWidth())
+            // Real photo picker (2026-07-24) -- a real photo is what a Karrot-style
+            // listing card actually needs most, see ListingCard's own header comment.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Ids.colors.surfaceSoft)
+                    .clickable(enabled = !uploadingPhoto) { pickPhoto.launch("image/*") },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (pickedImageUri != null) {
+                    AsyncImage(
+                        model = pickedImageUri,
+                        contentDescription = "Selected photo",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    if (uploadingPhoto) {
+                        Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)), contentAlignment = Alignment.Center) {
+                            Text("Uploading…", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    }
+                } else {
+                    Text("📷 Add a photo (optional)", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(value = price, onValueChange = { price = it }, placeholder = { Text("Price (RWF)") }, singleLine = true, modifier = Modifier.weight(1f))
                 OutlinedTextField(value = category, onValueChange = { category = it }, placeholder = { Text("Category") }, singleLine = true, modifier = Modifier.weight(1f))
@@ -459,7 +535,7 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
                         .weight(1f)
                         .clip(RoundedCornerShape(14.dp))
                         .background(Ids.colors.brand)
-                        .clickable(enabled = !submitting) {
+                        .clickable(enabled = !submitting && !uploadingPhoto) {
                             val priceValue = price.toDoubleOrNull()
                             if (title.isBlank() || description.isBlank() || category.isBlank() || priceValue == null || priceValue <= 0) {
                                 error = "Fill in every field with a real price."
@@ -471,7 +547,11 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
                                 try {
                                     val loc = if (shareLocation) myLocation else null
                                     val res = NetworkClient.apiService.createListing(
-                                        CreateListingRequest(title, description, priceValue, category, loc?.first, loc?.second, meetingPlace.trim().takeIf { it.isNotEmpty() }),
+                                        CreateListingRequest(
+                                            title, description, priceValue, category, loc?.first, loc?.second,
+                                            meetingPlace.trim().takeIf { it.isNotEmpty() },
+                                            photoUrl,
+                                        ),
                                     )
                                     if (res.success) onCreated()
                                 } catch (e: HttpException) {
@@ -518,34 +598,62 @@ private fun ListingCard(
     )
 
     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(listing.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        if (listing.status == "SOLD") {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft).padding(horizontal = 8.dp, vertical = 2.dp)) {
-                                Text("SOLD", color = Ids.colors.textSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            }
+        Column {
+            // Real Karrot-style photo-forward card (2026-07-24) -- a real listing
+            // photo (see Listing.photoUrl's own doc comment for the honest
+            // "seller-provided URL, no upload pipeline" scope) leads the card, since
+            // that's the actual #1 element in Karrot's real info hierarchy (confirmed:
+            // price -> title -> location/time -> social proof, always led by a large
+            // thumbnail) -- previously this card was pure text, closer to a bank
+            // transaction row than a marketplace listing. An unset photo falls back to
+            // a plain placeholder box, never a fabricated image.
+            Box(modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f).clip(RoundedCornerShape(topStart = Ids.layout.cardCornerRadius, topEnd = Ids.layout.cardCornerRadius))) {
+                if (listing.photoUrl != null) {
+                    AsyncImage(
+                        model = listing.photoUrl,
+                        contentDescription = listing.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    Box(modifier = Modifier.fillMaxSize().background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.ShoppingBag, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(40.dp))
+                    }
+                }
+                if (listing.status == "SOLD") {
+                    Box(
+                        modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surface).padding(horizontal = 12.dp, vertical = 6.dp)) {
+                            Text("SOLD", color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         }
                     }
-                    Text("${listing.category} · ${relativeTimeAgo(listing.createdAt)}", color = Ids.colors.textSecondary, fontSize = 12.sp)
                 }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (!isMine) {
-                        Icon(
-                            if (favorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                            contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist",
-                            tint = if (favorited) Ids.colors.danger else Ids.colors.textSecondary,
-                            modifier = Modifier
-                                .size(20.dp)
-                                .clickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
-                        )
-                    }
-                    Text("%,.0f RWF".format(listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                if (!isMine) {
+                    Icon(
+                        if (favorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist",
+                        tint = if (favorited) Ids.colors.danger else Color.White,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(10.dp)
+                            .size(22.dp)
+                            .clickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
+                    )
                 }
             }
+            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            // Real Karrot info order -- price first (most prominent), then title,
+            // then location + time, matching this session's own live research into
+            // 당근마켓's real listing-card hierarchy.
+            Text("%,.0f RWF".format(listing.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            Text(listing.title, color = Ids.colors.textPrimary, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                listOfNotNull(listing.neighborhood, listing.category, relativeTimeAgo(listing.createdAt)).joinToString(" · "),
+                color = Ids.colors.textSecondary,
+                fontSize = 12.sp,
+            )
             Text(listing.description, color = Ids.colors.textSecondary, fontSize = 13.sp)
             listing.meetingPlace?.let {
                 Text("Suggested hand-off: $it", color = Ids.colors.textSecondary, fontSize = 12.sp)
@@ -629,6 +737,7 @@ private fun ListingCard(
             // module -- captured into local vals above instead.
             if (showRoute && loc != null && listingLat != null && listingLng != null) {
                 RouteMiniMap(loc.first, loc.second, listingLat, listingLng, "You", listing.title)
+            }
             }
         }
     }
