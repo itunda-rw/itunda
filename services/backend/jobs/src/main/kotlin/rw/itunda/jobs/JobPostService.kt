@@ -26,6 +26,7 @@ class JobPostNotOpenException(message: String) : RuntimeException(message)
 class OwnJobPostException(message: String) : RuntimeException(message)
 class InvalidJobCoordinatesException(message: String) : RuntimeException(message)
 class JobsNeighborhoodNotSetException(message: String) : RuntimeException(message)
+class WorkerNotFoundException(message: String) : RuntimeException(message)
 
 data class JobCategory(val id: String, val label: String)
 
@@ -181,10 +182,19 @@ class JobPostService(
         jobPostRepository.findById(jobPostId).orElseThrow { JobPostNotFoundException("Job post not found") }
 
     @Transactional
-    fun markFilled(posterId: String, jobPostId: String): JobPost {
+    // Real optional worker identification (2026-07-24) -- see MarketplaceService.
+    // markSold's own doc comment for the full account; identical shape here.
+    fun markFilled(posterId: String, jobPostId: String, workerPhoneNumber: String? = null): JobPost {
         val post = requirePoster(posterId, jobPostId)
         if (post.status != JobPostStatus.OPEN) {
             throw JobPostNotOpenException("Only an open job post can be marked filled")
+        }
+        val trimmedPhone = workerPhoneNumber?.trim()
+        if (!trimmedPhone.isNullOrEmpty()) {
+            val worker = userRepository.findByPhoneNumber(trimmedPhone)
+                ?: throw WorkerNotFoundException("No itunda account found for this phone number")
+            if (worker.id == posterId) throw OwnJobPostException("You can't record yourself as the worker")
+            post.workerId = worker.id
         }
         post.status = JobPostStatus.FILLED
         val saved = jobPostRepository.save(post)

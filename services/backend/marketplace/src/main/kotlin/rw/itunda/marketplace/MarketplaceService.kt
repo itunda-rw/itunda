@@ -28,6 +28,7 @@ class ListingNotActiveException(message: String) : RuntimeException(message)
 class OwnListingException(message: String) : RuntimeException(message)
 class InvalidCoordinatesException(message: String) : RuntimeException(message)
 class NeighborhoodNotSetException(message: String) : RuntimeException(message)
+class BuyerNotFoundException(message: String) : RuntimeException(message)
 
 /**
  * A real 당근마켓 (Danggeun/Karrot Market)-style secondhand marketplace -- the second
@@ -234,11 +235,25 @@ class MarketplaceService(
     fun getMyListings(sellerId: String, pageable: Pageable): Page<Listing> =
         listingRepository.findBySellerIdOrderByCreatedAtDesc(sellerId, pageable)
 
+    // Real optional buyer identification (2026-07-24) -- buyerPhoneNumber is
+    // deliberately optional: the sale completes normally either way, but only a sale
+    // that recorded a real buyer can ever carry a post-transaction review (see
+    // HoodReviewService's own doc comment for why an unidentified buyer means there's
+    // structurally no one to review). Resolved the same "phone number identifies a
+    // person" way P2pService.sendDirect already established -- an unresolvable number
+    // is a real, honest 404, not a silently-ignored typo.
     @Transactional
-    fun markSold(sellerId: String, listingId: String): Listing {
+    fun markSold(sellerId: String, listingId: String, buyerPhoneNumber: String? = null): Listing {
         val listing = requireOwner(sellerId, listingId)
         if (listing.status != ListingStatus.ACTIVE) {
             throw ListingNotActiveException("Only an active listing can be marked sold")
+        }
+        val trimmedPhone = buyerPhoneNumber?.trim()
+        if (!trimmedPhone.isNullOrEmpty()) {
+            val buyer = userRepository.findByPhoneNumber(trimmedPhone)
+                ?: throw BuyerNotFoundException("No itunda account found for this phone number")
+            if (buyer.id == sellerId) throw OwnListingException("You can't record yourself as the buyer")
+            listing.buyerId = buyer.id
         }
         listing.status = ListingStatus.SOLD
         val saved = listingRepository.save(listing)

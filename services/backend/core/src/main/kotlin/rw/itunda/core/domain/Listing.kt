@@ -88,6 +88,19 @@ class Listing(
     // parity: a real Karrot-style feed leads with a photo, and Listing had none.
     @Column(name = "photo_url", nullable = true, length = 500)
     var photoUrl: String? = null,
+
+    // Real optional buyer identification at mark-sold time (2026-07-24) -- closes the
+    // structural gap docs/DESIGN_REFERENCES.md Section 4 recommendation #2 named:
+    // itunda has no per-listing chat trail (a `Conversation` is a plain 1:1 thread, not
+    // scoped to any one listing), so there was no way to know WHO a listing was
+    // actually sold to, which meant a review system couldn't be built without being
+    // trivially exploitable (a seller could "review" anyone). Resolved from a real
+    // phone number the seller types in at mark-sold time (see MarketplaceService.
+    // markSold), same phone-number-identifies-a-person convention P2pService.sendDirect
+    // already established -- deliberately optional: a sale completes normally with or
+    // without it, and only sales that recorded a real buyer can ever carry a review.
+    @Column(name = "buyer_id", nullable = true, length = 64)
+    var buyerId: String? = null,
 ) {
     protected constructor() : this(
         id = "", sellerId = "", title = "", description = "", price = BigDecimal.ZERO, category = "",

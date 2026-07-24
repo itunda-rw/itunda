@@ -75,6 +75,11 @@ class JobPost(
     // comment for the full account; identical cached-at-creation shape here.
     @Column(nullable = true, length = 120)
     var neighborhood: String? = null,
+
+    // Real optional worker identification at mark-filled time (2026-07-24) -- see
+    // Listing.buyerId's own doc comment for the full account; identical shape here.
+    @Column(name = "worker_id", nullable = true, length = 64)
+    var workerId: String? = null,
 ) {
     protected constructor() : this(
         id = "", posterId = "", category = "", title = "", description = "",

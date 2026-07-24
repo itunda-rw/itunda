@@ -587,6 +587,82 @@ private struct TrustBadge: View {
     }
 }
 
+// Real post-transaction review preset checklist labels (2026-07-24) -- ids must match
+// backend HoodReviewService.GOOD_POINTS/UNCOMFORTABLE_POINTS exactly.
+private let hoodGoodPointLabels: [(String, String)] = [
+    ("RESPONSIVE", "Quick to respond"), ("AS_DESCRIBED", "As described"), ("ON_TIME", "On time"),
+    ("FRIENDLY", "Friendly"), ("FAIR_PRICE", "Fair price"),
+]
+private let hoodUncomfortablePointLabels: [(String, String)] = [
+    ("LATE", "Was late"), ("NOT_AS_DESCRIBED", "Not as described"), ("UNRESPONSIVE", "Hard to reach"),
+    ("RUDE", "Rude"), ("PRICE_ISSUE", "Price disagreement"),
+]
+
+// Real post-transaction review with Karrot's own asymmetric public/private visibility
+// (2026-07-24) -- closes docs/DESIGN_REFERENCES.md Section 4 recommendation #2. A
+// preset checklist, not free text, matching Karrot's own real review UX: "good points"
+// are shown publicly (feed into the trust score), "uncomfortable points" stay private
+// between the two real parties to the transaction. Shared by Marketplace/Jobs/Property.
+private struct HoodReviewForm: View {
+    @Binding var selectedGoodPoints: Set<String>
+    @Binding var selectedUncomfortablePoints: Set<String>
+    let submitting: Bool
+    let onCancel: () -> Void
+    let onSubmit: () async -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("What went well? (shown publicly)").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(hoodGoodPointLabels, id: \.0) { id, label in
+                        let selected = selectedGoodPoints.contains(id)
+                        Text(label)
+                            .font(.caption).bold()
+                            .foregroundColor(selected ? .white : IDS.Colors.textPrimary)
+                            .padding(.horizontal, 12).padding(.vertical, 6)
+                            .background(selected ? IDS.Colors.brand : IDS.Colors.chipBackground)
+                            .cornerRadius(999)
+                            .onTapGesture {
+                                if selected { selectedGoodPoints.remove(id) } else { selectedGoodPoints.insert(id) }
+                            }
+                    }
+                }
+            }
+            Text("Anything uncomfortable? (private -- only you two see this)").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(hoodUncomfortablePointLabels, id: \.0) { id, label in
+                        let selected = selectedUncomfortablePoints.contains(id)
+                        Text(label)
+                            .font(.caption).bold()
+                            .foregroundColor(selected ? .white : IDS.Colors.textPrimary)
+                            .padding(.horizontal, 12).padding(.vertical, 6)
+                            .background(selected ? .red : IDS.Colors.chipBackground)
+                            .cornerRadius(999)
+                            .onTapGesture {
+                                if selected { selectedUncomfortablePoints.remove(id) } else { selectedUncomfortablePoints.insert(id) }
+                            }
+                    }
+                }
+            }
+            HStack(spacing: 10) {
+                Button("Cancel", action: onCancel)
+                    .font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    .padding(.horizontal, 16).padding(.vertical, 10)
+                    .background(IDS.Colors.chipBackground).cornerRadius(12)
+                Button(action: { Task { await onSubmit() } }) {
+                    Text(submitting ? "Submitting…" : "Submit review")
+                        .font(.subheadline).bold().foregroundColor(.white)
+                        .padding(.horizontal, 16).padding(.vertical, 10)
+                        .background(IDS.Colors.brand).cornerRadius(12)
+                }
+                .disabled(submitting)
+            }
+        }
+    }
+}
+
 private struct ListingCard: View {
     let listing: ListingDto
     let isMine: Bool
@@ -608,6 +684,20 @@ private struct ListingCard: View {
     @State private var offerAmount = ""
     @State private var showingSafetyChecklist = false
     @State private var showingReportOptions = false
+
+    // Real optional buyer identification at mark-sold time (2026-07-24) -- see backend
+    // MarketplaceService.markSold's own doc comment. Confirm with a phone number or
+    // Skip, either way the sale completes.
+    @State private var markingSold = false
+    @State private var buyerPhone = ""
+
+    // Real post-transaction review with asymmetric public/private visibility
+    // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+    @State private var showReviewSheet = false
+    @State private var selectedGoodPoints: Set<String> = []
+    @State private var selectedUncomfortablePoints: Set<String> = []
+    @State private var submittingReview = false
+    @State private var reviewSubmitted = false
 
     // Real "directions to this seller" (2026-07-19, item 8 on the Maps "100%" roadmap) --
     // reuses itunda's own self-hosted OSRM directions, same RouteMiniMap component Eats
@@ -692,10 +782,41 @@ private struct ListingCard: View {
                     .disabled(Double(offerAmount) == nil)
                 }
             }
+            // Real optional "who bought this?" prompt (2026-07-24) -- see backend
+            // MarketplaceService.markSold's own doc comment.
+            if markingSold {
+                TextField("Buyer's phone (optional)", text: $buyerPhone)
+                    .keyboardType(.phonePad)
+                    .padding(10)
+                    .background(IDS.Colors.chipBackground)
+                    .cornerRadius(10)
+                HStack(spacing: 10) {
+                    actionButton("Skip", filled: false) { await markSold(buyerPhoneNumber: nil) }
+                    actionButton("Confirm", filled: true) { await markSold(buyerPhoneNumber: buyerPhone.trimmingCharacters(in: .whitespaces)) }
+                }
+            }
+            // Real post-transaction review, preset checklist with asymmetric public/
+            // private visibility (2026-07-24) -- see backend HoodReviewService's own
+            // doc comment. Only offered once a real buyer was recorded at mark-sold
+            // time; no pre-check for "already reviewed" (a real, honest v1 -- a second
+            // attempt just surfaces the backend's own REVIEW_ALREADY_SUBMITTED error).
+            if isMine, listing.status == "SOLD", listing.buyerId != nil, !reviewSubmitted {
+                if showReviewSheet {
+                    HoodReviewForm(
+                        selectedGoodPoints: $selectedGoodPoints,
+                        selectedUncomfortablePoints: $selectedUncomfortablePoints,
+                        submitting: submittingReview,
+                        onCancel: { showReviewSheet = false },
+                        onSubmit: { await submitReview() }
+                    )
+                } else {
+                    actionButton("Rate this buyer", filled: true) { showReviewSheet = true }
+                }
+            }
             HStack(spacing: 10) {
                 if isMine {
-                    if listing.status == "ACTIVE" {
-                        actionButton("Mark sold", filled: false) { await markSold() }
+                    if listing.status == "ACTIVE" && !markingSold {
+                        actionButton("Mark sold", filled: false) { markingSold = true }
                     }
                     if listing.status != "REMOVED" {
                         actionButton("Remove", filled: false) { await remove() }
@@ -753,12 +874,31 @@ private struct ListingCard: View {
         .disabled(busy)
     }
 
-    private func markSold() async {
+    private func markSold(buyerPhoneNumber: String?) async {
         busy = true
         defer { busy = false }
         do {
-            _ = try await NetworkClient.shared.markListingSold(listing.id)
+            _ = try await NetworkClient.shared.markListingSold(listing.id, buyerPhoneNumber: buyerPhoneNumber?.isEmpty == true ? nil : buyerPhoneNumber)
+            markingSold = false
             onChanged()
+        } catch let NetworkError.httpError(statusCode) {
+            error = TalkScreen.errorMessage(statusCode)
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    // Real post-transaction review with asymmetric public/private visibility
+    // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+    private func submitReview() async {
+        submittingReview = true
+        defer { submittingReview = false }
+        do {
+            _ = try await NetworkClient.shared.submitListingReview(
+                listing.id, goodPoints: Array(selectedGoodPoints), uncomfortablePoints: Array(selectedUncomfortablePoints),
+            )
+            reviewSubmitted = true
+            showReviewSheet = false
         } catch let NetworkError.httpError(statusCode) {
             error = TalkScreen.errorMessage(statusCode)
         } catch {

@@ -15,11 +15,20 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.core.domain.HoodTransactionType
 import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.review.HoodReviewAlreadySubmittedException
+import rw.itunda.core.review.HoodReviewNoCounterpartyException
+import rw.itunda.core.review.HoodReviewNotPartyException
+import rw.itunda.core.review.HoodReviewService
+import rw.itunda.core.review.HoodReviewTransactionNotCompletedException
+import rw.itunda.core.review.HoodReviewTransactionNotFoundException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
+import rw.itunda.core.web.toResponseDto
 import rw.itunda.core.web.trustScores
+import rw.itunda.marketplace.BuyerNotFoundException
 import rw.itunda.marketplace.FavoriteListingNotFoundException
 import rw.itunda.marketplace.InvalidCoordinatesException
 import rw.itunda.marketplace.InvalidListingException
@@ -50,6 +59,8 @@ data class CreateListingRequest(
 
 data class MakeOfferRequest(val amount: BigDecimal)
 data class RespondToOfferRequest(val action: OfferResponseAction, val counterAmount: BigDecimal? = null)
+data class MarkSoldRequest(val buyerPhoneNumber: String? = null)
+data class SubmitHoodReviewRequest(val goodPoints: List<String> = emptyList(), val uncomfortablePoints: List<String> = emptyList())
 
 // Real 당근마켓-style marketplace -- see MarketplaceService's own doc comment. Normal
 // itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
@@ -60,6 +71,7 @@ class MarketplaceController(
     private val priceOfferService: PriceOfferService,
     private val listingFavoriteService: ListingFavoriteService,
     private val userRepository: UserRepository,
+    private val hoodReviewService: HoodReviewService,
 ) {
 
     @PostMapping("/listings")
@@ -134,9 +146,35 @@ class MarketplaceController(
     @PostMapping("/listings/{listingId}/mark-sold")
     fun markSold(
         @PathVariable listingId: String,
+        @RequestBody(required = false) request: MarkSoldRequest?,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "listing" to marketplaceService.markSold(currentUser.userId, listingId)))
+        ResponseEntity.ok(
+            mapOf("success" to true, "listing" to marketplaceService.markSold(currentUser.userId, listingId, request?.buyerPhoneNumber)),
+        )
+
+    // Real post-transaction review with asymmetric public/private visibility
+    // (2026-07-24) -- see HoodReviewService's own doc comment for the full account.
+    @PostMapping("/listings/{listingId}/review")
+    fun submitReview(
+        @PathVariable listingId: String,
+        @RequestBody request: SubmitHoodReviewRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val review = hoodReviewService.submitReview(
+            currentUser.userId, HoodTransactionType.LISTING, listingId, request.goodPoints, request.uncomfortablePoints,
+        )
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "review" to review.toResponseDto()))
+    }
+
+    @GetMapping("/listings/{listingId}/review")
+    fun getReviews(
+        @PathVariable listingId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val reviews = hoodReviewService.getTransactionReviews(currentUser.userId, HoodTransactionType.LISTING, listingId).map { it.toResponseDto() }
+        return ResponseEntity.ok(mapOf("success" to true, "reviews" to reviews))
+    }
 
     @DeleteMapping("/listings/{listingId}")
     fun removeListing(
@@ -262,4 +300,28 @@ class MarketplaceController(
     @ExceptionHandler(FavoriteListingNotFoundException::class)
     fun handleFavoriteListingNotFound(ex: FavoriteListingNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("LISTING_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(BuyerNotFoundException::class)
+    fun handleBuyerNotFound(ex: BuyerNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("BUYER_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(HoodReviewTransactionNotFoundException::class)
+    fun handleReviewTransactionNotFound(ex: HoodReviewTransactionNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("LISTING_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(HoodReviewTransactionNotCompletedException::class)
+    fun handleReviewTransactionNotCompleted(ex: HoodReviewTransactionNotCompletedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("REVIEW_TRANSACTION_NOT_COMPLETED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(HoodReviewNoCounterpartyException::class)
+    fun handleReviewNoCounterparty(ex: HoodReviewNoCounterpartyException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("REVIEW_NO_COUNTERPARTY", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(HoodReviewNotPartyException::class)
+    fun handleReviewNotParty(ex: HoodReviewNotPartyException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("REVIEW_NOT_PARTY", ex.message ?: "Forbidden"))
+
+    @ExceptionHandler(HoodReviewAlreadySubmittedException::class)
+    fun handleReviewAlreadySubmitted(ex: HoodReviewAlreadySubmittedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("REVIEW_ALREADY_SUBMITTED", ex.message ?: "Conflict"))
 }

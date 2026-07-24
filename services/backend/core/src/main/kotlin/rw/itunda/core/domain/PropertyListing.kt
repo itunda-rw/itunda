@@ -80,6 +80,13 @@ class PropertyListing(
     // comment for the full account; identical cached-at-creation shape here.
     @Column(nullable = true, length = 120)
     var neighborhood: String? = null,
+
+    // Real optional buyer/tenant identification at mark-taken time (2026-07-24) -- see
+    // Listing.buyerId's own doc comment for the full account; identical shape here.
+    // Named "counterparty" rather than "buyer" since RENT's other party is a tenant,
+    // not a buyer.
+    @Column(name = "counterparty_id", nullable = true, length = 64)
+    var counterpartyId: String? = null,
 ) {
     protected constructor() : this(
         id = "", listerId = "", listingType = PropertyListingType.RENT, propertyType = "",

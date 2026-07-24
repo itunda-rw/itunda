@@ -172,6 +172,66 @@ fun TrustBadge(score: Int, modifier: Modifier = Modifier) {
     }
 }
 
+// Real post-transaction review preset checklist labels (2026-07-24) -- ids must match
+// backend HoodReviewService.GOOD_POINTS/UNCOMFORTABLE_POINTS exactly.
+val HoodGoodPointLabels = mapOf(
+    "RESPONSIVE" to "Quick to respond", "AS_DESCRIBED" to "As described", "ON_TIME" to "On time",
+    "FRIENDLY" to "Friendly", "FAIR_PRICE" to "Fair price",
+)
+val HoodUncomfortablePointLabels = mapOf(
+    "LATE" to "Was late", "NOT_AS_DESCRIBED" to "Not as described", "UNRESPONSIVE" to "Hard to reach",
+    "RUDE" to "Rude", "PRICE_ISSUE" to "Price disagreement",
+)
+
+// Real post-transaction review with Karrot's own asymmetric public/private visibility
+// (2026-07-24) -- closes docs/DESIGN_REFERENCES.md Section 4 recommendation #2. A
+// preset checklist, not free text, matching Karrot's own real review UX: "good points"
+// are shown publicly (feed into the trust score), "uncomfortable points" stay private
+// between the two real parties to the transaction -- deliberate asymmetric visibility
+// to avoid public-negative-review churn. Shared by Marketplace/Jobs/Property so all
+// three verticals render the exact same checklist.
+@Composable
+fun HoodReviewForm(
+    selectedGoodPoints: Set<String>,
+    onToggleGoodPoint: (String) -> Unit,
+    selectedUncomfortablePoints: Set<String>,
+    onToggleUncomfortablePoint: (String) -> Unit,
+    submitting: Boolean,
+    onCancel: () -> Unit,
+    onSubmit: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("What went well? (shown publicly)", color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            HoodGoodPointLabels.forEach { (id, label) ->
+                val selected = id in selectedGoodPoints
+                Box(
+                    modifier = Modifier
+                        .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft, RoundedCornerShape(999.dp))
+                        .clickable { onToggleGoodPoint(id) }
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                ) { Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary) }
+            }
+        }
+        Text("Anything uncomfortable? (private -- only you two see this)", color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            HoodUncomfortablePointLabels.forEach { (id, label) ->
+                val selected = id in selectedUncomfortablePoints
+                Box(
+                    modifier = Modifier
+                        .background(if (selected) Ids.colors.danger else Ids.colors.surfaceSoft, RoundedCornerShape(999.dp))
+                        .clickable { onToggleUncomfortablePoint(id) }
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                ) { Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary) }
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ListingActionButton("Cancel", submitting, onClick = onCancel)
+            ListingActionButton(if (submitting) "Submitting…" else "Submit review", submitting, filled = true, onClick = onSubmit)
+        }
+    }
+}
+
 // Real device-location fetch, shared by NewListingForm's "share my location" toggle and
 // ListingCard's "directions to this seller" -- same runtime-permission-gated
 // FusedLocationProviderClient technique MapScreen.kt already established.

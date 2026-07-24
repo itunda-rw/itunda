@@ -783,6 +783,10 @@ public struct ListingDto: Decodable, Identifiable {
     public let latitude: Double?
     public let longitude: Double?
     public let meetingPlace: String?
+    // buyerId added 2026-07-24 -- real optional buyer identification captured at
+    // mark-sold time, see backend Listing.kt's own doc comment. Only set once a real
+    // review becomes possible for this transaction.
+    public let buyerId: String?
 }
 
 public struct CreateListingRequest: Encodable {
@@ -796,6 +800,24 @@ public struct CreateListingRequest: Encodable {
 }
 
 public struct ListingResponse: Decodable { public let success: Bool; public let listing: ListingDto }
+public struct MarkSoldRequest: Encodable { public let buyerPhoneNumber: String? }
+// Real post-transaction review with asymmetric public/private visibility (2026-07-24)
+// -- see backend HoodTransactionReview.kt's own doc comment. goodPoints/
+// uncomfortablePoints are preset tag ids (never free text), matching Karrot's own real
+// review UX.
+public struct SubmitHoodReviewRequest: Encodable { public let goodPoints: [String]; public let uncomfortablePoints: [String] }
+public struct HoodReviewDto: Decodable, Identifiable {
+    public let id: String
+    public let transactionType: String
+    public let transactionId: String
+    public let reviewerId: String
+    public let revieweeId: String
+    public let goodPoints: [String]
+    public let uncomfortablePoints: [String]
+    public let createdAt: String
+}
+public struct HoodReviewResponse: Decodable { public let success: Bool; public let review: HoodReviewDto }
+public struct HoodReviewsResponse: Decodable { public let success: Bool; public let reviews: [HoodReviewDto] }
 // trustScores added 2026-07-24 -- backend has spread this alongside every listing/
 // job-post/property-listing browse response since 2026-07-21
 // (rw.itunda.core.web.TrustScoreSupport), but no client ever parsed or rendered it.
@@ -1530,8 +1552,21 @@ extension NetworkClient {
         try await get("api/v1/marketplace/listings/my-neighborhood", query: [URLQueryItem(name: "category", value: category)])
     }
 
-    public func markListingSold(_ listingId: String) async throws -> ListingResponse {
-        try await authenticatedPost("api/v1/marketplace/listings/\(listingId)/mark-sold", body: EmptyBody())
+    public func markListingSold(_ listingId: String, buyerPhoneNumber: String? = nil) async throws -> ListingResponse {
+        try await authenticatedPost("api/v1/marketplace/listings/\(listingId)/mark-sold", body: MarkSoldRequest(buyerPhoneNumber: buyerPhoneNumber))
+    }
+
+    // Real post-transaction review with asymmetric public/private visibility
+    // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+    public func submitListingReview(_ listingId: String, goodPoints: [String], uncomfortablePoints: [String]) async throws -> HoodReviewResponse {
+        try await authenticatedPost(
+            "api/v1/marketplace/listings/\(listingId)/review",
+            body: SubmitHoodReviewRequest(goodPoints: goodPoints, uncomfortablePoints: uncomfortablePoints),
+        )
+    }
+
+    public func getListingReviews(_ listingId: String) async throws -> HoodReviewsResponse {
+        try await get("api/v1/marketplace/listings/\(listingId)/review")
     }
 
     public func removeListing(_ listingId: String) async throws -> ListingResponse {

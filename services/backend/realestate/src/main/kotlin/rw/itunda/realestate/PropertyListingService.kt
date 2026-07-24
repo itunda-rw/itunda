@@ -27,6 +27,7 @@ class PropertyListingNotAvailableException(message: String) : RuntimeException(m
 class OwnPropertyListingException(message: String) : RuntimeException(message)
 class InvalidPropertyCoordinatesException(message: String) : RuntimeException(message)
 class RealEstateNeighborhoodNotSetException(message: String) : RuntimeException(message)
+class CounterpartyNotFoundException(message: String) : RuntimeException(message)
 
 data class PropertyType(val id: String, val label: String)
 
@@ -195,11 +196,20 @@ class PropertyListingService(
     fun getListing(propertyListingId: String): PropertyListing =
         propertyListingRepository.findById(propertyListingId).orElseThrow { PropertyListingNotFoundException("Property listing not found") }
 
+    // Real optional buyer/tenant identification (2026-07-24) -- see MarketplaceService.
+    // markSold's own doc comment for the full account; identical shape here.
     @Transactional
-    fun markTaken(listerId: String, propertyListingId: String): PropertyListing {
+    fun markTaken(listerId: String, propertyListingId: String, counterpartyPhoneNumber: String? = null): PropertyListing {
         val listing = requireLister(listerId, propertyListingId)
         if (listing.status != PropertyListingStatus.AVAILABLE) {
             throw PropertyListingNotAvailableException("Only an available listing can be marked taken")
+        }
+        val trimmedPhone = counterpartyPhoneNumber?.trim()
+        if (!trimmedPhone.isNullOrEmpty()) {
+            val counterparty = userRepository.findByPhoneNumber(trimmedPhone)
+                ?: throw CounterpartyNotFoundException("No itunda account found for this phone number")
+            if (counterparty.id == listerId) throw OwnPropertyListingException("You can't record yourself as the buyer/tenant")
+            listing.counterpartyId = counterparty.id
         }
         listing.status = PropertyListingStatus.TAKEN
         val saved = propertyListingRepository.save(listing)

@@ -15,12 +15,21 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.core.domain.HoodTransactionType
 import rw.itunda.core.domain.PropertyListingType
 import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.review.HoodReviewAlreadySubmittedException
+import rw.itunda.core.review.HoodReviewNoCounterpartyException
+import rw.itunda.core.review.HoodReviewNotPartyException
+import rw.itunda.core.review.HoodReviewService
+import rw.itunda.core.review.HoodReviewTransactionNotCompletedException
+import rw.itunda.core.review.HoodReviewTransactionNotFoundException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
+import rw.itunda.core.web.toResponseDto
 import rw.itunda.core.web.trustScores
+import rw.itunda.realestate.CounterpartyNotFoundException
 import rw.itunda.realestate.FavoritePropertyListingNotFoundException
 import rw.itunda.realestate.InvalidPropertyCoordinatesException
 import rw.itunda.realestate.InvalidPropertyListingException
@@ -54,6 +63,8 @@ data class CreatePropertyListingRequest(
 // own doc comment. Mirrors MarketplaceController's MakeOfferRequest/RespondToOfferRequest exactly.
 data class MakePropertyOfferRequest(val amount: BigDecimal)
 data class RespondToPropertyOfferRequest(val action: PropertyOfferResponseAction, val counterAmount: BigDecimal? = null)
+data class MarkTakenRequest(val counterpartyPhoneNumber: String? = null)
+data class SubmitHoodReviewRequest(val goodPoints: List<String> = emptyList(), val uncomfortablePoints: List<String> = emptyList())
 
 // Real 당근부동산-style property board -- see PropertyListingService's own doc comment.
 // Normal itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
@@ -64,6 +75,7 @@ class PropertyListingController(
     private val propertyPriceOfferService: PropertyPriceOfferService,
     private val propertyListingFavoriteService: PropertyListingFavoriteService,
     private val userRepository: UserRepository,
+    private val hoodReviewService: HoodReviewService,
 ) {
 
     @GetMapping("/property-types")
@@ -139,9 +151,38 @@ class PropertyListingController(
     @PostMapping("/listings/{propertyListingId}/mark-taken")
     fun markTaken(
         @PathVariable propertyListingId: String,
+        @RequestBody(required = false) request: MarkTakenRequest?,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "listing" to propertyListingService.markTaken(currentUser.userId, propertyListingId)))
+        ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "listing" to propertyListingService.markTaken(currentUser.userId, propertyListingId, request?.counterpartyPhoneNumber),
+            ),
+        )
+
+    // Real post-transaction review with asymmetric public/private visibility
+    // (2026-07-24) -- see HoodReviewService's own doc comment for the full account.
+    @PostMapping("/listings/{propertyListingId}/review")
+    fun submitReview(
+        @PathVariable propertyListingId: String,
+        @RequestBody request: SubmitHoodReviewRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val review = hoodReviewService.submitReview(
+            currentUser.userId, HoodTransactionType.PROPERTY_LISTING, propertyListingId, request.goodPoints, request.uncomfortablePoints,
+        )
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "review" to review.toResponseDto()))
+    }
+
+    @GetMapping("/listings/{propertyListingId}/review")
+    fun getReviews(
+        @PathVariable propertyListingId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val reviews = hoodReviewService.getTransactionReviews(currentUser.userId, HoodTransactionType.PROPERTY_LISTING, propertyListingId).map { it.toResponseDto() }
+        return ResponseEntity.ok(mapOf("success" to true, "reviews" to reviews))
+    }
 
     @DeleteMapping("/listings/{propertyListingId}")
     fun removeListing(
@@ -264,4 +305,28 @@ class PropertyListingController(
     @ExceptionHandler(FavoritePropertyListingNotFoundException::class)
     fun handleFavoriteNotFound(ex: FavoritePropertyListingNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("PROPERTY_LISTING_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(CounterpartyNotFoundException::class)
+    fun handleCounterpartyNotFound(ex: CounterpartyNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("COUNTERPARTY_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(HoodReviewTransactionNotFoundException::class)
+    fun handleReviewTransactionNotFound(ex: HoodReviewTransactionNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("PROPERTY_LISTING_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(HoodReviewTransactionNotCompletedException::class)
+    fun handleReviewTransactionNotCompleted(ex: HoodReviewTransactionNotCompletedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("REVIEW_TRANSACTION_NOT_COMPLETED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(HoodReviewNoCounterpartyException::class)
+    fun handleReviewNoCounterparty(ex: HoodReviewNoCounterpartyException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("REVIEW_NO_COUNTERPARTY", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(HoodReviewNotPartyException::class)
+    fun handleReviewNotParty(ex: HoodReviewNotPartyException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("REVIEW_NOT_PARTY", ex.message ?: "Forbidden"))
+
+    @ExceptionHandler(HoodReviewAlreadySubmittedException::class)
+    fun handleReviewAlreadySubmitted(ex: HoodReviewAlreadySubmittedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("REVIEW_ALREADY_SUBMITTED", ex.message ?: "Conflict"))
 }

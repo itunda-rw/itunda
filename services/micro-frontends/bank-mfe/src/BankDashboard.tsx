@@ -39,7 +39,7 @@ import { createSplitBill, fetchSplitBillsForGroup, paySplitBillShare, type Split
 import {
   addListingFavorite, contactSeller, createListing, fetchListings, fetchListingsMyNeighborhood, fetchMyFavoriteListings,
   fetchMyListings, fetchOffersForConversation, makeOffer, markListingSold, removeListing, removeListingFavorite,
-  respondToOffer, type FavoriteListing, type Listing, type PriceOffer, type TrustScores,
+  respondToOffer, submitListingReview, type FavoriteListing, type Listing, type PriceOffer, type TrustScores,
 } from './lib/marketplace';
 import { fetchProfile, setNeighborhood } from './lib/neighborhood';
 import { claimGift, fetchGiftsForConversation, sendGiftInConversation, type Gift, type GiftStatus } from './lib/gift';
@@ -3236,6 +3236,20 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
   const [showRoute, setShowRoute] = useState(false);
   const [locating, setLocating] = useState(false);
 
+  // Real optional "who bought this?" prompt (2026-07-24) -- see backend
+  // MarketplaceService.markSold's own doc comment. Confirm with a phone number or
+  // Skip, either way the sale completes.
+  const [markingSold, setMarkingSold] = useState(false);
+  const [buyerPhone, setBuyerPhone] = useState('');
+
+  // Real post-transaction review with asymmetric public/private visibility
+  // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+  const [showReviewSheet, setShowReviewSheet] = useState(false);
+  const [selectedGoodPoints, setSelectedGoodPoints] = useState<Set<string>>(new Set());
+  const [selectedUncomfortablePoints, setSelectedUncomfortablePoints] = useState<Set<string>>(new Set());
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+
   const handleShowDirections = () => {
     if (showRoute) {
       setShowRoute(false);
@@ -3265,16 +3279,33 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
     );
   };
 
-  const handleMarkSold = async () => {
+  const handleMarkSold = async (buyerPhoneNumber?: string) => {
     setBusy(true);
     setError(null);
     try {
-      await markListingSold(listing.id);
+      await markListingSold(listing.id, buyerPhoneNumber || undefined);
+      setMarkingSold(false);
       onChanged();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not update this listing.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  // Real post-transaction review with asymmetric public/private visibility
+  // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+  const handleSubmitReview = async () => {
+    setSubmittingReview(true);
+    setError(null);
+    try {
+      await submitListingReview(listing.id, Array.from(selectedGoodPoints), Array.from(selectedUncomfortablePoints));
+      setReviewSubmitted(true);
+      setShowReviewSheet(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not submit this review.');
+    } finally {
+      setSubmittingReview(false);
     }
   };
 
@@ -3361,11 +3392,54 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
           </button>
         </div>
       )}
+      {/* Real optional "who bought this?" prompt (2026-07-24) -- see backend
+          MarketplaceService.markSold's own doc comment. */}
+      {markingSold && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <input
+            type="tel"
+            value={buyerPhone}
+            onChange={(e) => setBuyerPhone(e.target.value)}
+            placeholder="Buyer's phone (optional)"
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={() => handleMarkSold()}>
+              Skip
+            </button>
+            <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={() => handleMarkSold(buyerPhone.trim())}>
+              Confirm
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Real post-transaction review, preset checklist with asymmetric public/private
+          visibility (2026-07-24) -- see backend HoodReviewService's own doc comment.
+          Only offered once a real buyer was recorded at mark-sold time; no pre-check
+          for "already reviewed" (a real, honest v1 -- a second attempt just surfaces
+          the backend's own REVIEW_ALREADY_SUBMITTED error). */}
+      {isMine && listing.status === 'SOLD' && listing.buyerId && !reviewSubmitted && (
+        showReviewSheet ? (
+          <HoodReviewForm
+            selectedGoodPoints={selectedGoodPoints}
+            onToggleGoodPoint={(id) => setSelectedGoodPoints((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; })}
+            selectedUncomfortablePoints={selectedUncomfortablePoints}
+            onToggleUncomfortablePoint={(id) => setSelectedUncomfortablePoints((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; })}
+            submitting={submittingReview}
+            onCancel={() => setShowReviewSheet(false)}
+            onSubmit={handleSubmitReview}
+          />
+        ) : (
+          <button className="toss-btn toss-btn-primary" disabled={busy} onClick={() => setShowReviewSheet(true)}>
+            Rate this buyer
+          </button>
+        )
+      )}
       <div style={{ display: 'flex', gap: '8px' }}>
         {isMine ? (
           <>
-            {listing.status === 'ACTIVE' && (
-              <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={handleMarkSold}>
+            {listing.status === 'ACTIVE' && !markingSold && (
+              <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={() => setMarkingSold(true)}>
                 Mark sold
               </button>
             )}
@@ -6479,6 +6553,81 @@ function TrustBadge({ score }: { score: number }) {
     >
       Trust {score}
     </span>
+  );
+}
+
+// Real post-transaction review preset checklist labels (2026-07-24) -- ids must match
+// backend HoodReviewService.GOOD_POINTS/UNCOMFORTABLE_POINTS exactly.
+const HOOD_GOOD_POINT_LABELS: [string, string][] = [
+  ['RESPONSIVE', 'Quick to respond'], ['AS_DESCRIBED', 'As described'], ['ON_TIME', 'On time'],
+  ['FRIENDLY', 'Friendly'], ['FAIR_PRICE', 'Fair price'],
+];
+const HOOD_UNCOMFORTABLE_POINT_LABELS: [string, string][] = [
+  ['LATE', 'Was late'], ['NOT_AS_DESCRIBED', 'Not as described'], ['UNRESPONSIVE', 'Hard to reach'],
+  ['RUDE', 'Rude'], ['PRICE_ISSUE', 'Price disagreement'],
+];
+
+// Real post-transaction review with Karrot's own asymmetric public/private visibility
+// (2026-07-24) -- closes docs/DESIGN_REFERENCES.md Section 4 recommendation #2. A
+// preset checklist, not free text, matching Karrot's own real review UX: "good points"
+// are shown publicly (feed into the trust score), "uncomfortable points" stay private
+// between the two real parties to the transaction. Shared by Marketplace/Jobs/Property.
+function HoodReviewForm({
+  selectedGoodPoints, onToggleGoodPoint, selectedUncomfortablePoints, onToggleUncomfortablePoint, submitting, onCancel, onSubmit,
+}: {
+  selectedGoodPoints: Set<string>; onToggleGoodPoint: (id: string) => void;
+  selectedUncomfortablePoints: Set<string>; onToggleUncomfortablePoint: (id: string) => void;
+  submitting: boolean; onCancel: () => void; onSubmit: () => void;
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>What went well? (shown publicly)</p>
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        {HOOD_GOOD_POINT_LABELS.map(([id, label]) => {
+          const selected = selectedGoodPoints.has(id);
+          return (
+            <button
+              key={id}
+              onClick={() => onToggleGoodPoint(id)}
+              style={{
+                fontSize: '12px', fontWeight: 700, padding: '6px 12px', borderRadius: '999px',
+                color: selected ? 'var(--toss-white)' : 'var(--toss-grey-900)',
+                backgroundColor: selected ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>Anything uncomfortable? (private -- only you two see this)</p>
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        {HOOD_UNCOMFORTABLE_POINT_LABELS.map(([id, label]) => {
+          const selected = selectedUncomfortablePoints.has(id);
+          return (
+            <button
+              key={id}
+              onClick={() => onToggleUncomfortablePoint(id)}
+              style={{
+                fontSize: '12px', fontWeight: 700, padding: '6px 12px', borderRadius: '999px',
+                color: selected ? 'var(--toss-white)' : 'var(--toss-grey-900)',
+                backgroundColor: selected ? '#E53935' : 'var(--toss-grey-100)',
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={submitting} onClick={onCancel}>
+          Cancel
+        </button>
+        <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting} onClick={onSubmit}>
+          {submitting ? 'Submitting…' : 'Submit review'}
+        </button>
+      </div>
+    </div>
   );
 }
 

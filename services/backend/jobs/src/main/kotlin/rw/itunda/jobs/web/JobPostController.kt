@@ -15,11 +15,19 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.core.domain.HoodTransactionType
 import rw.itunda.core.domain.JobPayType
 import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.review.HoodReviewAlreadySubmittedException
+import rw.itunda.core.review.HoodReviewNoCounterpartyException
+import rw.itunda.core.review.HoodReviewNotPartyException
+import rw.itunda.core.review.HoodReviewService
+import rw.itunda.core.review.HoodReviewTransactionNotCompletedException
+import rw.itunda.core.review.HoodReviewTransactionNotFoundException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
+import rw.itunda.core.web.toResponseDto
 import rw.itunda.core.web.trustScores
 import rw.itunda.jobs.FavoriteJobPostNotFoundException
 import rw.itunda.jobs.InvalidJobCoordinatesException
@@ -30,6 +38,7 @@ import rw.itunda.jobs.JobPostNotOpenException
 import rw.itunda.jobs.JobPostService
 import rw.itunda.jobs.JobsNeighborhoodNotSetException
 import rw.itunda.jobs.OwnJobPostException
+import rw.itunda.jobs.WorkerNotFoundException
 import java.math.BigDecimal
 
 data class CreateJobPostRequest(
@@ -41,6 +50,8 @@ data class CreateJobPostRequest(
     val latitude: Double? = null,
     val longitude: Double? = null,
 )
+data class MarkFilledRequest(val workerPhoneNumber: String? = null)
+data class SubmitHoodReviewRequest(val goodPoints: List<String> = emptyList(), val uncomfortablePoints: List<String> = emptyList())
 
 // Real 당근알바-style local job board -- see JobPostService's own doc comment. Normal
 // itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
@@ -50,6 +61,7 @@ class JobPostController(
     private val jobPostService: JobPostService,
     private val jobPostFavoriteService: JobPostFavoriteService,
     private val userRepository: UserRepository,
+    private val hoodReviewService: HoodReviewService,
 ) {
 
     @GetMapping("/categories")
@@ -125,9 +137,35 @@ class JobPostController(
     @PostMapping("/posts/{jobPostId}/mark-filled")
     fun markFilled(
         @PathVariable jobPostId: String,
+        @RequestBody(required = false) request: MarkFilledRequest?,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> =
-        ResponseEntity.ok(mapOf("success" to true, "post" to jobPostService.markFilled(currentUser.userId, jobPostId)))
+        ResponseEntity.ok(
+            mapOf("success" to true, "post" to jobPostService.markFilled(currentUser.userId, jobPostId, request?.workerPhoneNumber)),
+        )
+
+    // Real post-transaction review with asymmetric public/private visibility
+    // (2026-07-24) -- see HoodReviewService's own doc comment for the full account.
+    @PostMapping("/posts/{jobPostId}/review")
+    fun submitReview(
+        @PathVariable jobPostId: String,
+        @RequestBody request: SubmitHoodReviewRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val review = hoodReviewService.submitReview(
+            currentUser.userId, HoodTransactionType.JOB_POST, jobPostId, request.goodPoints, request.uncomfortablePoints,
+        )
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "review" to review.toResponseDto()))
+    }
+
+    @GetMapping("/posts/{jobPostId}/review")
+    fun getReviews(
+        @PathVariable jobPostId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val reviews = hoodReviewService.getTransactionReviews(currentUser.userId, HoodTransactionType.JOB_POST, jobPostId).map { it.toResponseDto() }
+        return ResponseEntity.ok(mapOf("success" to true, "reviews" to reviews))
+    }
 
     @DeleteMapping("/posts/{jobPostId}")
     fun removePost(
@@ -206,4 +244,28 @@ class JobPostController(
     @ExceptionHandler(FavoriteJobPostNotFoundException::class)
     fun handleFavoriteNotFound(ex: FavoriteJobPostNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("JOB_POST_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(WorkerNotFoundException::class)
+    fun handleWorkerNotFound(ex: WorkerNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WORKER_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(HoodReviewTransactionNotFoundException::class)
+    fun handleReviewTransactionNotFound(ex: HoodReviewTransactionNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("JOB_POST_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(HoodReviewTransactionNotCompletedException::class)
+    fun handleReviewTransactionNotCompleted(ex: HoodReviewTransactionNotCompletedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("REVIEW_TRANSACTION_NOT_COMPLETED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(HoodReviewNoCounterpartyException::class)
+    fun handleReviewNoCounterparty(ex: HoodReviewNoCounterpartyException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("REVIEW_NO_COUNTERPARTY", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(HoodReviewNotPartyException::class)
+    fun handleReviewNotParty(ex: HoodReviewNotPartyException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("REVIEW_NOT_PARTY", ex.message ?: "Forbidden"))
+
+    @ExceptionHandler(HoodReviewAlreadySubmittedException::class)
+    fun handleReviewAlreadySubmitted(ex: HoodReviewAlreadySubmittedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("REVIEW_ALREADY_SUBMITTED", ex.message ?: "Conflict"))
 }

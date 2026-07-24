@@ -25,6 +25,25 @@ export interface Listing {
   // Seller-provided public landmark only. It is not verified and is never an
   // address or a safety guarantee.
   meetingPlace?: string | null;
+  // buyerId added 2026-07-24 -- real optional buyer identification captured at
+  // mark-sold time, see backend Listing.kt's own doc comment. Only set once a real
+  // review becomes possible for this transaction.
+  buyerId?: string | null;
+}
+
+// Real post-transaction review with asymmetric public/private visibility (2026-07-24)
+// -- see backend HoodTransactionReview.kt's own doc comment. goodPoints/
+// uncomfortablePoints are preset tag ids (never free text), matching Karrot's own real
+// review UX.
+export interface HoodReview {
+  id: string;
+  transactionType: string;
+  transactionId: string;
+  reviewerId: string;
+  revieweeId: string;
+  goodPoints: string[];
+  uncomfortablePoints: string[];
+  createdAt: string;
 }
 
 // Real Karrot-Score-style numeric trust/reputation badge (2026-07-21) -- see backend
@@ -65,10 +84,19 @@ export const createListing = (
     body: JSON.stringify({ title, description, price, category, latitude, longitude, meetingPlace }),
   }).then((r) => r.listing);
 
-export const markListingSold = (listingId: string) =>
+export const markListingSold = (listingId: string, buyerPhoneNumber?: string) =>
   apiFetch<{ success: boolean; listing: Listing }>(`/api/v1/marketplace/listings/${listingId}/mark-sold`, {
     method: 'POST',
+    body: JSON.stringify({ buyerPhoneNumber }),
   }).then((r) => r.listing);
+
+// Real post-transaction review with asymmetric public/private visibility (2026-07-24)
+// -- see backend HoodReviewService's own doc comment.
+export const submitListingReview = (listingId: string, goodPoints: string[], uncomfortablePoints: string[]) =>
+  apiFetch<{ success: boolean; review: HoodReview }>(`/api/v1/marketplace/listings/${listingId}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ goodPoints, uncomfortablePoints }),
+  }).then((r) => r.review);
 
 export const removeListing = (listingId: string) =>
   apiFetch<{ success: boolean; listing: Listing }>(`/api/v1/marketplace/listings/${listingId}`, {

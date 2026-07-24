@@ -443,7 +443,23 @@ data class ListingDto(
     val neighborhood: String? = null,
     val meetingPlace: String? = null,
     val photoUrl: String? = null,
+    // buyerId added 2026-07-24 -- real optional buyer identification captured at
+    // mark-sold time, see backend Listing.kt's own doc comment. Only set once a real
+    // review becomes possible for this transaction.
+    val buyerId: String? = null,
 )
+data class MarkSoldRequest(val buyerPhoneNumber: String? = null)
+// Real post-transaction review with asymmetric public/private visibility (2026-07-24)
+// -- see backend HoodTransactionReview.kt's own doc comment. goodPoints/
+// uncomfortablePoints are preset tag ids (never free text), matching Karrot's own real
+// review UX.
+data class SubmitHoodReviewRequest(val goodPoints: List<String> = emptyList(), val uncomfortablePoints: List<String> = emptyList())
+data class HoodReviewDto(
+    val id: String, val transactionType: String, val transactionId: String, val reviewerId: String, val revieweeId: String,
+    val goodPoints: List<String>, val uncomfortablePoints: List<String>, val createdAt: String,
+)
+data class HoodReviewResponse(val success: Boolean, val review: HoodReviewDto)
+data class HoodReviewsResponse(val success: Boolean, val reviews: List<HoodReviewDto>)
 
 data class CreateListingRequest(
     val title: String,
@@ -1298,7 +1314,15 @@ interface ApiService {
     suspend fun getListingsMyNeighborhood(@Query("category") category: String? = null): ListingsResponse
 
     @POST("api/v1/marketplace/listings/{id}/mark-sold")
-    suspend fun markListingSold(@Path("id") listingId: String): ListingResponse
+    suspend fun markListingSold(@Path("id") listingId: String, @Body request: MarkSoldRequest = MarkSoldRequest()): ListingResponse
+
+    // Real post-transaction review with asymmetric public/private visibility
+    // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+    @POST("api/v1/marketplace/listings/{id}/review")
+    suspend fun submitListingReview(@Path("id") listingId: String, @Body request: SubmitHoodReviewRequest): HoodReviewResponse
+
+    @GET("api/v1/marketplace/listings/{id}/review")
+    suspend fun getListingReviews(@Path("id") listingId: String): HoodReviewsResponse
 
     @DELETE("api/v1/marketplace/listings/{id}")
     suspend fun removeListing(@Path("id") listingId: String): ListingResponse
