@@ -174,7 +174,16 @@ internal enum class TossTab(val label: String, val icon: androidx.compose.ui.gra
     Shop("Shop", Icons.Outlined.ShoppingBag),
     Hood("Hood", Icons.Outlined.LocationOn),
     Talk("Talk", Icons.Outlined.Chat),
-    My("My", Icons.Outlined.Person)
+    // Real 전체 (All services) bottom tab (2026-07-24) -- previously nested two taps
+    // deep (Home -> My -> Menu icon), at the user's own direct request to bring it
+    // back to a first-class bottom-nav slot now that mini-apps/games need to be one
+    // tap away, matching real Toss's own bottom nav (홈/혜택/쇼핑/페이/전체 -- no
+    // separate "My" tab at all; personal info lives at the top of 전체 instead). The
+    // previous My tab's own real content (orders/favorites/listings tracking, a
+    // genuine itunda addition beyond Toss parity) isn't dropped -- it's reachable one
+    // tap in via the profile icon at the top of this screen, the exact same nesting
+    // this tab used to have with Menu, just inverted.
+    All("All", Icons.Outlined.Apps)
 }
 
 /**
@@ -236,7 +245,20 @@ fun ItundaAppScreen(
         var showWeeklySavings by rememberSaveable { mutableStateOf(false) }
         // Real 전체 (All services) menu (2026-07-22) -- separated from My per the
         // user's direct request; see MenuScreen's own doc comment.
-        var showMenu by rememberSaveable { mutableStateOf(false) }
+        var showMyTab by rememberSaveable { mutableStateOf(false) }
+        // Real Toss Bank 송금 (Transfer) full page (2026-07-24) -- reachable from the
+        // 전체/Menu screen's own "Financial services" section, matching real Toss where
+        // Home's own Send button stays a quick recipient-picker (unchanged, confirmed
+        // against a real Toss screenshot of that exact screen) while the full grouped
+        // page (Send money/Auto-transfer/history) lives one level into the menu.
+        var showTransferHub by rememberSaveable { mutableStateOf(false) }
+        var showAutoTransfers by rememberSaveable { mutableStateOf(false) }
+        var autoTransferCount by remember { mutableStateOf(0) }
+        LaunchedEffect(showTransferHub) {
+            if (showTransferHub) {
+                try { autoTransferCount = rw.itunda.core.network.NetworkClient.apiService.getMyAutoTransfers().autoTransfers.count { it.status == "ACTIVE" } } catch (_: Exception) { }
+            }
+        }
         // Mirrors NAVER Maps' app-to-map handoff, but remains inside Itunda's own
         // authenticated map stack. Consume once so recomposition cannot reopen the map.
         LaunchedEffect(openMapFromDeepLink) {
@@ -654,25 +676,37 @@ fun ItundaAppScreen(
             WeeklySavingsScreen(onBack = { showWeeklySavings = false })
             return@IdsTheme
         }
-        if (showMenu) {
-            val partnerMiniApps by viewModel.partnerMiniApps.collectAsState()
-            MenuScreen(
-                onBack = { showMenu = false },
-                onOpenPay = { showPay = true },
-                onOpenBenefits = { showBenefits = true },
-                onOpenInvest = { showInvest = true },
-                onOpenMap = { showMap = true },
-                onOpenOverview = { showOverview = true },
-                onOpenLoans = { showLoans = true },
-                onOpenSupport = { showSupport = true },
-                onOpenCreditScore = { showCreditScore = true },
-                onOpenCertificate = { showCertificate = true },
-                onOpenIdentity = { showIdentity = true },
-                onOpenWeeklySavings = { showWeeklySavings = true },
-                onClaimInterest = { showMenu = false; savingsFlowStep = SavingsFlowStep.ClaimInterest },
-                onSwitchToTalk = { showMenu = false; selectedTab = TossTab.Talk },
-                partnerMiniApps = partnerMiniApps,
+        // Real My-activity overlay (2026-07-24) -- the exact inverse of the old
+        // showMenu overlay: My's own real content (orders/favorites/listings) is now
+        // reached one tap in from the All tab's profile icon, instead of All being
+        // nested under My.
+        if (showMyTab) {
+            MyTab(
+                onBack = { showMyTab = false },
+                onSwitchToShop = { showMyTab = false; selectedTab = TossTab.Shop },
+                onSwitchToHood = { showMyTab = false; selectedTab = TossTab.Hood },
             )
+            return@IdsTheme
+        }
+        if (showTransferHub) {
+            if (showAutoTransfers) {
+                AutoTransferListScreen(
+                    onBack = { showAutoTransfers = false },
+                    onChanged = {
+                        coroutineScope.launch {
+                            try { autoTransferCount = rw.itunda.core.network.NetworkClient.apiService.getMyAutoTransfers().autoTransfers.count { it.status == "ACTIVE" } } catch (_: Exception) { }
+                        }
+                    },
+                )
+            } else {
+                TransferHubScreen(
+                    autoTransferCount = autoTransferCount,
+                    onBack = { showTransferHub = false },
+                    onSendMoney = { showTransferHub = false; transferStep = TransferStep.Recipient },
+                    onOpenAutoTransfers = { showAutoTransfers = true },
+                    onOpenHistory = { showTransferHub = false; showTransactionHistory = true },
+                )
+            }
             return@IdsTheme
         }
 
@@ -717,23 +751,30 @@ fun ItundaAppScreen(
                             DeviceStepUpHost(visible = visible, onDismiss = onDismiss, onVerified = onVerified)
                         },
                     )
-                    TossTab.My -> MyTab(
-                        onOpenSettings = { showSettings = true },
-                        onOpenMenu = { showMenu = true },
-                        onOpenPay = { showPay = true },
-                        onOpenBenefits = { showBenefits = true },
-                        onOpenInvest = { showInvest = true },
-                        onOpenMap = { showMap = true },
-                        onOpenOverview = { showOverview = true },
-                        onOpenLoans = { showLoans = true },
-                        onOpenSupport = { showSupport = true },
-                        onOpenCreditScore = { showCreditScore = true },
-                        onOpenCertificate = { showCertificate = true },
-                        onOpenIdentity = { showIdentity = true },
-                        onOpenWeeklySavings = { showWeeklySavings = true },
-                        onSwitchToShop = { selectedTab = TossTab.Shop },
-                        onSwitchToHood = { selectedTab = TossTab.Hood },
-                    )
+                    // Real 전체 (All services) primary bottom tab (2026-07-24) -- see
+                    // TossTab.All's own doc comment for why this replaced My here.
+                    TossTab.All -> {
+                        val partnerMiniApps by viewModel.partnerMiniApps.collectAsState()
+                        MenuScreen(
+                            onOpenMyTab = { showMyTab = true },
+                            onOpenSettings = { showSettings = true },
+                            onOpenPay = { showPay = true },
+                            onOpenBenefits = { showBenefits = true },
+                            onOpenInvest = { showInvest = true },
+                            onOpenMap = { showMap = true },
+                            onOpenOverview = { showOverview = true },
+                            onOpenLoans = { showLoans = true },
+                            onOpenSupport = { showSupport = true },
+                            onOpenCreditScore = { showCreditScore = true },
+                            onOpenCertificate = { showCertificate = true },
+                            onOpenIdentity = { showIdentity = true },
+                            onOpenWeeklySavings = { showWeeklySavings = true },
+                            onOpenTransferHub = { showTransferHub = true },
+                            onClaimInterest = { savingsFlowStep = SavingsFlowStep.ClaimInterest },
+                            onSwitchToTalk = { selectedTab = TossTab.Talk },
+                            partnerMiniApps = partnerMiniApps,
+                        )
+                    }
                 }
             }
         }
@@ -1124,15 +1165,18 @@ private fun PayTab(onBack: () -> Unit = {}) {
     }
 }
 
-// Real 전체 (KakaoPay-style "All services") menu (2026-07-22) -- separated out of what
-// used to be the single giant My-tab list, at the user's direct request ("My and All
-// screen should be separated like KakaoPay... accessed by click on menu icon in app
-// bar"). This screen is the exhaustive service catalog (every product/setting/legal
-// page itunda has, real or still-target); MyTab below is the new Naver-My-style
-// personal hub (orders/favorites/listings), reachable from the bottom nav directly.
+// Real 전체 (All services) primary bottom tab (2026-07-24, promoted from a My-tab-nested
+// overlay) -- see TossTab.All's own doc comment for the full history: separated from My
+// at the user's own direct request in an earlier pass ("My and All screen should be
+// separated like KakaoPay"), then brought back to the bottom nav directly once mini-apps
+// and (planned) games meant this exhaustive service catalog needed to be one tap away,
+// not nested two taps under My. MyTab is now the secondary, profile-icon-reachable
+// screen for the personal-activity content (orders/favorites/listings) that doesn't
+// belong in an exhaustive product catalog.
 @Composable
 private fun MenuScreen(
-    onBack: () -> Unit,
+    onOpenMyTab: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
     onOpenPay: () -> Unit = {},
     onOpenBenefits: () -> Unit = {},
     onOpenInvest: () -> Unit = {},
@@ -1144,11 +1188,14 @@ private fun MenuScreen(
     onOpenCertificate: () -> Unit = {},
     onOpenIdentity: () -> Unit = {},
     onOpenWeeklySavings: () -> Unit = {},
+    onOpenTransferHub: () -> Unit = {},
     onClaimInterest: () -> Unit = {},
     onSwitchToTalk: () -> Unit = {},
     partnerMiniApps: List<rw.itunda.core.network.PartnerMiniAppDto>,
 ) {
-    androidx.activity.compose.BackHandler(onBack = onBack)
+    // No BackHandler here (2026-07-24): this is now a persistent bottom-nav
+    // destination, not a screen pushed on top of one -- there's nothing to back out
+    // to. My's own real content is one tap in via the profile icon below instead.
     val context = androidx.compose.ui.platform.LocalContext.current
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
     var partnerLoadError by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
@@ -1157,7 +1204,7 @@ private fun MenuScreen(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)
     ) {
-        item { BackTopBar(title = "Menu", onBack = onBack) }
+        item { AllTopBar(onOpenSettings = onOpenSettings, onOpenMyTab = onOpenMyTab) }
         item { SearchBar("Search") }
         // Benefits/Pay folded in here (2026-07-18) -- both lost their own top-level
         // tab when the bottom nav became Home/Shop/Hood/Talk/My, but stay just as
@@ -1257,6 +1304,12 @@ private fun MenuScreen(
             FlatSection("Financial services", listOf(
                 FlatRow("Open account", subtitle = "Itunda Wallet, other banks, RSE brokerage", icon = Icons.Outlined.AddCircleOutline, iconColor = AccentBlue),
                 FlatRow("My assets", subtitle = "Accounts, loans, RSE holdings, cards, points", icon = Icons.Outlined.PieChart, iconColor = AccentPurple, onClick = onOpenOverview),
+                // Real Transfer full page (2026-07-24), matching real Toss's own 송금
+                // row here ("자동이체 · 더치페이" subtitle) -- groups Send money/
+                // Auto-transfer/history in one place instead of Home's Send button
+                // (which stays a quick recipient-picker, unchanged) being the only
+                // entry point.
+                FlatRow("Transfer", subtitle = "Auto-transfer, split a bill", icon = Icons.AutoMirrored.Outlined.Send, iconColor = AccentBlue, onClick = onOpenTransferHub),
                 FlatRow("Get a loan", subtitle = "Personal, salary-backed, SME working capital", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans),
                 FlatRow("Credit score", subtitle = "Free check, alternative data", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenCreditScore),
                 FlatRow("Digital certificate", subtitle = "Sign agreements in Itunda", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenCertificate),
@@ -1372,21 +1425,16 @@ private fun MenuScreen(
 // orders, reservation, favorites." Every number/row here is a real fetched count or
 // preview, not decoration -- the same "no fabricated numbers" discipline this whole
 // app already follows elsewhere.
+// Real My-activity screen (2026-07-24: trimmed to just this) -- "Quick links" and
+// "My account" used to duplicate rows this screen's own content, back when it was the
+// only way to reach them; now that All/MenuScreen is the primary bottom tab and already
+// carries both of those sections itself, keeping a second copy here would just be
+// stale duplication, not a real second path to anything. What's left is genuinely
+// unique to this screen: real per-product order/favorite/listing tracking, the
+// Naver-Pay-style addition this screen was built for in the first place.
 @Composable
 private fun MyTab(
-    onOpenSettings: () -> Unit,
-    onOpenMenu: () -> Unit,
-    onOpenPay: () -> Unit = {},
-    onOpenBenefits: () -> Unit = {},
-    onOpenInvest: () -> Unit = {},
-    onOpenMap: () -> Unit = {},
-    onOpenOverview: () -> Unit = {},
-    onOpenLoans: () -> Unit = {},
-    onOpenSupport: () -> Unit = {},
-    onOpenCreditScore: () -> Unit = {},
-    onOpenCertificate: () -> Unit = {},
-    onOpenIdentity: () -> Unit = {},
-    onOpenWeeklySavings: () -> Unit = {},
+    onBack: () -> Unit,
     onSwitchToShop: () -> Unit = {},
     onSwitchToHood: () -> Unit = {},
 ) {
@@ -1418,18 +1466,7 @@ private fun MyTab(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
-        item { AllTopBar(onOpenSettings = onOpenSettings, onOpenMenu = onOpenMenu) }
-        item {
-            FlatSection(
-                "Quick links",
-                listOf(
-                    FlatRow("Pay", subtitle = "Scan or pay by code", icon = Icons.Outlined.QrCodeScanner, iconColor = AccentBlue, onClick = onOpenPay),
-                    FlatRow("Benefits", subtitle = "Points, coupons, rewards", icon = Icons.Outlined.CardGiftcard, iconColor = AccentOrange, onClick = onOpenBenefits),
-                    FlatRow("Invest", subtitle = "RSE stocks, real portfolio", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenInvest),
-                    FlatRow("Map", subtitle = "Real Rwanda map, self-hosted", icon = Icons.Outlined.Map, iconColor = AccentTeal, onClick = onOpenMap),
-                ),
-            )
-        }
+        item { BackTopBar("My", onBack) }
         // Real order tracking -- Naver Pay/Shopping's own "My" tab leads with recent
         // orders across every product, not a settings list. Shows the real 3 most
         // recent orders per product; tapping switches to that product's own tab where
@@ -1491,24 +1528,10 @@ private fun MyTab(
                 ),
             )
         }
-        // Personal-account items (distinct from the exhaustive product catalog now in
-        // MenuScreen) -- these are inherently "about my own account," matching Naver
-        // Pay's own My tab keeping points/coupons/membership here rather than in its
-        // separate "전체" menu.
-        item {
-            FlatSection(
-                "My account",
-                listOf(
-                    FlatRow("My assets", subtitle = "Accounts, loans, RSE holdings, cards, points", icon = Icons.Outlined.PieChart, iconColor = AccentPurple, onClick = onOpenOverview),
-                    FlatRow("Get a loan", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans),
-                    FlatRow("Credit score", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenCreditScore),
-                    FlatRow("Digital certificate", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenCertificate),
-                    FlatRow("Verify identity", icon = Icons.Outlined.CheckCircle, iconColor = AccentOrange, onClick = onOpenIdentity),
-                    FlatRow("26-week savings", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
-                    FlatRow("Support", icon = Icons.Outlined.HelpOutline, iconColor = AccentGray, onClick = onOpenSupport),
-                ),
-            )
-        }
+        // "My account" (My assets/Get a loan/Credit score/etc) deliberately dropped
+        // here (2026-07-24) -- every one of those rows already lives in the All tab's
+        // own "Financial services" section now that All is the primary bottom tab;
+        // keeping a second copy here would just be stale duplication.
     }
 }
 
@@ -1802,16 +1825,17 @@ private fun PayFeatureCard() {
 // 전체 (All) tab top bar is just the user's name plus a single settings
 // icon button; support/ID live as rows further down the list, not up here.
 @Composable
-private fun AllTopBar(onOpenSettings: () -> Unit = {}, onOpenMenu: (() -> Unit)? = null) {
+private fun AllTopBar(onOpenSettings: () -> Unit = {}, onOpenMyTab: (() -> Unit)? = null) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text("TUYIZERE ERIC", color = TossText, fontWeight = FontWeight.Bold, fontSize = 26.sp)
         Row {
-            // Real 전체 (All services) menu (2026-07-22) -- the exhaustive service
-            // catalog moved out of this tab into its own MenuScreen, at the user's
-            // direct request ("My and All screen should be separated like KakaoPay").
-            // Optional/nil so HomeTopBar's own reuse of a similar bar isn't affected.
-            if (onOpenMenu != null) {
-                IdsIconButton(Icons.Outlined.Menu, contentDescription = "All services", onClick = onOpenMenu)
+            // Real My-activity screen (2026-07-24, inverted from Menu) -- see
+            // TossTab.All's own doc comment: the profile icon now leads to the
+            // personal-activity screen (orders/favorites/listings), the exact reverse
+            // of this bar's old Menu icon. Optional/nil so HomeTopBar's own reuse of a
+            // similar bar isn't affected.
+            if (onOpenMyTab != null) {
+                IdsIconButton(Icons.Outlined.Person, contentDescription = "My activity", onClick = onOpenMyTab)
             }
             // Real Settings screen (2026-07-12, see SettingsScreen.kt) -- previously
             // wired directly to logout with no screen behind it at all.

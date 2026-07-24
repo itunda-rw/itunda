@@ -246,6 +246,36 @@ data class ConfirmTransferResponse(val success: Boolean, val message: String, va
 data class SendDirectP2pRequest(val recipient: String, val amount: java.math.BigDecimal, val description: String = "")
 data class SendDirectP2pResponse(val success: Boolean, val message: String, val transaction: TransactionDto, val newBalance: Double)
 
+// Real Toss Bank 자동이체 (auto-transfer) equivalent -- mirrors AutoTransferController's
+// real DTOs exactly. See AutoTransfer.kt's own doc comment on the backend for why
+// execution reuses sendDirect's exact ledger movement rather than a separate rail.
+enum class AutoTransferFrequency { WEEKLY, MONTHLY }
+data class AutoTransferDto(
+    val id: String,
+    val recipientIdentifier: String,
+    val recipientName: String,
+    val amount: java.math.BigDecimal,
+    val frequency: AutoTransferFrequency,
+    val dayOfWeek: Int?,
+    val dayOfMonth: Int?,
+    val description: String,
+    val status: String,
+    val nextExecutionAt: String,
+    val lastExecutedAt: String?,
+    val executionCount: Int,
+    val lastFailureReason: String?,
+)
+data class CreateAutoTransferRequest(
+    val recipient: String,
+    val amount: java.math.BigDecimal,
+    val frequency: AutoTransferFrequency,
+    val dayOfWeek: Int? = null,
+    val dayOfMonth: Int? = null,
+    val description: String = "",
+)
+data class AutoTransferResponse(val success: Boolean, val autoTransfer: AutoTransferDto)
+data class AutoTransfersListResponse(val success: Boolean, val autoTransfers: List<AutoTransferDto>)
+
 // Mirrors services/backend/savings's SavingsController.kt.
 data class DepositRequest(val goalId: String, val amount: java.math.BigDecimal, val fromWalletId: String? = null)
 data class DepositResponse(val success: Boolean, val message: String, val goal: SavingsGoal)
@@ -1063,6 +1093,21 @@ interface ApiService {
     // MainViewModel.sendTransfer.
     @POST("api/v1/p2p/send")
     suspend fun sendDirect(@Header("Idempotency-Key") idempotencyKey: String, @Body request: SendDirectP2pRequest): SendDirectP2pResponse
+
+    @POST("api/v1/p2p/auto-transfers")
+    suspend fun createAutoTransfer(@Body request: CreateAutoTransferRequest): AutoTransferResponse
+
+    @GET("api/v1/p2p/auto-transfers")
+    suspend fun getMyAutoTransfers(): AutoTransfersListResponse
+
+    @POST("api/v1/p2p/auto-transfers/{id}/pause")
+    suspend fun pauseAutoTransfer(@Path("id") id: String): AutoTransferResponse
+
+    @POST("api/v1/p2p/auto-transfers/{id}/resume")
+    suspend fun resumeAutoTransfer(@Path("id") id: String): AutoTransferResponse
+
+    @DELETE("api/v1/p2p/auto-transfers/{id}")
+    suspend fun cancelAutoTransfer(@Path("id") id: String): AutoTransferResponse
 
     @POST("api/v1/savings/deposit")
     suspend fun depositToGoal(@Header("Idempotency-Key") idempotencyKey: String, @Body request: DepositRequest): DepositResponse
