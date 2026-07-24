@@ -1978,6 +1978,19 @@ private struct JobPostCard: View {
     @StateObject private var locationFetcher = HoodLocationFetcher()
     @State private var showingReportOptions = false
 
+    // Real optional worker identification at mark-filled time (2026-07-24) -- see
+    // backend JobPostService.markFilled's own doc comment.
+    @State private var markingFilled = false
+    @State private var workerPhone = ""
+
+    // Real post-transaction review with asymmetric public/private visibility
+    // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+    @State private var showReviewSheet = false
+    @State private var selectedGoodPoints: Set<String> = []
+    @State private var selectedUncomfortablePoints: Set<String> = []
+    @State private var submittingReview = false
+    @State private var reviewSubmitted = false
+
     private var payLabel: String {
         let base = "\(Int(post.payAmount)) RWF"
         return post.payType == "HOURLY" ? "\(base)/hr" : base
@@ -2015,10 +2028,41 @@ private struct JobPostCard: View {
             if let error {
                 Text(error).font(.caption).foregroundColor(.red)
             }
+            // Real optional "who did you hire?" prompt (2026-07-24) -- see backend
+            // JobPostService.markFilled's own doc comment.
+            if markingFilled {
+                TextField("Worker's phone (optional)", text: $workerPhone)
+                    .keyboardType(.phonePad)
+                    .padding(10)
+                    .background(IDS.Colors.chipBackground)
+                    .cornerRadius(10)
+                HStack(spacing: 10) {
+                    actionButton("Skip", filled: false) { await markFilled(workerPhoneNumber: nil) }
+                    actionButton("Confirm", filled: true) { await markFilled(workerPhoneNumber: workerPhone.trimmingCharacters(in: .whitespaces)) }
+                }
+            }
+            // Real post-transaction review, preset checklist with asymmetric public/
+            // private visibility (2026-07-24) -- see backend HoodReviewService's own
+            // doc comment. Only offered once a real worker was recorded at mark-filled
+            // time; no pre-check for "already reviewed" (a real, honest v1 -- a second
+            // attempt just surfaces the backend's own REVIEW_ALREADY_SUBMITTED error).
+            if isMine, post.status == "FILLED", post.workerId != nil, !reviewSubmitted {
+                if showReviewSheet {
+                    HoodReviewForm(
+                        selectedGoodPoints: $selectedGoodPoints,
+                        selectedUncomfortablePoints: $selectedUncomfortablePoints,
+                        submitting: submittingReview,
+                        onCancel: { showReviewSheet = false },
+                        onSubmit: { await submitReview() }
+                    )
+                } else {
+                    actionButton("Rate this worker", filled: true) { showReviewSheet = true }
+                }
+            }
             HStack(spacing: 10) {
                 if isMine {
-                    if post.status == "OPEN" {
-                        actionButton("Mark filled", filled: false) { await markFilled() }
+                    if post.status == "OPEN" && !markingFilled {
+                        actionButton("Mark filled", filled: false) { markingFilled = true }
                     }
                     if post.status != "REMOVED" {
                         actionButton("Remove", filled: false) { await remove() }
@@ -2073,12 +2117,29 @@ private struct JobPostCard: View {
         .disabled(busy)
     }
 
-    private func markFilled() async {
+    private func markFilled(workerPhoneNumber: String?) async {
         busy = true
         defer { busy = false }
         do {
-            _ = try await NetworkClient.shared.markJobPostFilled(post.id)
+            _ = try await NetworkClient.shared.markJobPostFilled(post.id, workerPhoneNumber: workerPhoneNumber?.isEmpty == true ? nil : workerPhoneNumber)
+            markingFilled = false
             onChanged()
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    // Real post-transaction review with asymmetric public/private visibility
+    // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+    private func submitReview() async {
+        submittingReview = true
+        defer { submittingReview = false }
+        do {
+            _ = try await NetworkClient.shared.submitJobPostReview(
+                post.id, goodPoints: Array(selectedGoodPoints), uncomfortablePoints: Array(selectedUncomfortablePoints),
+            )
+            reviewSubmitted = true
+            showReviewSheet = false
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
@@ -2538,6 +2599,19 @@ private struct PropertyListingCard: View {
     @State private var showRoute = false
     @StateObject private var locationFetcher = HoodLocationFetcher()
 
+    // Real optional buyer/tenant identification at mark-taken time (2026-07-24) --
+    // see backend PropertyListingService.markTaken's own doc comment.
+    @State private var markingTaken = false
+    @State private var counterpartyPhone = ""
+
+    // Real post-transaction review with asymmetric public/private visibility
+    // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+    @State private var showReviewSheet = false
+    @State private var selectedGoodPoints: Set<String> = []
+    @State private var selectedUncomfortablePoints: Set<String> = []
+    @State private var submittingReview = false
+    @State private var reviewSubmitted = false
+
     private var priceLabel: String {
         let base = "\(Int(listing.price)) RWF"
         return listing.listingType == "RENT" ? "\(base)/mo" : base
@@ -2599,10 +2673,42 @@ private struct PropertyListingCard: View {
             if let error {
                 Text(error).font(.caption).foregroundColor(.red)
             }
+            // Real optional "who's the buyer/tenant?" prompt (2026-07-24) -- see
+            // backend PropertyListingService.markTaken's own doc comment.
+            if markingTaken {
+                TextField("Their phone (optional)", text: $counterpartyPhone)
+                    .keyboardType(.phonePad)
+                    .padding(10)
+                    .background(IDS.Colors.chipBackground)
+                    .cornerRadius(10)
+                HStack(spacing: 10) {
+                    actionButton("Skip", filled: false) { await markTaken(counterpartyPhoneNumber: nil) }
+                    actionButton("Confirm", filled: true) { await markTaken(counterpartyPhoneNumber: counterpartyPhone.trimmingCharacters(in: .whitespaces)) }
+                }
+            }
+            // Real post-transaction review, preset checklist with asymmetric public/
+            // private visibility (2026-07-24) -- see backend HoodReviewService's own
+            // doc comment. Only offered once a real counterparty was recorded at
+            // mark-taken time; no pre-check for "already reviewed" (a real, honest v1
+            // -- a second attempt just surfaces the backend's own
+            // REVIEW_ALREADY_SUBMITTED error).
+            if isMine, listing.status == "TAKEN", listing.counterpartyId != nil, !reviewSubmitted {
+                if showReviewSheet {
+                    HoodReviewForm(
+                        selectedGoodPoints: $selectedGoodPoints,
+                        selectedUncomfortablePoints: $selectedUncomfortablePoints,
+                        submitting: submittingReview,
+                        onCancel: { showReviewSheet = false },
+                        onSubmit: { await submitReview() }
+                    )
+                } else {
+                    actionButton(listing.listingType == "RENT" ? "Rate this tenant" : "Rate this buyer", filled: true) { showReviewSheet = true }
+                }
+            }
             HStack(spacing: 10) {
                 if isMine {
-                    if listing.status == "AVAILABLE" {
-                        actionButton("Mark taken", filled: false) { await markTaken() }
+                    if listing.status == "AVAILABLE" && !markingTaken {
+                        actionButton("Mark taken", filled: false) { markingTaken = true }
                     }
                     if listing.status != "REMOVED" {
                         actionButton("Remove", filled: false) { await remove() }
@@ -2658,12 +2764,31 @@ private struct PropertyListingCard: View {
         .disabled(busy)
     }
 
-    private func markTaken() async {
+    private func markTaken(counterpartyPhoneNumber: String?) async {
         busy = true
         defer { busy = false }
         do {
-            _ = try await NetworkClient.shared.markPropertyListingTaken(listing.id)
+            _ = try await NetworkClient.shared.markPropertyListingTaken(
+                listing.id, counterpartyPhoneNumber: counterpartyPhoneNumber?.isEmpty == true ? nil : counterpartyPhoneNumber,
+            )
+            markingTaken = false
             onChanged()
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    // Real post-transaction review with asymmetric public/private visibility
+    // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+    private func submitReview() async {
+        submittingReview = true
+        defer { submittingReview = false }
+        do {
+            _ = try await NetworkClient.shared.submitPropertyListingReview(
+                listing.id, goodPoints: Array(selectedGoodPoints), uncomfortablePoints: Array(selectedUncomfortablePoints),
+            )
+            reviewSubmitted = true
+            showReviewSheet = false
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }

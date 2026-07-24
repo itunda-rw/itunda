@@ -930,11 +930,16 @@ public struct JobPostDto: Decodable, Identifiable {
     public let createdAt: String
     public let latitude: Double?
     public let longitude: Double?
+    // workerId added 2026-07-24 -- real optional worker identification captured at
+    // mark-filled time, see backend JobPost.kt's own doc comment. Only set once a
+    // real review becomes possible for this transaction.
+    public let workerId: String?
 }
 public struct CreateJobPostRequest: Encodable {
     public let category: String; public let title: String; public let description: String; public let payType: String; public let payAmount: Double
     public let latitude: Double?; public let longitude: Double?
 }
+public struct MarkFilledRequest: Encodable { public let workerPhoneNumber: String? }
 public struct JobPostResponse: Decodable { public let success: Bool; public let post: JobPostDto }
 public struct JobPostsResponse: Decodable { public let success: Bool; public let posts: [JobPostDto]; public let trustScores: [String: Int]? }
 public struct JobCategoriesResponse: Decodable { public let success: Bool; public let categories: [JobCategoryDto] }
@@ -958,7 +963,12 @@ public struct PropertyListingDto: Decodable, Identifiable {
     public let createdAt: String
     public let latitude: Double?
     public let longitude: Double?
+    // counterpartyId added 2026-07-24 -- real optional buyer/tenant identification
+    // captured at mark-taken time, see backend PropertyListing.kt's own doc comment.
+    // Only set once a real review becomes possible for this transaction.
+    public let counterpartyId: String?
 }
+public struct MarkTakenRequest: Encodable { public let counterpartyPhoneNumber: String? }
 public struct CreatePropertyListingRequest: Encodable {
     public let listingType: String; public let propertyType: String; public let title: String; public let description: String; public let price: Double
     public let bedrooms: Int?; public let sizeSqm: Double?; public let latitude: Double?; public let longitude: Double?
@@ -1698,8 +1708,21 @@ extension NetworkClient {
         try await get("api/v1/jobs/posts/my-neighborhood", query: [URLQueryItem(name: "category", value: category)])
     }
 
-    public func markJobPostFilled(_ jobPostId: String) async throws -> JobPostResponse {
-        try await authenticatedPost("api/v1/jobs/posts/\(jobPostId)/mark-filled", body: EmptyBody())
+    public func markJobPostFilled(_ jobPostId: String, workerPhoneNumber: String? = nil) async throws -> JobPostResponse {
+        try await authenticatedPost("api/v1/jobs/posts/\(jobPostId)/mark-filled", body: MarkFilledRequest(workerPhoneNumber: workerPhoneNumber))
+    }
+
+    // Real post-transaction review with asymmetric public/private visibility
+    // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+    public func submitJobPostReview(_ jobPostId: String, goodPoints: [String], uncomfortablePoints: [String]) async throws -> HoodReviewResponse {
+        try await authenticatedPost(
+            "api/v1/jobs/posts/\(jobPostId)/review",
+            body: SubmitHoodReviewRequest(goodPoints: goodPoints, uncomfortablePoints: uncomfortablePoints),
+        )
+    }
+
+    public func getJobPostReviews(_ jobPostId: String) async throws -> HoodReviewsResponse {
+        try await get("api/v1/jobs/posts/\(jobPostId)/review")
     }
 
     public func removeJobPost(_ jobPostId: String) async throws -> JobPostResponse {
@@ -1754,8 +1777,24 @@ extension NetworkClient {
         try await get("api/v1/realestate/listings/my-neighborhood")
     }
 
-    public func markPropertyListingTaken(_ propertyListingId: String) async throws -> PropertyListingResponse {
-        try await authenticatedPost("api/v1/realestate/listings/\(propertyListingId)/mark-taken", body: EmptyBody())
+    public func markPropertyListingTaken(_ propertyListingId: String, counterpartyPhoneNumber: String? = nil) async throws -> PropertyListingResponse {
+        try await authenticatedPost(
+            "api/v1/realestate/listings/\(propertyListingId)/mark-taken",
+            body: MarkTakenRequest(counterpartyPhoneNumber: counterpartyPhoneNumber),
+        )
+    }
+
+    // Real post-transaction review with asymmetric public/private visibility
+    // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+    public func submitPropertyListingReview(_ propertyListingId: String, goodPoints: [String], uncomfortablePoints: [String]) async throws -> HoodReviewResponse {
+        try await authenticatedPost(
+            "api/v1/realestate/listings/\(propertyListingId)/review",
+            body: SubmitHoodReviewRequest(goodPoints: goodPoints, uncomfortablePoints: uncomfortablePoints),
+        )
+    }
+
+    public func getPropertyListingReviews(_ propertyListingId: String) async throws -> HoodReviewsResponse {
+        try await get("api/v1/realestate/listings/\(propertyListingId)/review")
     }
 
     public func removePropertyListing(_ propertyListingId: String) async throws -> PropertyListingResponse {

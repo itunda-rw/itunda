@@ -571,7 +571,12 @@ data class JobPostDto(
     val id: String, val posterId: String, val category: String, val title: String, val description: String,
     val payType: String, val payAmount: Double, val status: String, val createdAt: String,
     val latitude: Double? = null, val longitude: Double? = null,
+    // workerId added 2026-07-24 -- real optional worker identification captured at
+    // mark-filled time, see backend JobPost.kt's own doc comment. Only set once a
+    // real review becomes possible for this transaction.
+    val workerId: String? = null,
 )
+data class MarkFilledRequest(val workerPhoneNumber: String? = null)
 data class CreateJobPostRequest(
     val category: String, val title: String, val description: String, val payType: String, val payAmount: Double,
     val latitude: Double? = null, val longitude: Double? = null,
@@ -590,7 +595,12 @@ data class PropertyListingDto(
     val id: String, val listerId: String, val listingType: String, val propertyType: String,
     val title: String, val description: String, val price: Double, val bedrooms: Int? = null, val sizeSqm: Double? = null,
     val status: String, val createdAt: String, val latitude: Double? = null, val longitude: Double? = null,
+    // counterpartyId added 2026-07-24 -- real optional buyer/tenant identification
+    // captured at mark-taken time, see backend PropertyListing.kt's own doc comment.
+    // Only set once a real review becomes possible for this transaction.
+    val counterpartyId: String? = null,
 )
+data class MarkTakenRequest(val counterpartyPhoneNumber: String? = null)
 data class CreatePropertyListingRequest(
     val listingType: String, val propertyType: String, val title: String, val description: String, val price: Double,
     val bedrooms: Int? = null, val sizeSqm: Double? = null, val latitude: Double? = null, val longitude: Double? = null,
@@ -1447,7 +1457,15 @@ interface ApiService {
     suspend fun getJobPostsMyNeighborhood(@Query("category") category: String? = null): JobPostsResponse
 
     @POST("api/v1/jobs/posts/{id}/mark-filled")
-    suspend fun markJobPostFilled(@Path("id") jobPostId: String): JobPostResponse
+    suspend fun markJobPostFilled(@Path("id") jobPostId: String, @Body request: MarkFilledRequest = MarkFilledRequest()): JobPostResponse
+
+    // Real post-transaction review with asymmetric public/private visibility
+    // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+    @POST("api/v1/jobs/posts/{id}/review")
+    suspend fun submitJobPostReview(@Path("id") jobPostId: String, @Body request: SubmitHoodReviewRequest): HoodReviewResponse
+
+    @GET("api/v1/jobs/posts/{id}/review")
+    suspend fun getJobPostReviews(@Path("id") jobPostId: String): HoodReviewsResponse
 
     @DELETE("api/v1/jobs/posts/{id}")
     suspend fun removeJobPost(@Path("id") jobPostId: String): JobPostResponse
@@ -1488,7 +1506,15 @@ interface ApiService {
     suspend fun getPropertyListingsMyNeighborhood(): PropertyListingsResponse
 
     @POST("api/v1/realestate/listings/{id}/mark-taken")
-    suspend fun markPropertyListingTaken(@Path("id") propertyListingId: String): PropertyListingResponse
+    suspend fun markPropertyListingTaken(@Path("id") propertyListingId: String, @Body request: MarkTakenRequest = MarkTakenRequest()): PropertyListingResponse
+
+    // Real post-transaction review with asymmetric public/private visibility
+    // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+    @POST("api/v1/realestate/listings/{id}/review")
+    suspend fun submitPropertyListingReview(@Path("id") propertyListingId: String, @Body request: SubmitHoodReviewRequest): HoodReviewResponse
+
+    @GET("api/v1/realestate/listings/{id}/review")
+    suspend fun getPropertyListingReviews(@Path("id") propertyListingId: String): HoodReviewsResponse
 
     @DELETE("api/v1/realestate/listings/{id}")
     suspend fun removePropertyListing(@Path("id") propertyListingId: String): PropertyListingResponse

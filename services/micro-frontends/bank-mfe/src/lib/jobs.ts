@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import type { HoodReview } from './marketplace';
 
 // Real 당근알바 (Danggeun/Karrot "Alba"/part-time-job board)-style local job posting
 // (rw.itunda.jobs, 2026-07-19) -- see JobPostService.kt's own doc comment for the full
@@ -21,6 +22,10 @@ export interface JobPost {
   // Real hyperlocal neighborhood (2026-07-20), cached at creation time -- see
   // lib/neighborhood.ts's own doc comment for the full account.
   neighborhood?: string | null;
+  // workerId added 2026-07-24 -- real optional worker identification captured at
+  // mark-filled time, see backend JobPost.kt's own doc comment. Only set once a
+  // real review becomes possible for this transaction.
+  workerId?: string | null;
 }
 
 export interface JobCategory {
@@ -71,10 +76,19 @@ export const createJobPost = (
     body: JSON.stringify({ category, title, description, payType, payAmount, latitude, longitude }),
   }).then((r) => r.post);
 
-export const markJobPostFilled = (jobPostId: string) =>
+export const markJobPostFilled = (jobPostId: string, workerPhoneNumber?: string) =>
   apiFetch<{ success: boolean; post: JobPost }>(`/api/v1/jobs/posts/${jobPostId}/mark-filled`, {
     method: 'POST',
+    body: JSON.stringify({ workerPhoneNumber }),
   }).then((r) => r.post);
+
+// Real post-transaction review with asymmetric public/private visibility (2026-07-24)
+// -- see backend HoodReviewService's own doc comment.
+export const submitJobPostReview = (jobPostId: string, goodPoints: string[], uncomfortablePoints: string[]) =>
+  apiFetch<{ success: boolean; review: HoodReview }>(`/api/v1/jobs/posts/${jobPostId}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ goodPoints, uncomfortablePoints }),
+  }).then((r) => r.review);
 
 export const removeJobPost = (jobPostId: string) =>
   apiFetch<{ success: boolean; post: JobPost }>(`/api/v1/jobs/posts/${jobPostId}`, {

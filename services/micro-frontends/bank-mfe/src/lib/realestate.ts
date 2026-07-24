@@ -23,6 +23,10 @@ export interface PropertyListing {
   // Real hyperlocal neighborhood (2026-07-20), cached at creation time -- see
   // lib/neighborhood.ts's own doc comment for the full account.
   neighborhood?: string | null;
+  // counterpartyId added 2026-07-24 -- real optional buyer/tenant identification
+  // captured at mark-taken time, see backend PropertyListing.kt's own doc comment.
+  // Only set once a real review becomes possible for this transaction.
+  counterpartyId?: string | null;
 }
 
 export interface PropertyType {
@@ -39,7 +43,7 @@ export const fetchPropertyTypes = () =>
 // PropertyListingController's own doc comment) -- was already spread in every one of
 // these responses since 2026-07-21, but silently discarded here until now. Reuses
 // lib/marketplace.ts's own TrustScores type (same Record<string, number> shape).
-import type { TrustScores } from './marketplace';
+import type { HoodReview, TrustScores } from './marketplace';
 
 export const fetchPropertyListings = (listingType?: PropertyListingType, propertyType?: string) => {
   const params = new URLSearchParams();
@@ -80,10 +84,19 @@ export const createPropertyListing = (
     body: JSON.stringify({ listingType, propertyType, title, description, price, bedrooms, sizeSqm, latitude, longitude }),
   }).then((r) => r.listing);
 
-export const markPropertyListingTaken = (propertyListingId: string) =>
+export const markPropertyListingTaken = (propertyListingId: string, counterpartyPhoneNumber?: string) =>
   apiFetch<{ success: boolean; listing: PropertyListing }>(`/api/v1/realestate/listings/${propertyListingId}/mark-taken`, {
     method: 'POST',
+    body: JSON.stringify({ counterpartyPhoneNumber }),
   }).then((r) => r.listing);
+
+// Real post-transaction review with asymmetric public/private visibility (2026-07-24)
+// -- see backend HoodReviewService's own doc comment.
+export const submitPropertyListingReview = (propertyListingId: string, goodPoints: string[], uncomfortablePoints: string[]) =>
+  apiFetch<{ success: boolean; review: HoodReview }>(`/api/v1/realestate/listings/${propertyListingId}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ goodPoints, uncomfortablePoints }),
+  }).then((r) => r.review);
 
 export const removePropertyListing = (propertyListingId: string) =>
   apiFetch<{ success: boolean; listing: PropertyListing }>(`/api/v1/realestate/listings/${propertyListingId}`, {

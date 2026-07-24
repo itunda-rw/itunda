@@ -50,14 +50,14 @@ import {
 } from './lib/community';
 import {
   addJobPostFavorite, contactPoster, createJobPost, fetchJobCategories, fetchJobPosts, fetchJobPostsMyNeighborhood,
-  fetchMyFavoriteJobPosts, fetchMyJobPosts, markJobPostFilled, removeJobPost, removeJobPostFavorite,
+  fetchMyFavoriteJobPosts, fetchMyJobPosts, markJobPostFilled, removeJobPost, removeJobPostFavorite, submitJobPostReview,
   type FavoriteJobPost, type JobCategory, type JobPayType, type JobPost,
 } from './lib/jobs';
 import {
   addPropertyListingFavorite, contactLister, createPropertyListing, fetchMyFavoritePropertyListings, fetchMyPropertyListings,
   fetchPropertyListings, fetchPropertyListingsMyNeighborhood, fetchPropertyOffersForConversation, fetchPropertyTypes,
   makePropertyOffer, markPropertyListingTaken, removePropertyListing, removePropertyListingFavorite, respondToPropertyOffer,
-  type FavoritePropertyListing, type PropertyListing, type PropertyListingType, type PropertyPriceOffer, type PropertyType,
+  submitPropertyListingReview, type FavoritePropertyListing, type PropertyListing, type PropertyListingType, type PropertyPriceOffer, type PropertyType,
 } from './lib/realestate';
 import {
   addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, fetchAvailableDeliveries,
@@ -4242,6 +4242,47 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Real optional worker identification at mark-filled time (2026-07-24) -- see
+  // backend JobPostService.markFilled's own doc comment.
+  const [markingFilled, setMarkingFilled] = useState(false);
+  const [workerPhone, setWorkerPhone] = useState('');
+
+  // Real post-transaction review with asymmetric public/private visibility
+  // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+  const [showReviewSheet, setShowReviewSheet] = useState(false);
+  const [selectedGoodPoints, setSelectedGoodPoints] = useState<Set<string>>(new Set());
+  const [selectedUncomfortablePoints, setSelectedUncomfortablePoints] = useState<Set<string>>(new Set());
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+
+  const handleMarkFilled = async (workerPhoneNumber?: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await markJobPostFilled(post.id, workerPhoneNumber || undefined);
+      setMarkingFilled(false);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update this job.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    setSubmittingReview(true);
+    setError(null);
+    try {
+      await submitJobPostReview(post.id, Array.from(selectedGoodPoints), Array.from(selectedUncomfortablePoints));
+      setReviewSubmitted(true);
+      setShowReviewSheet(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not submit this review.');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
   const payLabel = `${post.payAmount.toLocaleString()} RWF${post.payType === 'HOURLY' ? '/hr' : ''}`;
 
   return (
@@ -4269,19 +4310,55 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
       {!isMine && posterTrustScore != null && <TrustBadge score={posterTrustScore} />}
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{post.description}</p>
       {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      {/* Real optional "who did you hire?" prompt (2026-07-24) -- see backend
+          JobPostService.markFilled's own doc comment. */}
+      {markingFilled && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <input
+            type="tel"
+            value={workerPhone}
+            onChange={(e) => setWorkerPhone(e.target.value)}
+            placeholder="Worker's phone (optional)"
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={() => handleMarkFilled()}>
+              Skip
+            </button>
+            <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={() => handleMarkFilled(workerPhone.trim())}>
+              Confirm
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Real post-transaction review, preset checklist with asymmetric public/private
+          visibility (2026-07-24) -- see backend HoodReviewService's own doc comment.
+          Only offered once a real worker was recorded at mark-filled time. */}
+      {isMine && post.status === 'FILLED' && post.workerId && !reviewSubmitted && (
+        showReviewSheet ? (
+          <HoodReviewForm
+            selectedGoodPoints={selectedGoodPoints}
+            onToggleGoodPoint={(id) => setSelectedGoodPoints((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; })}
+            selectedUncomfortablePoints={selectedUncomfortablePoints}
+            onToggleUncomfortablePoint={(id) => setSelectedUncomfortablePoints((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; })}
+            submitting={submittingReview}
+            onCancel={() => setShowReviewSheet(false)}
+            onSubmit={handleSubmitReview}
+          />
+        ) : (
+          <button className="toss-btn toss-btn-primary" disabled={busy} onClick={() => setShowReviewSheet(true)}>
+            Rate this worker
+          </button>
+        )
+      )}
       <div style={{ display: 'flex', gap: '10px' }}>
         {isMine ? (
           <>
-            {post.status === 'OPEN' && (
+            {post.status === 'OPEN' && !markingFilled && (
               <button
                 className="toss-btn toss-btn-secondary"
                 disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  try { await markJobPostFilled(post.id); onChanged(); }
-                  catch (err) { setError(err instanceof ApiError ? err.message : 'Could not update this job.'); }
-                  finally { setBusy(false); }
-                }}
+                onClick={() => setMarkingFilled(true)}
               >
                 Mark filled
               </button>
@@ -4654,6 +4731,19 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
   const [offering, setOffering] = useState(false);
   const [offerAmount, setOfferAmount] = useState('');
 
+  // Real optional buyer/tenant identification at mark-taken time (2026-07-24) -- see
+  // backend PropertyListingService.markTaken's own doc comment.
+  const [markingTaken, setMarkingTaken] = useState(false);
+  const [counterpartyPhone, setCounterpartyPhone] = useState('');
+
+  // Real post-transaction review with asymmetric public/private visibility
+  // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+  const [showReviewSheet, setShowReviewSheet] = useState(false);
+  const [selectedGoodPoints, setSelectedGoodPoints] = useState<Set<string>>(new Set());
+  const [selectedUncomfortablePoints, setSelectedUncomfortablePoints] = useState<Set<string>>(new Set());
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+
   const priceLabel = `${listing.price.toLocaleString()} RWF${listing.listingType === 'RENT' ? '/mo' : ''}`;
   const detailsLabel = [
     listing.bedrooms != null ? `${listing.bedrooms} bd` : null,
@@ -4674,6 +4764,34 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
       setError(err instanceof ApiError ? err.message : 'Could not send this offer.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleMarkTaken = async (counterpartyPhoneNumber?: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await markPropertyListingTaken(listing.id, counterpartyPhoneNumber || undefined);
+      setMarkingTaken(false);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update this listing.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    setSubmittingReview(true);
+    setError(null);
+    try {
+      await submitPropertyListingReview(listing.id, Array.from(selectedGoodPoints), Array.from(selectedUncomfortablePoints));
+      setReviewSubmitted(true);
+      setShowReviewSheet(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not submit this review.');
+    } finally {
+      setSubmittingReview(false);
     }
   };
 
@@ -4720,19 +4838,55 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
         </div>
       )}
       {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      {/* Real optional "who's the buyer/tenant?" prompt (2026-07-24) -- see backend
+          PropertyListingService.markTaken's own doc comment. */}
+      {markingTaken && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <input
+            type="tel"
+            value={counterpartyPhone}
+            onChange={(e) => setCounterpartyPhone(e.target.value)}
+            placeholder="Their phone (optional)"
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={() => handleMarkTaken()}>
+              Skip
+            </button>
+            <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busy} onClick={() => handleMarkTaken(counterpartyPhone.trim())}>
+              Confirm
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Real post-transaction review, preset checklist with asymmetric public/private
+          visibility (2026-07-24) -- see backend HoodReviewService's own doc comment.
+          Only offered once a real counterparty was recorded at mark-taken time. */}
+      {isMine && listing.status === 'TAKEN' && listing.counterpartyId && !reviewSubmitted && (
+        showReviewSheet ? (
+          <HoodReviewForm
+            selectedGoodPoints={selectedGoodPoints}
+            onToggleGoodPoint={(id) => setSelectedGoodPoints((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; })}
+            selectedUncomfortablePoints={selectedUncomfortablePoints}
+            onToggleUncomfortablePoint={(id) => setSelectedUncomfortablePoints((prev) => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; })}
+            submitting={submittingReview}
+            onCancel={() => setShowReviewSheet(false)}
+            onSubmit={handleSubmitReview}
+          />
+        ) : (
+          <button className="toss-btn toss-btn-primary" disabled={busy} onClick={() => setShowReviewSheet(true)}>
+            {listing.listingType === 'RENT' ? 'Rate this tenant' : 'Rate this buyer'}
+          </button>
+        )
+      )}
       <div style={{ display: 'flex', gap: '10px' }}>
         {isMine ? (
           <>
-            {listing.status === 'AVAILABLE' && (
+            {listing.status === 'AVAILABLE' && !markingTaken && (
               <button
                 className="toss-btn toss-btn-secondary"
                 disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  try { await markPropertyListingTaken(listing.id); onChanged(); }
-                  catch (err) { setError(err instanceof ApiError ? err.message : 'Could not update this listing.'); }
-                  finally { setBusy(false); }
-                }}
+                onClick={() => setMarkingTaken(true)}
               >
                 Mark taken
               </button>

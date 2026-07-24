@@ -44,6 +44,7 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.HoodReportAction
+import rw.itunda.core.designsystem.components.HoodReviewForm
 import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
 import rw.itunda.core.designsystem.components.RouteMiniMap
@@ -56,7 +57,9 @@ import rw.itunda.core.network.CreateJobPostRequest
 import rw.itunda.core.network.FavoriteJobPostDto
 import rw.itunda.core.network.JobCategoryDto
 import rw.itunda.core.network.JobPostDto
+import rw.itunda.core.network.MarkFilledRequest
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.SubmitHoodReviewRequest
 import rw.itunda.core.network.TokenStore
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
@@ -454,6 +457,20 @@ private fun JobPostCard(
     )
     val payLabel = "%,.0f RWF".format(post.payAmount) + if (post.payType == "HOURLY") "/hr" else ""
 
+    // Real optional worker identification at mark-filled time (2026-07-24) -- see
+    // backend JobPostService.markFilled's own doc comment. Confirm with a phone
+    // number or Skip, either way the post completes.
+    var markingFilled by remember { mutableStateOf(false) }
+    var workerPhone by remember { mutableStateOf("") }
+
+    // Real post-transaction review with asymmetric public/private visibility
+    // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+    var showReviewSheet by remember { mutableStateOf(false) }
+    var selectedGoodPoints by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var selectedUncomfortablePoints by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var submittingReview by remember { mutableStateOf(false) }
+    var reviewSubmitted by remember { mutableStateOf(false) }
+
     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
@@ -480,17 +497,78 @@ private fun JobPostCard(
             }
             Text(post.description, color = Ids.colors.textSecondary, fontSize = 13.sp)
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+            // Real optional "who did you hire?" prompt (2026-07-24) -- see backend
+            // JobPostService.markFilled's own doc comment.
+            if (markingFilled) {
+                OutlinedTextField(
+                    value = workerPhone,
+                    onValueChange = { workerPhone = it },
+                    placeholder = { Text("Worker's phone (optional)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ListingActionButton("Skip", busy) {
+                        busy = true
+                        coroutineScope.launch {
+                            try { NetworkClient.apiService.markJobPostFilled(post.id); markingFilled = false; onChanged() }
+                            catch (e: HttpException) { error = superAppErrorMessage(e) }
+                            finally { busy = false }
+                        }
+                    }
+                    ListingActionButton("Confirm", busy, filled = true) {
+                        busy = true
+                        coroutineScope.launch {
+                            try {
+                                NetworkClient.apiService.markJobPostFilled(post.id, MarkFilledRequest(workerPhone.trim().ifBlank { null }))
+                                markingFilled = false
+                                onChanged()
+                            } catch (e: HttpException) { error = superAppErrorMessage(e) }
+                            finally { busy = false }
+                        }
+                    }
+                }
+            }
+            // Real post-transaction review, preset checklist with asymmetric public/
+            // private visibility (2026-07-24) -- see backend HoodReviewService's own
+            // doc comment. Only offered once a real worker was recorded at mark-filled
+            // time; no pre-check for "already reviewed" (a real, honest v1 -- a second
+            // attempt just surfaces the backend's own REVIEW_ALREADY_SUBMITTED error).
+            if (isMine && post.status == "FILLED" && post.workerId != null && !reviewSubmitted) {
+                if (showReviewSheet) {
+                    HoodReviewForm(
+                        selectedGoodPoints = selectedGoodPoints,
+                        onToggleGoodPoint = { p -> selectedGoodPoints = if (p in selectedGoodPoints) selectedGoodPoints - p else selectedGoodPoints + p },
+                        selectedUncomfortablePoints = selectedUncomfortablePoints,
+                        onToggleUncomfortablePoint = { p -> selectedUncomfortablePoints = if (p in selectedUncomfortablePoints) selectedUncomfortablePoints - p else selectedUncomfortablePoints + p },
+                        submitting = submittingReview,
+                        onCancel = { showReviewSheet = false },
+                        onSubmit = {
+                            submittingReview = true
+                            coroutineScope.launch {
+                                try {
+                                    NetworkClient.apiService.submitJobPostReview(
+                                        post.id,
+                                        SubmitHoodReviewRequest(selectedGoodPoints.toList(), selectedUncomfortablePoints.toList()),
+                                    )
+                                    reviewSubmitted = true
+                                    showReviewSheet = false
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } finally {
+                                    submittingReview = false
+                                }
+                            }
+                        },
+                    )
+                } else {
+                    ListingActionButton("Rate this worker", busy, filled = true) { showReviewSheet = true }
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (isMine) {
-                    if (post.status == "OPEN") {
-                        ListingActionButton("Mark filled", busy) {
-                            busy = true
-                            coroutineScope.launch {
-                                try { NetworkClient.apiService.markJobPostFilled(post.id); onChanged() }
-                                catch (e: HttpException) { error = superAppErrorMessage(e) }
-                                finally { busy = false }
-                            }
-                        }
+                    if (post.status == "OPEN" && !markingFilled) {
+                        ListingActionButton("Mark filled", busy) { markingFilled = true }
                     }
                     if (post.status != "REMOVED") {
                         ListingActionButton("Remove", busy) {

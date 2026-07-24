@@ -44,6 +44,7 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.HoodReportAction
+import rw.itunda.core.designsystem.components.HoodReviewForm
 import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
 import rw.itunda.core.designsystem.components.RouteMiniMap
@@ -55,9 +56,11 @@ import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.CreatePropertyListingRequest
 import rw.itunda.core.network.FavoritePropertyListingDto
 import rw.itunda.core.network.MakePropertyOfferRequest
+import rw.itunda.core.network.MarkTakenRequest
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.PropertyListingDto
 import rw.itunda.core.network.PropertyTypeDto
+import rw.itunda.core.network.SubmitHoodReviewRequest
 import rw.itunda.core.network.TokenStore
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
@@ -466,6 +469,20 @@ private fun PropertyListingCard(
         listing.sizeSqm?.let { "${it} m²" },
     ).joinToString(" · ")
 
+    // Real optional buyer/tenant identification at mark-taken time (2026-07-24) -- see
+    // backend PropertyListingService.markTaken's own doc comment. Confirm with a
+    // phone number or Skip, either way the listing completes.
+    var markingTaken by remember { mutableStateOf(false) }
+    var counterpartyPhone by remember { mutableStateOf("") }
+
+    // Real post-transaction review with asymmetric public/private visibility
+    // (2026-07-24) -- see backend HoodReviewService's own doc comment.
+    var showReviewSheet by remember { mutableStateOf(false) }
+    var selectedGoodPoints by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var selectedUncomfortablePoints by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var submittingReview by remember { mutableStateOf(false) }
+    var reviewSubmitted by remember { mutableStateOf(false) }
+
     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
@@ -517,17 +534,80 @@ private fun PropertyListingCard(
                 }
             }
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+            // Real optional "who's the buyer/tenant?" prompt (2026-07-24) -- see
+            // backend PropertyListingService.markTaken's own doc comment.
+            if (markingTaken) {
+                OutlinedTextField(
+                    value = counterpartyPhone,
+                    onValueChange = { counterpartyPhone = it },
+                    placeholder = { Text("Their phone (optional)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ListingActionButton("Skip", busy) {
+                        busy = true
+                        coroutineScope.launch {
+                            try { NetworkClient.apiService.markPropertyListingTaken(listing.id); markingTaken = false; onChanged() }
+                            catch (e: HttpException) { error = superAppErrorMessage(e) }
+                            finally { busy = false }
+                        }
+                    }
+                    ListingActionButton("Confirm", busy, filled = true) {
+                        busy = true
+                        coroutineScope.launch {
+                            try {
+                                NetworkClient.apiService.markPropertyListingTaken(listing.id, MarkTakenRequest(counterpartyPhone.trim().ifBlank { null }))
+                                markingTaken = false
+                                onChanged()
+                            } catch (e: HttpException) { error = superAppErrorMessage(e) }
+                            finally { busy = false }
+                        }
+                    }
+                }
+            }
+            // Real post-transaction review, preset checklist with asymmetric public/
+            // private visibility (2026-07-24) -- see backend HoodReviewService's own
+            // doc comment. Only offered once a real counterparty was recorded at
+            // mark-taken time; no pre-check for "already reviewed" (a real, honest v1
+            // -- a second attempt just surfaces the backend's own
+            // REVIEW_ALREADY_SUBMITTED error).
+            if (isMine && listing.status == "TAKEN" && listing.counterpartyId != null && !reviewSubmitted) {
+                if (showReviewSheet) {
+                    HoodReviewForm(
+                        selectedGoodPoints = selectedGoodPoints,
+                        onToggleGoodPoint = { p -> selectedGoodPoints = if (p in selectedGoodPoints) selectedGoodPoints - p else selectedGoodPoints + p },
+                        selectedUncomfortablePoints = selectedUncomfortablePoints,
+                        onToggleUncomfortablePoint = { p -> selectedUncomfortablePoints = if (p in selectedUncomfortablePoints) selectedUncomfortablePoints - p else selectedUncomfortablePoints + p },
+                        submitting = submittingReview,
+                        onCancel = { showReviewSheet = false },
+                        onSubmit = {
+                            submittingReview = true
+                            coroutineScope.launch {
+                                try {
+                                    NetworkClient.apiService.submitPropertyListingReview(
+                                        listing.id,
+                                        SubmitHoodReviewRequest(selectedGoodPoints.toList(), selectedUncomfortablePoints.toList()),
+                                    )
+                                    reviewSubmitted = true
+                                    showReviewSheet = false
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } finally {
+                                    submittingReview = false
+                                }
+                            }
+                        },
+                    )
+                } else {
+                    val label = if (listing.listingType == "RENT") "Rate this tenant" else "Rate this buyer"
+                    ListingActionButton(label, busy, filled = true) { showReviewSheet = true }
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (isMine) {
-                    if (listing.status == "AVAILABLE") {
-                        ListingActionButton("Mark taken", busy) {
-                            busy = true
-                            coroutineScope.launch {
-                                try { NetworkClient.apiService.markPropertyListingTaken(listing.id); onChanged() }
-                                catch (e: HttpException) { error = superAppErrorMessage(e) }
-                                finally { busy = false }
-                            }
-                        }
+                    if (listing.status == "AVAILABLE" && !markingTaken) {
+                        ListingActionButton("Mark taken", busy) { markingTaken = true }
                     }
                     if (listing.status != "REMOVED") {
                         ListingActionButton("Remove", busy) {
