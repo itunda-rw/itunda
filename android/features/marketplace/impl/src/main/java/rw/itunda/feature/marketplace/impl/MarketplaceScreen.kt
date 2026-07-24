@@ -95,13 +95,18 @@ import java.io.IOException
 // letting it move to core/designsystem and be imported directly, same as every other
 // shared UI atom.
 
-private enum class HoodView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, WISHLIST }
+// Real "My purchases" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+// recommendation #6: Karrot's real screen splits a user's own activity into labeled
+// sales/purchases/wishlist tabs, "specifically to avoid one overloaded list mixing
+// different user intents." Only newly buildable now that buyerId is captured.
+private enum class HoodView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, PURCHASES, WISHLIST }
 
 private fun HoodView.label() = when (this) {
     HoodView.BROWSE -> "Browse"
     HoodView.NEARBY -> "Near me"
     HoodView.NEIGHBORHOOD -> "Neighborhood"
     HoodView.MINE -> "My listings"
+    HoodView.PURCHASES -> "Purchases"
     HoodView.WISHLIST -> "♡ Wishlist"
 }
 
@@ -230,7 +235,11 @@ fun MarketplaceContent(
         }
         coroutineScope.launch {
             try {
-                val res = if (view == HoodView.BROWSE) NetworkClient.apiService.browseListings() else NetworkClient.apiService.getMyListings()
+                val res = when (view) {
+                    HoodView.BROWSE -> NetworkClient.apiService.browseListings()
+                    HoodView.PURCHASES -> NetworkClient.apiService.getMyPurchases()
+                    else -> NetworkClient.apiService.getMyListings()
+                }
                 if (res.success) { listings = res.listings; trustScores = res.trustScores }
                 error = null
             } catch (e: HttpException) {
@@ -319,6 +328,7 @@ fun MarketplaceContent(
                         HoodView.NEARBY -> "No listings near you yet."
                         HoodView.NEIGHBORHOOD -> "No listings in your neighborhood yet."
                         HoodView.MINE -> "You haven't listed anything yet."
+                        HoodView.PURCHASES -> "No purchases recorded yet."
                         HoodView.WISHLIST -> "No saved listings yet."
                     },
                     icon = Icons.Outlined.ShoppingBag,

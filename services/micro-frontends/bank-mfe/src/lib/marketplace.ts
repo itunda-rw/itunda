@@ -61,6 +61,12 @@ export const fetchMyListings = () =>
   apiFetch<{ success: boolean; listings: Listing[]; trustScores: TrustScores }>('/api/v1/marketplace/my-listings')
     .then((r) => ({ listings: r.listings, trustScores: r.trustScores }));
 
+// Real "My purchases" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+// recommendation #6. See backend ListingRepository's own doc comment.
+export const fetchMyPurchases = () =>
+  apiFetch<{ success: boolean; listings: Listing[]; trustScores: TrustScores }>('/api/v1/marketplace/my-purchases')
+    .then((r) => ({ listings: r.listings, trustScores: r.trustScores }));
+
 // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see lib/neighborhood.ts's own
 // doc comment for the full account. Throws ApiError with code NEIGHBORHOOD_NOT_SET
 // (real 400) if the caller hasn't set one yet -- callers should catch that specific

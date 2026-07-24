@@ -143,6 +143,19 @@ class MarketplaceController(
         return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
     }
 
+    // Real "My purchases" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+    // recommendation #6. See ListingRepository.findByBuyerIdOrderByCreatedAtDesc's own
+    // doc comment for the full account.
+    @GetMapping("/my-purchases")
+    fun getMyPurchases(
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = marketplaceService.getMyPurchases(currentUser.userId, pageable)
+        val scores = trustScores(userRepository, page.content.map { it.sellerId })
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
+    }
+
     @PostMapping("/listings/{listingId}/mark-sold")
     fun markSold(
         @PathVariable listingId: String,

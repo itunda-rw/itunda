@@ -141,6 +141,19 @@ class PropertyListingController(
         return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
     }
 
+    // Real "Places I got" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+    // recommendation #6. See PropertyListingRepository.
+    // findByCounterpartyIdOrderByCreatedAtDesc's own doc comment for the full account.
+    @GetMapping("/my-acquired-listings")
+    fun myAcquiredListings(
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = propertyListingService.getMyAcquiredListings(currentUser.userId, pageable)
+        val scores = trustScores(userRepository, page.content.map { it.listerId })
+        return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
+    }
+
     @GetMapping("/listings/{propertyListingId}")
     fun getListing(@PathVariable propertyListingId: String): ResponseEntity<Map<String, Any?>> {
         val listing = propertyListingService.getListing(propertyListingId)

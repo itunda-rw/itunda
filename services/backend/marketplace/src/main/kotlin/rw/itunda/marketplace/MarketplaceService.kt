@@ -235,6 +235,11 @@ class MarketplaceService(
     fun getMyListings(sellerId: String, pageable: Pageable): Page<Listing> =
         listingRepository.findBySellerIdOrderByCreatedAtDesc(sellerId, pageable)
 
+    // Real "My purchases" (2026-07-25) -- see ListingRepository.findByBuyerIdOrderByCreatedAtDesc's
+    // own doc comment for the full account of why this is newly buildable.
+    fun getMyPurchases(buyerId: String, pageable: Pageable): Page<Listing> =
+        listingRepository.findByBuyerIdOrderByCreatedAtDesc(buyerId, pageable)
+
     // Real optional buyer identification (2026-07-24) -- buyerPhoneNumber is
     // deliberately optional: the sale completes normally either way, but only a sale
     // that recorded a real buyer can ever carry a post-transaction review (see

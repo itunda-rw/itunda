@@ -70,7 +70,9 @@ import java.io.IOException
 // "dumb view" shape. RouteMiniMap imports directly from core/designsystem (see that
 // file's own header comment) rather than being injected.
 
-private enum class JobsView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, SAVED }
+// Real "Jobs I did" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+// recommendation #6, see backend JobPostRepository's own doc comment.
+private enum class JobsView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, WORKED, SAVED }
 
 @Composable
 fun JobsContent(
@@ -152,7 +154,11 @@ fun JobsContent(
         }
         coroutineScope.launch {
             try {
-                val res = if (view == JobsView.BROWSE) NetworkClient.apiService.browseJobPosts(activeCategory) else NetworkClient.apiService.getMyJobPosts()
+                val res = when (view) {
+                    JobsView.BROWSE -> NetworkClient.apiService.browseJobPosts(activeCategory)
+                    JobsView.WORKED -> NetworkClient.apiService.getMyWorkedJobPosts()
+                    else -> NetworkClient.apiService.getMyJobPosts()
+                }
                 if (res.success) { posts = res.posts; trustScores = res.trustScores }
                 error = null
             } catch (e: HttpException) {
@@ -180,7 +186,7 @@ fun JobsContent(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                listOf(JobsView.BROWSE to "Find work", JobsView.NEARBY to "Near me", JobsView.NEIGHBORHOOD to "Neighborhood", JobsView.MINE to "My posts", JobsView.SAVED to "Saved").forEach { (v, label) ->
+                listOf(JobsView.BROWSE to "Find work", JobsView.NEARBY to "Near me", JobsView.NEIGHBORHOOD to "Neighborhood", JobsView.MINE to "My posts", JobsView.WORKED to "Jobs I did", JobsView.SAVED to "Saved").forEach { (v, label) ->
                     val selected = v == view
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { view = v }) {
                         Text(
@@ -259,6 +265,7 @@ fun JobsContent(
                         JobsView.NEARBY -> "No jobs near you yet."
                         JobsView.NEIGHBORHOOD -> "No jobs in your neighborhood yet."
                         JobsView.MINE -> "You haven't posted any jobs yet."
+                        JobsView.WORKED -> "No completed jobs recorded yet."
                         JobsView.SAVED -> ""
                     },
                     color = Ids.colors.textSecondary, fontSize = 14.sp,

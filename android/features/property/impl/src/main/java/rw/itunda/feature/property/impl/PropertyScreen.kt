@@ -71,7 +71,9 @@ import java.io.IOException
 // imports directly from core/designsystem (see that file's own header comment) rather
 // than being injected.
 
-private enum class PropertyView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, SAVED }
+// Real "Places I got" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+// recommendation #6, see backend PropertyListingRepository's own doc comment.
+private enum class PropertyView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, ACQUIRED, SAVED }
 
 @Composable
 fun PropertyContent(
@@ -153,10 +155,10 @@ fun PropertyContent(
         }
         coroutineScope.launch {
             try {
-                val res = if (view == PropertyView.BROWSE) {
-                    NetworkClient.apiService.browsePropertyListings(listingTypeFilter, propertyTypeFilter)
-                } else {
-                    NetworkClient.apiService.getMyPropertyListings()
+                val res = when (view) {
+                    PropertyView.BROWSE -> NetworkClient.apiService.browsePropertyListings(listingTypeFilter, propertyTypeFilter)
+                    PropertyView.ACQUIRED -> NetworkClient.apiService.getMyAcquiredPropertyListings()
+                    else -> NetworkClient.apiService.getMyPropertyListings()
                 }
                 if (res.success) { listings = res.listings; trustScores = res.trustScores }
                 error = null
@@ -186,7 +188,7 @@ fun PropertyContent(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                listOf(PropertyView.BROWSE to "Browse", PropertyView.NEARBY to "Near me", PropertyView.NEIGHBORHOOD to "Neighborhood", PropertyView.MINE to "My listings", PropertyView.SAVED to "Saved").forEach { (v, label) ->
+                listOf(PropertyView.BROWSE to "Browse", PropertyView.NEARBY to "Near me", PropertyView.NEIGHBORHOOD to "Neighborhood", PropertyView.MINE to "My listings", PropertyView.ACQUIRED to "Places I got", PropertyView.SAVED to "Saved").forEach { (v, label) ->
                     val selected = v == view
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { view = v }) {
                         Text(
@@ -281,6 +283,7 @@ fun PropertyContent(
                         PropertyView.NEARBY -> "No properties near you yet."
                         PropertyView.NEIGHBORHOOD -> "No properties in your neighborhood yet."
                         PropertyView.MINE -> "You haven't listed any properties yet."
+                        PropertyView.ACQUIRED -> "No properties acquired yet."
                         PropertyView.SAVED -> ""
                     },
                     color = Ids.colors.textSecondary, fontSize = 14.sp,

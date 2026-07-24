@@ -35,4 +35,9 @@ interface PropertyListingRepository : JpaRepository<PropertyListing, String> {
     // rw.itunda.core.trust.TrustScoreService's own doc comment; identical shape to
     // ListingRepository.countBySellerIdAndStatus.
     fun countByListerIdAndStatus(listerId: String, status: PropertyListingStatus): Long
+
+    // Real "Places I got" (2026-07-25) -- see ListingRepository.
+    // findByBuyerIdOrderByCreatedAtDesc's own doc comment for the full account; same
+    // "activity split" gap this closes, now that counterpartyId is captured.
+    fun findByCounterpartyIdOrderByCreatedAtDesc(counterpartyId: String, pageable: Pageable): Page<PropertyListing>
 }

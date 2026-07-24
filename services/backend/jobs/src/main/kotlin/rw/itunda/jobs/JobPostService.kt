@@ -143,6 +143,11 @@ class JobPostService(
     fun getMyPosts(posterId: String, pageable: Pageable): Page<JobPost> =
         jobPostRepository.findByPosterIdOrderByCreatedAtDesc(posterId, pageable)
 
+    // Real "Jobs I did" (2026-07-25) -- see JobPostRepository.
+    // findByWorkerIdOrderByCreatedAtDesc's own doc comment for the full account.
+    fun getMyWorkedPosts(workerId: String, pageable: Pageable): Page<JobPost> =
+        jobPostRepository.findByWorkerIdOrderByCreatedAtDesc(workerId, pageable)
+
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see MarketplaceService.
     // myNeighborhood's own doc comment for the full account; identical shape here.
     fun myNeighborhood(callerUserId: String, category: String?, pageable: Pageable): Page<JobPost> {

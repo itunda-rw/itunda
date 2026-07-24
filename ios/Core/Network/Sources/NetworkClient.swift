@@ -1556,6 +1556,10 @@ extension NetworkClient {
 
     public func getMyListings() async throws -> ListingsResponse { try await get("api/v1/marketplace/my-listings") }
 
+    // Real "My purchases" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+    // recommendation #6. See backend ListingRepository's own doc comment.
+    public func getMyPurchases() async throws -> ListingsResponse { try await get("api/v1/marketplace/my-purchases") }
+
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see setNeighborhood.
     // Real 400 on the caller's own neighborhood-not-set case, matching Android/web.
     public func getListingsMyNeighborhood(category: String? = nil) async throws -> ListingsResponse {
@@ -1693,6 +1697,10 @@ extension NetworkClient {
 
     public func getMyJobPosts() async throws -> JobPostsResponse { try await get("api/v1/jobs/my-posts") }
 
+    // Real "Jobs I did" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+    // recommendation #6. See backend JobPostRepository's own doc comment.
+    public func getMyWorkedJobPosts() async throws -> JobPostsResponse { try await get("api/v1/jobs/my-worked-posts") }
+
     public func addJobPostFavorite(_ jobPostId: String) async throws -> SuccessResponse {
         try await authenticatedPost("api/v1/jobs/posts/\(jobPostId)/favorite", body: EmptyBody())
     }
@@ -1766,6 +1774,10 @@ extension NetworkClient {
     }
 
     public func getMyPropertyListings() async throws -> PropertyListingsResponse { try await get("api/v1/realestate/my-listings") }
+
+    // Real "Places I got" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+    // recommendation #6. See backend PropertyListingRepository's own doc comment.
+    public func getMyAcquiredPropertyListings() async throws -> PropertyListingsResponse { try await get("api/v1/realestate/my-acquired-listings") }
     public func addPropertyListingFavorite(_ id: String) async throws -> SuccessResponse { try await authenticatedPost("api/v1/realestate/listings/\(id)/favorite", body: EmptyBody()) }
     public func removePropertyListingFavorite(_ id: String) async throws -> SuccessResponse { try await authenticatedDelete("api/v1/realestate/listings/\(id)/favorite") }
     public func getMyFavoritePropertyListings() async throws -> FavoritePropertyListingsResponse { try await get("api/v1/realestate/listings/favorites") }

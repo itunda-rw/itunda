@@ -54,6 +54,12 @@ export const fetchMyJobPosts = () =>
   apiFetch<{ success: boolean; posts: JobPost[]; trustScores: TrustScores }>('/api/v1/jobs/my-posts')
     .then((r) => ({ posts: r.posts, trustScores: r.trustScores }));
 
+// Real "Jobs I did" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+// recommendation #6. See backend JobPostRepository's own doc comment.
+export const fetchMyWorkedJobPosts = () =>
+  apiFetch<{ success: boolean; posts: JobPost[]; trustScores: TrustScores }>('/api/v1/jobs/my-worked-posts')
+    .then((r) => ({ posts: r.posts, trustScores: r.trustScores }));
+
 // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see lib/neighborhood.ts's own
 // doc comment. Throws ApiError with code NEIGHBORHOOD_NOT_SET (real 400) if the caller
 // hasn't set one yet.

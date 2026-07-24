@@ -236,7 +236,9 @@ private struct MarketplaceContent: View {
     // wishlist added 2026-07-21, porting bank-mfe's Marketplace wishlist (shipped
     // earlier the same day) to iOS -- see favoriteIds state and ListingWishlistView
     // below for the full account.
-    private enum HoodView { case browse, nearby, neighborhood, mine, wishlist }
+    // Real "My purchases" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+    // recommendation #6, see backend ListingRepository's own doc comment.
+    private enum HoodView { case browse, nearby, neighborhood, mine, purchases, wishlist }
 
     @State private var view: HoodView = .browse
     @State private var listings: [ListingDto]?
@@ -273,6 +275,7 @@ private struct MarketplaceContent: View {
                     Text("Near me").tag(HoodView.nearby)
                     Text("Neighborhood").tag(HoodView.neighborhood)
                     Text("My listings").tag(HoodView.mine)
+                    Text("Purchases").tag(HoodView.purchases)
                     Text("♡ Wishlist").tag(HoodView.wishlist)
                 }
                 .pickerStyle(.segmented)
@@ -326,6 +329,7 @@ private struct MarketplaceContent: View {
                         view == .browse ? "No listings yet."
                             : view == .nearby ? "No listings near you yet."
                             : view == .neighborhood ? "No listings in your neighborhood yet."
+                            : view == .purchases ? "No purchases recorded yet."
                             : "You haven't listed anything yet."
                     )
                     .foregroundColor(IDS.Colors.textSecondary)
@@ -395,7 +399,12 @@ private struct MarketplaceContent: View {
             return
         }
         do {
-            let res = view == .browse ? try await NetworkClient.shared.browseListings() : try await NetworkClient.shared.getMyListings()
+            let res: ListingsResponse
+            switch view {
+            case .browse: res = try await NetworkClient.shared.browseListings()
+            case .purchases: res = try await NetworkClient.shared.getMyPurchases()
+            default: res = try await NetworkClient.shared.getMyListings()
+            }
             listings = res.listings
             trustScores = res.trustScores ?? [:]
             error = nil
@@ -1561,7 +1570,9 @@ private struct JobsContent: View {
     @Binding var pendingConversationId: String?
     let onSwitchToTalk: () -> Void
 
-    private enum JobsView { case browse, nearby, neighborhood, mine, wishlist }
+    // Real "Jobs I did" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+    // recommendation #6, see backend JobPostRepository's own doc comment.
+    private enum JobsView { case browse, nearby, neighborhood, mine, worked, wishlist }
 
     @State private var view: JobsView = .browse
     @State private var categories: [JobCategoryDto] = []
@@ -1588,6 +1599,7 @@ private struct JobsContent: View {
                         Text("Near me").tag(JobsView.nearby)
                         Text("Neighborhood").tag(JobsView.neighborhood)
                         Text("My posts").tag(JobsView.mine)
+                        Text("Jobs I did").tag(JobsView.worked)
                         Text("Saved").tag(JobsView.wishlist)
                 }
                 .pickerStyle(.segmented)
@@ -1661,6 +1673,7 @@ private struct JobsContent: View {
                     Text(
                         view == .browse ? "No jobs posted yet."
                             : view == .neighborhood ? "No jobs in your neighborhood yet."
+                            : view == .worked ? "No completed jobs recorded yet."
                             : "You haven't posted any jobs yet."
                     ).foregroundColor(IDS.Colors.textSecondary)
                 } else if !posts!.isEmpty {
@@ -1732,7 +1745,12 @@ private struct JobsContent: View {
             return
         }
         do {
-            let res = view == .browse ? try await NetworkClient.shared.browseJobPosts(category: activeCategory) : try await NetworkClient.shared.getMyJobPosts()
+            let res: JobPostsResponse
+            switch view {
+            case .browse: res = try await NetworkClient.shared.browseJobPosts(category: activeCategory)
+            case .worked: res = try await NetworkClient.shared.getMyWorkedJobPosts()
+            default: res = try await NetworkClient.shared.getMyJobPosts()
+            }
             posts = res.posts
             trustScores = res.trustScores ?? [:]
             error = nil
@@ -2176,7 +2194,9 @@ private struct PropertyContent: View {
     @Binding var pendingConversationId: String?
     let onSwitchToTalk: () -> Void
 
-    private enum PropertyView { case browse, nearby, neighborhood, mine, saved }
+    // Real "Places I got" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+    // recommendation #6, see backend PropertyListingRepository's own doc comment.
+    private enum PropertyView { case browse, nearby, neighborhood, mine, acquired, saved }
 
     @State private var view: PropertyView = .browse
     @State private var propertyTypes: [PropertyTypeDto] = []
@@ -2204,6 +2224,7 @@ private struct PropertyContent: View {
                     Text("Near me").tag(PropertyView.nearby)
                     Text("Neighborhood").tag(PropertyView.neighborhood)
                     Text("My listings").tag(PropertyView.mine)
+                    Text("Places I got").tag(PropertyView.acquired)
                     Text("Saved").tag(PropertyView.saved)
                 }
                 .pickerStyle(.segmented)
@@ -2281,6 +2302,7 @@ private struct PropertyContent: View {
                         view == .browse ? "No properties listed yet."
                             : view == .nearby ? "No properties near you yet."
                             : view == .neighborhood ? "No properties in your neighborhood yet."
+                            : view == .acquired ? "No properties acquired yet."
                             : "You haven't listed any properties yet."
                     ).foregroundColor(IDS.Colors.textSecondary)
                 } else if !listings!.isEmpty {
@@ -2362,9 +2384,12 @@ private struct PropertyContent: View {
             return
         }
         do {
-            let res = view == .browse
-                ? try await NetworkClient.shared.browsePropertyListings(listingType: listingTypeFilter, propertyType: propertyTypeFilter)
-                : try await NetworkClient.shared.getMyPropertyListings()
+            let res: PropertyListingsResponse
+            switch view {
+            case .browse: res = try await NetworkClient.shared.browsePropertyListings(listingType: listingTypeFilter, propertyType: propertyTypeFilter)
+            case .acquired: res = try await NetworkClient.shared.getMyAcquiredPropertyListings()
+            default: res = try await NetworkClient.shared.getMyPropertyListings()
+            }
             listings = res.listings
             trustScores = res.trustScores ?? [:]
             error = nil

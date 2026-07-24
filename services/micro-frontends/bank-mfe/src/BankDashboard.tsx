@@ -38,7 +38,7 @@ import {
 import { createSplitBill, fetchSplitBillsForGroup, paySplitBillShare, type SplitBillWithParticipants } from './lib/splitBill';
 import {
   addListingFavorite, contactSeller, createListing, fetchListings, fetchListingsMyNeighborhood, fetchMyFavoriteListings,
-  fetchMyListings, fetchOffersForConversation, makeOffer, markListingSold, removeListing, removeListingFavorite,
+  fetchMyListings, fetchMyPurchases, fetchOffersForConversation, makeOffer, markListingSold, removeListing, removeListingFavorite,
   respondToOffer, submitListingReview, type FavoriteListing, type Listing, type PriceOffer, type TrustScores,
 } from './lib/marketplace';
 import { fetchProfile, setNeighborhood } from './lib/neighborhood';
@@ -50,11 +50,11 @@ import {
 } from './lib/community';
 import {
   addJobPostFavorite, contactPoster, createJobPost, fetchJobCategories, fetchJobPosts, fetchJobPostsMyNeighborhood,
-  fetchMyFavoriteJobPosts, fetchMyJobPosts, markJobPostFilled, removeJobPost, removeJobPostFavorite, submitJobPostReview,
+  fetchMyFavoriteJobPosts, fetchMyJobPosts, fetchMyWorkedJobPosts, markJobPostFilled, removeJobPost, removeJobPostFavorite, submitJobPostReview,
   type FavoriteJobPost, type JobCategory, type JobPayType, type JobPost,
 } from './lib/jobs';
 import {
-  addPropertyListingFavorite, contactLister, createPropertyListing, fetchMyFavoritePropertyListings, fetchMyPropertyListings,
+  addPropertyListingFavorite, contactLister, createPropertyListing, fetchMyAcquiredPropertyListings, fetchMyFavoritePropertyListings, fetchMyPropertyListings,
   fetchPropertyListings, fetchPropertyListingsMyNeighborhood, fetchPropertyOffersForConversation, fetchPropertyTypes,
   makePropertyOffer, markPropertyListingTaken, removePropertyListing, removePropertyListingFavorite, respondToPropertyOffer,
   submitPropertyListingReview, type FavoritePropertyListing, type PropertyListing, type PropertyListingType, type PropertyPriceOffer, type PropertyType,
@@ -3587,7 +3587,9 @@ function ListingWishlistView() {
 }
 
 function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId: string) => void }) {
-  const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD' | 'WISHLIST'>('BROWSE');
+  // Real "My purchases" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+  // recommendation #6, see backend ListingRepository's own doc comment.
+  const [view, setView] = useState<'BROWSE' | 'MINE' | 'PURCHASES' | 'NEIGHBORHOOD' | 'WISHLIST'>('BROWSE');
   const [listings, setListings] = useState<Listing[] | null>(null);
   // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc comment.
   const [trustScores, setTrustScores] = useState<TrustScores>({});
@@ -3625,7 +3627,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
       return;
     }
     if (view === 'WISHLIST') return;
-    const fetcher = view === 'BROWSE' ? fetchListings() : fetchMyListings();
+    const fetcher = view === 'BROWSE' ? fetchListings() : view === 'PURCHASES' ? fetchMyPurchases() : fetchMyListings();
     fetcher
       .then((result) => {
         setListings(result.listings);
@@ -3658,7 +3660,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'WISHLIST'] as const).map((v) => (
+        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'PURCHASES', 'WISHLIST'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -3668,7 +3670,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
               backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : '♡ Wishlist'}
+            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'PURCHASES' ? 'Purchases' : '♡ Wishlist'}
           </button>
         ))}
       </div>
@@ -3699,7 +3701,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
           {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
             <div className="toss-card">
               <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-                {view === 'BROWSE' ? 'No listings yet.' : view === 'NEIGHBORHOOD' ? 'No listings in your neighborhood yet.' : "You haven't listed anything yet."}
+                {view === 'BROWSE' ? 'No listings yet.' : view === 'NEIGHBORHOOD' ? 'No listings in your neighborhood yet.' : view === 'PURCHASES' ? 'No purchases recorded yet.' : "You haven't listed anything yet."}
               </p>
             </div>
           )}
@@ -4449,7 +4451,9 @@ function JobPostWishlistView() {
 }
 
 function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: string) => void }) {
-  const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD' | 'WISHLIST'>('BROWSE');
+  // Real "Jobs I did" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+  // recommendation #6, see backend JobPostRepository's own doc comment.
+  const [view, setView] = useState<'BROWSE' | 'MINE' | 'WORKED' | 'NEIGHBORHOOD' | 'WISHLIST'>('BROWSE');
   const [categories, setCategories] = useState<JobCategory[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [posts, setPosts] = useState<JobPost[] | null>(null);
@@ -4493,7 +4497,7 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
       return;
     }
     if (view === 'WISHLIST') return;
-    const fetcher = view === 'BROWSE' ? fetchJobPosts(activeCategory ?? undefined) : fetchMyJobPosts();
+    const fetcher = view === 'BROWSE' ? fetchJobPosts(activeCategory ?? undefined) : view === 'WORKED' ? fetchMyWorkedJobPosts() : fetchMyJobPosts();
     fetcher
       .then((result) => { setPosts(result.posts); setTrustScores(result.trustScores); })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load jobs.'));
@@ -4534,7 +4538,7 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'WISHLIST'] as const).map((v) => (
+        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'WORKED', 'WISHLIST'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -4544,7 +4548,7 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
               backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Find work' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My posts' : '♡ Wishlist'}
+            {v === 'BROWSE' ? 'Find work' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My posts' : v === 'WORKED' ? 'Jobs I did' : '♡ Wishlist'}
           </button>
         ))}
       </div>
@@ -4594,7 +4598,7 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
           {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && posts !== null && posts.length === 0 && (
             <div className="toss-card">
               <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-                {view === 'BROWSE' ? 'No jobs posted yet.' : view === 'NEIGHBORHOOD' ? 'No jobs in your neighborhood yet.' : "You haven't posted any jobs yet."}
+                {view === 'BROWSE' ? 'No jobs posted yet.' : view === 'NEIGHBORHOOD' ? 'No jobs in your neighborhood yet.' : view === 'WORKED' ? 'No completed jobs recorded yet.' : "You haven't posted any jobs yet."}
               </p>
             </div>
           )}
@@ -4982,7 +4986,9 @@ function PropertyListingWishlistView() {
 }
 
 function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: string) => void }) {
-  const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD' | 'WISHLIST'>('BROWSE');
+  // Real "Places I got" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+  // recommendation #6, see backend PropertyListingRepository's own doc comment.
+  const [view, setView] = useState<'BROWSE' | 'MINE' | 'ACQUIRED' | 'NEIGHBORHOOD' | 'WISHLIST'>('BROWSE');
   const [propertyTypes, setPropertyTypes] = useState<PropertyType[]>([]);
   const [listingTypeFilter, setListingTypeFilter] = useState<PropertyListingType | null>(null);
   const [propertyTypeFilter, setPropertyTypeFilter] = useState<string | null>(null);
@@ -5029,7 +5035,9 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
     if (view === 'WISHLIST') return;
     const fetcher = view === 'BROWSE'
       ? fetchPropertyListings(listingTypeFilter ?? undefined, propertyTypeFilter ?? undefined)
-      : fetchMyPropertyListings();
+      : view === 'ACQUIRED'
+        ? fetchMyAcquiredPropertyListings()
+        : fetchMyPropertyListings();
     fetcher
       .then((result) => { setListings(result.listings); setTrustScores(result.trustScores); })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load listings.'));
@@ -5070,7 +5078,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'WISHLIST'] as const).map((v) => (
+        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'ACQUIRED', 'WISHLIST'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -5080,7 +5088,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
               backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : '♡ Wishlist'}
+            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'ACQUIRED' ? 'Places I got' : '♡ Wishlist'}
           </button>
         ))}
       </div>
@@ -5149,7 +5157,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
           {!error && (view !== 'NEIGHBORHOOD' || neighborhoodName) && listings !== null && listings.length === 0 && (
             <div className="toss-card">
               <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
-                {view === 'BROWSE' ? 'No properties listed yet.' : view === 'NEIGHBORHOOD' ? 'No properties in your neighborhood yet.' : "You haven't listed any properties yet."}
+                {view === 'BROWSE' ? 'No properties listed yet.' : view === 'NEIGHBORHOOD' ? 'No properties in your neighborhood yet.' : view === 'ACQUIRED' ? 'No properties acquired yet.' : "You haven't listed any properties yet."}
               </p>
             </div>
           )}

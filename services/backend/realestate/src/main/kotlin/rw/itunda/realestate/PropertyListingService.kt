@@ -159,6 +159,11 @@ class PropertyListingService(
     fun getMyListings(listerId: String, pageable: Pageable): Page<PropertyListing> =
         propertyListingRepository.findByListerIdOrderByCreatedAtDesc(listerId, pageable)
 
+    // Real "Places I got" (2026-07-25) -- see PropertyListingRepository.
+    // findByCounterpartyIdOrderByCreatedAtDesc's own doc comment for the full account.
+    fun getMyAcquiredListings(counterpartyId: String, pageable: Pageable): Page<PropertyListing> =
+        propertyListingRepository.findByCounterpartyIdOrderByCreatedAtDesc(counterpartyId, pageable)
+
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see MarketplaceService.
     // myNeighborhood's own doc comment for the full account. See
     // PropertyListingRepository's own note on why this isn't combined with

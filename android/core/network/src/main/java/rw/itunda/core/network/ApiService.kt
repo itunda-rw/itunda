@@ -1318,6 +1318,11 @@ interface ApiService {
     @GET("api/v1/marketplace/my-listings")
     suspend fun getMyListings(): ListingsResponse
 
+    // Real "My purchases" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+    // recommendation #6. See backend ListingRepository's own doc comment.
+    @GET("api/v1/marketplace/my-purchases")
+    suspend fun getMyPurchases(): ListingsResponse
+
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see AuthApi.setNeighborhood.
     // Real 400 NEIGHBORHOOD_NOT_SET if the caller hasn't set one yet.
     @GET("api/v1/marketplace/listings/my-neighborhood")
@@ -1443,6 +1448,11 @@ interface ApiService {
     @GET("api/v1/jobs/my-posts")
     suspend fun getMyJobPosts(): JobPostsResponse
 
+    // Real "Jobs I did" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+    // recommendation #6. See backend JobPostRepository's own doc comment.
+    @GET("api/v1/jobs/my-worked-posts")
+    suspend fun getMyWorkedJobPosts(): JobPostsResponse
+
     @POST("api/v1/jobs/posts/{id}/favorite")
     suspend fun addJobPostFavorite(@Path("id") jobPostId: String): SuccessResponse
 
@@ -1495,6 +1505,11 @@ interface ApiService {
 
     @GET("api/v1/realestate/my-listings")
     suspend fun getMyPropertyListings(): PropertyListingsResponse
+
+    // Real "Places I got" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+    // recommendation #6. See backend PropertyListingRepository's own doc comment.
+    @GET("api/v1/realestate/my-acquired-listings")
+    suspend fun getMyAcquiredPropertyListings(): PropertyListingsResponse
     @POST("api/v1/realestate/listings/{id}/favorite") suspend fun addPropertyListingFavorite(@Path("id") id: String): SuccessResponse
     @DELETE("api/v1/realestate/listings/{id}/favorite") suspend fun removePropertyListingFavorite(@Path("id") id: String): SuccessResponse
     @GET("api/v1/realestate/listings/favorites") suspend fun getMyFavoritePropertyListings(): FavoritePropertyListingsResponse

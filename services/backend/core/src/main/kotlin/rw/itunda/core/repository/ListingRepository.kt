@@ -35,4 +35,13 @@ interface ListingRepository : JpaRepository<Listing, String> {
     // a full listing load, since only the count of the seller's own completed (SOLD)
     // listings matters for the score.
     fun countBySellerIdAndStatus(sellerId: String, status: ListingStatus): Long
+
+    // Real "My purchases" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+    // recommendation #6: Karrot's real screen splits a user's own activity into
+    // labeled sales/purchases/wishlist tabs instead of one flat list, "specifically to
+    // avoid one overloaded list mixing different user intents." itunda already had
+    // sales (getMyListings) and wishlist separately -- this is the first time
+    // "purchases" is even queryable, now that buyerId is captured (see Listing.kt's
+    // own doc comment on why that was the real structural blocker until now).
+    fun findByBuyerIdOrderByCreatedAtDesc(buyerId: String, pageable: Pageable): Page<Listing>
 }

@@ -29,4 +29,9 @@ interface JobPostRepository : JpaRepository<JobPost, String> {
     // rw.itunda.core.trust.TrustScoreService's own doc comment; identical shape to
     // ListingRepository.countBySellerIdAndStatus.
     fun countByPosterIdAndStatus(posterId: String, status: JobPostStatus): Long
+
+    // Real "Jobs I did" (2026-07-25) -- see ListingRepository.
+    // findByBuyerIdOrderByCreatedAtDesc's own doc comment for the full account; same
+    // "activity split" gap this closes, now that workerId is captured.
+    fun findByWorkerIdOrderByCreatedAtDesc(workerId: String, pageable: Pageable): Page<JobPost>
 }

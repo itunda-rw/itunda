@@ -127,6 +127,19 @@ class JobPostController(
         return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content, "trustScores" to scores) + pageMeta(page))
     }
 
+    // Real "Jobs I did" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
+    // recommendation #6. See JobPostRepository.findByWorkerIdOrderByCreatedAtDesc's
+    // own doc comment for the full account.
+    @GetMapping("/my-worked-posts")
+    fun myWorkedPosts(
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = jobPostService.getMyWorkedPosts(currentUser.userId, pageable)
+        val scores = trustScores(userRepository, page.content.map { it.posterId })
+        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content, "trustScores" to scores) + pageMeta(page))
+    }
+
     @GetMapping("/posts/{jobPostId}")
     fun getPost(@PathVariable jobPostId: String): ResponseEntity<Map<String, Any?>> {
         val post = jobPostService.getPost(jobPostId)
