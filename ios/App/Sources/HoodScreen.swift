@@ -260,8 +260,12 @@ private struct MarketplaceContent: View {
     var body: some View {
         ScrollView {
             VStack(spacing: IDS.Layout.cardGap) {
-                IdsPlainTopBar(title: "Hood")
-
+                // No IdsPlainTopBar("Hood") here (2026-07-24) -- the bottom nav and
+                // this screen's own top-level Market/Life/Jobs/Home picker already
+                // establish where the user is; Hood's other three sub-screens
+                // (Community/Jobs/Property) never had this extra title, confirming
+                // it was a real inconsistency, matching the same fix already made
+                // on Android's MarketplaceScreen.kt.
                 Picker("", selection: $view) {
                     Text("Browse").tag(HoodView.browse)
                     Text("Near me").tag(HoodView.nearby)

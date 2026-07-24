@@ -143,8 +143,9 @@ private struct CommerceShopContent: View {
         ZStack(alignment: .bottom) {
             ScrollView {
                 VStack(spacing: IDS.Layout.cardGap) {
-                    IdsPlainTopBar(title: "Shop")
-
+                    // No IdsPlainTopBar("Shop") here (2026-07-24), same fix as
+                    // HoodScreen's own "Hood" title -- this screen's own Shop/Eats
+                    // picker one level up already establishes where the user is.
                     Picker("", selection: $view) {
                         Text("Merchants").tag(CommerceView.browse)
                         Text("My orders").tag(CommerceView.orders)
@@ -181,11 +182,12 @@ private struct CommerceShopContent: View {
                         ForEach(merchants!) { merchant in
                             Button(action: { Task { await openMerchant(merchant) } }) {
                                 HStack(spacing: 14) {
-                                    ZStack {
-                                        RoundedRectangle(cornerRadius: 14).fill(IDS.Colors.chipBackground)
-                                        Image(systemName: "storefront.fill").foregroundColor(IDS.Colors.brand)
-                                    }
-                                    .frame(width: 44, height: 44)
+                                    // Real photo-forward store thumb (2026-07-24), same
+                                    // pattern already shipped for EatsScreen's own
+                                    // RestaurantPhotoThumb -- ShoppingMerchantDto.photoUrl
+                                    // is the same field both screens share, previously only
+                                    // rendered on the Eats side.
+                                    StorePhotoThumb(imageUrl: merchant.photoUrl)
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(merchant.businessName).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
                                         Text("\(merchant.cashbackRate) cashback on QR/code payments")
@@ -233,6 +235,38 @@ private struct CommerceShopContent: View {
             products = res.products
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+}
+
+private struct StorePhotoThumb: View {
+    let imageUrl: String?
+    var side: CGFloat = 44
+
+    var body: some View {
+        Group {
+            if let imageUrl, let url = URL(string: imageUrl) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().scaledToFill()
+                    default:
+                        placeholder
+                    }
+                }
+            } else {
+                placeholder
+            }
+        }
+        .frame(width: side, height: side)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .background(IDS.Colors.chipBackground)
+    }
+
+    private var placeholder: some View {
+        ZStack {
+            IDS.Colors.chipBackground
+            Image(systemName: "storefront.fill").foregroundColor(IDS.Colors.brand)
         }
     }
 }
