@@ -178,7 +178,9 @@ fun PropertyContent(
                         label,
                         color = if (selected) Color.White else Ids.colors.textSecondary,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         modifier = Modifier
                             .weight(1f)
@@ -203,7 +205,7 @@ fun PropertyContent(
                         val active = listingTypeFilter == v
                         Box(
                             modifier = Modifier
-                                .background(if (active) Ids.colors.brand else Color.White, RoundedCornerShape(999.dp))
+                                .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
                                 .border(1.dp, if (active) Ids.colors.brand else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
                                 .clickable { listingTypeFilter = if (active) null else v }
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -221,7 +223,7 @@ fun PropertyContent(
                             val active = propertyTypeFilter == t.id
                             Box(
                                 modifier = Modifier
-                                    .background(if (active) Ids.colors.brand else Color.White, RoundedCornerShape(999.dp))
+                                    .background(if (active) Ids.colors.brand else Ids.colors.surface, RoundedCornerShape(999.dp))
                                     .border(1.dp, if (active) Ids.colors.brand else Ids.colors.textSecondary.copy(alpha = 0.3f), RoundedCornerShape(999.dp))
                                     .clickable { propertyTypeFilter = if (active) null else t.id }
                                     .padding(horizontal = 12.dp, vertical = 6.dp),
