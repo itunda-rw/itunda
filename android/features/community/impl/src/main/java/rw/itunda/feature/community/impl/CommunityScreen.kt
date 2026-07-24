@@ -166,24 +166,32 @@ fun CommunityContent() {
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
         item {
-            Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft).padding(4.dp)) {
+            // Flat, horizontally-scrolling category strip (2026-07-24), same
+            // Karrot/Toss-Shopping-style treatment as Marketplace's own Browse/
+            // Near me/etc row -- replacing a filled-pill segmented control.
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+            ) {
                 listOf(CommunityView.BROWSE to "Feed", CommunityView.NEARBY to "Near me", CommunityView.NEIGHBORHOOD to "Neighborhood", CommunityView.MINE to "My posts").forEach { (v, label) ->
                     val selected = v == view
-                    Text(
-                        label,
-                        color = if (selected) Color.White else Ids.colors.textSecondary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(if (selected) Ids.colors.brand else Color.Transparent)
-                            .clickable { view = v }
-                            .padding(vertical = 8.dp),
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { view = v }) {
+                        Text(
+                            label,
+                            color = if (selected) Ids.colors.textPrimary else Ids.colors.textSecondary,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .height(2.dp)
+                                .width(18.dp)
+                                .background(if (selected) Ids.colors.brand else Color.Transparent, RoundedCornerShape(1.dp)),
+                        )
+                    }
                 }
             }
         }

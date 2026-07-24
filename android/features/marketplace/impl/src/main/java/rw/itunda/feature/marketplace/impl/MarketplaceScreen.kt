@@ -6,6 +6,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,6 +51,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -61,7 +65,6 @@ import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
 import rw.itunda.core.designsystem.components.RouteMiniMap
 import rw.itunda.core.designsystem.components.SkeletonBlock
-import rw.itunda.core.designsystem.components.TabHeader
 import rw.itunda.core.designsystem.components.relativeTimeAgo
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
 import rw.itunda.core.designsystem.theme.Ids
@@ -237,26 +240,39 @@ fun MarketplaceContent(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
-        item { TabHeader("Hood") }
+        // No TabHeader here (2026-07-24, was `TabHeader("Hood")`): the bottom nav
+        // already highlights "Hood" and HoodTab's own Market/Life/Jobs/Home strip
+        // sits right above this screen, so a third "Hood" label was pure repeat
+        // noise, not information.
         item {
-            Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft).padding(4.dp)) {
+            // Flat, horizontally-scrolling category strip (2026-07-24), replacing
+            // a filled-pill segmented row -- same Karrot/Toss-Shopping-style flat
+            // tab treatment as HoodTab's own Market/Life/Jobs/Home row in
+            // SuperAppTabs.kt, so the two stacked nav rows read as one language
+            // instead of two different chrome styles.
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+            ) {
                 HoodView.entries.forEach { v ->
                     val selected = v == view
-                    Text(
-                        v.label(),
-                        color = if (selected) Color.White else Ids.colors.textSecondary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(if (selected) Ids.colors.brand else Color.Transparent)
-                            .clickable { view = v }
-                            .padding(vertical = 8.dp),
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { view = v }) {
+                        Text(
+                            v.label(),
+                            color = if (selected) Ids.colors.textPrimary else Ids.colors.textSecondary,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .height(2.dp)
+                                .width(18.dp)
+                                .background(if (selected) Ids.colors.brand else Color.Transparent, RoundedCornerShape(1.dp)),
+                        )
+                    }
                 }
             }
         }
@@ -572,6 +588,13 @@ private fun NewListingForm(onCreated: () -> Unit, onCancel: () -> Unit) {
 }
 
 @Composable
+private fun ListingPhotoPlaceholder() {
+    Box(modifier = Modifier.fillMaxSize().background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+        Icon(Icons.Outlined.ShoppingBag, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(40.dp))
+    }
+}
+
+@Composable
 private fun ListingCard(
     listing: ListingDto, isMine: Boolean, onChanged: () -> Unit, onMessageSeller: (String) -> Unit, onMakeOffer: (String, Double) -> Unit,
     // Real Marketplace listing wishlist (2026-07-21) -- state is lifted to
@@ -609,16 +632,26 @@ private fun ListingCard(
             // a plain placeholder box, never a fabricated image.
             Box(modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f).clip(RoundedCornerShape(topStart = Ids.layout.cardCornerRadius, topEnd = Ids.layout.cardCornerRadius))) {
                 if (listing.photoUrl != null) {
-                    AsyncImage(
+                    // SubcomposeAsyncImage, not AsyncImage (2026-07-24): plain AsyncImage
+                    // renders nothing at all while loading or on a failed fetch -- a
+                    // real gap that showed up live as a blank black box on a listing
+                    // whose photoUrl was valid but hadn't finished loading yet. Now
+                    // both the loading and error states fall back to the same
+                    // placeholder icon the "no photo" branch below already used, so a
+                    // slow or failed load never reads as broken UI.
+                    SubcomposeAsyncImage(
                         model = listing.photoUrl,
                         contentDescription = listing.title,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
-                    )
-                } else {
-                    Box(modifier = Modifier.fillMaxSize().background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.ShoppingBag, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(40.dp))
+                    ) {
+                        when (painter.state) {
+                            is coil.compose.AsyncImagePainter.State.Success -> SubcomposeAsyncImageContent()
+                            else -> ListingPhotoPlaceholder()
+                        }
                     }
+                } else {
+                    ListingPhotoPlaceholder()
                 }
                 if (listing.status == "SOLD") {
                     Box(

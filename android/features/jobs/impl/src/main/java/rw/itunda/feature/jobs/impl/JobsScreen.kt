@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -166,24 +167,32 @@ fun JobsContent(
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
         item {
-            Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft).padding(4.dp)) {
+            // Flat, horizontally-scrolling category strip (2026-07-24), same
+            // Karrot/Toss-Shopping-style treatment as Marketplace's own Browse/
+            // Near me/etc row -- replacing a filled-pill segmented control.
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+            ) {
                 listOf(JobsView.BROWSE to "Find work", JobsView.NEARBY to "Near me", JobsView.NEIGHBORHOOD to "Neighborhood", JobsView.MINE to "My posts", JobsView.SAVED to "Saved").forEach { (v, label) ->
                     val selected = v == view
-                    Text(
-                        label,
-                        color = if (selected) Color.White else Ids.colors.textSecondary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(if (selected) Ids.colors.brand else Color.Transparent)
-                            .clickable { view = v }
-                            .padding(vertical = 8.dp),
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { view = v }) {
+                        Text(
+                            label,
+                            color = if (selected) Ids.colors.textPrimary else Ids.colors.textSecondary,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .height(2.dp)
+                                .width(18.dp)
+                                .background(if (selected) Ids.colors.brand else Color.Transparent, RoundedCornerShape(1.dp)),
+                        )
+                    }
                 }
             }
         }
