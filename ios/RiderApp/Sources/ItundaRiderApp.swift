@@ -13,6 +13,11 @@ struct ItundaRiderApp: App {
     var body: some Scene {
         WindowGroup {
             RiderRootView()
+                // Matches the real app's own brand decision (see ItundaApp.swift's
+                // own comment) -- makes it explicit at the app boundary rather than
+                // leaving it to the simulator/device's own appearance setting, so
+                // this app and the real app can't visually diverge.
+                .preferredColorScheme(.dark)
         }
     }
 }

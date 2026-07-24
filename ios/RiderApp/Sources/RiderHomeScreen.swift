@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreDesignSystem
 
 private enum HomeTab { case available, mine }
 
@@ -51,7 +52,7 @@ struct RiderHomeScreen: View {
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.blue.opacity(0.15))
+                .background(IDS.Colors.brand.opacity(0.15))
                 .cornerRadius(12)
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
@@ -223,7 +224,7 @@ private struct DeliveryRow: View {
                 Button(action: onClaim) {
                     Text("Claim this delivery").bold().foregroundColor(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 10)
-                        .background(Color.blue).cornerRadius(10)
+                        .background(IDS.Colors.brand).cornerRadius(10)
                 }
             }
         }
@@ -251,7 +252,7 @@ struct StatusBadge: View {
         Text(label)
             .font(.caption2).bold()
             .padding(.horizontal, 8).padding(.vertical, 2)
-            .background(Color.blue.opacity(0.15))
+            .background(IDS.Colors.brand.opacity(0.15))
             .cornerRadius(8)
     }
 }

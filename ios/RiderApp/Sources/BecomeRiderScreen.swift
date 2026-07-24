@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreDesignSystem
 
 /// Shown once for any logged-in itunda user who hasn't registered as a rider yet.
 struct BecomeRiderScreen: View {
@@ -23,7 +24,7 @@ struct BecomeRiderScreen: View {
                 Text(busy ? "Registering…" : "Become a rider")
                     .bold().foregroundColor(.white)
                     .frame(maxWidth: .infinity).padding(.vertical, 14)
-                    .background(Color.blue).cornerRadius(12)
+                    .background(IDS.Colors.brand).cornerRadius(12)
             }
             .disabled(busy)
 

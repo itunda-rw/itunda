@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreDesignSystem
 
 /// A single active (or just-completed) delivery. Pushes this rider's real live
 /// coordinates every 15s while the order is in an in-progress status
@@ -73,7 +74,7 @@ struct DeliveryDetailScreen: View {
                             Text(advancing ? "Updating…" : label)
                                 .bold().foregroundColor(.white)
                                 .frame(maxWidth: .infinity).padding(.vertical, 14)
-                                .background(Color.blue).cornerRadius(12)
+                                .background(IDS.Colors.brand).cornerRadius(12)
                         }
                         .disabled(advancing)
                         .padding(16)
