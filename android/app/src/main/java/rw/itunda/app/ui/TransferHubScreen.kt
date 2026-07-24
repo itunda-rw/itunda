@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AutoMode
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -68,6 +69,7 @@ fun TransferHubScreen(
     onBack: () -> Unit,
     onSendMoney: () -> Unit,
     onOpenAutoTransfers: () -> Unit,
+    onSplitBill: () -> Unit,
     onOpenHistory: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize().background(Ids.colors.background)) {
@@ -85,6 +87,19 @@ fun TransferHubScreen(
                 title = "Auto-transfer",
                 subtitle = if (autoTransferCount > 0) "$autoTransferCount active" else "Set up a recurring transfer",
                 onClick = onOpenAutoTransfers,
+            )
+            Spacer(Modifier.height(8.dp))
+            // Real 더치페이 (Split bill) row (2026-07-24) -- completes real Toss's
+            // own 송금 page grouping (송금하기/자동이체/더치페이), deliberately
+            // deferred when this screen was first built. Split Bill itself already
+            // lives inside a group's own Talk thread (see MenuScreen's identical
+            // "Split a bill with friends" row) -- this just adds the same real
+            // entry point here too, not a second implementation.
+            TransferHubRow(
+                icon = Icons.Outlined.Groups,
+                title = "Split a bill",
+                subtitle = "Settle up with friends in Talk",
+                onClick = onSplitBill,
             )
             Spacer(Modifier.height(20.dp))
             Text(

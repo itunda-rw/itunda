@@ -19,6 +19,7 @@ import CoreNetwork
 struct TransferHubContainer: View {
     var onBack: () -> Void = {}
     var onSendMoney: () -> Void = {}
+    var onSplitBill: () -> Void = {}
     var onOpenHistory: () -> Void = {}
 
     @State private var autoTransferCount = 0
@@ -48,6 +49,18 @@ struct TransferHubContainer: View {
                         title: "Auto-transfer",
                         subtitle: autoTransferCount > 0 ? "\(autoTransferCount) active" : "Set up a recurring transfer",
                         action: { showAutoTransfers = true }
+                    )
+                    // Real 더치페이 (Split bill) row (2026-07-24) -- completes real
+                    // Toss's own 송금 page grouping, deliberately deferred when this
+                    // screen was first ported. Split Bill itself already lives inside
+                    // a group's own Talk thread (see EntireMenuScreen's identical
+                    // "Split a bill with friends" row) -- this just adds the same
+                    // real entry point here too.
+                    TransferHubRow(
+                        symbol: "person.3.fill",
+                        title: "Split a bill",
+                        subtitle: "Settle up with friends in Talk",
+                        action: onSplitBill
                     )
                     HStack {
                         Text("Transfer history")

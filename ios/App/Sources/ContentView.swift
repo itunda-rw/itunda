@@ -197,6 +197,7 @@ struct ContentView: View {
                     TransferHubContainer(
                         onBack: { showTransferHub = false },
                         onSendMoney: { showTransferHub = false; showTransferFlow = true },
+                        onSplitBill: { showTransferHub = false; selectedTab = 3 },
                         onOpenHistory: { showTransferHub = false; showTransactionHistory = true }
                     )
                 }

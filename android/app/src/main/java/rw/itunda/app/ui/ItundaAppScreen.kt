@@ -704,6 +704,7 @@ fun ItundaAppScreen(
                     onBack = { showTransferHub = false },
                     onSendMoney = { showTransferHub = false; transferStep = TransferStep.Recipient },
                     onOpenAutoTransfers = { showAutoTransfers = true },
+                    onSplitBill = { showTransferHub = false; selectedTab = TossTab.Talk },
                     onOpenHistory = { showTransferHub = false; showTransactionHistory = true },
                 )
             }
