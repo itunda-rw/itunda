@@ -11,6 +11,8 @@ import rw.itunda.core.domain.Listing
 import rw.itunda.core.domain.ListingStatus
 import rw.itunda.core.domain.LoanAccount
 import rw.itunda.core.domain.LoanStatus
+import rw.itunda.core.domain.Merchant
+import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.domain.SavingsGoal
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
@@ -21,6 +23,8 @@ import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.LedgerAccountRepository
 import rw.itunda.core.repository.ListingRepository
 import rw.itunda.core.repository.LoanAccountRepository
+import rw.itunda.core.repository.MerchantProductRepository
+import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.SavingsGoalRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
@@ -55,6 +59,8 @@ class SeedDataRunner(
     private val notificationRepository: NotificationRepository,
     private val insurancePolicyRepository: InsurancePolicyRepository,
     private val listingRepository: ListingRepository,
+    private val merchantRepository: MerchantRepository,
+    private val merchantProductRepository: MerchantProductRepository,
 ) : CommandLineRunner {
 
     override fun run(vararg args: String?) {
@@ -285,6 +291,107 @@ class SeedDataRunner(
                     latitude = -1.9578, longitude = 30.1127, neighborhood = "Remera",
                     meetingPlace = "Remera roundabout",
                     photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Laptop.jpg",
+                ),
+            )
+        }
+
+        // Real Eats demo restaurants (2026-07-24) -- until now the only merchants in
+        // this database were test-automation fixtures ("Fraud Test Cafe", "Retry Test
+        // Shop", etc, all category=NULL, no photo) plus two real-named but otherwise
+        // empty entries -- the same "empty product, can't judge the redesign" gap
+        // Marketplace had before its own seed above. Each restaurant is a real owner
+        // User + Wallet + Merchant, matching the real onboarding shape (no shortcut
+        // schema), with a real category and real Wikimedia food photos -- same "real
+        // external URL, no upload pipeline" honesty as Merchant.photoUrl's own doc
+        // comment.
+        val restaurantOwner1 = userRepository.findByPhoneNumber("+250788456789") ?: userRepository.save(
+            User(
+                id = "user_restaurant_1", phoneNumber = "+250788456789", email = "aline@itunda.rw",
+                firstName = "Aline", lastName = "Umutoni", passwordHash = BCryptPasswordEncoder().encode("password123"),
+                kycVerified = true, creditScore = 700, createdAt = Instant.now(), neighborhood = "Kimironko",
+            ),
+        )
+        val restaurantOwner2 = userRepository.findByPhoneNumber("+250788567890") ?: userRepository.save(
+            User(
+                id = "user_restaurant_2", phoneNumber = "+250788567890", email = "eric.h@itunda.rw",
+                firstName = "Eric", lastName = "Habimana", passwordHash = BCryptPasswordEncoder().encode("password123"),
+                kycVerified = true, creditScore = 680, createdAt = Instant.now(), neighborhood = "Remera",
+            ),
+        )
+        val restaurantOwner3 = userRepository.findByPhoneNumber("+250788678901") ?: userRepository.save(
+            User(
+                id = "user_restaurant_3", phoneNumber = "+250788678901", email = "grace.m@itunda.rw",
+                firstName = "Grace", lastName = "Mukamana", passwordHash = BCryptPasswordEncoder().encode("password123"),
+                kycVerified = true, creditScore = 710, createdAt = Instant.now(), neighborhood = "Kacyiru",
+            ),
+        )
+
+        listOf(
+            restaurantOwner1.id to Wallet(id = "wallet_restaurant_1", userId = restaurantOwner1.id, accountNumber = "2024200001", accountName = "Aline's Business Account", type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO),
+            restaurantOwner2.id to Wallet(id = "wallet_restaurant_2", userId = restaurantOwner2.id, accountNumber = "2024200002", accountName = "Eric's Business Account", type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO),
+            restaurantOwner3.id to Wallet(id = "wallet_restaurant_3", userId = restaurantOwner3.id, accountNumber = "2024200003", accountName = "Grace's Business Account", type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO),
+        ).forEach { (ownerId, wallet) ->
+            if (walletRepository.findByUserId(ownerId).isEmpty()) walletRepository.save(wallet)
+        }
+
+        if (merchantRepository.findByOwnerUserId(restaurantOwner1.id) == null) {
+            merchantRepository.save(
+                Merchant(
+                    id = "merchant_seed_1", ownerUserId = restaurantOwner1.id, walletId = "wallet_restaurant_1",
+                    businessName = "Heaven Kigali", category = "Rwandan", kybVerified = true,
+                    latitude = -1.9441, longitude = 30.1136,
+                    photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Brochettes.jpg",
+                    minOrderAmount = BigDecimal("3000"),
+                ),
+            )
+        }
+        if (merchantRepository.findByOwnerUserId(restaurantOwner2.id) == null) {
+            merchantRepository.save(
+                Merchant(
+                    id = "merchant_seed_2", ownerUserId = restaurantOwner2.id, walletId = "wallet_restaurant_2",
+                    businessName = "Kigali Grill House", category = "Fast Food", kybVerified = true,
+                    latitude = -1.9578, longitude = 30.1127,
+                    photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Hamburger.jpg",
+                    minOrderAmount = BigDecimal("2000"),
+                ),
+            )
+        }
+        if (merchantRepository.findByOwnerUserId(restaurantOwner3.id) == null) {
+            merchantRepository.save(
+                Merchant(
+                    id = "merchant_seed_3", ownerUserId = restaurantOwner3.id, walletId = "wallet_restaurant_3",
+                    businessName = "Inzozi Coffee & Bakery", category = "Coffee & Bakery", kybVerified = true,
+                    latitude = -1.9346, longitude = 30.0906,
+                    photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Cappuccino.jpg",
+                    minOrderAmount = BigDecimal("1500"),
+                ),
+            )
+        }
+
+        if (merchantProductRepository.findByMerchantIdAndActiveTrue("merchant_seed_1").isEmpty()) {
+            merchantProductRepository.saveAll(
+                listOf(
+                    MerchantProduct(id = "product_seed_1", merchantId = "merchant_seed_1", name = "Beef brochettes (5 skewers)", price = BigDecimal("3500"), imageUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Brochettes.jpg", description = "Grilled beef skewers, a Rwandan favorite."),
+                    MerchantProduct(id = "product_seed_2", merchantId = "merchant_seed_1", name = "Grilled tilapia with ugali", price = BigDecimal("5000"), imageUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Grilled_tilapia.jpg", description = "Whole grilled tilapia, served with ugali."),
+                ),
+            )
+        }
+        if (merchantProductRepository.findByMerchantIdAndActiveTrue("merchant_seed_2").isEmpty()) {
+            merchantProductRepository.saveAll(
+                listOf(
+                    MerchantProduct(id = "product_seed_3", merchantId = "merchant_seed_2", name = "Hamburger with chips", price = BigDecimal("4000"), imageUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Hamburger.jpg", description = "Beef burger with a side of fries."),
+                    MerchantProduct(id = "product_seed_4", merchantId = "merchant_seed_2", name = "Roast chicken (half)", price = BigDecimal("4500"), imageUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Roast_chicken.jpg", description = "Half roast chicken, seasoned and grilled."),
+                    MerchantProduct(id = "product_seed_5", merchantId = "merchant_seed_2", name = "French fries", price = BigDecimal("1500"), imageUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/French_fries.jpg"),
+                ),
+            )
+        }
+        if (merchantProductRepository.findByMerchantIdAndActiveTrue("merchant_seed_3").isEmpty()) {
+            merchantProductRepository.saveAll(
+                listOf(
+                    MerchantProduct(id = "product_seed_6", merchantId = "merchant_seed_3", name = "Cappuccino", price = BigDecimal("1800"), imageUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Cappuccino.jpg"),
+                    MerchantProduct(id = "product_seed_7", merchantId = "merchant_seed_3", name = "Espresso", price = BigDecimal("1200"), imageUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Espresso.jpg"),
+                    MerchantProduct(id = "product_seed_8", merchantId = "merchant_seed_3", name = "Croissant", price = BigDecimal("1500"), imageUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Croissant.jpg"),
+                    MerchantProduct(id = "product_seed_9", merchantId = "merchant_seed_3", name = "Banana bread slice", price = BigDecimal("1300"), imageUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Banana_bread.jpg"),
                 ),
             )
         }

@@ -3,12 +3,14 @@ package rw.itunda.feature.eats.impl
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,7 +19,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.filled.Favorite
@@ -161,6 +167,86 @@ private data class EatsCartLine(val productId: String, val quantity: Int, val ch
 
 private fun eatsCartKey(productId: String, choiceIds: List<String>): String =
     if (choiceIds.isEmpty()) productId else "$productId::${choiceIds.sorted().joinToString(",")}"
+
+// Real Coupang Eats-style photo-forward restaurant card (2026-07-24) -- confirmed via
+// real reference research that Coupang Eats leads every restaurant card with real food
+// photography (not a store icon/logo) specifically because it reads faster than text,
+// and deliberately keeps the info-dense secondary line (rating/distance/ETA/min-order)
+// itunda already had -- the same research flagged that Coupang Eats itself hides that
+// line until you open the restaurant, which it calls out as a real usability flaw, so
+// this keeps it visible rather than copying that specific weakness.
+@Composable
+private fun RestaurantCard(m: ShoppingMerchantDto, isFavorite: Boolean, favoriteBusy: Boolean, onOpen: () -> Unit, onToggleFavorite: () -> Unit) {
+    Card(
+        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
+    ) {
+        Column {
+            Box(modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(topStart = Ids.layout.cardCornerRadius, topEnd = Ids.layout.cardCornerRadius))) {
+                if (m.photoUrl != null) {
+                    SubcomposeAsyncImage(
+                        model = m.photoUrl,
+                        contentDescription = m.businessName,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        when (painter.state) {
+                            is coil.compose.AsyncImagePainter.State.Success -> SubcomposeAsyncImageContent()
+                            else -> RestaurantPhotoPlaceholder()
+                        }
+                    }
+                } else {
+                    RestaurantPhotoPlaceholder()
+                }
+                Icon(
+                    if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                    contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                    tint = if (isFavorite) Ids.colors.danger else Color.White,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(10.dp)
+                        .size(22.dp)
+                        .clickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
+                )
+            }
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text(m.businessName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(
+                    listOfNotNull(m.category, "${m.cashbackRate} cashback").joinToString(" · "),
+                    color = Ids.colors.textSecondary,
+                    fontSize = 12.sp,
+                )
+                if (m.rating != null || m.distanceKm != null || m.minOrderAmount != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                        if (m.rating != null) {
+                            Icon(Icons.Outlined.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(12.dp))
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text("%.1f (%d)".format(m.rating, m.reviewCount), color = Ids.colors.textSecondary, fontSize = 12.sp)
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        Text(
+                            listOfNotNull(
+                                m.distanceKm?.let { "%.1f km".format(it) },
+                                m.deliveryTimeMinutes?.let { "~$it min" },
+                                m.minOrderAmount?.let { "Min ${it.toLong()} RWF" },
+                            ).joinToString(" · "),
+                            color = Ids.colors.textSecondary,
+                            fontSize = 12.sp,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RestaurantPhotoPlaceholder() {
+    Box(modifier = Modifier.fillMaxSize().background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+        Icon(Icons.Outlined.Storefront, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(40.dp))
+    }
+}
 
 // Real, human-readable summary of a resolved cart line's selected options -- mirrors
 // the backend's own EatsOrderService.buildSelectedOptionsJson, but purely for display;
@@ -369,22 +455,30 @@ private fun OrderFoodContent(
 
     LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)) {
         item {
-            Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft).padding(4.dp)) {
+            // Flat, horizontally-scrolling category strip (2026-07-24), same
+            // Karrot/Toss-Shopping-style treatment as Hood's own nav rows --
+            // replacing a filled-pill segmented control.
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+            ) {
                 listOf(OrderFoodView.BROWSE to "Restaurants", OrderFoodView.FAVORITES to "Favorites", OrderFoodView.ORDERS to "My orders").forEach { (v, label) ->
                     val selected = v == view
-                    Text(
-                        label,
-                        color = if (selected) Color.White else Ids.colors.textSecondary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(if (selected) Ids.colors.brand else Color.Transparent)
-                            .clickable { view = v }
-                            .padding(vertical = 8.dp),
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { view = v }) {
+                        Text(
+                            label,
+                            color = if (selected) Ids.colors.textPrimary else Ids.colors.textSecondary,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            fontSize = 15.sp,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .height(2.dp)
+                                .width(18.dp)
+                                .background(if (selected) Ids.colors.brand else Color.Transparent, RoundedCornerShape(1.dp)),
+                        )
+                    }
                 }
             }
         }
@@ -431,71 +525,7 @@ private fun OrderFoodContent(
                     )
                 }
             } else {
-                items(restaurants!!, key = { it.merchantId }) { m ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
-                            .background(Ids.colors.surface)
-                            .clickable { openRestaurant(m) }
-                            .padding(18.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Outlined.Storefront, contentDescription = null, modifier = Modifier.size(20.dp), tint = Ids.colors.brand)
-                        }
-                        Spacer(modifier = Modifier.width(14.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(m.businessName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            // Real fix, 2026-07-21: every restaurant card showed the exact same
-                            // generic "Real menu, real delivery" filler regardless of which
-                            // restaurant it was -- not real per-restaurant info a user could
-                            // actually scan and compare, unlike a real Coupang Eats/Baemin card.
-                            // ShoppingMerchantDto already carries a real cashbackRate; it just
-                            // wasn't shown here.
-                            Text(
-                                listOfNotNull(m.category, "${m.cashbackRate} cashback").joinToString(" · "),
-                                color = Ids.colors.textSecondary,
-                                fontSize = 12.sp,
-                            )
-                            // Real browse-card enrichment (2026-07-21) -- closes
-                            // docs/DESIGN_REFERENCES.md's Eats recommendations #1/#2: rating
-                            // previously sat one tap deeper inside RestaurantMenuView only,
-                            // and there was no distance/delivery-time/min-order signal on the
-                            // browse card at all. Every clause conditionally rendered on real
-                            // data being present -- never a fabricated placeholder.
-                            if (m.rating != null || m.distanceKm != null || m.minOrderAmount != null) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    if (m.rating != null) {
-                                        Icon(Icons.Outlined.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(12.dp))
-                                        Spacer(modifier = Modifier.width(2.dp))
-                                        Text("%.1f (%d)".format(m.rating, m.reviewCount), color = Ids.colors.textSecondary, fontSize = 12.sp)
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                    }
-                                    Text(
-                                        listOfNotNull(
-                                            m.distanceKm?.let { "%.1f km".format(it) },
-                                            m.deliveryTimeMinutes?.let { "~$it min" },
-                                            m.minOrderAmount?.let { "Min ${it.toLong()} RWF" },
-                                        ).joinToString(" · "),
-                                        color = Ids.colors.textSecondary,
-                                        fontSize = 12.sp,
-                                    )
-                                }
-                            }
-                        }
-                        val isFavorite = m.merchantId in favoriteIds
-                        Icon(
-                            if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                            contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
-                            tint = if (isFavorite) Ids.colors.danger else Ids.colors.textSecondary,
-                            modifier = Modifier
-                                .size(22.dp)
-                                .clickable(enabled = favoritingId != m.merchantId) { toggleFavorite(m.merchantId) },
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                }
+                items(restaurants!!, key = { it.merchantId }) { m -> RestaurantCard(m, isFavorite = m.merchantId in favoriteIds, favoriteBusy = favoritingId == m.merchantId, onOpen = { openRestaurant(m) }, onToggleFavorite = { toggleFavorite(m.merchantId) }) }
             }
         }
     }
