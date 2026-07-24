@@ -45,6 +45,7 @@ data class CreateListingRequest(
     val latitude: Double? = null,
     val longitude: Double? = null,
     val meetingPlace: String? = null,
+    val photoUrl: String? = null,
 )
 
 data class MakeOfferRequest(val amount: BigDecimal)
@@ -68,7 +69,7 @@ class MarketplaceController(
     ): ResponseEntity<Map<String, Any?>> {
         val listing = marketplaceService.createListing(
             currentUser.userId, request.title, request.description, request.price, request.category,
-            request.latitude, request.longitude, request.meetingPlace,
+            request.latitude, request.longitude, request.meetingPlace, request.photoUrl,
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "listing" to listing))
     }

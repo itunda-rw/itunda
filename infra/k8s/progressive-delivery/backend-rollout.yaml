@@ -142,6 +142,11 @@ spec:
             secretKeyRef:
               name: itunda-jwt-secret
               key: secret
+        - name: UPLOAD_DIR
+          value: "/uploads"
+        volumeMounts:
+        - name: uploads
+          mountPath: /uploads
         resources:
           requests:
             memory: "512Mi"
@@ -167,3 +172,14 @@ spec:
             port: 4001
           initialDelaySeconds: 45
           periodSeconds: 15
+      # Real photo upload storage (2026-07-24) -- see UploadController's own doc
+      # comment. hostPath, not a PVC/storage class, because this private-cloud
+      # deployment is a genuine single node (itunda-dc-a) -- a hostPath here is
+      # exactly as durable as a PVC would be on one node, without needing a
+      # provisioner this cluster doesn't have. Revisit if the cluster ever becomes
+      # genuinely multi-node again.
+      volumes:
+      - name: uploads
+        hostPath:
+          path: /srv/itunda-uploads
+          type: DirectoryOrCreate

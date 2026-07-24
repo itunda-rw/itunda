@@ -77,6 +77,7 @@ class MarketplaceService(
         latitude: Double? = null,
         longitude: Double? = null,
         meetingPlace: String? = null,
+        photoUrl: String? = null,
     ): Listing {
         val trimmedTitle = title.trim()
         val trimmedDescription = description.trim()
@@ -106,6 +107,10 @@ class MarketplaceService(
         if (trimmedMeetingPlace != null && trimmedMeetingPlace.length > 120) {
             throw InvalidListingException("Suggested meeting place must be 120 characters or fewer")
         }
+        val trimmedPhotoUrl = photoUrl?.trim()?.takeIf { it.isNotEmpty() }
+        if (trimmedPhotoUrl != null && trimmedPhotoUrl.length > 500) {
+            throw InvalidListingException("Photo URL must be 500 characters or fewer")
+        }
         // Real anti-spam limit on user-generated listings -- same convention this
         // session's own security review already established for every other
         // content/money-creation endpoint (Partner SDK, Certificate, chargeCard,
@@ -130,7 +135,7 @@ class MarketplaceService(
                 id = "listing_${UUID.randomUUID()}", sellerId = sellerId, title = trimmedTitle,
                 description = trimmedDescription, price = price, category = trimmedCategory,
                 latitude = latitude, longitude = longitude, neighborhood = neighborhood,
-                meetingPlace = trimmedMeetingPlace,
+                meetingPlace = trimmedMeetingPlace, photoUrl = trimmedPhotoUrl,
             ),
         )
     }

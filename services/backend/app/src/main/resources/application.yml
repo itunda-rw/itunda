@@ -4,6 +4,12 @@ server:
 spring:
   application:
     name: itunda
+  # Real photo upload (2026-07-24) -- see UploadController's own doc comment. Spring
+  # Boot's own defaults (1MB file / 10MB request) are too small for a real phone photo.
+  servlet:
+    multipart:
+      max-file-size: 8MB
+      max-request-size: 8MB
   # This app authenticates purely via the JWT filter (see SecurityConfig/
   # JwtAuthenticationFilter) and never uses Spring Security's UserDetailsService /
   # form-login machinery, so auto-configuring an in-memory default user is just noise

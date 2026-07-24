@@ -9,6 +9,7 @@ import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.access.AccessDeniedHandler
 import org.springframework.security.web.authentication.HttpStatusEntryPoint
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
@@ -113,6 +114,12 @@ class SecurityConfig(
                     // before this fix). /issue, /me, /revoke stay behind the default
                     // JWT gate below -- those manage a real user's own certificate.
                     .requestMatchers("/api/v1/certificate/verify", "/api/v1/certificate/status/**").permitAll()
+                    // Real photo upload (2026-07-24) -- see UploadController's own doc
+                    // comment. A listing photo is meant to be viewed by any browser of
+                    // Hood, not just the uploader -- same "public read, authenticated
+                    // write" shape as itunda's self-hosted tiles/glyphs. GET only;
+                    // POST (creating an upload) stays behind the default JWT gate below.
+                    .requestMatchers(HttpMethod.GET, "/api/v1/uploads/**").permitAll()
                     // Fixed (2026-07-11): previously any authenticated user -- not just an
                     // operator -- could read fraud/compliance/reconciliation data from
                     // /api/v1/system/**, exactly the gap SECURITY.md names as still open.

@@ -77,6 +77,17 @@ class Listing(
     // ownership of a home or safety of a meeting point.
     @Column(name = "meeting_place", nullable = true, length = 120)
     var meetingPlace: String? = null,
+
+    // Real optional listing photo (2026-07-24) -- a seller-set URL to their own
+    // externally-hosted photo, same honest scope as Merchant.photoUrl/
+    // MerchantProduct.imageUrl: itunda has no file-upload/storage layer anywhere in
+    // this backend (confirmed repo-wide before adding this), so "bring your own
+    // publicly-hosted image URL" is the real v1 scope, not a fabricated upload
+    // pipeline. Unset falls back to a generic placeholder client-side, never a
+    // fabricated image -- this closes the single biggest gap in Hood's real Karrot
+    // parity: a real Karrot-style feed leads with a photo, and Listing had none.
+    @Column(name = "photo_url", nullable = true, length = 500)
+    var photoUrl: String? = null,
 ) {
     protected constructor() : this(
         id = "", sellerId = "", title = "", description = "", price = BigDecimal.ZERO, category = "",
