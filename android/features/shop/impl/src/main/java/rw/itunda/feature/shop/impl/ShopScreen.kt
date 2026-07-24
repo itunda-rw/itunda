@@ -76,6 +76,7 @@ import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.StarGold
 import rw.itunda.core.designsystem.components.StarRatingRow
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.network.DealProductDto
 import rw.itunda.core.network.FavoriteProductDto
 import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.NetworkClient
@@ -140,6 +141,20 @@ fun CommerceShopContent(
     // whichever screen toggled it. See ApiService.kt's FavoriteProductDto doc comment.
     var favoriteProductIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var favoritingProductId by remember { mutableStateOf<String?>(null) }
+
+    // Real "Deals" rail (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 5
+    // recommendation #8. Every entry is a real merchant-set discount, never a
+    // fabricated promo -- see backend MerchantProductRepository.findDeals's own doc
+    // comment.
+    var deals by remember { mutableStateOf<List<DealProductDto>?>(null) }
+    LaunchedEffect(Unit) {
+        try {
+            val res = NetworkClient.apiService.getShopDeals()
+            if (res.success) deals = res.products
+        } catch (e: Exception) {
+            // Real, non-critical -- the Deals rail just won't render if this fails.
+        }
+    }
 
     fun loadFavoriteProductIds() {
         coroutineScope.launch {
@@ -312,6 +327,36 @@ fun CommerceShopContent(
         } else if (view == CommerceView.WISHLIST) {
             item { ProductWishlistView(onRemoved = ::loadFavoriteProductIds) }
         } else {
+            // Real "Deals" rail (2026-07-25) -- only shown on the unfiltered landing
+            // state, same "merchandising above the raw list, hidden once the user
+            // starts filtering" discipline a real Coupang/Naver home surface follows.
+            // Tapping a deal jumps straight to that real merchant via the existing
+            // search-by-name flow, rather than fabricating a shortcut merchant object
+            // this screen doesn't otherwise have all the real fields for.
+            if (selectedCategory == null && searchInput.isBlank() && !deals.isNullOrEmpty()) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("🔥 Deals", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            deals!!.forEach { d ->
+                                Column(
+                                    modifier = Modifier.width(120.dp).clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface)
+                                        .clickable { searchInput = d.merchantName }.padding(10.dp),
+                                ) {
+                                    ProductImageThumb(d.imageUrl, size = 96.dp, corner = 10.dp)
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(d.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, maxLines = 2)
+                                    val discountPercent = d.discountPercent
+                                    if (discountPercent != null && discountPercent > 0) {
+                                        Text("$discountPercent% off", color = Ids.colors.danger, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                    }
+                                    Text("%,.0f RWF".format(d.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             item {
                 SearchAndCategoryChips(
                     searchInput = searchInput,

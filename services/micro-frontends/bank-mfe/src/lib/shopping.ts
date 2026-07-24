@@ -74,6 +74,14 @@ export interface ProductSearchResult {
 export const searchProducts = (q: string) =>
   apiFetch<{ success: boolean; products: ProductSearchResult[] }>(`/api/v1/shopping/products/search?q=${encodeURIComponent(q)}`).then((r) => r.products);
 
+// Real "Deals" rail (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 5
+// recommendation #8: a curated deal rail on the Shop landing surface. Every entry is a
+// real merchant-set discount, never a fabricated promo -- see backend
+// MerchantProductRepository.findDeals's own doc comment. Reuses ProductSearchResult's
+// exact shape (same fields, same source table) rather than a duplicate type.
+export const fetchShopDeals = () =>
+  apiFetch<{ success: boolean; products: ProductSearchResult[] }>('/api/v1/shopping/products/deals').then((r) => r.products);
+
 export interface CollectPaymentResult {
   transactionId: string;
   merchantName: string;

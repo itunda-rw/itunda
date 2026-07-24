@@ -23,7 +23,7 @@ import { fetchCreditScore, type CreditScoreResult } from './lib/creditScore';
 import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type KycSubmission } from './lib/identity';
 import { addContact, fetchContacts, type Contact } from './lib/contacts';
 import { createSupportTicket, fetchSupportTickets, type SupportTicket, type SupportTicketCategory } from './lib/support';
-import { collectPayment, fetchMerchantCategories, fetchShoppingCatalog, searchProducts, type CollectPaymentResult, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
+import { collectPayment, fetchMerchantCategories, fetchShopDeals, fetchShoppingCatalog, searchProducts, type CollectPaymentResult, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
 import {
   buyStock, fetchPortfolio, fetchPortfolioHistory, fetchStockHistory, fetchStocks, fetchWatchlist,
   sellStock, unwatchStock, watchStock,
@@ -7421,6 +7421,15 @@ function ShopView() {
   const [searchResults, setSearchResults] = useState<ProductSearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
 
+  // Real "Deals" rail (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 5
+  // recommendation #8. Every entry is a real merchant-set discount, never a
+  // fabricated promo -- see backend MerchantProductRepository.findDeals's own doc
+  // comment.
+  const [deals, setDeals] = useState<ProductSearchResult[] | null>(null);
+  useEffect(() => {
+    fetchShopDeals().then(setDeals).catch(() => {});
+  }, []);
+
   // Real Coupang-style commerce (rw.itunda.commerce) -- deliberately reuses the same
   // GET /api/v1/shopping/merchants catalog the Shopping tab (Toss Shopping cashback
   // browsing) already uses, matching how Android/iOS's own Shop tab reuses the same
@@ -7584,6 +7593,31 @@ function ShopView() {
             </button>
           )}
         </form>
+      )}
+
+      {/* Real "Deals" rail (2026-07-25) -- only shown on the unfiltered landing state,
+          same "merchandising above the raw list, hidden once the user starts
+          filtering" discipline a real Coupang/Naver home surface follows. Reuses
+          openSearchResult exactly -- a real product-search result and a real deal are
+          the same underlying row shape. */}
+      {view === 'BROWSE' && searchResults === null && deals && deals.length > 0 && (
+        <div style={{ marginBottom: '16px' }}>
+          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)', marginBottom: '8px' }}>🔥 Deals</p>
+          <div style={{ display: 'flex', gap: '10px', overflowX: 'auto' }}>
+            {deals.map((d) => (
+              <button
+                key={d.id}
+                onClick={() => openSearchResult(d)}
+                className="toss-card"
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left', width: '120px', flexShrink: 0, gap: '4px' }}
+              >
+                <ProductImageThumb imageUrl={d.imageUrl} size={96} />
+                <p style={{ fontSize: '12px', fontWeight: 700 }}>{d.name}</p>
+                <ProductPriceBlock price={d.price} originalPrice={d.originalPrice} discountPercent={d.discountPercent} />
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       {view === 'BROWSE' && searchResults === null && (

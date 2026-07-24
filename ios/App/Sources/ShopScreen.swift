@@ -78,6 +78,12 @@ private struct CommerceShopContent: View {
     @State private var favoriteProductIds: Set<String> = []
     @State private var favoritingProductId: String?
 
+    // Real "Deals" rail (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 5
+    // recommendation #8. Every entry is a real merchant-set discount, never a
+    // fabricated promo -- see backend MerchantProductRepository.findDeals's own doc
+    // comment.
+    @State private var deals: [DealProductDto]?
+
     private var totalItems: Int { cart.values.reduce(0) { $0 + $1.quantity } }
 
     var body: some View {
@@ -134,6 +140,9 @@ private struct CommerceShopContent: View {
                 do { categories = try await NetworkClient.shared.getMerchantCategories().categories } catch {}
             }
             await loadFavoriteProductIds()
+            if deals == nil {
+                do { deals = try await NetworkClient.shared.getShopDeals().products } catch {}
+            }
         }
     }
 
@@ -197,6 +206,36 @@ private struct CommerceShopContent: View {
                     } else if view == .wishlist {
                         ProductWishlistView(onRemoved: { Task { await loadFavoriteProductIds() } })
                     } else {
+                        // Real "Deals" rail (2026-07-25) -- only shown on the
+                        // unfiltered landing state, same "merchandising above the raw
+                        // list, hidden once the user starts filtering" discipline a
+                        // real Coupang/Naver home surface follows. Tapping a deal
+                        // jumps straight to that real merchant via the existing
+                        // search-by-name flow.
+                        if selectedCategory == nil, searchInput.trimmingCharacters(in: .whitespaces).isEmpty, let deals, !deals.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("🔥 Deals").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 10) {
+                                        ForEach(deals) { d in
+                                            VStack(alignment: .leading, spacing: 6) {
+                                                ProductImageThumb(imageUrl: d.imageUrl, side: 96)
+                                                Text(d.name).font(.caption).bold().foregroundColor(IDS.Colors.textPrimary).lineLimit(2)
+                                                if let discountPercent = d.discountPercent, discountPercent > 0 {
+                                                    Text("\(discountPercent)% off").font(.caption2).bold().foregroundColor(.red)
+                                                }
+                                                Text("\(Int(d.price)) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                            }
+                                            .frame(width: 120, alignment: .leading)
+                                            .padding(10)
+                                            .background(IDS.Colors.card)
+                                            .cornerRadius(IDS.Layout.cardCornerRadius)
+                                            .onTapGesture { searchInput = d.merchantName; scheduleFilterReload() }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         SearchAndCategoryChips(
                             searchText: searchInput,
                             onSearchChange: { searchInput = $0; scheduleFilterReload() },

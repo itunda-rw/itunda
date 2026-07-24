@@ -216,6 +216,27 @@ class ShoppingController(
         return ResponseEntity.ok(mapOf("success" to true, "products" to products) + pageMeta(page))
     }
 
+    // Real "Deals" rail (2026-07-25) -- see MerchantProductRepository.findDeals's own
+    // doc comment for the full account. Same response shape as searchProducts above,
+    // just a different source query (real discounts, ranked highest-first, instead of
+    // a name match).
+    @GetMapping("/products/deals")
+    fun getDeals(
+        @PageableDefault(size = 20) pageable: Pageable,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = merchantProductRepository.findDeals(MerchantStatus.ACTIVE, pageable)
+        val merchantNames = merchantRepository.findAllById(page.content.map { it.merchantId }.distinct()).associate { it.id to it.businessName }
+        val products = page.content.map { p ->
+            mapOf(
+                "id" to p.id, "merchantId" to p.merchantId, "merchantName" to (merchantNames[p.merchantId] ?: ""),
+                "name" to p.name, "price" to p.price,
+                "imageUrl" to p.imageUrl, "originalPrice" to p.originalPrice, "discountPercent" to p.discountPercent,
+                "description" to p.description,
+            )
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "products" to products) + pageMeta(page))
+    }
+
     @ExceptionHandler(ShoppingMerchantNotFoundException::class)
     fun handleMerchantNotFound(ex: ShoppingMerchantNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_NOT_FOUND", ex.message ?: "Not found"))

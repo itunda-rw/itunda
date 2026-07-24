@@ -680,6 +680,16 @@ data class ItineraryDirectionsRequest(val waypoints: List<ItineraryWaypointReque
 data class MapsItineraryResponse(val success: Boolean, val route: RouteResultDto)
 data class MerchantCategoriesResponse(val success: Boolean, val categories: List<String>)
 
+// Real "Deals" rail (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 5
+// recommendation #8: a curated deal rail on the Shop landing surface. Every entry is a
+// real merchant-set discount, never a fabricated promo -- see backend
+// MerchantProductRepository.findDeals's own doc comment.
+data class DealProductDto(
+    val id: String, val merchantId: String, val merchantName: String, val name: String, val price: Double,
+    val imageUrl: String? = null, val originalPrice: Double? = null, val discountPercent: Int? = null, val description: String? = null,
+)
+data class DealsResponse(val success: Boolean, val products: List<DealProductDto>)
+
 // Real "nearby places" category search + bookmarked/favorite places (2026-07-19) -- see
 // rw.itunda.maps.MapsService's own doc comment on the backend. `MAP_NEARBY_CATEGORIES`
 // mirrors bank-mfe's own hardcoded `NEARBY_CATEGORIES` list exactly.
@@ -1630,6 +1640,11 @@ interface ApiService {
     // doc comment on the backend.
     @GET("api/v1/shopping/merchants/categories")
     suspend fun getMerchantCategories(): MerchantCategoriesResponse
+
+    // Real "Deals" rail (2026-07-25) -- see backend MerchantProductRepository.findDeals's
+    // own doc comment.
+    @GET("api/v1/shopping/products/deals")
+    suspend fun getShopDeals(): DealsResponse
 
     @GET("api/v1/shopping/merchants/{id}/products")
     suspend fun getMerchantProducts(@Path("id") merchantId: String): MerchantProductsResponse

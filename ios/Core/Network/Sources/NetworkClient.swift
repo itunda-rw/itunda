@@ -1086,6 +1086,23 @@ public struct ItineraryDirectionsRequest: Encodable { public let waypoints: [Iti
 public struct MapsDirectionsAlternativesResponse: Decodable { public let success: Bool; public let routes: [RouteResultDto] }
 public struct MerchantCategoriesResponse: Decodable { public let success: Bool; public let categories: [String] }
 
+// Real "Deals" rail (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 5
+// recommendation #8: a curated deal rail on the Shop landing surface. Every entry is a
+// real merchant-set discount, never a fabricated promo -- see backend
+// MerchantProductRepository.findDeals's own doc comment.
+public struct DealProductDto: Decodable, Identifiable {
+    public let id: String
+    public let merchantId: String
+    public let merchantName: String
+    public let name: String
+    public let price: Double
+    public let imageUrl: String?
+    public let originalPrice: Double?
+    public let discountPercent: Int?
+    public let description: String?
+}
+public struct DealsResponse: Decodable { public let success: Bool; public let products: [DealProductDto] }
+
 // Real "nearby places" category search + bookmarked/favorite places (2026-07-19) -- see
 // rw.itunda.maps.MapsService's own doc comment on the backend. `mapNearbyCategories`
 // mirrors bank-mfe's own hardcoded `NEARBY_CATEGORIES` list exactly.
@@ -1846,6 +1863,10 @@ extension NetworkClient {
     // Real distinct category list -- see MerchantRepository.findDistinctCategories's own
     // doc comment on the backend.
     public func getMerchantCategories() async throws -> MerchantCategoriesResponse { try await get("api/v1/shopping/merchants/categories") }
+
+    // Real "Deals" rail (2026-07-25) -- see backend MerchantProductRepository.findDeals's
+    // own doc comment.
+    public func getShopDeals() async throws -> DealsResponse { try await get("api/v1/shopping/products/deals") }
 
     // Real "search this map" + "directions" (2026-07-19) -- see MapsService.
     public func searchPlaces(query: String) async throws -> MapsSearchResponse {

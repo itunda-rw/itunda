@@ -65,4 +65,17 @@ interface MerchantProductRepository : JpaRepository<MerchantProduct, String> {
             "AND LOWER(p.name) LIKE LOWER(CONCAT('%', :q, '%'))",
     )
     fun search(@Param("status") status: MerchantStatus, @Param("q") q: String, pageable: Pageable): Page<MerchantProduct>
+
+    // Real "Deals" rail (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 5
+    // recommendation #8: a curated deal rail on the Shop landing surface, above the
+    // raw merchant list. Never a fabricated/hardcoded promo -- every row here is a
+    // real merchant-set discount (discountPercent is always server-computed at write
+    // time from price/originalPrice, see MerchantProduct.kt's own doc comment, so this
+    // can never surface a fake or manipulated "deal").
+    @Query(
+        "SELECT p FROM MerchantProduct p JOIN Merchant m ON m.id = p.merchantId " +
+            "WHERE p.active = true AND m.status = :status AND p.discountPercent IS NOT NULL AND p.discountPercent > 0 " +
+            "ORDER BY p.discountPercent DESC",
+    )
+    fun findDeals(@Param("status") status: MerchantStatus, pageable: Pageable): Page<MerchantProduct>
 }
