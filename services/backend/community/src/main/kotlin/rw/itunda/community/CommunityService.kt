@@ -10,12 +10,16 @@ import rw.itunda.core.domain.CommunityComment
 import rw.itunda.core.domain.CommunityLike
 import rw.itunda.core.domain.CommunityPost
 import rw.itunda.core.domain.CommunityPostStatus
+import rw.itunda.core.domain.GroupConversation
+import rw.itunda.core.domain.GroupConversationMember
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.repository.CommunityCommentRepository
 import rw.itunda.core.repository.CommunityLikeRepository
 import rw.itunda.core.repository.CommunityPostRepository
+import rw.itunda.core.repository.GroupConversationMemberRepository
+import rw.itunda.core.repository.GroupConversationRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import java.time.Duration
@@ -28,6 +32,7 @@ class InvalidCommunityPostException(message: String) : RuntimeException(message)
 class InvalidCommunityCommentException(message: String) : RuntimeException(message)
 class InvalidCommunityCoordinatesException(message: String) : RuntimeException(message)
 class CommunityNeighborhoodNotSetException(message: String) : RuntimeException(message)
+class CommunityMeetupJoinException(message: String) : RuntimeException(message)
 
 data class CommunityCategory(val id: String, val label: String)
 
@@ -56,6 +61,8 @@ class CommunityService(
     private val likeRepository: CommunityLikeRepository,
     private val userRepository: UserRepository,
     private val notificationRepository: NotificationRepository,
+    private val groupConversationRepository: GroupConversationRepository,
+    private val groupConversationMemberRepository: GroupConversationMemberRepository,
     private val rateLimiter: RateLimiter,
     private val nominatimGeocodingClient: NominatimGeocodingClient,
 ) {
@@ -196,6 +203,56 @@ class CommunityService(
         val post = requireAuthor(authorId, postId)
         post.status = CommunityPostStatus.REMOVED
         return postRepository.save(post)
+    }
+
+    // Real 같이해요 (join-together) group chat (2026-07-24) -- closes
+    // docs/DESIGN_REFERENCES.md Section 4 recommendation #4's "joining their group chat
+    // requires an explicit 참여하기 tap." Deliberately bypasses
+    // GroupMessagingService.addMember (which requires the requester to already BE a
+    // group member -- correct for "invite someone to my existing group," wrong for
+    // "publicly join a meetup group you're not in yet"), and manages the group/member
+    // rows directly instead -- same cross-module repository reuse discipline
+    // TrustScoreSupport.trustScores already established (a service in one module using
+    // another module's repository directly, not routed through that module's own
+    // service API).
+    @Transactional
+    fun joinMeetup(userId: String, postId: String): GroupConversation {
+        val post = postRepository.findById(postId).orElseThrow { CommunityPostNotFoundException("Post not found") }
+        if (post.category != "meetup") {
+            throw CommunityMeetupJoinException("Only meetup posts can be joined")
+        }
+        if (post.status != CommunityPostStatus.ACTIVE) {
+            throw CommunityMeetupJoinException("This meetup is no longer active")
+        }
+        val groupId = post.groupConversationId ?: run {
+            val newGroupId = "group_${UUID.randomUUID()}"
+            groupConversationRepository.save(GroupConversation(id = newGroupId, name = post.title, createdBy = post.authorId))
+            groupConversationMemberRepository.save(
+                GroupConversationMember(id = "group_member_${UUID.randomUUID()}", groupConversationId = newGroupId, userId = post.authorId),
+            )
+            post.groupConversationId = newGroupId
+            postRepository.save(post)
+            newGroupId
+        }
+        if (groupConversationMemberRepository.findByGroupConversationIdAndUserId(groupId, userId) == null) {
+            groupConversationMemberRepository.save(
+                GroupConversationMember(id = "group_member_${UUID.randomUUID()}", groupConversationId = groupId, userId = userId),
+            )
+        }
+        return groupConversationRepository.findById(groupId).orElseThrow()
+    }
+
+    // Real "N joined" count (2026-07-24) -- batch member-count query
+    // (countMembersByGroupConversationIds) already proven by
+    // GroupMessagingService.listMyGroups, reused here rather than fetching every member
+    // row just to call .size, same N+1-avoidance discipline this class's own doc
+    // comment already established for likeCount/commentCount.
+    fun joinedCounts(posts: Collection<CommunityPost>): Map<String, Int> {
+        val groupIds = posts.mapNotNull { it.groupConversationId }
+        if (groupIds.isEmpty()) return emptyMap()
+        val counts = groupConversationMemberRepository.countMembersByGroupConversationIds(groupIds)
+            .associate { it.groupConversationId to it.memberCount.toInt() }
+        return posts.mapNotNull { post -> post.groupConversationId?.let { gid -> post.id to (counts[gid] ?: 0) } }.toMap()
     }
 
     fun getComments(postId: String, pageable: Pageable): Page<CommunityCommentWithAuthor> {

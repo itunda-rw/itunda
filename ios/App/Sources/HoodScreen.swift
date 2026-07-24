@@ -210,7 +210,7 @@ struct HoodScreen: View {
             case .marketplace:
                 MarketplaceContent(pendingConversationId: $pendingConversationId, onSwitchToTalk: onSwitchToTalk)
             case .community:
-                CommunityContent()
+                CommunityContent(pendingConversationId: $pendingConversationId, onSwitchToTalk: onSwitchToTalk)
             case .jobs:
                 JobsContent(pendingConversationId: $pendingConversationId, onSwitchToTalk: onSwitchToTalk)
             case .property:
@@ -874,10 +874,22 @@ private struct ListingWishlistView: View {
 private struct CommunityContent: View {
     private enum CommunityView { case browse, nearby, neighborhood, mine }
 
+    /// Real "join meetup" hand-off to Talk (2026-07-24) -- same
+    /// pendingConversationId/onSwitchToTalk pair Marketplace/Jobs/Property already
+    /// share, extended (see TalkScreen.swift's own doc comment) to also accept a real
+    /// GroupConversation id, not just a 1:1 conversation id.
+    @Binding var pendingConversationId: String?
+    let onSwitchToTalk: () -> Void
+
     @State private var view: CommunityView = .browse
     @State private var categories: [CommunityCategoryDto] = []
     @State private var activeCategory: String?
     @State private var posts: [CommunityPostDto]?
+    // Real 같이해요 (join-together) group join counts (2026-07-24) -- postId -> real
+    // member count of that meetup's group chat, closing docs/DESIGN_REFERENCES.md
+    // Section 4 recommendation #4.
+    @State private var joinedCounts: [String: Int] = [:]
+    @State private var joiningPostId: String?
     @State private var error: String?
     @State private var showNewPost = false
     @State private var openPostId: String?
@@ -963,13 +975,38 @@ private struct CommunityContent: View {
                                 : "You haven't posted anything yet."
                         ).foregroundColor(IDS.Colors.textSecondary)
                     } else if !posts!.isEmpty {
-                        ForEach(posts!) { post in
+                        // Real 같이해요 (join-together) pinned mid-feed slot
+                        // (2026-07-24) -- Karrot's real board gives meetup posts a
+                        // dedicated slot instead of mixing them purely chronologically
+                        // (docs/DESIGN_REFERENCES.md Section 4 recommendation #4). "My
+                        // posts" stays plain chronological.
+                        let meetups = view != .mine ? posts!.filter { $0.category == "meetup" } : []
+                        let regular = view != .mine ? posts!.filter { $0.category != "meetup" } : posts!
+                        if !meetups.isEmpty {
+                            Text("🎉 Meetups").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                            ForEach(meetups) { post in
+                                CommunityPostCard(
+                                    post: post,
+                                    categoryLabel: categories.first(where: { $0.id == post.category })?.label ?? post.category,
+                                    isMine: post.authorId == currentUserId,
+                                    onOpen: { openPostId = post.id },
+                                    onRemoved: { Task { await load() } },
+                                    joinedCount: joinedCounts[post.id] ?? 0,
+                                    joining: joiningPostId == post.id,
+                                    onJoin: { Task { await joinMeetup(post.id) } }
+                                )
+                            }
+                        }
+                        ForEach(regular) { post in
                             CommunityPostCard(
                                 post: post,
                                 categoryLabel: categories.first(where: { $0.id == post.category })?.label ?? post.category,
                                 isMine: view == .mine || post.authorId == currentUserId,
                                 onOpen: { openPostId = post.id },
-                                onRemoved: { Task { await load() } }
+                                onRemoved: { Task { await load() } },
+                                joinedCount: joinedCounts[post.id] ?? 0,
+                                joining: joiningPostId == post.id,
+                                onJoin: { Task { await joinMeetup(post.id) } }
                             )
                         }
                     }
@@ -1009,6 +1046,7 @@ private struct CommunityContent: View {
                 let res = try await NetworkClient.shared.getCommunityPostsMyNeighborhood(category: activeCategory)
                 neighborhoodName = profile.user.neighborhood
                 posts = res.posts
+                joinedCounts = res.joinedCounts ?? [:]
                 error = nil
             } catch let NetworkError.httpError(statusCode) where statusCode == 400 {
                 neighborhoodName = nil
@@ -1023,6 +1061,7 @@ private struct CommunityContent: View {
         do {
             let res = view == .browse ? try await NetworkClient.shared.browseCommunityPosts(category: activeCategory) : try await NetworkClient.shared.getMyCommunityPosts()
             posts = res.posts
+            joinedCounts = res.joinedCounts ?? [:]
             error = nil
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
@@ -1033,10 +1072,29 @@ private struct CommunityContent: View {
         do {
             let res = try await NetworkClient.shared.getNearbyCommunityPosts(lat: coordinate.latitude, lng: coordinate.longitude)
             posts = res.posts
+            joinedCounts = res.joinedCounts ?? [:]
             error = nil
         } catch {
             self.error = "Couldn't load nearby posts. Check your connection and try again."
             posts = []
+        }
+    }
+
+    // Real 같이해요 (join-together) explicit 참여하기 tap (2026-07-24) -- closes
+    // docs/DESIGN_REFERENCES.md Section 4 recommendation #4. Reuses the exact same
+    // pendingConversationId/onSwitchToTalk hand-off Marketplace/Jobs/Property already
+    // share -- TalkScreen.swift's own tryOpenPending() was extended to also check
+    // `groups`, so a real GroupConversation id works here too.
+    private func joinMeetup(_ postId: String) async {
+        joiningPostId = postId
+        defer { joiningPostId = nil }
+        do {
+            let res = try await NetworkClient.shared.joinCommunityMeetup(postId)
+            joinedCounts[postId, default: 0] += 1
+            pendingConversationId = res.groupId
+            onSwitchToTalk()
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
         }
     }
 }
@@ -1142,6 +1200,9 @@ private struct CommunityPostCard: View {
     let isMine: Bool
     let onOpen: () -> Void
     let onRemoved: () -> Void
+    var joinedCount: Int = 0
+    var joining: Bool = false
+    var onJoin: () -> Void = {}
 
     @State private var busy = false
     @State private var error: String?
@@ -1170,9 +1231,27 @@ private struct CommunityPostCard: View {
             if !isMine && post.category == "question" {
                 Button("Answer this question", action: onOpen)
                     .font(.caption).bold().foregroundColor(IDS.Colors.brand)
-            } else if !isMine && post.category == "meetup" {
-                Button("View meetup", action: onOpen)
-                    .font(.caption).bold().foregroundColor(IDS.Colors.brand)
+            } else if post.category == "meetup" {
+                // Real 참여하기 (join) tap (2026-07-24) -- a real join, not just a
+                // "view" navigation: it adds the tapper to a real GroupConversation
+                // (see backend CommunityService.joinMeetup's own doc comment), shown
+                // with a real "N joined" count rather than a bare label.
+                if isMine {
+                    Button("View meetup", action: onOpen)
+                        .font(.caption).bold().foregroundColor(IDS.Colors.brand)
+                } else {
+                    HStack(spacing: 12) {
+                        Button("View meetup", action: onOpen)
+                            .font(.caption).bold().foregroundColor(IDS.Colors.brand)
+                        Button(action: onJoin) {
+                            Text(joining ? "Joining…" : "참여하기 · \(joinedCount) joined")
+                                .font(.caption).bold().foregroundColor(.white)
+                                .padding(.horizontal, 12).padding(.vertical, 6)
+                                .background(IDS.Colors.brand).cornerRadius(10)
+                        }
+                        .disabled(joining)
+                    }
+                }
             }
             if let error {
                 Text(error).font(.caption).foregroundColor(.red)

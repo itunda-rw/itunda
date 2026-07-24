@@ -523,13 +523,20 @@ data class CommunityPostDto(
     val id: String, val authorId: String, val category: String, val title: String, val body: String,
     val status: String, val likeCount: Long, val commentCount: Long, val createdAt: String,
     val latitude: Double? = null, val longitude: Double? = null,
+    // groupConversationId added 2026-07-24 -- see backend CommunityPost.kt's own doc
+    // comment. Only ever set for category == "meetup" posts that have had at least one
+    // real join.
+    val groupConversationId: String? = null,
 )
 data class CreateCommunityPostRequest(
     val category: String, val title: String, val body: String,
     val latitude: Double? = null, val longitude: Double? = null,
 )
 data class CommunityPostResponse(val success: Boolean, val post: CommunityPostDto)
-data class CommunityPostsResponse(val success: Boolean, val posts: List<CommunityPostDto>)
+// joinedCounts added 2026-07-24 -- postId -> real member count of that meetup's group
+// chat, closing docs/DESIGN_REFERENCES.md Section 4 recommendation #4's "같이해요
+// (join-together) posts get a dedicated pinned mid-feed slot."
+data class CommunityPostsResponse(val success: Boolean, val posts: List<CommunityPostDto>, val joinedCounts: Map<String, Int> = emptyMap())
 data class CommunityCategoriesResponse(val success: Boolean, val categories: List<CommunityCategoryDto>)
 data class CommunityPostDetailResponse(val success: Boolean, val post: CommunityPostDto, val authorName: String, val likedByMe: Boolean)
 data class CommunityCommentDto(val id: String, val postId: String, val authorId: String, val body: String, val createdAt: String)
@@ -538,6 +545,9 @@ data class CommunityCommentsResponse(val success: Boolean, val comments: List<Co
 data class AddCommunityCommentRequest(val body: String)
 data class CommunityCommentResponse(val success: Boolean, val comment: CommunityCommentDto)
 data class ToggleCommunityLikeResponse(val success: Boolean, val liked: Boolean)
+// Real 같이해요 (join-together) explicit join (2026-07-24) -- see backend
+// CommunityService.joinMeetup's own doc comment.
+data class JoinMeetupResponse(val success: Boolean, val groupId: String)
 
 // Real 당근알바-style local job board (2026-07-19) -- see rw.itunda.jobs.web.JobPostController.
 data class JobCategoryDto(val id: String, val label: String)
@@ -1373,6 +1383,11 @@ interface ApiService {
 
     @POST("api/v1/community/posts/{id}/like")
     suspend fun toggleCommunityLike(@Path("id") postId: String): ToggleCommunityLikeResponse
+
+    // Real 같이해요 (join-together) explicit 참여하기 tap (2026-07-24) -- see backend
+    // CommunityService.joinMeetup's own doc comment.
+    @POST("api/v1/community/posts/{id}/join")
+    suspend fun joinCommunityMeetup(@Path("id") postId: String): JoinMeetupResponse
 
     // Real 당근알바-style local job board (2026-07-19) -- see rw.itunda.jobs.web.JobPostController.
     @GET("api/v1/jobs/categories")

@@ -864,14 +864,20 @@ public struct CommunityPostDto: Decodable, Identifiable {
     public let createdAt: String
     public let latitude: Double?
     public let longitude: Double?
-    public init(id: String, authorId: String, category: String, title: String, body: String, status: String, likeCount: Int, commentCount: Int, createdAt: String, latitude: Double?, longitude: Double?) { self.id = id; self.authorId = authorId; self.category = category; self.title = title; self.body = body; self.status = status; self.likeCount = likeCount; self.commentCount = commentCount; self.createdAt = createdAt; self.latitude = latitude; self.longitude = longitude }
+    // groupConversationId added 2026-07-24 -- see backend CommunityPost.kt's own doc
+    // comment. Only ever set for category == "meetup" posts that have had at least one
+    // real join.
+    public let groupConversationId: String?
+    public init(id: String, authorId: String, category: String, title: String, body: String, status: String, likeCount: Int, commentCount: Int, createdAt: String, latitude: Double?, longitude: Double?, groupConversationId: String? = nil) { self.id = id; self.authorId = authorId; self.category = category; self.title = title; self.body = body; self.status = status; self.likeCount = likeCount; self.commentCount = commentCount; self.createdAt = createdAt; self.latitude = latitude; self.longitude = longitude; self.groupConversationId = groupConversationId }
 }
 public struct CreateCommunityPostRequest: Encodable {
     public let category: String; public let title: String; public let body: String
     public let latitude: Double?; public let longitude: Double?
 }
 public struct CommunityPostResponse: Decodable { public let success: Bool; public let post: CommunityPostDto }
-public struct CommunityPostsResponse: Decodable { public let success: Bool; public let posts: [CommunityPostDto] }
+// joinedCounts added 2026-07-24 -- postId -> real member count of that meetup's group
+// chat, closing docs/DESIGN_REFERENCES.md Section 4 recommendation #4.
+public struct CommunityPostsResponse: Decodable { public let success: Bool; public let posts: [CommunityPostDto]; public let joinedCounts: [String: Int]? }
 public struct CommunityCategoriesResponse: Decodable { public let success: Bool; public let categories: [CommunityCategoryDto] }
 public struct CommunityPostDetailResponse: Decodable { public let success: Bool; public let post: CommunityPostDto; public let authorName: String; public let likedByMe: Bool }
 public struct CommunityCommentDto: Decodable, Identifiable { public let id: String; public let postId: String; public let authorId: String; public let body: String; public let createdAt: String }
@@ -884,6 +890,9 @@ public struct CommunityCommentsResponse: Decodable { public let success: Bool; p
 public struct AddCommunityCommentRequest: Encodable { public let body: String }
 public struct CommunityCommentResponse: Decodable { public let success: Bool; public let comment: CommunityCommentDto }
 public struct ToggleCommunityLikeResponse: Decodable { public let success: Bool; public let liked: Bool }
+// Real 같이해요 (join-together) explicit join (2026-07-24) -- see backend
+// CommunityService.joinMeetup's own doc comment.
+public struct JoinMeetupResponse: Decodable { public let success: Bool; public let groupId: String }
 
 // Real 당근알바-style local job board (2026-07-19) -- see rw.itunda.jobs.web.JobPostController.
 public struct JobCategoryDto: Decodable, Identifiable { public let id: String; public let label: String }
@@ -1614,6 +1623,12 @@ extension NetworkClient {
 
     public func toggleCommunityLike(_ postId: String) async throws -> ToggleCommunityLikeResponse {
         try await authenticatedPost("api/v1/community/posts/\(postId)/like", body: EmptyBody())
+    }
+
+    // Real 같이해요 (join-together) explicit 참여하기 tap (2026-07-24) -- see backend
+    // CommunityService.joinMeetup's own doc comment.
+    public func joinCommunityMeetup(_ postId: String) async throws -> JoinMeetupResponse {
+        try await authenticatedPost("api/v1/community/posts/\(postId)/join", body: EmptyBody())
     }
 
     // Real 당근알바-style local job board (2026-07-19) -- see rw.itunda.jobs.web.JobPostController.

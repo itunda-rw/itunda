@@ -184,9 +184,18 @@ fun TalkTab(
     // Real "message seller" hand-off from HoodTab -- opens straight into the real
     // chat thread once it shows up in this tab's own real conversation list, same
     // pattern bank-mfe's MessagesView/initialConversationId prop already established.
-    LaunchedEffect(initialConversationId, conversations) {
-        if (initialConversationId != null && conversations?.any { it.conversationId == initialConversationId } == true) {
+    // Extended 2026-07-24 to also check `groups` -- Community's "join meetup" hand-off
+    // (CommunityContent's onOpenGroupChat, reusing this exact same callback) hands off
+    // a real GroupConversation id, not a 1:1 conversation id, so this needs to open the
+    // group view instead when that's what matches.
+    LaunchedEffect(initialConversationId, conversations, groups) {
+        if (initialConversationId == null) return@LaunchedEffect
+        if (conversations?.any { it.conversationId == initialConversationId } == true) {
             openConversationId = initialConversationId
+            onConsumedInitial()
+        } else if (groups?.any { it.groupId == initialConversationId } == true) {
+            view = TalkView.GROUPS
+            openGroupId = initialConversationId
             onConsumedInitial()
         }
     }

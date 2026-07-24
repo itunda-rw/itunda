@@ -71,11 +71,16 @@ import java.io.IOException
 private enum class CommunityView { BROWSE, NEARBY, NEIGHBORHOOD, MINE }
 
 @Composable
-fun CommunityContent() {
+fun CommunityContent(onOpenGroupChat: (String) -> Unit = {}) {
     var view by remember { mutableStateOf(CommunityView.BROWSE) }
     var categories by remember { mutableStateOf<List<CommunityCategoryDto>>(emptyList()) }
     var activeCategory by remember { mutableStateOf<String?>(null) }
     var posts by remember { mutableStateOf<List<CommunityPostDto>?>(null) }
+    // Real 같이해요 (join-together) group join counts (2026-07-24) -- postId -> real
+    // member count of that meetup's group chat, closing docs/DESIGN_REFERENCES.md
+    // Section 4 recommendation #4.
+    var joinedCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+    var joiningPostId by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var showNewPost by remember { mutableStateOf(false) }
     var openPostId by remember { mutableStateOf<String?>(null) }
@@ -90,7 +95,7 @@ fun CommunityContent() {
             coroutineScope.launch {
                 try {
                     val res = NetworkClient.apiService.getNearbyCommunityPosts(lat, lng)
-                    if (res.success) posts = res.posts
+                    if (res.success) { posts = res.posts; joinedCounts = res.joinedCounts }
                     error = null
                 } catch (e: HttpException) {
                     error = superAppErrorMessage(e)
@@ -121,7 +126,7 @@ fun CommunityContent() {
                     val profileRes = NetworkClient.authApi.getProfile()
                     val res = NetworkClient.apiService.getCommunityPostsMyNeighborhood(activeCategory)
                     neighborhoodName = profileRes.user.neighborhood
-                    if (res.success) posts = res.posts
+                    if (res.success) { posts = res.posts; joinedCounts = res.joinedCounts }
                     error = null
                 } catch (e: HttpException) {
                     if (e.code() == 400) {
@@ -142,7 +147,7 @@ fun CommunityContent() {
         coroutineScope.launch {
             try {
                 val res = if (view == CommunityView.BROWSE) NetworkClient.apiService.browseCommunityPosts(activeCategory) else NetworkClient.apiService.getMyCommunityPosts()
-                if (res.success) posts = res.posts
+                if (res.success) { posts = res.posts; joinedCounts = res.joinedCounts }
                 error = null
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
@@ -152,6 +157,31 @@ fun CommunityContent() {
         }
     }
     LaunchedEffect(view, activeCategory) { load() }
+
+    // Real 같이해요 (join-together) explicit 참여하기 tap (2026-07-24) -- closes
+    // docs/DESIGN_REFERENCES.md Section 4 recommendation #4. Reuses the exact same
+    // onOpenGroupChat/onMessageSeller callback Marketplace/Jobs/Property already share
+    // for "hand off to Talk" -- TalkScreen.kt's own initialConversationId effect was
+    // extended to also check `groups`, so a real GroupConversation id works here too,
+    // no new navigation plumbing needed.
+    fun joinMeetup(postId: String) {
+        joiningPostId = postId
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.joinCommunityMeetup(postId)
+                if (res.success) {
+                    joinedCounts = joinedCounts + (postId to ((joinedCounts[postId] ?: 0) + 1))
+                    onOpenGroupChat(res.groupId)
+                }
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                joiningPostId = null
+            }
+        }
+    }
 
     if (openPostId != null) {
         CommunityPostDetailScreen(postId = openPostId!!, onBack = { openPostId = null; load() })
@@ -250,11 +280,42 @@ fun CommunityContent() {
                 )
             }
         } else if (posts!!.isNotEmpty()) {
-            items(posts!!, key = { it.id }) { post ->
+            // Real 같이해요 (join-together) pinned mid-feed slot (2026-07-24) --
+            // Karrot's real board gives meetup posts a dedicated slot instead of
+            // mixing them purely chronologically into the rest of the feed (see
+            // docs/DESIGN_REFERENCES.md Section 4 recommendation #4). "My posts"
+            // stays plain chronological -- pinning your own management list would
+            // just be noise, not a discovery aid.
+            val (meetups, regular) = if (view != CommunityView.MINE) {
+                posts!!.partition { it.category == "meetup" }
+            } else {
+                emptyList<CommunityPostDto>() to posts!!
+            }
+            if (meetups.isNotEmpty()) {
+                item {
+                    Text("🎉 Meetups", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                }
+                items(meetups, key = { "meetup_${it.id}" }) { post ->
+                    CommunityPostCard(
+                        post = post,
+                        categoryLabel = categories.firstOrNull { it.id == post.category }?.label ?: post.category,
+                        isMine = post.authorId == currentUserId,
+                        joinedCount = joinedCounts[post.id] ?: 0,
+                        joining = joiningPostId == post.id,
+                        onJoin = { joinMeetup(post.id) },
+                        onOpen = { openPostId = post.id },
+                        onRemoved = ::load,
+                    )
+                }
+            }
+            items(regular, key = { it.id }) { post ->
                 CommunityPostCard(
                     post = post,
                     categoryLabel = categories.firstOrNull { it.id == post.category }?.label ?: post.category,
                     isMine = view == CommunityView.MINE || post.authorId == currentUserId,
+                    joinedCount = joinedCounts[post.id] ?: 0,
+                    joining = joiningPostId == post.id,
+                    onJoin = { joinMeetup(post.id) },
                     onOpen = { openPostId = post.id },
                     onRemoved = ::load,
                 )
@@ -342,7 +403,10 @@ private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreat
 }
 
 @Composable
-private fun CommunityPostCard(post: CommunityPostDto, categoryLabel: String, isMine: Boolean, onOpen: () -> Unit, onRemoved: () -> Unit) {
+private fun CommunityPostCard(
+    post: CommunityPostDto, categoryLabel: String, isMine: Boolean, onOpen: () -> Unit, onRemoved: () -> Unit,
+    joinedCount: Int = 0, joining: Boolean = false, onJoin: () -> Unit = {},
+) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
@@ -375,8 +439,19 @@ private fun CommunityPostCard(post: CommunityPostDto, categoryLabel: String, isM
             Text("❤️ ${post.likeCount} · 💬 ${post.commentCount}", color = Ids.colors.textSecondary, fontSize = 12.sp)
             if (!isMine && post.category == "question") {
                 ListingActionButton("Answer this question", busy, onClick = onOpen)
-            } else if (!isMine && post.category == "meetup") {
-                ListingActionButton("View meetup", busy, onClick = onOpen)
+            } else if (post.category == "meetup") {
+                // Real 참여하기 (join) tap (2026-07-24) -- a real join, not just a
+                // "view" navigation: it adds the tapper to a real GroupConversation
+                // (see backend CommunityService.joinMeetup's own doc comment), shown
+                // with a real "N joined" count rather than a bare label.
+                if (isMine) {
+                    ListingActionButton("View meetup", busy, onClick = onOpen)
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ListingActionButton("View meetup", busy, onClick = onOpen)
+                        ListingActionButton(if (joining) "Joining…" else "참여하기 · $joinedCount joined", joining, filled = true, onClick = onJoin)
+                    }
+                }
             }
             if (!isMine) {
                 HoodReportAction(targetType = "COMMUNITY_POST", targetId = post.id)

@@ -45,8 +45,8 @@ import { fetchProfile, setNeighborhood } from './lib/neighborhood';
 import { claimGift, fetchGiftsForConversation, sendGiftInConversation, type Gift, type GiftStatus } from './lib/gift';
 import {
   addCommunityComment, createCommunityPost, fetchCommunityCategories, fetchCommunityComments, fetchCommunityPost,
-  fetchCommunityPosts, fetchCommunityPostsMyNeighborhood, fetchMyCommunityPosts, removeCommunityPost, toggleCommunityLike,
-  type CommunityCategory, type CommunityComment, type CommunityPost,
+  fetchCommunityPosts, fetchCommunityPostsMyNeighborhood, fetchMyCommunityPosts, joinCommunityMeetup, removeCommunityPost, toggleCommunityLike,
+  type CommunityCategory, type CommunityComment, type CommunityPost, type JoinedCounts,
 } from './lib/community';
 import {
   addJobPostFavorite, contactPoster, createJobPost, fetchJobCategories, fetchJobPosts, fetchJobPostsMyNeighborhood,
@@ -2959,7 +2959,7 @@ function GroupManageMembersView({
   );
 }
 
-function GroupsList() {
+function GroupsList({ initialConversationId, onConsumedInitial }: { initialConversationId?: string | null; onConsumedInitial?: () => void } = {}) {
   const [groups, setGroups] = useState<GroupSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
@@ -2972,6 +2972,16 @@ function GroupsList() {
   };
 
   useEffect(load, []);
+
+  // Real "join meetup" hand-off from CommunityView (2026-07-24) -- same pattern
+  // DirectMessagesList's own initialConversationId effect already established, just
+  // matched against `groups` instead of 1:1 conversations.
+  useEffect(() => {
+    if (initialConversationId && groups?.some((g) => g.groupId === initialConversationId)) {
+      setOpenGroupId(initialConversationId);
+      onConsumedInitial?.();
+    }
+  }, [initialConversationId, groups]);
 
   const openGroup = groups?.find((g) => g.groupId === openGroupId);
   if (openGroup) {
@@ -3048,6 +3058,20 @@ function GroupsList() {
 function MessagesView({ initialConversationId, onConsumedInitial }: { initialConversationId?: string | null; onConsumedInitial?: () => void }) {
   const [mode, setMode] = useState<'DIRECT' | 'GROUPS'>('DIRECT');
 
+  // Real "join meetup" hand-off from CommunityView (2026-07-24): a real
+  // GroupConversation id, not a 1:1 conversation id, needs the Groups tab
+  // pre-selected -- otherwise it would silently render under Direct, where neither
+  // DirectMessagesList's own conversation list nor its initialConversationId check
+  // would ever match it.
+  useEffect(() => {
+    if (!initialConversationId) return;
+    fetchGroups()
+      .then((groups) => {
+        if (groups.some((g) => g.groupId === initialConversationId)) setMode('GROUPS');
+      })
+      .catch(() => {});
+  }, [initialConversationId]);
+
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
@@ -3068,7 +3092,7 @@ function MessagesView({ initialConversationId, onConsumedInitial }: { initialCon
       {mode === 'DIRECT' ? (
         <DirectMessagesList initialConversationId={initialConversationId} onConsumedInitial={onConsumedInitial} />
       ) : (
-        <GroupsList />
+        <GroupsList initialConversationId={initialConversationId} onConsumedInitial={onConsumedInitial} />
       )}
     </div>
   );
@@ -3733,8 +3757,9 @@ function NewCommunityPostCard({ categories, onCreated }: { categories: Community
   );
 }
 
-function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChanged }: {
+function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChanged, joinedCount, joining, onJoin }: {
   post: CommunityPost; categoryLabel: string; isMine: boolean; onOpen: () => void; onChanged: () => void;
+  joinedCount?: number; joining?: boolean; onJoin?: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -3773,6 +3798,20 @@ function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChanged }: {
       <p style={{ fontSize: '12px', color: 'var(--toss-grey-400)' }}>
         ❤️ {post.likeCount} · 💬 {post.commentCount}
       </p>
+      {/* Real 참여하기 (join) tap (2026-07-24) -- a real join, not just a "view"
+          navigation: it adds the tapper to a real GroupConversation (see backend
+          CommunityService.joinMeetup's own doc comment), shown with a real "N joined"
+          count rather than a bare label. */}
+      {!isMine && post.category === 'meetup' && (
+        <button
+          className="toss-btn toss-btn-primary"
+          style={{ fontSize: '12px', padding: '6px 12px', alignSelf: 'flex-start' }}
+          disabled={joining}
+          onClick={(e) => { e.stopPropagation(); onJoin?.(); }}
+        >
+          {joining ? 'Joining…' : `참여하기 · ${joinedCount ?? 0} joined`}
+        </button>
+      )}
       {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
     </div>
   );
@@ -3877,11 +3916,15 @@ function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: (
   );
 }
 
-function CommunityView() {
+function CommunityView({ onOpenGroupChat }: { onOpenGroupChat: (groupId: string) => void }) {
   const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD'>('BROWSE');
   const [categories, setCategories] = useState<CommunityCategory[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [posts, setPosts] = useState<CommunityPost[] | null>(null);
+  // Real 같이해요 (join-together) group join counts (2026-07-24) -- see TrustBadge's
+  // sibling doc comments; closes docs/DESIGN_REFERENCES.md Section 4 recommendation #4.
+  const [joinedCounts, setJoinedCounts] = useState<JoinedCounts>({});
+  const [joiningPostId, setJoiningPostId] = useState<string | null>(null);
   const [openPostId, setOpenPostId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
@@ -3896,9 +3939,10 @@ function CommunityView() {
     setPosts(null);
     if (view === 'NEIGHBORHOOD') {
       Promise.all([fetchProfile(), fetchCommunityPostsMyNeighborhood(activeCategory ?? undefined)])
-        .then(([profile, items]) => {
+        .then(([profile, result]) => {
           setNeighborhoodName(profile.neighborhood);
-          setPosts(items);
+          setPosts(result.posts);
+          setJoinedCounts(result.joinedCounts);
         })
         .catch((err) => {
           if (err instanceof ApiError && err.code === 'NEIGHBORHOOD_NOT_SET') {
@@ -3912,11 +3956,26 @@ function CommunityView() {
     }
     const fetcher = view === 'BROWSE' ? fetchCommunityPosts(activeCategory ?? undefined) : fetchMyCommunityPosts();
     fetcher
-      .then(setPosts)
+      .then((result) => { setPosts(result.posts); setJoinedCounts(result.joinedCounts); })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load posts.'));
   };
 
   useEffect(load, [view, activeCategory]);
+
+  // Real 같이해요 (join-together) explicit 참여하기 tap (2026-07-24) -- see backend
+  // CommunityService.joinMeetup's own doc comment.
+  const joinMeetup = async (postId: string) => {
+    setJoiningPostId(postId);
+    try {
+      const groupId = await joinCommunityMeetup(postId);
+      setJoinedCounts((prev) => ({ ...prev, [postId]: (prev[postId] ?? 0) + 1 }));
+      onOpenGroupChat(groupId);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not join this meetup.');
+    } finally {
+      setJoiningPostId(null);
+    }
+  };
 
   if (openPostId) {
     return <CommunityPostDetailView postId={openPostId} onBack={() => { setOpenPostId(null); load(); }} />;
@@ -3987,20 +4046,38 @@ function CommunityView() {
           </p>
         </div>
       )}
-      {!error && posts !== null && posts.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {posts.map((post) => (
-            <CommunityPostCard
-              key={post.id}
-              post={post}
-              categoryLabel={categoryLabel(post.category)}
-              isMine={view === 'MINE' || post.authorId === currentUser?.id}
-              onOpen={() => setOpenPostId(post.id)}
-              onChanged={load}
-            />
-          ))}
-        </div>
-      )}
+      {!error && posts !== null && posts.length > 0 && (() => {
+        // Real 같이해요 (join-together) pinned mid-feed slot (2026-07-24) -- Karrot's
+        // real board gives meetup posts a dedicated slot instead of mixing them purely
+        // chronologically (docs/DESIGN_REFERENCES.md Section 4 recommendation #4). "My
+        // posts" stays plain chronological.
+        const meetups = view !== 'MINE' ? posts.filter((p) => p.category === 'meetup') : [];
+        const regular = view !== 'MINE' ? posts.filter((p) => p.category !== 'meetup') : posts;
+        const renderCard = (post: CommunityPost) => (
+          <CommunityPostCard
+            key={post.id}
+            post={post}
+            categoryLabel={categoryLabel(post.category)}
+            isMine={view === 'MINE' || post.authorId === currentUser?.id}
+            onOpen={() => setOpenPostId(post.id)}
+            onChanged={load}
+            joinedCount={joinedCounts[post.id] ?? 0}
+            joining={joiningPostId === post.id}
+            onJoin={() => joinMeetup(post.id)}
+          />
+        );
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {meetups.length > 0 && (
+              <>
+                <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>🎉 Meetups</p>
+                {meetups.map(renderCard)}
+              </>
+            )}
+            {regular.map(renderCard)}
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -8226,7 +8303,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
         />
       )}
       {tab === 'MARKETPLACE' && <MarketplaceView onMessageSeller={handleMessageSeller} />}
-      {tab === 'COMMUNITY' && <CommunityView />}
+      {tab === 'COMMUNITY' && <CommunityView onOpenGroupChat={handleMessageSeller} />}
       {tab === 'JOBS' && <JobsView onMessagePoster={handleMessageSeller} />}
       {tab === 'PROPERTY' && <PropertyView onMessageLister={handleMessageSeller} />}
       {tab === 'MAP' && <MapView />}

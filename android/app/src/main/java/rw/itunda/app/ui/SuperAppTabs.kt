@@ -305,8 +305,11 @@ internal fun HoodTab(onMessageSeller: (String) -> Unit) {
             // lives in :features:marketplace:impl, the first Hood-mode section pulled out
             // of this file to match Toss's real Microfeatures architecture.
             HoodMode.MARKETPLACE -> MarketplaceContent(onMessageSeller = onMessageSeller)
-            // Fourth Feature extraction (2026-07-23), same pattern.
-            HoodMode.COMMUNITY -> CommunityContent()
+            // Fourth Feature extraction (2026-07-23), same pattern. onOpenGroupChat
+            // reuses the same onMessageSeller callback (2026-07-24) -- see
+            // TalkScreen.kt's own doc comment on why a real GroupConversation id works
+            // through the exact same hand-off Marketplace/Jobs/Property already share.
+            HoodMode.COMMUNITY -> CommunityContent(onOpenGroupChat = onMessageSeller)
             // Second Feature extraction (2026-07-23), same pattern as Marketplace above.
             HoodMode.JOBS -> JobsContent(onMessagePoster = onMessageSeller)
             // Third Feature extraction (2026-07-23), same pattern as Marketplace/Jobs above.

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.community.CommunityMeetupJoinException
 import rw.itunda.community.CommunityNeighborhoodNotSetException
 import rw.itunda.community.CommunityPostNotFoundException
 import rw.itunda.community.CommunityService
@@ -61,7 +62,8 @@ class CommunityController(private val communityService: CommunityService) {
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
         val page = communityService.browse(pageable, category)
-        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content) + pageMeta(page))
+        val joinedCounts = communityService.joinedCounts(page.content)
+        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content, "joinedCounts" to joinedCounts) + pageMeta(page))
     }
 
     @GetMapping("/posts/nearby")
@@ -72,7 +74,8 @@ class CommunityController(private val communityService: CommunityService) {
         @PageableDefault(size = 20) pageable: Pageable,
     ): ResponseEntity<Map<String, Any?>> {
         val page = communityService.nearby(latitude, longitude, radiusKm, pageable)
-        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content) + pageMeta(page))
+        val joinedCounts = communityService.joinedCounts(page.content)
+        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content, "joinedCounts" to joinedCounts) + pageMeta(page))
     }
 
     // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see CommunityService.
@@ -84,7 +87,8 @@ class CommunityController(private val communityService: CommunityService) {
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val page = communityService.myNeighborhood(currentUser.userId, category, pageable)
-        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content) + pageMeta(page))
+        val joinedCounts = communityService.joinedCounts(page.content)
+        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content, "joinedCounts" to joinedCounts) + pageMeta(page))
     }
 
     @GetMapping("/my-posts")
@@ -93,7 +97,8 @@ class CommunityController(private val communityService: CommunityService) {
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val page = communityService.getMyPosts(currentUser.userId, pageable)
-        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content) + pageMeta(page))
+        val joinedCounts = communityService.joinedCounts(page.content)
+        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content, "joinedCounts" to joinedCounts) + pageMeta(page))
     }
 
     @GetMapping("/posts/{postId}")
@@ -144,6 +149,21 @@ class CommunityController(private val communityService: CommunityService) {
         val liked = communityService.toggleLike(currentUser.userId, postId)
         return ResponseEntity.ok(mapOf("success" to true, "liked" to liked))
     }
+
+    // Real 같이해요 (join-together) explicit 참여하기 tap (2026-07-24) -- see
+    // CommunityService.joinMeetup's own doc comment.
+    @PostMapping("/posts/{postId}/join")
+    fun joinMeetup(
+        @PathVariable postId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val group = communityService.joinMeetup(currentUser.userId, postId)
+        return ResponseEntity.ok(mapOf("success" to true, "groupId" to group.id))
+    }
+
+    @ExceptionHandler(CommunityMeetupJoinException::class)
+    fun handleMeetupJoin(ex: CommunityMeetupJoinException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("COMMUNITY_MEETUP_JOIN_INVALID", ex.message ?: "Bad request"))
 
     @ExceptionHandler(CommunityPostNotFoundException::class)
     fun handleNotFound(ex: CommunityPostNotFoundException) =

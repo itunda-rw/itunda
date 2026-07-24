@@ -55,6 +55,7 @@ struct TalkScreen: View {
         .task(id: conversations?.map { $0.otherUserId }) { await pollPresence() }
         .onChange(of: pendingConversationId) { _ in tryOpenPending() }
         .onChange(of: conversations?.count) { _ in tryOpenPending() }
+        .onChange(of: groups?.count) { _ in tryOpenPending() }
     }
 
     private func pollPresence() async {
@@ -119,11 +120,21 @@ struct TalkScreen: View {
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
     }
 
+    // Extended 2026-07-24 to also check `groups` -- Community's "join meetup" hand-off
+    // (CommunityContent's onOpenGroupChat, reusing this exact same pendingConversationId
+    // mechanism) hands off a real GroupConversation id, not a 1:1 conversation id, so
+    // this needs to open the group thread instead when that's what matches. Mirrors
+    // Android's identical TalkScreen.kt extension.
     private func tryOpenPending() {
-        guard let pending = pendingConversationId,
-              let match = conversations?.first(where: { $0.conversationId == pending }) else { return }
-        openConversation = match
-        pendingConversationId = nil
+        guard let pending = pendingConversationId else { return }
+        if let match = conversations?.first(where: { $0.conversationId == pending }) {
+            openConversation = match
+            pendingConversationId = nil
+        } else if let match = groups?.first(where: { $0.groupId == pending }) {
+            view = .groups
+            openGroup = match
+            pendingConversationId = nil
+        }
     }
 
     private func loadConversations() async {

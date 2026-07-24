@@ -74,6 +74,15 @@ class CommunityPost(
     // comment for the full account; identical cached-at-creation shape here.
     @Column(nullable = true, length = 120)
     var neighborhood: String? = null,
+
+    // Real 같이해요 (join-together) meetup group chat (2026-07-24) -- closes
+    // docs/DESIGN_REFERENCES.md Section 4 recommendation #4's "joining their group chat
+    // requires an explicit 참여하기 tap." Lazily created on the FIRST real join (not at
+    // post-creation time) so a meetup nobody ever joins never creates an empty
+    // GroupConversation row. Only meaningful when category == "meetup"; null for every
+    // other post category, forever.
+    @Column(name = "group_conversation_id", nullable = true, length = 64)
+    var groupConversationId: String? = null,
 ) {
     protected constructor() : this(id = "", authorId = "", category = "", title = "", body = "")
 }
