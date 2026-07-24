@@ -20,6 +20,10 @@ struct ItundaMerchantApp: App {
     var body: some Scene {
         WindowGroup {
             MerchantRootView()
+                // Matches the real app's own brand decision (see ItundaApp.swift's
+                // own comment) -- explicit at the app boundary so this app can't
+                // visually diverge based on the simulator/device's own appearance.
+                .preferredColorScheme(.dark)
         }
     }
 }

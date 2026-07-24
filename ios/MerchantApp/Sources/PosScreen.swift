@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreDesignSystem
 
 private struct CartLine: Identifiable {
     let product: MerchantProductDto
@@ -78,7 +79,7 @@ struct PosTab: View {
                         Button(action: { checkingOut = true }) {
                             Text("Checkout").bold().foregroundColor(.white)
                                 .frame(maxWidth: .infinity).padding(.vertical, 10)
-                                .background(cart.isEmpty ? Color.gray : Color.blue).cornerRadius(10)
+                                .background(cart.isEmpty ? Color.gray : IDS.Colors.brand).cornerRadius(10)
                         }
                         .disabled(cart.isEmpty)
                     }
@@ -154,7 +155,7 @@ private struct QrCheckoutView: View {
                 Button(action: onDone) {
                     Text("Done — new sale").bold().foregroundColor(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(Color.blue).cornerRadius(10)
+                        .background(IDS.Colors.brand).cornerRadius(10)
                 }
             } else {
                 if let error {
@@ -199,7 +200,7 @@ private struct CardCheckoutView: View {
                 Button(action: onDone) {
                     Text("Done — new sale").bold().foregroundColor(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(Color.blue).cornerRadius(10)
+                        .background(IDS.Colors.brand).cornerRadius(10)
                 }
             }
         } else {
@@ -217,7 +218,7 @@ private struct CardCheckoutView: View {
                     Text(submitting ? "Charging…" : "Charge \(formattedRWF(amount)) RWF")
                         .bold().foregroundColor(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(Color.blue).cornerRadius(10)
+                        .background(IDS.Colors.brand).cornerRadius(10)
                 }
                 .disabled(submitting)
             }

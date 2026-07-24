@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreDesignSystem
 
 struct LoginScreen: View {
     let onLoggedIn: () -> Void
@@ -29,7 +30,7 @@ struct LoginScreen: View {
                 Text(busy ? "Logging in…" : "Log in")
                     .bold().foregroundColor(.white)
                     .frame(maxWidth: .infinity).padding(.vertical, 14)
-                    .background(Color.blue).cornerRadius(12)
+                    .background(IDS.Colors.brand).cornerRadius(12)
             }
             .disabled(busy)
 

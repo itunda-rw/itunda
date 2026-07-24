@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreDesignSystem
 
 private enum MerchantTab { case orders, catalog, register, reports }
 
@@ -141,7 +142,7 @@ private struct OrderCard: View {
                 }) {
                     Text(label).bold().foregroundColor(.white)
                         .frame(maxWidth: .infinity).padding(.vertical, 10)
-                        .background(Color.blue).cornerRadius(10)
+                        .background(IDS.Colors.brand).cornerRadius(10)
                 }
                 .disabled(busy)
             }
@@ -173,7 +174,7 @@ struct MerchantStatusBadge: View {
         Text(label)
             .font(.caption2).bold()
             .padding(.horizontal, 8).padding(.vertical, 2)
-            .background(Color.blue.opacity(0.15))
+            .background(IDS.Colors.brand.opacity(0.15))
             .cornerRadius(8)
     }
 }

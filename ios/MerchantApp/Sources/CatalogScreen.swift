@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreDesignSystem
 
 struct CatalogTab: View {
     @State private var products: [MerchantProductDto]?
@@ -21,7 +22,7 @@ struct CatalogTab: View {
                         Text(submitting ? "Adding…" : "Add")
                             .bold().foregroundColor(.white)
                             .frame(maxWidth: .infinity).padding(.vertical, 12)
-                            .background(Color.blue).cornerRadius(10)
+                            .background(IDS.Colors.brand).cornerRadius(10)
                     }
                     .disabled(submitting)
                 }

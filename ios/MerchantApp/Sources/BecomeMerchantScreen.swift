@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreDesignSystem
 
 /// Shown once for any logged-in itunda user who hasn't registered a business yet.
 struct BecomeMerchantScreen: View {
@@ -27,7 +28,7 @@ struct BecomeMerchantScreen: View {
                 Text(busy ? "Registering…" : "Register my business")
                     .bold().foregroundColor(.white)
                     .frame(maxWidth: .infinity).padding(.vertical, 14)
-                    .background(Color.blue).cornerRadius(12)
+                    .background(IDS.Colors.brand).cornerRadius(12)
             }
             .disabled(busy)
 
