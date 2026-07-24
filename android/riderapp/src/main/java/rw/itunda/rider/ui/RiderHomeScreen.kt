@@ -199,15 +199,26 @@ fun RiderHomeScreen(
             }
         }
 
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
             listOf(HomeTab.AVAILABLE to "Available", HomeTab.MINE to "My deliveries").forEach { (t, label) ->
                 val selected = tab == t
-                Text(
-                    label,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(end = 20.dp).clickable { tab = t },
-                )
+                Column(modifier = Modifier.clickable { tab = t }) {
+                    Text(
+                        label,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 6.dp),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .height(2.dp)
+                            .width(18.dp)
+                            .background(if (selected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent, RoundedCornerShape(1.dp)),
+                    )
+                }
             }
         }
 

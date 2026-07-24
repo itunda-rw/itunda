@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.rider.network.NetworkClient
 import rw.itunda.rider.ui.BecomeRiderScreen
 import rw.itunda.rider.ui.DeliveryDetailScreen
@@ -34,8 +35,16 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
+            // Real shared brand theme (2026-07-24), replacing a bare default
+            // MaterialTheme -- this app depended on :core:designsystem already
+            // (see build.gradle.kts's own comment) but never actually applied
+            // it, so every screen rendered in generic Material purple/teal
+            // instead of itunda's real brand colors. IdsTheme builds a real
+            // Material3 ColorScheme from those brand tokens, so this one wrap
+            // fixes every MaterialTheme.colorScheme reference in this app at
+            // once, no per-screen changes needed.
+            IdsTheme {
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     RiderApp()
                 }
             }
