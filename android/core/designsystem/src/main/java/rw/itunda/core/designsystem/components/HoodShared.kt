@@ -154,6 +154,24 @@ fun ListingActionButton(label: String, disabled: Boolean, filled: Boolean = fals
     }
 }
 
+// Real Karrot-Score-style numeric trust/reputation badge (2026-07-24) -- backend
+// (User.trustScore, TrustScoreService) and the trustScores map on every Hood browse
+// endpoint have existed since 2026-07-21, but no client rendered it anywhere -- closes
+// docs/DESIGN_REFERENCES.md Section 4 recommendation #1. Deliberately a plain 0-1000
+// number, never a manner-temperature/Celsius metaphor (see backend User.kt's own doc
+// comment on why that's specifically wrong for a non-Korean market).
+@Composable
+fun TrustBadge(score: Int, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(Ids.colors.surfaceSoft)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    ) {
+        Text("Trust $score", color = Ids.colors.textSecondary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
 // Real device-location fetch, shared by NewListingForm's "share my location" toggle and
 // ListingCard's "directions to this seller" -- same runtime-permission-gated
 // FusedLocationProviderClient technique MapScreen.kt already established.

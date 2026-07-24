@@ -796,7 +796,12 @@ public struct CreateListingRequest: Encodable {
 }
 
 public struct ListingResponse: Decodable { public let success: Bool; public let listing: ListingDto }
-public struct ListingsResponse: Decodable { public let success: Bool; public let listings: [ListingDto] }
+// trustScores added 2026-07-24 -- backend has spread this alongside every listing/
+// job-post/property-listing browse response since 2026-07-21
+// (rw.itunda.core.web.TrustScoreSupport), but no client ever parsed or rendered it.
+// A sellerId/posterId/listerId -> User.trustScore map (Karrot-Score-style, 0-1000,
+// starting at 30). Optional since not every endpoint sharing this struct spreads it.
+public struct ListingsResponse: Decodable { public let success: Bool; public let listings: [ListingDto]; public let trustScores: [String: Int]? }
 
 // Real Marketplace listing wishlist (2026-07-21 backend + bank-mfe, ported here) --
 // mirrors FavoriteRestaurantDto's exact shape; see ListingFavoriteService.kt's own doc
@@ -900,7 +905,7 @@ public struct CreateJobPostRequest: Encodable {
     public let latitude: Double?; public let longitude: Double?
 }
 public struct JobPostResponse: Decodable { public let success: Bool; public let post: JobPostDto }
-public struct JobPostsResponse: Decodable { public let success: Bool; public let posts: [JobPostDto] }
+public struct JobPostsResponse: Decodable { public let success: Bool; public let posts: [JobPostDto]; public let trustScores: [String: Int]? }
 public struct JobCategoriesResponse: Decodable { public let success: Bool; public let categories: [JobCategoryDto] }
 public struct ContactPosterResponse: Decodable { public let success: Bool; public let conversation: ConversationDto }
 public struct CreateHoodReportRequest: Encodable { public let targetType: String; public let targetId: String; public let reason: String }
@@ -928,7 +933,7 @@ public struct CreatePropertyListingRequest: Encodable {
     public let bedrooms: Int?; public let sizeSqm: Double?; public let latitude: Double?; public let longitude: Double?
 }
 public struct PropertyListingResponse: Decodable { public let success: Bool; public let listing: PropertyListingDto }
-public struct PropertyListingsResponse: Decodable { public let success: Bool; public let listings: [PropertyListingDto] }
+public struct PropertyListingsResponse: Decodable { public let success: Bool; public let listings: [PropertyListingDto]; public let trustScores: [String: Int]? }
 public struct FavoritePropertyListingDto: Decodable, Identifiable { public let propertyListingId: String; public let title: String; public let price: Double; public let listingType: String; public let favoritedAt: String; public var id: String { propertyListingId } }
 public struct FavoritePropertyListingsResponse: Decodable { public let success: Bool; public let favorites: [FavoritePropertyListingDto] }
 public struct PropertyTypesResponse: Decodable { public let success: Bool; public let propertyTypes: [PropertyTypeDto] }

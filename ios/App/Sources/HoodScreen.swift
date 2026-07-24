@@ -240,6 +240,8 @@ private struct MarketplaceContent: View {
 
     @State private var view: HoodView = .browse
     @State private var listings: [ListingDto]?
+    // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc comment.
+    @State private var trustScores: [String: Int] = [:]
     @State private var error: String?
     @State private var showNewListing = false
     @State private var neighborhoodName: String?
@@ -337,7 +339,8 @@ private struct MarketplaceContent: View {
                             onMakeOffer: { id, amount in Task { await makeOffer(id, amount) } },
                             favorited: favoriteIds.contains(listing.id),
                             favoriteBusy: favoritingId == listing.id,
-                            onToggleFavorite: { Task { await toggleFavorite(listing.id) } }
+                            onToggleFavorite: { Task { await toggleFavorite(listing.id) } },
+                            sellerTrustScore: trustScores[listing.sellerId]
                         )
                     }
                 }
@@ -379,6 +382,7 @@ private struct MarketplaceContent: View {
                 let res = try await NetworkClient.shared.getListingsMyNeighborhood()
                 neighborhoodName = profile.user.neighborhood
                 listings = res.listings
+                trustScores = res.trustScores ?? [:]
                 error = nil
             } catch let NetworkError.httpError(statusCode) where statusCode == 400 {
                 neighborhoodName = nil
@@ -393,6 +397,7 @@ private struct MarketplaceContent: View {
         do {
             let res = view == .browse ? try await NetworkClient.shared.browseListings() : try await NetworkClient.shared.getMyListings()
             listings = res.listings
+            trustScores = res.trustScores ?? [:]
             error = nil
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
@@ -403,6 +408,7 @@ private struct MarketplaceContent: View {
         do {
             let res = try await NetworkClient.shared.getNearbyListings(lat: coordinate.latitude, lng: coordinate.longitude)
             listings = res.listings
+            trustScores = res.trustScores ?? [:]
             error = nil
         } catch {
             self.error = "Couldn't load nearby listings. Check your connection and try again."
@@ -561,6 +567,26 @@ private struct NewListingForm: View {
     }
 }
 
+// Real Karrot-Score-style numeric trust/reputation badge (2026-07-24) -- backend
+// (User.trustScore, TrustScoreService) and the trustScores map on every Hood browse
+// endpoint have existed since 2026-07-21, but no client rendered it anywhere -- closes
+// docs/DESIGN_REFERENCES.md Section 4 recommendation #1. Deliberately a plain 0-1000
+// number, never a manner-temperature/Celsius metaphor (see backend User.kt's own doc
+// comment on why that's specifically wrong for a non-Korean market). Shared by
+// ListingCard/JobPostCard/PropertyListingCard, all in this file.
+private struct TrustBadge: View {
+    let score: Int
+
+    var body: some View {
+        Text("Trust \(score)")
+            .font(.caption2).fontWeight(.semibold)
+            .foregroundColor(IDS.Colors.textSecondary)
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .background(IDS.Colors.chipBackground)
+            .cornerRadius(6)
+    }
+}
+
 private struct ListingCard: View {
     let listing: ListingDto
     let isMine: Bool
@@ -574,6 +600,7 @@ private struct ListingCard: View {
     var favorited: Bool = false
     var favoriteBusy: Bool = false
     var onToggleFavorite: () -> Void = {}
+    var sellerTrustScore: Int?
 
     @State private var busy = false
     @State private var error: String?
@@ -616,6 +643,11 @@ private struct ListingCard: View {
                     .padding(.trailing, 6)
                 }
                 Text("\(Int(listing.price)) RWF").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+            }
+            // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc
+            // comment. Only shown for someone else's listing.
+            if !isMine, let sellerTrustScore {
+                TrustBadge(score: sellerTrustScore)
             }
             Text(listing.description).font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
             if let meetingPlace = listing.meetingPlace {
@@ -1316,6 +1348,8 @@ private struct JobsContent: View {
     @State private var categories: [JobCategoryDto] = []
     @State private var activeCategory: String?
     @State private var posts: [JobPostDto]?
+    // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc comment.
+    @State private var trustScores: [String: Int] = [:]
     @State private var error: String?
     @State private var showNewPost = false
     @State private var neighborhoodName: String?
@@ -1420,7 +1454,8 @@ private struct JobsContent: View {
                             onContact: { Task { await contact(post.id) } },
                             favorited: favoriteIds.contains(post.id),
                             favoriteBusy: favoritingId == post.id,
-                            onToggleFavorite: { Task { await toggleFavorite(post.id) } }
+                            onToggleFavorite: { Task { await toggleFavorite(post.id) } },
+                            posterTrustScore: trustScores[post.posterId]
                         )
                     }
                 }
@@ -1465,6 +1500,7 @@ private struct JobsContent: View {
                 let res = try await NetworkClient.shared.getJobPostsMyNeighborhood(category: activeCategory)
                 neighborhoodName = profile.user.neighborhood
                 posts = res.posts
+                trustScores = res.trustScores ?? [:]
                 error = nil
             } catch let NetworkError.httpError(statusCode) where statusCode == 400 {
                 neighborhoodName = nil
@@ -1479,6 +1515,7 @@ private struct JobsContent: View {
         do {
             let res = view == .browse ? try await NetworkClient.shared.browseJobPosts(category: activeCategory) : try await NetworkClient.shared.getMyJobPosts()
             posts = res.posts
+            trustScores = res.trustScores ?? [:]
             error = nil
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
@@ -1489,6 +1526,7 @@ private struct JobsContent: View {
         do {
             let res = try await NetworkClient.shared.getNearbyJobPosts(lat: coordinate.latitude, lng: coordinate.longitude, radiusKm: nearbyRadiusKm)
             posts = res.posts
+            trustScores = res.trustScores ?? [:]
             error = nil
         } catch {
             self.error = "Couldn't load nearby work. Check your connection and try again."
@@ -1712,6 +1750,7 @@ private struct JobPostCard: View {
     var favorited: Bool = false
     var favoriteBusy: Bool = false
     var onToggleFavorite: () -> Void = {}
+    var posterTrustScore: Int?
 
     @State private var busy = false
     @State private var error: String?
@@ -1748,6 +1787,11 @@ private struct JobPostCard: View {
                 Text(payLabel).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
             }
             Text(post.title).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+            // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc
+            // comment. Only shown for someone else's post.
+            if !isMine, let posterTrustScore {
+                TrustBadge(score: posterTrustScore)
+            }
             Text(post.description).font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
             if let error {
                 Text(error).font(.caption).foregroundColor(.red)
@@ -1859,6 +1903,8 @@ private struct PropertyContent: View {
     @State private var listingTypeFilter: String?
     @State private var propertyTypeFilter: String?
     @State private var listings: [PropertyListingDto]?
+    // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc comment.
+    @State private var trustScores: [String: Int] = [:]
     @State private var error: String?
     @State private var showNewListing = false
     @State private var neighborhoodName: String?
@@ -2004,7 +2050,8 @@ private struct PropertyContent: View {
             onChanged: { Task { await load() } },
             onToggleFavorite: { Task { await toggleFavorite(listing.id) } },
             onContact: { Task { await contact(listing.id) } },
-            onMakeOffer: { id, amount in Task { await makeOffer(id, amount) } }
+            onMakeOffer: { id, amount in Task { await makeOffer(id, amount) } },
+            listerTrustScore: trustScores[listing.listerId]
         )
     }
 
@@ -2022,6 +2069,7 @@ private struct PropertyContent: View {
                 let res = try await NetworkClient.shared.getPropertyListingsMyNeighborhood()
                 neighborhoodName = profile.user.neighborhood
                 listings = res.listings
+                trustScores = res.trustScores ?? [:]
                 error = nil
             } catch let NetworkError.httpError(statusCode) where statusCode == 400 {
                 neighborhoodName = nil
@@ -2038,6 +2086,7 @@ private struct PropertyContent: View {
                 ? try await NetworkClient.shared.browsePropertyListings(listingType: listingTypeFilter, propertyType: propertyTypeFilter)
                 : try await NetworkClient.shared.getMyPropertyListings()
             listings = res.listings
+            trustScores = res.trustScores ?? [:]
             error = nil
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
@@ -2051,6 +2100,7 @@ private struct PropertyContent: View {
         do {
             let res = try await NetworkClient.shared.getNearbyPropertyListings(lat: coordinate.latitude, lng: coordinate.longitude, radiusKm: nearbyRadiusKm)
             listings = res.listings
+            trustScores = res.trustScores ?? [:]
             error = nil
         } catch {
             self.error = "Couldn't load nearby properties. Check your connection and try again."
@@ -2226,6 +2276,7 @@ private struct PropertyListingRow: View {
     let onToggleFavorite: () -> Void
     let onContact: () -> Void
     let onMakeOffer: (String, Double) -> Void
+    var listerTrustScore: Int?
 
     var body: some View {
         PropertyListingCard(
@@ -2237,7 +2288,8 @@ private struct PropertyListingRow: View {
             onMakeOffer: onMakeOffer,
             favorited: favorited,
             favoriteBusy: favoriteBusy,
-            onToggleFavorite: onToggleFavorite
+            onToggleFavorite: onToggleFavorite,
+            listerTrustScore: listerTrustScore
         )
     }
 }
@@ -2252,6 +2304,7 @@ private struct PropertyListingCard: View {
     var favorited: Bool = false
     var favoriteBusy: Bool = false
     var onToggleFavorite: () -> Void = {}
+    var listerTrustScore: Int?
 
     @State private var busy = false
     @State private var error: String?
@@ -2297,6 +2350,11 @@ private struct PropertyListingCard: View {
             Text(listing.title).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
             if !detailsLabel.isEmpty {
                 Text(detailsLabel).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            }
+            // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc
+            // comment. Only shown for someone else's listing.
+            if !isMine, let listerTrustScore {
+                TrustBadge(score: listerTrustScore)
             }
             Text(listing.description).font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
             if offering {

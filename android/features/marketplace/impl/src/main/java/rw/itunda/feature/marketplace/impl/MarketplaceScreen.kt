@@ -65,6 +65,7 @@ import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
 import rw.itunda.core.designsystem.components.RouteMiniMap
 import rw.itunda.core.designsystem.components.SkeletonBlock
+import rw.itunda.core.designsystem.components.TrustBadge
 import rw.itunda.core.designsystem.components.relativeTimeAgo
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
 import rw.itunda.core.designsystem.theme.Ids
@@ -109,6 +110,10 @@ fun MarketplaceContent(
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
     var neighborhoodChecked by remember { mutableStateOf(false) }
     var listings by remember { mutableStateOf<List<ListingDto>?>(null) }
+    // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc comment;
+    // the backend has spread this sellerId->score map alongside every browse response
+    // since 2026-07-21, this just finally reads and renders it.
+    var trustScores by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     var error by remember { mutableStateOf<String?>(null) }
     var showNewListing by remember { mutableStateOf(false) }
     if (showNewListing) {
@@ -124,7 +129,7 @@ fun MarketplaceContent(
             coroutineScope.launch {
                 try {
                     val res = NetworkClient.apiService.getNearbyListings(lat, lng)
-                    if (res.success) listings = res.listings
+                    if (res.success) { listings = res.listings; trustScores = res.trustScores }
                     error = null
                 } catch (e: HttpException) {
                     error = superAppErrorMessage(e)
@@ -202,7 +207,7 @@ fun MarketplaceContent(
                     val profileRes = NetworkClient.authApi.getProfile()
                     val res = NetworkClient.apiService.getListingsMyNeighborhood()
                     neighborhoodName = profileRes.user.neighborhood
-                    if (res.success) listings = res.listings
+                    if (res.success) { listings = res.listings; trustScores = res.trustScores }
                     error = null
                 } catch (e: HttpException) {
                     if (e.code() == 400) {
@@ -223,7 +228,7 @@ fun MarketplaceContent(
         coroutineScope.launch {
             try {
                 val res = if (view == HoodView.BROWSE) NetworkClient.apiService.browseListings() else NetworkClient.apiService.getMyListings()
-                if (res.success) listings = res.listings
+                if (res.success) { listings = res.listings; trustScores = res.trustScores }
                 error = null
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
@@ -321,6 +326,7 @@ fun MarketplaceContent(
                 ListingCard(
                     listing = listing,
                     isMine = view == HoodView.MINE || listing.sellerId == currentUserId,
+                    sellerTrustScore = trustScores[listing.sellerId],
                     onChanged = ::load,
                     favorited = listing.id in favoriteIds,
                     favoriteBusy = favoritingId == listing.id,
@@ -602,6 +608,7 @@ private fun ListingCard(
     // lifted-favoriteIds pattern) so the heart stays correct across Browse/
     // Neighborhood/My-listings without a per-card refetch.
     favorited: Boolean = false, favoriteBusy: Boolean = false, onToggleFavorite: () -> Unit = {},
+    sellerTrustScore: Int? = null,
 ) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -687,6 +694,13 @@ private fun ListingCard(
                 color = Ids.colors.textSecondary,
                 fontSize = 12.sp,
             )
+            // Real Karrot-Score trust badge (2026-07-24) -- social proof, the fourth
+            // element in Karrot's own real card hierarchy (price -> title ->
+            // location/time -> social proof). Only shown for someone else's listing --
+            // a trust score about yourself is meaningless here.
+            if (!isMine && sellerTrustScore != null) {
+                TrustBadge(sellerTrustScore)
+            }
             Text(listing.description, color = Ids.colors.textSecondary, fontSize = 13.sp)
             listing.meetingPlace?.let {
                 Text("Suggested hand-off: $it", color = Ids.colors.textSecondary, fontSize = 12.sp)

@@ -39,7 +39,7 @@ import { createSplitBill, fetchSplitBillsForGroup, paySplitBillShare, type Split
 import {
   addListingFavorite, contactSeller, createListing, fetchListings, fetchListingsMyNeighborhood, fetchMyFavoriteListings,
   fetchMyListings, fetchOffersForConversation, makeOffer, markListingSold, removeListing, removeListingFavorite,
-  respondToOffer, type FavoriteListing, type Listing, type PriceOffer,
+  respondToOffer, type FavoriteListing, type Listing, type PriceOffer, type TrustScores,
 } from './lib/marketplace';
 import { fetchProfile, setNeighborhood } from './lib/neighborhood';
 import { claimGift, fetchGiftsForConversation, sendGiftInConversation, type Gift, type GiftStatus } from './lib/gift';
@@ -1029,8 +1029,8 @@ function MyView() {
     fetchMyFavoritePropertyListings().then((r) => setFavoritePropertyListingsCount(r.length)).catch(() => {});
     fetchMyFavoriteRestaurants().then((r) => setFavoriteRestaurantsCount(r.length)).catch(() => {});
     fetchMyListings().then((r) => setMyListingsCount(r.listings.length)).catch(() => {});
-    fetchMyJobPosts().then((r) => setMyJobPostsCount(r.length)).catch(() => {});
-    fetchMyPropertyListings().then((r) => setMyPropertyListingsCount(r.length)).catch(() => {});
+    fetchMyJobPosts().then((r) => setMyJobPostsCount(r.posts.length)).catch(() => {});
+    fetchMyPropertyListings().then((r) => setMyPropertyListingsCount(r.listings.length)).catch(() => {});
   }, []);
 
   const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: '13px' };
@@ -3194,7 +3194,7 @@ function NewListingCard({ onCreated }: { onCreated: () => void }) {
   );
 }
 
-function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, favoriteBusy, onToggleFavorite }: {
+function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, favoriteBusy, onToggleFavorite, sellerTrustScore }: {
   listing: Listing;
   isMine: boolean;
   onChanged: () => void;
@@ -3202,6 +3202,7 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
   favorited: boolean;
   favoriteBusy: boolean;
   onToggleFavorite: () => void;
+  sellerTrustScore?: number;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -3315,6 +3316,9 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
           <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{listing.price.toLocaleString()} RWF</span>
         </div>
       </div>
+      {/* Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc
+          comment. Only shown for someone else's listing. */}
+      {!isMine && sellerTrustScore != null && <TrustBadge score={sellerTrustScore} />}
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>{listing.description}</p>
       {listing.meetingPlace && (
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-600)', margin: 0 }}>Suggested hand-off: {listing.meetingPlace}</p>
@@ -3487,6 +3491,8 @@ function ListingWishlistView() {
 function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId: string) => void }) {
   const [view, setView] = useState<'BROWSE' | 'MINE' | 'NEIGHBORHOOD' | 'WISHLIST'>('BROWSE');
   const [listings, setListings] = useState<Listing[] | null>(null);
+  // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc comment.
+  const [trustScores, setTrustScores] = useState<TrustScores>({});
   const [error, setError] = useState<string | null>(null);
   const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
@@ -3508,6 +3514,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
         .then(([profile, result]) => {
           setNeighborhoodName(profile.neighborhood);
           setListings(result.listings);
+          setTrustScores(result.trustScores);
         })
         .catch((err) => {
           if (err instanceof ApiError && err.code === 'NEIGHBORHOOD_NOT_SET') {
@@ -3524,6 +3531,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
     fetcher
       .then((result) => {
         setListings(result.listings);
+        setTrustScores(result.trustScores);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load listings.'));
   };
@@ -3609,6 +3617,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
                   favorited={favoriteIds.has(listing.id)}
                   favoriteBusy={favoritingId === listing.id}
                   onToggleFavorite={() => toggleFavorite(listing.id)}
+                  sellerTrustScore={trustScores[listing.sellerId]}
                 />
               ))}
             </div>
@@ -4075,9 +4084,9 @@ function NewJobPostCard({ categories, onCreated }: { categories: JobCategory[]; 
   );
 }
 
-function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favorited, favoriteBusy, onToggleFavorite }: {
+function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favorited, favoriteBusy, onToggleFavorite, posterTrustScore }: {
   post: JobPost; categoryLabel: string; isMine: boolean; onChanged: () => void; onContact: () => void;
-  favorited: boolean; favoriteBusy: boolean; onToggleFavorite: () => void;
+  favorited: boolean; favoriteBusy: boolean; onToggleFavorite: () => void; posterTrustScore?: number;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -4104,6 +4113,9 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
         </div>
       </div>
       <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{post.title}</p>
+      {/* Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc
+          comment. Only shown for someone else's post. */}
+      {!isMine && posterTrustScore != null && <TrustBadge score={posterTrustScore} />}
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{post.description}</p>
       {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '10px' }}>
@@ -4213,6 +4225,8 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
   const [categories, setCategories] = useState<JobCategory[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [posts, setPosts] = useState<JobPost[] | null>(null);
+  // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc comment.
+  const [trustScores, setTrustScores] = useState<TrustScores>({});
   const [error, setError] = useState<string | null>(null);
   const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
@@ -4235,9 +4249,10 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
     loadFavoriteIds();
     if (view === 'NEIGHBORHOOD') {
       Promise.all([fetchProfile(), fetchJobPostsMyNeighborhood(activeCategory ?? undefined)])
-        .then(([profile, items]) => {
+        .then(([profile, result]) => {
           setNeighborhoodName(profile.neighborhood);
-          setPosts(items);
+          setPosts(result.posts);
+          setTrustScores(result.trustScores);
         })
         .catch((err) => {
           if (err instanceof ApiError && err.code === 'NEIGHBORHOOD_NOT_SET') {
@@ -4252,7 +4267,7 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
     if (view === 'WISHLIST') return;
     const fetcher = view === 'BROWSE' ? fetchJobPosts(activeCategory ?? undefined) : fetchMyJobPosts();
     fetcher
-      .then(setPosts)
+      .then((result) => { setPosts(result.posts); setTrustScores(result.trustScores); })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load jobs.'));
   };
 
@@ -4368,6 +4383,7 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
                   favorited={favoriteIds.has(post.id)}
                   favoriteBusy={favoritingId === post.id}
                   onToggleFavorite={() => toggleFavorite(post.id)}
+                  posterTrustScore={trustScores[post.posterId]}
                 />
               ))}
             </div>
@@ -4475,10 +4491,10 @@ function NewPropertyListingCard({ propertyTypes, onCreated }: { propertyTypes: P
   );
 }
 
-function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, onContact, onMessageLister, favorited, favoriteBusy, onToggleFavorite }: {
+function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, onContact, onMessageLister, favorited, favoriteBusy, onToggleFavorite, listerTrustScore }: {
   listing: PropertyListing; propertyTypeLabel: string; isMine: boolean; onChanged: () => void; onContact: () => void;
   onMessageLister: (conversationId: string) => void;
-  favorited: boolean; favoriteBusy: boolean; onToggleFavorite: () => void;
+  favorited: boolean; favoriteBusy: boolean; onToggleFavorite: () => void; listerTrustScore?: number;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -4534,6 +4550,9 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
       </div>
       <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{listing.title}</p>
       {detailsLabel && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{detailsLabel}</p>}
+      {/* Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc
+          comment. Only shown for someone else's listing. */}
+      {!isMine && listerTrustScore != null && <TrustBadge score={listerTrustScore} />}
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{listing.description}</p>
       {offering && (
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -4663,6 +4682,8 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
   const [listingTypeFilter, setListingTypeFilter] = useState<PropertyListingType | null>(null);
   const [propertyTypeFilter, setPropertyTypeFilter] = useState<string | null>(null);
   const [listings, setListings] = useState<PropertyListing[] | null>(null);
+  // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc comment.
+  const [trustScores, setTrustScores] = useState<TrustScores>({});
   const [error, setError] = useState<string | null>(null);
   const [neighborhoodName, setNeighborhoodName] = useState<string | null | undefined>(undefined);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
@@ -4685,9 +4706,10 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
     loadFavoriteIds();
     if (view === 'NEIGHBORHOOD') {
       Promise.all([fetchProfile(), fetchPropertyListingsMyNeighborhood()])
-        .then(([profile, items]) => {
+        .then(([profile, result]) => {
           setNeighborhoodName(profile.neighborhood);
-          setListings(items);
+          setListings(result.listings);
+          setTrustScores(result.trustScores);
         })
         .catch((err) => {
           if (err instanceof ApiError && err.code === 'NEIGHBORHOOD_NOT_SET') {
@@ -4704,7 +4726,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
       ? fetchPropertyListings(listingTypeFilter ?? undefined, propertyTypeFilter ?? undefined)
       : fetchMyPropertyListings();
     fetcher
-      .then(setListings)
+      .then((result) => { setListings(result.listings); setTrustScores(result.trustScores); })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load listings.'));
   };
 
@@ -4840,6 +4862,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
                   favorited={favoriteIds.has(listing.id)}
                   favoriteBusy={favoritingId === listing.id}
                   onToggleFavorite={() => toggleFavorite(listing.id)}
+                  listerTrustScore={trustScores[listing.listerId]}
                 />
               ))}
             </div>
@@ -6359,6 +6382,26 @@ function WishlistButton({ favorited, busy, onToggle }: { favorited: boolean; bus
     >
       {favorited ? '♥' : '♡'}
     </button>
+  );
+}
+
+// Real Karrot-Score-style numeric trust/reputation badge (2026-07-24) -- backend
+// (User.trustScore, TrustScoreService) and the trustScores map on every Hood browse
+// response have existed since 2026-07-21, and this file already fetched it into state
+// via fetchListings/fetchMyListings/etc, but never rendered it anywhere -- closes
+// docs/DESIGN_REFERENCES.md Section 4 recommendation #1. Deliberately a plain 0-1000
+// number, never a manner-temperature/Celsius metaphor (see backend User.kt's own doc
+// comment on why that's specifically wrong for a non-Korean market).
+function TrustBadge({ score }: { score: number }) {
+  return (
+    <span
+      style={{
+        fontSize: '11px', fontWeight: 700, color: 'var(--toss-grey-600)',
+        backgroundColor: 'var(--toss-grey-100)', padding: '2px 6px', borderRadius: '6px',
+      }}
+    >
+      Trust {score}
+    </span>
   );
 }
 

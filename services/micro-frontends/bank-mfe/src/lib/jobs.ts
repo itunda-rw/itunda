@@ -31,21 +31,31 @@ export interface JobCategory {
 export const fetchJobCategories = () =>
   apiFetch<{ success: boolean; categories: JobCategory[] }>('/api/v1/jobs/categories').then((r) => r.categories);
 
+// Real Karrot-Score-style numeric trust/reputation badge (2026-07-24) -- see backend
+// TrustScoreService's own doc comment for the full account. A posterId -> cached
+// User.trustScore map, resolved server-side in one batch call alongside the post list
+// itself (see JobPostController's own doc comment) -- was already spread in every one
+// of these responses since 2026-07-21, but silently discarded here until now. Reuses
+// lib/marketplace.ts's own TrustScores type (same Record<string, number> shape) rather
+// than exporting a duplicate.
+import type { TrustScores } from './marketplace';
+
 export const fetchJobPosts = (category?: string) =>
-  apiFetch<{ success: boolean; posts: JobPost[] }>(
+  apiFetch<{ success: boolean; posts: JobPost[]; trustScores: TrustScores }>(
     `/api/v1/jobs/posts${category ? `?category=${encodeURIComponent(category)}` : ''}`,
-  ).then((r) => r.posts);
+  ).then((r) => ({ posts: r.posts, trustScores: r.trustScores }));
 
 export const fetchMyJobPosts = () =>
-  apiFetch<{ success: boolean; posts: JobPost[] }>('/api/v1/jobs/my-posts').then((r) => r.posts);
+  apiFetch<{ success: boolean; posts: JobPost[]; trustScores: TrustScores }>('/api/v1/jobs/my-posts')
+    .then((r) => ({ posts: r.posts, trustScores: r.trustScores }));
 
 // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see lib/neighborhood.ts's own
 // doc comment. Throws ApiError with code NEIGHBORHOOD_NOT_SET (real 400) if the caller
 // hasn't set one yet.
 export const fetchJobPostsMyNeighborhood = (category?: string) =>
-  apiFetch<{ success: boolean; posts: JobPost[] }>(
+  apiFetch<{ success: boolean; posts: JobPost[]; trustScores: TrustScores }>(
     `/api/v1/jobs/posts/my-neighborhood${category ? `?category=${encodeURIComponent(category)}` : ''}`,
-  ).then((r) => r.posts);
+  ).then((r) => ({ posts: r.posts, trustScores: r.trustScores }));
 
 export const createJobPost = (
   category: string,

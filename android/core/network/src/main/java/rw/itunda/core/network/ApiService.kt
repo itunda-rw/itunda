@@ -457,7 +457,13 @@ data class CreateListingRequest(
 )
 data class UploadResponse(val success: Boolean, val url: String)
 data class ListingResponse(val success: Boolean, val listing: ListingDto)
-data class ListingsResponse(val success: Boolean, val listings: List<ListingDto>)
+// trustScores added 2026-07-24 -- backend has spread this alongside every
+// listing/job-post/property-listing browse response since 2026-07-21
+// (rw.itunda.core.web.TrustScoreSupport), but no client ever parsed or rendered it.
+// A sellerId/posterId/listerId -> User.trustScore map (Karrot-Score-style, 0-1000,
+// starting at 30 -- see backend User.kt's own doc comment for why not a literal
+// manner-temperature metaphor).
+data class ListingsResponse(val success: Boolean, val listings: List<ListingDto>, val trustScores: Map<String, Int> = emptyMap())
 
 // Real Marketplace listing wishlist (2026-07-21 backend + bank-mfe, ported here) --
 // mirrors FavoriteRestaurantDto's exact shape; see ListingFavoriteService.kt's own doc
@@ -546,7 +552,7 @@ data class CreateJobPostRequest(
 )
 data class JobPostResponse(val success: Boolean, val post: JobPostDto)
 data class SuccessResponse(val success: Boolean)
-data class JobPostsResponse(val success: Boolean, val posts: List<JobPostDto>)
+data class JobPostsResponse(val success: Boolean, val posts: List<JobPostDto>, val trustScores: Map<String, Int> = emptyMap())
 data class JobCategoriesResponse(val success: Boolean, val categories: List<JobCategoryDto>)
 data class FavoriteJobPostDto(val jobPostId: String, val title: String, val payAmount: Double, val category: String, val favoritedAt: String)
 data class FavoriteJobPostsResponse(val success: Boolean, val favorites: List<FavoriteJobPostDto>)
@@ -564,7 +570,7 @@ data class CreatePropertyListingRequest(
     val bedrooms: Int? = null, val sizeSqm: Double? = null, val latitude: Double? = null, val longitude: Double? = null,
 )
 data class PropertyListingResponse(val success: Boolean, val listing: PropertyListingDto)
-data class PropertyListingsResponse(val success: Boolean, val listings: List<PropertyListingDto>)
+data class PropertyListingsResponse(val success: Boolean, val listings: List<PropertyListingDto>, val trustScores: Map<String, Int> = emptyMap())
 data class FavoritePropertyListingDto(val propertyListingId: String, val title: String, val price: Double, val listingType: String, val favoritedAt: String)
 data class FavoritePropertyListingsResponse(val success: Boolean, val favorites: List<FavoritePropertyListingDto>)
 data class PropertyTypesResponse(val success: Boolean, val propertyTypes: List<PropertyTypeDto>)

@@ -48,6 +48,7 @@ import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
 import rw.itunda.core.designsystem.components.RouteMiniMap
 import rw.itunda.core.designsystem.components.SkeletonBlock
+import rw.itunda.core.designsystem.components.TrustBadge
 import rw.itunda.core.designsystem.components.relativeTimeAgo
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
 import rw.itunda.core.designsystem.theme.Ids
@@ -78,6 +79,8 @@ fun PropertyContent(
     var listingTypeFilter by remember { mutableStateOf<String?>(null) }
     var propertyTypeFilter by remember { mutableStateOf<String?>(null) }
     var listings by remember { mutableStateOf<List<PropertyListingDto>?>(null) }
+    // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc comment.
+    var trustScores by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     var error by remember { mutableStateOf<String?>(null) }
     var showNewListing by remember { mutableStateOf(false) }
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
@@ -94,7 +97,7 @@ fun PropertyContent(
             coroutineScope.launch {
                 try {
                     val res = NetworkClient.apiService.getNearbyPropertyListings(lat, lng, nearbyRadiusKm)
-                    if (res.success) listings = res.listings
+                    if (res.success) { listings = res.listings; trustScores = res.trustScores }
                     error = null
                 } catch (e: HttpException) {
                     error = superAppErrorMessage(e)
@@ -127,7 +130,7 @@ fun PropertyContent(
                     val profileRes = NetworkClient.authApi.getProfile()
                     val res = NetworkClient.apiService.getPropertyListingsMyNeighborhood()
                     neighborhoodName = profileRes.user.neighborhood
-                    if (res.success) listings = res.listings
+                    if (res.success) { listings = res.listings; trustScores = res.trustScores }
                     error = null
                 } catch (e: HttpException) {
                     if (e.code() == 400) {
@@ -152,7 +155,7 @@ fun PropertyContent(
                 } else {
                     NetworkClient.apiService.getMyPropertyListings()
                 }
-                if (res.success) listings = res.listings
+                if (res.success) { listings = res.listings; trustScores = res.trustScores }
                 error = null
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
@@ -286,6 +289,7 @@ fun PropertyContent(
                     listing = listing,
                     propertyTypeLabel = propertyTypes.firstOrNull { it.id == listing.propertyType }?.label ?: listing.propertyType,
                     isMine = view == PropertyView.MINE || listing.listerId == currentUserId,
+                    listerTrustScore = trustScores[listing.listerId],
                     onChanged = ::load,
                     onContact = {
                         coroutineScope.launch {
@@ -441,6 +445,7 @@ private fun NewPropertyListingForm(propertyTypes: List<PropertyTypeDto>, onCreat
 private fun PropertyListingCard(
     listing: PropertyListingDto, propertyTypeLabel: String, isMine: Boolean, onChanged: () -> Unit, onContact: () -> Unit,
     onMakeOffer: (String, Double) -> Unit, favorited: Boolean = false, onToggleFavorite: () -> Unit = {},
+    listerTrustScore: Int? = null,
 ) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -484,6 +489,12 @@ private fun PropertyListingCard(
             Text(listing.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             val detailsWithTime = (if (details.isNotBlank()) "$details · " else "") + relativeTimeAgo(listing.createdAt)
             Text(detailsWithTime, color = Ids.colors.textSecondary, fontSize = 12.sp)
+            // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc
+            // comment. Only shown for someone else's listing -- a trust score about
+            // yourself is meaningless here.
+            if (!isMine && listerTrustScore != null) {
+                TrustBadge(listerTrustScore)
+            }
             Text(listing.description, color = Ids.colors.textSecondary, fontSize = 13.sp)
             // Real 당근-style price-offer negotiation (2026-07-19) -- see
             // PropertyPriceOfferService's own doc comment; mirrors ListingCard's own

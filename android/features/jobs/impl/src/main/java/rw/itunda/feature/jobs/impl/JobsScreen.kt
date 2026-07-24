@@ -48,6 +48,7 @@ import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
 import rw.itunda.core.designsystem.components.RouteMiniMap
 import rw.itunda.core.designsystem.components.SkeletonBlock
+import rw.itunda.core.designsystem.components.TrustBadge
 import rw.itunda.core.designsystem.components.relativeTimeAgo
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
 import rw.itunda.core.designsystem.theme.Ids
@@ -76,6 +77,8 @@ fun JobsContent(
     var categories by remember { mutableStateOf<List<JobCategoryDto>>(emptyList()) }
     var activeCategory by remember { mutableStateOf<String?>(null) }
     var posts by remember { mutableStateOf<List<JobPostDto>?>(null) }
+    // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc comment.
+    var trustScores by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     var error by remember { mutableStateOf<String?>(null) }
     var showNewPost by remember { mutableStateOf(false) }
     var neighborhoodName by remember { mutableStateOf<String?>(null) }
@@ -93,7 +96,7 @@ fun JobsContent(
             coroutineScope.launch {
                 try {
                     val res = NetworkClient.apiService.getNearbyJobPosts(lat, lng, nearbyRadiusKm)
-                    if (res.success) posts = res.posts
+                    if (res.success) { posts = res.posts; trustScores = res.trustScores }
                     error = null
                 } catch (e: HttpException) {
                     error = superAppErrorMessage(e)
@@ -126,7 +129,7 @@ fun JobsContent(
                     val profileRes = NetworkClient.authApi.getProfile()
                     val res = NetworkClient.apiService.getJobPostsMyNeighborhood(activeCategory)
                     neighborhoodName = profileRes.user.neighborhood
-                    if (res.success) posts = res.posts
+                    if (res.success) { posts = res.posts; trustScores = res.trustScores }
                     error = null
                 } catch (e: HttpException) {
                     if (e.code() == 400) {
@@ -147,7 +150,7 @@ fun JobsContent(
         coroutineScope.launch {
             try {
                 val res = if (view == JobsView.BROWSE) NetworkClient.apiService.browseJobPosts(activeCategory) else NetworkClient.apiService.getMyJobPosts()
-                if (res.success) posts = res.posts
+                if (res.success) { posts = res.posts; trustScores = res.trustScores }
                 error = null
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)
@@ -264,6 +267,7 @@ fun JobsContent(
                     post = post,
                     categoryLabel = categories.firstOrNull { it.id == post.category }?.label ?: post.category,
                     isMine = view == JobsView.MINE || post.posterId == currentUserId,
+                    posterTrustScore = trustScores[post.posterId],
                     onChanged = ::load,
                     onContact = {
                         coroutineScope.launch {
@@ -435,6 +439,7 @@ private fun NewJobPostForm(categories: List<JobCategoryDto>, onCreated: () -> Un
 private fun JobPostCard(
     post: JobPostDto, categoryLabel: String, isMine: Boolean, onChanged: () -> Unit, onContact: () -> Unit,
     favorited: Boolean = false, favoriteBusy: Boolean = false, onToggleFavorite: () -> Unit = {},
+    posterTrustScore: Int? = null,
 ) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -467,6 +472,12 @@ private fun JobPostCard(
                 }
             }
             Text(post.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc
+            // comment. Only shown for someone else's post -- a trust score about
+            // yourself is meaningless here.
+            if (!isMine && posterTrustScore != null) {
+                TrustBadge(posterTrustScore)
+            }
             Text(post.description, color = Ids.colors.textSecondary, fontSize = 13.sp)
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

@@ -33,26 +33,35 @@ export interface PropertyType {
 export const fetchPropertyTypes = () =>
   apiFetch<{ success: boolean; propertyTypes: PropertyType[] }>('/api/v1/realestate/property-types').then((r) => r.propertyTypes);
 
+// Real Karrot-Score-style numeric trust/reputation badge (2026-07-24) -- see backend
+// TrustScoreService's own doc comment for the full account. A listerId -> cached
+// User.trustScore map, resolved server-side alongside the listing list itself (see
+// PropertyListingController's own doc comment) -- was already spread in every one of
+// these responses since 2026-07-21, but silently discarded here until now. Reuses
+// lib/marketplace.ts's own TrustScores type (same Record<string, number> shape).
+import type { TrustScores } from './marketplace';
+
 export const fetchPropertyListings = (listingType?: PropertyListingType, propertyType?: string) => {
   const params = new URLSearchParams();
   if (listingType) params.set('listingType', listingType);
   if (propertyType) params.set('propertyType', propertyType);
   const qs = params.toString();
-  return apiFetch<{ success: boolean; listings: PropertyListing[] }>(`/api/v1/realestate/listings${qs ? `?${qs}` : ''}`).then(
-    (r) => r.listings,
+  return apiFetch<{ success: boolean; listings: PropertyListing[]; trustScores: TrustScores }>(`/api/v1/realestate/listings${qs ? `?${qs}` : ''}`).then(
+    (r) => ({ listings: r.listings, trustScores: r.trustScores }),
   );
 };
 
 export const fetchMyPropertyListings = () =>
-  apiFetch<{ success: boolean; listings: PropertyListing[] }>('/api/v1/realestate/my-listings').then((r) => r.listings);
+  apiFetch<{ success: boolean; listings: PropertyListing[]; trustScores: TrustScores }>('/api/v1/realestate/my-listings')
+    .then((r) => ({ listings: r.listings, trustScores: r.trustScores }));
 
 // Real hyperlocal "my neighborhood" browse (2026-07-20) -- see lib/neighborhood.ts's own
 // doc comment. Throws ApiError with code NEIGHBORHOOD_NOT_SET (real 400) if the caller
 // hasn't set one yet. Deliberately not combined with listingType/propertyType filters --
 // PropertyListingRepository's own doc comment names this as an honest v1 scoping choice.
 export const fetchPropertyListingsMyNeighborhood = () =>
-  apiFetch<{ success: boolean; listings: PropertyListing[] }>('/api/v1/realestate/listings/my-neighborhood').then(
-    (r) => r.listings,
+  apiFetch<{ success: boolean; listings: PropertyListing[]; trustScores: TrustScores }>('/api/v1/realestate/listings/my-neighborhood').then(
+    (r) => ({ listings: r.listings, trustScores: r.trustScores }),
   );
 
 export const createPropertyListing = (
