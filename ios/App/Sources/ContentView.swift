@@ -51,8 +51,16 @@ struct ContentView: View {
     @State private var showSettings = false
     @State private var showMapFromDeepLink = false
     @State private var mapSearchFromDeepLink: String?
-    // Real 전체 (All services) menu (2026-07-22) -- see MyTabView's own doc comment.
-    @State private var showMenu = false
+    // Real My-activity overlay (2026-07-24, inverted from Menu) -- see EntireMenuScreen's
+    // own doc comment: My's own real content (orders/favorites/listings) is now reached
+    // one tap in from the All tab's profile icon, instead of All being nested under My.
+    @State private var showMyTab = false
+    // Real Toss Bank 송금 (Transfer) full page (2026-07-24) -- reachable from the
+    // 전체/All tab's own "Financial services" section, matching real Toss where Home's
+    // own Send button stays a quick recipient-picker (unchanged) while the full grouped
+    // page (Send money/Auto-transfer/history) lives one level into the menu. See
+    // TransferHubScreen.swift's own doc comment.
+    @State private var showTransferHub = false
 
     // Real Savings section rows with real tap targets (2026-07-12) -- built here,
     // not inside BankViewModel, because triggering savingsFlowStep needs
@@ -134,14 +142,15 @@ struct ContentView: View {
                 }
                 .tag(0)
 
-            // Real super-app bottom nav (2026-07-18): Home/Shop/Hood/Talk/My,
-            // replacing the previous Home/Benefits/Shop/Pay/All layout now that
-            // itunda has real Coupang-style commerce (Shop), 당근마켓-style
-            // marketplace (Hood), and Kakao-style messaging (Talk) backends to put
-            // behind top-level tabs -- exact same restructure Android's
-            // ItundaAppScreen.kt just went through, see that file's own header
-            // comment for the full reasoning (Benefits/Pay folded into My below,
-            // not dropped).
+            // Real super-app bottom nav (2026-07-18): Home/Shop/Hood/Talk/My, replacing
+            // the previous Home/Benefits/Shop/Pay/All layout now that itunda has real
+            // Coupang-style commerce (Shop), 당근마켓-style marketplace (Hood), and
+            // Kakao-style messaging (Talk) backends to put behind top-level tabs.
+            // Tab 4 promoted from My to All (2026-07-24) -- see EntireMenuScreen's own
+            // doc comment for the full reasoning (mini-apps/games need to be one tap
+            // away, matching real Toss's own bottom nav) -- same restructure Android's
+            // ItundaAppScreen.kt just went through, see that file's own header comment
+            // for the identical history.
             ShopScreen()
                 .tabItem {
                     Image(systemName: "bag.fill")
@@ -163,26 +172,37 @@ struct ContentView: View {
                 }
                 .tag(3)
 
-            MyTabView(
+            // Real 전체 (All services) primary bottom tab (2026-07-24) -- see
+            // EntireMenuScreen's own doc comment for the full history: this used to be
+            // MyTabView's own tab content, reached from All via a hamburger icon; now
+            // inverted, with My reached one tap in from this tab's own profile icon.
+            EntireMenuScreen(
                 onOpenSettings: { showSettings = true },
-                onOpenMenu: { showMenu = true },
-                onSwitchToShop: { selectedTab = 1 },
-                onSwitchToHood: { selectedTab = 2 }
+                onOpenMyTab: { showMyTab = true },
+                onClaimInterest: { savingsFlowStep = .claimInterest },
+                onSwitchToTalk: { selectedTab = 3 },
+                onOpenTransferHub: { showTransferHub = true }
             )
                 .fullScreenCover(isPresented: $showSettings) {
                     SettingsScreen(onDone: { showSettings = false })
                 }
-                .fullScreenCover(isPresented: $showMenu) {
-                    EntireMenuScreen(
-                        onBack: { showMenu = false },
-                        onOpenSettings: { showSettings = true },
-                        onClaimInterest: { showMenu = false; savingsFlowStep = .claimInterest },
-                        onSwitchToTalk: { showMenu = false; selectedTab = 3 }
+                .fullScreenCover(isPresented: $showMyTab) {
+                    MyTabView(
+                        onBack: { showMyTab = false },
+                        onSwitchToShop: { showMyTab = false; selectedTab = 1 },
+                        onSwitchToHood: { showMyTab = false; selectedTab = 2 }
+                    )
+                }
+                .fullScreenCover(isPresented: $showTransferHub) {
+                    TransferHubContainer(
+                        onBack: { showTransferHub = false },
+                        onSendMoney: { showTransferHub = false; showTransferFlow = true },
+                        onOpenHistory: { showTransferHub = false; showTransactionHistory = true }
                     )
                 }
                 .tabItem {
-                    Image(systemName: "person.fill")
-                    Text("My")
+                    Image(systemName: "square.grid.2x2.fill")
+                    Text("All")
                 }
                 .tag(4)
         }

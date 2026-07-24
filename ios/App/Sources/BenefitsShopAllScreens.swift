@@ -155,17 +155,23 @@ private struct CashbackChanceCard: View {
 
 // MARK: - All tab
 
-// Real 전체 (KakaoPay-style "All services") menu (2026-07-22) -- separated from the My
-// tab at the user's direct request: "My and All screen should be separated like
-// KakaoPay... accessed by click on menu icon in app bar." Presented as a
-// fullScreenCover from MyTabView's own hamburger icon, not the tab's direct content
-// anymore -- see MyTabView's own doc comment for the new personal-hub content that
-// replaced this as tab 4's actual body.
+// Real 전체 (All services) primary bottom tab (2026-07-24) -- separated from the My tab
+// at the user's own direct request in an earlier pass ("My and All screen should be
+// separated like KakaoPay... accessed by click on menu icon in app bar"), then brought
+// back to the bottom nav directly once mini-apps and (planned) games meant this
+// exhaustive service catalog needed to be one tap away, not nested two taps under My --
+// matching real Toss's own bottom nav (홈/혜택/쇼핑/페이/전체, no separate "My" tab at
+// all; personal info lives at the top of 전체 instead). Mirrors Android's MenuScreen
+// exactly (see ItundaAppScreen.kt's own doc comment on TossTab.All for the full history).
+// MyTabView's own real content (orders/favorites/listings tracking) isn't dropped -- it's
+// reachable one tap in via the profile icon this screen's own IdsAllTopBar now points at,
+// the exact same nesting this tab used to have with Menu, just inverted.
 struct EntireMenuScreen: View {
-    var onBack: () -> Void = {}
     var onOpenSettings: () -> Void = {}
+    var onOpenMyTab: () -> Void = {}
     var onClaimInterest: () -> Void = {}
     var onSwitchToTalk: () -> Void = {}
+    var onOpenTransferHub: () -> Void = {}
 
     // Real granite mini-app launch, closing this file's own "MiniAppsSection... plain,
     // non-functional list rows" gap for real -- the CocoaPods/Tuist bridge plus the real
@@ -218,13 +224,13 @@ struct EntireMenuScreen: View {
                 // workaround, each Group still contributes its children directly
                 // to the VStack's layout.
                 Group {
-                    HStack {
-                        Button(action: onBack) { Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary) }
-                        Spacer()
-                        Text("Menu").font(IDS.scaledFont(size: 20, weight: .bold, relativeTo: .title2)).foregroundColor(IDS.Colors.textPrimary)
-                        Spacer()
-                        Color.clear.frame(width: 20)
-                    }
+                    // No back button here (2026-07-24): this is now a persistent
+                    // bottom-nav destination, not a screen pushed on top of one --
+                    // there's nothing to back out to. My's own real content is one tap
+                    // in via IdsAllTopBar's profile icon instead. Same real name/
+                    // settings/profile top bar MyTabView used to own when All was
+                    // nested under it -- inverted to live here now.
+                    IdsAllTopBar(onOpenSettings: onOpenSettings, onOpenMyTab: onOpenMyTab)
                     FlatSection(title: "Quick links", rows: [
                         FlatRow(title: "Pay", subtitle: "Scan or pay by code", symbol: "qrcode", tint: .accentBlue, action: { showPay = true }),
                         FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", symbol: "gift.fill", tint: .accentOrange, action: { showBenefits = true }),
@@ -267,6 +273,12 @@ struct EntireMenuScreen: View {
                     FlatSection(title: "Financial services", rows: [
                         FlatRow(title: "Open account", subtitle: "Itunda Wallet, other banks, RSE brokerage", symbol: "plus.circle", tint: .accentBlue),
                         FlatRow(title: "My assets", subtitle: "Accounts, loans, RSE holdings, cards, points", symbol: "chart.pie.fill", tint: .accentPurple, action: { showOverview = true }),
+                        // Real Transfer full page (2026-07-24 port), matching real Toss's
+                        // own 송금 row here ("자동이체 · 더치페이" subtitle) -- groups Send
+                        // money/Auto-transfer/history in one place instead of Home's Send
+                        // button (which stays a quick recipient-picker, unchanged) being the
+                        // only entry point. See TransferHubScreen.swift's own doc comment.
+                        FlatRow(title: "Transfer", subtitle: "Auto-transfer, split a bill", symbol: "paperplane.fill", tint: .accentBlue, action: onOpenTransferHub),
                         FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
                         FlatRow(title: "Credit score", subtitle: "Free check, alternative data", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showCreditScore = true }),
                         FlatRow(title: "Digital certificate", subtitle: "Sign agreements in Itunda", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showCertificate = true }),
@@ -389,31 +401,23 @@ struct EntireMenuScreen: View {
     }
 }
 
-// Real Naver-style "My" personal hub (2026-07-22), replacing EntireMenuScreen as tab
-// 4's actual content -- at the user's direct request: "My should be like Naver style
-// My since we have shopping and eats and other products where users need to easily
-// get track of their orders, reservation, favorites." Every number/row here is a real
-// fetched count or preview, not decoration -- the same "no fabricated numbers"
-// discipline this app already follows elsewhere. Mirrors Android's MyTab exactly.
+// Real Naver-style "My" personal hub (2026-07-22) -- at the user's direct request:
+// "My should be like Naver style My since we have shopping and eats and other products
+// where users need to easily get track of their orders, reservation, favorites." Every
+// number/row here is a real fetched count or preview, not decoration -- the same "no
+// fabricated numbers" discipline this app already follows elsewhere.
+//
+// Trimmed down (2026-07-24) to ONLY this unique content -- its old "Quick links" and
+// "My account" sections are deleted, since both now fully duplicate rows already in
+// EntireMenuScreen's own catalog now that All is the primary bottom tab (see that
+// screen's own doc comment). Mirrors Android's trimmed MyTab exactly. No longer this
+// tab's own body: reached instead as a real back-button overlay from the profile icon
+// at the top of EntireMenuScreen (see ContentView.swift's own fullScreenCover), the
+// exact same nesting All used to have under this tab, just inverted.
 struct MyTabView: View {
-    var onOpenSettings: () -> Void = {}
-    var onOpenMenu: () -> Void = {}
+    var onBack: () -> Void = {}
     var onSwitchToShop: () -> Void = {}
     var onSwitchToHood: () -> Void = {}
-
-    // Self-contained sheet-trigger state, same pattern EntireMenuScreen already uses
-    // for its own rows -- only Settings/Menu/tab-switching are cross-cutting enough
-    // to need ContentView's own state (see MyTabView's call site in ContentView.swift).
-    @State private var showPay = false
-    @State private var showBenefits = false
-    @State private var showInvest = false
-    @State private var showMap = false
-    @State private var showOverview = false
-    @State private var showLoans = false
-    @State private var showSupport = false
-    @State private var showCreditScore = false
-    @State private var showCertificate = false
-    @State private var showIdentity = false
 
     @State private var shopOrders: [OrderDto] = []
     @State private var eatsOrders: [EatsOrderDto] = []
@@ -428,13 +432,13 @@ struct MyTabView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: IDS.Layout.sectionSpacing) {
-                IdsAllTopBar(onOpenSettings: onOpenSettings, onOpenMenu: onOpenMenu)
-                FlatSection(title: "Quick links", rows: [
-                    FlatRow(title: "Pay", subtitle: "Scan or pay by code", symbol: "qrcode", tint: .accentBlue, action: { showPay = true }),
-                    FlatRow(title: "Benefits", subtitle: "Points, coupons, rewards", symbol: "gift.fill", tint: .accentOrange, action: { showBenefits = true }),
-                    FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showInvest = true }),
-                    FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", symbol: "map.fill", tint: .accentTeal, action: { showMap = true }),
-                ])
+                HStack {
+                    Button(action: onBack) { Image(systemName: "chevron.left").foregroundColor(IDS.Colors.textPrimary) }
+                    Spacer()
+                    Text("My").font(IDS.scaledFont(size: 20, weight: .bold, relativeTo: .title2)).foregroundColor(IDS.Colors.textPrimary)
+                    Spacer()
+                    Color.clear.frame(width: 20)
+                }
                 // Real order tracking -- Naver Pay/Shopping's own "My" tab leads with
                 // recent orders across every product, not a settings list. Tapping
                 // switches to that product's own tab where the full order-history view
@@ -469,34 +473,17 @@ struct MyTabView: View {
                     FlatRow(title: "Jobs posted", trailing: "\(myJobPostsCount)", symbol: "briefcase.fill", tint: .accentBlue, action: onSwitchToHood),
                     FlatRow(title: "Property listed", trailing: "\(myPropertyListingsCount)", symbol: "house.fill", tint: .accentTeal, action: onSwitchToHood),
                 ])
-                // Personal-account items (distinct from the exhaustive product catalog
-                // now in EntireMenuScreen) -- inherently "about my own account,"
-                // matching Naver Pay's own My tab keeping points/coupons/membership
-                // here rather than in its separate 전체 menu.
-                FlatSection(title: "My account", rows: [
-                    FlatRow(title: "My assets", subtitle: "Accounts, loans, RSE holdings, cards, points", symbol: "chart.pie.fill", tint: .accentPurple, action: { showOverview = true }),
-                    FlatRow(title: "Get a loan", symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
-                    FlatRow(title: "Credit score", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showCreditScore = true }),
-                    FlatRow(title: "Digital certificate", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showCertificate = true }),
-                    FlatRow(title: "Verify identity", symbol: "checkmark.circle.fill", tint: .accentOrange, action: { showIdentity = true }),
-                    FlatRow(title: "Support", symbol: "questionmark.circle.fill", tint: .accentGray, action: { showSupport = true }),
-                ])
+                // "My account" (My assets/Get a loan/Credit score/etc) deliberately
+                // dropped here (2026-07-24) -- every one of those rows already lives in
+                // EntireMenuScreen's own "Financial services" section now that All is
+                // the primary bottom tab; keeping a second copy here would just be stale
+                // duplication. Mirrors Android's identical MyTab cleanup.
             }
             .padding(.horizontal, IDS.Layout.screenHorizontal)
             .padding(.top, IDS.Layout.screenTop)
             .padding(.bottom, IDS.Layout.sectionSpacing)
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
-        .sheet(isPresented: $showPay) { PayScreen() }
-        .sheet(isPresented: $showBenefits) { BenefitsScreen() }
-        .sheet(isPresented: $showInvest) { InvestScreenView(onBack: { showInvest = false }) }
-        .sheet(isPresented: $showMap) { MapScreenView() }
-        .sheet(isPresented: $showOverview) { OverviewScreenView(onBack: { showOverview = false }) }
-        .sheet(isPresented: $showLoans) { LoansScreenView(onBack: { showLoans = false }) }
-        .sheet(isPresented: $showSupport) { SupportScreenView(onBack: { showSupport = false }) }
-        .sheet(isPresented: $showCreditScore) { CreditScoreScreenView(onBack: { showCreditScore = false }) }
-        .sheet(isPresented: $showCertificate) { CertificateScreenView(onBack: { showCertificate = false }) }
-        .sheet(isPresented: $showIdentity) { IdentityScreenView(onBack: { showIdentity = false }) }
         .task {
             // Each fetch independent and best-effort -- one product's API hiccup must
             // never blank the rest of this real personal-activity summary.
@@ -528,11 +515,20 @@ struct MyTabView: View {
     }
 }
 
+// Was a text navbar -- "ID | Support | Settings" with pipe separators, then a hamburger
+// icon leading to the Menu screen -- neither has an equivalent in real Toss. The 전체
+// (All) tab top bar is just the user's name plus a profile icon (2026-07-24: inverted
+// from a hamburger, since this bar itself now IS the Menu/전체 screen's own top bar --
+// see EntireMenuScreen's own doc comment for the full history) and a settings icon;
+// support/ID live as rows further down the list, not up here.
 private struct IdsAllTopBar: View {
     var onOpenSettings: () -> Void = {}
-    // Real 전체 (All services) menu (2026-07-22) -- optional, nil default so this
-    // bar's only other real caller is unaffected. See MyTabView's own doc comment.
-    var onOpenMenu: (() -> Void)? = nil
+    // Real My-activity screen (2026-07-24, inverted from Menu) -- see
+    // EntireMenuScreen's own doc comment: the profile icon now leads to the
+    // personal-activity screen (orders/favorites/listings), the exact reverse of this
+    // bar's old Menu icon. Optional, nil default so this bar's only other real caller
+    // (HomeTopBar-style reuse, if any) is unaffected.
+    var onOpenMyTab: (() -> Void)? = nil
 
     var body: some View {
         HStack {
@@ -540,13 +536,13 @@ private struct IdsAllTopBar: View {
                 .font(IDS.scaledFont(size: 26, weight: .bold, relativeTo: .largeTitle))
                 .foregroundColor(IDS.Colors.textPrimary)
             Spacer()
-            if let onOpenMenu {
-                Button(action: onOpenMenu) {
-                    Image(systemName: "line.3.horizontal")
+            if let onOpenMyTab {
+                Button(action: onOpenMyTab) {
+                    Image(systemName: "person.fill")
                         .font(IDS.scaledFont(size: 20, weight: .regular, relativeTo: .body))
                         .foregroundColor(IDS.Colors.textPrimary)
                 }
-                .accessibilityLabel("All services")
+                .accessibilityLabel("My activity")
             }
             // Real Settings screen (2026-07-12, see SettingsScreen.swift) --
             // previously wired directly to logout with no screen behind it at all,

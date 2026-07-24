@@ -355,6 +355,39 @@ public struct SendDirectP2pResponse: Decodable {
     public let newBalance: Double
 }
 
+// Real Toss Bank 자동이체 (auto-transfer) equivalent (2026-07-24 port) -- mirrors
+// AutoTransferController's real DTOs exactly (see AutoTransfer.kt/AutoTransferController.kt
+// on the backend for the full account), same shapes Android's ApiService.kt already
+// gained the same day. Execution reuses P2pService.sendDirect's exact real ledger
+// movement, just triggered by a scheduler instead of a direct tap -- recipientIdentifier
+// is resolved fresh on every real execution, recipientName is a cached display label only.
+public enum AutoTransferFrequency: String, Codable { case WEEKLY, MONTHLY }
+public struct AutoTransferDto: Decodable, Identifiable {
+    public let id: String
+    public let recipientIdentifier: String
+    public let recipientName: String
+    public let amount: Double
+    public let frequency: AutoTransferFrequency
+    public let dayOfWeek: Int?
+    public let dayOfMonth: Int?
+    public let description: String
+    public let status: String
+    public let nextExecutionAt: String
+    public let lastExecutedAt: String?
+    public let executionCount: Int
+    public let lastFailureReason: String?
+}
+public struct CreateAutoTransferRequest: Encodable {
+    public let recipient: String
+    public let amount: Double
+    public let frequency: AutoTransferFrequency
+    public let dayOfWeek: Int?
+    public let dayOfMonth: Int?
+    public let description: String
+}
+public struct AutoTransferResponse: Decodable { public let success: Bool; public let autoTransfer: AutoTransferDto }
+public struct AutoTransfersListResponse: Decodable { public let success: Bool; public let autoTransfers: [AutoTransferDto] }
+
 public struct DepositRequest: Encodable { public let goalId: String; public let amount: Double }
 public struct DepositResponse: Decodable { public let success: Bool; public let message: String; public let goal: SavingsGoal }
 public struct ClaimInterestResponse: Decodable { public let success: Bool; public let message: String }
@@ -455,6 +488,35 @@ extension NetworkClient {
             body: SendDirectP2pRequest(recipient: recipient, amount: amount, description: ""),
             idempotencyKey: UUID().uuidString
         )
+    }
+
+    // Real Toss Bank 자동이체 (auto-transfer) equivalent (2026-07-24 port) -- see
+    // AutoTransferDto's own doc comment above. No idempotency key on create/pause/resume/
+    // cancel (unlike sendDirect/confirmTransfer): these mutate a schedule row, not a wallet
+    // balance directly, matching AutoTransferController's own real endpoints exactly (none
+    // of the five read an Idempotency-Key header).
+    public func createAutoTransfer(
+        recipient: String, amount: Double, frequency: AutoTransferFrequency,
+        dayOfWeek: Int?, dayOfMonth: Int?, description: String
+    ) async throws -> AutoTransferResponse {
+        try await authenticatedPost(
+            "api/v1/p2p/auto-transfers",
+            body: CreateAutoTransferRequest(recipient: recipient, amount: amount, frequency: frequency, dayOfWeek: dayOfWeek, dayOfMonth: dayOfMonth, description: description)
+        )
+    }
+
+    public func getMyAutoTransfers() async throws -> AutoTransfersListResponse { try await get("api/v1/p2p/auto-transfers") }
+
+    public func pauseAutoTransfer(_ id: String) async throws -> AutoTransferResponse {
+        try await authenticatedPost("api/v1/p2p/auto-transfers/\(id)/pause", body: EmptyBody())
+    }
+
+    public func resumeAutoTransfer(_ id: String) async throws -> AutoTransferResponse {
+        try await authenticatedPost("api/v1/p2p/auto-transfers/\(id)/resume", body: EmptyBody())
+    }
+
+    public func cancelAutoTransfer(_ id: String) async throws -> AutoTransferResponse {
+        try await authenticatedDelete("api/v1/p2p/auto-transfers/\(id)")
     }
 
     public func depositToGoal(goalId: String, amount: Double) async throws -> DepositResponse {
