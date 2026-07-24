@@ -3,6 +3,7 @@ package rw.itunda.feature.shop.impl
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -58,6 +60,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
@@ -69,7 +73,6 @@ import rw.itunda.core.designsystem.components.SearchAndCategoryChips
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.StarGold
 import rw.itunda.core.designsystem.components.StarRatingRow
-import rw.itunda.core.designsystem.components.TabHeader
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.NetworkClient
@@ -227,24 +230,32 @@ fun CommerceShopContent(
         modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical),
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
-        item { TabHeader("Shop") }
         item {
-            Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft).padding(4.dp)) {
+            // No TabHeader here (2026-07-24, was `TabHeader("Shop")`): the bottom
+            // nav / ShopTab's own Shop/Eats row already establish where the user
+            // is, same redundant-title fix as Hood. Flat category strip below,
+            // same treatment as everywhere else.
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+            ) {
                 listOf(CommerceView.BROWSE to "Merchants", CommerceView.ORDERS to "My orders").forEach { (v, label) ->
                     val selected = v == view
-                    Text(
-                        label,
-                        color = if (selected) Color.White else Ids.colors.textSecondary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(if (selected) Ids.colors.brand else Color.Transparent)
-                            .clickable { view = v }
-                            .padding(vertical = 8.dp),
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { view = v }) {
+                        Text(
+                            label,
+                            color = if (selected) Ids.colors.textPrimary else Ids.colors.textSecondary,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            fontSize = 15.sp,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .height(2.dp)
+                                .width(18.dp)
+                                .background(if (selected) Ids.colors.brand else Color.Transparent, RoundedCornerShape(1.dp)),
+                        )
+                    }
                 }
             }
         }
@@ -273,27 +284,7 @@ fun CommerceShopContent(
                     )
                 }
             } else {
-                items(merchants!!, key = { it.merchantId }) { m ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
-                            .background(Ids.colors.surface)
-                            .clickable { openMerchant(m) }
-                            .padding(18.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Outlined.Storefront, contentDescription = null, modifier = Modifier.size(20.dp), tint = Ids.colors.brand)
-                        }
-                        Spacer(modifier = Modifier.width(14.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(m.businessName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            Text("${m.cashbackRate} cashback on QR/code payments", color = Ids.colors.textSecondary, fontSize = 12.sp)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                }
+                items(merchants!!, key = { it.merchantId }) { m -> StoreCard(m, onOpen = { openMerchant(m) }) }
             }
         }
         if (view == CommerceView.BROWSE && totalItems > 0) {
@@ -318,6 +309,54 @@ private fun CartFab(totalItems: Int, onClick: () -> Unit) {
             Spacer(modifier = Modifier.width(8.dp))
             Text("View cart ($totalItems item${if (totalItems == 1) "" else "s"})", color = Color.White, fontWeight = FontWeight.Bold)
         }
+    }
+}
+
+// Real Coupang-style photo-forward store card (2026-07-24) -- same treatment as the
+// Eats restaurant card and Marketplace's ListingCard: a real merchant-set photo leads,
+// same ShoppingMerchantDto.photoUrl field Eats already uses (this endpoint and Eats'
+// share the same DTO), so no backend change was needed here.
+@Composable
+private fun StoreCard(m: ShoppingMerchantDto, onOpen: () -> Unit) {
+    Card(
+        shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = Ids.colors.surface),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
+    ) {
+        Column {
+            Box(modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(topStart = Ids.layout.cardCornerRadius, topEnd = Ids.layout.cardCornerRadius))) {
+                if (m.photoUrl != null) {
+                    SubcomposeAsyncImage(
+                        model = m.photoUrl,
+                        contentDescription = m.businessName,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        when (painter.state) {
+                            is coil.compose.AsyncImagePainter.State.Success -> SubcomposeAsyncImageContent()
+                            else -> StorePhotoPlaceholder()
+                        }
+                    }
+                } else {
+                    StorePhotoPlaceholder()
+                }
+            }
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text(m.businessName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(
+                    listOfNotNull(m.category, "${m.cashbackRate} cashback").joinToString(" · "),
+                    color = Ids.colors.textSecondary,
+                    fontSize = 12.sp,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StorePhotoPlaceholder() {
+    Box(modifier = Modifier.fillMaxSize().background(Ids.colors.surfaceSoft), contentAlignment = Alignment.Center) {
+        Icon(Icons.Outlined.Storefront, contentDescription = null, tint = Ids.colors.textTertiary, modifier = Modifier.size(40.dp))
     }
 }
 

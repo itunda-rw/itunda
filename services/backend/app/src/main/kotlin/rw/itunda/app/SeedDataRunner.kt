@@ -395,5 +395,70 @@ class SeedDataRunner(
                 ),
             )
         }
+
+        // Real Shop demo retail merchants (2026-07-24) -- Shop and Eats browse the
+        // same Merchant directory (see ShoppingController.getEligibleMerchants, called
+        // identically by both screens) with no category split at the API level, so the
+        // 3 restaurants seeded above already appear in Shop's own browse list too, but
+        // Shop needs real non-food retail merchants of its own to actually be a fair
+        // Coupang-style shopping test rather than just a mirror of Eats.
+        val retailOwner1 = userRepository.findByPhoneNumber("+250788789012") ?: userRepository.save(
+            User(
+                id = "user_retail_1", phoneNumber = "+250788789012", email = "jean.claude@itunda.rw",
+                firstName = "Jean Claude", lastName = "Nkurunziza", passwordHash = BCryptPasswordEncoder().encode("password123"),
+                kycVerified = true, creditScore = 690, createdAt = Instant.now(), neighborhood = "Nyamirambo",
+            ),
+        )
+        val retailOwner2 = userRepository.findByPhoneNumber("+250788890123") ?: userRepository.save(
+            User(
+                id = "user_retail_2", phoneNumber = "+250788890123", email = "diane@itunda.rw",
+                firstName = "Diane", lastName = "Ingabire", passwordHash = BCryptPasswordEncoder().encode("password123"),
+                kycVerified = true, creditScore = 705, createdAt = Instant.now(), neighborhood = "Kicukiro",
+            ),
+        )
+
+        listOf(
+            retailOwner1.id to Wallet(id = "wallet_retail_1", userId = retailOwner1.id, accountNumber = "2024200004", accountName = "Jean Claude's Business Account", type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO),
+            retailOwner2.id to Wallet(id = "wallet_retail_2", userId = retailOwner2.id, accountNumber = "2024200005", accountName = "Diane's Business Account", type = WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO),
+        ).forEach { (ownerId, wallet) ->
+            if (walletRepository.findByUserId(ownerId).isEmpty()) walletRepository.save(wallet)
+        }
+
+        if (merchantRepository.findByOwnerUserId(retailOwner1.id) == null) {
+            merchantRepository.save(
+                Merchant(
+                    id = "merchant_seed_4", ownerUserId = retailOwner1.id, walletId = "wallet_retail_1",
+                    businessName = "Kigali Electronics Hub", category = "Electronics", kybVerified = true,
+                    latitude = -1.9723, longitude = 30.0428,
+                    photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Smartphone.jpg",
+                ),
+            )
+        }
+        if (merchantRepository.findByOwnerUserId(retailOwner2.id) == null) {
+            merchantRepository.save(
+                Merchant(
+                    id = "merchant_seed_5", ownerUserId = retailOwner2.id, walletId = "wallet_retail_2",
+                    businessName = "Umutima Fashion", category = "Fashion", kybVerified = true,
+                    latitude = -1.9878, longitude = 30.1094,
+                    photoUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/T-shirt.jpg",
+                ),
+            )
+        }
+
+        if (merchantProductRepository.findByMerchantIdAndActiveTrue("merchant_seed_4").isEmpty()) {
+            merchantProductRepository.saveAll(
+                listOf(
+                    MerchantProduct(id = "product_seed_10", merchantId = "merchant_seed_4", name = "Smartphone (mid-range)", price = BigDecimal("180000"), imageUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Smartphone.jpg", description = "New, sealed box, 1-year warranty."),
+                ),
+            )
+        }
+        if (merchantProductRepository.findByMerchantIdAndActiveTrue("merchant_seed_5").isEmpty()) {
+            merchantProductRepository.saveAll(
+                listOf(
+                    MerchantProduct(id = "product_seed_11", merchantId = "merchant_seed_5", name = "Cotton T-shirt", price = BigDecimal("8000"), imageUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/T-shirt.jpg"),
+                    MerchantProduct(id = "product_seed_12", merchantId = "merchant_seed_5", name = "Sneakers", price = BigDecimal("35000"), imageUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Sneakers.jpg"),
+                ),
+            )
+        }
     }
 }

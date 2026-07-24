@@ -335,29 +335,32 @@ private enum class ShopMode { SHOP, EATS }
 internal fun ShopTab() {
     var mode by remember { mutableStateOf(ShopMode.SHOP) }
     Column(modifier = Modifier.fillMaxSize()) {
+        // Flat category strip (2026-07-24), same treatment as HoodTab's own
+        // Market/Life/Jobs/Home row -- see that composable's own comment for
+        // the full reasoning.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(TossCardSoft)
-                .padding(4.dp),
+                .padding(horizontal = Ids.layout.screenHorizontal, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(28.dp),
         ) {
             listOf(ShopMode.SHOP to "Shop", ShopMode.EATS to "Eats").forEach { (m, label) ->
                 val selected = m == mode
-                Text(
-                    label,
-                    color = if (selected) Color.White else TossSecondary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (selected) TossBlue else Color.Transparent)
-                        .clickable { mode = m }
-                        .padding(vertical = 8.dp),
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { mode = m }) {
+                    Text(
+                        label,
+                        color = if (selected) Ids.colors.textPrimary else TossSecondary,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                        fontSize = 15.sp,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .height(2.dp)
+                            .width(18.dp)
+                            .background(if (selected) TossBlue else Color.Transparent, RoundedCornerShape(1.dp)),
+                    )
+                }
             }
         }
         when (mode) {
