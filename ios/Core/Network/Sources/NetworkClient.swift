@@ -1110,6 +1110,25 @@ public struct MerchantProductDto: Decodable, Identifiable {
 public struct MerchantSummaryDto: Decodable { public let id: String; public let businessName: String }
 public struct MerchantProductsResponse: Decodable { public let success: Bool; public let merchant: MerchantSummaryDto; public let products: [MerchantProductDto] }
 
+// Real Shop product wishlist (2026-07-24) -- closes docs/DESIGN_REFERENCES.md Section 5
+// recommendation #3: backend (ProductFavoriteService, 2026-07-20) and bank-mfe already
+// had this; iOS had zero wiring. Mirrors FavoriteListingDto/FavoriteJobPostDto/
+// FavoritePropertyListingDto field-for-field.
+public struct FavoriteProductDto: Decodable, Identifiable {
+    public let productId: String
+    public let merchantId: String
+    public let name: String
+    public let price: Double
+    public let businessName: String
+    public let favoritedAt: String
+    public let imageUrl: String?
+    public let originalPrice: Double?
+    public let discountPercent: Int?
+    public let description: String?
+    public var id: String { productId }
+}
+public struct FavoriteProductsResponse: Decodable { public let success: Bool; public let favorites: [FavoriteProductDto] }
+
 public struct OrderItemRequest: Encodable {  public let productId: String; public let quantity: Int; public init(productId: String, quantity: Int) { self.productId = productId; self.quantity = quantity } }
 public struct PlaceOrderRequest: Encodable {
     public let merchantId: String
@@ -1853,6 +1872,19 @@ extension NetworkClient {
     public func getProductReviews(_ productId: String) async throws -> ProductReviewsResponse {
         try await get("api/v1/orders/products/\(productId)/reviews")
     }
+
+    // Real Shop product wishlist (2026-07-24) -- backend shipped 2026-07-20
+    // (ProductFavoriteService), bank-mfe wired the same day; this closes the iOS-side
+    // gap. Mirrors addListingFavorite/removeListingFavorite exactly.
+    public func addProductFavorite(_ productId: String) async throws -> SuccessResponse {
+        try await authenticatedPost("api/v1/orders/products/\(productId)/favorite", body: EmptyBody())
+    }
+
+    public func removeProductFavorite(_ productId: String) async throws -> SuccessResponse {
+        try await authenticatedDelete("api/v1/orders/products/\(productId)/favorite")
+    }
+
+    public func getMyFavoriteProducts() async throws -> FavoriteProductsResponse { try await get("api/v1/orders/products/favorites") }
 
     // Real Coupang Eats-style food delivery (2026-07-18) -- see rw.itunda.eats.web.EatsController.
     public func placeEatsOrder(_ request: PlaceEatsOrderRequest) async throws -> EatsOrderDetailResponse {

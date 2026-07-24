@@ -35,7 +35,7 @@ struct ShopScreen: View {
     }
 }
 
-private enum CommerceView { case browse, orders }
+private enum CommerceView { case browse, orders, wishlist }
 
 // Real cross-merchant cart (2026-07-20) -- closes the "real Coupang splits a
 // multi-seller cart into per-seller orders, not attempted here" simplification the
@@ -71,6 +71,13 @@ private struct CommerceShopContent: View {
     @State private var showCart = false
     @State private var results: [CommerceCheckoutResult]?
 
+    // Real Shop product wishlist (2026-07-24) -- lifted here same as Marketplace's own
+    // favoriteIds (HoodScreen.swift), so the heart on a product card (grid or detail)
+    // stays correct whichever screen toggled it. See NetworkClient's FavoriteProductDto
+    // doc comment.
+    @State private var favoriteProductIds: Set<String> = []
+    @State private var favoritingProductId: String?
+
     private var totalItems: Int { cart.values.reduce(0) { $0 + $1.quantity } }
 
     var body: some View {
@@ -100,7 +107,10 @@ private struct CommerceShopContent: View {
                     product: product,
                     cart: $cart,
                     onBack: { selectedProduct = nil },
-                    onViewCart: { selectedProduct = nil; showCart = true }
+                    onViewCart: { selectedProduct = nil; showCart = true },
+                    favorited: favoriteProductIds.contains(product.id),
+                    favoriteBusy: favoritingProductId == product.id,
+                    onToggleFavorite: { Task { await toggleProductFavorite(product.id) } }
                 )
             } else if let merchant = selectedMerchant {
                 MerchantDetailView(
@@ -109,7 +119,10 @@ private struct CommerceShopContent: View {
                     cart: $cart,
                     onBack: { selectedMerchant = nil },
                     onViewCart: { showCart = true },
-                    onOpenProduct: { selectedProduct = $0 }
+                    onOpenProduct: { selectedProduct = $0 },
+                    favoriteProductIds: favoriteProductIds,
+                    favoritingProductId: favoritingProductId,
+                    onToggleFavorite: { productId in Task { await toggleProductFavorite(productId) } }
                 )
             } else {
                 browseBody
@@ -120,6 +133,32 @@ private struct CommerceShopContent: View {
             if categories.isEmpty {
                 do { categories = try await NetworkClient.shared.getMerchantCategories().categories } catch {}
             }
+            await loadFavoriteProductIds()
+        }
+    }
+
+    private func loadFavoriteProductIds() async {
+        do {
+            let res = try await NetworkClient.shared.getMyFavoriteProducts()
+            favoriteProductIds = Set(res.favorites.map { $0.productId })
+        } catch {
+            // Best-effort -- hearts just won't render as filled if this fails.
+        }
+    }
+
+    private func toggleProductFavorite(_ productId: String) async {
+        favoritingProductId = productId
+        defer { favoritingProductId = nil }
+        do {
+            if favoriteProductIds.contains(productId) {
+                _ = try await NetworkClient.shared.removeProductFavorite(productId)
+                favoriteProductIds.remove(productId)
+            } else {
+                _ = try await NetworkClient.shared.addProductFavorite(productId)
+                favoriteProductIds.insert(productId)
+            }
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
         }
     }
 
@@ -149,11 +188,14 @@ private struct CommerceShopContent: View {
                     Picker("", selection: $view) {
                         Text("Merchants").tag(CommerceView.browse)
                         Text("My orders").tag(CommerceView.orders)
+                        Text("♡ Wishlist").tag(CommerceView.wishlist)
                     }
                     .pickerStyle(.segmented)
 
                     if view == .orders {
                         MyCommerceOrdersView()
+                    } else if view == .wishlist {
+                        ProductWishlistView(onRemoved: { Task { await loadFavoriteProductIds() } })
                     } else {
                         SearchAndCategoryChips(
                             searchText: searchInput,
@@ -299,6 +341,9 @@ private struct MerchantDetailView: View {
     let onBack: () -> Void
     let onViewCart: () -> Void
     let onOpenProduct: (MerchantProductDto) -> Void
+    var favoriteProductIds: Set<String> = []
+    var favoritingProductId: String?
+    var onToggleFavorite: (String) -> Void = { _ in }
 
     private var totalItems: Int { cart.values.reduce(0) { $0 + $1.quantity } }
     private func qty(_ productId: String) -> Int { cart["\(merchant.merchantId):\(productId)"]?.quantity ?? 0 }
@@ -336,14 +381,28 @@ private struct MerchantDetailView: View {
                                     // (2026-07-21) -- see ProductDetailView's own doc
                                     // comment. Only image/name/price is tappable so the
                                     // qty stepper below stays independently tappable.
-                                    Button(action: { onOpenProduct(product) }) {
-                                        VStack(alignment: .leading, spacing: 6) {
-                                            ProductImageThumb(imageUrl: product.imageUrl, side: 96)
-                                            Text(product.name).font(IDS.Typography.bodyMedium).foregroundColor(IDS.Colors.textPrimary).lineLimit(2)
-                                            ProductPriceRow(product: product)
+                                    // Real Shop product wishlist heart (2026-07-24) -- a
+                                    // sibling overlay button, not nested inside the
+                                    // tap-through Button below (SwiftUI doesn't route
+                                    // nested-Button taps reliably), same top-trailing
+                                    // placement as Marketplace's ListingCard heart. Closes
+                                    // docs/DESIGN_REFERENCES.md Section 5 recommendation #3.
+                                    ZStack(alignment: .topTrailing) {
+                                        Button(action: { onOpenProduct(product) }) {
+                                            VStack(alignment: .leading, spacing: 6) {
+                                                ProductImageThumb(imageUrl: product.imageUrl, side: 96)
+                                                Text(product.name).font(IDS.Typography.bodyMedium).foregroundColor(IDS.Colors.textPrimary).lineLimit(2)
+                                                ProductPriceRow(product: product)
+                                            }
                                         }
+                                        .buttonStyle(.plain)
+                                        Button(action: { onToggleFavorite(product.id) }) {
+                                            Image(systemName: favoriteProductIds.contains(product.id) ? "heart.fill" : "heart")
+                                                .foregroundColor(favoriteProductIds.contains(product.id) ? .red : .white)
+                                                .padding(4)
+                                        }
+                                        .disabled(favoritingProductId == product.id)
                                     }
-                                    .buttonStyle(.plain)
                                     ProductRatingBadge(productId: product.id)
                                     HStack(spacing: 10) {
                                         Spacer()
@@ -396,6 +455,9 @@ private struct ProductDetailView: View {
     @Binding var cart: [String: CommerceCartLine]
     let onBack: () -> Void
     let onViewCart: () -> Void
+    var favorited: Bool = false
+    var favoriteBusy: Bool = false
+    var onToggleFavorite: () -> Void = {}
 
     private var totalItems: Int { cart.values.reduce(0) { $0 + $1.quantity } }
     private var key: String { "\(merchant.merchantId):\(product.id)" }
@@ -419,10 +481,23 @@ private struct ProductDetailView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Spacer()
-                        ProductImageThumb(imageUrl: product.imageUrl, side: 220)
-                        Spacer()
+                    ZStack(alignment: .topTrailing) {
+                        HStack {
+                            Spacer()
+                            ProductImageThumb(imageUrl: product.imageUrl, side: 220)
+                            Spacer()
+                        }
+                        // Real Shop product wishlist button on the detail page
+                        // (2026-07-24) -- Chloe Youn's Coupang case study
+                        // (docs/DESIGN_REFERENCES.md Section 5) names wishlist as
+                        // available directly alongside add-to-cart, not buried behind
+                        // a sub-menu.
+                        Button(action: onToggleFavorite) {
+                            Image(systemName: favorited ? "heart.fill" : "heart")
+                                .foregroundColor(favorited ? .red : IDS.Colors.textSecondary)
+                                .padding(8)
+                        }
+                        .disabled(favoriteBusy)
                     }
                     Spacer().frame(height: 16)
                     Text(product.name).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
@@ -679,6 +754,81 @@ extension CommerceOrderRow where Action == EmptyView {
     init(order: OrderDto) {
         self.order = order
         self.action = { EmptyView() }
+    }
+}
+
+// Real Shop product wishlist view (2026-07-24) -- iOS port of bank-mfe's
+// ProductCatalogView wishlist tab, mirroring HoodScreen's own ListingWishlistView
+// field-for-field. Closes docs/DESIGN_REFERENCES.md Section 5 recommendation #3.
+private struct ProductWishlistView: View {
+    let onRemoved: () -> Void
+
+    @State private var favorites: [FavoriteProductDto]?
+    @State private var error: String?
+    @State private var removingId: String?
+
+    var body: some View {
+        Group {
+            if let error {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(error).foregroundColor(.red).font(.subheadline)
+                    Button("Retry") { Task { await load() } }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(20)
+                .background(IDS.Colors.card)
+                .cornerRadius(IDS.Layout.cardCornerRadius)
+            } else if favorites == nil {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+            } else if favorites!.isEmpty {
+                Text("No saved products yet -- tap ♡ on any product to save it here.")
+                    .foregroundColor(IDS.Colors.textSecondary)
+            } else {
+                ForEach(favorites!) { f in
+                    HStack(spacing: 12) {
+                        ProductImageThumb(imageUrl: f.imageUrl, side: 48)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(f.name).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                            Text("\(f.businessName) · \(Int(f.price)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                        Spacer()
+                        Button(action: { Task { await remove(f.productId) } }) {
+                            Text(removingId == f.productId ? "Removing…" : "Remove")
+                                .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                .padding(.horizontal, 12).padding(.vertical, 8)
+                                .background(IDS.Colors.chipBackground).cornerRadius(10)
+                        }
+                        .disabled(removingId == f.productId)
+                    }
+                    .padding(16)
+                    .background(IDS.Colors.card)
+                    .cornerRadius(IDS.Layout.cardCornerRadius)
+                }
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        do {
+            let res = try await NetworkClient.shared.getMyFavoriteProducts()
+            favorites = res.favorites
+            error = nil
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func remove(_ productId: String) async {
+        removingId = productId
+        defer { removingId = nil }
+        do {
+            _ = try await NetworkClient.shared.removeProductFavorite(productId)
+            favorites = favorites?.filter { $0.productId != productId }
+            onRemoved()
+        } catch {
+            self.error = "Couldn't remove this item. Check your connection and try again."
+        }
     }
 }
 

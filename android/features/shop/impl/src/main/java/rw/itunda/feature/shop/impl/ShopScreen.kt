@@ -27,6 +27,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.RateReview
 import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material.icons.outlined.ShoppingCart
@@ -74,6 +76,7 @@ import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.StarGold
 import rw.itunda.core.designsystem.components.StarRatingRow
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.network.FavoriteProductDto
 import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.OrderDto
@@ -103,7 +106,7 @@ import java.util.UUID
 //   split exists) -- so this stays an app-level composition, injected here exactly like
 //   routeMiniMap, rather than pulled into this module.
 
-private enum class CommerceView { BROWSE, ORDERS }
+private enum class CommerceView { BROWSE, ORDERS, WISHLIST }
 
 // Real cross-merchant cart (2026-07-20) -- closes the "real Coupang splits a
 // multi-seller cart into per-seller orders, not attempted here" simplification the
@@ -131,6 +134,45 @@ fun CommerceShopContent(
     var showCart by remember { mutableStateOf(false) }
     var results by remember { mutableStateOf<List<CommerceCheckoutResult>?>(null) }
     val coroutineScope = rememberCoroutineScope()
+
+    // Real Shop product wishlist (2026-07-24) -- lifted here same as Marketplace's own
+    // favoriteIds, so the heart on a product card (grid or detail) stays correct
+    // whichever screen toggled it. See ApiService.kt's FavoriteProductDto doc comment.
+    var favoriteProductIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var favoritingProductId by remember { mutableStateOf<String?>(null) }
+
+    fun loadFavoriteProductIds() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyFavoriteProducts()
+                if (res.success) favoriteProductIds = res.favorites.map { it.productId }.toSet()
+            } catch (e: Exception) {
+                // Best-effort -- hearts just won't render as filled if this fails.
+            }
+        }
+    }
+    LaunchedEffect(Unit) { loadFavoriteProductIds() }
+
+    fun toggleProductFavorite(productId: String) {
+        favoritingProductId = productId
+        coroutineScope.launch {
+            try {
+                if (productId in favoriteProductIds) {
+                    NetworkClient.apiService.removeProductFavorite(productId)
+                    favoriteProductIds = favoriteProductIds - productId
+                } else {
+                    NetworkClient.apiService.addProductFavorite(productId)
+                    favoriteProductIds = favoriteProductIds + productId
+                }
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                favoritingProductId = null
+            }
+        }
+    }
 
     fun loadMerchants() {
         coroutineScope.launch {
@@ -210,6 +252,9 @@ fun CommerceShopContent(
             cart = cart,
             onBack = { selectedProduct = null },
             onViewCart = { selectedProduct = null; showCart = true },
+            favorited = product.id in favoriteProductIds,
+            favoriteBusy = favoritingProductId == product.id,
+            onToggleFavorite = { toggleProductFavorite(product.id) },
         )
         return
     }
@@ -221,6 +266,9 @@ fun CommerceShopContent(
             onBack = { selectedMerchant = null },
             onViewCart = { showCart = true },
             onOpenProduct = { selectedProduct = it },
+            favoriteProductIds = favoriteProductIds,
+            favoritingProductId = favoritingProductId,
+            onToggleFavorite = ::toggleProductFavorite,
         )
         return
     }
@@ -239,7 +287,7 @@ fun CommerceShopContent(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                listOf(CommerceView.BROWSE to "Merchants", CommerceView.ORDERS to "My orders").forEach { (v, label) ->
+                listOf(CommerceView.BROWSE to "Merchants", CommerceView.ORDERS to "My orders", CommerceView.WISHLIST to "♡ Wishlist").forEach { (v, label) ->
                     val selected = v == view
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { view = v }) {
                         Text(
@@ -261,6 +309,8 @@ fun CommerceShopContent(
         }
         if (view == CommerceView.ORDERS) {
             item { MyCommerceOrdersView() }
+        } else if (view == CommerceView.WISHLIST) {
+            item { ProductWishlistView(onRemoved = ::loadFavoriteProductIds) }
         } else {
             item {
                 SearchAndCategoryChips(
@@ -419,6 +469,9 @@ private fun MerchantDetailView(
     onBack: () -> Unit,
     onViewCart: () -> Unit,
     onOpenProduct: (MerchantProductDto) -> Unit,
+    favoriteProductIds: Set<String> = emptySet(),
+    favoritingProductId: String? = null,
+    onToggleFavorite: (String) -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     val totalItems = cart.values.sumOf { it.quantity }
@@ -456,7 +509,24 @@ private fun MerchantDetailView(
                         // stepper below stays independently clickable for quick
                         // add-to-cart.
                         Column(modifier = Modifier.clickable { onOpenProduct(p) }) {
-                            ProductImageThumb(p.imageUrl, size = 96.dp, corner = 12.dp)
+                            Box {
+                                ProductImageThumb(p.imageUrl, size = 96.dp, corner = 12.dp)
+                                // Real Shop product wishlist heart (2026-07-24) --
+                                // same top-end overlay treatment as Marketplace's
+                                // ListingCard, closing docs/DESIGN_REFERENCES.md
+                                // Section 5 recommendation #3.
+                                val favorited = p.id in favoriteProductIds
+                                Icon(
+                                    if (favorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                    contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist",
+                                    tint = if (favorited) Ids.colors.danger else Color.White,
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(4.dp)
+                                        .size(20.dp)
+                                        .clickable(enabled = favoritingProductId != p.id) { onToggleFavorite(p.id) },
+                                )
+                            }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(p.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 2)
                             Spacer(modifier = Modifier.height(2.dp))
@@ -494,6 +564,9 @@ private fun ProductDetailScreen(
     cart: SnapshotStateMap<String, CommerceCartLine>,
     onBack: () -> Unit,
     onViewCart: () -> Unit,
+    favorited: Boolean = false,
+    favoriteBusy: Boolean = false,
+    onToggleFavorite: () -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     val totalItems = cart.values.sumOf { it.quantity }
@@ -507,6 +580,20 @@ private fun ProductDetailScreen(
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 ProductImageThumb(product.imageUrl, size = 220.dp, corner = 16.dp)
+                // Real Shop product wishlist button on the detail page (2026-07-24) --
+                // Chloe Youn's Coupang case study (docs/DESIGN_REFERENCES.md Section 5)
+                // names wishlist as available directly alongside add-to-cart, not
+                // buried behind a sub-menu.
+                Icon(
+                    if (favorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                    contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist",
+                    tint = if (favorited) Ids.colors.danger else Ids.colors.textTertiary,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .size(26.dp)
+                        .clickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
+                )
             }
             Spacer(modifier = Modifier.height(16.dp))
             Text(product.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
@@ -706,6 +793,76 @@ private fun CommerceOrderRow(order: OrderDto, action: (@Composable () -> Unit)? 
                 Text("%,.0f RWF".format(order.totalAmount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
             action?.invoke()
+        }
+    }
+}
+
+// Real Shop product wishlist view (2026-07-24) -- Android port of bank-mfe's
+// ProductCatalogView wishlist tab, mirroring Marketplace's own ListingWishlistView
+// field-for-field. Closes docs/DESIGN_REFERENCES.md Section 5 recommendation #3.
+@Composable
+private fun ProductWishlistView(onRemoved: () -> Unit) {
+    var favorites by remember { mutableStateOf<List<FavoriteProductDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var removingId by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyFavoriteProducts()
+                if (res.success) favorites = res.favorites
+                error = null
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+    LaunchedEffect(Unit) { load() }
+
+    when {
+        error != null -> ErrorCard(error!!, onRetry = ::load)
+        favorites == null -> SkeletonBlock()
+        favorites!!.isEmpty() -> EmptyState("No saved products yet -- tap ♡ on any product to save it here.", icon = Icons.Outlined.FavoriteBorder)
+        else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            favorites!!.forEach { f ->
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            ProductImageThumb(f.imageUrl, size = 48.dp, corner = 10.dp)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(f.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                Text("${f.businessName} · %,.0f RWF".format(f.price), color = Ids.colors.textSecondary, fontSize = 13.sp)
+                            }
+                        }
+                        TextButton(onClick = {
+                            removingId = f.productId
+                            coroutineScope.launch {
+                                try {
+                                    NetworkClient.apiService.removeProductFavorite(f.productId)
+                                    favorites = favorites?.filterNot { it.productId == f.productId }
+                                    onRemoved()
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } catch (e: IOException) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
+                                } finally {
+                                    removingId = null
+                                }
+                            }
+                        }) {
+                            Text(if (removingId == f.productId) "Removing…" else "Remove", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                        }
+                    }
+                }
+            }
         }
     }
 }

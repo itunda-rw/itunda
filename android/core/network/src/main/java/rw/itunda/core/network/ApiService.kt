@@ -707,6 +707,25 @@ data class MerchantProductDto(
 data class MerchantSummaryDto(val id: String, val businessName: String)
 data class MerchantProductsResponse(val success: Boolean, val merchant: MerchantSummaryDto, val products: List<MerchantProductDto>)
 
+// Real Shop product wishlist (2026-07-24) -- closes docs/DESIGN_REFERENCES.md Section 5
+// recommendation #3: the backend (ProductFavoriteService, shipped 2026-07-20) and
+// bank-mfe (ProductCatalogView.toggleFavorite) already had this; Android had zero
+// wiring. Mirrors FavoriteListingDto/FavoriteJobPostDto/FavoritePropertyListingDto
+// field-for-field.
+data class FavoriteProductDto(
+    val productId: String,
+    val merchantId: String,
+    val name: String,
+    val price: Double,
+    val businessName: String,
+    val favoritedAt: String,
+    val imageUrl: String? = null,
+    val originalPrice: Double? = null,
+    val discountPercent: Int? = null,
+    val description: String? = null,
+)
+data class FavoriteProductsResponse(val success: Boolean, val favorites: List<FavoriteProductDto>)
+
 data class OrderItemRequest(val productId: String, val quantity: Int)
 data class PlaceOrderRequest(val merchantId: String, val items: List<OrderItemRequest>, val deliveryAddress: String)
 data class UpdateOrderStatusRequest(val status: String)
@@ -1553,6 +1572,18 @@ interface ApiService {
 
     @GET("api/v1/orders/products/{id}/reviews")
     suspend fun getProductReviews(@Path("id") productId: String): ProductReviewsResponse
+
+    // Real Shop product wishlist (2026-07-24) -- backend shipped 2026-07-20
+    // (ProductFavoriteService), bank-mfe wired the same day; this closes the
+    // Android-side gap. Mirrors addListingFavorite/addJobPostFavorite exactly.
+    @POST("api/v1/orders/products/{id}/favorite")
+    suspend fun addProductFavorite(@Path("id") productId: String): SuccessResponse
+
+    @DELETE("api/v1/orders/products/{id}/favorite")
+    suspend fun removeProductFavorite(@Path("id") productId: String): SuccessResponse
+
+    @GET("api/v1/orders/products/favorites")
+    suspend fun getMyFavoriteProducts(): FavoriteProductsResponse
 
     // Real Coupang Eats-style food delivery (2026-07-18) -- see rw.itunda.eats.web.EatsController.
     @POST("api/v1/eats/orders")
