@@ -36,6 +36,11 @@ export interface Message {
   deletedAt?: string | null;
   replyToMessageId: string | null;
   reactions: ReactionGroup[];
+  // Real message forwarding (2026-07-25) -- see backend Message.kt's own doc comment.
+  // Only ever set on a message that was actually created via the forward endpoint,
+  // never a client-asserted label.
+  forwardedFromMessageId?: string | null;
+  forwardedFromType?: 'DIRECT' | 'GROUP' | null;
 }
 
 export const fetchConversations = () =>
@@ -81,6 +86,17 @@ export const sendMessage = (conversationId: string, body: string, replyToMessage
 
 export const deleteMessage = (conversationId: string, messageId: string) =>
   apiFetch<{ success: boolean }>(`/api/v1/messages/conversations/${conversationId}/messages/${messageId}`, { method: 'DELETE' });
+
+// Real message forwarding (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Talk
+// section recommendation #3. See backend MessageForwardService's own doc comment for
+// the full account -- the real source message is always resolved server-side, this
+// call never sends a body, only where to forward it. destinationType: 'GROUP' targets
+// a group by id instead of a 1:1 conversation.
+export const forwardMessage = (messageId: string, destinationType: 'DIRECT' | 'GROUP', destinationId: string) =>
+  apiFetch<{ success: boolean; destinationType: 'DIRECT' | 'GROUP' }>(`/api/v1/messages/messages/${messageId}/forward`, {
+    method: 'POST',
+    body: JSON.stringify({ destinationType, destinationId }),
+  });
 
 export const blockConversationParticipant = (conversationId: string) =>
   apiFetch<{ success: boolean }>(`/api/v1/messages/conversations/${conversationId}/block`, { method: 'POST' });
@@ -141,6 +157,10 @@ export interface GroupMessage {
   sentAt: string;
   replyToMessageId?: string | null;
   reactions: ReactionGroup[];
+  // Real message forwarding (2026-07-25) -- see backend GroupMessage's own doc
+  // comment; identical shape to Message.forwardedFromMessageId/forwardedFromType.
+  forwardedFromMessageId?: string | null;
+  forwardedFromType?: 'DIRECT' | 'GROUP' | null;
 }
 
 // memberPhoneNumbers is the real human-friendly entry point (same reasoning as
@@ -165,6 +185,14 @@ export const sendGroupMessage = (groupId: string, body: string, replyToMessageId
     method: 'POST',
     body: JSON.stringify({ body, replyToMessageId }),
   }).then((r) => r.message);
+
+// Real message forwarding (2026-07-25) -- see forwardMessage's own doc comment above;
+// identical shape, this message is always the real GROUP source instead.
+export const forwardGroupMessage = (messageId: string, destinationType: 'DIRECT' | 'GROUP', destinationId: string) =>
+  apiFetch<{ success: boolean; destinationType: 'DIRECT' | 'GROUP' }>(`/api/v1/messages/groups/messages/${messageId}/forward`, {
+    method: 'POST',
+    body: JSON.stringify({ destinationType, destinationId }),
+  });
 
 export const deleteGroupMessage = (groupId: string, messageId: string) =>
   apiFetch<{ success: boolean }>(`/api/v1/messages/groups/${groupId}/messages/${messageId}`, { method: 'DELETE' });

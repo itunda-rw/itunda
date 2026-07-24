@@ -18,7 +18,10 @@ import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.messaging.AlreadyGroupMemberException
+import rw.itunda.messaging.ConversationNotFoundException
 import rw.itunda.messaging.EmptyGroupMessageException
+import rw.itunda.messaging.EmptyMessageException
+import rw.itunda.messaging.ForwardResult
 import rw.itunda.messaging.GroupMemberNotFoundException
 import rw.itunda.messaging.GroupMessageNotFoundException
 import rw.itunda.messaging.GroupMessageDeleteForbiddenException
@@ -28,7 +31,13 @@ import rw.itunda.messaging.GroupNameRequiredException
 import rw.itunda.messaging.GroupNameTooLongException
 import rw.itunda.messaging.GroupNeedsMoreMembersException
 import rw.itunda.messaging.GroupNotFoundException
+import rw.itunda.messaging.InvalidForwardDestinationException
 import rw.itunda.messaging.InvalidGroupReactionException
+import rw.itunda.messaging.MessageDestinationType
+import rw.itunda.messaging.MessageForwardService
+import rw.itunda.messaging.MessageNotFoundException
+import rw.itunda.messaging.MessageTooLongException
+import rw.itunda.messaging.UserBlockedException
 
 // memberPhoneNumbers is the real human-friendly entry point (same reasoning as
 // StartConversationRequest.phoneNumber); memberUserIds stays available for a call site
@@ -37,12 +46,17 @@ data class CreateGroupRequest(val name: String, val memberUserIds: List<String> 
 data class SendGroupMessageRequest(val body: String, val replyToMessageId: String? = null)
 data class AddGroupMemberRequest(val userId: String)
 data class ToggleGroupReactionRequest(val emoji: String)
+// Real message forwarding (2026-07-25) -- see MessageForwardService's own doc comment.
+data class ForwardGroupMessageRequest(val destinationType: String, val destinationId: String)
 
 // Real group chat -- see GroupMessagingService's own doc comment for the full account.
 // Normal itunda-user JWT gate, same as every other user-facing feature in this backend.
 @RestController
 @RequestMapping("/api/v1/messages/groups")
-class GroupMessagingController(private val groupMessagingService: GroupMessagingService) {
+class GroupMessagingController(
+    private val groupMessagingService: GroupMessagingService,
+    private val messageForwardService: MessageForwardService,
+) {
 
     @PostMapping
     fun createGroup(
@@ -111,6 +125,29 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
     fun deleteMessage(@PathVariable groupId: String, @PathVariable messageId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Boolean>> {
         groupMessagingService.deleteMessage(currentUser.userId, groupId, messageId)
         return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    // Real message forwarding (2026-07-25) -- see MessageForwardService's own doc
+    // comment. This message is always the real GROUP source; destinationType picks
+    // whether it lands in another group or a 1:1 conversation.
+    @PostMapping("/messages/{messageId}/forward")
+    fun forwardMessage(
+        @PathVariable messageId: String,
+        @RequestBody request: ForwardGroupMessageRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val destinationType = try {
+            MessageDestinationType.valueOf(request.destinationType)
+        } catch (e: IllegalArgumentException) {
+            throw InvalidForwardDestinationException("destinationType must be DIRECT or GROUP")
+        }
+        val result = messageForwardService.forward(currentUser.userId, MessageDestinationType.GROUP, messageId, destinationType, request.destinationId)
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+            when (result) {
+                is ForwardResult.Direct -> mapOf("success" to true, "message" to result.message, "destinationType" to "DIRECT")
+                is ForwardResult.Group -> mapOf("success" to true, "message" to result.message, "destinationType" to "GROUP")
+            },
+        )
     }
 
     // Real member list with real resolved display names (2026-07-18) -- see
@@ -190,4 +227,32 @@ class GroupMessagingController(private val groupMessagingService: GroupMessaging
     @ExceptionHandler(InvalidGroupReactionException::class)
     fun handleInvalidReaction(ex: InvalidGroupReactionException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_REACTION", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidForwardDestinationException::class)
+    fun handleInvalidForwardDestination(ex: InvalidForwardDestinationException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_FORWARD_DESTINATION", ex.message ?: "Bad request"))
+
+    // Real message forwarding (2026-07-25) -- these four can only surface here when
+    // forwarding a group message TO a 1:1 destination (MessageForwardService then calls
+    // straight into MessagingService), same "handle the other service's exceptions too"
+    // discipline MessagingController.forwardMessage's own doc comment names.
+    @ExceptionHandler(MessageNotFoundException::class)
+    fun handleMessageNotFound(ex: MessageNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MESSAGE_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(ConversationNotFoundException::class)
+    fun handleConversationNotFound(ex: ConversationNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("CONVERSATION_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(UserBlockedException::class)
+    fun handleBlocked(ex: UserBlockedException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("CONVERSATION_BLOCKED", ex.message ?: "Unavailable"))
+
+    @ExceptionHandler(EmptyMessageException::class)
+    fun handleEmptyMessage(ex: EmptyMessageException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("EMPTY_MESSAGE", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(MessageTooLongException::class)
+    fun handleMessageTooLong(ex: MessageTooLongException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("MESSAGE_TOO_LONG", ex.message ?: "Bad request"))
 }

@@ -31,7 +31,7 @@ import {
 } from './lib/stocks';
 import {
   addGroupMember, connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages, fetchPinnedConversationMessage,
-  blockConversationParticipant, deleteGroupMessage, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, leaveGroup, pinConversationMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationQuiet, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unpinConversationMessage,
+  blockConversationParticipant, deleteGroupMessage, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, forwardGroupMessage, forwardMessage, leaveGroup, pinConversationMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationQuiet, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unpinConversationMessage,
   type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup, type TalkContact,
 } from './lib/messaging';
@@ -1905,6 +1905,8 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [pinnedMessage, setPinnedMessage] = useState<Message | null>(null);
   const [updatingPin, setUpdatingPin] = useState(false);
+  // Real message forwarding (2026-07-25) -- see lib/messaging.ts's own doc comment.
+  const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
   const [sending, setSending] = useState(false);
   const [giftComposerOpen, setGiftComposerOpen] = useState(false);
   const [giftAmount, setGiftAmount] = useState('');
@@ -2025,6 +2027,22 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       await deleteMessage(conversation.conversationId, messageId);
       setMessages((prev) => prev?.map((m) => m.id === messageId ? { ...m, body: 'This message was deleted', deletedAt: new Date().toISOString(), reactions: [] } : m) ?? prev);
     } catch (err) { setError(err instanceof ApiError ? err.message : 'Could not delete this message.'); }
+  };
+
+  // Real message forwarding (2026-07-25) -- see lib/messaging.ts's own doc comment.
+  const handleForward = async (destinationType: 'DIRECT' | 'GROUP', destinationId: string) => {
+    if (!forwardingMessage) return;
+    try {
+      await forwardMessage(forwardingMessage.id, destinationType, destinationId);
+      setForwardingMessage(null);
+      setError('Message forwarded.');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not forward this message.');
+    }
+  };
+
+  const handleCopy = (body: string) => {
+    navigator.clipboard?.writeText(body).catch(() => {});
   };
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -2232,6 +2250,12 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
           const gift = giftsByMessageId[m.id];
           return (
             <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
+              {/* Real message forwarding (2026-07-25) -- a genuine provenance label,
+                  only ever set on a message actually created via the forward
+                  endpoint, see lib/messaging.ts's own doc comment. */}
+              {m.forwardedFromMessageId && (
+                <span style={{ fontSize: '10px', color: 'var(--toss-grey-400)', fontStyle: 'italic', marginBottom: '2px' }}>Forwarded</span>
+              )}
               {gift ? (
                 <GiftBubble gift={gift} isMine={isMine} currentUserId={currentUser?.id} onClaim={handleClaimGift} />
               ) : offer ? (
@@ -2260,6 +2284,8 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
                 {isMine && !m.readAt ? '1 · ' : ''}{chatMessageTime(m.sentAt)}
               </span>
               <button type="button" onClick={() => setReplyingTo(m)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Reply</button>
+              <button type="button" onClick={() => handleCopy(m.body)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Copy</button>
+              {!m.deletedAt && <button type="button" onClick={() => setForwardingMessage(m)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Forward</button>}
               {isMine && !m.deletedAt && <button type="button" onClick={() => handleDelete(m.id)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Delete</button>}
               <button type="button" onClick={() => handlePin(m)} disabled={updatingPin} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>{pinnedMessage?.id === m.id ? 'Pinned' : 'Pin'}</button>
               {!isMine && (
@@ -2272,6 +2298,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         })}
         <div ref={bottomRef} />
       </div>
+      {forwardingMessage && <ForwardPickerModal onForward={handleForward} onClose={() => setForwardingMessage(null)} />}
 
       {otherTyping && (
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px', fontStyle: 'italic' }}>
@@ -2374,6 +2401,8 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [replyingTo, setReplyingTo] = useState<GroupMessage | null>(null);
+  // Real message forwarding (2026-07-25) -- see lib/messaging.ts's own doc comment.
+  const [forwardingMessage, setForwardingMessage] = useState<GroupMessage | null>(null);
   const [sending, setSending] = useState(false);
   const [typingUserIds, setTypingUserIds] = useState<Record<string, boolean>>({});
   // Real split-bill/manage-members (found 2026-07-22 fully built on the backend with
@@ -2495,6 +2524,22 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
     catch (err) { setError(err instanceof ApiError ? err.message : 'Could not delete this message.'); }
   };
 
+  // Real message forwarding (2026-07-25) -- see lib/messaging.ts's own doc comment.
+  const handleForward = async (destinationType: 'DIRECT' | 'GROUP', destinationId: string) => {
+    if (!forwardingMessage) return;
+    try {
+      await forwardGroupMessage(forwardingMessage.id, destinationType, destinationId);
+      setForwardingMessage(null);
+      setError('Message forwarded.');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not forward this message.');
+    }
+  };
+
+  const handleCopy = (body: string) => {
+    navigator.clipboard?.writeText(body).catch(() => {});
+  };
+
   if (showSplitBills) {
     return (
       <GroupSplitBillsView
@@ -2556,6 +2601,11 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
                   {nameForSender(m.senderId)}
                 </span>
               )}
+              {/* Real message forwarding (2026-07-25) -- see lib/messaging.ts's own
+                  doc comment. */}
+              {m.forwardedFromMessageId && (
+                <span style={{ fontSize: '10px', color: 'var(--toss-grey-400)', fontStyle: 'italic', marginBottom: '2px' }}>Forwarded</span>
+              )}
               <div
                 style={{
                   maxWidth: '75%',
@@ -2575,6 +2625,8 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
                 onToggle={(emoji) => handleToggleReaction(m.id, emoji)}
               />
               <button type="button" onClick={() => setReplyingTo(m)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Reply</button>
+              <button type="button" onClick={() => handleCopy(m.body)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Copy</button>
+              {!(m as GroupMessage & { deletedAt?: string | null }).deletedAt && <button type="button" onClick={() => setForwardingMessage(m)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Forward</button>}
               {isMine && !(m as GroupMessage & { deletedAt?: string | null }).deletedAt && <button type="button" onClick={() => handleDelete(m.id)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Delete</button>}
               <span style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>
                 {chatMessageTime(m.sentAt)}
@@ -2584,6 +2636,7 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
         })}
         <div ref={bottomRef} />
       </div>
+      {forwardingMessage && <ForwardPickerModal onForward={handleForward} onClose={() => setForwardingMessage(null)} />}
 
       {Object.keys(typingUserIds).length > 0 && (
         <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px', fontStyle: 'italic' }}>
@@ -2615,6 +2668,66 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
           <Send size={16} />
         </button>
       </form>
+    </div>
+  );
+}
+
+// Real message forwarding (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Talk
+// section recommendation #3. Lists the caller's own real conversations and groups
+// (same fetchConversations/fetchGroups this tab's own list views already use) -- never
+// a public directory, matching this whole feature's own privacy-preserving precedent.
+function ForwardPickerModal({ onForward, onClose }: { onForward: (destinationType: 'DIRECT' | 'GROUP', destinationId: string) => void; onClose: () => void }) {
+  const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
+  const [groups, setGroups] = useState<GroupSummary[] | null>(null);
+
+  useEffect(() => {
+    fetchConversations().then(setConversations).catch(() => setConversations([]));
+    fetchGroups().then(setGroups).catch(() => setGroups([]));
+  }, []);
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', zIndex: 1000 }}
+      onClick={onClose}
+    >
+      <div
+        className="toss-card"
+        style={{ width: '100%', maxHeight: '60vh', overflowY: 'auto', borderRadius: '16px 16px 0 0', margin: 0 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px' }}>Forward to…</p>
+        {conversations === null || groups === null ? (
+          <div className="toss-card skeleton" style={{ height: '100px' }} />
+        ) : conversations.length === 0 && groups.length === 0 ? (
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No conversations or groups to forward to yet.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {conversations.map((c) => (
+              <button
+                key={c.conversationId}
+                className="toss-card"
+                style={{ width: '100%', textAlign: 'left' }}
+                onClick={() => onForward('DIRECT', c.conversationId)}
+              >
+                {c.otherUserName}
+              </button>
+            ))}
+            {groups.map((g) => (
+              <button
+                key={g.groupId}
+                className="toss-card"
+                style={{ width: '100%', textAlign: 'left' }}
+                onClick={() => onForward('GROUP', g.groupId)}
+              >
+                {g.name} (group)
+              </button>
+            ))}
+          </div>
+        )}
+        <button type="button" className="toss-btn toss-btn-secondary" style={{ width: '100%', marginTop: '12px' }} onClick={onClose}>
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }

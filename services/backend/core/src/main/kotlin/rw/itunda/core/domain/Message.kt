@@ -42,6 +42,19 @@ class Message(
 
     @Column(name = "deleted_by_user_id", length = 64)
     var deletedByUserId: String? = null,
+
+    // Real message forwarding (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Talk
+    // section recommendation #3: Kakao's confirmed real per-message toolkit is Copy/
+    // Reply/Forward/Pin/Delete/@mention -- reply/pin/delete already existed, this adds
+    // Forward. The source message is always resolved server-side (see
+    // MessageForwardService.forward's own doc comment) and its real body copied here --
+    // never a client-asserted body -- so `forwardedFromMessageId`/`forwardedFromType`
+    // are a genuine, verifiable provenance label, not just a cosmetic tag.
+    @Column(name = "forwarded_from_message_id", length = 64)
+    val forwardedFromMessageId: String? = null,
+
+    @Column(name = "forwarded_from_type", length = 16)
+    val forwardedFromType: String? = null,
 ) {
     protected constructor() : this(id = "", conversationId = "", senderId = "", body = "")
 }

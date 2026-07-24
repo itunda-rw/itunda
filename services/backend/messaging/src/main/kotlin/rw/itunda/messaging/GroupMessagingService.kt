@@ -165,8 +165,24 @@ class GroupMessagingService(
      * group" without duplicating this same IDOR check. */
     fun getGroupForMember(userId: String, groupId: String): GroupConversation = requireMember(userId, groupId)
 
+    // Real message forwarding (2026-07-25) -- see MessageForwardService.forward's own
+    // doc comment; identical shape to MessagingService.getMessageForParticipant.
+    fun getMessageForMember(userId: String, messageId: String): GroupMessage {
+        val message = groupMessageRepository.findById(messageId).orElseThrow { GroupMessageNotFoundException("Message not found") }
+        requireMember(userId, message.groupConversationId)
+        if (message.deletedAt != null) throw GroupMessageNotFoundException("Message not found")
+        return message
+    }
+
     @Transactional
-    fun sendMessage(userId: String, groupId: String, body: String, replyToMessageId: String? = null): GroupMessage {
+    fun sendMessage(
+        userId: String,
+        groupId: String,
+        body: String,
+        replyToMessageId: String? = null,
+        forwardedFromMessageId: String? = null,
+        forwardedFromType: String? = null,
+    ): GroupMessage {
         val trimmed = body.trim()
         if (trimmed.isEmpty()) {
             throw EmptyGroupMessageException("Message body cannot be empty")
@@ -185,7 +201,11 @@ class GroupMessagingService(
             if (replied.groupConversationId != groupId) throw GroupMessageNotFoundException("Message not found")
         }
         val message = groupMessageRepository.save(
-            GroupMessage(id = "group_message_${UUID.randomUUID()}", groupConversationId = groupId, senderId = userId, body = trimmed, replyToMessageId = replyToMessageId),
+            GroupMessage(
+                id = "group_message_${UUID.randomUUID()}", groupConversationId = groupId, senderId = userId, body = trimmed,
+                replyToMessageId = replyToMessageId,
+                forwardedFromMessageId = forwardedFromMessageId, forwardedFromType = forwardedFromType,
+            ),
         )
         group.lastMessageAt = message.sentAt
         groupConversationRepository.save(group)

@@ -141,8 +141,27 @@ class MessagingService(
     fun getConversationForParticipant(userId: String, conversationId: String): Conversation =
         requireParticipant(userId, conversationId)
 
+    // Real message forwarding (2026-07-25) -- see MessageForwardService.forward's own
+    // doc comment. Resolves the real source message server-side, verifying the
+    // forwarder actually had access to read it (was a real participant in its
+    // conversation) -- never trusts a client-asserted body/source, same discipline
+    // this service already applies everywhere else.
+    fun getMessageForParticipant(userId: String, messageId: String): Message {
+        val message = messageRepository.findById(messageId).orElseThrow { MessageNotFoundException("Message not found") }
+        requireParticipant(userId, message.conversationId)
+        if (message.deletedAt != null) throw MessageNotFoundException("Message not found")
+        return message
+    }
+
     @Transactional
-    fun sendMessage(userId: String, conversationId: String, body: String, replyToMessageId: String? = null): Message {
+    fun sendMessage(
+        userId: String,
+        conversationId: String,
+        body: String,
+        replyToMessageId: String? = null,
+        forwardedFromMessageId: String? = null,
+        forwardedFromType: String? = null,
+    ): Message {
         val trimmed = body.trim()
         if (trimmed.isEmpty()) {
             throw EmptyMessageException("Message body cannot be empty")
@@ -169,7 +188,11 @@ class MessagingService(
         val recipientId = if (conversation.participantAId == userId) conversation.participantBId else conversation.participantAId
         requireNotBlocked(userId, recipientId)
         val message = messageRepository.save(
-            Message(id = "message_${UUID.randomUUID()}", conversationId = conversationId, senderId = userId, body = trimmed, replyToMessageId = replyToMessageId),
+            Message(
+                id = "message_${UUID.randomUUID()}", conversationId = conversationId, senderId = userId, body = trimmed,
+                replyToMessageId = replyToMessageId,
+                forwardedFromMessageId = forwardedFromMessageId, forwardedFromType = forwardedFromType,
+            ),
         )
         conversation.lastMessageAt = message.sentAt
         conversationRepository.save(conversation)
