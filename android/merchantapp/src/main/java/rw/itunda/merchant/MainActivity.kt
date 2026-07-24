@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import rw.itunda.core.designsystem.theme.IdsTheme
 import rw.itunda.merchant.network.MerchantDto
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.ui.BecomeMerchantScreen
@@ -33,8 +34,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
-                Surface(modifier = androidx.compose.ui.Modifier.fillMaxSize()) {
+            // Real shared brand theme (2026-07-24), same fix as riderapp's own
+            // MainActivity.kt -- this app also depended on :core:designsystem
+            // without ever applying it, rendering in generic Material colors
+            // instead of itunda's real brand.
+            IdsTheme {
+                Surface(modifier = androidx.compose.ui.Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     MerchantApp()
                 }
             }
