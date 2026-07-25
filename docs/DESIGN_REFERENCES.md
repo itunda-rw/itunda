@@ -126,6 +126,7 @@ they close in itunda's current implementation.
 | 배달의민족 (Baemin) | brunch.co.kr/@plusx/69, techblog.woowahan.com, news.nate.com (추천 리뷰), story.baemin.com, mt.co.kr (2024 overhaul) | List card shows delivery time/fee/min order/rating together; 8-way swipeable filter chips; "추천순" review ranking (weights photo + length + recency); review-stats aggregate block; 2024 overhaul split home into per-service tabs; owner replies to reviews (사장님 댓글) |
 | 쿠팡이츠 (Coupang Eats) | yozm.wishket.com, brunch.co.kr/@uibowl/356, partners.coupangeats.com (official seller guide), namu.wiki | Proactive address-confirmation bubble on open; "주문많음"/좋아요 tags on menu items; **required-option system where at least one +0원 choice is mandatory** so list price never mismatches checkout price (explicit seller-guide constraint); 치타배달/단건배달 (one rider, one order) speed badge, pioneered 2019, since industry-adopted; in-cart delivery↔pickup toggle; one-tap order with no confirmation screen; bifurcated post-delivery rating (food vs. delivery, binary good/bad with reason tags on "bad"); live rider map + phone + vehicle type with 4-stage status chain |
 | 배민오더 (Baemin Order) — official product page | baemin-order.com, story.baemin.com | Table/QR in-store ordering: each physical table gets its own printed QR; scanning opens that restaurant's real menu pre-scoped to that table, no delivery address/rider step at all; order status is restaurant-driven only (accept -> preparing -> served); payment settles to the restaurant immediately rather than sitting in a delivery-holding account |
+| 배민상회 (Baemin Sanghoe) — B2B restaurant-supplies marketplace | hankyung.com (40조원 ingredient-distribution market entry), mart.baemin.com, cidermics.com | Online wholesale mall where restaurant owners buy ingredients/packaging/tableware at real bulk-discount pricing; targets small owners/first-time founders with explicit "save money on sourcing" positioning; entered a ~40조원 market by piggybacking on Baemin's own existing restaurant-owner relationship, not a separate acquisition funnel |
 
 ### Recommendations (ranked)
 
@@ -186,6 +187,23 @@ they close in itunda's current implementation.
    the register/POS flow) and a Delivery/dine-in toggle at consumer checkout.
    *Shipped: `DineInOrder`, `DineInOrderService`, `POST /api/v1/eats/dine-in/orders`,
    merchant app's Dine-in tab (table QR + order queue), `EatsCheckoutView`'s mode toggle*
+
+9. **[sourced] Implemented 2026-07-25.** Add real bulk/wholesale pricing, closing the gap named
+   in Baemin's own real 배민상회 B2B supplies marketplace research -- rather than build a second,
+   B2B-only catalog system (배민상회 is itself just Baemin's existing merchant relationship reused
+   for a different buyer intent), this reuses itunda's existing Shopping/`MerchantProduct` catalog
+   completely: the real differentiator is that price genuinely depends on quantity, not a separate
+   marketplace. A product with no real tiers behaves exactly as before -- purely additive. Tiers
+   are validated as a real, honest bulk-discount schedule (every tier, including a lone first one,
+   must cost strictly less per unit than the product's own flat retail price -- a real gap in an
+   early version of this validation was caught live via curl testing before shipping: a lone tier
+   priced ABOVE retail slipped through because the check only compared tiers to each other, never
+   to the base price). `OrderService.placeOrder` resolves the real effective unit price from the
+   real ordered quantity server-side, same "price is never trusted from the client" discipline
+   this class's own doc comment already establishes.
+   *Shipped: `ProductPriceTier`, `MerchantProductService.setPriceTiers`,
+   `POST /api/v1/merchant/products/{id}/price-tiers`, merchant app's "Bulk pricing" editor, Shop's
+   "Buy N+ for X each" hint*
 
 ### Unresolved / worth a follow-up
 

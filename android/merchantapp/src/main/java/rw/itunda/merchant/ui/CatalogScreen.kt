@@ -32,6 +32,8 @@ import kotlinx.coroutines.launch
 import rw.itunda.merchant.network.AddProductRequest
 import rw.itunda.merchant.network.MerchantProductDto
 import rw.itunda.merchant.network.NetworkClient
+import rw.itunda.merchant.network.PriceTierDto
+import rw.itunda.merchant.network.SetPriceTiersRequest
 
 @Composable
 fun CatalogTab() {
@@ -106,24 +108,107 @@ fun CatalogTab() {
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(list, key = { it.id }) { product ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column {
-                                Text(product.name, fontWeight = FontWeight.Bold)
-                                val priceLine = "${"%,.0f".format(product.price)} RWF" + (product.durationMinutes?.let { " · ${it} min booking" } ?: "")
-                                Text(priceLine, style = MaterialTheme.typography.bodySmall)
-                            }
-                            TextButton(onClick = {
-                                scope.launch {
-                                    try { NetworkClient.apiService.removeProduct(product.id); load() } catch (e: Exception) { error = "Couldn't remove this product." }
-                                }
-                            }) { Text("Remove") }
+                    ProductRow(product, onRemoved = ::load, onError = { error = it })
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Real bulk/wholesale pricing (2026-07-25) -- closes the gap named in Baemin's own real
+ * 배민상회 B2B supplies marketplace research: the real differentiator between a B2B
+ * wholesale listing and a normal retail one is that price genuinely depends on
+ * quantity. Up to 3 real tiers, quantity + price fields -- see backend
+ * MerchantProductService.setPriceTiers's own doc comment for the real "must actually be
+ * a discount" validation this relies on server-side.
+ */
+@Composable
+private fun ProductRow(product: MerchantProductDto, onRemoved: () -> Unit, onError: (String) -> Unit) {
+    val scope = rememberCoroutineScope()
+    var showTiers by remember { mutableStateOf(false) }
+    var tierRows by remember { mutableStateOf(listOf("" to "", "" to "", "" to "")) }
+    var loadedTiers by remember { mutableStateOf(false) }
+    var savingTiers by remember { mutableStateOf(false) }
+
+    fun openTierEditor() {
+        showTiers = true
+        if (!loadedTiers) {
+            scope.launch {
+                try {
+                    val tiers = NetworkClient.apiService.getPriceTiers(product.id).tiers
+                    tierRows = (tiers.map { it.minQuantity.toString() to it.unitPrice.toString() } +
+                        listOf("" to "", "" to "", "" to "")).take(3)
+                } catch (e: Exception) {
+                    // Best-effort -- the editor just starts blank.
+                } finally {
+                    loadedTiers = true
+                }
+            }
+        }
+    }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column {
+                    Text(product.name, fontWeight = FontWeight.Bold)
+                    val priceLine = "${"%,.0f".format(product.price)} RWF" + (product.durationMinutes?.let { " · ${it} min booking" } ?: "")
+                    Text(priceLine, style = MaterialTheme.typography.bodySmall)
+                }
+                Row {
+                    TextButton(onClick = { if (showTiers) showTiers = false else openTierEditor() }) { Text(if (showTiers) "Close" else "Bulk pricing") }
+                    TextButton(onClick = {
+                        scope.launch {
+                            try { NetworkClient.apiService.removeProduct(product.id); onRemoved() } catch (e: Exception) { onError("Couldn't remove this product.") }
+                        }
+                    }) { Text("Remove") }
+                }
+            }
+            if (showTiers) {
+                Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        "Real bulk discounts -- e.g. buy 10+, pay less per unit. Leave a row blank to skip it.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    tierRows.forEachIndexed { index, (qty, unitPrice) ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = qty, onValueChange = { v -> tierRows = tierRows.toMutableList().also { it[index] = v to unitPrice } },
+                                label = { Text("Min qty") }, modifier = Modifier.weight(1f),
+                            )
+                            OutlinedTextField(
+                                value = unitPrice, onValueChange = { v -> tierRows = tierRows.toMutableList().also { it[index] = qty to v } },
+                                label = { Text("Price each (RWF)") }, modifier = Modifier.weight(1f),
+                            )
                         }
                     }
+                    androidx.compose.material3.Button(
+                        onClick = {
+                            val tiers = tierRows.mapNotNull { (qtyText, priceText) ->
+                                val qty = qtyText.trim().toIntOrNull()
+                                val unitPrice = priceText.trim().toDoubleOrNull()
+                                if (qty != null && unitPrice != null) PriceTierDto(qty, unitPrice) else null
+                            }
+                            savingTiers = true
+                            scope.launch {
+                                try {
+                                    NetworkClient.apiService.setPriceTiers(product.id, SetPriceTiersRequest(tiers))
+                                    showTiers = false
+                                } catch (e: Exception) {
+                                    onError("Couldn't save bulk pricing -- each higher tier must cost less per unit.")
+                                } finally {
+                                    savingTiers = false
+                                }
+                            }
+                        },
+                        enabled = !savingTiers,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text(if (savingTiers) "Saving…" else "Save bulk pricing") }
                 }
             }
         }

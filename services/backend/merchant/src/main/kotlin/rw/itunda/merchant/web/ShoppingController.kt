@@ -17,6 +17,7 @@ import rw.itunda.core.repository.MenuOptionChoiceRepository
 import rw.itunda.core.repository.MenuOptionGroupRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.ProductPriceTierRepository
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import java.math.BigDecimal
@@ -38,6 +39,7 @@ class ShoppingController(
     private val eatsReviewRepository: EatsReviewRepository,
     private val menuOptionGroupRepository: MenuOptionGroupRepository,
     private val menuOptionChoiceRepository: MenuOptionChoiceRepository,
+    private val priceTierRepository: ProductPriceTierRepository,
 ) {
     companion object {
         // Real, labeled ESTIMATE (2026-07-21) -- not measured historical delivery time
@@ -156,6 +158,14 @@ class ShoppingController(
         } else {
             emptyMap()
         }
+        // Real bulk/wholesale pricing (2026-07-25) -- see ProductPriceTier's own doc
+        // comment. Same batched-by-product-ids discipline optionGroups above already
+        // established.
+        val tiersByProduct = if (products.isNotEmpty()) {
+            priceTierRepository.findByProductIdInOrderByMinQuantityAsc(products.map { it.id }).groupBy { it.productId }
+        } else {
+            emptyMap()
+        }
         val enrichedProducts = products.map { product ->
             mapOf(
                 "id" to product.id,
@@ -175,6 +185,16 @@ class ShoppingController(
                 "originalPrice" to product.originalPrice,
                 "discountPercent" to product.discountPercent,
                 "description" to product.description,
+                // durationMinutes -- real fix, 2026-07-25: this hand-built response map
+                // never included it since the 2026-07-25 booking feature was added, which
+                // meant the real "Book" action on this exact browse endpoint's data could
+                // never actually appear for a customer -- the same class of regression the
+                // imageUrl/originalPrice comment above already documents happening once on
+                // this same endpoint. Caught while adding priceTiers below, not a new gap.
+                "durationMinutes" to product.durationMinutes,
+                "priceTiers" to (tiersByProduct[product.id] ?: emptyList()).map { tier ->
+                    mapOf("minQuantity" to tier.minQuantity, "unitPrice" to tier.unitPrice)
+                },
                 "optionGroups" to (groupsByProduct[product.id] ?: emptyList()).map { group ->
                     mapOf(
                         "id" to group.id,

@@ -17,12 +17,14 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.pricing.effectiveUnitPrice
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.OrderItemRepository
 import rw.itunda.core.repository.OrderRepository
+import rw.itunda.core.repository.ProductPriceTierRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -78,6 +80,7 @@ class OrderService(
     private val fraudRuleEngine: FraudRuleEngine,
     private val ledgerEntryRepository: LedgerEntryRepository,
     private val notificationRepository: NotificationRepository,
+    private val priceTierRepository: ProductPriceTierRepository,
 ) {
     // Same real Toss Payments fee-schedule reasoning MerchantService.feeRate's own
     // comment gives -- one flat rate in the middle of Toss's published 0.8%-1.8% range,
@@ -119,6 +122,17 @@ class OrderService(
         // Real prices read from the live catalog row -- never trusted from the client
         // (see this class's own doc comment on why) -- and snapshotted onto each
         // OrderItem below so the receipt stays accurate even if the catalog changes later.
+        // Real bulk/wholesale pricing (2026-07-25) -- batched up front for every
+        // distinct product in this order, same N+1-avoidance discipline
+        // EatsOrderService's own menu-options resolution already established. See
+        // ProductPriceTier's own doc comment for the full account.
+        val distinctProductIds = items.map { it.productId }.distinct()
+        val tiersByProduct = if (distinctProductIds.isNotEmpty()) {
+            priceTierRepository.findByProductIdInOrderByMinQuantityAsc(distinctProductIds).groupBy { it.productId }
+        } else {
+            emptyMap()
+        }
+
         data class Resolved(val productId: String, val name: String, val unitPrice: BigDecimal, val quantity: Int)
         val resolved = items.map { req ->
             if (req.quantity <= 0) {
@@ -132,7 +146,8 @@ class OrderService(
                 // "not orderable here" from this order's point of view.
                 throw OrderProductNotFoundException("Product not found")
             }
-            Resolved(product.id, product.name, product.price, req.quantity)
+            val unitPrice = effectiveUnitPrice(product.price, req.quantity, tiersByProduct[product.id].orEmpty())
+            Resolved(product.id, product.name, unitPrice, req.quantity)
         }
         val totalAmount = resolved.fold(BigDecimal.ZERO) { acc, r -> acc + r.unitPrice.multiply(BigDecimal(r.quantity)) }
         val fee = totalAmount.multiply(feeRate).setScale(2, RoundingMode.HALF_UP)

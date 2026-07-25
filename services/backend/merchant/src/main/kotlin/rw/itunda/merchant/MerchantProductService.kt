@@ -4,8 +4,10 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.MerchantProduct
+import rw.itunda.core.domain.ProductPriceTier
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.ProductPriceTierRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.net.URI
@@ -18,6 +20,9 @@ class MerchantProductNotFoundException(message: String) : RuntimeException(messa
 class InvalidProductImageUrlException(message: String) : RuntimeException(message)
 class InvalidProductDiscountException(message: String) : RuntimeException(message)
 class InvalidProductDurationException(message: String) : RuntimeException(message)
+class InvalidPriceTierException(message: String) : RuntimeException(message)
+
+data class PriceTierRequest(val minQuantity: Int, val unitPrice: BigDecimal)
 
 /**
  * A real merchant product catalog -- the register-software half of the "Toss Place"
@@ -30,6 +35,7 @@ class InvalidProductDurationException(message: String) : RuntimeException(messag
 class MerchantProductService(
     private val merchantRepository: MerchantRepository,
     private val merchantProductRepository: MerchantProductRepository,
+    private val priceTierRepository: ProductPriceTierRepository,
     private val rateLimiter: RateLimiter,
 ) {
     private fun getMyMerchant(ownerUserId: String) =
@@ -165,6 +171,62 @@ class MerchantProductService(
         product.durationMinutes = validateDuration(durationMinutes)
         return merchantProductRepository.save(product)
     }
+
+    /**
+     * Real bulk/wholesale pricing (2026-07-25) -- see `ProductPriceTier`'s own doc
+     * comment for the full account. Replace-all, same pattern
+     * `MerchantBookingService.setAvailability` already established: a merchant
+     * re-declares their full real tier list each time rather than incrementally
+     * patching it. Validated as a real, honest bulk-discount schedule -- `minQuantity`
+     * strictly increasing, `unitPrice` strictly decreasing (a "bulk discount" that
+     * charges MORE per unit at a higher quantity isn't a real discount, and would just
+     * confuse a buyer who orders more expecting to pay less).
+     */
+    @Transactional
+    fun setPriceTiers(ownerUserId: String, productId: String, tiers: List<PriceTierRequest>): List<ProductPriceTier> {
+        val merchant = getMyMerchant(ownerUserId)
+        val product = merchantProductRepository.findById(productId)
+            .orElseThrow { MerchantProductNotFoundException("Product not found") }
+        if (product.merchantId != merchant.id) {
+            throw MerchantProductNotFoundException("Product not found")
+        }
+        if (tiers.size > 10) {
+            throw InvalidPriceTierException("Too many price tiers -- 10 is the real limit")
+        }
+        val sorted = tiers.sortedBy { it.minQuantity }
+        sorted.forEachIndexed { index, tier ->
+            if (tier.minQuantity < 1) {
+                throw InvalidPriceTierException("Minimum quantity must be at least 1")
+            }
+            if (tier.unitPrice <= BigDecimal.ZERO) {
+                throw InvalidPriceTierException("Unit price must be greater than zero")
+            }
+            // Real "must actually be a discount" check against the product's own flat
+            // retail price -- checked for EVERY tier, not just consecutive ones,
+            // otherwise a lone first tier priced above (or equal to) retail would slip
+            // through with nothing to compare it against.
+            if (tier.unitPrice >= product.price) {
+                throw InvalidPriceTierException("A bulk tier must cost less per unit than the regular price (${product.price})")
+            }
+            if (index > 0) {
+                val previous = sorted[index - 1]
+                if (tier.minQuantity == previous.minQuantity) {
+                    throw InvalidPriceTierException("Each tier needs a distinct minimum quantity")
+                }
+                if (tier.unitPrice >= previous.unitPrice) {
+                    throw InvalidPriceTierException("A higher-quantity tier must cost less per unit than the tier below it")
+                }
+            }
+        }
+        priceTierRepository.deleteByProductId(productId)
+        val saved = sorted.map {
+            ProductPriceTier(id = "product_price_tier_${UUID.randomUUID()}", productId = productId, minQuantity = it.minQuantity, unitPrice = it.unitPrice)
+        }
+        return priceTierRepository.saveAll(saved)
+    }
+
+    fun getPriceTiers(productId: String): List<ProductPriceTier> =
+        priceTierRepository.findByProductIdOrderByMinQuantityAsc(productId)
 
     @Transactional
     fun removeProduct(ownerUserId: String, productId: String): MerchantProduct {

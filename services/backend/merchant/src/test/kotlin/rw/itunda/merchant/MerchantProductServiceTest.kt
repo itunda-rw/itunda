@@ -13,6 +13,7 @@ import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.ProductPriceTierRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.util.Optional
@@ -25,7 +26,8 @@ class MerchantProductServiceTest : BehaviorSpec({
         val merchantRepository = mockk<MerchantRepository>()
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = MerchantProductService(merchantRepository, merchantProductRepository, rateLimiter)
+        val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
+        val service = MerchantProductService(merchantRepository, merchantProductRepository, priceTierRepository, rateLimiter)
 
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
         every { merchantProductRepository.save(any()) } answers { firstArg() }
@@ -57,7 +59,8 @@ class MerchantProductServiceTest : BehaviorSpec({
         val merchantRepository = mockk<MerchantRepository>()
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = MerchantProductService(merchantRepository, merchantProductRepository, rateLimiter)
+        val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
+        val service = MerchantProductService(merchantRepository, merchantProductRepository, priceTierRepository, rateLimiter)
 
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
         val products = listOf(
@@ -79,7 +82,8 @@ class MerchantProductServiceTest : BehaviorSpec({
         val merchantRepository = mockk<MerchantRepository>()
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = MerchantProductService(merchantRepository, merchantProductRepository, rateLimiter)
+        val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
+        val service = MerchantProductService(merchantRepository, merchantProductRepository, priceTierRepository, rateLimiter)
 
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
         val product = MerchantProduct(id = "p1", merchantId = "merchant_1", name = "Latte", price = BigDecimal("2500"))
@@ -100,7 +104,8 @@ class MerchantProductServiceTest : BehaviorSpec({
         val merchantRepository = mockk<MerchantRepository>()
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = MerchantProductService(merchantRepository, merchantProductRepository, rateLimiter)
+        val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
+        val service = MerchantProductService(merchantRepository, merchantProductRepository, priceTierRepository, rateLimiter)
 
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
         val othersProduct = MerchantProduct(id = "p9", merchantId = "merchant_other", name = "Someone Else's Item", price = BigDecimal("1000"))
@@ -133,7 +138,8 @@ class MerchantProductServiceTest : BehaviorSpec({
         val merchantRepository = mockk<MerchantRepository>()
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = MerchantProductService(merchantRepository, merchantProductRepository, rateLimiter)
+        val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
+        val service = MerchantProductService(merchantRepository, merchantProductRepository, priceTierRepository, rateLimiter)
 
         every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
         val product = MerchantProduct(id = "p1", merchantId = "merchant_1", name = "Latte", price = BigDecimal("2500"))
@@ -153,7 +159,8 @@ class MerchantProductServiceTest : BehaviorSpec({
         val merchantRepository = mockk<MerchantRepository>()
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val rateLimiter = mockk<RateLimiter>()
-        val service = MerchantProductService(merchantRepository, merchantProductRepository, rateLimiter)
+        val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
+        val service = MerchantProductService(merchantRepository, merchantProductRepository, priceTierRepository, rateLimiter)
         every { rateLimiter.checkLimit("merchant:product:owner_9", limit = 30, window = Duration.ofHours(1)) } throws RateLimitExceededException("Too many requests")
 
         When("they try to add another real product") {

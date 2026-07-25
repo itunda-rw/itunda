@@ -810,7 +810,13 @@ data class MerchantProductDto(
     // "product" is actually a real appointment-bookable service (e.g. a 30-minute
     // haircut). See MerchantProduct.kt's own doc comment on the backend.
     val durationMinutes: Int? = null,
+    // Real bulk/wholesale pricing (2026-07-25) -- closes the gap named in Baemin's own
+    // real 배민상회 B2B supplies marketplace research. Empty for every product with no
+    // real tiers set, the pre-existing behavior for every product before this field
+    // existed. See ProductPriceTier.kt's own doc comment on the backend.
+    val priceTiers: List<PriceTierDto> = emptyList(),
 )
+data class PriceTierDto(val minQuantity: Int, val unitPrice: Double)
 
 // Real local-business appointment booking (2026-07-25) -- see
 // rw.itunda.merchant.MerchantBookingService on the backend for the full account. Date

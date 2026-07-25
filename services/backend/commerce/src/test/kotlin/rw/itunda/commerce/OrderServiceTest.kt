@@ -27,6 +27,7 @@ import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.OrderItemRepository
 import rw.itunda.core.repository.OrderRepository
+import rw.itunda.core.repository.ProductPriceTierRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -59,10 +60,11 @@ class OrderServiceTest : BehaviorSpec({
         // signature" gotcha this project's own tests already document repeatedly.
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
+        val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             walletRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
-            notificationRepository,
+            notificationRepository, priceTierRepository,
         )
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
@@ -182,10 +184,11 @@ class OrderServiceTest : BehaviorSpec({
         // signature" gotcha this project's own tests already document repeatedly.
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
+        val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             walletRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
-            notificationRepository,
+            notificationRepository, priceTierRepository,
         )
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val order = Order(

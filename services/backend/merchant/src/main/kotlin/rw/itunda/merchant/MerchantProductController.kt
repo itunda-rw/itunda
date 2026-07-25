@@ -31,6 +31,10 @@ data class AddProductRequest(
 )
 data class AddMenuOptionGroupRequest(val name: String, val choices: List<MenuOptionChoiceRequest>)
 
+// Real bulk/wholesale pricing (2026-07-25) -- see ProductPriceTier's own doc comment.
+data class PriceTierDto(val minQuantity: Int, val unitPrice: BigDecimal)
+data class SetPriceTiersRequest(val tiers: List<PriceTierDto>)
+
 // Real merchant product-catalog endpoints -- the register-software half of "Toss
 // Place" (see MerchantProductService's own doc comment). Not money-moving, so no
 // Idempotency-Key requirement -- checkout itself still goes through MerchantController's
@@ -117,6 +121,27 @@ class MerchantProductController(
         return ResponseEntity.ok(mapOf("success" to true))
     }
 
+    // Real bulk/wholesale pricing (2026-07-25) -- see MerchantProductService
+    // .setPriceTiers's own doc comment.
+    @PostMapping("/{productId}/price-tiers")
+    fun setPriceTiers(
+        @PathVariable productId: String,
+        @RequestBody request: SetPriceTiersRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val tiers = merchantProductService.setPriceTiers(
+            currentUser.userId, productId, request.tiers.map { PriceTierRequest(it.minQuantity, it.unitPrice) },
+        )
+        return ResponseEntity.ok(mapOf("success" to true, "tiers" to tiers))
+    }
+
+    // Real public read (owner or buyer -- no ownership gate), same convention
+    // getOptionGroups above already established -- a buyer needs real tier pricing
+    // visible before ordering.
+    @GetMapping("/{productId}/price-tiers")
+    fun getPriceTiers(@PathVariable productId: String): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "tiers" to merchantProductService.getPriceTiers(productId)))
+
     @ExceptionHandler(MerchantNotFoundException::class)
     fun handleMerchantNotFound(ex: MerchantNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_NOT_FOUND", ex.message ?: "Not found"))
@@ -136,6 +161,10 @@ class MerchantProductController(
     @ExceptionHandler(InvalidProductDurationException::class)
     fun handleInvalidDuration(ex: InvalidProductDurationException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PRODUCT_DURATION", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidPriceTierException::class)
+    fun handleInvalidPriceTier(ex: InvalidPriceTierException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PRICE_TIER", ex.message ?: "Bad request"))
 
     @ExceptionHandler(MerchantProductNotFoundException::class)
     fun handleProductNotFound(ex: MerchantProductNotFoundException) =

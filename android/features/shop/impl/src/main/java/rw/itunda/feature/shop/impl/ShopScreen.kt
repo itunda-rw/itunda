@@ -520,6 +520,16 @@ private fun ProductPriceRow(p: MerchantProductDto) {
     } else {
         Text("%,.0f RWF".format(p.price), color = Ids.colors.textSecondary, fontSize = 13.sp)
     }
+    // Real bulk/wholesale pricing (2026-07-25) -- closes the gap named in Baemin's own
+    // real 배민상회 B2B supplies marketplace research. Shows the best (highest-quantity)
+    // real tier as a hint; the actual price used at checkout is always resolved
+    // server-side from the real ordered quantity, never trusted from this display.
+    p.priceTiers.maxByOrNull { it.minQuantity }?.let { bestTier ->
+        Text(
+            "Buy ${bestTier.minQuantity}+ for %,.0f RWF each".format(bestTier.unitPrice),
+            color = Ids.colors.success, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+        )
+    }
 }
 
 @Composable
