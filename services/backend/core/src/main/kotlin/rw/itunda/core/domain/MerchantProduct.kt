@@ -80,6 +80,14 @@ class MerchantProduct(
     @Column(name = "duration_minutes")
     var durationMinutes: Int? = null,
 
+    // Real Kakao Hair Shop-style 100%-prepay-to-book (2026-07-25) -- see
+    // BookingDeposit.kt's own doc comment for the full account. Opt-in per bookable
+    // service, mirroring Kakao Hair Shop's own real product (not every business on
+    // Kakao Hair Shop requires prepay either) -- only meaningful when durationMinutes
+    // is set; a physical good ignores this flag entirely.
+    @Column(name = "requires_prepay", nullable = false)
+    var requiresPrepay: Boolean = false,
+
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 ) {

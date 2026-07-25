@@ -45,7 +45,12 @@ class MerchantAvailabilityWindow(
 // customer REQUESTs a slot, the merchant CONFIRMs or DECLINEs it (real 당근비즈프로필-style
 // request-then-confirm, not an auto-accept), either side can CANCEL a REQUESTED/CONFIRMED
 // booking, and the merchant marks a CONFIRMED booking COMPLETED once served.
-enum class MerchantBookingStatus { REQUESTED, CONFIRMED, DECLINED, CANCELLED, COMPLETED }
+// NO_SHOW added 2026-07-25 -- see BookingDeposit.kt's own doc comment. A CONFIRMED
+// booking whose scheduled time passed with no explicit action from either side
+// (BookingNoShowScheduler) is genuinely distinct from a CANCELLED one (an explicit,
+// timely choice by either side, always refundable) or COMPLETED (the service was
+// rendered) -- collapsing it into either would misrepresent what actually happened.
+enum class MerchantBookingStatus { REQUESTED, CONFIRMED, DECLINED, CANCELLED, COMPLETED, NO_SHOW }
 
 /**
  * A real customer appointment against a bookable [MerchantProduct] (one with

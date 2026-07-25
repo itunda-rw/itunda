@@ -35,6 +35,12 @@ enum class LedgerAccountType {
     // establish -- the buyer's money already left their wallet, it just hasn't reached
     // its final recipient yet. See MarketplaceEscrow.kt's own doc comment.
     MARKETPLACE_ESCROW_HOLDING,
+    // Real Kakao Hair Shop-style 100%-prepay-to-book holding (2026-07-25) -- see
+    // BookingDeposit.kt's own doc comment. Same escrow-clearing-account shape
+    // MARKETPLACE_ESCROW_HOLDING already establishes: a customer's real money already
+    // left their wallet at booking time, it just hasn't reached the merchant (or been
+    // refunded/forfeited) yet.
+    BOOKING_DEPOSIT_HOLDING,
 }
 
 /**

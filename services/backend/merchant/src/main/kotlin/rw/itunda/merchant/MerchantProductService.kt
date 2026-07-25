@@ -100,6 +100,15 @@ class MerchantProductService(
         return durationMinutes
     }
 
+    // Real Kakao Hair Shop-style prepay requirement -- see BookingDeposit.kt's own doc
+    // comment. Only meaningful on a bookable service (durationMinutes set); a physical
+    // good has no booking flow to prepay into.
+    private fun validateRequiresPrepay(requiresPrepay: Boolean, durationMinutes: Int?) {
+        if (requiresPrepay && durationMinutes == null) {
+            throw InvalidProductDurationException("Only a bookable service (with a duration) can require prepay")
+        }
+    }
+
     @Transactional
     fun addProduct(
         ownerUserId: String,
@@ -109,6 +118,7 @@ class MerchantProductService(
         originalPrice: BigDecimal? = null,
         description: String? = null,
         durationMinutes: Int? = null,
+        requiresPrepay: Boolean = false,
     ): MerchantProduct {
         // Real anti-spam limit -- found missing in a 2026-07-19 security sweep. Not
         // money-moving (deliberately no Idempotency-Key, per the controller's own doc
@@ -121,6 +131,7 @@ class MerchantProductService(
         }
         val validatedImageUrl = validateImageUrl(imageUrl)
         val discountPercent = computeDiscountPercent(price, originalPrice)
+        validateRequiresPrepay(requiresPrepay, durationMinutes)
         val product = MerchantProduct(
             id = "merchant_product_${UUID.randomUUID()}",
             merchantId = merchant.id,
@@ -131,6 +142,7 @@ class MerchantProductService(
             discountPercent = discountPercent,
             description = validateDescription(description),
             durationMinutes = validateDuration(durationMinutes),
+            requiresPrepay = requiresPrepay,
         )
         return merchantProductRepository.save(product)
     }
@@ -150,6 +162,7 @@ class MerchantProductService(
         originalPrice: BigDecimal? = null,
         description: String? = null,
         durationMinutes: Int? = null,
+        requiresPrepay: Boolean = false,
     ): MerchantProduct {
         val merchant = getMyMerchant(ownerUserId)
         if (price <= BigDecimal.ZERO) {
@@ -157,6 +170,7 @@ class MerchantProductService(
         }
         val validatedImageUrl = validateImageUrl(imageUrl)
         val discountPercent = computeDiscountPercent(price, originalPrice)
+        validateRequiresPrepay(requiresPrepay, durationMinutes)
         val product = merchantProductRepository.findById(productId)
             .orElseThrow { MerchantProductNotFoundException("Product not found") }
         if (product.merchantId != merchant.id) {
@@ -169,6 +183,7 @@ class MerchantProductService(
         product.discountPercent = discountPercent
         product.description = validateDescription(description)
         product.durationMinutes = validateDuration(durationMinutes)
+        product.requiresPrepay = requiresPrepay
         return merchantProductRepository.save(product)
     }
 

@@ -28,6 +28,9 @@ data class AddProductRequest(
     val originalPrice: BigDecimal? = null,
     val description: String? = null,
     val durationMinutes: Int? = null,
+    // Real Kakao Hair Shop-style prepay-to-book (2026-07-25) -- see
+    // BookingDeposit.kt's own doc comment. Only valid with durationMinutes set.
+    val requiresPrepay: Boolean = false,
 )
 data class AddMenuOptionGroupRequest(val name: String, val choices: List<MenuOptionChoiceRequest>)
 
@@ -52,7 +55,7 @@ class MerchantProductController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val product = merchantProductService.addProduct(
-            currentUser.userId, request.name, request.price, request.imageUrl, request.originalPrice, request.description, request.durationMinutes,
+            currentUser.userId, request.name, request.price, request.imageUrl, request.originalPrice, request.description, request.durationMinutes, request.requiresPrepay,
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "product" to product))
     }
@@ -68,7 +71,7 @@ class MerchantProductController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val product = merchantProductService.updateProduct(
-            currentUser.userId, productId, request.name, request.price, request.imageUrl, request.originalPrice, request.description, request.durationMinutes,
+            currentUser.userId, productId, request.name, request.price, request.imageUrl, request.originalPrice, request.description, request.durationMinutes, request.requiresPrepay,
         )
         return ResponseEntity.ok(mapOf("success" to true, "product" to product))
     }

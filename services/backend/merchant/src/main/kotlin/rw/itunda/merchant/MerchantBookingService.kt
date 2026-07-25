@@ -4,18 +4,35 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.core.domain.BookingDeposit
+import rw.itunda.core.domain.BookingDepositStatus
+import rw.itunda.core.domain.LedgerAccountType
+import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantAvailabilityWindow
 import rw.itunda.core.domain.MerchantBooking
 import rw.itunda.core.domain.MerchantBookingStatus
 import rw.itunda.core.domain.Notification
+import rw.itunda.core.domain.Transaction
+import rw.itunda.core.domain.TransactionStatus
+import rw.itunda.core.domain.TransactionType
+import rw.itunda.core.domain.WalletType
+import rw.itunda.core.ledger.LedgerLeg
+import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.repository.BookingDepositRepository
 import rw.itunda.core.repository.MerchantAvailabilityWindowRepository
 import rw.itunda.core.repository.MerchantBookingRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
+import rw.itunda.core.repository.TransactionRepository
+import rw.itunda.core.repository.WalletRepository
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneOffset
 import java.util.UUID
@@ -49,7 +66,18 @@ class MerchantBookingService(
     private val availabilityWindowRepository: MerchantAvailabilityWindowRepository,
     private val merchantBookingRepository: MerchantBookingRepository,
     private val notificationRepository: NotificationRepository,
+    private val walletRepository: WalletRepository,
+    private val ledgerService: LedgerService,
+    private val transactionRepository: TransactionRepository,
+    private val bookingDepositRepository: BookingDepositRepository,
 ) {
+    companion object {
+        // Same real fee rate MerchantService.feeRate/MarketplaceService.ESCROW_FEE_RATE
+        // already established for a real held-then-released payment -- not a new number
+        // invented for this feature.
+        val DEPOSIT_FEE_RATE: BigDecimal = BigDecimal("0.015")
+    }
+
     private fun getMyMerchant(ownerUserId: String) =
         merchantRepository.findByOwnerUserId(ownerUserId)
             ?: throw MerchantNotFoundException("This account is not registered as a merchant")
@@ -143,8 +171,104 @@ class MerchantBookingService(
                 startTime = slot.startTime, endTime = slot.endTime, notes = trimmedNotes,
             ),
         )
+        // Real Kakao Hair Shop-style prepay-to-book (2026-07-25) -- see
+        // BookingDeposit.kt's own doc comment. Posted before notify() so an
+        // InsufficientFundsException (thrown by ledgerService itself) rolls back the
+        // whole booking inside this @Transactional method -- a customer who can't afford
+        // the deposit simply can't book a prepay-required slot at all, the entire point
+        // of the real mechanic this closes.
+        if (service.requiresPrepay) {
+            holdDeposit(booking, merchant, service.price, customerId)
+        }
         notify(merchant.ownerUserId, booking, "New booking request", "A customer requested ${service.name} on $date at ${slot.startTime}.")
         return booking
+    }
+
+    private fun holdDeposit(booking: MerchantBooking, merchant: Merchant, amount: BigDecimal, customerId: String) {
+        val customerWallet = walletRepository.findByUserIdAndType(customerId, WalletType.MAIN)
+            ?: throw MerchantNoWalletException("No wallet found for this account")
+        val merchantWallet = walletRepository.findById(merchant.walletId)
+            .orElseThrow { MerchantNoWalletException("Merchant settlement wallet not found") }
+        val fee = amount.multiply(DEPOSIT_FEE_RATE).setScale(2, RoundingMode.HALF_UP)
+
+        val result = ledgerService.postLedgerTransaction(
+            customerWallet.currency,
+            listOf(
+                LedgerLeg(customerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Booking deposit - ${booking.serviceName}"),
+                LedgerLeg("booking_deposit_holding", LedgerAccountType.BOOKING_DEPOSIT_HOLDING, LedgerDirection.CREDIT, amount, "Booking deposit held - ${booking.serviceName}"),
+            ),
+        )
+        transactionRepository.save(
+            Transaction(
+                id = result.transactionId,
+                referenceNumber = "BKDEP${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
+                senderId = customerId,
+                recipientId = merchant.ownerUserId,
+                fromWalletId = customerWallet.id,
+                toWalletId = merchantWallet.id,
+                amount = amount,
+                fee = fee,
+                currency = customerWallet.currency,
+                type = TransactionType.PAYMENT,
+                status = TransactionStatus.COMPLETED,
+                description = "Booking deposit - ${booking.serviceName}",
+                channel = "BOOKING_DEPOSIT",
+                completedAt = Instant.now(),
+            ),
+        )
+        bookingDepositRepository.save(
+            BookingDeposit(
+                id = "booking_deposit_${UUID.randomUUID()}", bookingId = booking.id, merchantId = merchant.id,
+                customerId = customerId, amount = amount, fee = fee, holdTransactionId = result.transactionId,
+            ),
+        )
+    }
+
+    private fun getDeposit(bookingId: String): BookingDeposit? = bookingDepositRepository.findByBookingId(bookingId)
+
+    // Shared by markCompleted (real RELEASED) and BookingNoShowScheduler (real
+    // FORFEITED) -- both pay the merchant net of itunda's fee, only the resulting
+    // status differs. A no-op if this booking was never prepay-required (no HELD
+    // deposit exists) or its deposit was already resolved.
+    private fun payOutDeposit(booking: MerchantBooking, merchant: Merchant, resultStatus: BookingDepositStatus) {
+        val deposit = getDeposit(booking.id) ?: return
+        if (deposit.status != BookingDepositStatus.HELD) return
+        val merchantWallet = walletRepository.findById(merchant.walletId)
+            .orElseThrow { MerchantNoWalletException("Merchant settlement wallet not found") }
+        val netToMerchant = deposit.amount.subtract(deposit.fee)
+        val result = ledgerService.postLedgerTransaction(
+            merchantWallet.currency,
+            listOf(
+                LedgerLeg("booking_deposit_holding", LedgerAccountType.BOOKING_DEPOSIT_HOLDING, LedgerDirection.DEBIT, deposit.amount, "Booking deposit ${resultStatus.name.lowercase()}"),
+                LedgerLeg(merchantWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "Booking deposit ${resultStatus.name.lowercase()}"),
+                LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, deposit.fee, "Booking deposit fee"),
+            ),
+        )
+        deposit.status = resultStatus
+        deposit.resolutionTransactionId = result.transactionId
+        deposit.updatedAt = Instant.now()
+        bookingDepositRepository.save(deposit)
+    }
+
+    // Always a full refund, no fee -- same "an explicit cancel/decline is never
+    // penalized, only a real no-show is" rule MerchantBooking.kt's own doc comment
+    // names. A no-op if this booking was never prepay-required or already resolved.
+    private fun refundDeposit(booking: MerchantBooking) {
+        val deposit = getDeposit(booking.id) ?: return
+        if (deposit.status != BookingDepositStatus.HELD) return
+        val customerWallet = walletRepository.findByUserIdAndType(deposit.customerId, WalletType.MAIN)
+            ?: throw MerchantNoWalletException("No wallet found for this account")
+        val result = ledgerService.postLedgerTransaction(
+            customerWallet.currency,
+            listOf(
+                LedgerLeg("booking_deposit_holding", LedgerAccountType.BOOKING_DEPOSIT_HOLDING, LedgerDirection.DEBIT, deposit.amount, "Booking deposit refunded"),
+                LedgerLeg(customerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, deposit.amount, "Booking deposit refund"),
+            ),
+        )
+        deposit.status = BookingDepositStatus.REFUNDED
+        deposit.resolutionTransactionId = result.transactionId
+        deposit.updatedAt = Instant.now()
+        bookingDepositRepository.save(deposit)
     }
 
     @Transactional
@@ -157,6 +281,9 @@ class MerchantBookingService(
         booking.status = if (confirm) MerchantBookingStatus.CONFIRMED else MerchantBookingStatus.DECLINED
         booking.updatedAt = Instant.now()
         val saved = merchantBookingRepository.save(booking)
+        if (!confirm) {
+            refundDeposit(saved)
+        }
         val title = if (confirm) "Booking confirmed" else "Booking declined"
         notify(booking.customerId, saved, title, "${merchant.businessName}: ${booking.serviceName} on ${booking.bookingDate} at ${booking.startTime} was ${saved.status.name.lowercase()}.")
         return saved
@@ -171,7 +298,9 @@ class MerchantBookingService(
         }
         booking.status = MerchantBookingStatus.COMPLETED
         booking.updatedAt = Instant.now()
-        return merchantBookingRepository.save(booking)
+        val saved = merchantBookingRepository.save(booking)
+        payOutDeposit(saved, merchant, BookingDepositStatus.RELEASED)
+        return saved
     }
 
     @Transactional
@@ -190,6 +319,7 @@ class MerchantBookingService(
         booking.status = MerchantBookingStatus.CANCELLED
         booking.updatedAt = Instant.now()
         val saved = merchantBookingRepository.save(booking)
+        refundDeposit(saved)
         // Only notify the OTHER party -- same "don't notify someone about their own
         // action" discipline every other Notification call site in this codebase uses.
         if (isCustomer && merchant != null) {
@@ -225,5 +355,42 @@ class MerchantBookingService(
                 dataJson = "{\"bookingId\":\"${booking.id}\"}",
             ),
         )
+    }
+
+    // Real read for whichever party paid/receives a prepay deposit -- same "don't reveal
+    // a resource to someone who shouldn't see it" discipline MarketplaceService's
+    // getEscrow already establishes.
+    fun getBookingDeposit(requesterId: String, bookingId: String): BookingDeposit {
+        val booking = merchantBookingRepository.findById(bookingId).orElseThrow { MerchantBookingNotFoundException("Booking not found") }
+        val merchant = merchantRepository.findById(booking.merchantId).orElse(null)
+        if (booking.customerId != requesterId && merchant?.ownerUserId != requesterId) {
+            throw MerchantBookingNotFoundException("Booking not found")
+        }
+        return getDeposit(bookingId) ?: throw MerchantBookingNotFoundException("This booking has no deposit")
+    }
+
+    // Real no-show detection -- see BookingDeposit.kt's own doc comment and
+    // BookingNoShowScheduler. A still-CONFIRMED booking whose real scheduled end time has
+    // passed with no explicit action from either side is a genuine no-show: transitions
+    // it to NO_SHOW and forfeits any held deposit to the merchant. A booking with no
+    // deposit (service didn't require prepay) still gets the real NO_SHOW status -- an
+    // honest record of what happened -- even though payOutDeposit is then a no-op for it.
+    @Transactional
+    fun processNoShows(): List<MerchantBooking> {
+        val nowDateTime = LocalDateTime.now(ZoneOffset.UTC)
+        val due = merchantBookingRepository.findByStatusAndBookingDateLessThanEqual(MerchantBookingStatus.CONFIRMED, today())
+            .filter { LocalDateTime.of(it.bookingDate, it.endTime).isBefore(nowDateTime) }
+        return due.map { booking ->
+            booking.status = MerchantBookingStatus.NO_SHOW
+            booking.updatedAt = Instant.now()
+            val saved = merchantBookingRepository.save(booking)
+            val merchant = merchantRepository.findById(booking.merchantId).orElse(null)
+            if (merchant != null) {
+                payOutDeposit(saved, merchant, BookingDepositStatus.FORFEITED)
+                notify(merchant.ownerUserId, saved, "Marked as no-show", "${booking.serviceName} on ${booking.bookingDate} at ${booking.startTime} was marked a no-show.")
+            }
+            notify(booking.customerId, saved, "Missed appointment", "You missed your ${booking.serviceName} booking on ${booking.bookingDate} at ${booking.startTime}.")
+            saved
+        }
     }
 }

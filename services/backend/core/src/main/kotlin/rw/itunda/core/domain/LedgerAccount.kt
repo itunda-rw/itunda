@@ -69,6 +69,9 @@ class LedgerAccount(
             // Real Marketplace escrow holding (2026-07-25) -- see
             // MarketplaceEscrow.kt's own doc comment.
             "marketplace_escrow_holding" to "Marketplace Escrow Holding",
+            // Real Kakao Hair Shop-style prepay-to-book holding (2026-07-25) -- see
+            // BookingDeposit.kt's own doc comment.
+            "booking_deposit_holding" to "Booking Deposit Escrow Holding",
         )
     }
 }

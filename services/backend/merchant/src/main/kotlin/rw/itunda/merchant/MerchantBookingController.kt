@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
@@ -117,6 +118,23 @@ class MerchantBookingController(
         return ResponseEntity.ok(mapOf("success" to true, "booking" to booking))
     }
 
+    @GetMapping("/bookings/{bookingId}/deposit")
+    fun getDeposit(
+        @PathVariable bookingId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "deposit" to merchantBookingService.getBookingDeposit(currentUser.userId, bookingId)))
+
+    // Real convenience endpoint (same "verify a scheduled effect without waiting real
+    // wall-clock time" precedent as WeeklySavingsController's own POST /process-due) --
+    // processes every real due no-show network-wide, not scoped to the caller, same
+    // unguarded-but-idempotent shape that endpoint already established.
+    @PostMapping("/bookings/process-no-shows")
+    fun processNoShows(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val processed = merchantBookingService.processNoShows()
+        return ResponseEntity.ok(mapOf("success" to true, "processedCount" to processed.size, "bookings" to processed))
+    }
+
     @ExceptionHandler(MerchantNotFoundException::class)
     fun handleMerchantNotFound(ex: MerchantNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_NOT_FOUND", ex.message ?: "Not found"))
@@ -148,4 +166,19 @@ class MerchantBookingController(
     @ExceptionHandler(InvalidBookingStatusTransitionException::class)
     fun handleInvalidTransition(ex: InvalidBookingStatusTransitionException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("INVALID_BOOKING_STATUS_TRANSITION", ex.message ?: "Conflict"))
+
+    // Real Kakao Hair Shop-style prepay-to-book (2026-07-25) -- found live during this
+    // feature's own verification: a customer without enough balance for a
+    // requiresPrepay service's deposit got a raw 500, not a real handled error, since
+    // this controller never registered a handler for the same InsufficientFundsException
+    // MerchantController's own /collect endpoint already handles. The booking itself
+    // still correctly rolled back (book() is @Transactional) -- only the HTTP response
+    // was wrong.
+    @ExceptionHandler(InsufficientFundsException::class)
+    fun handleInsufficientFunds(ex: InsufficientFundsException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
+
+    @ExceptionHandler(MerchantNoWalletException::class)
+    fun handleNoWallet(ex: MerchantNoWalletException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 }
