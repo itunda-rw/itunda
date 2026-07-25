@@ -24,7 +24,12 @@ import java.time.Instant
 // multi-row-per-user reasoning as GROUP/WEEKLY_SAVINGS: a user can hold several (one per
 // currency), so resolved via WalletRepository.findByUserIdAndTypeAndCurrency, never
 // findByUserIdAndType.
-enum class WalletType { MAIN, SAVINGS, INVESTMENT, LOAN, GROUP, WEEKLY_SAVINGS, UPFRONT_DEPOSIT, FOREIGN_CURRENCY }
+//
+// BUSINESS added 2026-07-25 for the real 토스뱅크 개인사업자 (business banking for sole
+// proprietors) equivalent -- see MerchantBusinessAccountService's own doc comment. One
+// per registered Merchant (unlike GROUP/WEEKLY_SAVINGS/FOREIGN_CURRENCY above), so this
+// one IS resolved via the plain findByUserIdAndType, same as MAIN/SAVINGS.
+enum class WalletType { MAIN, SAVINGS, INVESTMENT, LOAN, GROUP, WEEKLY_SAVINGS, UPFRONT_DEPOSIT, FOREIGN_CURRENCY, BUSINESS }
 
 /** Mirrors backend/src/types/index.ts Wallet. Money is BigDecimal, not float, on purpose. */
 @Entity

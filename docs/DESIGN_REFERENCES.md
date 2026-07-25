@@ -551,6 +551,7 @@ they close in itunda's current implementation.
 | KakaoPay 정산하기 (settlement/split-bill) 2020 redesign | seoulfn.com, hankyung.com, digitaltoday.co.kr, moneys.mt.co.kr, v.daum.net (cross-verified across 5 outlets) | "사다리타기" (ladder-game) mode randomizes the split by headcount instead of always even, 3 adjustable variance levels (top level assigns the whole amount to one "loser"); up to 5 sequential settlement "rounds" tracked per thread; manual per-person override with KakaoPay itself absorbing the rounding remainder; scheduled reminder-nudge bell for unpaid friends; up to 3 photos attached; KakaoBank runs its own, differently-branded, non-converged "1/N 빵나누기" feature — Kakao didn't even unify this within its own family |
 | Toss — 더치페이 (split-the-bill) baseline for contrast | blog.toss.im/article/toss-split-the-bill | Opened by searching or tapping under a specific spending-history transaction — receipt/ledger-anchored, not chat-anchored; no randomization, no multi-round, no rounding absorption, no photo attach — deliberately minimal versus KakaoPay |
 | 토스뱅크 외화통장 (Toss Bank foreign-currency account) | tossbank.com/articles/foreign-currency-exchange | Single account holds multiple real currencies (Toss's own product spans 17); 100% preferential FX rate messaging, scheduled auto-buy/accumulate, rate-triggered auto-exchange, cashback on overseas card spend using the held balance |
+| 토스뱅크 개인사업자 (Toss Bank business banking) | tossbank.com/articles/selfemployed, asiae.co.kr (Boss Loan scale), businesspost.co.kr (guaranteed-loan rates) | Dedicated business account + purpose-based savings vaults + cashback business debit card, separate from consumer banking; account auto-categorizes income/expenses from transaction history for tax filing, card integrates with Homtax (Korea's e-tax system); unsecured "Boss Loans" (사장님 대출) reached ₩1.5T in a year with government-subsidized interest support |
 
 ### Recommendations (ranked)
 
@@ -605,6 +606,26 @@ they close in itunda's current implementation.
    enforces raw debits==credits per call with one shared currency label.
    *Shipped: `WalletType.FOREIGN_CURRENCY`, `ForeignCurrencyRateClient`, `ForeignCurrencyWalletService`,
    `POST /api/v1/wallet/foreign-currency/convert`, Menu's "Foreign currency" screen*
+
+6. **[sourced] Implemented 2026-07-25.** Add a real 토스뱅크 개인사업자 (business banking for sole
+   proprietors) equivalent, scoped to its real, buildable core -- `Merchant.kt`'s own doc comment
+   already named the structural gap: every merchant's real card/QR collection has always settled
+   straight into their PERSONAL main wallet ("reuses the owner's existing MAIN wallet... rather
+   than introducing a new WalletType"), so business income and personal spending were genuinely
+   inseparable. Ships a real dedicated `WalletType.BUSINESS` wallet a merchant can open, plus real
+   fee-free wallet-to-wallet money movement into/out of it and its own real transaction history --
+   deliberately does NOT touch `MerchantService.collect`/`chargeCard` at all (those keep settling
+   to `Merchant.walletId` exactly as before), favoring an additive new wallet over modifying
+   already-tested money-movement code. Deliberately not shipped, named follow-ups: a real business
+   debit card (itunda has no physical card issuance anywhere to extend), expense
+   auto-categorization for tax filing (`WalletService.getSpendingInsight`'s existing categorization
+   logic is the real reusable foundation once there's a concrete tax-authority integration to
+   feed), and 사장님 대출 (Boss Loans) as a business-specific lending product (itunda's existing
+   generic Loan product is the real foundation, but business-specific underwriting is a genuinely
+   separate build).
+   *Shipped: `WalletType.BUSINESS`, `MerchantBusinessAccountService`,
+   `POST /api/v1/merchant/business-account/{move-to-business,move-to-personal}`, merchant app's
+   Business tab*
 
 ### Unresolved / worth a follow-up
 

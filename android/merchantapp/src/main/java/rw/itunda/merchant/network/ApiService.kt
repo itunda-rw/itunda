@@ -134,6 +134,20 @@ data class DineInOrderDetailResponse(val success: Boolean, val order: DineInOrde
 data class DineInOrdersResponse(val success: Boolean, val orders: List<DineInOrderDto>)
 data class UpdateDineInOrderStatusRequest(val status: String)
 
+// Real 토스뱅크 개인사업자 (business banking for sole proprietors) equivalent
+// (2026-07-25) -- see rw.itunda.merchant.MerchantBusinessAccountService on the backend.
+data class BusinessWalletDto(
+    val id: String, val userId: String, val accountNumber: String, val accountName: String, val type: String,
+    val balance: Double, val availableBalance: Double, val currency: String,
+)
+data class BusinessWalletResponse(val success: Boolean, val wallet: BusinessWalletDto)
+data class BusinessLedgerEntryDto(
+    val id: String, val transactionId: String, val accountId: String, val direction: String,
+    val amount: Double, val currency: String, val balanceAfter: Double, val memo: String, val createdAt: String,
+)
+data class BusinessTransactionsResponse(val success: Boolean, val transactions: List<BusinessLedgerEntryDto>)
+data class MoveBusinessMoneyRequest(val amount: Double)
+
 interface ApiService {
     @POST("api/v1/merchant/register")
     suspend fun registerMerchant(@Body request: RegisterMerchantRequest): MerchantResponse
@@ -188,6 +202,23 @@ interface ApiService {
 
     @POST("api/v1/merchant/bookings/{id}/complete")
     suspend fun completeBooking(@Path("id") bookingId: String): MerchantBookingDetailResponse
+
+    // Real business banking for sole proprietors (2026-07-25) -- see
+    // rw.itunda.merchant.MerchantBusinessAccountController.
+    @POST("api/v1/merchant/business-account")
+    suspend fun openBusinessAccount(): BusinessWalletResponse
+
+    @GET("api/v1/merchant/business-account")
+    suspend fun getBusinessAccount(): BusinessWalletResponse
+
+    @GET("api/v1/merchant/business-account/transactions")
+    suspend fun getBusinessTransactions(): BusinessTransactionsResponse
+
+    @POST("api/v1/merchant/business-account/move-to-business")
+    suspend fun moveToBusiness(@Header("Idempotency-Key") idempotencyKey: String, @Body request: MoveBusinessMoneyRequest): BusinessWalletResponse
+
+    @POST("api/v1/merchant/business-account/move-to-personal")
+    suspend fun moveToPersonal(@Header("Idempotency-Key") idempotencyKey: String, @Body request: MoveBusinessMoneyRequest): BusinessWalletResponse
 }
 
 /**
