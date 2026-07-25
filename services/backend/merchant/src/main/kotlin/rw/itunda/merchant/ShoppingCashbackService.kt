@@ -52,17 +52,34 @@ import java.util.UUID
  * rolled back afterward -- rewarding a purchase that never actually completed. Joining
  * the caller's transaction fixes both: no separate lock to contend for, and cashback
  * now correctly rolls back together with the payment it's rewarding.
+ *
+ * **Real Naver Pay-style boosted opt-in rate added 2026-07-26** -- Naver Pay's own
+ * real membership program pays "최대 5%" (up to 5%) back on real "N Pay+"-marked
+ * purchases, well above a flat rate (benefitshub.co.kr, sourced from Naver's own
+ * published membership terms). `Merchant.cashbackRate` lets a merchant opt into a real
+ * boosted rate up to [MAX_CASHBACK_RATE] (itunda's own honest mapping of Naver's real
+ * ceiling -- QR collection has no per-product granularity to mirror Naver's own
+ * per-item "N Pay+" marking, so the opt-in is merchant-wide instead). Every real
+ * cashback payout is also capped at [MAX_CASHBACK_PER_TRANSACTION] -- itunda's own
+ * honest scoping choice, not a currency-converted reuse of Naver's real 20,000원 cap
+ * (this backend has no real KRW/RWF conversion path; see
+ * `ForeignCurrencyWalletService`'s own supported-currency list, which doesn't include
+ * KRW -- reusing the raw number as RWF would misrepresent a sourced fact).
  */
 @Service
 class ShoppingCashbackService(
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
 ) {
-    private val cashbackRate = BigDecimal("0.01")
+    companion object {
+        val DEFAULT_CASHBACK_RATE: BigDecimal = BigDecimal("0.01")
+        val MAX_CASHBACK_RATE: BigDecimal = BigDecimal("0.05")
+        val MAX_CASHBACK_PER_TRANSACTION: BigDecimal = BigDecimal("1000")
+    }
 
     @Transactional
-    fun awardCashback(payerWallet: Wallet, purchaseAmount: BigDecimal, merchantName: String): BigDecimal {
-        val cashbackAmount = purchaseAmount.multiply(cashbackRate).setScale(2, RoundingMode.HALF_UP)
+    fun awardCashback(payerWallet: Wallet, purchaseAmount: BigDecimal, merchantName: String, rate: BigDecimal = DEFAULT_CASHBACK_RATE): BigDecimal {
+        val cashbackAmount = purchaseAmount.multiply(rate).setScale(2, RoundingMode.HALF_UP).min(MAX_CASHBACK_PER_TRANSACTION)
         if (cashbackAmount <= BigDecimal.ZERO) return BigDecimal.ZERO
 
         val result = ledgerService.postLedgerTransaction(

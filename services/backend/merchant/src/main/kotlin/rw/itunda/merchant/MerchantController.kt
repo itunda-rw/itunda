@@ -30,6 +30,7 @@ data class GenerateQrRequest(val amount: BigDecimal, val description: String)
 data class SetWebhookUrlRequest(val webhookUrl: String)
 data class SetLocationRequest(val latitude: Double, val longitude: Double)
 data class SetCategoryRequest(val category: String)
+data class SetCashbackRateRequest(val rate: BigDecimal?)
 data class SetPhotoUrlRequest(val photoUrl: String)
 data class SetMinOrderAmountRequest(val minOrderAmount: BigDecimal?)
 data class CollectPaymentRequest(val couponId: String? = null)
@@ -107,6 +108,17 @@ class MerchantController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val merchant = merchantService.setCategory(currentUser.userId, request.category)
+        return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
+    }
+
+    // Real Naver Pay-style boosted cashback opt-in (2026-07-26) -- see
+    // ShoppingCashbackService's own doc comment.
+    @PostMapping("/cashback-rate")
+    fun setCashbackRate(
+        @RequestBody request: SetCashbackRateRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val merchant = merchantService.setCashbackRate(currentUser.userId, request.rate)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
@@ -271,6 +283,10 @@ class MerchantController(
     @ExceptionHandler(InvalidCategoryException::class)
     fun handleInvalidCategory(ex: InvalidCategoryException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_CATEGORY", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidCashbackRateException::class)
+    fun handleInvalidCashbackRate(ex: InvalidCashbackRateException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_CASHBACK_RATE", ex.message ?: "Bad request"))
 
     @ExceptionHandler(InvalidPhotoUrlException::class)
     fun handleInvalidPhotoUrl(ex: InvalidPhotoUrlException) =

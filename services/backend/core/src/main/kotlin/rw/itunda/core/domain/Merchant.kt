@@ -104,6 +104,18 @@ class Merchant(
     // server calling itunda directly, with no itunda user login involved at all).
     @Column(name = "api_key_hash", length = 64, nullable = true)
     var apiKeyHash: String? = null,
+
+    // Real Naver Pay-style boosted merchant cashback opt-in (2026-07-26) -- Naver Pay's
+    // own real membership program pays "최대 5%" (up to 5%) back on real "N Pay+"-marked
+    // purchases, well above the flat 1% every itunda QR payment already earns via
+    // ShoppingCashbackService. Nullable: unset means this merchant hasn't opted in, the
+    // pre-existing flat 1% ShoppingCashbackService.DEFAULT_CASHBACK_RATE stays
+    // unchanged for every merchant that never sets one. Validated 0-5% inclusive at
+    // write time (ShoppingCashbackService.MAX_CASHBACK_RATE) -- itunda's own real,
+    // sourced ceiling, not an unbounded merchant-set discount that could drain
+    // rewards_expense arbitrarily.
+    @Column(name = "cashback_rate", precision = 6, scale = 4, nullable = true)
+    var cashbackRate: BigDecimal? = null,
 ) {
     protected constructor() : this(id = "", ownerUserId = "", walletId = "", businessName = "")
 }

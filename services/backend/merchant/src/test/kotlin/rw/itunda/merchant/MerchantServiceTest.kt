@@ -238,7 +238,7 @@ class MerchantServiceTest : BehaviorSpec({
                 intent.completedTransactionId shouldBe "ledgertxn_test"
             }
             Then("real Toss Shopping cashback is awarded for the real payer wallet and purchase amount") {
-                verify(exactly = 1) { shoppingCashbackService.awardCashback(payerWallet, BigDecimal("5000"), "Kigali Coffee") }
+                verify(exactly = 1) { shoppingCashbackService.awardCashback(payerWallet, BigDecimal("5000"), "Kigali Coffee", any()) }
                 result.containsKey("cashbackEarned") shouldBe true
             }
             // Real-time "money received" notification for the merchant owner (2026-07-22)
@@ -356,7 +356,7 @@ class MerchantServiceTest : BehaviorSpec({
             every { walletRepository.findById("wallet_merchant") } returns Optional.of(ownerWallet)
             every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_cb_fail", emptyList())
             every { paymentIntentRepository.save(any()) } answers { firstArg() }
-            every { shoppingCashbackService.awardCashback(any(), any(), any()) } throws RuntimeException("simulated cashback outage")
+            every { shoppingCashbackService.awardCashback(any(), any(), any(), any()) } throws RuntimeException("simulated cashback outage")
 
             val result = service.collect("payer_3", "pi_cashback_fail")
 

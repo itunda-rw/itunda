@@ -39,6 +39,7 @@ class MerchantNotFoundException(message: String) : RuntimeException(message)
 class MerchantNoWalletException(message: String) : RuntimeException(message)
 class InvalidCoordinatesException(message: String) : RuntimeException(message)
 class InvalidCategoryException(message: String) : RuntimeException(message)
+class InvalidCashbackRateException(message: String) : RuntimeException(message)
 class InvalidPhotoUrlException(message: String) : RuntimeException(message)
 class InvalidMinOrderAmountException(message: String) : RuntimeException(message)
 class PaymentIntentNotFoundException(message: String) : RuntimeException(message)
@@ -156,6 +157,19 @@ class MerchantService(
         val merchant = getMyMerchant(ownerUserId)
         merchant.latitude = latitude
         merchant.longitude = longitude
+        return merchantRepository.save(merchant)
+    }
+
+    // Real Naver Pay-style boosted merchant cashback opt-in (2026-07-26) -- see
+    // ShoppingCashbackService's own doc comment for the full sourced account. Null
+    // resets to the pre-existing flat default rate.
+    @Transactional
+    fun setCashbackRate(ownerUserId: String, rate: BigDecimal?): Merchant {
+        if (rate != null && (rate <= BigDecimal.ZERO || rate > ShoppingCashbackService.MAX_CASHBACK_RATE)) {
+            throw InvalidCashbackRateException("Cashback rate must be between 0 and ${ShoppingCashbackService.MAX_CASHBACK_RATE} (0-5%)")
+        }
+        val merchant = getMyMerchant(ownerUserId)
+        merchant.cashbackRate = rate
         return merchantRepository.save(merchant)
     }
 
@@ -483,8 +497,11 @@ class MerchantService(
         // established -- REQUIRES_NEW alone doesn't guarantee that (an uncaught exception
         // here would still roll back this method's own transaction), so this needs its
         // own explicit try/catch, not just the inner service's propagation setting.
+        // Real Naver Pay-style boosted opt-in rate (2026-07-26) -- see
+        // ShoppingCashbackService's own doc comment. Null means this merchant never
+        // opted in, so the default flat rate applies, unchanged.
         val cashbackEarned = try {
-            shoppingCashbackService.awardCashback(payerWallet, chargeAmount, merchant.businessName)
+            shoppingCashbackService.awardCashback(payerWallet, chargeAmount, merchant.businessName, merchant.cashbackRate ?: ShoppingCashbackService.DEFAULT_CASHBACK_RATE)
         } catch (e: Exception) {
             BigDecimal.ZERO
         }
