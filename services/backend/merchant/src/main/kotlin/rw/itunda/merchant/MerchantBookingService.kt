@@ -19,6 +19,7 @@ import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.BookingDepositRepository
 import rw.itunda.core.repository.MerchantAvailabilityWindowRepository
 import rw.itunda.core.repository.MerchantBookingRepository
@@ -70,6 +71,7 @@ class MerchantBookingService(
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
     private val bookingDepositRepository: BookingDepositRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     companion object {
         // Same real fee rate MerchantService.feeRate/MarketplaceService.ESCROW_FEE_RATE
@@ -355,6 +357,12 @@ class MerchantBookingService(
                 dataJson = "{\"bookingId\":\"${booking.id}\"}",
             ),
         )
+        // Real push notification (2026-07-26) -- see PushNotificationService's own doc
+        // comment for why this is the one real, sourced call site (Naver Smart Place's
+        // own "push notifications on new bookings") this pass wires, not all 19
+        // Notification call sites in this codebase. Best-effort by design -- never
+        // throws, never blocks the booking action that triggered it.
+        pushNotificationService.sendToUser(userId, title, body, mapOf("bookingId" to booking.id))
     }
 
     // Real read for whichever party paid/receives a prepay deposit -- same "don't reveal
