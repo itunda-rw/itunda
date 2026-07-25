@@ -11,6 +11,7 @@ import java.time.Instant
 
 enum class SplitBillStatus { OPEN, SETTLED }
 enum class SplitBillParticipantStatus { PENDING, PAID }
+enum class SplitBillMode { EVEN, LADDER }
 
 /**
  * A real KakaoPay-style "정산하기" (settlement/split-bill) request, chat-embedded in an
@@ -28,13 +29,14 @@ enum class SplitBillParticipantStatus { PENDING, PAID }
  * mirroring `P2pService.sendDirect`'s real direct WALLET-to-WALLET push, just fanned out
  * per-participant with a shared parent record for the settlement thread.
  *
- * Honestly scoped v1 (see `SplitBillService`'s own doc comment for the full account):
- * a single flat, even split with silent rounding-remainder absorption -- one designated
+ * Even split (v1) has silent rounding-remainder absorption -- one designated
  * participant's share silently absorbs the leftover minor-currency-unit remainder so the
  * sum of every [SplitBillParticipant.shareAmount] always reconciles exactly to
- * [totalAmount]. KakaoPay's own randomized ladder-game mode, multi-round tracking, and
- * scheduled reminder nudges are deliberately deferred, named as follow-ups, not
- * attempted here.
+ * [totalAmount]. [mode]/[ladderVarianceLevel] (2026-07-25) add KakaoPay's real
+ * "사다리타기" (ladder-game) randomized mode -- see `SplitBillService.ladderSplit`'s own
+ * doc comment for the 3 variance levels, sourced from `docs/DESIGN_REFERENCES.md`
+ * Section 6. Multi-round tracking and scheduled reminder nudges remain deferred,
+ * named follow-ups.
  */
 @Entity
 @Table(name = "split_bills")
@@ -64,6 +66,17 @@ class SplitBill(
 
     @Column(name = "settled_at")
     var settledAt: Instant? = null,
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    var mode: SplitBillMode = SplitBillMode.EVEN,
+
+    // 1/2/3, only meaningful when mode == LADDER -- see SplitBillService.ladderSplit's
+    // own doc comment for what each level means. Stored (not just used transiently at
+    // creation) so the split bill's own real transparency -- "this was randomized, at
+    // this variance" -- survives for every viewer, not just the organizer who chose it.
+    @Column(name = "ladder_variance_level")
+    var ladderVarianceLevel: Int? = null,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),

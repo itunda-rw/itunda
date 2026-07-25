@@ -16,12 +16,14 @@ import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
+import rw.itunda.core.domain.SplitBillMode
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.splitbill.SplitBillAlreadyPaidException
 import rw.itunda.splitbill.SplitBillDescriptionRequiredException
 import rw.itunda.splitbill.SplitBillInvalidAmountException
+import rw.itunda.splitbill.SplitBillInvalidVarianceLevelException
 import rw.itunda.splitbill.SplitBillNeedsParticipantsException
 import rw.itunda.splitbill.SplitBillNoWalletException
 import rw.itunda.splitbill.SplitBillNotFoundException
@@ -33,6 +35,11 @@ data class CreateSplitBillRequest(
     val totalAmount: BigDecimal,
     val description: String,
     val participantUserIds: List<String>,
+    // Real KakaoPay 사다리타기 (ladder-game) mode (2026-07-25) -- see
+    // SplitBillService.ladderSplit's own doc comment. Both optional; omitting mode
+    // (or leaving it EVEN) is the unchanged v1 behavior.
+    val mode: SplitBillMode = SplitBillMode.EVEN,
+    val ladderVarianceLevel: Int? = null,
 )
 
 // Real KakaoPay-style "정산하기" (settlement/split-bill), chat-embedded in an existing
@@ -51,6 +58,7 @@ class SplitBillController(private val splitBillService: SplitBillService, privat
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/split-bills/conversations/$groupConversationId", idempotencyKey, request) {
             val result = splitBillService.createSplitBill(
                 currentUser.userId, groupConversationId, request.totalAmount, request.description, request.participantUserIds,
+                request.mode, request.ladderVarianceLevel,
             )
             201 to mapOf("success" to true, "splitBill" to result.splitBill, "participants" to result.participants)
         }
@@ -105,6 +113,10 @@ class SplitBillController(private val splitBillService: SplitBillService, privat
     @ExceptionHandler(SplitBillNeedsParticipantsException::class)
     fun handleNeedsParticipants(ex: SplitBillNeedsParticipantsException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("SPLIT_BILL_NEEDS_PARTICIPANTS", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(SplitBillInvalidVarianceLevelException::class)
+    fun handleInvalidVarianceLevel(ex: SplitBillInvalidVarianceLevelException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_LADDER_VARIANCE_LEVEL", ex.message ?: "Bad request"))
 
     @ExceptionHandler(SplitBillParticipantNotGroupMemberException::class)
     fun handleParticipantNotGroupMember(ex: SplitBillParticipantNotGroupMemberException) =
