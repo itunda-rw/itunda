@@ -310,6 +310,9 @@ they close in itunda's current implementation.
 | Karrot — 동네생활 board structure | brunch.co.kr/@zezezeze/79 | Question posts get distinct 궁금해요/답변하기 CTA vs. ordinary 공감하기/댓글; feed is strictly chronological (no popularity ranking, to preserve voice diversity); 같이해요 (join-together) posts get a dedicated pinned mid-feed slot; joining their group chat requires an explicit 참여하기 tap |
 | Karrot — review & wishlist UX | ditoday.com | Post-transaction review is a preset checklist, not free text; "good points" shown publicly, "uncomfortable points" kept private between the two parties (deliberate asymmetric visibility to avoid public-negative-review churn); un-hearting a wishlist item is toast-confirmed, not silent |
 | Karrot — general IA | mobiinside.co.kr | Transaction history split into 판매내역/구매내역/관심목록 (sales/purchases/wishlist) tabs; search radius as a slider, not checkboxes |
+| 당근알바 (Karrot Jobs) — official product page | daangn.com/kr/jobs/about | Three-step flow: 알바공고 작성하기 (post) → 지원자 확인하기 (review applicants) → 채팅으로 약속 잡기 (arrange via chat, only *after* reviewing applicants, not before); proximity-first framing ("걸어서 10분 거리" — within a 10-minute walk); phone number never exposed, all contact routes through in-app chat |
+| 당근부동산 (Karrot Real Estate) — official product page + press coverage | realty.daangn.com/about, digitaltoday.co.kr, about.daangn.com press archive | **Mandatory** per-listing ownership verification (made mandatory specifically to stop fraud, per their own 2025 press release): owner-posted listings are cross-checked against 등기부등본 (title deed registry) and labeled "집주인 확인 매물" (owner-confirmed listing); non-owner posters (e.g. tenants) must submit a lease agreement or get the owner's confirmation instead; separate realtor/agent accounts can only post brokered listings, never mixed with owner-direct ones |
+| 토스뱅크 (Toss Bank) — official product pages | tossbank.com/product-service/savings/{space-account, moim-account}, press coverage (alphabiz.co.kr, heraldcorp.com) | 나눠모으기 통장: multiple named, color-coded sub-purposes within one real account, daily compound interest, no manual "claim" step; 모임통장: consent-based co-ownership (any withdrawal/card-issuance right requires existing co-owners' approval), shared 모임카드; **먼저 이자받는 정기예금** (2025): a 12-month locked deposit that pays the *entire year's* interest immediately at signup (2.80% pre-tax) instead of at maturity — principal stays locked, tax is withheld at closing, not at the interest payout |
 
 ### Recommendations (ranked)
 
@@ -365,6 +368,23 @@ they close in itunda's current implementation.
    dual-neighborhood and verification-count mechanics; the specific 8–63-area radius-scaling
    figures are secondary-sourced (nuthang.com) and should be treated as illustrative only.
    *Target: `NeighborhoodSetupPrompt`, `bank-mfe/src/lib/neighborhood.ts`, `V50__hyperlocal_neighborhood.sql` (currently one VARCHAR(120) column, no radius/verification fields)*
+
+9. **[sourced] Implemented 2026-07-25.** Add per-listing ownership verification to Property —
+   before this, `PropertyListingService.createListing` had zero ownership proof of any kind,
+   unlike 당근부동산's real product, which made registry-document verification *mandatory*
+   specifically to stop listing fraud. Rwanda has no publicly documented land-registry number
+   format to structurally pre-validate the way `DemoNidaVerificationService` does for National
+   IDs, so this is honestly scoped as document-upload + human-review only, mirroring
+   `KycSubmission`'s real submit/queue/decide shape — no fabricated auto-check against a
+   registry this backend has no real access to.
+   *Shipped: `PropertyOwnershipSubmission`, `PropertyOwnershipService`, `PropertyListing.ownershipVerificationStatus`, `POST /api/v1/realestate/listings/{id}/verify-ownership`, `/api/v1/system/property-verification/**` (admin queue+decide)*
+
+10. **[sourced]** Replace Jobs' "just message the poster" apply flow with 당근알바's real
+    three-step structure: post → review applicants → *then* chat. itunda's `JobPostService`
+    has no application/resume object at all today — `contactPoster()` is a bare DM, so a
+    poster has no way to review candidates before opening a conversation with each one.
+    *Target: new `JobApplication` entity (résumé snapshot per Karrot's real "snapshot at submit
+    time" mechanic), `JobPostService.contactPoster` → gated behind an application review step*
 
 ### Unresolved / worth a follow-up
 
