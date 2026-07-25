@@ -246,7 +246,7 @@ they close in itunda's current implementation.
 
 1. **[implemented]** Talk now has a privacy-preserving saved-contacts directory across web, Android, and iOS. It resolves only the caller's own saved contacts, never a public user search.
 
-2. **[implemented]** Direct messages now show a Kakao-style pending-read `1` and message timestamps across all clients. Group receipts still need a true per-member model.
+2. **[implemented]** Direct messages now show a Kakao-style pending-read `1` and message timestamps across all clients. Group receipts now have a true per-member model too (2026-07-26): a live per-message unread countdown built on the existing per-member `lastReadAt` cursor — backend-only so far, no client UI touchpoint yet.
 
 3. **[sourced]** Add a long-press message menu: reply/thread, forward, pin, delete. itunda's only
    per-message interaction today is tap-to-toggle a reaction (`MessageReactionsRow`). Kakao's
@@ -264,8 +264,11 @@ they close in itunda's current implementation.
    or sticker send at all. Kakao's emoticon picker alone is core, monetized product surface (~1/3
    of 2020 revenue), not a nice-to-have.
 
-7. **[sourced]** Add @mention support in group chats. No mention parsing exists anywhere; Kakao's
-   own message-toolkit coverage lists mention alongside pin/forward/delete as shipped.
+7. **[implemented, backend]** @mention support in group chats is real (`GroupMessagingService
+   .parseMentions`, 2026-07-25): `@FirstName` tokens resolve against real group members and
+   trigger a distinctly-titled `GROUP_MENTION` notification. Group-chat pin is also now real
+   (2026-07-26), matching 1:1's own pin. UI affordance to actually type/select a mention or
+   trigger pin from a long-press menu is still missing on every client — see item 3.
    *Target: `GroupThreadView` header/composer, `GroupMessageBubble` (~500-676)*
 
 8. **[implemented]** Per-message timestamps now appear in direct and group threads across all clients.
@@ -371,12 +374,13 @@ they close in itunda's current implementation.
    with Karrot's public-good/private-uncomfortable split rather than inventing free-text review.
    *Target: `markListingSold` flow and Job/Property equivalents; template at `~3355-3490`*
 
-3. **[sourced]** Add a wishlist/heart to Marketplace, Jobs, and Property listings with
-   toast-confirmed add/remove. itunda already has this pattern for Community posts and Shop
-   merchants but not Hood listings (`ListingActionButton` only offers Message/Offer/Mark
-   sold/Remove). Karrot confirms both add *and* remove via toast specifically because the icon
-   state change alone wasn't judged sufficient feedback.
-   *Target: `ListingCard`/`JobPostCard`/`PropertyListing`; add a Saved `HoodView`*
+3. **[implemented, correction 2026-07-26]** This was miscategorized as still-open — checking the
+   actual backend before starting a fresh build (this session's own discipline) found
+   `ListingFavoriteService`/`JobPostFavoriteService`/`PropertyListingFavoriteService` already
+   real and controller-wired for all three (migrations `V56`/`V74`/`V75`), each mirroring
+   `ProductFavoriteService`'s exact add/remove/list shape. Left un-tagged here since this file
+   wasn't updated when those shipped. Client UI (toast-confirmed add/remove, a Saved `HoodView`)
+   still worth checking separately.
 
 4. **[sourced]** Differentiate community-board post types by interaction verb; give "join
    together" posts a dedicated feed slot. `CommunityContent` (`~1795+`) treats every post

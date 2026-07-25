@@ -429,6 +429,34 @@ class GroupMessagingService(
         return group
     }
 
+    /**
+     * Real group-chat pin (2026-07-26) -- closes the "pin" half of
+     * docs/DESIGN_REFERENCES.md's Talk long-press-menu recommendation for group chats;
+     * 1:1 conversations already had this (`MessagingService.setPinnedMessage`), whose
+     * exact same "any real member can pin/unpin, no owner-only restriction" shape this
+     * mirrors -- a shared conversation has one shared pin, same as Kakao's own real
+     * behavior.
+     */
+    @Transactional
+    fun setPinnedMessage(userId: String, groupId: String, messageId: String?) {
+        val group = requireMember(userId, groupId)
+        if (messageId != null) {
+            val message = groupMessageRepository.findById(messageId).orElseThrow { GroupMessageNotFoundException("Message not found") }
+            if (message.groupConversationId != groupId || message.deletedAt != null) throw GroupMessageNotFoundException("Message not found")
+        }
+        group.pinnedMessageId = messageId
+        groupConversationRepository.save(group)
+    }
+
+    /** Resolves the shared pin only after the usual non-disclosing membership check. */
+    fun getPinnedMessage(userId: String, groupId: String): GroupMessage? {
+        val group = requireMember(userId, groupId)
+        return group.pinnedMessageId?.let { messageId ->
+            // A stale legacy reference must not make the group inaccessible.
+            groupMessageRepository.findById(messageId).orElse(null)?.takeIf { it.groupConversationId == groupId }
+        }
+    }
+
     @Transactional
     fun leaveGroup(userId: String, groupId: String) {
         val member = groupConversationMemberRepository.findByGroupConversationIdAndUserId(groupId, userId)

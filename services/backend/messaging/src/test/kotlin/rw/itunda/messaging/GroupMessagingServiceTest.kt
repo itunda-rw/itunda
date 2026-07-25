@@ -401,6 +401,38 @@ class GroupMessagingServiceTest : BehaviorSpec({
             }
         }
 
+        When("a real member pins a real message in the group") {
+            val pinMessage = GroupMessage(id = "group_message_pin", groupConversationId = "group_1", senderId = "user_b", body = "Pin me")
+            every { groupConversationRepository.findById("group_1") } returns Optional.of(group)
+            every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "user_a") } returns members[0]
+            every { groupMessageRepository.findById("group_message_pin") } returns Optional.of(pinMessage)
+            every { groupConversationRepository.save(any()) } answers { firstArg() }
+
+            service.setPinnedMessage("user_a", "group_1", "group_message_pin")
+
+            Then("it stores and returns the shared pin to any real member") {
+                group.pinnedMessageId shouldBe "group_message_pin"
+                every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "user_b") } returns members[1]
+                service.getPinnedMessage("user_b", "group_1")?.id shouldBe "group_message_pin"
+            }
+        }
+
+        When("a real member tries to pin a message from a different group") {
+            val otherGroupMessage = GroupMessage(id = "group_message_elsewhere", groupConversationId = "group_elsewhere", senderId = "user_b", body = "Private")
+            every { groupConversationRepository.findById("group_1") } returns Optional.of(group)
+            every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "user_a") } returns members[0]
+            every { groupMessageRepository.findById("group_message_elsewhere") } returns Optional.of(otherGroupMessage)
+
+            Then("it rejects the cross-group reference, same real IDOR discipline as 1:1 pin") {
+                try {
+                    service.setPinnedMessage("user_a", "group_1", "group_message_elsewhere")
+                    error("expected GroupMessageNotFoundException")
+                } catch (e: GroupMessageNotFoundException) {
+                    // expected
+                }
+            }
+        }
+
         When("computing the real per-message unread countdown from real per-member cursors") {
             val now = java.time.Instant.now()
             val readMembers = listOf(

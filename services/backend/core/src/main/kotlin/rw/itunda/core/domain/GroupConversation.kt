@@ -38,6 +38,11 @@ class GroupConversation(
     @Column(name = "last_message_at", nullable = false)
     var lastMessageAt: Instant = Instant.now(),
 
+    // Real group-chat pin (2026-07-26), same shape as 1:1 Conversation.pinnedMessageId
+    // -- see GroupMessagingService.setPinnedMessage's own doc comment.
+    @Column(name = "pinned_message_id", length = 64)
+    var pinnedMessageId: String? = null,
+
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 ) {

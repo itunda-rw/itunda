@@ -132,6 +132,33 @@ class GroupMessagingController(
         return ResponseEntity.ok(mapOf("success" to true))
     }
 
+    // Real group-chat pin (2026-07-26) -- see GroupMessagingService.setPinnedMessage's
+    // own doc comment; mirrors MessagingController's own 1:1 pin/unpin/get endpoints.
+    @PostMapping("/{groupId}/pin/{messageId}")
+    fun pinMessage(@PathVariable groupId: String, @PathVariable messageId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Boolean>> {
+        groupMessagingService.setPinnedMessage(currentUser.userId, groupId, messageId)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    @DeleteMapping("/{groupId}/pin")
+    fun unpinMessage(@PathVariable groupId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Boolean>> {
+        groupMessagingService.setPinnedMessage(currentUser.userId, groupId, null)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    @GetMapping("/{groupId}/pin")
+    fun getPinnedMessage(@PathVariable groupId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val message = groupMessagingService.getPinnedMessage(currentUser.userId, groupId)
+        val payload = message?.let {
+            mapOf(
+                "id" to it.id, "groupConversationId" to it.groupConversationId, "senderId" to it.senderId,
+                "body" to if (it.deletedAt == null) it.body else "This message was deleted", "sentAt" to it.sentAt,
+                "replyToMessageId" to it.replyToMessageId, "reactions" to emptyList<Any>(),
+            )
+        }
+        return ResponseEntity.ok(mapOf("success" to true, "message" to payload))
+    }
+
     // Real message forwarding (2026-07-25) -- see MessageForwardService's own doc
     // comment. This message is always the real GROUP source; destinationType picks
     // whether it lands in another group or a 1:1 conversation.
