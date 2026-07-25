@@ -119,6 +119,63 @@ class CreditScoreServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a brand new user checking real improvement suggestions") {
+        val userRepository = mockk<UserRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val loanAccountRepository = mockk<LoanAccountRepository>()
+        val savingsGoalRepository = mockk<SavingsGoalRepository>()
+        val service = CreditScoreService(userRepository, transactionRepository, loanAccountRepository, savingsGoalRepository)
+
+        val user = User(id = "user_4", phoneNumber = "0788000004", firstName = "New", lastName = "User", passwordHash = "hash", kycVerified = false, createdAt = Instant.now())
+        every { userRepository.findById("user_4") } returns Optional.of(user)
+        every { transactionRepository.findBySenderIdOrRecipientIdOrderByCreatedAtDesc("user_4", "user_4") } returns emptyList()
+        every { loanAccountRepository.findByUserId("user_4") } returns emptyList()
+        every { savingsGoalRepository.findByUserId("user_4") } returns emptyList()
+
+        When("getting suggestions") {
+            val suggestions = service.getImprovementSuggestions("user_4")
+
+            Then("it real-suggests KYC, more transactions, and starting savings -- but NOT paying off a loan, since they have none") {
+                suggestions.map { it.action } shouldBe listOf(
+                    "Verify your identity", "Complete more real transactions", "Start a savings goal",
+                )
+                suggestions.first { it.action == "Verify your identity" }.pointsGain shouldBe 100
+                suggestions.first { it.action == "Complete more real transactions" }.pointsGain shouldBe 100
+                suggestions.first { it.action == "Start a savings goal" }.pointsGain shouldBe 50
+            }
+            Then("it never mutates real state -- unlike computeScore, this is read-only") {
+                verify(exactly = 0) { userRepository.save(any()) }
+            }
+        }
+    }
+
+    Given("a user with an active, unpaid loan checking real improvement suggestions") {
+        val userRepository = mockk<UserRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val loanAccountRepository = mockk<LoanAccountRepository>()
+        val savingsGoalRepository = mockk<SavingsGoalRepository>()
+        val service = CreditScoreService(userRepository, transactionRepository, loanAccountRepository, savingsGoalRepository)
+
+        val user = User(id = "user_5", phoneNumber = "0788000005", firstName = "Borrower", lastName = "User", passwordHash = "hash", kycVerified = true, createdAt = Instant.now())
+        every { userRepository.findById("user_5") } returns Optional.of(user)
+        every { transactionRepository.findBySenderIdOrRecipientIdOrderByCreatedAtDesc("user_5", "user_5") } returns (1..50).map { transaction(TransactionStatus.COMPLETED) }
+        every { loanAccountRepository.findByUserId("user_5") } returns listOf(
+            LoanAccount(id = "loan_3", userId = "user_5", walletId = "w1", offerId = "offer_1", principal = BigDecimal("50000"), outstanding = BigDecimal("30000"), interestRate = 0.1, status = LoanStatus.ACTIVE),
+        )
+        every { savingsGoalRepository.findByUserId("user_5") } returns listOf(
+            SavingsGoal(id = "goal_2", userId = "user_5", walletId = "w1", name = "Fund", targetAmount = BigDecimal("50000"), currentAmount = BigDecimal("10000"), monthlyContribution = BigDecimal("5000"), interestRate = 0.02, status = SavingsGoalStatus.active),
+        )
+
+        When("getting suggestions") {
+            val suggestions = service.getImprovementSuggestions("user_5")
+
+            Then("it real-suggests paying off the loan for the exact real 80-point delta (100 paid - 20 active), and nothing else -- KYC/transactions/savings are all already maxed or satisfied") {
+                suggestions.map { it.action } shouldBe listOf("Pay off your active loan in full")
+                suggestions[0].pointsGain shouldBe 80
+            }
+        }
+    }
+
     Given("a user id that doesn't exist") {
         val userRepository = mockk<UserRepository>()
         val transactionRepository = mockk<TransactionRepository>()
