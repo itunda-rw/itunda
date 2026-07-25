@@ -44,10 +44,16 @@ data class MerchantResponse(val success: Boolean, val merchant: MerchantDto)
 
 data class RegisterMerchantRequest(val businessName: String)
 
-data class MerchantProductDto(val id: String, val merchantId: String, val name: String, val price: Double, val active: Boolean, val createdAt: String)
+data class MerchantProductDto(
+    val id: String, val merchantId: String, val name: String, val price: Double, val active: Boolean, val createdAt: String,
+    // Real bookable-service duration (2026-07-25) -- see MerchantProduct.kt's own doc
+    // comment on the backend. Non-null means this product is a real appointment-
+    // bookable service (e.g. a 30-minute haircut), not a physical good.
+    val durationMinutes: Int? = null,
+)
 data class MerchantProductResponse(val success: Boolean, val product: MerchantProductDto)
 data class MerchantProductsResponse(val success: Boolean, val products: List<MerchantProductDto>)
-data class AddProductRequest(val name: String, val price: Double)
+data class AddProductRequest(val name: String, val price: Double, val durationMinutes: Int? = null)
 
 data class GenerateQrRequest(val amount: Double, val description: String)
 data class PaymentIntentDto(val id: String, val merchantId: String, val amount: Double, val description: String, val status: String, val expiresAt: String, val createdAt: String)
@@ -95,6 +101,21 @@ data class EatsOrderDto(
 data class EatsOrderDetailResponse(val success: Boolean, val order: EatsOrderDto)
 data class EatsOrdersResponse(val success: Boolean, val orders: List<EatsOrderDto>)
 data class UpdateEatsOrderStatusRequest(val status: String)
+
+// Real local-business appointment booking (2026-07-25) -- see
+// rw.itunda.merchant.MerchantBookingService on the backend. Date/time fields stay plain
+// ISO strings (Gson has no java.time adapter registered), same convention every other
+// temporal field in this file already uses.
+data class AvailabilityWindowDto(val dayOfWeek: String, val startTime: String, val endTime: String)
+data class SetAvailabilityRequest(val windows: List<AvailabilityWindowDto>)
+data class AvailabilityResponse(val success: Boolean, val windows: List<AvailabilityWindowDto>)
+data class MerchantBookingDto(
+    val id: String, val merchantId: String, val customerId: String, val serviceId: String, val serviceName: String,
+    val bookingDate: String, val startTime: String, val endTime: String, val status: String, val notes: String? = null, val createdAt: String,
+)
+data class MerchantBookingDetailResponse(val success: Boolean, val booking: MerchantBookingDto)
+data class MerchantBookingsResponse(val success: Boolean, val bookings: List<MerchantBookingDto>)
+data class RespondToBookingRequest(val confirm: Boolean)
 
 // Real 배민오더-style table/QR in-store ordering (2026-07-25) -- previously only ever
 // exposed via the consumer app's own checkout flow; this app's own restaurant-side
@@ -152,6 +173,21 @@ interface ApiService {
 
     @POST("api/v1/eats/dine-in/orders/{id}/status")
     suspend fun advanceDineInOrderStatus(@Path("id") orderId: String, @Body request: UpdateDineInOrderStatusRequest): DineInOrderDetailResponse
+
+    @POST("api/v1/merchant/booking/availability")
+    suspend fun setAvailability(@Body request: SetAvailabilityRequest): AvailabilityResponse
+
+    @GET("api/v1/merchant/booking/availability")
+    suspend fun getMyAvailability(): AvailabilityResponse
+
+    @GET("api/v1/merchant/bookings/merchant-bookings")
+    suspend fun getMerchantBookings(): MerchantBookingsResponse
+
+    @POST("api/v1/merchant/bookings/{id}/respond")
+    suspend fun respondToBooking(@Path("id") bookingId: String, @Body request: RespondToBookingRequest): MerchantBookingDetailResponse
+
+    @POST("api/v1/merchant/bookings/{id}/complete")
+    suspend fun completeBooking(@Path("id") bookingId: String): MerchantBookingDetailResponse
 }
 
 /**

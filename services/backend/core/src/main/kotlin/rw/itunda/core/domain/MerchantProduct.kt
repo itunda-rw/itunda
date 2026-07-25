@@ -71,6 +71,15 @@ class MerchantProduct(
     @Column(length = 2000)
     var description: String? = null,
 
+    // Real bookable-service duration (2026-07-25) -- closes the "local business profile
+    // + real appointment booking" gap independently converged on by Naver Smart Place,
+    // Kakao Hair Shop, and Karrot's Business Profile research. A product with a real
+    // durationMinutes set (e.g. "Haircut", 30) is bookable via MerchantBookingService;
+    // null (the pre-existing default for every current product) just means "not a
+    // bookable service," never a fabricated duration on a physical good.
+    @Column(name = "duration_minutes")
+    var durationMinutes: Int? = null,
+
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 ) {

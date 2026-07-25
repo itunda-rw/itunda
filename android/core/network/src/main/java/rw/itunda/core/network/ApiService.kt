@@ -775,7 +775,37 @@ data class MerchantProductDto(
     // Absent/empty on endpoints that don't fold it in (e.g. product search) -- only
     // ShoppingController.getMerchantProducts (Eats' menu) populates this today.
     val optionGroups: List<EatsMenuOptionGroupDto> = emptyList(),
+    // Real bookable-service duration (2026-07-25) -- a non-null value means this
+    // "product" is actually a real appointment-bookable service (e.g. a 30-minute
+    // haircut). See MerchantProduct.kt's own doc comment on the backend.
+    val durationMinutes: Int? = null,
 )
+
+// Real local-business appointment booking (2026-07-25) -- see
+// rw.itunda.merchant.MerchantBookingService on the backend for the full account. Date
+// ("yyyy-MM-dd") and time ("HH:mm:ss") fields stay plain ISO strings here, same
+// convention every other temporal field (createdAt etc.) in this file already uses --
+// Gson has no built-in java.time.LocalDate/LocalTime adapter registered, so this avoids
+// that pitfall entirely rather than registering one just for this feature.
+data class BookingSlotDto(val startTime: String, val endTime: String)
+data class BookingSlotsResponse(val success: Boolean, val slots: List<BookingSlotDto>)
+data class CreateBookingRequest(val merchantId: String, val serviceId: String, val date: String, val startTime: String, val notes: String? = null)
+data class MerchantBookingDto(
+    val id: String,
+    val merchantId: String,
+    val customerId: String,
+    val serviceId: String,
+    val serviceName: String,
+    val bookingDate: String,
+    val startTime: String,
+    val endTime: String,
+    val status: String,
+    val notes: String? = null,
+    val createdAt: String,
+    val updatedAt: String,
+)
+data class MerchantBookingDetailResponse(val success: Boolean, val booking: MerchantBookingDto)
+data class MerchantBookingsResponse(val success: Boolean, val bookings: List<MerchantBookingDto>)
 data class MerchantSummaryDto(val id: String, val businessName: String)
 data class MerchantProductsResponse(val success: Boolean, val merchant: MerchantSummaryDto, val products: List<MerchantProductDto>)
 
@@ -1731,6 +1761,20 @@ interface ApiService {
 
     @GET("api/v1/shopping/merchants/{id}/products")
     suspend fun getMerchantProducts(@Path("id") merchantId: String): MerchantProductsResponse
+
+    // Real local-business appointment booking (2026-07-25) -- see
+    // rw.itunda.merchant.web.MerchantBookingController.
+    @GET("api/v1/merchant/{merchantId}/booking-slots")
+    suspend fun getBookingSlots(@Path("merchantId") merchantId: String, @Query("serviceId") serviceId: String, @Query("date") date: String): BookingSlotsResponse
+
+    @POST("api/v1/merchant/bookings")
+    suspend fun createBooking(@Body request: CreateBookingRequest): MerchantBookingDetailResponse
+
+    @GET("api/v1/merchant/bookings/my-bookings")
+    suspend fun getMyBookings(): MerchantBookingsResponse
+
+    @POST("api/v1/merchant/bookings/{id}/cancel")
+    suspend fun cancelBooking(@Path("id") bookingId: String): MerchantBookingDetailResponse
 
     // Real Coupang-style multi-item checkout (2026-07-18) -- see rw.itunda.commerce.web.OrderController.
     @POST("api/v1/orders")

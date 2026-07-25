@@ -76,8 +76,11 @@ import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.StarGold
 import rw.itunda.core.designsystem.components.StarRatingRow
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.network.BookingSlotDto
+import rw.itunda.core.network.CreateBookingRequest
 import rw.itunda.core.network.DealProductDto
 import rw.itunda.core.network.FavoriteProductDto
+import rw.itunda.core.network.MerchantBookingDto
 import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.OrderDto
@@ -131,6 +134,7 @@ fun CommerceShopContent(
     var selectedMerchant by remember { mutableStateOf<ShoppingMerchantDto?>(null) }
     var products by remember { mutableStateOf<List<MerchantProductDto>?>(null) }
     var selectedProduct by remember { mutableStateOf<MerchantProductDto?>(null) }
+    var bookingService by remember { mutableStateOf<MerchantProductDto?>(null) }
     val cart = remember { mutableStateMapOf<String, CommerceCartLine>() }
     var showCart by remember { mutableStateOf(false) }
     var results by remember { mutableStateOf<List<CommerceCheckoutResult>?>(null) }
@@ -259,6 +263,16 @@ fun CommerceShopContent(
     }
 
     val merchant = selectedMerchant
+    val bookableService = bookingService
+    if (merchant != null && bookableService != null) {
+        MerchantBookingFlowView(
+            merchant = merchant,
+            service = bookableService,
+            onBack = { bookingService = null },
+            onBooked = { bookingService = null },
+        )
+        return
+    }
     val product = selectedProduct
     if (merchant != null && product != null) {
         ProductDetailScreen(
@@ -281,6 +295,7 @@ fun CommerceShopContent(
             onBack = { selectedMerchant = null },
             onViewCart = { showCart = true },
             onOpenProduct = { selectedProduct = it },
+            onBookService = { bookingService = it },
             favoriteProductIds = favoriteProductIds,
             favoritingProductId = favoritingProductId,
             onToggleFavorite = ::toggleProductFavorite,
@@ -324,6 +339,7 @@ fun CommerceShopContent(
         }
         if (view == CommerceView.ORDERS) {
             item { MyCommerceOrdersView() }
+            item { MyBookingsView() }
         } else if (view == CommerceView.WISHLIST) {
             item { ProductWishlistView(onRemoved = ::loadFavoriteProductIds) }
         } else {
@@ -514,6 +530,7 @@ private fun MerchantDetailView(
     onBack: () -> Unit,
     onViewCart: () -> Unit,
     onOpenProduct: (MerchantProductDto) -> Unit,
+    onBookService: (MerchantProductDto) -> Unit = {},
     favoriteProductIds: Set<String> = emptySet(),
     favoritingProductId: String? = null,
     onToggleFavorite: (String) -> Unit = {},
@@ -579,10 +596,26 @@ private fun MerchantDetailView(
                         }
                         ProductRatingBadge(p.id)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                            QtyButton("-") { setQty(p, qty - 1) }
-                            Text(qty.toString(), modifier = Modifier.width(28.dp), textAlign = TextAlign.Center, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
-                            QtyButton("+") { setQty(p, qty + 1) }
+                        // Real bookable-service entry point (2026-07-25) -- a product
+                        // with a real durationMinutes set is an appointment, not a
+                        // cart-able good, so it gets a "Book" action instead of the
+                        // qty stepper. See MerchantBookingFlowView's own doc comment.
+                        if (p.durationMinutes != null) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Ids.colors.brand)
+                                    .clickable { onBookService(p) }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center,
+                            ) { Text("Book", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                        } else {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                                QtyButton("-") { setQty(p, qty - 1) }
+                                Text(qty.toString(), modifier = Modifier.width(28.dp), textAlign = TextAlign.Center, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
+                                QtyButton("+") { setQty(p, qty + 1) }
+                            }
                         }
                     }
                 }
@@ -591,6 +624,238 @@ private fun MerchantDetailView(
         if (totalItems > 0) {
             CartFab(totalItems, onClick = onViewCart)
         }
+    }
+}
+
+private val BOOKING_STATUS_LABEL = mapOf(
+    "REQUESTED" to "Requested",
+    "CONFIRMED" to "Confirmed",
+    "DECLINED" to "Declined",
+    "CANCELLED" to "Cancelled",
+    "COMPLETED" to "Completed",
+)
+
+@Composable
+private fun MyBookingsView() {
+    var bookings by remember { mutableStateOf<List<MerchantBookingDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var cancellingId by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyBookings()
+                if (res.success) bookings = res.bookings
+                error = null
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+    LaunchedEffect(Unit) { load() }
+
+    fun cancel(bookingId: String) {
+        cancellingId = bookingId
+        error = null
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.cancelBooking(bookingId)
+                load()
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                cancellingId = null
+            }
+        }
+    }
+
+    val list = bookings
+    if (list.isNullOrEmpty() && error == null) return
+    Column(modifier = Modifier.padding(top = 16.dp)) {
+        Text("Bookings", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.padding(bottom = 10.dp))
+        if (error != null) {
+            ErrorCard(error!!, onRetry = ::load)
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                list!!.forEach { b ->
+                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface)) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(b.serviceName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text(BOOKING_STATUS_LABEL[b.status] ?: b.status, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            }
+                            Text("${b.bookingDate} at ${b.startTime.take(5)}", color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                            if (b.status == "REQUESTED" || b.status == "CONFIRMED") {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(top = 10.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Ids.colors.danger)
+                                        .clickable(enabled = cancellingId != b.id) { cancel(b.id) }
+                                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                                ) {
+                                    Text(
+                                        if (cancellingId == b.id) "Cancelling…" else "Cancel booking",
+                                        color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Real local-business appointment booking (2026-07-25) -- closes the "business profile
+ * + real booking" gap independently converged on by Naver Smart Place, Kakao Hair Shop,
+ * and Karrot's Business Profile research (docs/DESIGN_REFERENCES.md). Date picker is a
+ * plain next-14-days strip (no calendar widget -- itunda has no calendar-sync/external
+ * scheduling to justify one); slots come straight from the real backend-computed
+ * availability (see MerchantBookingService.getAvailableSlots), never client-guessed.
+ */
+@Composable
+private fun MerchantBookingFlowView(
+    merchant: ShoppingMerchantDto,
+    service: MerchantProductDto,
+    onBack: () -> Unit,
+    onBooked: () -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    val today = remember { java.time.LocalDate.now() }
+    var selectedDate by remember { mutableStateOf(today) }
+    var slots by remember { mutableStateOf<List<BookingSlotDto>?>(null) }
+    var selectedSlot by remember { mutableStateOf<BookingSlotDto?>(null) }
+    var notes by remember { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var booked by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun loadSlots() {
+        selectedSlot = null
+        slots = null
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getBookingSlots(merchant.merchantId, service.id, selectedDate.toString())
+                slots = if (res.success) res.slots else emptyList()
+            } catch (e: Exception) {
+                error = "Couldn't load available times."
+                slots = emptyList()
+            }
+        }
+    }
+    LaunchedEffect(selectedDate) { loadSlots() }
+
+    if (booked) {
+        AlertDialog(
+            onDismissRequest = onBooked,
+            title = { Text("Booking requested") },
+            text = { Text("${service.name} on $selectedDate at ${selectedSlot?.startTime?.take(5)} -- ${merchant.businessName} will confirm shortly.") },
+            confirmButton = { TextButton(onClick = onBooked) { Text("Done") } },
+        )
+        return
+    }
+
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
+        BackTopBar("Book ${service.name}", onBack)
+        Text(
+            "${service.name} · ${service.durationMinutes} min · %,.0f RWF".format(service.price),
+            color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
+        )
+        Text("Choose a date", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            (0 until 14).map { today.plusDays(it.toLong()) }.forEach { date ->
+                val selected = date == selectedDate
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (selected) Ids.colors.brand else Ids.colors.surface)
+                        .clickable { selectedDate = date }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.ENGLISH),
+                        color = if (selected) Color.White else Ids.colors.textSecondary, fontSize = 11.sp,
+                    )
+                    Text(date.dayOfMonth.toString(), color = if (selected) Color.White else Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                }
+            }
+        }
+        Text("Choose a time", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp))
+        Box(modifier = Modifier.weight(1f)) {
+            val slotList = slots
+            if (slotList == null) {
+                SkeletonBlock()
+            } else if (slotList.isEmpty()) {
+                EmptyState("No open times on this date.", icon = Icons.Outlined.Storefront)
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(vertical = 12.dp),
+                ) {
+                    gridItems(slotList) { slot ->
+                        val selected = slot == selectedSlot
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (selected) Ids.colors.brand else Ids.colors.surface)
+                                .clickable { selectedSlot = slot }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { Text(slot.startTime.take(5), color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+                    }
+                }
+            }
+        }
+        OutlinedTextField(
+            value = notes,
+            onValueChange = { if (it.length <= 500) notes = it },
+            placeholder = { Text("Notes (optional)") },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(if (submitting || selectedSlot == null) Ids.colors.textTertiary else Ids.colors.brand)
+                .clickable(enabled = !submitting && selectedSlot != null) {
+                    val slot = selectedSlot ?: return@clickable
+                    submitting = true
+                    error = null
+                    coroutineScope.launch {
+                        try {
+                            val res = NetworkClient.apiService.createBooking(
+                                CreateBookingRequest(merchant.merchantId, service.id, selectedDate.toString(), slot.startTime, notes.trim().ifBlank { null }),
+                            )
+                            if (res.success) booked = true
+                        } catch (e: HttpException) {
+                            error = superAppErrorMessage(e)
+                        } catch (e: IOException) {
+                            error = "Couldn't reach itunda. Check your connection and try again."
+                        } finally {
+                            submitting = false
+                        }
+                    }
+                }
+                .padding(vertical = 16.dp),
+            contentAlignment = Alignment.Center,
+        ) { Text(if (submitting) "Requesting…" else "Request booking", color = Color.White, fontWeight = FontWeight.Bold) }
     }
 }
 

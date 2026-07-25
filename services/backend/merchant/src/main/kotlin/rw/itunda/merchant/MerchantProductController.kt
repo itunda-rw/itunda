@@ -27,6 +27,7 @@ data class AddProductRequest(
     val imageUrl: String? = null,
     val originalPrice: BigDecimal? = null,
     val description: String? = null,
+    val durationMinutes: Int? = null,
 )
 data class AddMenuOptionGroupRequest(val name: String, val choices: List<MenuOptionChoiceRequest>)
 
@@ -47,7 +48,7 @@ class MerchantProductController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val product = merchantProductService.addProduct(
-            currentUser.userId, request.name, request.price, request.imageUrl, request.originalPrice, request.description,
+            currentUser.userId, request.name, request.price, request.imageUrl, request.originalPrice, request.description, request.durationMinutes,
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "product" to product))
     }
@@ -63,7 +64,7 @@ class MerchantProductController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val product = merchantProductService.updateProduct(
-            currentUser.userId, productId, request.name, request.price, request.imageUrl, request.originalPrice, request.description,
+            currentUser.userId, productId, request.name, request.price, request.imageUrl, request.originalPrice, request.description, request.durationMinutes,
         )
         return ResponseEntity.ok(mapOf("success" to true, "product" to product))
     }
@@ -131,6 +132,10 @@ class MerchantProductController(
     @ExceptionHandler(InvalidProductDiscountException::class)
     fun handleInvalidDiscount(ex: InvalidProductDiscountException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PRODUCT_DISCOUNT", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidProductDurationException::class)
+    fun handleInvalidDuration(ex: InvalidProductDurationException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PRODUCT_DURATION", ex.message ?: "Bad request"))
 
     @ExceptionHandler(MerchantProductNotFoundException::class)
     fun handleProductNotFound(ex: MerchantProductNotFoundException) =

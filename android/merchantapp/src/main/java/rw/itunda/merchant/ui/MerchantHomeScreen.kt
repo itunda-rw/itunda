@@ -39,7 +39,7 @@ import rw.itunda.merchant.network.MerchantDto
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.network.UpdateEatsOrderStatusRequest
 
-private enum class MerchantTab { ORDERS, DINE_IN, CATALOG, REGISTER, REPORTS }
+private enum class MerchantTab { ORDERS, DINE_IN, BOOKINGS, CATALOG, REGISTER, REPORTS }
 
 @Composable
 fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
@@ -64,6 +64,7 @@ fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
             listOf(
                 MerchantTab.ORDERS to "Orders",
                 MerchantTab.DINE_IN to "Dine-in",
+                MerchantTab.BOOKINGS to "Bookings",
                 MerchantTab.CATALOG to "Catalog",
                 MerchantTab.REGISTER to "Register",
                 MerchantTab.REPORTS to "Reports",
@@ -81,6 +82,7 @@ fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
         when (tab) {
             MerchantTab.ORDERS -> OrdersTab()
             MerchantTab.DINE_IN -> DineInTab(restaurantId = merchant.id)
+            MerchantTab.BOOKINGS -> BookingTab()
             MerchantTab.CATALOG -> CatalogTab()
             MerchantTab.REGISTER -> PosTab()
             MerchantTab.REPORTS -> ReportsTab()

@@ -17,6 +17,7 @@ class InvalidProductPriceException(message: String) : RuntimeException(message)
 class MerchantProductNotFoundException(message: String) : RuntimeException(message)
 class InvalidProductImageUrlException(message: String) : RuntimeException(message)
 class InvalidProductDiscountException(message: String) : RuntimeException(message)
+class InvalidProductDurationException(message: String) : RuntimeException(message)
 
 /**
  * A real merchant product catalog -- the register-software half of the "Toss Place"
@@ -82,6 +83,17 @@ class MerchantProductService(
     private fun validateDescription(description: String?): String? =
         description?.trim()?.ifBlank { null }?.take(2000)
 
+    // Real bookable-service duration validation (2026-07-25) -- see MerchantProduct.kt's
+    // own doc comment. Bounded to a real, sane appointment length (5 min .. 8 hours);
+    // null stays null, a real, valid "not bookable" state, not an error.
+    private fun validateDuration(durationMinutes: Int?): Int? {
+        if (durationMinutes == null) return null
+        if (durationMinutes < 5 || durationMinutes > 480) {
+            throw InvalidProductDurationException("Duration must be between 5 and 480 minutes")
+        }
+        return durationMinutes
+    }
+
     @Transactional
     fun addProduct(
         ownerUserId: String,
@@ -90,6 +102,7 @@ class MerchantProductService(
         imageUrl: String? = null,
         originalPrice: BigDecimal? = null,
         description: String? = null,
+        durationMinutes: Int? = null,
     ): MerchantProduct {
         // Real anti-spam limit -- found missing in a 2026-07-19 security sweep. Not
         // money-moving (deliberately no Idempotency-Key, per the controller's own doc
@@ -111,6 +124,7 @@ class MerchantProductService(
             originalPrice = originalPrice,
             discountPercent = discountPercent,
             description = validateDescription(description),
+            durationMinutes = validateDuration(durationMinutes),
         )
         return merchantProductRepository.save(product)
     }
@@ -129,6 +143,7 @@ class MerchantProductService(
         imageUrl: String? = null,
         originalPrice: BigDecimal? = null,
         description: String? = null,
+        durationMinutes: Int? = null,
     ): MerchantProduct {
         val merchant = getMyMerchant(ownerUserId)
         if (price <= BigDecimal.ZERO) {
@@ -147,6 +162,7 @@ class MerchantProductService(
         product.originalPrice = originalPrice
         product.discountPercent = discountPercent
         product.description = validateDescription(description)
+        product.durationMinutes = validateDuration(durationMinutes)
         return merchantProductRepository.save(product)
     }
 

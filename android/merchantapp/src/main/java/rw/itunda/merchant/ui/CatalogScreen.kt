@@ -38,6 +38,7 @@ fun CatalogTab() {
     var products by remember { mutableStateOf<List<MerchantProductDto>?>(null) }
     var name by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
+    var durationMinutes by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var submitting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -56,6 +57,14 @@ fun CatalogTab() {
                 Text("Add a product", fontWeight = FontWeight.Bold)
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Price (RWF)") }, modifier = Modifier.fillMaxWidth())
+                // Real bookable-service duration (2026-07-25) -- leaving this blank
+                // keeps the product a normal cataloged good; a real minute value marks
+                // it bookable (e.g. "Haircut", 30) via the new Availability tab.
+                OutlinedTextField(
+                    value = durationMinutes, onValueChange = { durationMinutes = it },
+                    label = { Text("Booking duration in minutes (optional -- makes this a bookable service)") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 androidx.compose.material3.Button(
                     onClick = {
@@ -64,12 +73,17 @@ fun CatalogTab() {
                             error = "Enter a name and a real price."
                             return@Button
                         }
+                        val duration = durationMinutes.trim().ifBlank { null }?.toIntOrNull()
+                        if (durationMinutes.isNotBlank() && duration == null) {
+                            error = "Booking duration must be a whole number of minutes."
+                            return@Button
+                        }
                         submitting = true
                         error = null
                         scope.launch {
                             try {
-                                NetworkClient.apiService.addProduct(AddProductRequest(name.trim(), amount))
-                                name = ""; price = ""
+                                NetworkClient.apiService.addProduct(AddProductRequest(name.trim(), amount, duration))
+                                name = ""; price = ""; durationMinutes = ""
                                 load()
                             } catch (e: Exception) {
                                 error = "Couldn't add this product. Try again."
@@ -100,7 +114,8 @@ fun CatalogTab() {
                         ) {
                             Column {
                                 Text(product.name, fontWeight = FontWeight.Bold)
-                                Text("${"%,.0f".format(product.price)} RWF", style = MaterialTheme.typography.bodySmall)
+                                val priceLine = "${"%,.0f".format(product.price)} RWF" + (product.durationMinutes?.let { " · ${it} min booking" } ?: "")
+                                Text(priceLine, style = MaterialTheme.typography.bodySmall)
                             }
                             TextButton(onClick = {
                                 scope.launch {

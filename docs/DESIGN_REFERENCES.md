@@ -428,6 +428,7 @@ they close in itunda's current implementation.
 | Naver 가격비교 (Shopping) price-comparison model | 메이크샵 고객센터 explainer | One product identity maps to multiple seller listings shown together, sortable by lowest price, with per-listing price-tracking — cross-seller comparison, not a single-seller catalog |
 | Baymard Institute — discount/price-badge placement research | baymard.com/blog/product-page-price-discounts | Discount % must sit immediately next to the struck-through original price; badges must stay visually consistent across list card, search result, and detail page |
 | itunda's own codebase (ground truth) | direct repo inspection | `MerchantProduct` has only id/merchantId/name/price/active/createdAt — no image, no discount price, no description, no stock; all three clients render single-column full-width list rows, never a grid; cross-merchant search endpoint exists and is wired into bank-mfe only; wishlist exists in bank-mfe only |
+| Naver Smart Place / Kakao Hair Shop / Karrot Business Profile — convergent local-business research | smartplace.naver.com, koreaherald.com (Kakao Hair Shop), business.daangn.com | Three unrelated Korean companies independently ship the same real product: a persistent local-business profile page (hours, photos, description) with real appointment booking, distinct from a marketplace listing or a food-delivery restaurant catalog. Kakao Hair Shop's real, sourced innovation is a 100%-prepay-to-book mechanic that cut no-shows from ~20% to under 0.5%; Naver Smart Place adds owner-side review replies and push notifications on new bookings; Karrot's Business Profile adds coupons/loyalty on top |
 
 ### Recommendations (ranked)
 
@@ -481,6 +482,20 @@ they close in itunda's current implementation.
    this pass beyond general knowledge — flagged as the weakest-sourced recommendation in this
    section.
    *Target: top of `browseBody` in `CommerceShopContent`/`ShopScreen.swift`; bank-mfe shopping tab header*
+
+9. **[sourced] Implemented 2026-07-25.** Add real local-business appointment booking, the single
+   gap Naver Smart Place, Kakao Hair Shop, and Karrot's Business Profile independently converged
+   on -- itunda had a marketplace, a restaurant catalog (Eats), and a property board, but nothing
+   for "any shop or service gets a page and takes bookings" (salons, tutors, repair services).
+   Ships as a bookable-service flag on the existing `MerchantProduct` catalog (`durationMinutes`,
+   same "a menu item IS a MerchantProduct" reuse discipline `EatsOrderService` already
+   established) plus two new entities: a merchant's real weekly `MerchantAvailabilityWindow`s and
+   the resulting `MerchantBooking` request/confirm/decline/cancel/complete flow. No payment or
+   deposit at booking time -- no research source described one, and real local service businesses
+   overwhelmingly settle in person.
+   *Shipped: `MerchantProduct.durationMinutes`, `MerchantBookingService`, `POST /api/v1/merchant/bookings`,
+   Shop's "Book" flow (date strip + real backend-computed slot grid), merchant app's Bookings tab
+   (weekly availability editor + confirm/decline/complete queue)*
 
 ### Unresolved / worth a follow-up
 
