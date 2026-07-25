@@ -40,6 +40,7 @@ data class PublicUser(
     val referralCode: String?,
     val profilePhotoUrl: String?,
     val emailVerified: Boolean,
+    val phoneVerified: Boolean,
     val neighborhood: String?,
     val neighborhoodVerifiedAt: Instant? = null,
     val neighborhoodVerificationCount: Int = 0,
@@ -58,6 +59,7 @@ data class AuthResponse(
 data class UpdateProfilePhotoRequest(val profilePhotoUrl: String)
 
 data class ConfirmEmailVerificationRequest(val token: String)
+data class ConfirmPhoneVerificationRequest(val code: String)
 
 // Real hyperlocal neighborhood (2026-07-20) -- see User.neighborhood's own doc comment.
 // A coordinate in, never a self-declared free-text neighborhood name -- AuthService

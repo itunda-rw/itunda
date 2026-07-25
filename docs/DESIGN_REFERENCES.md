@@ -822,15 +822,13 @@ backend) so every recommendation below cites a real file, not a hypothetical.
 
 ### Recommendations (ranked)
 
-1. **[sourced]** Add a real, honest phone-verification step at registration, delivered the same
-   way itunda's existing email verification already is (in-app `Notification`, since no SMTP/SMS
-   relay exists — see `AuthService.kt:240-244`'s own comment). This is the single most
-   Toss-aligned, currently-real gap: Toss's whole real-name-verification model is built on proven
-   phone possession; itunda currently accepts any unverified number. Mirror
-   `requestEmailVerification`/`confirmEmailVerification` (`AuthService.kt:245-282`) field-for-field
-   for phone, rather than inventing a new pattern.
-   *Target: `AuthService.kt:245-282` (pattern to mirror), new `requestPhoneVerification`/
-   `confirmPhoneVerification`, `AuthController.kt`, all 3 clients' registration screens*
+1. **[implemented, backend]** Real phone verification now exists (2026-07-26), mirroring
+   `requestEmailVerification`/`confirmEmailVerification` field-for-field exactly as this
+   recommendation asked: a real single-use 6-digit OTP, delivered via in-app `Notification` (no
+   SMTP/SMS relay exists), sent automatically at registration with a resend action for an
+   expired/lost code. Honestly does not prove real SMS possession -- the user is already
+   authenticated when they see the in-app notification, same limitation the recommendation itself
+   anticipated. No client UI touchpoint yet on any of the 3 clients' registration screens.
 
 2. **[sourced]** Reuse itunda's own existing biometric primitive as a login/app-launch quick-unlock,
    not just a transaction step-up gate. Toss's real login credential is a 6-digit PIN or Face ID,

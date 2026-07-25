@@ -22,6 +22,7 @@ import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.LedgerAccount
 import rw.itunda.core.domain.LedgerEntry
 import rw.itunda.core.domain.LoanAccount
+import rw.itunda.core.domain.PhoneVerificationToken
 import rw.itunda.core.domain.SavingsGoal
 import rw.itunda.core.domain.StockTrade
 import rw.itunda.core.domain.Transaction
@@ -116,6 +117,10 @@ interface UserRepository : JpaRepository<User, String> {
 
 interface EmailVerificationTokenRepository : JpaRepository<EmailVerificationToken, String> {
     fun findByToken(token: String): EmailVerificationToken?
+}
+
+interface PhoneVerificationTokenRepository : JpaRepository<PhoneVerificationToken, String> {
+    fun findByToken(token: String): PhoneVerificationToken?
 }
 
 interface WalletRepository : JpaRepository<Wallet, String> {

@@ -200,13 +200,13 @@ class MarketplaceServiceTest : BehaviorSpec({
         )
 
         When("no category filter is given") {
-            every { listingRepository.findByStatusOrderByCreatedAtDesc(ListingStatus.ACTIVE, any()) } returns
+            every { listingRepository.findByStatusOrderByBoostedThenCreatedAtDesc(ListingStatus.ACTIVE, any(), any()) } returns
                 mockk(relaxed = true)
 
             service.browse(PageRequest.of(0, 20), null)
 
             Then("it queries the unfiltered ACTIVE listing method, not the category one") {
-                io.mockk.verify { listingRepository.findByStatusOrderByCreatedAtDesc(ListingStatus.ACTIVE, any()) }
+                io.mockk.verify { listingRepository.findByStatusOrderByBoostedThenCreatedAtDesc(ListingStatus.ACTIVE, any(), any()) }
             }
         }
     }

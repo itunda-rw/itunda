@@ -11,6 +11,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import rw.itunda.core.domain.EmailVerificationToken
 import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.Notification
+import rw.itunda.core.domain.PhoneVerificationToken
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
@@ -18,6 +19,7 @@ import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.repository.EmailVerificationTokenRepository
 import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.NotificationRepository
+import rw.itunda.core.repository.PhoneVerificationTokenRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
 import java.time.Duration
@@ -51,6 +53,7 @@ class AuthServiceTest : BehaviorSpec({
         val tokenBlocklistService = mockk<TokenBlocklistService>()
         val rateLimiter = mockk<RateLimiter>()
         val emailVerificationTokenRepository = mockk<EmailVerificationTokenRepository>()
+        val phoneVerificationTokenRepository = mockk<PhoneVerificationTokenRepository>()
         val notificationRepository = mockk<NotificationRepository>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         // Real device binding (2026-07-20) -- relaxed since these tests aren't about
@@ -59,7 +62,7 @@ class AuthServiceTest : BehaviorSpec({
         val deviceService = mockk<DeviceService>(relaxed = true)
         val service = AuthService(
             userRepository, walletRepository, interestJarRepository, jwtService, tokenBlocklistService, rateLimiter,
-            emailVerificationTokenRepository, notificationRepository, nominatimGeocodingClient, deviceService,
+            emailVerificationTokenRepository, phoneVerificationTokenRepository, notificationRepository, nominatimGeocodingClient, deviceService,
         )
 
         When("registering a brand-new phone number") {
@@ -69,6 +72,10 @@ class AuthServiceTest : BehaviorSpec({
             every { walletRepository.save(any()) } answers { firstArg() }
             val jarSlot = mutableListOf<InterestJar>()
             every { interestJarRepository.save(capture(jarSlot)) } answers { firstArg() }
+            val phoneTokenSlot = mutableListOf<PhoneVerificationToken>()
+            every { phoneVerificationTokenRepository.save(capture(phoneTokenSlot)) } answers { firstArg() }
+            val notificationSlot = mutableListOf<Notification>()
+            every { notificationRepository.save(capture(notificationSlot)) } answers { firstArg() }
 
             val response = service.register(RegisterRequest("+250788000001", "a@b.rw", "Jean", "B", "password123"))
 
@@ -89,6 +96,11 @@ class AuthServiceTest : BehaviorSpec({
                 jarSlot.single().walletId shouldBe walletSlot.single { it.type == WalletType.SAVINGS }.id
                 jarSlot.single().earnedThisMonth.signum() shouldBe 0
             }
+            Then("it real-sends a 6-digit phone verification code via a real in-app notification, at registration itself") {
+                phoneTokenSlot.single().token.length shouldBe 6
+                phoneTokenSlot.single().token.toIntOrNull() shouldNotBe null
+                notificationSlot.single { it.type == "PHONE_VERIFICATION" } shouldNotBe null
+            }
         }
 
         When("registering with a valid referral code") {
@@ -103,6 +115,8 @@ class AuthServiceTest : BehaviorSpec({
             every { userRepository.save(capture(userSlot)) } answers { firstArg() }
             every { walletRepository.save(any()) } answers { firstArg() }
             every { interestJarRepository.save(any()) } answers { firstArg() }
+            every { phoneVerificationTokenRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
 
             service.register(RegisterRequest("+250788000011", null, "New", "User", "password123", "ITDREF01"))
 
@@ -386,6 +400,103 @@ class AuthServiceTest : BehaviorSpec({
             Then("it throws InvalidVerificationTokenException -- a token verifies an email exactly once") {
                 try {
                     service.confirmEmailVerification("user_15", "usedtoken")
+                    error("expected InvalidVerificationTokenException")
+                } catch (e: InvalidVerificationTokenException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+
+        When("requesting phone verification when it's already verified") {
+            val user = User(
+                id = "user_16", phoneNumber = "+250788000016", firstName = "Jean", lastName = "B",
+                passwordHash = "unused", phoneVerified = true, createdAt = Instant.now(),
+            )
+            every { userRepository.findById("user_16") } returns Optional.of(user)
+
+            Then("it throws PhoneAlreadyVerifiedException before sending a new code") {
+                try {
+                    service.requestPhoneVerification("user_16")
+                    error("expected PhoneAlreadyVerifiedException")
+                } catch (e: PhoneAlreadyVerifiedException) {
+                    verify(exactly = 0) { phoneVerificationTokenRepository.save(any()) }
+                }
+            }
+        }
+
+        When("requesting a real resend of an unverified phone's code") {
+            val user = User(
+                id = "user_17", phoneNumber = "+250788000017", firstName = "Jean", lastName = "B",
+                passwordHash = "unused", phoneVerified = false, createdAt = Instant.now(),
+            )
+            every { userRepository.findById("user_17") } returns Optional.of(user)
+            val tokenSlot = mutableListOf<PhoneVerificationToken>()
+            every { phoneVerificationTokenRepository.save(capture(tokenSlot)) } answers { firstArg() }
+            val notificationSlot = mutableListOf<Notification>()
+            every { notificationRepository.save(capture(notificationSlot)) } answers { firstArg() }
+
+            service.requestPhoneVerification("user_17")
+
+            Then("it saves a real single-use 6-digit code and delivers it via a real in-app notification") {
+                tokenSlot.single().userId shouldBe "user_17"
+                tokenSlot.single().token.length shouldBe 6
+                val notification = notificationSlot.single()
+                notification.userId shouldBe "user_17"
+                notification.type shouldBe "PHONE_VERIFICATION"
+                notification.body.contains(tokenSlot.single().token) shouldBe true
+            }
+        }
+
+        When("confirming phone verification with the real code just issued") {
+            val user = User(
+                id = "user_18", phoneNumber = "+250788000018", firstName = "Jean", lastName = "B",
+                passwordHash = "unused", phoneVerified = false, createdAt = Instant.now(),
+            )
+            val tokenRecord = PhoneVerificationToken(
+                id = "pvt_1", userId = "user_18", token = "654321",
+                expiresAt = Instant.now().plusSeconds(1800),
+            )
+            every { phoneVerificationTokenRepository.findByToken("654321") } returns tokenRecord
+            every { phoneVerificationTokenRepository.save(any()) } answers { firstArg() }
+            every { userRepository.findById("user_18") } returns Optional.of(user)
+            every { userRepository.save(any()) } answers { firstArg() }
+
+            val result = service.confirmPhoneVerification("user_18", "654321")
+
+            Then("it flips phoneVerified to true and marks the code used, once") {
+                result.phoneVerified shouldBe true
+                tokenRecord.usedAt shouldNotBe null
+                verify(exactly = 1) { phoneVerificationTokenRepository.save(any()) }
+            }
+        }
+
+        When("confirming phone verification with a code that belongs to a different user") {
+            val tokenRecord = PhoneVerificationToken(
+                id = "pvt_2", userId = "user_other", token = "111111",
+                expiresAt = Instant.now().plusSeconds(1800),
+            )
+            every { phoneVerificationTokenRepository.findByToken("111111") } returns tokenRecord
+
+            Then("it throws InvalidVerificationTokenException -- ownership is checked, not just code validity") {
+                try {
+                    service.confirmPhoneVerification("user_19", "111111")
+                    error("expected InvalidVerificationTokenException")
+                } catch (e: InvalidVerificationTokenException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+
+        When("confirming phone verification with an expired code") {
+            val tokenRecord = PhoneVerificationToken(
+                id = "pvt_3", userId = "user_20", token = "222222",
+                expiresAt = Instant.now().minusSeconds(60),
+            )
+            every { phoneVerificationTokenRepository.findByToken("222222") } returns tokenRecord
+
+            Then("it throws InvalidVerificationTokenException -- a stale code can't verify a phone number") {
+                try {
+                    service.confirmPhoneVerification("user_20", "222222")
                     error("expected InvalidVerificationTokenException")
                 } catch (e: InvalidVerificationTokenException) {
                     verify(exactly = 0) { userRepository.save(any()) }

@@ -75,6 +75,22 @@ class AuthController(private val authService: AuthService, private val deviceSer
     ): ResponseEntity<Map<String, Any>> =
         ResponseEntity.ok(mapOf("success" to true, "user" to authService.confirmEmailVerification(currentUser.userId, request.token)))
 
+    // Real phone verification (2026-07-26) -- see AuthService.requestPhoneVerification's
+    // own doc comment. A code is already sent automatically at registration; this is the
+    // real resend action for an expired/lost code.
+    @PostMapping("/profile/verify-phone")
+    fun requestPhoneVerification(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Boolean>> {
+        authService.requestPhoneVerification(currentUser.userId)
+        return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    @PostMapping("/profile/verify-phone/confirm")
+    fun confirmPhoneVerification(
+        @RequestBody request: ConfirmPhoneVerificationRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "user" to authService.confirmPhoneVerification(currentUser.userId, request.code)))
+
     // Real hyperlocal neighborhood (2026-07-20) -- see AuthService.setNeighborhood's own
     // doc comment.
     @PostMapping("/profile/neighborhood")
@@ -157,6 +173,10 @@ class AuthController(private val authService: AuthService, private val deviceSer
     @ExceptionHandler(EmailAlreadyVerifiedException::class)
     fun handleEmailAlreadyVerified(ex: EmailAlreadyVerifiedException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("EMAIL_ALREADY_VERIFIED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(PhoneAlreadyVerifiedException::class)
+    fun handlePhoneAlreadyVerified(ex: PhoneAlreadyVerifiedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("PHONE_ALREADY_VERIFIED", ex.message ?: "Conflict"))
 
     @ExceptionHandler(InvalidVerificationTokenException::class)
     fun handleInvalidVerificationToken(ex: InvalidVerificationTokenException) =

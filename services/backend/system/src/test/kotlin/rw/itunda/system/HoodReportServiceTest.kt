@@ -28,7 +28,7 @@ class HoodReportServiceTest : BehaviorSpec({
         val community = mockk<CommunityPostRepository>()
         val jobs = mockk<JobPostRepository>()
         val properties = mockk<PropertyListingRepository>()
-        val service = HoodReportService(repository, listings, community, jobs, properties)
+        val service = HoodReportService(repository, listings, community, jobs, properties, mockk(), mockk())
         val existing = HoodReport("report_1", "user_1", HoodReportTargetType.JOB_POST, "job_1", "Fee requested")
 
         When("the same user reports the same job again") {
@@ -46,7 +46,7 @@ class HoodReportServiceTest : BehaviorSpec({
 
     Given("an open report awaiting review") {
         val repository = mockk<HoodReportRepository>()
-        val service = HoodReportService(repository, mockk(), mockk(), mockk(), mockk())
+        val service = HoodReportService(repository, mockk(), mockk(), mockk(), mockk(), mockk(), mockk())
         val report = HoodReport("report_2", "user_2", HoodReportTargetType.JOB_POST, "job_2", "Misleading pay")
 
         When("an administrator resolves it") {
@@ -65,7 +65,7 @@ class HoodReportServiceTest : BehaviorSpec({
     Given("a report for a missing marketplace listing") {
         val repository = mockk<HoodReportRepository>()
         val listings = mockk<ListingRepository>()
-        val service = HoodReportService(repository, listings, mockk(), mockk(), mockk())
+        val service = HoodReportService(repository, listings, mockk(), mockk(), mockk(), mockk(), mockk())
 
         When("a member submits it") {
             every { listings.existsById("listing_missing") } returns false
@@ -87,7 +87,7 @@ class HoodReportServiceTest : BehaviorSpec({
     Given("a substantiated job report") {
         val repository = mockk<HoodReportRepository>()
         val jobs = mockk<JobPostRepository>()
-        val service = HoodReportService(repository, mockk(), mockk(), jobs, mockk())
+        val service = HoodReportService(repository, mockk(), mockk(), jobs, mockk(), mockk(), mockk())
         val report = HoodReport("report_3", "user_3", HoodReportTargetType.JOB_POST, "job_3", "Asks for a fee")
         val job = JobPost("job_3", "poster_1", "cleaning", "Cleaner needed", "Bring supplies", JobPayType.FIXED, BigDecimal("3000"))
 

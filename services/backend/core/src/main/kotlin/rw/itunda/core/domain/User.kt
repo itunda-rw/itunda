@@ -65,6 +65,11 @@ class User(
     @Column(name = "email_verified", nullable = false)
     var emailVerified: Boolean = false,
 
+    // Real phone verification at registration (2026-07-26) -- see
+    // AuthService.requestPhoneVerification's own doc comment.
+    @Column(name = "phone_verified", nullable = false)
+    var phoneVerified: Boolean = false,
+
     // Real hyperlocal neighborhood (2026-07-20) -- closes the "User has no address/
     // district field" gap Marketplace/Community/Jobs/RealEstate's own doc comments all
     // name. Set once via AuthService.setNeighborhood from a real coordinate the user
