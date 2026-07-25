@@ -1,10 +1,33 @@
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 const promClient = require('prom-client');
 
 const app = express();
+app.set('trust proxy', true);
 app.use(cors());
+
+// Real rate limiting (2026-07-25) -- this gateway is now reachable from the
+// public internet (bore.pub tunnel -> Istio ingress -> here), so it needs a
+// first line of defense before it's treated as a shareable demo URL. Istio's
+// ingressgateway sets X-Forwarded-For, so `trust proxy` lets express-rate-limit
+// key on the real client IP for traffic that arrives with that header; traffic
+// that doesn't (e.g. the raw bore.pub TCP tunnel, which has no concept of the
+// original client IP) all collapses onto one key -- an honest limitation, not
+// a precise per-visitor limit, but it still caps total abuse/flood volume.
+app.use(rateLimit({
+    windowMs: 60 * 1000,
+    limit: 300,
+    standardHeaders: true,
+    legacyHeaders: false,
+}));
+const moneyMovementLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 
 // Real Prometheus scrape target (2026-07-11, alongside services/backend's
 // micrometer-registry-prometheus) -- default Node process metrics plus HTTP
@@ -46,12 +69,12 @@ const PAYMENT_SERVICE_URL = process.env.PAYMENT_SERVICE_URL || 'http://localhost
 const LEDGER_SERVICE_URL = process.env.LEDGER_SERVICE_URL || 'http://localhost:8082';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:4001';
 
-app.use('/api/v1/payments', createProxyMiddleware({
+app.use('/api/v1/payments', moneyMovementLimiter, createProxyMiddleware({
     target: PAYMENT_SERVICE_URL,
     changeOrigin: true
 }));
 
-app.use('/api/v1/ledger', createProxyMiddleware({
+app.use('/api/v1/ledger', moneyMovementLimiter, createProxyMiddleware({
     target: LEDGER_SERVICE_URL,
     changeOrigin: true
 }));
