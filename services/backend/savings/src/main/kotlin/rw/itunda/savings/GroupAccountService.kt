@@ -4,6 +4,8 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.GroupAccount
+import rw.itunda.core.domain.GroupAccountContribution
+import rw.itunda.core.domain.GroupAccountDuesReminder
 import rw.itunda.core.domain.GroupAccountMember
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
@@ -13,6 +15,8 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.repository.GroupAccountContributionRepository
+import rw.itunda.core.repository.GroupAccountDuesReminderRepository
 import rw.itunda.core.repository.GroupAccountMemberRepository
 import rw.itunda.core.repository.GroupAccountRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -21,6 +25,7 @@ import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
+import java.time.YearMonth
 import java.util.UUID
 
 private const val MAX_MEMBERS = 100
@@ -35,6 +40,8 @@ class GroupAccountNoWalletException(message: String) : RuntimeException(message)
 
 data class GroupAccountView(val account: GroupAccount, val balance: BigDecimal, val members: List<GroupAccountMemberView>)
 data class GroupAccountMemberView(val userId: String, val firstName: String, val lastName: String, val isOwner: Boolean, val joinedAt: Instant)
+data class GroupAccountDuesStatusView(val duesAmount: BigDecimal?, val cycleMonth: String, val members: List<GroupAccountDuesMemberView>)
+data class GroupAccountDuesMemberView(val userId: String, val firstName: String, val lastName: String, val contributedAmount: BigDecimal, val paid: Boolean)
 
 /**
  * Real Kakao Bank 모임통장 (group/shared account) -- see GroupAccount.kt's own doc
@@ -50,6 +57,8 @@ data class GroupAccountMemberView(val userId: String, val firstName: String, val
 class GroupAccountService(
     private val groupAccountRepository: GroupAccountRepository,
     private val groupAccountMemberRepository: GroupAccountMemberRepository,
+    private val groupAccountContributionRepository: GroupAccountContributionRepository,
+    private val groupAccountDuesReminderRepository: GroupAccountDuesReminderRepository,
     private val walletRepository: WalletRepository,
     private val userRepository: UserRepository,
     private val notificationRepository: NotificationRepository,
@@ -57,6 +66,7 @@ class GroupAccountService(
     private val rateLimiter: RateLimiter,
 ) {
     private fun generateAccountNumber(): String = (2024100000L + (Math.random() * 900000).toLong()).toString()
+    private fun currentCycleMonth(): String = YearMonth.now().toString()
 
     @Transactional
     fun createGroupAccount(ownerId: String, name: String): GroupAccount {
@@ -153,6 +163,12 @@ class GroupAccountService(
                 LedgerLeg(groupWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Deposit to \"${account.name}\""),
             ),
         )
+        // Real dues tracking (2026-07-26) -- see getDuesStatus's own doc comment. Every
+        // deposit counts toward this cycle's dues; there's no separate "pay dues" action,
+        // matching how a real 모임통장 works.
+        groupAccountContributionRepository.save(
+            GroupAccountContribution(id = "grpcontrib_${UUID.randomUUID()}", groupAccountId = account.id, userId = userId, cycleMonth = currentCycleMonth(), amount = amount),
+        )
         notifyOtherMembers(account, actorId = userId, title = "New deposit to \"${account.name}\"", body = "${amount.toPlainString()} RWF was added by a member.")
         return getGroupAccount(userId, groupAccountId)
     }
@@ -181,6 +197,101 @@ class GroupAccountService(
         )
         notifyOtherMembers(account, actorId = ownerId, title = "Withdrawal from \"${account.name}\"", body = "${amount.toPlainString()} RWF was withdrawn by the organizer.")
         return getGroupAccount(ownerId, groupAccountId)
+    }
+
+    /**
+     * Real KakaoBank 회비 (monthly dues) amount -- see kakaobank.com/products/moim's own
+     * "자동 회비 관리" (automated dues management). Organizer-only, matching every other
+     * real settlement/withdrawal-adjacent authority on this entity. `null` clears dues
+     * tracking entirely (no reminders sent, `getDuesStatus` reports `duesAmount = null`).
+     */
+    @Transactional
+    fun setDuesAmount(ownerId: String, groupAccountId: String, amount: BigDecimal?): GroupAccount {
+        require(amount == null || amount >= BigDecimal.ZERO) { "Dues amount cannot be negative" }
+        val account = groupAccountRepository.findById(groupAccountId).orElseThrow { GroupAccountNotFoundException("Group account not found") }
+        if (account.ownerId != ownerId) throw GroupAccountNotOwnerException("Only the group account's organizer can set the dues amount")
+        account.monthlyDuesAmount = amount
+        return groupAccountRepository.save(account)
+    }
+
+    /**
+     * Real per-member dues status for the current real calendar cycle -- any member can
+     * see this (matches Kakao Bank's own real shared transparency), not just the
+     * organizer. "Paid" is computed live from real deposits (`GroupAccountContribution`),
+     * never a separately-tracked flag that could drift from what actually happened.
+     */
+    fun getDuesStatus(userId: String, groupAccountId: String): GroupAccountDuesStatusView {
+        val account = groupAccountRepository.findById(groupAccountId).orElseThrow { GroupAccountNotFoundException("Group account not found") }
+        groupAccountMemberRepository.findByGroupAccountIdAndUserId(groupAccountId, userId)
+            ?: throw GroupAccountNotMemberException("You are not a member of this group account")
+
+        val cycleMonth = currentCycleMonth()
+        val members = groupAccountMemberRepository.findByGroupAccountId(groupAccountId)
+        val users = userRepository.findAllById(members.map { it.userId }).associateBy { it.id }
+        val contributedByUser = groupAccountContributionRepository.findByGroupAccountIdAndCycleMonth(groupAccountId, cycleMonth)
+            .groupBy { it.userId }.mapValues { (_, rows) -> rows.sumOf { it.amount } }
+
+        val duesAmount = account.monthlyDuesAmount
+        val memberViews = members.map { m ->
+            val u = users[m.userId]
+            val contributed = contributedByUser[m.userId] ?: BigDecimal.ZERO
+            GroupAccountDuesMemberView(
+                userId = m.userId, firstName = u?.firstName ?: "", lastName = u?.lastName ?: "",
+                contributedAmount = contributed, paid = duesAmount != null && contributed >= duesAmount,
+            )
+        }
+        return GroupAccountDuesStatusView(duesAmount = duesAmount, cycleMonth = cycleMonth, members = memberViews)
+    }
+
+    /**
+     * Organizer's real one-tap "미납부 모임원에게 알림 발송" (send unpaid members a
+     * notification) action -- see docs/DESIGN_REFERENCES.md's Group Account row. Shares
+     * `remindUnpaidMembers`'s real per-cycle dedupe with the automatic scheduler so a
+     * member already reminded automatically today doesn't get double-notified; returns
+     * how many were actually reminded (can be 0 if everyone's already paid or already
+     * reminded this cycle -- an honest count, not a fire-and-forget action).
+     */
+    @Transactional
+    fun requestUnpaidDues(ownerId: String, groupAccountId: String): Int {
+        val account = groupAccountRepository.findById(groupAccountId).orElseThrow { GroupAccountNotFoundException("Group account not found") }
+        if (account.ownerId != ownerId) throw GroupAccountNotOwnerException("Only the group account's organizer can request unpaid dues")
+        require(account.monthlyDuesAmount != null) { "No monthly dues amount is set for this group account" }
+        return remindUnpaidMembers(account, currentCycleMonth())
+    }
+
+    /** Called by GroupAccountDuesReminderScheduler -- see that class's own doc comment. */
+    @Transactional
+    fun sendAutomaticDuesReminders(): Int {
+        val cycleMonth = currentCycleMonth()
+        return groupAccountRepository.findByMonthlyDuesAmountIsNotNull().sumOf { remindUnpaidMembers(it, cycleMonth) }
+    }
+
+    private fun remindUnpaidMembers(account: GroupAccount, cycleMonth: String): Int {
+        val duesAmount = account.monthlyDuesAmount ?: return 0
+        val members = groupAccountMemberRepository.findByGroupAccountId(account.id)
+        val contributedByUser = groupAccountContributionRepository.findByGroupAccountIdAndCycleMonth(account.id, cycleMonth)
+            .groupBy { it.userId }.mapValues { (_, rows) -> rows.sumOf { it.amount } }
+
+        var remindedCount = 0
+        for (m in members) {
+            val contributed = contributedByUser[m.userId] ?: BigDecimal.ZERO
+            if (contributed >= duesAmount) continue
+            if (groupAccountDuesReminderRepository.existsByGroupAccountIdAndUserIdAndCycleMonth(account.id, m.userId, cycleMonth)) continue
+
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = m.userId, type = "GROUP_ACCOUNT_DUES_REMINDER",
+                    title = "Dues reminder for \"${account.name}\"",
+                    body = "You haven't paid this month's ${duesAmount.toPlainString()} RWF dues yet.",
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"groupAccountId\":\"${account.id}\"}",
+                ),
+            )
+            groupAccountDuesReminderRepository.save(
+                GroupAccountDuesReminder(id = "grpdue_${UUID.randomUUID()}", groupAccountId = account.id, userId = m.userId, cycleMonth = cycleMonth),
+            )
+            remindedCount++
+        }
+        return remindedCount
     }
 
     // Real transparency, matching Kakao Bank's own real-time shared-activity feed --

@@ -14,6 +14,8 @@ import rw.itunda.core.domain.AgentTillReconciliation
 import rw.itunda.core.domain.TillReconciliationStatus
 import rw.itunda.core.domain.EmailVerificationToken
 import rw.itunda.core.domain.GroupAccount
+import rw.itunda.core.domain.GroupAccountContribution
+import rw.itunda.core.domain.GroupAccountDuesReminder
 import rw.itunda.core.domain.GroupAccountMember
 import rw.itunda.core.domain.Holding
 import rw.itunda.core.domain.InterestJar
@@ -62,6 +64,7 @@ interface InterestJarRepository : JpaRepository<InterestJar, String>
 
 interface GroupAccountRepository : JpaRepository<GroupAccount, String> {
     fun findAllByIdIn(ids: List<String>): List<GroupAccount>
+    fun findByMonthlyDuesAmountIsNotNull(): List<GroupAccount>
 }
 
 interface GroupAccountMemberRepository : JpaRepository<GroupAccountMember, String> {
@@ -69,6 +72,14 @@ interface GroupAccountMemberRepository : JpaRepository<GroupAccountMember, Strin
     fun findByUserId(userId: String): List<GroupAccountMember>
     fun findByGroupAccountIdAndUserId(groupAccountId: String, userId: String): GroupAccountMember?
     fun countByGroupAccountId(groupAccountId: String): Long
+}
+
+interface GroupAccountContributionRepository : JpaRepository<GroupAccountContribution, String> {
+    fun findByGroupAccountIdAndCycleMonth(groupAccountId: String, cycleMonth: String): List<GroupAccountContribution>
+}
+
+interface GroupAccountDuesReminderRepository : JpaRepository<GroupAccountDuesReminder, String> {
+    fun existsByGroupAccountIdAndUserIdAndCycleMonth(groupAccountId: String, userId: String, cycleMonth: String): Boolean
 }
 
 interface WeeklySavingsPlanRepository : JpaRepository<WeeklySavingsPlan, String> {

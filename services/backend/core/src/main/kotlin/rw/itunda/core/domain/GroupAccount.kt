@@ -4,6 +4,7 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import java.math.BigDecimal
 import java.time.Instant
 
 /**
@@ -31,6 +32,11 @@ class GroupAccount(
 
     @Column(name = "wallet_id", nullable = false, length = 64)
     val walletId: String,
+
+    // Real KakaoBank 회비 (dues) amount, null until the organizer sets one -- see
+    // GroupAccountService.setDuesAmount's own doc comment.
+    @Column(name = "monthly_dues_amount", precision = 18, scale = 2)
+    var monthlyDuesAmount: BigDecimal? = null,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),

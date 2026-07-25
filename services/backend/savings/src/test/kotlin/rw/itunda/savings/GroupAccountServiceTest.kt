@@ -8,6 +8,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.GroupAccount
+import rw.itunda.core.domain.GroupAccountContribution
 import rw.itunda.core.domain.GroupAccountMember
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
@@ -15,6 +16,8 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.repository.GroupAccountContributionRepository
+import rw.itunda.core.repository.GroupAccountDuesReminderRepository
 import rw.itunda.core.repository.GroupAccountMemberRepository
 import rw.itunda.core.repository.GroupAccountRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -40,12 +43,17 @@ class GroupAccountServiceTest : BehaviorSpec({
     Given("creating a group account") {
         val groupAccountRepository = mockk<GroupAccountRepository>()
         val groupAccountMemberRepository = mockk<GroupAccountMemberRepository>()
+        val groupAccountContributionRepository = mockk<GroupAccountContributionRepository>()
+        val groupAccountDuesReminderRepository = mockk<GroupAccountDuesReminderRepository>()
         val walletRepository = mockk<WalletRepository>()
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>()
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = GroupAccountService(groupAccountRepository, groupAccountMemberRepository, walletRepository, userRepository, notificationRepository, ledgerService, rateLimiter)
+        val service = GroupAccountService(
+            groupAccountRepository, groupAccountMemberRepository, groupAccountContributionRepository, groupAccountDuesReminderRepository,
+            walletRepository, userRepository, notificationRepository, ledgerService, rateLimiter,
+        )
 
         When("an owner creates a new group account") {
             every { userRepository.findById("owner_1") } returns Optional.of(user("owner_1"))
@@ -72,12 +80,17 @@ class GroupAccountServiceTest : BehaviorSpec({
     Given("a group account with an owner and one invited member") {
         val groupAccountRepository = mockk<GroupAccountRepository>()
         val groupAccountMemberRepository = mockk<GroupAccountMemberRepository>()
+        val groupAccountContributionRepository = mockk<GroupAccountContributionRepository>()
+        val groupAccountDuesReminderRepository = mockk<GroupAccountDuesReminderRepository>()
         val walletRepository = mockk<WalletRepository>()
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>()
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = GroupAccountService(groupAccountRepository, groupAccountMemberRepository, walletRepository, userRepository, notificationRepository, ledgerService, rateLimiter)
+        val service = GroupAccountService(
+            groupAccountRepository, groupAccountMemberRepository, groupAccountContributionRepository, groupAccountDuesReminderRepository,
+            walletRepository, userRepository, notificationRepository, ledgerService, rateLimiter,
+        )
 
         val account = GroupAccount(id = "grp_1", name = "Roommates", ownerId = "owner_1", walletId = "wallet_grp_1")
 
@@ -170,6 +183,7 @@ class GroupAccountServiceTest : BehaviorSpec({
             )
             every { userRepository.findAllById(any<List<String>>()) } returns listOf(user("owner_1"), user("member_2"))
             every { notificationRepository.save(any()) } answers { firstArg() }
+            every { groupAccountContributionRepository.save(any()) } answers { firstArg() }
 
             val result = service.deposit("member_2", "grp_1", BigDecimal("3000"))
 
@@ -178,6 +192,9 @@ class GroupAccountServiceTest : BehaviorSpec({
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "owner_1" && it.type == "GROUP_ACCOUNT_ACTIVITY" }) }
                 verify(exactly = 0) { notificationRepository.save(match { it.userId == "member_2" && it.type == "GROUP_ACCOUNT_ACTIVITY" }) }
                 result.members.size shouldBe 2
+            }
+            Then("it records a real per-cycle dues contribution for the depositing member") {
+                verify(exactly = 1) { groupAccountContributionRepository.save(match { it.userId == "member_2" && it.groupAccountId == "grp_1" && it.amount == BigDecimal("3000") }) }
             }
         }
 
@@ -241,6 +258,112 @@ class GroupAccountServiceTest : BehaviorSpec({
                     error("expected InsufficientFundsException")
                 } catch (e: InsufficientFundsException) {
                     verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("the owner sets a real monthly dues amount") {
+            every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
+            every { groupAccountRepository.save(any()) } answers { firstArg() }
+
+            val updated = service.setDuesAmount("owner_1", "grp_1", BigDecimal("2000"))
+
+            Then("it's stored on the real account row") {
+                updated.monthlyDuesAmount shouldBe BigDecimal("2000")
+            }
+        }
+
+        When("a member who isn't the owner tries to set the dues amount") {
+            every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
+
+            Then("it throws GroupAccountNotOwnerException, matching every other real settlement-authority action") {
+                try {
+                    service.setDuesAmount("member_2", "grp_1", BigDecimal("2000"))
+                    error("expected GroupAccountNotOwnerException")
+                } catch (e: GroupAccountNotOwnerException) {
+                    verify(exactly = 0) { groupAccountRepository.save(any()) }
+                }
+            }
+        }
+
+        When("checking real dues status for the current cycle, with one member paid and one unpaid") {
+            val duesAccount = GroupAccount(id = "grp_1", name = "Roommates", ownerId = "owner_1", walletId = "wallet_grp_1", monthlyDuesAmount = BigDecimal("2000"))
+            val cycleMonth = java.time.YearMonth.now().toString()
+            every { groupAccountRepository.findById("grp_1") } returns Optional.of(duesAccount)
+            every { groupAccountMemberRepository.findByGroupAccountIdAndUserId("grp_1", "owner_1") } returns
+                GroupAccountMember(id = "m1", groupAccountId = "grp_1", userId = "owner_1")
+            every { groupAccountMemberRepository.findByGroupAccountId("grp_1") } returns listOf(
+                GroupAccountMember(id = "m1", groupAccountId = "grp_1", userId = "owner_1"),
+                GroupAccountMember(id = "m2", groupAccountId = "grp_1", userId = "member_2"),
+            )
+            every { userRepository.findAllById(any<List<String>>()) } returns listOf(user("owner_1"), user("member_2"))
+            every { groupAccountContributionRepository.findByGroupAccountIdAndCycleMonth("grp_1", cycleMonth) } returns listOf(
+                GroupAccountContribution(id = "c1", groupAccountId = "grp_1", userId = "owner_1", cycleMonth = cycleMonth, amount = BigDecimal("2000")),
+                GroupAccountContribution(id = "c2", groupAccountId = "grp_1", userId = "member_2", cycleMonth = cycleMonth, amount = BigDecimal("500")),
+            )
+
+            val status = service.getDuesStatus("owner_1", "grp_1")
+
+            Then("it correctly computes paid vs unpaid live from real deposits, never a separately-tracked flag") {
+                status.duesAmount shouldBe BigDecimal("2000")
+                status.members.first { it.userId == "owner_1" }.paid shouldBe true
+                status.members.first { it.userId == "owner_1" }.contributedAmount shouldBe BigDecimal("2000")
+                status.members.first { it.userId == "member_2" }.paid shouldBe false
+                status.members.first { it.userId == "member_2" }.contributedAmount shouldBe BigDecimal("500")
+            }
+        }
+
+        When("the owner requests reminders for real unpaid members") {
+            val duesAccount = GroupAccount(id = "grp_1", name = "Roommates", ownerId = "owner_1", walletId = "wallet_grp_1", monthlyDuesAmount = BigDecimal("2000"))
+            val cycleMonth = java.time.YearMonth.now().toString()
+            every { groupAccountRepository.findById("grp_1") } returns Optional.of(duesAccount)
+            every { groupAccountMemberRepository.findByGroupAccountId("grp_1") } returns listOf(
+                GroupAccountMember(id = "m1", groupAccountId = "grp_1", userId = "owner_1"),
+                GroupAccountMember(id = "m2", groupAccountId = "grp_1", userId = "member_2"),
+                GroupAccountMember(id = "m3", groupAccountId = "grp_1", userId = "member_3"),
+            )
+            every { groupAccountContributionRepository.findByGroupAccountIdAndCycleMonth("grp_1", cycleMonth) } returns listOf(
+                GroupAccountContribution(id = "c1", groupAccountId = "grp_1", userId = "owner_1", cycleMonth = cycleMonth, amount = BigDecimal("2000")),
+            )
+            // member_2 hasn't paid and hasn't been reminded yet -- member_3 hasn't paid but was already reminded this cycle.
+            every { groupAccountDuesReminderRepository.existsByGroupAccountIdAndUserIdAndCycleMonth("grp_1", "member_2", cycleMonth) } returns false
+            every { groupAccountDuesReminderRepository.existsByGroupAccountIdAndUserIdAndCycleMonth("grp_1", "member_3", cycleMonth) } returns true
+            every { notificationRepository.save(any()) } answers { firstArg() }
+            every { groupAccountDuesReminderRepository.save(any()) } answers { firstArg() }
+
+            val remindedCount = service.requestUnpaidDues("owner_1", "grp_1")
+
+            Then("it reminds only the real never-yet-reminded unpaid member -- not the paid owner, not the already-reminded member") {
+                remindedCount shouldBe 1
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "member_2" && it.type == "GROUP_ACCOUNT_DUES_REMINDER" }) }
+                verify(exactly = 0) { notificationRepository.save(match { it.userId == "owner_1" && it.type == "GROUP_ACCOUNT_DUES_REMINDER" }) }
+                verify(exactly = 0) { notificationRepository.save(match { it.userId == "member_3" && it.type == "GROUP_ACCOUNT_DUES_REMINDER" }) }
+            }
+        }
+
+        When("a member who isn't the owner tries to request unpaid-dues reminders") {
+            val duesAccount = GroupAccount(id = "grp_1", name = "Roommates", ownerId = "owner_1", walletId = "wallet_grp_1", monthlyDuesAmount = BigDecimal("2000"))
+            every { groupAccountRepository.findById("grp_1") } returns Optional.of(duesAccount)
+
+            Then("it throws GroupAccountNotOwnerException before touching notifications") {
+                try {
+                    service.requestUnpaidDues("member_2", "grp_1")
+                    error("expected GroupAccountNotOwnerException")
+                } catch (e: GroupAccountNotOwnerException) {
+                    verify(exactly = 0) { notificationRepository.save(any()) }
+                }
+            }
+        }
+
+        When("the owner requests reminders but never configured a dues amount") {
+            every { groupAccountRepository.findById("grp_1") } returns Optional.of(account)
+
+            Then("it throws a real, honest IllegalArgumentException rather than silently reminding nobody") {
+                try {
+                    service.requestUnpaidDues("owner_1", "grp_1")
+                    error("expected IllegalArgumentException")
+                } catch (e: IllegalArgumentException) {
+                    verify(exactly = 0) { notificationRepository.save(any()) }
                 }
             }
         }

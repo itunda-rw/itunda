@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
@@ -25,6 +26,7 @@ import java.math.BigDecimal
 data class CreateGroupAccountRequest(val name: String)
 data class InviteMemberRequest(val phoneNumber: String)
 data class GroupAccountAmountRequest(val amount: BigDecimal)
+data class SetDuesAmountRequest(val amount: BigDecimal?)
 
 @RestController
 @RequestMapping("/api/v1/group-accounts")
@@ -82,6 +84,27 @@ class GroupAccountController(
             200 to (mapOf("success" to true, "message" to "Withdrew ${request.amount} RWF") + view.toMap())
         }
         return ResponseEntity.status(status).body(body)
+    }
+
+    // Real KakaoBank 회비 (dues) management -- see GroupAccountService's own doc comments.
+    @PutMapping("/{id}/dues")
+    fun setDuesAmount(
+        @PathVariable id: String,
+        @RequestBody request: SetDuesAmountRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val account = groupAccountService.setDuesAmount(currentUser.userId, id, request.amount)
+        return ResponseEntity.ok(mapOf("success" to true, "groupAccount" to account))
+    }
+
+    @GetMapping("/{id}/dues")
+    fun getDuesStatus(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser) =
+        ResponseEntity.ok(mapOf("success" to true, "dues" to groupAccountService.getDuesStatus(currentUser.userId, id)))
+
+    @PostMapping("/{id}/dues/remind")
+    fun requestUnpaidDues(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val remindedCount = groupAccountService.requestUnpaidDues(currentUser.userId, id)
+        return ResponseEntity.ok(mapOf("success" to true, "remindedCount" to remindedCount))
     }
 
     private fun GroupAccountView.toMap() = mapOf("groupAccount" to account, "balance" to balance, "members" to members)
