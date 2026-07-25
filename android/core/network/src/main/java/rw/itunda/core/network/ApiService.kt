@@ -587,6 +587,17 @@ data class JobPostsResponse(val success: Boolean, val posts: List<JobPostDto>, v
 data class JobCategoriesResponse(val success: Boolean, val categories: List<JobCategoryDto>)
 data class FavoriteJobPostDto(val jobPostId: String, val title: String, val payAmount: Double, val category: String, val favoritedAt: String)
 data class FavoriteJobPostsResponse(val success: Boolean, val favorites: List<FavoriteJobPostDto>)
+
+// Real 당근알바-style structured application (2026-07-25) -- see backend
+// JobApplicationService's own doc comment.
+data class ApplyToJobRequest(val message: String)
+data class JobApplicationDto(
+    val id: String, val jobPostId: String, val applicantId: String, val message: String,
+    val status: String, val submittedAt: String, val respondedAt: String? = null,
+)
+data class JobApplicationResponse(val success: Boolean, val application: JobApplicationDto, val conversation: ConversationDto? = null)
+data class JobApplicationsResponse(val success: Boolean, val applications: List<JobApplicationDto>)
+data class RespondToApplicationRequest(val accept: Boolean)
 data class ContactPosterResponse(val success: Boolean, val conversation: ConversationDto)
 
 // Real 당근부동산-style property listing (2026-07-19) -- see rw.itunda.realestate.web.PropertyListingController.
@@ -599,8 +610,17 @@ data class PropertyListingDto(
     // captured at mark-taken time, see backend PropertyListing.kt's own doc comment.
     // Only set once a real review becomes possible for this transaction.
     val counterpartyId: String? = null,
+    // Real ownership verification (2026-07-25) -- NONE/PENDING/VERIFIED, see backend
+    // PropertyOwnershipSubmission's own doc comment.
+    val ownershipVerificationStatus: String = "NONE",
 )
 data class MarkTakenRequest(val counterpartyPhoneNumber: String? = null)
+data class SubmitOwnershipVerificationRequest(val documentUrl: String)
+data class PropertyOwnershipSubmissionDto(
+    val id: String, val listingId: String, val userId: String, val documentUrl: String,
+    val status: String, val submittedAt: String,
+)
+data class PropertyOwnershipSubmissionResponse(val success: Boolean, val submission: PropertyOwnershipSubmissionDto)
 data class CreatePropertyListingRequest(
     val listingType: String, val propertyType: String, val title: String, val description: String, val price: Double,
     val bedrooms: Int? = null, val sizeSqm: Double? = null, val latitude: Double? = null, val longitude: Double? = null,
@@ -901,6 +921,39 @@ data class EatsOrderItemDto(
 data class EatsOrderDetailResponse(val success: Boolean, val order: EatsOrderDto, val items: List<EatsOrderItemDto>)
 data class EatsOrdersResponse(val success: Boolean, val orders: List<EatsOrderDto>)
 
+// Real 배민오더-style table/QR in-store ordering (2026-07-25) -- see
+// rw.itunda.eats.web.DineInOrderController. No delivery address/rider fields at all;
+// totalAmount == itemsSubtotal since there's no delivery fee to add.
+data class DineInOrderItemRequest(val menuItemId: String, val quantity: Int, val selectedChoiceIds: List<String>? = null)
+data class PlaceDineInOrderRequest(
+    val restaurantId: String,
+    val tableNumber: String,
+    val items: List<DineInOrderItemRequest>,
+    val notes: String? = null,
+)
+data class UpdateDineInOrderStatusRequest(val status: String)
+data class DineInOrderDto(
+    val id: String,
+    val buyerId: String,
+    val restaurantId: String,
+    val tableNumber: String,
+    val itemsSubtotal: Double,
+    val platformFee: Double,
+    val totalAmount: Double,
+    val transactionId: String,
+    val status: String,
+    val notes: String? = null,
+    val createdAt: String,
+    val updatedAt: String,
+    val refundTransactionId: String? = null,
+)
+data class DineInOrderItemDto(
+    val id: String, val orderId: String, val productId: String, val productName: String, val unitPrice: Double, val quantity: Int,
+    val selectedOptionsJson: String? = null,
+)
+data class DineInOrderDetailResponse(val success: Boolean, val order: DineInOrderDto, val items: List<DineInOrderItemDto>)
+data class DineInOrdersResponse(val success: Boolean, val orders: List<DineInOrderDto>)
+
 data class RiderDto(val id: String, val userId: String, val walletId: String, val status: String, val available: Boolean, val createdAt: String)
 data class RiderResponse(val success: Boolean, val rider: RiderDto)
 
@@ -1044,11 +1097,19 @@ data class IdentityStatusResponse(val success: Boolean, val submissions: List<Ky
 // remainder silently absorbed into one participant's share so shares always sum
 // exactly to totalAmount; each participant pays their own share directly to the
 // organizer via a real wallet-to-wallet push, no escrow.
-data class CreateSplitBillRequest(val totalAmount: java.math.BigDecimal, val description: String, val participantUserIds: List<String>)
+data class CreateSplitBillRequest(
+    val totalAmount: java.math.BigDecimal, val description: String, val participantUserIds: List<String>,
+    // Real KakaoPay 사다리타기 (ladder-game) mode (2026-07-25) -- see backend
+    // SplitBillService.ladderSplit's own doc comment. Omit (or "EVEN") for the
+    // unchanged flat-split v1 behavior.
+    val mode: String = "EVEN",
+    val ladderVarianceLevel: Int? = null,
+)
 data class SplitBillDto(
     val id: String, val organizerId: String, val groupConversationId: String, val messageId: String,
     val totalAmount: java.math.BigDecimal, val description: String, val status: String,
     val settledAt: String?, val createdAt: String,
+    val mode: String = "EVEN", val ladderVarianceLevel: Int? = null,
 )
 data class SplitBillParticipantDto(
     val id: String, val splitBillId: String, val userId: String, val shareAmount: java.math.BigDecimal,
@@ -1493,6 +1554,20 @@ interface ApiService {
     @POST("api/v1/jobs/posts/{id}/contact-poster")
     suspend fun contactPoster(@Path("id") jobPostId: String): ContactPosterResponse
 
+    // Real 당근알바-style structured application (2026-07-25) -- see backend
+    // JobApplicationService's own doc comment.
+    @POST("api/v1/jobs/posts/{id}/apply")
+    suspend fun applyToJob(@Path("id") jobPostId: String, @Body request: ApplyToJobRequest): JobApplicationResponse
+
+    @GET("api/v1/jobs/posts/{id}/applications")
+    suspend fun getApplicationsForJobPost(@Path("id") jobPostId: String): JobApplicationsResponse
+
+    @GET("api/v1/jobs/my-applications")
+    suspend fun getMyJobApplications(): JobApplicationsResponse
+
+    @POST("api/v1/jobs/applications/{id}/respond")
+    suspend fun respondToJobApplication(@Path("id") applicationId: String, @Body request: RespondToApplicationRequest): JobApplicationResponse
+
     // Real 당근부동산-style property listing (2026-07-19) -- see rw.itunda.realestate.web.PropertyListingController.
     @GET("api/v1/realestate/property-types")
     suspend fun getPropertyTypes(): PropertyTypesResponse
@@ -1532,6 +1607,14 @@ interface ApiService {
 
     @POST("api/v1/realestate/listings/{id}/mark-taken")
     suspend fun markPropertyListingTaken(@Path("id") propertyListingId: String, @Body request: MarkTakenRequest = MarkTakenRequest()): PropertyListingResponse
+
+    // Real ownership verification (2026-07-25) -- see backend PropertyOwnershipService's
+    // own doc comment. documentUrl comes from uploadPhoto() above.
+    @POST("api/v1/realestate/listings/{id}/verify-ownership")
+    suspend fun submitPropertyOwnershipVerification(
+        @Path("id") propertyListingId: String,
+        @Body request: SubmitOwnershipVerificationRequest,
+    ): PropertyOwnershipSubmissionResponse
 
     // Real post-transaction review with asymmetric public/private visibility
     // (2026-07-24) -- see backend HoodReviewService's own doc comment.
@@ -1747,6 +1830,20 @@ interface ApiService {
     @GET("api/v1/eats/favorites")
     suspend fun getMyFavoriteRestaurants(): FavoriteRestaurantsResponse
 
+    // Real 배민오더-style table/QR in-store ordering (2026-07-25) -- see
+    // rw.itunda.eats.web.DineInOrderController.
+    @POST("api/v1/eats/dine-in/orders")
+    suspend fun placeDineInOrder(@Header("Idempotency-Key") idempotencyKey: String, @Body request: PlaceDineInOrderRequest): DineInOrderDetailResponse
+
+    @GET("api/v1/eats/dine-in/orders/my-orders")
+    suspend fun getMyDineInOrders(): DineInOrdersResponse
+
+    @GET("api/v1/eats/dine-in/orders/{id}")
+    suspend fun getDineInOrder(@Path("id") orderId: String): DineInOrderDetailResponse
+
+    @POST("api/v1/eats/dine-in/orders/{id}/cancel")
+    suspend fun cancelDineInOrder(@Path("id") orderId: String): DineInOrderDetailResponse
+
     // Real Toss Securities-style stock investing (rw.itunda.stocks) -- this is the
     // first mobile UI this feature has ever had (bank-mfe just got its own real UI the
     // same session, closing what had been a zero-client-UI gap even for the original
@@ -1871,7 +1968,27 @@ interface ApiService {
 
     @POST("api/v1/weekly-savings/plans/{id}/withdraw")
     suspend fun withdrawWeeklySavingsPlan(@Path("id") id: String): WeeklySavingsActionResponse
+
+    // Real Toss Bank 먼저 이자받는 정기예금 (interest-paid-upfront term deposit)
+    // equivalent (2026-07-25) -- see backend UpfrontInterestDeposit's own doc comment.
+    @GET("api/v1/upfront-deposits")
+    suspend fun getUpfrontDeposits(): UpfrontDepositsResponse
+
+    @POST("api/v1/upfront-deposits")
+    suspend fun openUpfrontDeposit(@Body request: OpenUpfrontDepositRequest): UpfrontDepositResponse
+
+    @POST("api/v1/upfront-deposits/{id}/withdraw")
+    suspend fun withdrawUpfrontDeposit(@Path("id") id: String): UpfrontDepositResponse
 }
+
+data class UpfrontDepositDto(
+    val id: String, val userId: String, val walletId: String, val principal: Double,
+    val interestRate: Double, val interestPaid: Double, val status: String,
+    val openedAt: String, val maturesAt: String, val maturedAt: String? = null, val withdrawnAt: String? = null,
+)
+data class OpenUpfrontDepositRequest(val principal: java.math.BigDecimal)
+data class UpfrontDepositResponse(val success: Boolean, val deposit: UpfrontDepositDto, val message: String? = null)
+data class UpfrontDepositsResponse(val success: Boolean, val deposits: List<UpfrontDepositDto>)
 
 data class TransactionHistoryResponse(val success: Boolean, val transactions: List<TransactionDto>)
 

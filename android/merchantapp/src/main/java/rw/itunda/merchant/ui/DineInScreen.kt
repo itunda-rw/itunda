@@ -1,25 +1,26 @@
 package rw.itunda.merchant.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,76 +35,72 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import rw.itunda.merchant.network.EatsOrderDto
-import rw.itunda.merchant.network.MerchantDto
+import rw.itunda.merchant.network.DineInOrderDto
 import rw.itunda.merchant.network.NetworkClient
-import rw.itunda.merchant.network.UpdateEatsOrderStatusRequest
+import rw.itunda.merchant.network.UpdateDineInOrderStatusRequest
+import rw.itunda.merchant.network.dineInTableQrPayload
 
-private enum class MerchantTab { ORDERS, DINE_IN, CATALOG, REGISTER, REPORTS }
+/**
+ * Real 배민오더-style table/QR in-store ordering, restaurant side (2026-07-25) --
+ * two real, independent jobs on one tab: print/display a real per-table QR (top), and
+ * watch + progress real incoming table orders (below), same restaurant-driven-only
+ * status chain (PLACED -> ACCEPTED -> PREPARING -> SERVED) OrdersTab's own Eats queue
+ * already established, minus the rider-handoff step this order type never has.
+ */
+@Composable
+fun DineInTab(restaurantId: String) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        TableQrGenerator(restaurantId)
+        androidx.compose.material3.Divider(modifier = Modifier.padding(vertical = 4.dp))
+        DineInOrdersQueue()
+    }
+}
 
 @Composable
-fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
-    var tab by remember { mutableStateOf(MerchantTab.ORDERS) }
+private fun TableQrGenerator(restaurantId: String) {
+    var tableNumber by remember { mutableStateOf("") }
+    var qrContent by remember { mutableStateOf<String?>(null) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column {
-                Text("Itunda Merchant", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text(merchant.businessName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            IconButton(onClick = { NetworkClient.currentTokenStore().clearSession(); onLogout() }) {
-                Icon(Icons.Filled.ExitToApp, contentDescription = "Log out")
-            }
-        }
-
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
-            listOf(
-                MerchantTab.ORDERS to "Orders",
-                MerchantTab.DINE_IN to "Dine-in",
-                MerchantTab.CATALOG to "Catalog",
-                MerchantTab.REGISTER to "Register",
-                MerchantTab.REPORTS to "Reports",
-            ).forEach { (t, label) ->
-                val selected = t == tab
-                Text(
-                    label,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(end = 18.dp).clickable { tab = t },
-                )
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text("Table QR codes", fontWeight = FontWeight.Bold)
+        Text(
+            "Print this and leave it on a table -- a customer scans it to order straight to that table.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.padding(top = 8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = tableNumber,
+                onValueChange = { if (it.length <= 50) tableNumber = it },
+                label = { Text("Table number") },
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(modifier = Modifier.padding(start = 8.dp))
+            Button(onClick = { qrContent = dineInTableQrPayload(restaurantId, tableNumber.trim()) }, enabled = tableNumber.isNotBlank()) {
+                Text("Generate")
             }
         }
-
-        when (tab) {
-            MerchantTab.ORDERS -> OrdersTab()
-            MerchantTab.DINE_IN -> DineInTab(restaurantId = merchant.id)
-            MerchantTab.CATALOG -> CatalogTab()
-            MerchantTab.REGISTER -> PosTab()
-            MerchantTab.REPORTS -> ReportsTab()
+        val content = qrContent
+        if (content != null) {
+            Spacer(modifier = Modifier.padding(top = 12.dp))
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                Image(bitmap = generateQrBitmap(content), contentDescription = "Table QR code", modifier = Modifier.size(200.dp))
+                Text("Table $tableNumber", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 6.dp))
+            }
         }
     }
 }
 
-/**
- * Real incoming Eats orders (restaurant side) -- this previously only ever existed
- * in the consumer app's own bank-mfe (any merchant who wanted to manage incoming
- * orders had to use their buyer account's app, a real structural gap). Restaurant-
- * driven statuses only: PLACED -> ACCEPTED -> PREPARING -> READY_FOR_PICKUP; once a
- * rider claims it, this app's job is done (rider-driven statuses have no action here).
- */
 @Composable
-private fun OrdersTab() {
-    var orders by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
+private fun DineInOrdersQueue() {
+    var orders by remember { mutableStateOf<List<DineInOrderDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     suspend fun refresh() {
         try {
-            orders = NetworkClient.apiService.getRestaurantOrders().orders
+            orders = NetworkClient.apiService.getDineInOrders().orders
             error = null
         } catch (e: Exception) {
             error = "Couldn't reach itunda. Check your connection and try again."
@@ -118,6 +115,9 @@ private fun OrdersTab() {
         }
     }
 
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Text("Table orders", fontWeight = FontWeight.Bold)
+    }
     error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp)) }
 
     val list = orders
@@ -125,36 +125,36 @@ private fun OrdersTab() {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         return
     }
-    val active = list.filter { it.status in setOf("PLACED", "ACCEPTED", "PREPARING", "READY_FOR_PICKUP") }
+    val active = list.filter { it.status in setOf("PLACED", "ACCEPTED", "PREPARING") }
     if (active.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No open orders right now.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("No open table orders right now.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         return
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+        contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         items(active, key = { it.id }) { order ->
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                        StatusBadge(order.status)
+                        DineInStatusBadge(order.status)
                         Text("${"%,.0f".format(order.totalAmount)} RWF", fontWeight = FontWeight.Bold)
                     }
-                    Text(order.deliveryAddress, style = MaterialTheme.typography.bodySmall)
-                    order.deliveryNotes?.takeIf { it.isNotBlank() }?.let {
+                    Text("Table ${order.tableNumber}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                    order.notes?.takeIf { it.isNotBlank() }?.let {
                         Text("Note: $it", style = MaterialTheme.typography.bodySmall)
                     }
-                    nextRestaurantAction(order.status)?.let { (nextStatus, label) ->
-                        androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(top = 8.dp))
+                    nextDineInAction(order.status)?.let { (nextStatus, label) ->
+                        Spacer(modifier = Modifier.padding(top = 8.dp))
                         Button(
                             onClick = {
                                 scope.launch {
                                     try {
-                                        NetworkClient.apiService.advanceRestaurantOrderStatus(order.id, UpdateEatsOrderStatusRequest(nextStatus))
+                                        NetworkClient.apiService.advanceDineInOrderStatus(order.id, UpdateDineInOrderStatusRequest(nextStatus))
                                         refresh()
                                     } catch (e: Exception) {
                                         error = "Couldn't update this order. Try again."
@@ -170,23 +170,20 @@ private fun OrdersTab() {
     }
 }
 
-private fun nextRestaurantAction(status: String): Pair<String, String>? = when (status) {
+private fun nextDineInAction(status: String): Pair<String, String>? = when (status) {
     "PLACED" -> "ACCEPTED" to "Accept order"
     "ACCEPTED" -> "PREPARING" to "Start preparing"
-    "PREPARING" -> "READY_FOR_PICKUP" to "Mark ready for pickup"
+    "PREPARING" -> "SERVED" to "Mark served"
     else -> null
 }
 
 @Composable
-internal fun StatusBadge(status: String) {
+private fun DineInStatusBadge(status: String) {
     val label = when (status) {
         "PLACED" -> "New order"
         "ACCEPTED" -> "Accepted"
         "PREPARING" -> "Preparing"
-        "READY_FOR_PICKUP" -> "Ready for pickup"
-        "RIDER_ASSIGNED" -> "Rider on the way"
-        "PICKED_UP" -> "Out for delivery"
-        "DELIVERED" -> "Delivered"
+        "SERVED" -> "Served"
         "CANCELLED" -> "Cancelled"
         else -> status
     }

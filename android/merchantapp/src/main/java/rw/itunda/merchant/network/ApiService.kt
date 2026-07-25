@@ -96,6 +96,23 @@ data class EatsOrderDetailResponse(val success: Boolean, val order: EatsOrderDto
 data class EatsOrdersResponse(val success: Boolean, val orders: List<EatsOrderDto>)
 data class UpdateEatsOrderStatusRequest(val status: String)
 
+// Real 배민오더-style table/QR in-store ordering (2026-07-25) -- previously only ever
+// exposed via the consumer app's own checkout flow; this app's own restaurant-side
+// queue reuses it unmodified, trimmed to the fields this app's UI actually reads.
+data class DineInOrderDto(
+    val id: String,
+    val buyerId: String,
+    val restaurantId: String,
+    val tableNumber: String,
+    val totalAmount: Double,
+    val status: String,
+    val notes: String? = null,
+    val createdAt: String,
+)
+data class DineInOrderDetailResponse(val success: Boolean, val order: DineInOrderDto)
+data class DineInOrdersResponse(val success: Boolean, val orders: List<DineInOrderDto>)
+data class UpdateDineInOrderStatusRequest(val status: String)
+
 interface ApiService {
     @POST("api/v1/merchant/register")
     suspend fun registerMerchant(@Body request: RegisterMerchantRequest): MerchantResponse
@@ -129,6 +146,12 @@ interface ApiService {
 
     @POST("api/v1/eats/orders/{id}/status")
     suspend fun advanceRestaurantOrderStatus(@Path("id") orderId: String, @Body request: UpdateEatsOrderStatusRequest): EatsOrderDetailResponse
+
+    @GET("api/v1/eats/dine-in/orders/restaurant-orders")
+    suspend fun getDineInOrders(): DineInOrdersResponse
+
+    @POST("api/v1/eats/dine-in/orders/{id}/status")
+    suspend fun advanceDineInOrderStatus(@Path("id") orderId: String, @Body request: UpdateDineInOrderStatusRequest): DineInOrderDetailResponse
 }
 
 /**
@@ -177,3 +200,9 @@ object NetworkClient {
  * convention merchant-mfe's web POS screen already established
  * (paymentIntentQrPayload). */
 fun paymentIntentQrPayload(intentId: String) = "itunda://pay?intentId=$intentId"
+
+/** Real 배민오더-style per-table QR (2026-07-25) -- printed/displayed at a physical
+ * table, resolved by a customer's own app into the dine-in ordering screen for this
+ * exact restaurant + table. Same encoding convention as paymentIntentQrPayload above. */
+fun dineInTableQrPayload(restaurantId: String, tableNumber: String) =
+    "itunda://eats/dine-in?restaurantId=$restaurantId&table=${java.net.URLEncoder.encode(tableNumber, "UTF-8")}"

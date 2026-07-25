@@ -73,12 +73,15 @@ import rw.itunda.core.designsystem.components.StarGold
 import rw.itunda.core.designsystem.components.StarRatingRow
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.AddressSuggestionDto
+import rw.itunda.core.network.DineInOrderDto
+import rw.itunda.core.network.DineInOrderItemRequest
 import rw.itunda.core.network.EatsOrderDto
 import rw.itunda.core.network.EatsOrderItemRequest
 import rw.itunda.core.network.EatsRatingResponse
 import rw.itunda.core.network.FavoriteRestaurantDto
 import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.PlaceDineInOrderRequest
 import rw.itunda.core.network.PlaceEatsOrderRequest
 import rw.itunda.core.network.RiderDto
 import rw.itunda.core.network.SetRiderAvailabilityRequest
@@ -115,6 +118,14 @@ private val EATS_STATUS_LABEL = mapOf(
     "RIDER_ASSIGNED" to "Rider on the way to restaurant",
     "PICKED_UP" to "Picked up — on the way",
     "DELIVERED" to "Delivered",
+    "CANCELLED" to "Cancelled — refunded",
+)
+
+private val DINE_IN_STATUS_LABEL = mapOf(
+    "PLACED" to "Placed",
+    "ACCEPTED" to "Accepted by restaurant",
+    "PREPARING" to "Preparing",
+    "SERVED" to "Served",
     "CANCELLED" to "Cancelled — refunded",
 )
 
@@ -282,6 +293,7 @@ private fun OrderFoodContent(
     val cart = remember { mutableStateMapOf<String, EatsCartLine>() }
     var showCheckout by remember { mutableStateOf(false) }
     var confirmedOrder by remember { mutableStateOf<EatsOrderDto?>(null) }
+    var confirmedDineInOrder by remember { mutableStateOf<DineInOrderDto?>(null) }
     var reorderingId by remember { mutableStateOf<String?>(null) }
     var reorderError by remember { mutableStateOf<String?>(null) }
     // Real bookmarked/favorited restaurants (2026-07-19) -- a set of restaurant ids for
@@ -429,6 +441,18 @@ private fun OrderFoodContent(
         })
         return
     }
+    val confirmedDineIn = confirmedDineInOrder
+    if (confirmedDineIn != null) {
+        DineInOrderConfirmationView(confirmedDineIn, onDone = {
+            confirmedDineInOrder = null
+            selectedRestaurant = null
+            menu = null
+            cart.clear()
+            showCheckout = false
+            view = OrderFoodView.ORDERS
+        })
+        return
+    }
 
     val restaurant = selectedRestaurant
     if (restaurant != null) {
@@ -439,6 +463,7 @@ private fun OrderFoodContent(
                 menu = menu.orEmpty(),
                 onBack = { showCheckout = false },
                 onOrderPlaced = { order -> confirmedOrder = order },
+                onDineInOrderPlaced = { order -> confirmedDineInOrder = order },
                 deviceStepUpHost = deviceStepUpHost,
             )
         } else {
@@ -490,6 +515,7 @@ private fun OrderFoodContent(
                     Spacer(Modifier.height(8.dp))
                     Text(reorderErr, color = Ids.colors.danger, fontSize = 13.sp)
                 }
+                MyDineInOrdersView()
             }
         } else if (view == OrderFoodView.FAVORITES) {
             item {
@@ -928,6 +954,8 @@ private fun AddressAutocompleteField(
     }
 }
 
+private enum class EatsCheckoutMode { DELIVERY, DINE_IN }
+
 @Composable
 private fun EatsCheckoutView(
     restaurant: ShoppingMerchantDto,
@@ -935,13 +963,19 @@ private fun EatsCheckoutView(
     menu: List<MerchantProductDto>,
     onBack: () -> Unit,
     onOrderPlaced: (EatsOrderDto) -> Unit,
+    onDineInOrderPlaced: (DineInOrderDto) -> Unit,
     deviceStepUpHost: @Composable (Boolean, () -> Unit, suspend () -> Unit) -> Unit,
 ) {
     BackHandler(onBack = onBack)
+    var mode by remember { mutableStateOf(EatsCheckoutMode.DELIVERY) }
     var address by remember { mutableStateOf("") }
     var addressLatitude by remember { mutableStateOf<Double?>(null) }
     var addressLongitude by remember { mutableStateOf<Double?>(null) }
     var deliveryNotes by remember { mutableStateOf("") }
+    // Real 배민오더-style table/QR ordering (2026-07-25) -- the table number a buyer
+    // reads off the physical tag/QR at their table. See DineInOrder.kt's own doc
+    // comment for why this is free text rather than a validated table registry.
+    var tableNumber by remember { mutableStateOf("") }
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     // Real device binding step-up (2026-07-21) -- Eats checkout was a real gap:
@@ -953,6 +987,34 @@ private fun EatsCheckoutView(
 
     val lines = cart.values.filter { it.quantity > 0 }.mapNotNull { line -> menu.find { it.id == line.productId }?.let { it to line } }
     val total = lines.sumOf { (p, line) -> eatsLineUnitPrice(p, line.choiceIds) * line.quantity }
+    val canSubmit = if (mode == EatsCheckoutMode.DELIVERY) address.isNotBlank() else tableNumber.isNotBlank()
+
+    suspend fun submitDelivery() {
+        val res = NetworkClient.apiService.placeEatsOrder(
+            idempotencyKey = idempotencyKey,
+            request = PlaceEatsOrderRequest(
+                restaurantId = restaurant.merchantId,
+                items = lines.map { (p, line) -> EatsOrderItemRequest(p.id, line.quantity, line.choiceIds.ifEmpty { null }) },
+                deliveryAddress = address.trim(),
+                deliveryLatitude = addressLatitude,
+                deliveryLongitude = addressLongitude,
+                deliveryNotes = deliveryNotes.trim().ifBlank { null },
+            ),
+        )
+        if (res.success) onOrderPlaced(res.order)
+    }
+
+    suspend fun submitDineIn() {
+        val res = NetworkClient.apiService.placeDineInOrder(
+            idempotencyKey = idempotencyKey,
+            request = PlaceDineInOrderRequest(
+                restaurantId = restaurant.merchantId,
+                tableNumber = tableNumber.trim(),
+                items = lines.map { (p, line) -> DineInOrderItemRequest(p.id, line.quantity, line.choiceIds.ifEmpty { null }) },
+            ),
+        )
+        if (res.success) onDineInOrderPlaced(res.order)
+    }
 
     Column(modifier = Modifier.fillMaxSize().padding(vertical = Ids.layout.screenVertical)) {
         BackTopBar("Checkout", onBack)
@@ -970,29 +1032,64 @@ private fun EatsCheckoutView(
                     Text("%,.0f RWF".format(total), color = Ids.colors.textPrimary, fontSize = 14.sp)
                 }
             }
-            item { Text("Plus a real delivery fee, added at checkout", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp)) }
             item { Spacer(modifier = Modifier.height(14.dp)) }
             item {
-                AddressAutocompleteField(
-                    address = address,
-                    onAddressChange = { address = it; addressLatitude = null; addressLongitude = null },
-                    onSuggestionSelected = { s ->
-                        address = s.displayName
-                        addressLatitude = s.latitude
-                        addressLongitude = s.longitude
-                    },
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Ids.colors.surfaceSoft),
+                ) {
+                    listOf(EatsCheckoutMode.DELIVERY to "Delivery", EatsCheckoutMode.DINE_IN to "Order at table").forEach { (m, label) ->
+                        val selected = m == mode
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (selected) Ids.colors.brand else Color.Transparent)
+                                .clickable(enabled = !submitting) { mode = m; error = null }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(label, color = if (selected) Color.White else Ids.colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
             }
-            if (addressLatitude != null) {
-                item { Text("Pinned -- real distance-based delivery fee applies", color = Ids.colors.success, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)) }
-            }
-            item {
-                OutlinedTextField(
-                    value = deliveryNotes,
-                    onValueChange = { if (it.length <= 500) deliveryNotes = it },
-                    placeholder = { Text("Delivery notes (optional) -- e.g. Leave at the gate") },
-                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                )
+            if (mode == EatsCheckoutMode.DELIVERY) {
+                item { Text("Plus a real delivery fee, added at checkout", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp)) }
+                item {
+                    AddressAutocompleteField(
+                        address = address,
+                        onAddressChange = { address = it; addressLatitude = null; addressLongitude = null },
+                        onSuggestionSelected = { s ->
+                            address = s.displayName
+                            addressLatitude = s.latitude
+                            addressLongitude = s.longitude
+                        },
+                    )
+                }
+                if (addressLatitude != null) {
+                    item { Text("Pinned -- real distance-based delivery fee applies", color = Ids.colors.success, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)) }
+                }
+                item {
+                    OutlinedTextField(
+                        value = deliveryNotes,
+                        onValueChange = { if (it.length <= 500) deliveryNotes = it },
+                        placeholder = { Text("Delivery notes (optional) -- e.g. Leave at the gate") },
+                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                    )
+                }
+            } else {
+                item { Text("No delivery fee -- served straight to your table", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp)) }
+                item {
+                    OutlinedTextField(
+                        value = tableNumber,
+                        onValueChange = { if (it.length <= 50) tableNumber = it },
+                        placeholder = { Text("Table number -- e.g. 12") },
+                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                    )
+                }
             }
             error?.let { item { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) } }
         }
@@ -1000,25 +1097,14 @@ private fun EatsCheckoutView(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
-                .background(if (submitting || address.isBlank()) Ids.colors.textTertiary else Ids.colors.brand)
-                .clickable(enabled = !submitting && address.isNotBlank()) {
+                .background(if (submitting || !canSubmit) Ids.colors.textTertiary else Ids.colors.brand)
+                .clickable(enabled = !submitting && canSubmit) {
                     submitting = true
                     error = null
                     needsDeviceVerification = false
                     coroutineScope.launch {
                         try {
-                            val res = NetworkClient.apiService.placeEatsOrder(
-                                idempotencyKey = idempotencyKey,
-                                request = PlaceEatsOrderRequest(
-                                    restaurantId = restaurant.merchantId,
-                                    items = lines.map { (p, line) -> EatsOrderItemRequest(p.id, line.quantity, line.choiceIds.ifEmpty { null }) },
-                                    deliveryAddress = address.trim(),
-                                    deliveryLatitude = addressLatitude,
-                                    deliveryLongitude = addressLongitude,
-                                    deliveryNotes = deliveryNotes.trim().ifBlank { null },
-                                ),
-                            )
-                            if (res.success) onOrderPlaced(res.order)
+                            if (mode == EatsCheckoutMode.DELIVERY) submitDelivery() else submitDineIn()
                         } catch (e: HttpException) {
                             if (isDeviceNotVerifiedError(e)) {
                                 needsDeviceVerification = true
@@ -1042,18 +1128,7 @@ private fun EatsCheckoutView(
                 needsDeviceVerification = false
                 submitting = true
                 try {
-                    val res = NetworkClient.apiService.placeEatsOrder(
-                        idempotencyKey = idempotencyKey,
-                        request = PlaceEatsOrderRequest(
-                            restaurantId = restaurant.merchantId,
-                            items = lines.map { (p, line) -> EatsOrderItemRequest(p.id, line.quantity, line.choiceIds.ifEmpty { null }) },
-                            deliveryAddress = address.trim(),
-                            deliveryLatitude = addressLatitude,
-                            deliveryLongitude = addressLongitude,
-                            deliveryNotes = deliveryNotes.trim().ifBlank { null },
-                        ),
-                    )
-                    if (res.success) onOrderPlaced(res.order)
+                    if (mode == EatsCheckoutMode.DELIVERY) submitDelivery() else submitDineIn()
                 } catch (e: HttpException) {
                     error = superAppErrorMessage(e)
                 } catch (e: IOException) {
@@ -1079,6 +1154,22 @@ private fun EatsOrderConfirmationView(order: EatsOrderDto, onDone: () -> Unit) {
             }
         },
         confirmButton = { TextButton(onClick = onDone) { Text("Track order") } },
+    )
+}
+
+@Composable
+private fun DineInOrderConfirmationView(order: DineInOrderDto, onDone: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDone,
+        title = { Text("Order placed") },
+        text = {
+            Column {
+                Text("%,.0f RWF".format(order.totalAmount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Spacer(modifier = Modifier.height(6.dp))
+                Text("Table ${order.tableNumber} -- the kitchen has your order", color = Ids.colors.textSecondary, fontSize = 13.sp)
+            }
+        },
+        confirmButton = { TextButton(onClick = onDone) { Text("Done") } },
     )
 }
 
@@ -1210,6 +1301,95 @@ private fun MyEatsOrdersView(
                             }
                         } else if (o.status == "CANCELLED") {
                             ReorderButton(reordering = reorderingId == o.id, onClick = { onReorder(o) })
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Real 배민오더-style table/QR order history (2026-07-25) -- own real polling loop and
+// own real cancel action, same shape MyEatsOrdersView already established, kept as a
+// separate view rather than merged into it since DineInOrderDto/EatsOrderDto are
+// genuinely different real types with no shared row component to reuse.
+@Composable
+private fun MyDineInOrdersView() {
+    var orders by remember { mutableStateOf<List<DineInOrderDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var cancellingId by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyDineInOrders()
+                if (res.success) orders = res.orders
+                error = null
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            load()
+            delay(4000)
+        }
+    }
+
+    fun cancel(orderId: String) {
+        cancellingId = orderId
+        error = null
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.cancelDineInOrder(orderId)
+                load()
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                cancellingId = null
+            }
+        }
+    }
+
+    val list = orders
+    if (list.isNullOrEmpty() && error == null) return
+    Column(modifier = Modifier.padding(top = 16.dp)) {
+        Text("Table orders", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.padding(bottom = 10.dp))
+        if (error != null) {
+            ErrorCard(error!!, onRetry = ::load)
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                list!!.forEach { o ->
+                    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface)) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("Table ${o.tableNumber}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text("%,.0f RWF".format(o.totalAmount), color = Ids.colors.textPrimary, fontSize = 14.sp)
+                            }
+                            Text(DINE_IN_STATUS_LABEL[o.status] ?: o.status, color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                            if (o.status == "PLACED") {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(top = 10.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Ids.colors.danger)
+                                        .clickable(enabled = cancellingId != o.id) { cancel(o.id) }
+                                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                                ) {
+                                    Text(
+                                        if (cancellingId == o.id) "Cancelling…" else "Cancel order",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                    )
+                                }
+                            }
                         }
                     }
                 }

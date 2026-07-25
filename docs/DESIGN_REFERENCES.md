@@ -125,6 +125,7 @@ they close in itunda's current implementation.
 |---|---|---|
 | 배달의민족 (Baemin) | brunch.co.kr/@plusx/69, techblog.woowahan.com, news.nate.com (추천 리뷰), story.baemin.com, mt.co.kr (2024 overhaul) | List card shows delivery time/fee/min order/rating together; 8-way swipeable filter chips; "추천순" review ranking (weights photo + length + recency); review-stats aggregate block; 2024 overhaul split home into per-service tabs; owner replies to reviews (사장님 댓글) |
 | 쿠팡이츠 (Coupang Eats) | yozm.wishket.com, brunch.co.kr/@uibowl/356, partners.coupangeats.com (official seller guide), namu.wiki | Proactive address-confirmation bubble on open; "주문많음"/좋아요 tags on menu items; **required-option system where at least one +0원 choice is mandatory** so list price never mismatches checkout price (explicit seller-guide constraint); 치타배달/단건배달 (one rider, one order) speed badge, pioneered 2019, since industry-adopted; in-cart delivery↔pickup toggle; one-tap order with no confirmation screen; bifurcated post-delivery rating (food vs. delivery, binary good/bad with reason tags on "bad"); live rider map + phone + vehicle type with 4-stage status chain |
+| 배민오더 (Baemin Order) — official product page | baemin-order.com, story.baemin.com | Table/QR in-store ordering: each physical table gets its own printed QR; scanning opens that restaurant's real menu pre-scoped to that table, no delivery address/rider step at all; order status is restaurant-driven only (accept -> preparing -> served); payment settles to the restaurant immediately rather than sitting in a delivery-holding account |
 
 ### Recommendations (ranked)
 
@@ -174,6 +175,17 @@ they close in itunda's current implementation.
    Eats pioneered 단건배달/치타배달 (2019); Baemin now has 배민1. Lower priority than the above —
    itunda has no equivalent anywhere, but this is a purchase-decision nicety, not a functional gap.
    *Target: browse list, `~3746+`; no current equivalent*
+
+8. **[sourced] Implemented 2026-07-25.** Add table/QR in-store ordering, matching 배민오더's real
+   product exactly: `EatsOrder` was hardcoded delivery-only (`deliveryAddress` `nullable = false`,
+   plus rider/delivery-fee-holding fields with no way to skip them). Rather than widen that
+   already-tested entity, this ships as a purely additive `DineInOrder` sibling with no
+   delivery/rider fields at all -- payment settles straight to the restaurant's wallet at
+   placement instead of sitting in `eats_delivery_holding`. Ships with real per-table QR
+   generation on the merchant side (reusing the existing ZXing `generateQrBitmap` util from
+   the register/POS flow) and a Delivery/dine-in toggle at consumer checkout.
+   *Shipped: `DineInOrder`, `DineInOrderService`, `POST /api/v1/eats/dine-in/orders`,
+   merchant app's Dine-in tab (table QR + order queue), `EatsCheckoutView`'s mode toggle*
 
 ### Unresolved / worth a follow-up
 
