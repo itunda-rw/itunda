@@ -30,8 +30,13 @@ import rw.itunda.core.web.pageMeta
 import rw.itunda.core.web.toResponseDto
 import rw.itunda.core.web.trustScores
 import rw.itunda.jobs.FavoriteJobPostNotFoundException
+import rw.itunda.jobs.InvalidJobApplicationException
 import rw.itunda.jobs.InvalidJobCoordinatesException
 import rw.itunda.jobs.InvalidJobPostException
+import rw.itunda.jobs.JobApplicationAlreadyPendingException
+import rw.itunda.jobs.JobApplicationNotFoundException
+import rw.itunda.jobs.JobApplicationNotPendingException
+import rw.itunda.jobs.JobApplicationService
 import rw.itunda.jobs.JobPostFavoriteService
 import rw.itunda.jobs.JobPostNotFoundException
 import rw.itunda.jobs.JobPostNotOpenException
@@ -52,6 +57,8 @@ data class CreateJobPostRequest(
 )
 data class MarkFilledRequest(val workerPhoneNumber: String? = null)
 data class SubmitHoodReviewRequest(val goodPoints: List<String> = emptyList(), val uncomfortablePoints: List<String> = emptyList())
+data class ApplyToJobRequest(val message: String)
+data class RespondToApplicationRequest(val accept: Boolean)
 
 // Real 당근알바-style local job board -- see JobPostService's own doc comment. Normal
 // itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
@@ -62,6 +69,7 @@ class JobPostController(
     private val jobPostFavoriteService: JobPostFavoriteService,
     private val userRepository: UserRepository,
     private val hoodReviewService: HoodReviewService,
+    private val jobApplicationService: JobApplicationService,
 ) {
 
     @GetMapping("/categories")
@@ -226,6 +234,48 @@ class JobPostController(
         return ResponseEntity.ok(mapOf("success" to true, "conversation" to conversation))
     }
 
+    // Real 당근알바-style structured application (2026-07-25) -- see
+    // JobApplicationService's own doc comment for the full account.
+    @PostMapping("/posts/{jobPostId}/apply")
+    fun apply(
+        @PathVariable jobPostId: String,
+        @RequestBody request: ApplyToJobRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val application = jobApplicationService.apply(currentUser.userId, jobPostId, request.message)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "application" to application))
+    }
+
+    @GetMapping("/posts/{jobPostId}/applications")
+    fun getApplicationsForPost(
+        @PathVariable jobPostId: String,
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = jobApplicationService.getApplicationsForPost(currentUser.userId, jobPostId, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "applications" to page.content) + pageMeta(page))
+    }
+
+    @GetMapping("/my-applications")
+    fun getMyApplications(
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = jobApplicationService.getMyApplications(currentUser.userId, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "applications" to page.content) + pageMeta(page))
+    }
+
+    // Accepting opens a real conversation (returned inline); declining does not.
+    @PostMapping("/applications/{applicationId}/respond")
+    fun respondToApplication(
+        @PathVariable applicationId: String,
+        @RequestBody request: RespondToApplicationRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (application, conversation) = jobApplicationService.respond(currentUser.userId, applicationId, request.accept)
+        return ResponseEntity.ok(mapOf("success" to true, "application" to application, "conversation" to conversation))
+    }
+
     @ExceptionHandler(JobPostNotFoundException::class)
     fun handleNotFound(ex: JobPostNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("JOB_POST_NOT_FOUND", ex.message ?: "Not found"))
@@ -281,4 +331,20 @@ class JobPostController(
     @ExceptionHandler(HoodReviewAlreadySubmittedException::class)
     fun handleReviewAlreadySubmitted(ex: HoodReviewAlreadySubmittedException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("REVIEW_ALREADY_SUBMITTED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(InvalidJobApplicationException::class)
+    fun handleInvalidApplication(ex: InvalidJobApplicationException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_JOB_APPLICATION", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(JobApplicationAlreadyPendingException::class)
+    fun handleApplicationAlreadyPending(ex: JobApplicationAlreadyPendingException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("JOB_APPLICATION_ALREADY_PENDING", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(JobApplicationNotFoundException::class)
+    fun handleApplicationNotFound(ex: JobApplicationNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("JOB_APPLICATION_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(JobApplicationNotPendingException::class)
+    fun handleApplicationNotPending(ex: JobApplicationNotPendingException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("JOB_APPLICATION_NOT_PENDING", ex.message ?: "Conflict"))
 }

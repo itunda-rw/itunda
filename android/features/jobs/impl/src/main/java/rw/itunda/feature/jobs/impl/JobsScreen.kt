@@ -53,12 +53,15 @@ import rw.itunda.core.designsystem.components.TrustBadge
 import rw.itunda.core.designsystem.components.relativeTimeAgo
 import rw.itunda.core.designsystem.components.rememberRealLocationRequester
 import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.network.ApplyToJobRequest
 import rw.itunda.core.network.CreateJobPostRequest
 import rw.itunda.core.network.FavoriteJobPostDto
+import rw.itunda.core.network.JobApplicationDto
 import rw.itunda.core.network.JobCategoryDto
 import rw.itunda.core.network.JobPostDto
 import rw.itunda.core.network.MarkFilledRequest
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.RespondToApplicationRequest
 import rw.itunda.core.network.SubmitHoodReviewRequest
 import rw.itunda.core.network.TokenStore
 import rw.itunda.core.network.superAppErrorMessage
@@ -454,6 +457,7 @@ private fun JobPostCard(
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
     var myLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     var showRoute by remember { mutableStateOf(false) }
     var locating by remember { mutableStateOf(false) }
@@ -477,6 +481,29 @@ private fun JobPostCard(
     var selectedUncomfortablePoints by remember { mutableStateOf<Set<String>>(emptySet()) }
     var submittingReview by remember { mutableStateOf(false) }
     var reviewSubmitted by remember { mutableStateOf(false) }
+
+    // Real 당근알바-style structured application (2026-07-25) -- see backend
+    // JobApplicationService's own doc comment. Applying is additive alongside "Message
+    // poster", not a replacement -- see JobApplication's own doc comment for why.
+    var applying by remember { mutableStateOf(false) }
+    var applicationMessage by remember { mutableStateOf("") }
+    var applicationSubmitted by remember { mutableStateOf(false) }
+    var submittingApplication by remember { mutableStateOf(false) }
+
+    // Poster's real "review applicants, then decide" step -- lazily fetched only when
+    // opened, same on-demand pattern as the review sheet above.
+    var showApplicants by remember { mutableStateOf(false) }
+    var applications by remember { mutableStateOf<List<JobApplicationDto>?>(null) }
+    var respondingToId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(showApplicants) {
+        if (showApplicants && applications == null) {
+            try {
+                applications = NetworkClient.apiService.getApplicationsForJobPost(post.id).applications
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            }
+        }
+    }
 
     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -588,7 +615,90 @@ private fun JobPostCard(
                         }
                     }
                 } else if (post.status == "OPEN") {
-                    ListingActionButton("Message poster", busy, filled = true, onClick = onContact)
+                    ListingActionButton("Message poster", busy, onClick = onContact)
+                    if (!applicationSubmitted && !applying) {
+                        ListingActionButton("Apply", busy, filled = true) { applying = true }
+                    }
+                }
+            }
+            // Real 당근알바-style structured application (2026-07-25) -- the applicant's
+            // real self-introduction, not a bare DM. See backend JobApplicationService's
+            // own doc comment.
+            if (!isMine && applying) {
+                OutlinedTextField(
+                    value = applicationMessage,
+                    onValueChange = { applicationMessage = it },
+                    placeholder = { Text("Why should the poster pick you? (required)") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ListingActionButton("Cancel", submittingApplication) { applying = false }
+                    ListingActionButton("Submit application", submittingApplication || applicationMessage.isBlank(), filled = true) {
+                        submittingApplication = true
+                        coroutineScope.launch {
+                            try {
+                                NetworkClient.apiService.applyToJob(post.id, ApplyToJobRequest(applicationMessage.trim()))
+                                applying = false
+                                applicationSubmitted = true
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } finally {
+                                submittingApplication = false
+                            }
+                        }
+                    }
+                }
+            }
+            if (!isMine && applicationSubmitted) {
+                Text("Application sent — you'll hear back once the poster reviews it", color = Ids.colors.textSecondary, fontSize = 12.sp)
+            }
+            // Poster's real "review applicants, then decide" step (2026-07-25) -- see
+            // backend JobApplicationService's own doc comment.
+            if (isMine && post.status == "OPEN") {
+                ListingActionButton(if (showApplicants) "Hide applicants" else "View applicants", busy) { showApplicants = !showApplicants }
+                if (showApplicants) {
+                    applications?.let { apps ->
+                        if (apps.isEmpty()) {
+                            Text("No applications yet", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                        }
+                        apps.filter { it.status == "PENDING" }.forEach { app ->
+                            Column(
+                                modifier = Modifier.fillMaxWidth().background(Ids.colors.surfaceSoft, RoundedCornerShape(Ids.layout.cardCornerRadius)).padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Text(app.message, color = Ids.colors.textPrimary, fontSize = 13.sp)
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    ListingActionButton("Decline", respondingToId == app.id) {
+                                        respondingToId = app.id
+                                        coroutineScope.launch {
+                                            try {
+                                                NetworkClient.apiService.respondToJobApplication(app.id, RespondToApplicationRequest(accept = false))
+                                                applications = applications?.filterNot { it.id == app.id }
+                                            } catch (e: HttpException) {
+                                                error = superAppErrorMessage(e)
+                                            } finally {
+                                                respondingToId = null
+                                            }
+                                        }
+                                    }
+                                    ListingActionButton("Accept & message", respondingToId == app.id, filled = true) {
+                                        respondingToId = app.id
+                                        coroutineScope.launch {
+                                            try {
+                                                NetworkClient.apiService.respondToJobApplication(app.id, RespondToApplicationRequest(accept = true))
+                                                applications = applications?.filterNot { it.id == app.id }
+                                                Toast.makeText(context, "Conversation started", Toast.LENGTH_SHORT).show()
+                                            } catch (e: HttpException) {
+                                                error = superAppErrorMessage(e)
+                                            } finally {
+                                                respondingToId = null
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } ?: SkeletonBlock()
                 }
             }
             if (!isMine && post.status == "OPEN") {
