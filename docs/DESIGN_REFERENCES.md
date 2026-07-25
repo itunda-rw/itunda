@@ -839,16 +839,16 @@ backend) so every recommendation below cites a real file, not a hypothetical.
    *Target: `NIDABiometricAuth.kt`/`.swift` (existing), new call site at app launch/foreground in
    `ItundaAppScreen.kt`/`ContentView.swift`, a settings toggle to enable/disable*
 
-3. **[sourced]** Add a passport-based identity-verification path for foreign residents, mirroring
-   Toss's identical pattern for both foreign residents and 14+ teens (one alternative-identity
-   mechanism, reused for two segments, not two separate builds). itunda's `IdentityService`
-   explicitly rejects `PASSPORT` today; Rwanda has significant cross-border residency (Congolese,
-   Burundian, Ugandan, Kenyan) with no NIDA number to submit. This also unblocks the "no consumer
-   KYC UI exists in the main app at all" gap found during this pass, since building the first real
-   consumer-facing identity-verification screen would need to happen either way.
-   *Target: `IdentityService.kt`, `DemoNidaVerificationService.kt` (new demo passport-verification
-   path, same "structural validation + simulated match, honestly labeled" convention already used
-   for National ID), first consumer KYC UI on all 3 clients*
+3. **[implemented, backend, correction 2026-07-26]** This description was already stale when
+   written -- checking the code directly found `IdentityService` did NOT reject `PASSPORT`
+   (it was already an accepted `documentType`, creating a real `PENDING` submission for human
+   review); only the automated pre-check itself was a stub. `DemoNidaVerificationService` now
+   real-validates passport numbers against ICAO Doc 9303's shared shell (6-9 alphanumeric
+   characters) and returns a real deterministic MATCHED/NOT_FOUND/INVALID_FORMAT signal, same
+   convention as National ID, honestly never fabricating fields a generic passport number can't
+   convey. Still open: no consumer-facing KYC submission UI exists on any of the 3 clients at
+   all (for either document type) -- that's the real remaining half of this gap.
+   *Target: first consumer KYC UI on all 3 clients*
 
 4. **[sourced]** Apply "Easy to Answer" (Toss's own principle, quantified 60%/50% drop-off
    reduction in a real case study) to itunda's own highest-friction moment found this pass: KYC

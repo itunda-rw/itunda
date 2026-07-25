@@ -34,18 +34,53 @@ data class NidaVerificationResult(
  * checksum whose real algorithm is not public (known only to NIDA itself) -- this demo
  * validates everything a real client-side/pre-check step reasonably could and honestly
  * cannot validate that final checksum, rather than silently pretending to.
+ *
+ * Real PASSPORT structural pre-check added 2026-07-26 -- closes
+ * docs/DESIGN_REFERENCES.md's own recommendation for a foreign-resident identity path
+ * (Rwanda has significant cross-border residency -- Congolese, Burundian, Ugandan,
+ * Kenyan -- with no NIDA number to submit). `IdentityService.submit` already accepted
+ * `PASSPORT` as a document type before this change; only the automated pre-check itself
+ * was a stub (always `UNSUPPORTED_DOCUMENT_TYPE`), so a passport submission always went
+ * straight to manual review with zero pre-check signal for the reviewer -- unlike
+ * National ID's rich field-by-field parse, a real passport number has no single
+ * internationally-shared structure (each issuing country defines its own), so this
+ * intentionally validates only the shared shell every real machine-readable passport
+ * number (ICAO Doc 9303) follows -- 6 to 9 alphanumeric characters -- not a specific
+ * country's own checksum, and never fabricates citizenship/birth-year/gender fields the
+ * way National ID's structure genuinely supports.
  */
 @Service
 class DemoNidaVerificationService {
 
-    fun verify(documentType: String, documentNumber: String): NidaVerificationResult {
-        if (!documentType.equals("NATIONAL_ID", ignoreCase = true)) {
+    fun verify(documentType: String, documentNumber: String): NidaVerificationResult = when {
+        documentType.equals("NATIONAL_ID", ignoreCase = true) -> verifyNationalId(documentNumber)
+        documentType.equals("PASSPORT", ignoreCase = true) -> verifyPassport(documentNumber)
+        else -> NidaVerificationResult(
+            NidaVerificationStatus.UNSUPPORTED_DOCUMENT_TYPE,
+            "Automated verification only covers NATIONAL_ID and PASSPORT -- this document type needs manual review",
+        )
+    }
+
+    private fun verifyPassport(documentNumber: String): NidaVerificationResult {
+        val cleaned = documentNumber.trim().uppercase()
+        if (cleaned.length !in 6..9 || !cleaned.all { it.isLetterOrDigit() }) {
             return NidaVerificationResult(
-                NidaVerificationStatus.UNSUPPORTED_DOCUMENT_TYPE,
-                "Automated verification only covers NATIONAL_ID -- this document type needs manual review",
+                NidaVerificationStatus.INVALID_FORMAT,
+                "A passport number must be 6 to 9 letters/digits (ICAO Doc 9303's shared shell) -- the exact format varies by issuing country beyond that",
             )
         }
+        // Same deterministic hash-bucket simulation as National ID -- see this class's
+        // own doc comment for why (a fixed record lookup, not a live network dice roll).
+        val digest = MessageDigest.getInstance("SHA-256").digest(cleaned.toByteArray())
+        val bucket = (digest[0].toInt() and 0xFF) % 100
+        return if (bucket < 90) {
+            NidaVerificationResult(NidaVerificationStatus.MATCHED, "Structurally valid and found in the simulated passport registry")
+        } else {
+            NidaVerificationResult(NidaVerificationStatus.NOT_FOUND, "Structurally valid but no matching record in the simulated passport registry")
+        }
+    }
 
+    private fun verifyNationalId(documentNumber: String): NidaVerificationResult {
         val digits = documentNumber.trim()
         if (digits.length != 16 || !digits.all { it.isDigit() }) {
             return NidaVerificationResult(NidaVerificationStatus.INVALID_FORMAT, "A real Rwandan National ID is exactly 16 digits")

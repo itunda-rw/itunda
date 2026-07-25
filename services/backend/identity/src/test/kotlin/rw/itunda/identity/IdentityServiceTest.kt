@@ -79,11 +79,19 @@ class IdentityServiceTest : BehaviorSpec({
         val savedSlot = slot<KycSubmission>()
         every { kycSubmissionRepository.save(capture(savedSlot)) } answers { firstArg() }
 
-        When("submitting a PASSPORT") {
+        When("submitting a structurally valid PASSPORT") {
             service.submit("user_7", "PASSPORT", "P1234567", "doc-ref-3")
 
-            Then("the real pre-check honestly reports it doesn't cover this document type, rather than guessing") {
-                savedSlot.captured.autoVerificationStatus shouldBe NidaVerificationStatus.UNSUPPORTED_DOCUMENT_TYPE.name
+            Then("the real pre-check gives a real MATCHED/NOT_FOUND signal (2026-07-26) -- foreign residents now get real pre-check coverage, not an automatic 'unsupported' stub") {
+                (savedSlot.captured.autoVerificationStatus == NidaVerificationStatus.MATCHED.name || savedSlot.captured.autoVerificationStatus == NidaVerificationStatus.NOT_FOUND.name) shouldBe true
+            }
+        }
+
+        When("submitting a malformed PASSPORT number") {
+            service.submit("user_7", "PASSPORT", "P1", "doc-ref-3b")
+
+            Then("the submission is still created (a human still reviews it) but the real pre-check flags it as invalid format") {
+                savedSlot.captured.autoVerificationStatus shouldBe NidaVerificationStatus.INVALID_FORMAT.name
             }
         }
     }
