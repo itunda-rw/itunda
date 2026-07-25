@@ -286,11 +286,16 @@ fun CommunityContent(onOpenGroupChat: (String) -> Unit = {}) {
             // docs/DESIGN_REFERENCES.md Section 4 recommendation #4). "My posts"
             // stays plain chronological -- pinning your own management list would
             // just be noise, not a discovery aid.
-            val (meetups, regular) = if (view != CommunityView.MINE) {
+            val (meetupsRaw, regular) = if (view != CommunityView.MINE) {
                 posts!!.partition { it.category == "meetup" }
             } else {
                 emptyList<CommunityPostDto>() to posts!!
             }
+            // Real 당근모임-style soonest-first ordering (2026-07-25) -- a real
+            // upcoming-events list reads by "what's happening soon," not by
+            // when it was posted; a meetup with no real eventDate (created before
+            // this field existed) sorts last, never dropped.
+            val meetups = meetupsRaw.sortedBy { it.eventDate ?: "9999" }
             if (meetups.isNotEmpty()) {
                 item {
                     Text("🎉 Meetups", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -324,11 +329,28 @@ fun CommunityContent(onOpenGroupChat: (String) -> Unit = {}) {
     }
 }
 
+// Real 당근모임-style structured event date display (2026-07-25) -- falls back to the
+// raw ISO string on any parse failure, never a fabricated date.
+private fun formatMeetupDate(iso: String): String = try {
+    val instant = java.time.Instant.parse(iso)
+    val local = instant.atZone(java.time.ZoneOffset.UTC)
+    "%04d-%02d-%02d %02d:%02d".format(local.year, local.monthValue, local.dayOfMonth, local.hour, local.minute)
+} catch (e: Exception) {
+    iso
+}
+
 @Composable
 private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreated: () -> Unit, onCancel: () -> Unit) {
     var category by remember { mutableStateOf(categories.firstOrNull()?.id ?: "") }
     var title by remember { mutableStateOf("") }
     var body by remember { mutableStateOf("") }
+    // Real 당근모임-style mandatory date-setting + real capacity cap (2026-07-25) --
+    // only meaningful/shown for the meetup category. See backend
+    // CommunityService.createPost's own doc comment for why eventDate is required for
+    // this one category.
+    var eventDateText by remember { mutableStateOf("") }
+    var eventTimeText by remember { mutableStateOf("") }
+    var capacityText by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var submitting by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
@@ -360,6 +382,22 @@ private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreat
             }
             OutlinedTextField(value = title, onValueChange = { title = it }, placeholder = { Text("Title") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = body, onValueChange = { body = it }, placeholder = { Text("What's going on in the neighborhood?") }, modifier = Modifier.fillMaxWidth())
+            if (category == "meetup") {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = eventDateText, onValueChange = { eventDateText = it },
+                        placeholder = { Text("Date (YYYY-MM-DD)") }, singleLine = true, modifier = Modifier.weight(1f),
+                    )
+                    OutlinedTextField(
+                        value = eventTimeText, onValueChange = { eventTimeText = it },
+                        placeholder = { Text("Time (HH:mm)") }, singleLine = true, modifier = Modifier.weight(1f),
+                    )
+                }
+                OutlinedTextField(
+                    value = capacityText, onValueChange = { capacityText = it },
+                    placeholder = { Text("Max people (optional -- blank means unlimited)") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                )
+            }
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Ids.colors.surfaceSoft)
                     .clickable(enabled = !locating) { if (shareLocation) shareLocation = false else requestLocation() }
@@ -378,12 +416,34 @@ private fun NewCommunityPostForm(categories: List<CommunityCategoryDto>, onCreat
                                 error = "Fill in every field."
                                 return@clickable
                             }
+                            var eventDateIso: String? = null
+                            var capacity: Int? = null
+                            if (category == "meetup") {
+                                if (eventDateText.isBlank() || eventTimeText.isBlank()) {
+                                    error = "A meetup needs a real date and time."
+                                    return@clickable
+                                }
+                                eventDateIso = "${eventDateText.trim()}T${eventTimeText.trim()}:00Z"
+                                try {
+                                    java.time.Instant.parse(eventDateIso)
+                                } catch (e: Exception) {
+                                    error = "Enter a real date (YYYY-MM-DD) and time (HH:mm)."
+                                    return@clickable
+                                }
+                                capacity = capacityText.trim().ifBlank { null }?.toIntOrNull()
+                                if (capacityText.isNotBlank() && capacity == null) {
+                                    error = "Max people must be a whole number."
+                                    return@clickable
+                                }
+                            }
                             submitting = true
                             error = null
                             coroutineScope.launch {
                                 try {
                                     val loc = if (shareLocation) myLocation else null
-                                    val res = NetworkClient.apiService.createCommunityPost(CreateCommunityPostRequest(category, title, body, loc?.first, loc?.second))
+                                    val res = NetworkClient.apiService.createCommunityPost(
+                                        CreateCommunityPostRequest(category, title, body, loc?.first, loc?.second, eventDateIso, capacity),
+                                    )
                                     if (res.success) onCreated()
                                 } catch (e: HttpException) {
                                     error = superAppErrorMessage(e)
@@ -440,6 +500,13 @@ private fun CommunityPostCard(
             if (!isMine && post.category == "question") {
                 ListingActionButton("Answer this question", busy, onClick = onOpen)
             } else if (post.category == "meetup") {
+                // Real 당근모임-style structured date/capacity (2026-07-25) -- see
+                // backend CommunityPost.eventDate/capacity's own doc comment.
+                val eventDate = post.eventDate
+                if (eventDate != null) {
+                    val capacityLabel = post.capacity?.let { " · $joinedCount/$it" } ?: ""
+                    Text("🗓️ ${formatMeetupDate(eventDate)}$capacityLabel", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                }
                 // Real 참여하기 (join) tap (2026-07-24) -- a real join, not just a
                 // "view" navigation: it adds the tapper to a real GroupConversation
                 // (see backend CommunityService.joinMeetup's own doc comment), shown

@@ -3,8 +3,11 @@ package rw.itunda.core.repository
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.CommunityPost
 import rw.itunda.core.domain.CommunityPostStatus
+import java.time.Instant
 
 interface CommunityPostRepository : JpaRepository<CommunityPost, String> {
     fun findByStatusOrderByCreatedAtDesc(status: CommunityPostStatus, pageable: Pageable): Page<CommunityPost>
@@ -25,4 +28,13 @@ interface CommunityPostRepository : JpaRepository<CommunityPost, String> {
         category: String,
         pageable: Pageable,
     ): Page<CommunityPost>
+
+    // Real 당근모임-style "upcoming" browse (2026-07-25) -- see CommunityPost
+    // .eventDate's own doc comment. Soonest-first, and only ever real future meetups --
+    // a past eventDate just means the meetup already happened, not a fabricated filter.
+    @Query(
+        "SELECT p FROM CommunityPost p WHERE p.status = :status AND p.category = 'meetup' " +
+            "AND p.eventDate IS NOT NULL AND p.eventDate > :now ORDER BY p.eventDate ASC",
+    )
+    fun findUpcomingMeetups(@Param("status") status: CommunityPostStatus, @Param("now") now: Instant, pageable: Pageable): Page<CommunityPost>
 }

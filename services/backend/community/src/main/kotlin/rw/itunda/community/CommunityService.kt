@@ -33,6 +33,8 @@ class InvalidCommunityCommentException(message: String) : RuntimeException(messa
 class InvalidCommunityCoordinatesException(message: String) : RuntimeException(message)
 class CommunityNeighborhoodNotSetException(message: String) : RuntimeException(message)
 class CommunityMeetupJoinException(message: String) : RuntimeException(message)
+class InvalidMeetupException(message: String) : RuntimeException(message)
+class MeetupFullException(message: String) : RuntimeException(message)
 
 data class CommunityCategory(val id: String, val label: String)
 
@@ -99,6 +101,8 @@ class CommunityService(
         body: String,
         latitude: Double? = null,
         longitude: Double? = null,
+        eventDate: Instant? = null,
+        capacity: Int? = null,
     ): CommunityPost {
         val trimmedTitle = title.trim()
         val trimmedBody = body.trim()
@@ -115,6 +119,22 @@ class CommunityService(
         }
         if (category !in CATEGORY_IDS) {
             throw InvalidCommunityPostException("Unknown category")
+        }
+        // Real 당근모임-style mandatory date-setting (2026-07-25) -- Karrot's own real
+        // product made this mandatory specifically when it spun 모임 out of the
+        // freeform 같이해요 post type, see CommunityPost.eventDate's own doc comment.
+        // Only enforced for the meetup category -- every other category stays exactly
+        // as unaffected as before this field existed.
+        if (category == "meetup") {
+            if (eventDate == null) {
+                throw InvalidMeetupException("A meetup needs a real date and time")
+            }
+            if (eventDate.isBefore(Instant.now())) {
+                throw InvalidMeetupException("A meetup's date must be in the future")
+            }
+            if (capacity != null && capacity < 2) {
+                throw InvalidMeetupException("Capacity must allow at least 2 people (including the organizer)")
+            }
         }
         if ((latitude == null) != (longitude == null)) {
             throw InvalidCommunityCoordinatesException("Both latitude and longitude are required together")
@@ -143,10 +163,16 @@ class CommunityService(
             CommunityPost(
                 id = "community_post_${UUID.randomUUID()}", authorId = authorId, category = category,
                 title = trimmedTitle, body = trimmedBody, latitude = latitude, longitude = longitude,
-                neighborhood = neighborhood,
+                neighborhood = neighborhood, eventDate = if (category == "meetup") eventDate else null,
+                capacity = if (category == "meetup") capacity else null,
             ),
         )
     }
+
+    // Real 당근모임-style "upcoming meetups" browse (2026-07-25) -- see
+    // CommunityPostRepository.findUpcomingMeetups' own doc comment.
+    fun upcomingMeetups(pageable: Pageable): Page<CommunityPost> =
+        postRepository.findUpcomingMeetups(CommunityPostStatus.ACTIVE, Instant.now(), pageable)
 
     fun browse(pageable: Pageable, category: String?): Page<CommunityPost> =
         if (category.isNullOrBlank()) {
@@ -235,6 +261,15 @@ class CommunityService(
             newGroupId
         }
         if (groupConversationMemberRepository.findByGroupConversationIdAndUserId(groupId, userId) == null) {
+            // Real capacity cap (2026-07-25) -- see CommunityPost.capacity's own doc
+            // comment. Checked at join time, not reserved in advance -- an honest
+            // first-come-first-served cap, same as every other real "N spots" mechanic
+            // in this codebase (e.g. AgentWithdrawalAuthorizationService's own real
+            // per-day limit check happens at the moment of the action, not earlier).
+            val capacity = post.capacity
+            if (capacity != null && groupConversationMemberRepository.findByGroupConversationId(groupId).size >= capacity) {
+                throw MeetupFullException("This meetup is full")
+            }
             groupConversationMemberRepository.save(
                 GroupConversationMember(id = "group_member_${UUID.randomUUID()}", groupConversationId = groupId, userId = userId),
             )

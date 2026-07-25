@@ -22,9 +22,12 @@ import rw.itunda.community.CommunityService
 import rw.itunda.community.InvalidCommunityCommentException
 import rw.itunda.community.InvalidCommunityCoordinatesException
 import rw.itunda.community.InvalidCommunityPostException
+import rw.itunda.community.InvalidMeetupException
+import rw.itunda.community.MeetupFullException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
+import java.time.Instant
 
 data class CreateCommunityPostRequest(
     val category: String,
@@ -32,6 +35,10 @@ data class CreateCommunityPostRequest(
     val body: String,
     val latitude: Double? = null,
     val longitude: Double? = null,
+    // Real 당근모임-style structured meetup fields (2026-07-25) -- both ignored unless
+    // category == "meetup"; see CommunityService.createPost's own doc comment.
+    val eventDate: Instant? = null,
+    val capacity: Int? = null,
 )
 data class AddCommunityCommentRequest(val body: String)
 
@@ -52,8 +59,18 @@ class CommunityController(private val communityService: CommunityService) {
     ): ResponseEntity<Map<String, Any?>> {
         val post = communityService.createPost(
             currentUser.userId, request.category, request.title, request.body, request.latitude, request.longitude,
+            request.eventDate, request.capacity,
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "post" to post))
+    }
+
+    // Real 당근모임-style "upcoming meetups" browse (2026-07-25) -- see
+    // CommunityService.upcomingMeetups' own doc comment.
+    @GetMapping("/meetups/upcoming")
+    fun upcomingMeetups(@PageableDefault(size = 20) pageable: Pageable): ResponseEntity<Map<String, Any?>> {
+        val page = communityService.upcomingMeetups(pageable)
+        val joinedCounts = communityService.joinedCounts(page.content)
+        return ResponseEntity.ok(mapOf("success" to true, "posts" to page.content, "joinedCounts" to joinedCounts) + pageMeta(page))
     }
 
     @GetMapping("/posts")
@@ -188,4 +205,12 @@ class CommunityController(private val communityService: CommunityService) {
     @ExceptionHandler(CommunityNeighborhoodNotSetException::class)
     fun handleNeighborhoodNotSet(ex: CommunityNeighborhoodNotSetException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("NEIGHBORHOOD_NOT_SET", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidMeetupException::class)
+    fun handleInvalidMeetup(ex: InvalidMeetupException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MEETUP", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(MeetupFullException::class)
+    fun handleMeetupFull(ex: MeetupFullException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("MEETUP_FULL", ex.message ?: "Conflict"))
 }

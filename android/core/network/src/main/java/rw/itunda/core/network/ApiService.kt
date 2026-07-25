@@ -567,10 +567,17 @@ data class CommunityPostDto(
     // comment. Only ever set for category == "meetup" posts that have had at least one
     // real join.
     val groupConversationId: String? = null,
+    // Real 당근모임-style structured meetup fields (2026-07-25) -- see backend
+    // CommunityPost.kt's own doc comment. Only ever set for category == "meetup";
+    // eventDate stays a plain ISO string, same convention every other temporal field in
+    // this file already uses. capacity null means unlimited.
+    val eventDate: String? = null,
+    val capacity: Int? = null,
 )
 data class CreateCommunityPostRequest(
     val category: String, val title: String, val body: String,
     val latitude: Double? = null, val longitude: Double? = null,
+    val eventDate: String? = null, val capacity: Int? = null,
 )
 data class CommunityPostResponse(val success: Boolean, val post: CommunityPostDto)
 // joinedCounts added 2026-07-24 -- postId -> real member count of that meetup's group
@@ -1540,6 +1547,11 @@ interface ApiService {
 
     @POST("api/v1/community/posts")
     suspend fun createCommunityPost(@Body request: CreateCommunityPostRequest): CommunityPostResponse
+
+    // Real 당근모임-style "upcoming meetups" browse (2026-07-25) -- see
+    // rw.itunda.community.web.CommunityController.upcomingMeetups.
+    @GET("api/v1/community/meetups/upcoming")
+    suspend fun getUpcomingMeetups(): CommunityPostsResponse
 
     @GET("api/v1/community/posts")
     suspend fun browseCommunityPosts(@Query("category") category: String? = null): CommunityPostsResponse

@@ -83,6 +83,21 @@ class CommunityPost(
     // other post category, forever.
     @Column(name = "group_conversation_id", nullable = true, length = 64)
     var groupConversationId: String? = null,
+
+    // Real 당근모임-style structured meetup fields (2026-07-25) -- closes the gap
+    // between the freeform join-anyone-anytime 같이해요 group chat above and Karrot's
+    // own real "모임" product, which spun out specifically because it added mandatory
+    // date-setting and a real capacity cap on top of the original freeform post type.
+    // Both only meaningful when category == "meetup", forever null for every other
+    // post category -- see CommunityService.createPost/joinMeetup's own doc comments
+    // for the real validation/enforcement this backs.
+    @Column(name = "event_date", nullable = true)
+    var eventDate: Instant? = null,
+
+    // Null means unlimited (the pre-existing, unchanged behavior for every meetup
+    // created before this field existed) -- a real, honest default, not a fabricated cap.
+    @Column(nullable = true)
+    var capacity: Int? = null,
 ) {
     protected constructor() : this(id = "", authorId = "", category = "", title = "", body = "")
 }

@@ -412,6 +412,18 @@ they close in itunda's current implementation.
     *Shipped: `Listing.boostedUntil`, `MarketplaceService.boostListing` (3/7/14-day real flat-fee
     tiers), `POST /api/v1/marketplace/listings/{id}/boost`, Marketplace's "Boost" action + Sponsored badge*
 
+12. **[sourced] Implemented 2026-07-25.** Add structured date/capacity fields to Community's real
+    같이해요 (join-together) meetup post type. Karrot's own real product spun 모임 out of the
+    freeform 같이해요 post type specifically because it added mandatory date-setting and a real
+    capacity cap on top -- itunda's existing `joinMeetup` was unlimited-join with no event date at
+    all. `eventDate` is now required (and must be a real future instant) for the meetup category
+    only; `capacity` is optional (null stays unlimited, the pre-existing behavior for every meetup
+    created before this field existed) and is enforced at join time with a real, honest
+    first-come-first-served cap -- no unsourced waitlist-with-promotion mechanic invented on top.
+    *Shipped: `CommunityPost.eventDate`/`capacity`, `CommunityService.joinMeetup`'s real capacity
+    check, `GET /api/v1/community/meetups/upcoming` (soonest-first), Android's date/time/capacity
+    fields on meetup creation + soonest-first pinned meetup ordering*
+
 ### Unresolved / worth a follow-up
 
 - Could not confirm whether Karrot's live product actually gates category/filter selection behind
