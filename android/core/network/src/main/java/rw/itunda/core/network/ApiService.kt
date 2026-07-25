@@ -299,6 +299,19 @@ data class DepositRequest(val goalId: String, val amount: java.math.BigDecimal, 
 data class DepositResponse(val success: Boolean, val message: String, val goal: SavingsGoal)
 data class ClaimInterestResponse(val success: Boolean, val message: String, val claimed: Double? = null)
 
+// Real Kakao Pay 머니굴리기 (round-up auto-save) equivalent (2026-07-25) -- see
+// RoundUpSettings.kt's own doc comment. P2P transfers only in this v1, not every
+// payment flow -- see RoundUpService.kt's processRoundUp doc comment.
+data class RoundUpSettingsDto(
+    val id: String,
+    val userId: String,
+    val enabled: Boolean,
+    val roundToNearest: java.math.BigDecimal,
+    val targetGoalId: String?,
+)
+data class RoundUpSettingsResponse(val success: Boolean, val settings: RoundUpSettingsDto?)
+data class SetRoundUpSettingsRequest(val enabled: Boolean, val roundToNearest: java.math.BigDecimal, val targetGoalId: String? = null)
+
 data class CreateAgentWithdrawalAuthorizationRequest(val amount: java.math.BigDecimal)
 data class CancelAgentWithdrawalAuthorizationRequest(val code: String)
 data class AgentWithdrawalAuthorizationDto(val id: String, val code: String, val amount: java.math.BigDecimal, val expiresAt: String, val status: String, val createdAt: String)
@@ -1342,6 +1355,14 @@ interface ApiService {
 
     @POST("api/v1/savings/interest-jar/claim")
     suspend fun claimInterest(@Header("Idempotency-Key") idempotencyKey: String): ClaimInterestResponse
+
+    // No Idempotency-Key -- a settings write, not money movement itself. See
+    // RoundUpController.kt's own doc comment.
+    @GET("api/v1/savings/round-up")
+    suspend fun getRoundUpSettings(): RoundUpSettingsResponse
+
+    @POST("api/v1/savings/round-up")
+    suspend fun setRoundUpSettings(@Body request: SetRoundUpSettingsRequest): RoundUpSettingsResponse
 
     @POST("api/v1/wallet/agent-withdrawal-authorizations")
     suspend fun createAgentWithdrawalAuthorization(

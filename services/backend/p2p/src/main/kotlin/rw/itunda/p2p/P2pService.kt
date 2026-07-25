@@ -21,6 +21,7 @@ import rw.itunda.core.repository.P2pPaymentRequestRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.savings.RoundUpService
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -54,6 +55,7 @@ class P2pService(
     private val fraudRuleEngine: FraudRuleEngine,
     private val rateLimiter: RateLimiter,
     private val notificationRepository: NotificationRepository,
+    private val roundUpService: RoundUpService,
 ) {
 
     fun generateRequest(requesterUserId: String, amount: BigDecimal, description: String): P2pPaymentRequest {
@@ -223,6 +225,10 @@ class P2pService(
         fraudRuleEngine.evaluate(senderUserId, recipientWallet.userId, amount, transaction.id)
         transactionRepository.save(transaction)
         notifyMoneyReceived(recipientWallet.userId, senderUserId, amount)
+        // Real round-up auto-saving (2026-07-25) -- see RoundUpService's own doc
+        // comment for the full account, including why P2P transfer specifically is
+        // this feature's honest v1 scope.
+        roundUpService.processRoundUp(senderUserId, amount)
 
         val updatedSenderWallet = walletRepository.findById(senderWallet.id).orElseThrow { P2pNoWalletException("No wallet found for this account") }
         return transaction to updatedSenderWallet.balance

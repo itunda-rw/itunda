@@ -867,6 +867,9 @@ private fun HomeTab(
     val savingsGoals by viewModel.savingsGoals.collectAsState()
     val interestJar by viewModel.interestJar.collectAsState()
     val discoverItems by viewModel.discoverItems.collectAsState()
+    val roundUpSettings by viewModel.roundUpSettings.collectAsState()
+    var showRoundUpDialog by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -941,7 +944,39 @@ private fun HomeTab(
                                 )
                             )
                         }
+                        // Real Kakao Pay 머니굴리기 round-up equivalent (2026-07-25) --
+                        // only offered once a goal exists to round into. See
+                        // RoundUpSettings.kt's own doc comment.
+                        if (savingsGoals.isNotEmpty()) {
+                            add(
+                                ShellRow(
+                                    "Round-up saving",
+                                    if (roundUpSettings?.enabled == true) {
+                                        "Rounding up to RWF %,.0f".format(roundUpSettings?.roundToNearest)
+                                    } else "Off",
+                                    if (roundUpSettings?.enabled == true) "On" else "Set up",
+                                    Icons.Outlined.CurrencyExchange,
+                                    AccentPurple,
+                                    onClick = { showRoundUpDialog = true },
+                                )
+                            )
+                        }
                     }
+                )
+            }
+        }
+        if (showRoundUpDialog) {
+            item {
+                RoundUpSettingsDialog(
+                    settings = roundUpSettings,
+                    goals = savingsGoals,
+                    onDismiss = { showRoundUpDialog = false },
+                    onSave = { enabled, increment, goalId ->
+                        coroutineScope.launch {
+                            viewModel.setRoundUpSettings(enabled, increment, goalId)
+                            showRoundUpDialog = false
+                        }
+                    },
                 )
             }
         }
@@ -953,6 +988,68 @@ private fun HomeTab(
             item { DiscoverSection(discoverItems) }
         }
     }
+}
+
+// Real Kakao Pay 머니굴리기 round-up settings sheet (2026-07-25) -- see
+// RoundUpSettings.kt's own doc comment for the increment/goal invariants this
+// mirrors (SUPPORTED_INCREMENTS, a goal is required to enable).
+@Composable
+private fun RoundUpSettingsDialog(
+    settings: rw.itunda.core.network.RoundUpSettingsDto?,
+    goals: List<rw.itunda.core.network.SavingsGoal>,
+    onDismiss: () -> Unit,
+    onSave: (enabled: Boolean, roundToNearest: Long, goalId: String?) -> Unit,
+) {
+    var enabled by remember { mutableStateOf(settings?.enabled ?: false) }
+    var increment by remember { mutableStateOf(settings?.roundToNearest?.toLong() ?: 100L) }
+    var selectedGoalId by remember { mutableStateOf(settings?.targetGoalId ?: goals.firstOrNull()?.id) }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Round-up saving") },
+        text = {
+            Column {
+                Text("Every time you send money, round the payment up and save the difference.", color = TossSecondary, fontSize = 13.sp)
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Text("Enable round-up", modifier = Modifier.weight(1f))
+                    androidx.compose.material3.Switch(checked = enabled, onCheckedChange = { enabled = it })
+                }
+                if (enabled) {
+                    Spacer(Modifier.height(12.dp))
+                    Text("Round up to nearest", color = TossSecondary, fontSize = 13.sp)
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        listOf(100L, 500L, 1000L).forEach { option ->
+                            Row(
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                modifier = Modifier.clickable { increment = option }.padding(end = 8.dp)
+                            ) {
+                                androidx.compose.material3.RadioButton(selected = increment == option, onClick = { increment = option })
+                                Text("RWF $option")
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text("Save into", color = TossSecondary, fontSize = 13.sp)
+                    goals.forEach { goal ->
+                        Row(
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().clickable { selectedGoalId = goal.id }
+                        ) {
+                            androidx.compose.material3.RadioButton(selected = selectedGoalId == goal.id, onClick = { selectedGoalId = goal.id })
+                            Text(goal.name)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = { onSave(enabled, increment, if (enabled) selectedGoalId else null) }) { Text("Save") }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
 
 @Composable

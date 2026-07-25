@@ -16,6 +16,12 @@ dependencies {
     // missing in a 2026-07-19 security sweep, same convention every other
     // content/money-creation endpoint in this codebase already uses.
     implementation(project(":auth"))
+    // For RoundUpService -- real round-up auto-saving after a real P2P transfer
+    // (2026-07-25), see RoundUpSettings.kt's own doc comment. Same cross-module reuse
+    // discipline MarketplaceService's own dependency on the messaging module already
+    // established -- itunda's backend modules aren't isolated from each other the way
+    // the Android client's own Toss-Microfeatures split is.
+    implementation(project(":savings"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

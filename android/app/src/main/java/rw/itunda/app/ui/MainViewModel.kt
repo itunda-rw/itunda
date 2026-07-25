@@ -9,6 +9,8 @@ import kotlinx.coroutines.launch
 import rw.itunda.core.network.Wallet
 import rw.itunda.core.network.SavingsGoal
 import rw.itunda.core.network.InterestJar
+import rw.itunda.core.network.RoundUpSettingsDto
+import rw.itunda.core.network.SetRoundUpSettingsRequest
 import rw.itunda.core.network.DiscoverItem
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SendDirectP2pRequest
@@ -56,6 +58,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _interestJar = MutableStateFlow<InterestJar?>(null)
     val interestJar: StateFlow<InterestJar?> = _interestJar
+
+    private val _roundUpSettings = MutableStateFlow<RoundUpSettingsDto?>(null)
+    val roundUpSettings: StateFlow<RoundUpSettingsDto?> = _roundUpSettings
 
     private val _discoverItems = MutableStateFlow<List<DiscoverItem>>(emptyList())
     val discoverItems: StateFlow<List<DiscoverItem>> = _discoverItems
@@ -134,6 +139,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 } catch (e: retrofit2.HttpException) {
                     if (e.code() != 404) throw e
                     _interestJar.value = null
+                }
+
+                // Real round-up auto-save settings (2026-07-25) -- a brand-new account has
+                // no row yet, same 404-safe discipline as getInterestJar's fetch above.
+                try {
+                    val roundUpRes = NetworkClient.apiService.getRoundUpSettings()
+                    if (roundUpRes.success) {
+                        _roundUpSettings.value = roundUpRes.settings
+                    }
+                } catch (e: retrofit2.HttpException) {
+                    if (e.code() != 404) throw e
+                    _roundUpSettings.value = null
                 }
 
                 val discoverRes = NetworkClient.apiService.getDiscoverItems()
@@ -295,6 +312,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
             _pendingActionCount.value = offlineQueue.peekAll().size
             MoneyActionResult.Queued("Saved offline -- this deposit will go through automatically once you're back online.")
+        }
+    }
+
+    /**
+     * Real round-up auto-save settings write (2026-07-25) -- see
+     * RoundUpController.kt's own doc comment for why this is unqueued (a settings
+     * change, not money movement) unlike depositToSavingsGoal above.
+     */
+    suspend fun setRoundUpSettings(enabled: Boolean, roundToNearest: Long, targetGoalId: String?): MoneyActionResult {
+        return try {
+            val res = NetworkClient.apiService.setRoundUpSettings(
+                SetRoundUpSettingsRequest(enabled = enabled, roundToNearest = BigDecimal(roundToNearest), targetGoalId = targetGoalId)
+            )
+            _roundUpSettings.value = res.settings
+            MoneyActionResult.Success(if (enabled) "Round-up saving is on" else "Round-up saving is off")
+        } catch (e: retrofit2.HttpException) {
+            MoneyActionResult.Failure(backendErrorMessage(e))
+        } catch (e: IOException) {
+            MoneyActionResult.Failure("Couldn't reach itunda. Check your connection and try again.")
         }
     }
 
