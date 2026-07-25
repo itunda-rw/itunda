@@ -205,4 +205,17 @@ interface TransactionRepository : JpaRepository<Transaction, String> {
         type: TransactionType,
         status: TransactionStatus,
     ): Long
+
+    // Real recurring-payment detection for SubscriptionDetectionService -- a coarse
+    // fetch of everything real money this user has ever sent out via a recurring-
+    // capable channel (TRANSFER/PAYMENT/BILL -- DEPOSIT/WITHDRAWAL/AIRTIME/LOAN aren't
+    // subscription-like), ascending so consecutive-occurrence intervals compute forward
+    // in time. Real pattern detection itself happens in application code, same
+    // "coarse repo filter, exact logic in the service" discipline this codebase already
+    // uses for nearby()/spending-insight categorization.
+    fun findBySenderIdAndTypeInAndStatusOrderByCreatedAtAsc(
+        senderId: String,
+        types: List<TransactionType>,
+        status: TransactionStatus,
+    ): List<Transaction>
 }

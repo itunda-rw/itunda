@@ -35,6 +35,7 @@ class WalletController(
     private val walletService: WalletService,
     private val idempotencyService: IdempotencyService,
     private val agentWithdrawalAuthorizationService: AgentWithdrawalAuthorizationService,
+    private val subscriptionDetectionService: SubscriptionDetectionService,
 ) {
 
     @GetMapping
@@ -57,6 +58,14 @@ class WalletController(
     fun getSpendingInsight(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> {
         val result = walletService.getSpendingInsight(currentUser.userId)
         return ResponseEntity.ok(mapOf("success" to true, "categories" to result.categories, "totalSpent" to result.totalSpent))
+    }
+
+    // Real recurring-payment ("subscription") detection -- see
+    // SubscriptionDetectionService's own doc comment for the full sourced account.
+    @GetMapping("/subscriptions")
+    fun getSubscriptions(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> {
+        val result = subscriptionDetectionService.detectSubscriptions(currentUser.userId)
+        return ResponseEntity.ok(mapOf("success" to true, "subscriptions" to result.subscriptions, "estimatedMonthlyTotal" to result.estimatedMonthlyTotal))
     }
 
     // Real budgeting/limits (2026-07-13) -- see WalletService.setBudget/getBudgets.
