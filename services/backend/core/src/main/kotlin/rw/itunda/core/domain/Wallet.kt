@@ -19,7 +19,7 @@ import java.time.Instant
 // user can open many 26-week plans over time (one at a time or several concurrently),
 // so each plan gets its own dedicated Wallet resolved by WeeklySavingsPlan.walletId,
 // never via findByUserIdAndType.
-enum class WalletType { MAIN, SAVINGS, INVESTMENT, LOAN, GROUP, WEEKLY_SAVINGS }
+enum class WalletType { MAIN, SAVINGS, INVESTMENT, LOAN, GROUP, WEEKLY_SAVINGS, UPFRONT_DEPOSIT }
 
 /** Mirrors backend/src/types/index.ts Wallet. Money is BigDecimal, not float, on purpose. */
 @Entity
