@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Gift
 import rw.itunda.core.domain.GiftStatus
+import rw.itunda.core.domain.GiftTheme
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Transaction
@@ -55,7 +56,7 @@ class GiftService(
      * point for a client that doesn't already have a conversation open (e.g. a
      * standalone "send a gift" flow, not initiated from an existing chat thread). */
     @Transactional
-    fun sendGift(senderUserId: String, recipientPhoneNumber: String, amount: BigDecimal, note: String?): Gift {
+    fun sendGift(senderUserId: String, recipientPhoneNumber: String, amount: BigDecimal, note: String?, theme: GiftTheme? = null): Gift {
         if (amount <= BigDecimal.ZERO) throw GiftInvalidAmountException("Amount must be greater than zero")
         val trimmedPhone = recipientPhoneNumber.trim()
         val recipientUser = userRepository.findByPhoneNumber(trimmedPhone)
@@ -66,7 +67,7 @@ class GiftService(
         // surface as an unhandled 500, not the real, honest GIFT_SELF_NOT_ALLOWED 400).
         if (recipientUser.id == senderUserId) throw GiftSelfException("Cannot send a gift to yourself")
         val conversation = messagingService.startOrGetConversation(senderUserId, recipientUser.id)
-        return createGift(senderUserId, recipientUser.id, conversation.id, amount, note)
+        return createGift(senderUserId, recipientUser.id, conversation.id, amount, note, theme)
     }
 
     /** Send a gift within an already-open conversation -- the real, natural entry
@@ -74,13 +75,13 @@ class GiftService(
      * participant isn't the caller, resolved via [MessagingService.getConversationForParticipant]'s
      * own IDOR check rather than re-validated here. */
     @Transactional
-    fun sendGiftInConversation(senderUserId: String, conversationId: String, amount: BigDecimal, note: String?): Gift {
+    fun sendGiftInConversation(senderUserId: String, conversationId: String, amount: BigDecimal, note: String?, theme: GiftTheme? = null): Gift {
         val conversation = messagingService.getConversationForParticipant(senderUserId, conversationId)
         val recipientId = if (conversation.participantAId == senderUserId) conversation.participantBId else conversation.participantAId
-        return createGift(senderUserId, recipientId, conversation.id, amount, note)
+        return createGift(senderUserId, recipientId, conversation.id, amount, note, theme)
     }
 
-    private fun createGift(senderUserId: String, recipientUserId: String, conversationId: String, amount: BigDecimal, note: String?): Gift {
+    private fun createGift(senderUserId: String, recipientUserId: String, conversationId: String, amount: BigDecimal, note: String?, theme: GiftTheme? = null): Gift {
         if (amount <= BigDecimal.ZERO) throw GiftInvalidAmountException("Amount must be greater than zero")
         if (recipientUserId == senderUserId) throw GiftSelfException("Cannot send a gift to yourself")
 
@@ -124,7 +125,7 @@ class GiftService(
         transactionRepository.save(holdTransaction)
 
         val trimmedNote = note?.trim()?.take(200)
-        val message = messagingService.sendMessage(senderUserId, conversationId, formatGiftBody(amount, trimmedNote))
+        val message = messagingService.sendMessage(senderUserId, conversationId, formatGiftBody(amount, trimmedNote, theme))
 
         return giftRepository.save(
             Gift(
@@ -135,6 +136,7 @@ class GiftService(
                 messageId = message.id,
                 amount = amount,
                 note = trimmedNote,
+                theme = theme,
                 holdTransactionId = holdTransaction.id,
                 expiresAt = Instant.now().plus(Gift.EXPIRY),
             ),
@@ -267,7 +269,17 @@ private fun formatAmount(amount: BigDecimal): String {
  * links back to the [Gift] row via [Gift.messageId], so the client never needs to
  * parse the amount out of this string; it's a human-readable fallback for any client
  * that doesn't special-case gift messages. */
-private fun formatGiftBody(amount: BigDecimal, note: String?): String {
+// Real KakaoPay 송금봉투 (money envelope) themed presets -- see GiftTheme's own doc
+// comment for the sourced account. Exactly the 4 real, sourced presets; nothing invented.
+private fun themeLabel(theme: GiftTheme): String = when (theme) {
+    GiftTheme.CONGRATULATIONS -> "🎉 축하해요 (Congratulations)"
+    GiftTheme.HEARTFELT -> "💌 내마음 (From the heart)"
+    GiftTheme.GOOD_LUCK -> "🍀 행운만땅 (Good luck)"
+    GiftTheme.SETTLE_UP -> "🧾 정산해요 (Settling up)"
+}
+
+private fun formatGiftBody(amount: BigDecimal, note: String?, theme: GiftTheme? = null): String {
     val amountText = "${formatAmount(amount)} RWF"
-    return if (note.isNullOrBlank()) "🎁 Sent a gift: $amountText" else "🎁 Sent a gift: $amountText — \"$note\""
+    val prefix = theme?.let { "${themeLabel(it)} " } ?: "🎁 "
+    return if (note.isNullOrBlank()) "${prefix}Sent a gift: $amountText" else "${prefix}Sent a gift: $amountText — \"$note\""
 }

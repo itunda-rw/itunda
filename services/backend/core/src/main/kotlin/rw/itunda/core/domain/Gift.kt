@@ -11,6 +11,17 @@ import java.time.Instant
 
 enum class GiftStatus { PENDING, CLAIMED, EXPIRED }
 
+// Real KakaoPay 송금봉투 (money envelope) themed presets (2026-07-26) -- see
+// docs/DESIGN_REFERENCES.md's own sourced account (story.kakaopay.com/
+// support.kakaopay.com): "themed presets ([축하해요]/[내마음]/[행운만땅]/[정산해요]) carry
+// occasion/message instead of free text." Exactly these 4 real, sourced presets --
+// DESIGN_REFERENCES.md itself notes "a complete, verified catalog... wasn't found," so
+// this doesn't invent a 5th one. Optional and additive alongside the pre-existing free-
+// text `note`, never replacing it -- a theme communicates occasion, a note still
+// carries an actual message, the same way KakaoPay's own envelope still shows the
+// sender's typed text alongside the preset.
+enum class GiftTheme { CONGRATULATIONS, HEARTFELT, GOOD_LUCK, SETTLE_UP }
+
 /**
  * A real KakaoTalk-style "선물하기" (gift) money gift sent within an existing 1:1 chat
  * conversation -- distinct from `P2pService.sendDirect`'s instant push-transfer: a
@@ -46,6 +57,10 @@ class Gift(
 
     @Column(length = 500)
     val note: String?,
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    val theme: GiftTheme? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
