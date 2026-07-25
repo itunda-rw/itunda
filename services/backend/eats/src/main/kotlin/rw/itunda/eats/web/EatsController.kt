@@ -27,6 +27,7 @@ import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.eats.DeliveryAlreadyClaimedException
+import rw.itunda.eats.RiderAlreadyOnDeliveryException
 import rw.itunda.eats.EatsBuyerNoWalletException
 import rw.itunda.eats.EatsFavoriteService
 import rw.itunda.eats.EatsOrderAlreadyReviewedException
@@ -415,6 +416,10 @@ class EatsController(
     @ExceptionHandler(DeliveryAlreadyClaimedException::class)
     fun handleDeliveryAlreadyClaimed(ex: DeliveryAlreadyClaimedException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("DELIVERY_ALREADY_CLAIMED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(RiderAlreadyOnDeliveryException::class)
+    fun handleRiderAlreadyOnDelivery(ex: RiderAlreadyOnDeliveryException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("RIDER_ALREADY_ON_DELIVERY", ex.message ?: "Conflict"))
 
     @ExceptionHandler(NoActiveOfferException::class)
     fun handleNoActiveOffer(ex: NoActiveOfferException) =

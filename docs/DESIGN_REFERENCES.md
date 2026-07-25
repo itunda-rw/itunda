@@ -172,10 +172,18 @@ they close in itunda's current implementation.
    independently sourced claim, and should be fixed alongside it.
    *Target: `SuperAppTabs.kt:3580`, consumers in `EatsCheckoutView:4214+`*
 
-7. **[sourced]** No delivery-speed badge / no single-order vs. batched-order distinction. Coupang
+7. **[sourced] Implemented 2026-07-26.** No delivery-speed badge / no single-order vs. batched-order distinction. Coupang
    Eats pioneered 단건배달/치타배달 (2019); Baemin now has 배민1. Lower priority than the above —
    itunda has no equivalent anywhere, but this is a purchase-decision nicety, not a functional gap.
-   *Target: browse list, `~3746+`; no current equivalent*
+   *Target: browse list, `~3746+`; no current equivalent* -- **and a real, live bug found while
+   closing it**: nothing in `EatsOrderService.claimDelivery` ever stopped a rider from claiming a
+   second delivery while still carrying an unfinished one (no batching logic exists anywhere to
+   justify it either). Fixed: a rider can now only claim one active delivery at a time, real-409
+   (`RIDER_ALREADY_ON_DELIVERY`) otherwise, and the dispatch/notify candidate pool now excludes
+   busy riders too (skipping straight to the next free candidate instead of wasting an offer on
+   someone who can't accept it). `singleOrderDelivery: true` surfaced on
+   `GET /api/v1/shopping/merchants`, honestly true because it's now enforced, not decorative copy.
+   See `docs/TOSS_PARITY_MATRIX.md`'s Eats row for the full live-verified account.
 
 8. **[sourced] Implemented 2026-07-25.** Add table/QR in-store ordering, matching 배민오더's real
    product exactly: `EatsOrder` was hardcoded delivery-only (`deliveryAddress` `nullable = false`,

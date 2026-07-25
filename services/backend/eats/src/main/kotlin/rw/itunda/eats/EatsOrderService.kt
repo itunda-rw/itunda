@@ -55,6 +55,7 @@ class EatsOrderNotFoundException(message: String) : RuntimeException(message)
 class InvalidEatsOrderStatusTransitionException(message: String) : RuntimeException(message)
 class RiderNotAvailableException(message: String) : RuntimeException(message)
 class DeliveryAlreadyClaimedException(message: String) : RuntimeException(message)
+class RiderAlreadyOnDeliveryException(message: String) : RuntimeException(message)
 class NotAssignedRiderException(message: String) : RuntimeException(message)
 class InvalidEatsCoordinatesException(message: String) : RuntimeException(message)
 class InvalidEatsDeliveryNotesException(message: String) : RuntimeException(message)
@@ -582,16 +583,25 @@ class EatsOrderService(
     // .createGroup): the query has no per-order parameters, so it returns the identical
     // real result set every time within one short scheduler tick -- N calls for N orders
     // was real, avoidable repeated work, not N genuinely different queries.
+    // Real busy-rider exclusion (2026-07-26) -- see
+    // EatsOrderRepository.findDistinctRiderIdsByStatusIn's own doc comment. Computed
+    // fresh here when a caller didn't already batch it (busyRiderIds defaults to null,
+    // same "compute once, reuse for a batch" opt-in shape candidatePool already uses).
     private fun rankNearbyRiders(
         restaurantLat: Double,
         restaurantLng: Double,
         excludedUserIds: Set<String> = emptySet(),
         candidatePool: List<Rider>? = null,
-    ) =
-        (candidatePool ?: riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull())
+        busyRiderIds: Set<String>? = null,
+    ): List<Pair<Rider, Double>> {
+        val actuallyBusy = busyRiderIds
+            ?: eatsOrderRepository.findDistinctRiderIdsByStatusIn(listOf(EatsOrderStatus.RIDER_ASSIGNED, EatsOrderStatus.PICKED_UP)).toSet()
+        return (candidatePool ?: riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull())
             .filterNot { it.userId in excludedUserIds }
+            .filterNot { it.id in actuallyBusy }
             .map { rider -> rider to GeoUtils.haversineKm(restaurantLat, restaurantLng, rider.currentLatitude!!, rider.currentLongitude!!) }
             .sortedBy { (_, distanceKm) -> distanceKm }
+    }
 
     // Real proactive nearest-rider push (2026-07-19) -- the open-browse fallback: rather
     // than every online rider having to poll/browse to discover a new READY_FOR_PICKUP
@@ -605,12 +615,12 @@ class EatsOrderService(
     // side-effect can't block the real operation it's attached to" discipline
     // ShoppingCashbackService's own doc comment already established -- a notification
     // failure must never fail the real status transition it's reacting to.
-    private fun notifyNearestRiders(order: EatsOrder, restaurant: Merchant, candidatePool: List<Rider>? = null) {
+    private fun notifyNearestRiders(order: EatsOrder, restaurant: Merchant, candidatePool: List<Rider>? = null, busyRiderIds: Set<String>? = null) {
         try {
             val restaurantLat = restaurant.latitude
             val restaurantLng = restaurant.longitude
             if (restaurantLat == null || restaurantLng == null) return
-            val nearest = rankNearbyRiders(restaurantLat, restaurantLng, candidatePool = candidatePool).take(NEAREST_RIDERS_TO_NOTIFY)
+            val nearest = rankNearbyRiders(restaurantLat, restaurantLng, candidatePool = candidatePool, busyRiderIds = busyRiderIds).take(NEAREST_RIDERS_TO_NOTIFY)
             if (nearest.isEmpty()) return
 
             notificationRepository.saveAll(
@@ -640,16 +650,16 @@ class EatsOrderService(
     // degrades to the pre-existing open browse/first-claim-wins model via
     // notifyNearestRiders -- a real delivery is never left silently stuck just because
     // automatic dispatch ran out of real candidates.
-    private fun dispatchToNextCandidate(order: EatsOrder, restaurant: Merchant, candidatePool: List<Rider>? = null) {
+    private fun dispatchToNextCandidate(order: EatsOrder, restaurant: Merchant, candidatePool: List<Rider>? = null, busyRiderIds: Set<String>? = null) {
         try {
             val restaurantLat = restaurant.latitude
             val restaurantLng = restaurant.longitude
             if (restaurantLat == null || restaurantLng == null) {
-                notifyNearestRiders(order, restaurant, candidatePool)
+                notifyNearestRiders(order, restaurant, candidatePool, busyRiderIds)
                 return
             }
             val excluded = order.excludedRiderUserIds?.split(",")?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
-            val next = rankNearbyRiders(restaurantLat, restaurantLng, excluded, candidatePool).firstOrNull()?.first
+            val next = rankNearbyRiders(restaurantLat, restaurantLng, excluded, candidatePool, busyRiderIds).firstOrNull()?.first
 
             if (next == null) {
                 order.offeredRiderId = null
@@ -702,6 +712,9 @@ class EatsOrderService(
         val expiredRiderIds = orders.mapNotNull { it.offeredRiderId }.distinct()
         val expiredRidersById = if (expiredRiderIds.isEmpty()) emptyMap() else riderRepository.findAllById(expiredRiderIds).associateBy { it.id }
         val candidatePool = riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull()
+        // Real busy-rider exclusion, computed once for the whole batch -- see
+        // EatsOrderRepository.findDistinctRiderIdsByStatusIn's own doc comment.
+        val busyRiderIds = eatsOrderRepository.findDistinctRiderIdsByStatusIn(listOf(EatsOrderStatus.RIDER_ASSIGNED, EatsOrderStatus.PICKED_UP)).toSet()
 
         for (order in orders) {
             val restaurant = restaurantsById[order.restaurantId] ?: continue
@@ -712,7 +725,7 @@ class EatsOrderService(
             order.offeredRiderId = null
             order.offerExpiresAt = null
             eatsOrderRepository.save(order)
-            dispatchToNextCandidate(order, restaurant, candidatePool)
+            dispatchToNextCandidate(order, restaurant, candidatePool, busyRiderIds)
         }
     }
 
@@ -789,13 +802,28 @@ class EatsOrderService(
     }
 
     /** A real, available rider claims a READY_FOR_PICKUP order no one else has claimed
-     * yet -- the actual "accept delivery" action, moving the order to RIDER_ASSIGNED. */
+     * yet -- the actual "accept delivery" action, moving the order to RIDER_ASSIGNED.
+     *
+     * **Real 단건배달 (single-order delivery) guarantee, 2026-07-26** -- closes a real
+     * gap found live while researching Coupang Eats' own real, sourced 단건배달/치타배달
+     * distinction (2019) and Baemin's own 배민1 equivalent
+     * (docs/DESIGN_REFERENCES.md): nothing in this method previously stopped a rider
+     * from claiming a second delivery while still carrying an unfinished one (no
+     * batching UI/logic exists anywhere in this backend to justify it either -- this
+     * was a real oversight, not an intentional multi-order feature). Every itunda
+     * delivery is now genuinely single-order, the same real guarantee Coupang
+     * Eats/배민1 market -- see `ShoppingController.getEligibleMerchants`'s own
+     * `singleOrderDelivery: true` field, honestly true because it's enforced here, not
+     * decorative copy. */
     @Transactional
     fun claimDelivery(riderUserId: String, orderId: String): EatsOrder {
         val rider = riderRepository.findByUserId(riderUserId)
             ?: throw RiderNotRegisteredException("This account is not registered as a rider")
         if (!rider.available) {
             throw RiderNotAvailableException("Go online before claiming a delivery")
+        }
+        if (eatsOrderRepository.existsByRiderIdAndStatusIn(rider.id, listOf(EatsOrderStatus.RIDER_ASSIGNED, EatsOrderStatus.PICKED_UP))) {
+            throw RiderAlreadyOnDeliveryException("Finish your current delivery before claiming another -- itunda riders carry one order at a time")
         }
         val order = eatsOrderRepository.findById(orderId).orElseThrow { EatsOrderNotFoundException("Order not found") }
         if (order.status != EatsOrderStatus.READY_FOR_PICKUP || order.riderId != null) {

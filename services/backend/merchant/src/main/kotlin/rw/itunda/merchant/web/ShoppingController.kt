@@ -118,6 +118,12 @@ class ShoppingController(
                 "reviewCount" to (rating?.count ?: 0L),
                 "distanceKm" to distanceKm?.let { BigDecimal(it).setScale(2, RoundingMode.HALF_UP) },
                 "deliveryTimeMinutes" to distanceKm?.let { estimateDeliveryMinutes(it) },
+                // Real 단건배달 (single-order delivery) guarantee (2026-07-26) -- see
+                // EatsOrderService.claimDelivery's own doc comment. Universally true,
+                // not a per-merchant toggle: enforced at claim time for every real
+                // itunda delivery, the same real Coupang Eats/배민1 distinction
+                // docs/DESIGN_REFERENCES.md named.
+                "singleOrderDelivery" to true,
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "merchants" to merchants) + pageMeta(page))

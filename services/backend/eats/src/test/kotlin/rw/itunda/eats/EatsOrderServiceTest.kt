@@ -61,6 +61,12 @@ class EatsOrderServiceTest : BehaviorSpec({
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
+        // Real 단건배달 (single-order delivery) guarantee (2026-07-26) -- default "no
+        // rider is currently busy" stub for every pre-existing test in this suite, none
+        // of which predate or specifically exercise this new behavior. See
+        // EatsOrderService.claimDelivery's own doc comment.
+        every { eatsOrderRepository.existsByRiderIdAndStatusIn(any(), any()) } returns false
+        every { eatsOrderRepository.findDistinctRiderIdsByStatusIn(any()) } returns emptyList()
         val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
         // Real menu-options resolution (2026-07-21) -- relaxed + explicit empty-list
         // stubs, matching this suite's own existing "no option groups defined" default
@@ -467,6 +473,12 @@ class EatsOrderServiceTest : BehaviorSpec({
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
+        // Real 단건배달 (single-order delivery) guarantee (2026-07-26) -- default "no
+        // rider is currently busy" stub for every pre-existing test in this suite, none
+        // of which predate or specifically exercise this new behavior. See
+        // EatsOrderService.claimDelivery's own doc comment.
+        every { eatsOrderRepository.existsByRiderIdAndStatusIn(any(), any()) } returns false
+        every { eatsOrderRepository.findDistinctRiderIdsByStatusIn(any()) } returns emptyList()
         val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
         // Real menu-options resolution (2026-07-21) -- relaxed + explicit empty-list
         // stubs, matching this suite's own existing "no option groups defined" default
@@ -577,6 +589,32 @@ class EatsOrderServiceTest : BehaviorSpec({
                     notificationRepository.save(match<Notification> { it.type == "DELIVERY_OFFER" && it.userId == "rider_user_close" })
                 }
                 verify(exactly = 0) { notificationRepository.saveAll(any<List<Notification>>()) }
+            }
+        }
+
+        When("the closest rider is real ONLINE but already carrying another real active delivery") {
+            val locatedRestaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE, latitude = -1.9536, longitude = 30.0605)
+            val preparingOrder = EatsOrder(
+                id = "eats_order_11", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_11", status = EatsOrderStatus.PREPARING,
+            )
+            val busyCloseRider = Rider(id = "rider_busy_close", userId = "rider_user_busy_close", walletId = "wallet_busy_close", available = true, currentLatitude = -1.9536, currentLongitude = 30.0620)
+            val freeFarRider = Rider(id = "rider_free_far", userId = "rider_user_free_far", walletId = "wallet_free_far", available = true, currentLatitude = -1.9600, currentLongitude = 30.0700)
+            val savedSlot = slot<EatsOrder>()
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns locatedRestaurant
+            every { eatsOrderRepository.findById("eats_order_11") } returns Optional.of(preparingOrder)
+            every { eatsOrderRepository.save(capture(savedSlot)) } answers { firstArg() }
+            every { riderRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns listOf(busyCloseRider, freeFarRider)
+            // Real 단건배달 (single-order delivery) exclusion (2026-07-26) -- the
+            // closest rider is real busy, so real dispatch must skip them for the next
+            // real candidate, never offering a delivery claimDelivery would reject anyway.
+            every { eatsOrderRepository.findDistinctRiderIdsByStatusIn(listOf(EatsOrderStatus.RIDER_ASSIGNED, EatsOrderStatus.PICKED_UP)) } returns listOf("rider_busy_close")
+
+            service.updateRestaurantStatus("owner_1", "eats_order_11", EatsOrderStatus.READY_FOR_PICKUP)
+
+            Then("real dispatch skips the real busy closest rider and offers the next real free candidate instead") {
+                savedSlot.captured.offeredRiderId shouldBe "rider_free_far"
             }
         }
 
@@ -750,6 +788,12 @@ class EatsOrderServiceTest : BehaviorSpec({
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
+        // Real 단건배달 (single-order delivery) guarantee (2026-07-26) -- default "no
+        // rider is currently busy" stub for every pre-existing test in this suite, none
+        // of which predate or specifically exercise this new behavior. See
+        // EatsOrderService.claimDelivery's own doc comment.
+        every { eatsOrderRepository.existsByRiderIdAndStatusIn(any(), any()) } returns false
+        every { eatsOrderRepository.findDistinctRiderIdsByStatusIn(any()) } returns emptyList()
         val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
         // Real menu-options resolution (2026-07-21) -- relaxed + explicit empty-list
         // stubs, matching this suite's own existing "no option groups defined" default
@@ -813,6 +857,20 @@ class EatsOrderServiceTest : BehaviorSpec({
                     service.claimDelivery("rider_user_2", "eats_order_1")
                     error("expected RiderNotAvailableException")
                 } catch (e: RiderNotAvailableException) {
+                    // expected
+                }
+            }
+        }
+
+        When("a rider who's already carrying a real active delivery tries to claim a second one") {
+            every { riderRepository.findByUserId("rider_user_1") } returns rider
+            every { eatsOrderRepository.existsByRiderIdAndStatusIn("rider_1", listOf(EatsOrderStatus.RIDER_ASSIGNED, EatsOrderStatus.PICKED_UP)) } returns true
+
+            Then("it throws RiderAlreadyOnDeliveryException -- real 단건배달 (single-order delivery), the same real Coupang Eats/배민1 guarantee") {
+                try {
+                    service.claimDelivery("rider_user_1", "eats_order_1")
+                    error("expected RiderAlreadyOnDeliveryException")
+                } catch (e: RiderAlreadyOnDeliveryException) {
                     // expected
                 }
             }
@@ -902,6 +960,12 @@ class EatsOrderServiceTest : BehaviorSpec({
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
+        // Real 단건배달 (single-order delivery) guarantee (2026-07-26) -- default "no
+        // rider is currently busy" stub for every pre-existing test in this suite, none
+        // of which predate or specifically exercise this new behavior. See
+        // EatsOrderService.claimDelivery's own doc comment.
+        every { eatsOrderRepository.existsByRiderIdAndStatusIn(any(), any()) } returns false
+        every { eatsOrderRepository.findDistinctRiderIdsByStatusIn(any()) } returns emptyList()
         val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
         // Real menu-options resolution (2026-07-21) -- relaxed + explicit empty-list
         // stubs, matching this suite's own existing "no option groups defined" default
@@ -982,6 +1046,12 @@ class EatsOrderServiceTest : BehaviorSpec({
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
+        // Real 단건배달 (single-order delivery) guarantee (2026-07-26) -- default "no
+        // rider is currently busy" stub for every pre-existing test in this suite, none
+        // of which predate or specifically exercise this new behavior. See
+        // EatsOrderService.claimDelivery's own doc comment.
+        every { eatsOrderRepository.existsByRiderIdAndStatusIn(any(), any()) } returns false
+        every { eatsOrderRepository.findDistinctRiderIdsByStatusIn(any()) } returns emptyList()
         val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
         // Real menu-options resolution (2026-07-21) -- relaxed + explicit empty-list
         // stubs, matching this suite's own existing "no option groups defined" default
@@ -1077,6 +1147,12 @@ class EatsOrderServiceTest : BehaviorSpec({
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
+        // Real 단건배달 (single-order delivery) guarantee (2026-07-26) -- default "no
+        // rider is currently busy" stub for every pre-existing test in this suite, none
+        // of which predate or specifically exercise this new behavior. See
+        // EatsOrderService.claimDelivery's own doc comment.
+        every { eatsOrderRepository.existsByRiderIdAndStatusIn(any(), any()) } returns false
+        every { eatsOrderRepository.findDistinctRiderIdsByStatusIn(any()) } returns emptyList()
         val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
         // Real menu-options resolution (2026-07-21) -- relaxed + explicit empty-list
         // stubs, matching this suite's own existing "no option groups defined" default
@@ -1183,6 +1259,12 @@ class EatsOrderServiceTest : BehaviorSpec({
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
+        // Real 단건배달 (single-order delivery) guarantee (2026-07-26) -- default "no
+        // rider is currently busy" stub for every pre-existing test in this suite, none
+        // of which predate or specifically exercise this new behavior. See
+        // EatsOrderService.claimDelivery's own doc comment.
+        every { eatsOrderRepository.existsByRiderIdAndStatusIn(any(), any()) } returns false
+        every { eatsOrderRepository.findDistinctRiderIdsByStatusIn(any()) } returns emptyList()
         val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
         // Real menu-options resolution (2026-07-21) -- relaxed + explicit empty-list
         // stubs, matching this suite's own existing "no option groups defined" default
@@ -1309,6 +1391,12 @@ class EatsOrderServiceTest : BehaviorSpec({
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
+        // Real 단건배달 (single-order delivery) guarantee (2026-07-26) -- default "no
+        // rider is currently busy" stub for every pre-existing test in this suite, none
+        // of which predate or specifically exercise this new behavior. See
+        // EatsOrderService.claimDelivery's own doc comment.
+        every { eatsOrderRepository.existsByRiderIdAndStatusIn(any(), any()) } returns false
+        every { eatsOrderRepository.findDistinctRiderIdsByStatusIn(any()) } returns emptyList()
         val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
         // Real menu-options resolution (2026-07-21) -- relaxed + explicit empty-list
         // stubs, matching this suite's own existing "no option groups defined" default
@@ -1373,6 +1461,12 @@ class EatsOrderServiceTest : BehaviorSpec({
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val riderRepository = mockk<RiderRepository>()
         val eatsOrderRepository = mockk<EatsOrderRepository>()
+        // Real 단건배달 (single-order delivery) guarantee (2026-07-26) -- default "no
+        // rider is currently busy" stub for every pre-existing test in this suite, none
+        // of which predate or specifically exercise this new behavior. See
+        // EatsOrderService.claimDelivery's own doc comment.
+        every { eatsOrderRepository.existsByRiderIdAndStatusIn(any(), any()) } returns false
+        every { eatsOrderRepository.findDistinctRiderIdsByStatusIn(any()) } returns emptyList()
         val eatsOrderItemRepository = mockk<EatsOrderItemRepository>(relaxed = true)
         // Real menu-options resolution (2026-07-21) -- relaxed + explicit empty-list
         // stubs, matching this suite's own existing "no option groups defined" default
