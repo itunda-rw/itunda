@@ -146,13 +146,21 @@ class DineInOrderService(
                 val summaries = mutableListOf<Triple<String, String, BigDecimal>>()
                 for (group in groups) {
                     val groupChoiceIds = (choicesByGroup[group.id] ?: emptyList()).map { it.id }.toSet()
+                    // Real multi-select optional add-ons (2026-07-26) -- see
+                    // EatsOrderService's identical fix and MenuOptionGroup.kt's own doc
+                    // comment for the full account.
                     val selectedInGroup = selectedSet.intersect(groupChoiceIds)
-                    if (selectedInGroup.size != 1) {
-                        throw MissingRequiredDineInMenuOptionException("Select exactly one option for '${group.name}' on ${menuItem.name}")
+                    if (group.required && selectedInGroup.isEmpty()) {
+                        throw MissingRequiredDineInMenuOptionException("Select at least one option for '${group.name}' on ${menuItem.name}")
                     }
-                    val chosen = choiceById.getValue(selectedInGroup.first())
-                    optionsDelta = optionsDelta.add(chosen.priceDelta)
-                    summaries.add(Triple(group.name, chosen.name, chosen.priceDelta))
+                    if (!group.multiSelect && selectedInGroup.size > 1) {
+                        throw InvalidDineInMenuOptionSelectionException("Only one option can be selected for '${group.name}' on ${menuItem.name}")
+                    }
+                    selectedInGroup.forEach { choiceId ->
+                        val chosen = choiceById.getValue(choiceId)
+                        optionsDelta = optionsDelta.add(chosen.priceDelta)
+                        summaries.add(Triple(group.name, chosen.name, chosen.priceDelta))
+                    }
                 }
                 selectedOptionsJson = buildSelectedOptionsJson(summaries)
             }

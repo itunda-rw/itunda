@@ -32,7 +32,15 @@ data class AddProductRequest(
     // BookingDeposit.kt's own doc comment. Only valid with durationMinutes set.
     val requiresPrepay: Boolean = false,
 )
-data class AddMenuOptionGroupRequest(val name: String, val choices: List<MenuOptionChoiceRequest>)
+data class AddMenuOptionGroupRequest(
+    val name: String,
+    val choices: List<MenuOptionChoiceRequest>,
+    // Real multi-select optional add-ons (2026-07-26) -- see MenuOptionGroup.kt's own
+    // doc comment. Defaults preserve the original v1 "exactly one required choice"
+    // behavior for any caller not yet passing these.
+    val required: Boolean = true,
+    val multiSelect: Boolean = false,
+)
 
 // Real bulk/wholesale pricing (2026-07-25) -- see ProductPriceTier's own doc comment.
 data class PriceTierDto(val minQuantity: Int, val unitPrice: BigDecimal)
@@ -85,17 +93,23 @@ class MerchantProductController(
         return ResponseEntity.ok(mapOf("success" to true, "product" to product))
     }
 
-    // Real menu-item option groups (2026-07-21, v1: required single-select only) -- see
-    // MenuOptionService.addOptionGroup's own doc comment for the full account.
+    // Real menu-item option groups (2026-07-21; multi-select optional add-ons added
+    // 2026-07-26) -- see MenuOptionService.addOptionGroup's own doc comment.
     @PostMapping("/{productId}/option-groups")
     fun addOptionGroup(
         @PathVariable productId: String,
         @RequestBody request: AddMenuOptionGroupRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val view = menuOptionService.addOptionGroup(currentUser.userId, productId, request.name, request.choices)
+        val view = menuOptionService.addOptionGroup(currentUser.userId, productId, request.name, request.choices, request.required, request.multiSelect)
         return ResponseEntity.status(HttpStatus.CREATED).body(
-            mapOf("success" to true, "optionGroup" to mapOf("id" to view.group.id, "name" to view.group.name, "choices" to view.choices)),
+            mapOf(
+                "success" to true,
+                "optionGroup" to mapOf(
+                    "id" to view.group.id, "name" to view.group.name, "required" to view.group.required,
+                    "multiSelect" to view.group.multiSelect, "choices" to view.choices,
+                ),
+            ),
         )
     }
 
@@ -109,7 +123,9 @@ class MerchantProductController(
         return ResponseEntity.ok(
             mapOf(
                 "success" to true,
-                "optionGroups" to views.map { mapOf("id" to it.group.id, "name" to it.group.name, "choices" to it.choices) },
+                "optionGroups" to views.map {
+                    mapOf("id" to it.group.id, "name" to it.group.name, "required" to it.group.required, "multiSelect" to it.group.multiSelect, "choices" to it.choices)
+                },
             ),
         )
     }

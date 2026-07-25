@@ -289,17 +289,25 @@ class EatsOrderService(
                 val summaries = mutableListOf<Triple<String, String, BigDecimal>>()
                 for (group in groups) {
                     val groupChoiceIds = (choicesByGroup[group.id] ?: emptyList()).map { it.id }.toSet()
-                    // Real Coupang Eats-style enforcement (v1: required, single-select
-                    // only) -- exactly one choice from EVERY group defined on this
-                    // product, real-422 otherwise. Never silently defaults to a choice
-                    // the buyer didn't actually pick.
+                    // Real Coupang Eats/Baemin-style enforcement (multi-select optional
+                    // add-ons added 2026-07-26 -- see MenuOptionGroup.kt's own doc
+                    // comment): a `required` group needs at least one real choice, a
+                    // non-`multiSelect` group allows at most one. For the original v1
+                    // required+single-select groups (every pre-2026-07-26 group), this
+                    // is exactly the old "exactly one" enforcement, unchanged. Never
+                    // silently defaults to a choice the buyer didn't actually pick.
                     val selectedInGroup = selectedSet.intersect(groupChoiceIds)
-                    if (selectedInGroup.size != 1) {
-                        throw MissingRequiredMenuOptionException("Select exactly one option for '${group.name}' on ${menuItem.name}")
+                    if (group.required && selectedInGroup.isEmpty()) {
+                        throw MissingRequiredMenuOptionException("Select at least one option for '${group.name}' on ${menuItem.name}")
                     }
-                    val chosen = choiceById.getValue(selectedInGroup.first())
-                    optionsDelta = optionsDelta.add(chosen.priceDelta)
-                    summaries.add(Triple(group.name, chosen.name, chosen.priceDelta))
+                    if (!group.multiSelect && selectedInGroup.size > 1) {
+                        throw InvalidMenuOptionSelectionException("Only one option can be selected for '${group.name}' on ${menuItem.name}")
+                    }
+                    selectedInGroup.forEach { choiceId ->
+                        val chosen = choiceById.getValue(choiceId)
+                        optionsDelta = optionsDelta.add(chosen.priceDelta)
+                        summaries.add(Triple(group.name, chosen.name, chosen.priceDelta))
+                    }
                 }
                 selectedOptionsJson = buildSelectedOptionsJson(summaries)
             }

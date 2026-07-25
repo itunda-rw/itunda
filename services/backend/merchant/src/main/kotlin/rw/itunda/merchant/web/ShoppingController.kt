@@ -199,6 +199,10 @@ class ShoppingController(
                     mapOf(
                         "id" to group.id,
                         "name" to group.name,
+                        // Real multi-select optional add-ons (2026-07-26) -- see
+                        // MenuOptionGroup.kt's own doc comment.
+                        "required" to group.required,
+                        "multiSelect" to group.multiSelect,
                         "choices" to (choicesByGroup[group.id] ?: emptyList()).map { choice ->
                             mapOf("id" to choice.id, "name" to choice.name, "priceDelta" to choice.priceDelta)
                         },
