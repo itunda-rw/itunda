@@ -338,6 +338,7 @@ they close in itunda's current implementation.
 | Seed Design (Karrot's official open-source design system) | seed-design.io, github.com/daangn/seed-design | 44 official components incl. Manner Temp & Badge (10 discrete levels l1–l10, pill variant for cards), Bottom Sheet (documented anatomy, 90/50/10% snap points, mandatory drag handle, switch to full page past 90% height), Scroll Fog (persistent edge-fade, 15–20% depth, always rendered to avoid flicker), Content Placeholder/Skeleton/Identity Placeholder, Tag Group, Menu Sheet, Reaction Button |
 | Karrot — 동네인증 (neighborhood verification) | cs.kr.karrotmarket.com (official FAQs 44, 1), corroborated by nuthang.com | GPS verification of up to 2 neighborhoods (home + work); user-adjustable radius (8–63 nearby areas per secondary source); verification frequency shown as a trust signal |
 | Karrot — 동네생활 board structure | brunch.co.kr/@zezezeze/79 | Question posts get distinct 궁금해요/답변하기 CTA vs. ordinary 공감하기/댓글; feed is strictly chronological (no popularity ranking, to preserve voice diversity); 같이해요 (join-together) posts get a dedicated pinned mid-feed slot; joining their group chat requires an explicit 참여하기 tap |
+| Naver Cafe — 안전거래 (Safe Trade) escrow | navercorp.com press release (Feb/Sept 2025) | Real escrow + Naver Certificate ID-verification + fraud-detection system bolted onto informal P2P trades happening inside community posts/comments -- trust infrastructure for commerce that was never a dedicated marketplace to begin with, built specifically to stop fraud in that informal setting |
 | Karrot — review & wishlist UX | ditoday.com | Post-transaction review is a preset checklist, not free text; "good points" shown publicly, "uncomfortable points" kept private between the two parties (deliberate asymmetric visibility to avoid public-negative-review churn); un-hearting a wishlist item is toast-confirmed, not silent |
 | Karrot — general IA | mobiinside.co.kr | Transaction history split into 판매내역/구매내역/관심목록 (sales/purchases/wishlist) tabs; search radius as a slider, not checkboxes |
 | 당근알바 (Karrot Jobs) — official product page | daangn.com/kr/jobs/about | Three-step flow: 알바공고 작성하기 (post) → 지원자 확인하기 (review applicants) → 채팅으로 약속 잡기 (arrange via chat, only *after* reviewing applicants, not before); proximity-first framing ("걸어서 10분 거리" — within a 10-minute walk); phone number never exposed, all contact routes through in-app chat |
@@ -441,6 +442,22 @@ they close in itunda's current implementation.
     *Shipped: `CommunityPost.eventDate`/`capacity`, `CommunityService.joinMeetup`'s real capacity
     check, `GET /api/v1/community/meetups/upcoming` (soonest-first), Android's date/time/capacity
     fields on meetup creation + soonest-first pinned meetup ordering*
+
+13. **[sourced] Implemented 2026-07-25.** Add real "pay via itunda" Marketplace escrow, closing a
+    real trust gap Naver Cafe's own "안전거래" (Safe Trade) product exists specifically to solve.
+    itunda's Marketplace has always settled buyer/seller in person, off-platform (same real
+    당근마켓 model), with zero protection against a no-show or a not-as-described item -- this ships
+    as a purely opt-in alternative alongside that existing cash handoff, never replacing it. A
+    buyer's payment sits in a real `marketplace_escrow_holding` clearing account (same shape
+    `EATS_DELIVERY_HOLDING`/`GIFT_HOLDING` already establish) until they confirm receipt, at which
+    point the seller is paid minus a real 1.5% escrow fee (matching `OrderService.feeRate`); a
+    disputed trade is resolved by a real human admin (release or full refund, no fee on a refund,
+    and the listing reopens for sale), the same real human-review-queue precedent
+    `PropertyOwnershipService` already established -- deliberately not an automated resolution,
+    since this backend has no real fraud-detection system to drive one safely.
+    *Shipped: `MarketplaceEscrow`, `MarketplaceService.payEscrow`/`confirmReceipt`/`disputeEscrow`,
+    `MarketplaceEscrowAdminController` (`/api/v1/system/marketplace-escrow`), Marketplace's "🔒 Pay
+    via itunda" + Confirm receipt/Report a problem actions*
 
 ### Unresolved / worth a follow-up
 

@@ -35,15 +35,19 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.core.web.toResponseDto
 import rw.itunda.core.web.trustScores
+import rw.itunda.marketplace.BuyerNoWalletException
 import rw.itunda.marketplace.BuyerNotFoundException
 import rw.itunda.marketplace.FavoriteListingNotFoundException
 import rw.itunda.marketplace.InvalidBoostDurationException
 import rw.itunda.marketplace.InvalidCoordinatesException
+import rw.itunda.marketplace.InvalidDisputeReasonException
+import rw.itunda.marketplace.InvalidEscrowStatusException
 import rw.itunda.marketplace.InvalidListingException
 import rw.itunda.marketplace.InvalidOfferAmountException
 import rw.itunda.marketplace.ListingFavoriteService
 import rw.itunda.marketplace.ListingNotActiveException
 import rw.itunda.marketplace.ListingNotFoundException
+import rw.itunda.marketplace.MarketplaceEscrowNotFoundException
 import rw.itunda.marketplace.MarketplaceService
 import rw.itunda.marketplace.NeighborhoodNotSetException
 import rw.itunda.marketplace.OfferAlreadyResolvedException
@@ -71,6 +75,7 @@ data class RespondToOfferRequest(val action: OfferResponseAction, val counterAmo
 data class MarkSoldRequest(val buyerPhoneNumber: String? = null)
 data class SubmitHoodReviewRequest(val goodPoints: List<String> = emptyList(), val uncomfortablePoints: List<String> = emptyList())
 data class BoostListingRequest(val days: Int)
+data class DisputeEscrowRequest(val reason: String)
 
 // Real 당근마켓-style marketplace -- see MarketplaceService's own doc comment. Normal
 // itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
@@ -188,6 +193,53 @@ class MarketplaceController(
     @GetMapping("/boost-tiers")
     fun getBoostTiers(): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "tiers" to MarketplaceService.BOOST_TIERS.toSortedMap()))
+
+    // Real "pay via itunda" Marketplace escrow -- see MarketplaceService's own doc
+    // comment. Real money movement, so this and confirm-receipt both require a real
+    // Idempotency-Key, same discipline boost above already established for this
+    // controller's first money-moving endpoint.
+    @PostMapping("/listings/{listingId}/pay-escrow")
+    fun payEscrow(
+        @PathVariable listingId: String,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/marketplace/listings/$listingId/pay-escrow", idempotencyKey, listingId) {
+            201 to mapOf("success" to true, "escrow" to marketplaceService.payEscrow(currentUser.userId, listingId))
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    @PostMapping("/listings/{listingId}/confirm-receipt")
+    fun confirmReceipt(
+        @PathVariable listingId: String,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/marketplace/listings/$listingId/confirm-receipt", idempotencyKey, listingId) {
+            200 to mapOf("success" to true, "escrow" to marketplaceService.confirmReceipt(currentUser.userId, listingId))
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    @PostMapping("/listings/{listingId}/dispute-escrow")
+    fun disputeEscrow(
+        @PathVariable listingId: String,
+        @RequestBody request: DisputeEscrowRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val escrow = marketplaceService.disputeEscrow(currentUser.userId, listingId, request.reason)
+        return ResponseEntity.ok(mapOf("success" to true, "escrow" to escrow))
+    }
+
+    @GetMapping("/listings/{listingId}/escrow")
+    fun getEscrow(
+        @PathVariable listingId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val escrow = marketplaceService.getEscrow(currentUser.userId, listingId)
+        return ResponseEntity.ok(mapOf("success" to true, "escrow" to escrow))
+    }
 
     @PostMapping("/listings/{listingId}/mark-sold")
     fun markSold(
@@ -378,6 +430,22 @@ class MarketplaceController(
     @ExceptionHandler(SellerNoWalletException::class)
     fun handleSellerNoWallet(ex: SellerNoWalletException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(BuyerNoWalletException::class)
+    fun handleBuyerNoWallet(ex: BuyerNoWalletException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(MarketplaceEscrowNotFoundException::class)
+    fun handleEscrowNotFound(ex: MarketplaceEscrowNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ESCROW_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(InvalidEscrowStatusException::class)
+    fun handleInvalidEscrowStatus(ex: InvalidEscrowStatusException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("INVALID_ESCROW_STATUS", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(InvalidDisputeReasonException::class)
+    fun handleInvalidDisputeReason(ex: InvalidDisputeReasonException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_DISPUTE_REASON", ex.message ?: "Bad request"))
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) =

@@ -66,6 +66,9 @@ class LedgerAccount(
             "fx_clearing_usd" to "FX Clearing (USD)",
             "fx_clearing_eur" to "FX Clearing (EUR)",
             "fx_clearing_gbp" to "FX Clearing (GBP)",
+            // Real Marketplace escrow holding (2026-07-25) -- see
+            // MarketplaceEscrow.kt's own doc comment.
+            "marketplace_escrow_holding" to "Marketplace Escrow Holding",
         )
     }
 }

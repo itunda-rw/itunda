@@ -473,6 +473,18 @@ data class ListingDto(
 data class MarkSoldRequest(val buyerPhoneNumber: String? = null)
 data class BoostListingRequest(val days: Int)
 data class BoostTiersResponse(val success: Boolean, val tiers: Map<String, Double>)
+
+// Real "pay via itunda" Marketplace escrow (2026-07-25) -- see backend
+// MarketplaceEscrow.kt's own doc comment. An opt-in safer alternative to the existing
+// in-person cash handoff, never replacing it.
+data class MarketplaceEscrowDto(
+    val id: String, val listingId: String, val buyerId: String, val sellerId: String,
+    val amount: Double, val fee: Double, val status: String,
+    val holdTransactionId: String, val resolutionTransactionId: String? = null,
+    val disputeReason: String? = null, val createdAt: String, val updatedAt: String,
+)
+data class MarketplaceEscrowResponse(val success: Boolean, val escrow: MarketplaceEscrowDto)
+data class DisputeEscrowRequest(val reason: String)
 // Real post-transaction review with asymmetric public/private visibility (2026-07-24)
 // -- see backend HoodTransactionReview.kt's own doc comment. goodPoints/
 // uncomfortablePoints are preset tag ids (never free text), matching Karrot's own real
@@ -1493,6 +1505,20 @@ interface ApiService {
 
     @POST("api/v1/marketplace/listings/{id}/boost")
     suspend fun boostListing(@Path("id") listingId: String, @Header("Idempotency-Key") idempotencyKey: String, @Body request: BoostListingRequest): ListingResponse
+
+    // Real "pay via itunda" Marketplace escrow (2026-07-25) -- see
+    // rw.itunda.marketplace.web.MarketplaceController.
+    @POST("api/v1/marketplace/listings/{id}/pay-escrow")
+    suspend fun payEscrow(@Path("id") listingId: String, @Header("Idempotency-Key") idempotencyKey: String): MarketplaceEscrowResponse
+
+    @POST("api/v1/marketplace/listings/{id}/confirm-receipt")
+    suspend fun confirmEscrowReceipt(@Path("id") listingId: String, @Header("Idempotency-Key") idempotencyKey: String): MarketplaceEscrowResponse
+
+    @POST("api/v1/marketplace/listings/{id}/dispute-escrow")
+    suspend fun disputeEscrow(@Path("id") listingId: String, @Body request: DisputeEscrowRequest): MarketplaceEscrowResponse
+
+    @GET("api/v1/marketplace/listings/{id}/escrow")
+    suspend fun getEscrow(@Path("id") listingId: String): MarketplaceEscrowResponse
 
     // Real post-transaction review with asymmetric public/private visibility
     // (2026-07-24) -- see backend HoodReviewService's own doc comment.

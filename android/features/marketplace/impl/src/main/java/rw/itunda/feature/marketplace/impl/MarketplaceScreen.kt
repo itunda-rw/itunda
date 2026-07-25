@@ -342,6 +342,7 @@ fun MarketplaceContent(
                 ListingCard(
                     listing = listing,
                     isMine = view == HoodView.MINE || listing.sellerId == currentUserId,
+                    currentUserId = currentUserId,
                     sellerTrustScore = trustScores[listing.sellerId],
                     onChanged = ::load,
                     favorited = listing.id in favoriteIds,
@@ -638,6 +639,10 @@ private fun ListingCard(
     // Neighborhood/My-listings without a per-card refetch.
     favorited: Boolean = false, favoriteBusy: Boolean = false, onToggleFavorite: () -> Unit = {},
     sellerTrustScore: Int? = null,
+    // Real "pay via itunda" Marketplace escrow (2026-07-25) -- needed to tell whether
+    // the viewer is the buyer of an already-SOLD listing, so the Confirm-receipt/
+    // dispute actions only ever show to the one real party who can act on them.
+    currentUserId: String? = null,
 ) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -657,6 +662,17 @@ private fun ListingCard(
     var boostTiers by remember { mutableStateOf<Map<String, Double>?>(null) }
     var boosting by remember { mutableStateOf(false) }
 
+    // Real "pay via itunda" Marketplace escrow (2026-07-25) -- see backend
+    // MarketplaceEscrow.kt's own doc comment. Opt-in alongside the existing in-person
+    // cash handoff -- paying = the buyer committing to escrow; escrow/loadedEscrow =
+    // the buyer's own already-paid escrow status once this listing is SOLD to them.
+    var paying by remember { mutableStateOf(false) }
+    var escrow by remember { mutableStateOf<rw.itunda.core.network.MarketplaceEscrowDto?>(null) }
+    var loadedEscrow by remember { mutableStateOf(false) }
+    var showDispute by remember { mutableStateOf(false) }
+    var disputeReason by remember { mutableStateOf("") }
+    var resolvingEscrow by remember { mutableStateOf(false) }
+
     // Real post-transaction review with asymmetric public/private visibility
     // (2026-07-24) -- see backend HoodReviewService's own doc comment.
     var showReviewSheet by remember { mutableStateOf(false) }
@@ -675,6 +691,17 @@ private fun ListingCard(
         onSuccess = { lat, lng -> myLocation = lat to lng; showRoute = true },
         onError = { error = it },
     )
+
+    // Real escrow-status lazy fetch (2026-07-25) -- only for the one real buyer of an
+    // already-SOLD listing, since that's the only person `getEscrow` will actually
+    // return data to.
+    val isMyEscrowPurchase = !isMine && listing.status == "SOLD" && currentUserId != null && listing.buyerId == currentUserId
+    LaunchedEffect(listing.id, isMyEscrowPurchase) {
+        if (isMyEscrowPurchase && !loadedEscrow) {
+            escrow = try { NetworkClient.apiService.getEscrow(listing.id).escrow } catch (e: Exception) { null }
+            loadedEscrow = true
+        }
+    }
 
     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column {
@@ -935,6 +962,80 @@ private fun ListingCard(
                         busy = false
                     }
                     ListingActionButton("Make an offer", busy, filled = true) { offering = true }
+                    // Real "pay via itunda" Marketplace escrow (2026-07-25) -- an
+                    // opt-in safer alternative to the existing in-person cash handoff,
+                    // never replacing it.
+                    ListingActionButton(if (paying) "Paying…" else "🔒 Pay via itunda", paying) {
+                        paying = true
+                        error = null
+                        coroutineScope.launch {
+                            try {
+                                NetworkClient.apiService.payEscrow(listing.id, UUID.randomUUID().toString())
+                                onChanged()
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
+                            } finally {
+                                paying = false
+                            }
+                        }
+                    }
+                }
+            }
+            // Real buyer-side escrow status (2026-07-25) -- Confirm receipt releases
+            // payment to the seller; Report a problem flags it for real human admin
+            // review instead of an automated resolution. See backend
+            // MarketplaceEscrow.kt's own doc comment.
+            if (isMyEscrowPurchase && escrow != null) {
+                val currentEscrow = escrow!!
+                when (currentEscrow.status) {
+                    "HELD" -> {
+                        Text("🔒 Payment held by itunda until you confirm receipt", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                        if (showDispute) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = disputeReason, onValueChange = { disputeReason = it },
+                                    placeholder = { Text("What went wrong?") }, modifier = Modifier.fillMaxWidth(),
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    ListingActionButton("Cancel", resolvingEscrow) { showDispute = false }
+                                    ListingActionButton("Submit", resolvingEscrow || disputeReason.isBlank(), filled = true) {
+                                        resolvingEscrow = true
+                                        coroutineScope.launch {
+                                            try {
+                                                escrow = NetworkClient.apiService.disputeEscrow(listing.id, rw.itunda.core.network.DisputeEscrowRequest(disputeReason)).escrow
+                                                showDispute = false
+                                            } catch (e: HttpException) {
+                                                error = superAppErrorMessage(e)
+                                            } finally {
+                                                resolvingEscrow = false
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                ListingActionButton(if (resolvingEscrow) "Working…" else "Confirm receipt", resolvingEscrow, filled = true) {
+                                    resolvingEscrow = true
+                                    coroutineScope.launch {
+                                        try {
+                                            escrow = NetworkClient.apiService.confirmEscrowReceipt(listing.id, UUID.randomUUID().toString()).escrow
+                                        } catch (e: HttpException) {
+                                            error = superAppErrorMessage(e)
+                                        } finally {
+                                            resolvingEscrow = false
+                                        }
+                                    }
+                                }
+                                ListingActionButton("Report a problem", resolvingEscrow) { showDispute = true }
+                            }
+                        }
+                    }
+                    "DISPUTED" -> Text("⚠️ Reported -- itunda is reviewing this trade", color = Ids.colors.danger, fontSize = 12.sp)
+                    "RELEASED" -> Text("✅ Payment released to the seller", color = Ids.colors.success, fontSize = 12.sp)
+                    "REFUNDED" -> Text("↩️ Refunded to you", color = Ids.colors.success, fontSize = 12.sp)
                 }
             }
             if (!isMine && listing.status == "ACTIVE") {

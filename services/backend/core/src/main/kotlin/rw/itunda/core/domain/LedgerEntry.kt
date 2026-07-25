@@ -27,6 +27,14 @@ enum class LedgerAccountType {
     // cash-in/out -- one FX_CLEARING account per currency (accountId e.g.
     // "fx_clearing_usd"), never one shared account mixing currencies.
     FX_CLEARING,
+    // Real Marketplace escrow holding (2026-07-25) -- closes a real trust gap Naver
+    // Cafe's own "안전거래" (Safe Trade) product exists specifically to solve: itunda's
+    // Marketplace has always settled buyer/seller in person, off-platform, with zero
+    // protection against a no-show or a not-as-described item. Same real
+    // escrow-clearing-account shape EATS_DELIVERY_HOLDING/GIFT_HOLDING already
+    // establish -- the buyer's money already left their wallet, it just hasn't reached
+    // its final recipient yet. See MarketplaceEscrow.kt's own doc comment.
+    MARKETPLACE_ESCROW_HOLDING,
 }
 
 /**

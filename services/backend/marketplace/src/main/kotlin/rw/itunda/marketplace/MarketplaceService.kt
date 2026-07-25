@@ -11,6 +11,11 @@ import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Listing
 import rw.itunda.core.domain.ListingStatus
+import rw.itunda.core.domain.MarketplaceEscrow
+import rw.itunda.core.domain.MarketplaceEscrowStatus
+import rw.itunda.core.domain.Transaction
+import rw.itunda.core.domain.TransactionStatus
+import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.NominatimGeocodingClient
@@ -18,12 +23,15 @@ import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.ListingRepository
+import rw.itunda.core.repository.MarketplaceEscrowRepository
+import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
 import rw.itunda.core.trust.TrustScoreService
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
@@ -38,6 +46,10 @@ class NeighborhoodNotSetException(message: String) : RuntimeException(message)
 class BuyerNotFoundException(message: String) : RuntimeException(message)
 class InvalidBoostDurationException(message: String) : RuntimeException(message)
 class SellerNoWalletException(message: String) : RuntimeException(message)
+class BuyerNoWalletException(message: String) : RuntimeException(message)
+class MarketplaceEscrowNotFoundException(message: String) : RuntimeException(message)
+class InvalidEscrowStatusException(message: String) : RuntimeException(message)
+class InvalidDisputeReasonException(message: String) : RuntimeException(message)
 
 /**
  * A real 당근마켓 (Danggeun/Karrot Market)-style secondhand marketplace -- the second
@@ -60,12 +72,19 @@ class MarketplaceService(
     private val trustScoreService: TrustScoreService,
     private val walletRepository: WalletRepository,
     private val ledgerService: LedgerService,
+    private val transactionRepository: TransactionRepository,
+    private val marketplaceEscrowRepository: MarketplaceEscrowRepository,
 ) {
     companion object {
         // Bounds a single OSRM /table request's URL length and the private cloud's
         // per-request load -- beyond this, nearby() quietly stays on the already-honest
         // Haversine ranking rather than risking an oversized request.
         private const val MAX_OSRM_TABLE_CANDIDATES = 100
+
+        // Same real 1.5% fee-schedule reasoning OrderService.feeRate/EatsOrderService
+        // .platformFeeRate already use -- reused rather than inventing a different
+        // number for what is, underneath, the same kind of real paid-safety-service fee.
+        val ESCROW_FEE_RATE = BigDecimal("0.015")
 
         // Real flat-fee sponsored-placement tiers (2026-07-25), matching Baemin's own
         // real 울트라콜 mechanic (a flat fee per real time slot) rather than Coupang's
@@ -281,6 +300,190 @@ class MarketplaceService(
         val currentBoostedUntil = listing.boostedUntil?.takeIf { it.isAfter(now) } ?: now
         listing.boostedUntil = currentBoostedUntil.plus(Duration.ofDays(days.toLong()))
         return listingRepository.save(listing)
+    }
+
+    /**
+     * Real "pay via itunda" escrow -- see `MarketplaceEscrow`'s own doc comment for the
+     * full account. Opt-in alongside the existing in-person cash handoff, never
+     * replacing it: a buyer who'd rather trade through the app pays here instead of
+     * meeting up with cash. Marks the listing SOLD immediately (the buyer has real
+     * committed money on it), same as `markSold`, but the money sits in
+     * `marketplace_escrow_holding` until `confirmReceipt` releases it.
+     */
+    @Transactional
+    fun payEscrow(buyerId: String, listingId: String): MarketplaceEscrow {
+        val listing = listingRepository.findById(listingId).orElseThrow { ListingNotFoundException("Listing not found") }
+        if (listing.status != ListingStatus.ACTIVE) {
+            throw ListingNotActiveException("Only an active listing can be paid for")
+        }
+        if (listing.sellerId == buyerId) {
+            throw OwnListingException("Cannot buy your own listing")
+        }
+        val buyerWallet = walletRepository.findByUserIdAndType(buyerId, WalletType.MAIN)
+            ?: throw BuyerNoWalletException("No wallet found for this account")
+        val seller = userRepository.findById(listing.sellerId).orElseThrow { ListingNotFoundException("Listing not found") }
+        val sellerWallet = walletRepository.findByUserIdAndType(seller.id, WalletType.MAIN)
+            ?: throw SellerNoWalletException("Seller has no wallet to receive this payment")
+
+        val fee = listing.price.multiply(ESCROW_FEE_RATE).setScale(2, RoundingMode.HALF_UP)
+        val result = ledgerService.postLedgerTransaction(
+            buyerWallet.currency,
+            listOf(
+                LedgerLeg(buyerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, listing.price, "Escrow payment - ${listing.title}"),
+                LedgerLeg("marketplace_escrow_holding", LedgerAccountType.MARKETPLACE_ESCROW_HOLDING, LedgerDirection.CREDIT, listing.price, "Escrow held - ${listing.title}"),
+            ),
+        )
+        transactionRepository.save(
+            Transaction(
+                id = result.transactionId,
+                referenceNumber = "ESCROW${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
+                senderId = buyerId,
+                recipientId = seller.id,
+                fromWalletId = buyerWallet.id,
+                toWalletId = sellerWallet.id,
+                amount = listing.price,
+                fee = fee,
+                currency = buyerWallet.currency,
+                type = TransactionType.PAYMENT,
+                status = TransactionStatus.COMPLETED,
+                description = "Escrow payment - ${listing.title}",
+                channel = "MARKETPLACE_ESCROW",
+                completedAt = Instant.now(),
+            ),
+        )
+
+        listing.status = ListingStatus.SOLD
+        listing.buyerId = buyerId
+        listingRepository.save(listing)
+
+        val escrow = marketplaceEscrowRepository.save(
+            MarketplaceEscrow(
+                id = "marketplace_escrow_${UUID.randomUUID()}", listingId = listingId, buyerId = buyerId, sellerId = seller.id,
+                amount = listing.price, fee = fee, holdTransactionId = result.transactionId,
+            ),
+        )
+        trustScoreService.computeScore(seller.id)
+        val conversation = messagingService.startOrGetConversation(buyerId, seller.id)
+        messagingService.sendMessage(buyerId, conversation.id, "💳 Paid for \"${listing.title}\" through itunda -- the seller gets paid once you confirm you received it.")
+        return escrow
+    }
+
+    /** Real read for the buyer or seller of a listing to check its own escrow status --
+     * same "don't reveal a resource exists to someone who shouldn't see it" discipline
+     * `requireOwner` already establishes. */
+    fun getEscrow(requesterId: String, listingId: String): MarketplaceEscrow {
+        val escrow = requireEscrow(listingId)
+        if (escrow.buyerId != requesterId && escrow.sellerId != requesterId) {
+            throw MarketplaceEscrowNotFoundException("No escrow payment found for this listing")
+        }
+        return escrow
+    }
+
+    private fun requireEscrow(listingId: String): MarketplaceEscrow =
+        marketplaceEscrowRepository.findByListingId(listingId) ?: throw MarketplaceEscrowNotFoundException("No escrow payment found for this listing")
+
+    /** Real release -- the buyer confirms they received the real item, paying the
+     * seller (minus itunda's real escrow fee) out of holding. */
+    @Transactional
+    fun confirmReceipt(buyerId: String, listingId: String): MarketplaceEscrow {
+        val escrow = requireEscrow(listingId)
+        if (escrow.buyerId != buyerId) {
+            throw MarketplaceEscrowNotFoundException("No escrow payment found for this listing")
+        }
+        if (escrow.status != MarketplaceEscrowStatus.HELD) {
+            throw InvalidEscrowStatusException("This escrow is already ${escrow.status}")
+        }
+        val saved = releaseEscrowToSeller(escrow)
+        val listing = listingRepository.findById(listingId).orElse(null)
+        if (listing != null) {
+            val conversation = messagingService.startOrGetConversation(buyerId, escrow.sellerId)
+            messagingService.sendMessage(buyerId, conversation.id, "✅ Confirmed receipt of \"${listing.title}\" -- payment released to the seller.")
+        }
+        return saved
+    }
+
+    /** Real dispute -- the buyer flags a real problem (no-show, not as described)
+     * instead of confirming receipt. Awaits real human admin review -- see
+     * `MarketplaceEscrow`'s own doc comment for why this isn't auto-resolved. */
+    @Transactional
+    fun disputeEscrow(buyerId: String, listingId: String, reason: String): MarketplaceEscrow {
+        val trimmedReason = reason.trim()
+        if (trimmedReason.isEmpty() || trimmedReason.length > 500) {
+            throw InvalidDisputeReasonException("Explain what went wrong in 500 characters or fewer")
+        }
+        val escrow = requireEscrow(listingId)
+        if (escrow.buyerId != buyerId) {
+            throw MarketplaceEscrowNotFoundException("No escrow payment found for this listing")
+        }
+        if (escrow.status != MarketplaceEscrowStatus.HELD) {
+            throw InvalidEscrowStatusException("This escrow is already ${escrow.status}")
+        }
+        escrow.status = MarketplaceEscrowStatus.DISPUTED
+        escrow.disputeReason = trimmedReason
+        escrow.updatedAt = Instant.now()
+        return marketplaceEscrowRepository.save(escrow)
+    }
+
+    fun getPendingDisputes(): List<MarketplaceEscrow> =
+        marketplaceEscrowRepository.findByStatusOrderByCreatedAtAsc(MarketplaceEscrowStatus.DISPUTED)
+
+    /** Real admin resolution -- `release = true` pays the seller (the trade was
+     * legitimate), `false` refunds the buyer in full, no fee charged, and reopens the
+     * listing for sale again (the trade genuinely didn't happen). */
+    @Transactional
+    fun resolveDispute(escrowId: String, release: Boolean): MarketplaceEscrow {
+        val escrow = marketplaceEscrowRepository.findById(escrowId).orElseThrow { MarketplaceEscrowNotFoundException("Escrow not found") }
+        if (escrow.status != MarketplaceEscrowStatus.DISPUTED) {
+            throw InvalidEscrowStatusException("Only a DISPUTED escrow can be resolved -- this one is ${escrow.status}")
+        }
+        return if (release) {
+            releaseEscrowToSeller(escrow)
+        } else {
+            refundEscrowToBuyer(escrow)
+        }
+    }
+
+    private fun releaseEscrowToSeller(escrow: MarketplaceEscrow): MarketplaceEscrow {
+        val sellerWallet = walletRepository.findByUserIdAndType(escrow.sellerId, WalletType.MAIN)
+            ?: throw SellerNoWalletException("Seller has no wallet to receive this payment")
+        val netToSeller = escrow.amount.subtract(escrow.fee)
+        val result = ledgerService.postLedgerTransaction(
+            sellerWallet.currency,
+            listOf(
+                LedgerLeg("marketplace_escrow_holding", LedgerAccountType.MARKETPLACE_ESCROW_HOLDING, LedgerDirection.DEBIT, escrow.amount, "Escrow released"),
+                LedgerLeg(sellerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToSeller, "Escrow release"),
+                LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, escrow.fee, "Marketplace escrow fee"),
+            ),
+        )
+        escrow.status = MarketplaceEscrowStatus.RELEASED
+        escrow.resolutionTransactionId = result.transactionId
+        escrow.updatedAt = Instant.now()
+        return marketplaceEscrowRepository.save(escrow)
+    }
+
+    private fun refundEscrowToBuyer(escrow: MarketplaceEscrow): MarketplaceEscrow {
+        val buyerWallet = walletRepository.findByUserIdAndType(escrow.buyerId, WalletType.MAIN)
+            ?: throw BuyerNoWalletException("No wallet found for this account")
+        val result = ledgerService.postLedgerTransaction(
+            buyerWallet.currency,
+            listOf(
+                LedgerLeg("marketplace_escrow_holding", LedgerAccountType.MARKETPLACE_ESCROW_HOLDING, LedgerDirection.DEBIT, escrow.amount, "Escrow refunded"),
+                LedgerLeg(buyerWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, escrow.amount, "Escrow refund"),
+            ),
+        )
+        escrow.status = MarketplaceEscrowStatus.REFUNDED
+        escrow.resolutionTransactionId = result.transactionId
+        escrow.updatedAt = Instant.now()
+        val saved = marketplaceEscrowRepository.save(escrow)
+        // Real reopen -- the trade genuinely didn't happen, so the listing goes back to
+        // real ACTIVE/sellable, same honest state as before payEscrow was ever called.
+        val listing = listingRepository.findById(escrow.listingId).orElse(null)
+        if (listing != null && listing.status == ListingStatus.SOLD && listing.buyerId == escrow.buyerId) {
+            listing.status = ListingStatus.ACTIVE
+            listing.buyerId = null
+            listingRepository.save(listing)
+        }
+        return saved
     }
 
     // Any status, not just ACTIVE -- a buyer who already contacted a seller about a
