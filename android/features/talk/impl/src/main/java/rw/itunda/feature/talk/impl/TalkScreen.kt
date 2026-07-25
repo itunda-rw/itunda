@@ -736,6 +736,10 @@ private fun GroupSplitBillsView(
     var amountText by remember { mutableStateOf("") }
     var descriptionText by remember { mutableStateOf("") }
     var selectedParticipantIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    // Real KakaoPay 사다리타기 (ladder-game) mode (2026-07-25) -- see backend
+    // SplitBillService.ladderSplit's own doc comment for the 3 variance levels.
+    var ladderMode by remember { mutableStateOf(false) }
+    var varianceLevel by remember { mutableStateOf(1) }
     val coroutineScope = rememberCoroutineScope()
 
     suspend fun refresh() {
@@ -783,6 +787,37 @@ private fun GroupSplitBillsView(
                             }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clickable { ladderMode = !ladderMode }.padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text("🎲 Ladder game (randomized split)", fontSize = 13.sp)
+                            Text(if (ladderMode) "On" else "Off", fontSize = 12.sp, color = if (ladderMode) Ids.colors.brand else Ids.colors.textSecondary, fontWeight = FontWeight.Bold)
+                        }
+                        if (ladderMode) {
+                            Text(
+                                when (varianceLevel) {
+                                    3 -> "One random person pays the whole thing -- everyone else pays nothing."
+                                    2 -> "Wider random spread -- shares can differ a lot."
+                                    else -> "Mild random spread around an even split."
+                                },
+                                fontSize = 12.sp, color = Ids.colors.textSecondary,
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+                                listOf(1, 2, 3).forEach { level ->
+                                    val selected = varianceLevel == level
+                                    Box(
+                                        modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                                            .background(if (selected) Ids.colors.brand else Ids.colors.surfaceSoft)
+                                            .clickable { varianceLevel = level }
+                                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                                    ) {
+                                        Text("Level $level", color = if (selected) Color.White else Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
                         Button(
                             enabled = busyId == null && amountText.toBigDecimalOrNull()?.let { it > java.math.BigDecimal.ZERO } == true &&
                                 descriptionText.isNotBlank() && selectedParticipantIds.isNotEmpty(),
@@ -795,9 +830,13 @@ private fun GroupSplitBillsView(
                                         NetworkClient.apiService.createSplitBill(
                                             groupConversationId,
                                             UUID.randomUUID().toString(),
-                                            CreateSplitBillRequest(amount, descriptionText, selectedParticipantIds.toList()),
+                                            CreateSplitBillRequest(
+                                                amount, descriptionText, selectedParticipantIds.toList(),
+                                                mode = if (ladderMode) "LADDER" else "EVEN",
+                                                ladderVarianceLevel = if (ladderMode) varianceLevel else null,
+                                            ),
                                         )
-                                        amountText = ""; descriptionText = ""; selectedParticipantIds = emptySet(); showNewForm = false
+                                        amountText = ""; descriptionText = ""; selectedParticipantIds = emptySet(); showNewForm = false; ladderMode = false
                                         refresh()
                                     } catch (_: Exception) {
                                         error = "That split bill could not be created."
@@ -816,7 +855,8 @@ private fun GroupSplitBillsView(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(entry.splitBill.description, fontWeight = FontWeight.SemiBold)
-                        Text("Total RWF ${entry.splitBill.totalAmount} · ${entry.splitBill.status}", fontSize = 13.sp, color = Ids.colors.textSecondary)
+                        val modeLabel = if (entry.splitBill.mode == "LADDER") " · 🎲 Ladder L${entry.splitBill.ladderVarianceLevel}" else ""
+                        Text("Total RWF ${entry.splitBill.totalAmount} · ${entry.splitBill.status}$modeLabel", fontSize = 13.sp, color = Ids.colors.textSecondary)
                         entry.participants.forEach { participant ->
                             val name = members.find { it.userId == participant.userId }?.name ?: participant.userId.take(8)
                             Text("$name: RWF ${participant.shareAmount} (${participant.status})", fontSize = 13.sp)
