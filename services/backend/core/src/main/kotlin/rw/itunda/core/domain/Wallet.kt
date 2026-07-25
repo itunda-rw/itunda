@@ -19,7 +19,12 @@ import java.time.Instant
 // user can open many 26-week plans over time (one at a time or several concurrently),
 // so each plan gets its own dedicated Wallet resolved by WeeklySavingsPlan.walletId,
 // never via findByUserIdAndType.
-enum class WalletType { MAIN, SAVINGS, INVESTMENT, LOAN, GROUP, WEEKLY_SAVINGS, UPFRONT_DEPOSIT }
+// FOREIGN_CURRENCY added 2026-07-25 for the real 토스뱅크 외화통장 (foreign-currency
+// account) equivalent -- see ForeignCurrencyWalletService's own doc comment. Same
+// multi-row-per-user reasoning as GROUP/WEEKLY_SAVINGS: a user can hold several (one per
+// currency), so resolved via WalletRepository.findByUserIdAndTypeAndCurrency, never
+// findByUserIdAndType.
+enum class WalletType { MAIN, SAVINGS, INVESTMENT, LOAN, GROUP, WEEKLY_SAVINGS, UPFRONT_DEPOSIT, FOREIGN_CURRENCY }
 
 /** Mirrors backend/src/types/index.ts Wallet. Money is BigDecimal, not float, on purpose. */
 @Entity

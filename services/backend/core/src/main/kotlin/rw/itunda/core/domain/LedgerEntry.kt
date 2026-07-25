@@ -17,6 +17,16 @@ enum class LedgerAccountType {
     INSURANCE_CLAIMS_EXPENSE, EATS_DELIVERY_HOLDING, GIFT_HOLDING,
     AGENT_CASH,
     CASH_VAULT,
+    // Real foreign-currency conversion clearing (2026-07-25) -- see
+    // ForeignCurrencyWalletService's own doc comment for why a conversion is two
+    // separate, each-individually-balanced single-currency ledger transactions rather
+    // than one cross-currency one (postLedgerTransaction enforces raw debits==credits
+    // per call, with no per-currency dimension). itunda's own real counterparty position
+    // (the currency it's holding/owed on the other side of every user's foreign-currency
+    // balance), same real-counterparty shape CASH_VAULT/AGENT_CASH already establish for
+    // cash-in/out -- one FX_CLEARING account per currency (accountId e.g.
+    // "fx_clearing_usd"), never one shared account mixing currencies.
+    FX_CLEARING,
 }
 
 /**

@@ -155,6 +155,24 @@ data class WalletResponse(
     val wallets: List<Wallet>
 )
 
+// Real 토스뱅크 외화통장 (foreign-currency account) equivalent (2026-07-25) -- see
+// rw.itunda.wallet.ForeignCurrencyWalletService on the backend for the full account,
+// incl. why USD/EUR/GBP specifically (real Rwandan diaspora remittance corridors) and
+// why this is real-rate conversion between a user's own wallets, not a cross-border
+// receiving rail.
+data class OpenForeignWalletRequest(val currency: String)
+data class ForeignWalletResponse(val success: Boolean, val wallet: Wallet)
+data class ForeignWalletsResponse(val success: Boolean, val wallets: List<Wallet>)
+data class ExchangeRateResponse(val success: Boolean, val from: String, val to: String, val rate: Double)
+data class ConvertCurrencyRequest(val fromCurrency: String, val toCurrency: String, val amount: Double)
+data class CurrencyConversionDto(
+    val id: String, val userId: String, val fromCurrency: String, val toCurrency: String,
+    val fromAmount: Double, val toAmount: Double, val rate: Double, val marginAmount: Double,
+    val transactionId: String, val createdAt: String,
+)
+data class CurrencyConversionResponse(val success: Boolean, val conversion: CurrencyConversionDto)
+data class CurrencyConversionsResponse(val success: Boolean, val conversions: List<CurrencyConversionDto>)
+
 // Mirrors services/backend/core/.../domain/SavingsGoal.kt / InterestJar.kt.
 data class SavingsGoal(
     val id: String,
@@ -1234,6 +1252,23 @@ data class WeeklySavingsActionResponse(
 interface ApiService {
     @GET("api/v1/wallet")
     suspend fun getWallets(): WalletResponse
+
+    // Real 토스뱅크 외화통장 (foreign-currency account) equivalent (2026-07-25) -- see
+    // rw.itunda.wallet.web.ForeignCurrencyController.
+    @POST("api/v1/wallet/foreign-currency/wallets")
+    suspend fun openForeignWallet(@Body request: OpenForeignWalletRequest): ForeignWalletResponse
+
+    @GET("api/v1/wallet/foreign-currency/wallets")
+    suspend fun getForeignWallets(): ForeignWalletsResponse
+
+    @GET("api/v1/wallet/foreign-currency/rate")
+    suspend fun getExchangeRate(@Query("from") from: String, @Query("to") to: String): ExchangeRateResponse
+
+    @POST("api/v1/wallet/foreign-currency/convert")
+    suspend fun convertCurrency(@Body request: ConvertCurrencyRequest): CurrencyConversionResponse
+
+    @GET("api/v1/wallet/foreign-currency/conversions")
+    suspend fun getMyConversions(): CurrencyConversionsResponse
 
     @GET("api/v1/discover")
     suspend fun getDiscoverItems(): DiscoverResponse

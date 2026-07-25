@@ -248,6 +248,9 @@ fun ItundaAppScreen(
         // screen (2026-07-25) -- same "backend existed with zero mobile UI" gap
         // WeeklySavingsScreen closed above.
         var showUpfrontDeposit by rememberSaveable { mutableStateOf(false) }
+        // Real 토스뱅크 외화통장 (foreign-currency account) screen (2026-07-25) -- same
+        // "backend existed with zero mobile UI" gap-close pattern as the two above.
+        var showForeignCurrency by rememberSaveable { mutableStateOf(false) }
         // Real 전체 (All services) menu (2026-07-22) -- separated from My per the
         // user's direct request; see MenuScreen's own doc comment.
         var showMyTab by rememberSaveable { mutableStateOf(false) }
@@ -687,6 +690,12 @@ fun ItundaAppScreen(
             UpfrontDepositScreen(onBack = { showUpfrontDeposit = false })
             return@IdsTheme
         }
+        // Real 토스뱅크 외화통장 screen (2026-07-25) -- same pattern.
+        if (showForeignCurrency) {
+            BackHandler { showForeignCurrency = false }
+            ForeignCurrencyScreen(onBack = { showForeignCurrency = false })
+            return@IdsTheme
+        }
         // Real My-activity overlay (2026-07-24) -- the exact inverse of the old
         // showMenu overlay: My's own real content (orders/favorites/listings) is now
         // reached one tap in from the All tab's profile icon, instead of All being
@@ -782,6 +791,7 @@ fun ItundaAppScreen(
                             onOpenIdentity = { showIdentity = true },
                             onOpenWeeklySavings = { showWeeklySavings = true },
                             onOpenUpfrontDeposit = { showUpfrontDeposit = true },
+                            onOpenForeignCurrency = { showForeignCurrency = true },
                             onOpenTransferHub = { showTransferHub = true },
                             onClaimInterest = { savingsFlowStep = SavingsFlowStep.ClaimInterest },
                             onSwitchToTalk = { selectedTab = TossTab.Talk },
@@ -1202,6 +1212,7 @@ private fun MenuScreen(
     onOpenIdentity: () -> Unit = {},
     onOpenWeeklySavings: () -> Unit = {},
     onOpenUpfrontDeposit: () -> Unit = {},
+    onOpenForeignCurrency: () -> Unit = {},
     onOpenTransferHub: () -> Unit = {},
     onClaimInterest: () -> Unit = {},
     onSwitchToTalk: () -> Unit = {},
@@ -1329,6 +1340,7 @@ private fun MenuScreen(
                 FlatRow("Digital certificate", subtitle = "Sign agreements in Itunda", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenCertificate),
                 FlatRow("26-week savings", subtitle = "Escalating weekly deposit plan", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
                 FlatRow("12-month deposit", subtitle = "Interest paid upfront, principal locked", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenUpfrontDeposit),
+                FlatRow("Foreign currency", subtitle = "Hold and convert USD, EUR, GBP", icon = Icons.Outlined.CurrencyExchange, iconColor = AccentBlue, onClick = onOpenForeignCurrency),
                 FlatRow("Mobile plan", subtitle = "MTN, Airtel, broadband", icon = Icons.Outlined.Public, iconColor = AccentTeal)
             ))
         }

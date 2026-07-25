@@ -111,6 +111,14 @@ interface WalletRepository : JpaRepository<Wallet, String> {
     fun findByUserId(userId: String): List<Wallet>
     fun findByUserIdAndType(userId: String, type: WalletType): Wallet?
 
+    // Real foreign-currency accounts (2026-07-25) -- a user can hold several
+    // FOREIGN_CURRENCY wallets at once (one per currency), unlike MAIN/SAVINGS'
+    // single-row-per-type assumption findByUserIdAndType relies on, same reasoning
+    // GROUP/WEEKLY_SAVINGS already established. See ForeignCurrencyWalletService's own
+    // doc comment.
+    fun findByUserIdAndTypeOrderByCreatedAtDesc(userId: String, type: WalletType): List<Wallet>
+    fun findByUserIdAndTypeAndCurrency(userId: String, type: WalletType, currency: String): Wallet?
+
     // Batch form of findByUserIdAndType -- PayrollService.runPayroll uses this to fetch
     // every employee's wallet in one round trip instead of one findByUserIdAndType call
     // per roster row (a real N+1 a large payroll roster would otherwise pay for on every

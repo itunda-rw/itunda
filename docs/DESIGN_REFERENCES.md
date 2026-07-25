@@ -524,6 +524,7 @@ they close in itunda's current implementation.
 | KakaoBank — 26주적금 (26-week savings) | kakaobank.com/products/26weeks | Weekly auto-debit amount escalates automatically from the opening deposit; locked to the account's opening weekday, no mid-plan changes; interest computed per-weekly-installment on its own remaining term then summed; preferential rate requires an unbroken 26-week streak through maturity — a real "don't break the streak" gamification mechanic |
 | KakaoPay 정산하기 (settlement/split-bill) 2020 redesign | seoulfn.com, hankyung.com, digitaltoday.co.kr, moneys.mt.co.kr, v.daum.net (cross-verified across 5 outlets) | "사다리타기" (ladder-game) mode randomizes the split by headcount instead of always even, 3 adjustable variance levels (top level assigns the whole amount to one "loser"); up to 5 sequential settlement "rounds" tracked per thread; manual per-person override with KakaoPay itself absorbing the rounding remainder; scheduled reminder-nudge bell for unpaid friends; up to 3 photos attached; KakaoBank runs its own, differently-branded, non-converged "1/N 빵나누기" feature — Kakao didn't even unify this within its own family |
 | Toss — 더치페이 (split-the-bill) baseline for contrast | blog.toss.im/article/toss-split-the-bill | Opened by searching or tapping under a specific spending-history transaction — receipt/ledger-anchored, not chat-anchored; no randomization, no multi-round, no rounding absorption, no photo attach — deliberately minimal versus KakaoPay |
+| 토스뱅크 외화통장 (Toss Bank foreign-currency account) | tossbank.com/articles/foreign-currency-exchange | Single account holds multiple real currencies (Toss's own product spans 17); 100% preferential FX rate messaging, scheduled auto-buy/accumulate, rate-triggered auto-exchange, cashback on overseas card spend using the held balance |
 
 ### Recommendations (ranked)
 
@@ -564,6 +565,20 @@ they close in itunda's current implementation.
    (100-member cap, owner-only withdraw, fresh account number, transparency notifications) per the
    parity matrix's own citation. No new work follows from this — flagged so the design team knows
    these two are genuinely sourced-accurate already, not just superficially similar.
+
+5. **[sourced] Implemented 2026-07-25.** Add a real 토스뱅크 외화통장 (foreign-currency account)
+   equivalent, scoped to USD/EUR/GBP -- the currencies real Rwandan diaspora remittance corridors
+   (US, Eurozone/Belgium, UK) actually run through, not Toss's real 17-currency breadth. Honestly
+   scoped: this is real conversion between a user's OWN RWF and foreign-currency wallets at a real
+   live rate (a free, keyless public FX feed -- Frankfurter's ECB-only feed doesn't carry RWF,
+   confirmed live before picking a provider that does) plus a real itunda margin, not a
+   cross-border receiving/SWIFT rail (itunda has no real correspondent-banking relationship to
+   build one on, same genuinely-blocked-external-access category as NIDA/PSP elsewhere in this
+   codebase). Each conversion is two separate, each-individually-balanced single-currency ledger
+   transactions rather than one cross-currency one, since `LedgerService.postLedgerTransaction`
+   enforces raw debits==credits per call with one shared currency label.
+   *Shipped: `WalletType.FOREIGN_CURRENCY`, `ForeignCurrencyRateClient`, `ForeignCurrencyWalletService`,
+   `POST /api/v1/wallet/foreign-currency/convert`, Menu's "Foreign currency" screen*
 
 ### Unresolved / worth a follow-up
 

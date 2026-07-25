@@ -57,6 +57,15 @@ class LedgerAccount(
             // real escrow-clearing-account shape as eats_delivery_holding above.
             "gift_holding" to "Gift Holding",
             "cash_vault" to "Itunda Cash Vault",
+            // Real foreign-currency conversion clearing, one per real supported
+            // currency (2026-07-25) -- see ForeignCurrencyWalletService's own doc
+            // comment for why each conversion is two separate single-currency ledger
+            // transactions rather than one cross-currency one, and why these are
+            // per-currency accounts rather than one shared "fx_clearing" bucket.
+            "fx_clearing_rwf" to "FX Clearing (RWF)",
+            "fx_clearing_usd" to "FX Clearing (USD)",
+            "fx_clearing_eur" to "FX Clearing (EUR)",
+            "fx_clearing_gbp" to "FX Clearing (GBP)",
         )
     }
 }
