@@ -48,11 +48,12 @@ class GroupConversation(
  * A real member of a [GroupConversation] -- `lastReadAt` tracks this member's own read
  * position (a real per-member cursor, updated whenever they fetch a page of messages),
  * the same "viewing the screen marks it read" convention 1:1 `Message.readAt` already
- * uses, just shaped for N members instead of exactly one recipient (a per-message,
- * per-member read-receipt row would be the more granular real WhatsApp/KakaoTalk
- * "seen by" behavior, but a real, explicit v1 simplification: this session's own
- * `unreadCount` needs only "how many messages after my last-read cursor," not who else
- * has seen them yet -- a genuinely separate, later feature if ever needed).
+ * uses, just shaped for N members instead of exactly one recipient. **Update
+ * 2026-07-26**: this single cursor turned out to be enough to build the real Kakao-style
+ * per-message read-receipt countdown too (see `GroupMessagingService.getUnreadCounts`'s
+ * own doc comment) -- a message's remaining-unread count is just "how many other
+ * members' cursors are still behind this message's `sentAt`," no separate
+ * per-message-per-member row needed after all.
  */
 @Entity
 @Table(name = "group_conversation_members")

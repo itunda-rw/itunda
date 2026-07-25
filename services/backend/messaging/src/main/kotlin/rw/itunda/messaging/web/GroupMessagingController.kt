@@ -91,10 +91,14 @@ class GroupMessagingController(
         // Real reaction summaries attached in one batch query (2026-07-19) -- see
         // GroupMessagingService.getReactionSummaries's own doc comment.
         val reactionsByMessageId = groupMessagingService.getReactionSummaries(page.content.map { it.id })
+        // Real Kakao-style per-message read-receipt countdown (2026-07-26) -- see
+        // GroupMessagingService.getUnreadCounts's own doc comment.
+        val unreadCountByMessageId = groupMessagingService.getUnreadCounts(groupId, page.content)
         val messages = page.content.map { m ->
             mapOf(
                 "id" to m.id, "groupConversationId" to m.groupConversationId, "senderId" to m.senderId, "body" to if (m.deletedAt == null) m.body else "This message was deleted",
                 "sentAt" to m.sentAt, "deletedAt" to m.deletedAt, "replyToMessageId" to m.replyToMessageId, "reactions" to (reactionsByMessageId[m.id] ?: emptyList()),
+                "unreadCount" to (unreadCountByMessageId[m.id] ?: 0),
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "messages" to messages) + pageMeta(page))

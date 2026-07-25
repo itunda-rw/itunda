@@ -15,6 +15,7 @@ import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.ConversationRepository
 import rw.itunda.core.repository.GroupConversationMemberRepository
 import java.time.Duration
+import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 
 internal const val WS_USER_ID_ATTR = "userId"
@@ -153,6 +154,13 @@ class MessagingWebSocketHandler(
     override fun publishGroupReactionChange(groupId: String, recipientUserIds: List<String>, groupMessageId: String, reactions: List<ReactionGroup>) {
         val payload = objectMapper.writeValueAsString(
             mapOf("type" to "reaction", "groupConversationId" to groupId, "messageId" to groupMessageId, "reactions" to reactions),
+        )
+        recipientUserIds.forEach { sendToUser(it, payload) }
+    }
+
+    override fun publishGroupReadReceiptChange(groupId: String, recipientUserIds: List<String>, readByUserId: String, lastReadAt: Instant) {
+        val payload = objectMapper.writeValueAsString(
+            mapOf("type" to "group_read_receipt", "groupConversationId" to groupId, "readByUserId" to readByUserId, "lastReadAt" to lastReadAt.toString()),
         )
         recipientUserIds.forEach { sendToUser(it, payload) }
     }

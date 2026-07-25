@@ -2,6 +2,7 @@ package rw.itunda.core.realtime
 
 import rw.itunda.core.domain.GroupMessage
 import rw.itunda.core.domain.Message
+import java.time.Instant
 
 /** Real per-emoji reaction breakdown (2026-07-19) -- a raw list of who reacted with
  * each emoji, never a pre-computed "reactedByMe"/count on the wire: every recipient of
@@ -65,4 +66,15 @@ interface RealtimeMessagePublisher {
 
     /** Same real push, fanned out to every other real member of a group conversation. */
     fun publishGroupReactionChange(groupId: String, recipientUserIds: List<String>, groupMessageId: String, reactions: List<ReactionGroup>)
+
+    /**
+     * Real KakaoTalk-style group read-receipt push (2026-07-26) -- see
+     * `GroupMessagingService.getUnreadCounts`'s own doc comment for the real per-member
+     * cursor this is built on. Fired every time a real member's `lastReadAt` cursor
+     * advances (i.e. they open the thread), fanned out to every other real member so an
+     * open thread's per-message countdown decrements live instead of only on next
+     * refetch -- the same "live, not polled" bar every other real-time push in this
+     * interface already holds itself to.
+     */
+    fun publishGroupReadReceiptChange(groupId: String, recipientUserIds: List<String>, readByUserId: String, lastReadAt: Instant)
 }

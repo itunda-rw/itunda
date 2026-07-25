@@ -3,6 +3,7 @@ package rw.itunda.messaging
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -165,6 +166,10 @@ class GroupMessagingServiceTest : BehaviorSpec({
             every { notificationRepository.saveAll(any<List<rw.itunda.core.domain.Notification>>()) } answers { firstArg() }
             every { groupConversationMemberRepository.findByGroupConversationId("group_1") } returns members
             every { userRepository.findById("user_a") } returns Optional.of(user("user_a", "Alice"))
+            // parseMentions resolves every real member's name to check for @mentions,
+            // even when the message has none -- see GroupMessagingService.parseMentions's
+            // own doc comment.
+            every { userRepository.findAllById(any<List<String>>()) } returns listOf(user("user_a", "Alice"), user("user_b", "Beata"), user("user_c", "Claude"))
 
             val message = service.sendMessage("user_a", "group_1", "  Hey everyone  ")
 
@@ -376,6 +381,42 @@ class GroupMessagingServiceTest : BehaviorSpec({
                 } catch (e: RateLimitExceededException) {
                     // expected
                 }
+            }
+        }
+
+        When("a real member fetches messages, advancing their own real read cursor") {
+            val memberSlot = slot<GroupConversationMember>()
+            every { groupConversationRepository.findById("group_1") } returns Optional.of(group)
+            every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "user_a") } returns members[0]
+            every { groupConversationMemberRepository.findByGroupConversationId("group_1") } returns members
+            every { groupConversationMemberRepository.save(capture(memberSlot)) } answers { firstArg() }
+            every { groupMessageRepository.findByGroupConversationIdOrderBySentAtDesc("group_1", any()) } returns
+                org.springframework.data.domain.PageImpl(emptyList())
+
+            service.getMessages("user_a", "group_1", org.springframework.data.domain.Pageable.unpaged())
+
+            Then("it real-advances the caller's own lastReadAt and live-pushes the change to every OTHER real member") {
+                memberSlot.captured.lastReadAt shouldNotBe null
+                verify { realtimeMessagePublisher.publishGroupReadReceiptChange("group_1", match { it.toSet() == setOf("user_b", "user_c") }, "user_a", any()) }
+            }
+        }
+
+        When("computing the real per-message unread countdown from real per-member cursors") {
+            val now = java.time.Instant.now()
+            val readMembers = listOf(
+                GroupConversationMember(id = "gm_a", groupConversationId = "group_1", userId = "user_a", lastReadAt = now),
+                // user_b's cursor is AFTER the message's sentAt -- they've already caught up.
+                GroupConversationMember(id = "gm_b", groupConversationId = "group_1", userId = "user_b", lastReadAt = now),
+                // user_c's cursor is BEFORE the message's sentAt -- still unread.
+                GroupConversationMember(id = "gm_c", groupConversationId = "group_1", userId = "user_c", lastReadAt = now.minusSeconds(10)),
+            )
+            every { groupConversationMemberRepository.findByGroupConversationId("group_1") } returns readMembers
+            val message = GroupMessage(id = "group_message_1", groupConversationId = "group_1", senderId = "user_a", body = "Hey", sentAt = now.minusSeconds(5))
+
+            val counts = service.getUnreadCounts("group_1", listOf(message))
+
+            Then("it counts only OTHER members whose real cursor is still behind this message's sentAt -- user_b already caught up, user_c hasn't, the sender never counts against themself") {
+                counts["group_message_1"] shouldBe 1
             }
         }
     }

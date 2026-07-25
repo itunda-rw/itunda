@@ -55,8 +55,8 @@ data class GroupMemberInfo(val userId: String, val name: String)
  * widened `Conversation`.
  *
  * Real membership (`GroupConversationMember`), real per-member read cursors
- * (`lastReadAt`, not a per-message-per-member row -- an explicit v1 simplification,
- * see `GroupConversationMember`'s own doc comment), real notifications on every new
+ * (`lastReadAt`, which also now drives a real Kakao-style per-message read-receipt
+ * countdown -- see `getUnreadCounts`'s own doc comment), real notifications on every new
  * message to every other real member, and a real live push over the same
  * `RealtimeMessagePublisher` 1:1 messaging just added, fanned out to every member
  * instead of a single recipient. Reuses the exact same `RateLimiter` per-sender
@@ -286,9 +286,37 @@ class GroupMessagingService(
         requireMember(userId, groupId)
         val page = groupMessageRepository.findByGroupConversationIdOrderBySentAtDesc(groupId, pageable)
         val member = groupConversationMemberRepository.findByGroupConversationIdAndUserId(groupId, userId)!!
-        member.lastReadAt = Instant.now()
+        val now = Instant.now()
+        member.lastReadAt = now
         groupConversationMemberRepository.save(member)
+
+        // Real live read-receipt countdown (2026-07-26) -- see getUnreadCounts's own
+        // doc comment. Pushed to every other real member so an open thread's per-message
+        // countdown decrements live, not only on their own next refetch.
+        val otherMemberIds = groupConversationMemberRepository.findByGroupConversationId(groupId)
+            .map { it.userId }
+            .filter { it != userId }
+        realtimeMessagePublisher.publishGroupReadReceiptChange(groupId, otherMemberIds, userId, now)
         return page
+    }
+
+    /**
+     * Real per-message unread countdown -- see `GroupConversationMember.lastReadAt`'s
+     * own doc comment, which named this exact upgrade path. Reuses the existing
+     * per-member cursor rather than a new per-message-per-member row: since opening a
+     * thread always marks it read up through "now" (this service's own `getMessages`
+     * convention), a message's real remaining-unread count is exactly how many OTHER
+     * members (excluding the sender, who trivially "read" their own message) have a
+     * `lastReadAt` earlier than that message's `sentAt`, or `null` (never opened this
+     * thread at all) -- the exact real cursor state, not a best-effort estimate.
+     */
+    fun getUnreadCounts(groupId: String, messages: List<GroupMessage>): Map<String, Int> {
+        if (messages.isEmpty()) return emptyMap()
+        val members = groupConversationMemberRepository.findByGroupConversationId(groupId)
+        return messages.associate { message ->
+            val unread = members.count { it.userId != message.senderId && (it.lastReadAt == null || it.lastReadAt!!.isBefore(message.sentAt)) }
+            message.id to unread
+        }
     }
 
     // Real batch fetch (2026-07-19, found in a security/performance sweep) -- was a real
