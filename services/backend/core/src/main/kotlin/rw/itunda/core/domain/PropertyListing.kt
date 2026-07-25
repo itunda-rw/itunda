@@ -87,6 +87,13 @@ class PropertyListing(
     // not a buyer.
     @Column(name = "counterparty_id", nullable = true, length = 64)
     var counterpartyId: String? = null,
+
+    // Real ownership verification (2026-07-25) -- NONE/PENDING/VERIFIED, driven by
+    // PropertyOwnershipSubmission's real submit/review workflow. See that entity's own
+    // doc comment for why this is document-upload + human-review, not an automated
+    // registry check.
+    @Column(name = "ownership_verification_status", nullable = false, length = 16)
+    var ownershipVerificationStatus: String = "NONE",
 ) {
     protected constructor() : this(
         id = "", listerId = "", listingType = PropertyListingType.RENT, propertyType = "",

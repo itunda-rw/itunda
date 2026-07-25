@@ -43,6 +43,8 @@ import rw.itunda.realestate.PropertyListingService
 import rw.itunda.realestate.PropertyOfferAlreadyResolvedException
 import rw.itunda.realestate.PropertyOfferNotFoundException
 import rw.itunda.realestate.PropertyOfferResponseAction
+import rw.itunda.realestate.PropertyOwnershipService
+import rw.itunda.realestate.PropertyOwnershipSubmissionAlreadyPendingException
 import rw.itunda.realestate.PropertyPriceOfferService
 import rw.itunda.realestate.RealEstateNeighborhoodNotSetException
 import java.math.BigDecimal
@@ -65,6 +67,7 @@ data class MakePropertyOfferRequest(val amount: BigDecimal)
 data class RespondToPropertyOfferRequest(val action: PropertyOfferResponseAction, val counterAmount: BigDecimal? = null)
 data class MarkTakenRequest(val counterpartyPhoneNumber: String? = null)
 data class SubmitHoodReviewRequest(val goodPoints: List<String> = emptyList(), val uncomfortablePoints: List<String> = emptyList())
+data class SubmitOwnershipVerificationRequest(val documentUrl: String)
 
 // Real 당근부동산-style property board -- see PropertyListingService's own doc comment.
 // Normal itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
@@ -76,6 +79,7 @@ class PropertyListingController(
     private val propertyListingFavoriteService: PropertyListingFavoriteService,
     private val userRepository: UserRepository,
     private val hoodReviewService: HoodReviewService,
+    private val propertyOwnershipService: PropertyOwnershipService,
 ) {
 
     @GetMapping("/property-types")
@@ -173,6 +177,19 @@ class PropertyListingController(
                 "listing" to propertyListingService.markTaken(currentUser.userId, propertyListingId, request?.counterpartyPhoneNumber),
             ),
         )
+
+    // Real ownership verification (2026-07-25) -- see PropertyOwnershipService's own doc
+    // comment. Document should already be a real /api/v1/uploads/{name} URL from
+    // UploadController; review happens via /api/v1/system/property-verification (ADMIN).
+    @PostMapping("/listings/{propertyListingId}/verify-ownership")
+    fun submitOwnershipVerification(
+        @PathVariable propertyListingId: String,
+        @RequestBody request: SubmitOwnershipVerificationRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val submission = propertyOwnershipService.submit(currentUser.userId, propertyListingId, request.documentUrl)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "submission" to submission))
+    }
 
     // Real post-transaction review with asymmetric public/private visibility
     // (2026-07-24) -- see HoodReviewService's own doc comment for the full account.
@@ -342,4 +359,8 @@ class PropertyListingController(
     @ExceptionHandler(HoodReviewAlreadySubmittedException::class)
     fun handleReviewAlreadySubmitted(ex: HoodReviewAlreadySubmittedException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("REVIEW_ALREADY_SUBMITTED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(PropertyOwnershipSubmissionAlreadyPendingException::class)
+    fun handleOwnershipAlreadyPending(ex: PropertyOwnershipSubmissionAlreadyPendingException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("OWNERSHIP_VERIFICATION_ALREADY_PENDING", ex.message ?: "Conflict"))
 }

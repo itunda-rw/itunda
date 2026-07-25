@@ -1,7 +1,10 @@
 package rw.itunda.feature.property.impl
 
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -61,9 +64,13 @@ import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.PropertyListingDto
 import rw.itunda.core.network.PropertyTypeDto
 import rw.itunda.core.network.SubmitHoodReviewRequest
+import rw.itunda.core.network.SubmitOwnershipVerificationRequest
 import rw.itunda.core.network.TokenStore
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
+import okhttp3.MultipartBody
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 
 // Third Feature extraction (2026-07-23) after Marketplace and Jobs, same template -- see
 // features/marketplace/impl/.../MarketplaceScreen.kt's own header comment for the full
@@ -486,6 +493,42 @@ private fun PropertyListingCard(
     var submittingReview by remember { mutableStateOf(false) }
     var reviewSubmitted by remember { mutableStateOf(false) }
 
+    // Real ownership verification (2026-07-25) -- see backend PropertyOwnershipService's
+    // own doc comment. Document-upload + human-review, same real upload pipeline
+    // (uploadPhoto) NewPropertyListingForm's own photo picker already established;
+    // submittedStatus is local so the "pending" state shows immediately without waiting
+    // for a full listing refetch.
+    val context = LocalContext.current
+    var uploadingOwnershipDoc by remember { mutableStateOf(false) }
+    var submittedOwnershipStatus by remember { mutableStateOf<String?>(null) }
+    val pickOwnershipDoc = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        uploadingOwnershipDoc = true
+        error = null
+        coroutineScope.launch {
+            try {
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                if (bytes == null) {
+                    error = "Couldn't read that document."
+                    return@launch
+                }
+                val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+                val body = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
+                val part = MultipartBody.Part.createFormData("file", "ownership-doc.jpg", body)
+                val documentUrl = NetworkClient.apiService.uploadPhoto(part).url
+                NetworkClient.apiService.submitPropertyOwnershipVerification(listing.id, SubmitOwnershipVerificationRequest(documentUrl))
+                submittedOwnershipStatus = "PENDING"
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't upload that document. Check your connection and try again."
+            } finally {
+                uploadingOwnershipDoc = false
+            }
+        }
+    }
+    val ownershipStatus = submittedOwnershipStatus ?: listing.ownershipVerificationStatus
+
     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
@@ -507,6 +550,16 @@ private fun PropertyListingCard(
                 }
             }
             Text(listing.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            // Real ownership verification badge (2026-07-25) -- shown to every viewer,
+            // not just the lister, since this is a trust signal for the buyer/tenant
+            // deciding whether to contact this listing.
+            if (ownershipStatus == "VERIFIED") {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.brand.copy(alpha = 0.12f)).padding(horizontal = 8.dp, vertical = 2.dp)) {
+                        Text("✓ Owner verified", color = Ids.colors.brand, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
             val detailsWithTime = (if (details.isNotBlank()) "$details · " else "") + relativeTimeAgo(listing.createdAt)
             Text(detailsWithTime, color = Ids.colors.textSecondary, fontSize = 12.sp)
             // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc
@@ -621,6 +674,17 @@ private fun PropertyListingCard(
                                 finally { busy = false }
                             }
                         }
+                    }
+                    // Real ownership verification action (2026-07-25) -- see the
+                    // pickOwnershipDoc launcher above. NONE -> offer to submit;
+                    // PENDING -> awaiting a real human reviewer, no action to take;
+                    // VERIFIED -> already covered by the badge above, nothing more to show.
+                    if (ownershipStatus == "NONE") {
+                        ListingActionButton(if (uploadingOwnershipDoc) "Uploading…" else "Verify ownership", uploadingOwnershipDoc) {
+                            pickOwnershipDoc.launch("image/*")
+                        }
+                    } else if (ownershipStatus == "PENDING") {
+                        Text("Verification pending review", color = Ids.colors.textSecondary, fontSize = 12.sp)
                     }
                 } else if (listing.status == "AVAILABLE" && !offering) {
                     ListingActionButton("Message lister", busy, onClick = onContact)
