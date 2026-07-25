@@ -157,3 +157,71 @@
   cursor: pointer;
   width: 100%;
 }
+
+/* Real status/form additions (2026-07-26) -- see KycDashboard.tsx's own doc comment. */
+
+.kyc-error {
+  font-size: 13px;
+  color: #E53935;
+  margin: 0 0 12px 0;
+}
+
+.kyc-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.kyc-status-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+
+.kyc-status-badge--pending {
+  background-color: var(--toss-grey-200);
+  color: var(--toss-grey-800);
+}
+
+.kyc-status-badge--verified {
+  background-color: #E3F5E9;
+  color: #1E8E4F;
+}
+
+.kyc-status-badge--rejected {
+  background-color: #FCE8E8;
+  color: #C0392B;
+}
+
+.kyc-status-detail {
+  font-size: 13px;
+  color: var(--toss-grey-500);
+}
+
+.kyc-doctype-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.kyc-doctype-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--toss-grey-200);
+  background-color: var(--toss-white);
+  color: var(--toss-grey-800);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.kyc-doctype-btn--active {
+  background-color: var(--toss-blue);
+  border-color: var(--toss-blue);
+  color: var(--toss-white);
+}
