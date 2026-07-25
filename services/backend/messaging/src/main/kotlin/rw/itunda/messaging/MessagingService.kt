@@ -30,6 +30,7 @@ class SelfConversationException(message: String) : RuntimeException(message)
 class ConversationNotFoundException(message: String) : RuntimeException(message)
 class EmptyMessageException(message: String) : RuntimeException(message)
 class MessageTooLongException(message: String) : RuntimeException(message)
+class InvalidMessageImageException(message: String) : RuntimeException(message)
 class MessageNotFoundException(message: String) : RuntimeException(message)
 class InvalidReactionException(message: String) : RuntimeException(message)
 class InvalidMessageSearchException(message: String) : RuntimeException(message)
@@ -161,8 +162,19 @@ class MessagingService(
         replyToMessageId: String? = null,
         forwardedFromMessageId: String? = null,
         forwardedFromType: String? = null,
+        imageUrl: String? = null,
     ): Message {
-        val trimmed = body.trim()
+        // Real composer photo send (2026-07-25) -- an image-only send is real ("📷
+        // Photo" is what every preview/notification surface shows), not an empty
+        // message; only reject a genuinely empty send when there's no image either.
+        // Only ever a real /api/v1/uploads/ URL from our own UploadController -- never
+        // an arbitrary client-asserted URL, the same discipline this codebase already
+        // applies to every other "the client points at content it already uploaded
+        // through our own pipeline" field.
+        if (imageUrl != null && !imageUrl.startsWith("/api/v1/uploads/")) {
+            throw InvalidMessageImageException("imageUrl must be a real uploaded file from /api/v1/uploads")
+        }
+        val trimmed = body.trim().ifEmpty { if (imageUrl != null) "📷 Photo" else "" }
         if (trimmed.isEmpty()) {
             throw EmptyMessageException("Message body cannot be empty")
         }
@@ -192,6 +204,7 @@ class MessagingService(
                 id = "message_${UUID.randomUUID()}", conversationId = conversationId, senderId = userId, body = trimmed,
                 replyToMessageId = replyToMessageId,
                 forwardedFromMessageId = forwardedFromMessageId, forwardedFromType = forwardedFromType,
+                imageUrl = imageUrl,
             ),
         )
         conversation.lastMessageAt = message.sentAt

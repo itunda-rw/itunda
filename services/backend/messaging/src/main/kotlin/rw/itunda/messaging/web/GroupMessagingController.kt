@@ -33,6 +33,7 @@ import rw.itunda.messaging.GroupNeedsMoreMembersException
 import rw.itunda.messaging.GroupNotFoundException
 import rw.itunda.messaging.InvalidForwardDestinationException
 import rw.itunda.messaging.InvalidGroupReactionException
+import rw.itunda.messaging.InvalidGroupMessageImageException
 import rw.itunda.messaging.MessageDestinationType
 import rw.itunda.messaging.MessageForwardService
 import rw.itunda.messaging.MessageNotFoundException
@@ -43,7 +44,7 @@ import rw.itunda.messaging.UserBlockedException
 // StartConversationRequest.phoneNumber); memberUserIds stays available for a call site
 // that already resolved real user ids.
 data class CreateGroupRequest(val name: String, val memberUserIds: List<String> = emptyList(), val memberPhoneNumbers: List<String> = emptyList())
-data class SendGroupMessageRequest(val body: String, val replyToMessageId: String? = null)
+data class SendGroupMessageRequest(val body: String, val replyToMessageId: String? = null, val imageUrl: String? = null)
 data class AddGroupMemberRequest(val userId: String)
 data class ToggleGroupReactionRequest(val emoji: String)
 // Real message forwarding (2026-07-25) -- see MessageForwardService's own doc comment.
@@ -117,7 +118,7 @@ class GroupMessagingController(
         @RequestBody request: SendGroupMessageRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val message = groupMessagingService.sendMessage(currentUser.userId, groupId, request.body, request.replyToMessageId)
+        val message = groupMessagingService.sendMessage(currentUser.userId, groupId, request.body, request.replyToMessageId, imageUrl = request.imageUrl)
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "message" to message))
     }
 
@@ -211,6 +212,10 @@ class GroupMessagingController(
     @ExceptionHandler(GroupMessageTooLongException::class)
     fun handleMessageTooLong(ex: GroupMessageTooLongException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("MESSAGE_TOO_LONG", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidGroupMessageImageException::class)
+    fun handleInvalidMessageImage(ex: InvalidGroupMessageImageException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MESSAGE_IMAGE", ex.message ?: "Bad request"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =

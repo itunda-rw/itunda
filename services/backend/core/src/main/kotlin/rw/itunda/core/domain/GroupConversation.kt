@@ -114,6 +114,18 @@ class GroupMessage(
 
     @Column(name = "forwarded_from_type", length = 16)
     val forwardedFromType: String? = null,
+
+    // Real @mention support (2026-07-25) -- comma-separated real user ids, resolved
+    // server-side against this group's actual membership at send time (see
+    // GroupMessagingService.parseMentions's own doc comment), never a client-asserted
+    // list. Null/empty when the message mentions no one.
+    @Column(name = "mentioned_user_ids", length = 1000)
+    val mentionedUserIds: String? = null,
+
+    // Real composer photo send (2026-07-25) -- see Message.kt's own doc comment for the
+    // full account; identical shape here.
+    @Column(name = "image_url", length = 255)
+    val imageUrl: String? = null,
 ) {
     protected constructor() : this(id = "", groupConversationId = "", senderId = "", body = "")
 }

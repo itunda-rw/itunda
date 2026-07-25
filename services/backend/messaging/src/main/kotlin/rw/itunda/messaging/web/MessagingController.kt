@@ -38,13 +38,14 @@ import rw.itunda.messaging.RecipientRequiredException
 import rw.itunda.messaging.SelfConversationException
 import rw.itunda.messaging.UserBlockedException
 import rw.itunda.messaging.InvalidMessageSearchException
+import rw.itunda.messaging.InvalidMessageImageException
 
 // One of the two must be set. phoneNumber is the real human-friendly entry point (see
 // MessagingService.startOrGetConversationByPhoneNumber's own doc comment); otherUserId
 // stays available for a future call site that already resolved a real user id (e.g. a
 // "message this merchant" action from a merchant's own profile screen).
 data class StartConversationRequest(val phoneNumber: String? = null, val otherUserId: String? = null)
-data class SendMessageRequest(val body: String, val replyToMessageId: String? = null)
+data class SendMessageRequest(val body: String, val replyToMessageId: String? = null, val imageUrl: String? = null)
 data class ToggleReactionRequest(val emoji: String)
 data class SetConversationQuietRequest(val quiet: Boolean)
 // Real message forwarding (2026-07-25) -- see MessageForwardService's own doc comment.
@@ -140,7 +141,7 @@ class MessagingController(
         @RequestBody request: SendMessageRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val message = messagingService.sendMessage(currentUser.userId, conversationId, request.body, request.replyToMessageId)
+        val message = messagingService.sendMessage(currentUser.userId, conversationId, request.body, request.replyToMessageId, imageUrl = request.imageUrl)
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "message" to message))
     }
 
@@ -255,6 +256,10 @@ class MessagingController(
     @ExceptionHandler(MessageTooLongException::class)
     fun handleMessageTooLong(ex: MessageTooLongException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("MESSAGE_TOO_LONG", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidMessageImageException::class)
+    fun handleInvalidMessageImage(ex: InvalidMessageImageException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MESSAGE_IMAGE", ex.message ?: "Bad request"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =

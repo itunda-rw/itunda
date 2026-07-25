@@ -34,6 +34,7 @@ class GroupNameTooLongException(message: String) : RuntimeException(message)
 class GroupMessageNotFoundException(message: String) : RuntimeException(message)
 class GroupMessageDeleteForbiddenException(message: String) : RuntimeException(message)
 class InvalidGroupReactionException(message: String) : RuntimeException(message)
+class InvalidGroupMessageImageException(message: String) : RuntimeException(message)
 
 data class GroupSummary(
     val groupId: String,
@@ -174,6 +175,26 @@ class GroupMessagingService(
         return message
     }
 
+    /**
+     * Real @mention resolution (2026-07-25) -- see `GroupMessage.mentionedUserIds`'s own
+     * doc comment. Extracts `@Token` runs from [body] with a real regex, then resolves
+     * each token against [memberIds]'s actual first names (case-insensitive exact
+     * match) -- never trusts a client-supplied user-id list, since that would let a
+     * message claim to mention anyone, including a non-member, which would be a real
+     * IDOR-adjacent spoof (a fabricated "you were mentioned" notification to someone who
+     * never actually appeared in this conversation). A first-name collision between two
+     * real members resolves to whichever member matches first (itunda's own honest v1
+     * scoping choice -- Kakao's own product disambiguates via a real tap-to-select
+     * autocomplete in the composer, which is a client-side UI concern, not something
+     * this server-side parser can decide on the sender's behalf).
+     */
+    internal fun parseMentions(body: String, memberIds: List<String>): Set<String> {
+        if (memberIds.isEmpty()) return emptySet()
+        val members = userRepository.findAllById(memberIds).associateBy { it.firstName.lowercase() }
+        val tokens = Regex("@(\\w+)").findAll(body).map { it.groupValues[1].lowercase() }
+        return tokens.mapNotNull { token -> members[token]?.id }.toSet()
+    }
+
     @Transactional
     fun sendMessage(
         userId: String,
@@ -182,8 +203,14 @@ class GroupMessagingService(
         replyToMessageId: String? = null,
         forwardedFromMessageId: String? = null,
         forwardedFromType: String? = null,
+        imageUrl: String? = null,
     ): GroupMessage {
-        val trimmed = body.trim()
+        // Real composer photo send (2026-07-25) -- see MessagingService.sendMessage's
+        // own doc comment for the full account; identical shape here.
+        if (imageUrl != null && !imageUrl.startsWith("/api/v1/uploads/")) {
+            throw InvalidGroupMessageImageException("imageUrl must be a real uploaded file from /api/v1/uploads")
+        }
+        val trimmed = body.trim().ifEmpty { if (imageUrl != null) "📷 Photo" else "" }
         if (trimmed.isEmpty()) {
             throw EmptyGroupMessageException("Message body cannot be empty")
         }
@@ -200,11 +227,15 @@ class GroupMessagingService(
             val replied = groupMessageRepository.findById(replyId).orElseThrow { GroupMessageNotFoundException("Message not found") }
             if (replied.groupConversationId != groupId) throw GroupMessageNotFoundException("Message not found")
         }
+        val memberIds = groupConversationMemberRepository.findByGroupConversationId(groupId).map { it.userId }
+        val mentionedUserIds = parseMentions(trimmed, memberIds)
         val message = groupMessageRepository.save(
             GroupMessage(
                 id = "group_message_${UUID.randomUUID()}", groupConversationId = groupId, senderId = userId, body = trimmed,
                 replyToMessageId = replyToMessageId,
                 forwardedFromMessageId = forwardedFromMessageId, forwardedFromType = forwardedFromType,
+                mentionedUserIds = mentionedUserIds.takeIf { it.isNotEmpty() }?.joinToString(","),
+                imageUrl = imageUrl,
             ),
         )
         group.lastMessageAt = message.sentAt
@@ -219,9 +250,16 @@ class GroupMessagingService(
         // uses just above.
         notificationRepository.saveAll(
             recipientIds.map { recipientId ->
+                // Real @mention-aware notification (2026-07-25) -- a mentioned recipient
+                // gets a distinctly-titled, higher-signal notification, matching Kakao's
+                // own real "mention" treatment as more attention-worthy than an ordinary
+                // new message in a group they're already in.
+                val mentioned = recipientId in mentionedUserIds
                 Notification(
-                    id = "notif_${UUID.randomUUID()}", userId = recipientId, type = "NEW_GROUP_MESSAGE",
-                    title = "${group.name}: $senderName", body = trimmed.take(120),
+                    id = "notif_${UUID.randomUUID()}", userId = recipientId,
+                    type = if (mentioned) "GROUP_MENTION" else "NEW_GROUP_MESSAGE",
+                    title = if (mentioned) "$senderName mentioned you in ${group.name}" else "${group.name}: $senderName",
+                    body = trimmed.take(120),
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"groupConversationId\":\"$groupId\"}",
                 )
             },

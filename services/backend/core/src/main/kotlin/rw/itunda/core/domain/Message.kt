@@ -55,6 +55,13 @@ class Message(
 
     @Column(name = "forwarded_from_type", length = 16)
     val forwardedFromType: String? = null,
+
+    // Real composer photo send (2026-07-25) -- see V99's migration comment. A real
+    // uploaded-file URL from UploadController, never a client-asserted arbitrary URL
+    // beyond that (MessagingService.sendMessage validates it looks like one of our own
+    // /api/v1/uploads/ URLs before storing -- see that method's own doc comment).
+    @Column(name = "image_url", length = 255)
+    val imageUrl: String? = null,
 ) {
     protected constructor() : this(id = "", conversationId = "", senderId = "", body = "")
 }
