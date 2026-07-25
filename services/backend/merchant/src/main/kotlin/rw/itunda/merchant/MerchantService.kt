@@ -173,6 +173,16 @@ class MerchantService(
         return merchantRepository.save(merchant)
     }
 
+    // Real Baemin Club (배민클럽)-style participating-restaurant opt-in (2026-07-26) --
+    // see EatsMembership.kt's own doc comment. A restaurant explicitly opts into
+    // waiving delivery fees for real active members -- never forced on.
+    @Transactional
+    fun setParticipatesInEatsMembership(ownerUserId: String, participates: Boolean): Merchant {
+        val merchant = getMyMerchant(ownerUserId)
+        merchant.participatesInEatsMembership = participates
+        return merchantRepository.save(merchant)
+    }
+
     // Real category/cuisine (2026-07-19) -- powers restaurant categories + search/filter
     // for Eats (and Shopping, since both browse the same Merchant directory). Same
     // separate-settable-field pattern as setWebhookUrl/setLocation.

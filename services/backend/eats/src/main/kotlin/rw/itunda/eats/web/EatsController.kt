@@ -30,6 +30,9 @@ import rw.itunda.eats.DeliveryAlreadyClaimedException
 import rw.itunda.eats.RiderAlreadyOnDeliveryException
 import rw.itunda.eats.EatsBuyerNoWalletException
 import rw.itunda.eats.EatsFavoriteService
+import rw.itunda.eats.EatsMembershipNoWalletException
+import rw.itunda.eats.EatsMembershipService
+import rw.itunda.eats.InvalidMembershipDurationException
 import rw.itunda.eats.EatsOrderAlreadyReviewedException
 import rw.itunda.eats.EatsOrderItemRequest
 import rw.itunda.eats.EatsOrderNotFoundException
@@ -66,6 +69,7 @@ data class PlaceEatsOrderRequest(
     val deliveryLongitude: Double? = null,
     val deliveryNotes: String? = null,
 )
+data class SubscribeMembershipRequest(val days: Int)
 data class UpdateEatsOrderStatusRequest(val status: EatsOrderStatus)
 data class SetRiderAvailabilityRequest(val available: Boolean)
 data class UpdateRiderLocationRequest(val latitude: Double, val longitude: Double)
@@ -90,8 +94,28 @@ class EatsController(
     private val eatsOrderService: EatsOrderService,
     private val eatsReviewService: EatsReviewService,
     private val eatsFavoriteService: EatsFavoriteService,
+    private val eatsMembershipService: EatsMembershipService,
     private val idempotencyService: IdempotencyService,
 ) {
+    // Real Baemin Club (배민클럽)-style free-delivery membership -- see
+    // EatsMembership.kt's own doc comment. Real Idempotency-Key requirement, same
+    // convention as every other money-moving creation endpoint in this backend.
+    @PostMapping("/membership/subscribe")
+    fun subscribeMembership(
+        @RequestBody request: SubscribeMembershipRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/eats/membership/subscribe", idempotencyKey, request) {
+            val membership = eatsMembershipService.subscribe(currentUser.userId, request.days)
+            200 to mapOf("success" to true, "membership" to membership)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    @GetMapping("/membership/me")
+    fun getMyMembership(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "membership" to eatsMembershipService.getMyMembership(currentUser.userId)))
     @PostMapping("/riders/register")
     fun registerRider(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
         val rider = riderService.register(currentUser.userId)
@@ -336,6 +360,14 @@ class EatsController(
     @ExceptionHandler(EatsBuyerNoWalletException::class)
     fun handleBuyerNoWallet(ex: EatsBuyerNoWalletException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(EatsMembershipNoWalletException::class)
+    fun handleMembershipNoWallet(ex: EatsMembershipNoWalletException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(InvalidMembershipDurationException::class)
+    fun handleInvalidMembershipDuration(ex: InvalidMembershipDurationException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MEMBERSHIP_DURATION", ex.message ?: "Bad request"))
 
     @ExceptionHandler(EmptyEatsOrderException::class)
     fun handleEmptyOrder(ex: EmptyEatsOrderException) =

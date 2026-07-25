@@ -107,6 +107,7 @@ class EatsOrderService(
     private val nominatimGeocodingClient: NominatimGeocodingClient,
     private val rateLimiter: RateLimiter,
     private val notificationRepository: NotificationRepository,
+    private val eatsMembershipService: EatsMembershipService,
 ) {
     private val logger = LoggerFactory.getLogger(EatsOrderService::class.java)
 
@@ -340,7 +341,16 @@ class EatsOrderService(
         } else {
             null
         }
-        val (deliveryFee, distanceKmRounded) = computeDeliveryFee(distanceKm)
+        val (computedDeliveryFee, distanceKmRounded) = computeDeliveryFee(distanceKm)
+        // Real Baemin Club (배민클럽)-style free delivery (2026-07-26) -- see
+        // EatsMembership.kt's own doc comment. Only waived at a restaurant that has
+        // itself opted in (`participatesInEatsMembership`), never a blanket waiver,
+        // mirroring Baemin's own real "참여 가게" scoping.
+        val deliveryFee = if (restaurant.participatesInEatsMembership && eatsMembershipService.hasActiveMembership(buyerId)) {
+            BigDecimal.ZERO
+        } else {
+            computedDeliveryFee
+        }
         val totalAmount = itemsSubtotal.add(deliveryFee)
 
         val result = ledgerService.postLedgerTransaction(

@@ -31,6 +31,7 @@ data class SetWebhookUrlRequest(val webhookUrl: String)
 data class SetLocationRequest(val latitude: Double, val longitude: Double)
 data class SetCategoryRequest(val category: String)
 data class SetCashbackRateRequest(val rate: BigDecimal?)
+data class SetParticipatesInEatsMembershipRequest(val participates: Boolean)
 data class SetPhotoUrlRequest(val photoUrl: String)
 data class SetMinOrderAmountRequest(val minOrderAmount: BigDecimal?)
 data class CollectPaymentRequest(val couponId: String? = null)
@@ -119,6 +120,17 @@ class MerchantController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val merchant = merchantService.setCashbackRate(currentUser.userId, request.rate)
+        return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
+    }
+
+    // Real Baemin Club-style participating-restaurant opt-in (2026-07-26) -- see
+    // EatsMembership.kt's own doc comment.
+    @PostMapping("/eats-membership-participation")
+    fun setParticipatesInEatsMembership(
+        @RequestBody request: SetParticipatesInEatsMembershipRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val merchant = merchantService.setParticipatesInEatsMembership(currentUser.userId, request.participates)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 

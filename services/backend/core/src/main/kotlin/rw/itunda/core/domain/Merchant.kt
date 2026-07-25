@@ -116,6 +116,13 @@ class Merchant(
     // rewards_expense arbitrarily.
     @Column(name = "cashback_rate", precision = 6, scale = 4, nullable = true)
     var cashbackRate: BigDecimal? = null,
+
+    // Real Baemin Club (배민클럽)-style participating-restaurant opt-in (2026-07-26) --
+    // see EatsMembership.kt's own doc comment. Free delivery for a real active member
+    // only ever applies here when true -- never a blanket waiver across every
+    // restaurant, mirroring Baemin's own real "참여 가게" scoping.
+    @Column(name = "participates_in_eats_membership", nullable = false)
+    var participatesInEatsMembership: Boolean = false,
 ) {
     protected constructor() : this(id = "", ownerUserId = "", walletId = "", businessName = "")
 }

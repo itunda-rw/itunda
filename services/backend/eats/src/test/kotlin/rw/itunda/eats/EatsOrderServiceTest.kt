@@ -100,6 +100,11 @@ class EatsOrderServiceTest : BehaviorSpec({
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
+            // Real Baemin Club-style free-delivery membership (2026-07-26) -- relaxed,
+            // no active member by default, matching this suite's own "no pre-existing
+            // test predates this feature" convention already used for the single-order
+            // delivery guard's own default stubs.
+            mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
         )
 
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
@@ -508,6 +513,11 @@ class EatsOrderServiceTest : BehaviorSpec({
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
+            // Real Baemin Club-style free-delivery membership (2026-07-26) -- relaxed,
+            // no active member by default, matching this suite's own "no pre-existing
+            // test predates this feature" convention already used for the single-order
+            // delivery guard's own default stubs.
+            mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
         val order = EatsOrder(
@@ -823,6 +833,11 @@ class EatsOrderServiceTest : BehaviorSpec({
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
+            // Real Baemin Club-style free-delivery membership (2026-07-26) -- relaxed,
+            // no active member by default, matching this suite's own "no pre-existing
+            // test predates this feature" convention already used for the single-order
+            // delivery guard's own default stubs.
+            mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
         val readyOrder = EatsOrder(
@@ -993,6 +1008,11 @@ class EatsOrderServiceTest : BehaviorSpec({
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
+            // Real Baemin Club-style free-delivery membership (2026-07-26) -- relaxed,
+            // no active member by default, matching this suite's own "no pre-existing
+            // test predates this feature" convention already used for the single-order
+            // delivery guard's own default stubs.
+            mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE, latitude = -1.9536, longitude = 30.0605)
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
@@ -1079,6 +1099,11 @@ class EatsOrderServiceTest : BehaviorSpec({
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
+            // Real Baemin Club-style free-delivery membership (2026-07-26) -- relaxed,
+            // no active member by default, matching this suite's own "no pre-existing
+            // test predates this feature" convention already used for the single-order
+            // delivery guard's own default stubs.
+            mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE, latitude = -1.9536, longitude = 30.0605)
 
@@ -1182,6 +1207,11 @@ class EatsOrderServiceTest : BehaviorSpec({
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
+            // Real Baemin Club-style free-delivery membership (2026-07-26) -- relaxed,
+            // no active member by default, matching this suite's own "no pre-existing
+            // test predates this feature" convention already used for the single-order
+            // delivery guard's own default stubs.
+            mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
         val riderWallet = wallet("wallet_rider", "rider_user_1")
@@ -1292,6 +1322,11 @@ class EatsOrderServiceTest : BehaviorSpec({
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
+            // Real Baemin Club-style free-delivery membership (2026-07-26) -- relaxed,
+            // no active member by default, matching this suite's own "no pre-existing
+            // test predates this feature" convention already used for the single-order
+            // delivery guard's own default stubs.
+            mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
         )
         val riderWithLocation = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", currentLatitude = -1.95, currentLongitude = 30.06, locationUpdatedAt = java.time.Instant.parse("2026-07-19T12:00:00Z"))
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Test Spot", status = MerchantStatus.ACTIVE)
@@ -1424,6 +1459,11 @@ class EatsOrderServiceTest : BehaviorSpec({
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
+            // Real Baemin Club-style free-delivery membership (2026-07-26) -- relaxed,
+            // no active member by default, matching this suite's own "no pre-existing
+            // test predates this feature" convention already used for the single-order
+            // delivery guard's own default stubs.
+            mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
         )
 
         When("a real query matches real Nominatim suggestions") {
@@ -1498,6 +1538,11 @@ class EatsOrderServiceTest : BehaviorSpec({
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
+            // Real Baemin Club-style free-delivery membership (2026-07-26) -- relaxed,
+            // no active member by default, matching this suite's own "no pre-existing
+            // test predates this feature" convention already used for the single-order
+            // delivery guard's own default stubs.
+            mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
         )
 
         // Kigali city center vs. Huye (real Rwandan towns, ~135km apart) -- a rider
