@@ -69,7 +69,8 @@ class MerchantServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val ledgerEntryRepository = mockk<LedgerEntryRepository>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository)
+        val merchantCouponService = mockk<MerchantCouponService>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService)
 
         val ownerWallet = wallet("wallet_merchant", "owner_1")
         val merchant = Merchant(
@@ -701,7 +702,8 @@ class MerchantServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val ledgerEntryRepository = mockk<LedgerEntryRepository>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository)
+        val merchantCouponService = mockk<MerchantCouponService>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService)
 
         val merchant = Merchant(id = "merchant_3", ownerUserId = "owner_3", walletId = "wallet_3", businessName = "Test Shop")
         every { merchantRepository.findByOwnerUserId("owner_3") } returns merchant
@@ -741,7 +743,8 @@ class MerchantServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val ledgerEntryRepository = mockk<LedgerEntryRepository>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository)
+        val merchantCouponService = mockk<MerchantCouponService>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService)
 
         val merchant = Merchant(id = "merchant_4", ownerUserId = "owner_4", walletId = "wallet_4", businessName = "Report Cafe")
         every { merchantRepository.findByOwnerUserId("owner_4") } returns merchant

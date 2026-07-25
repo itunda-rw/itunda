@@ -96,6 +96,7 @@ class MerchantService(
     private val rateLimiter: RateLimiter,
     private val ledgerEntryRepository: LedgerEntryRepository,
     private val notificationRepository: NotificationRepository,
+    private val merchantCouponService: MerchantCouponService,
 ) {
     // Toss Payments' real published fee schedule tiers wallet-based payments
     // ("Toss Pay") at 0.8%-1.8% depending on merchant volume (see
@@ -387,7 +388,7 @@ class MerchantService(
         MessageDigest.getInstance("SHA-256").digest(rawKey.toByteArray()).joinToString("") { "%02x".format(it) }
 
     @Transactional
-    fun collect(payerUserId: String, intentId: String, channel: String = "QR"): Map<String, Any?> {
+    fun collect(payerUserId: String, intentId: String, channel: String = "QR", couponId: String? = null): Map<String, Any?> {
         val intent = paymentIntentRepository.findById(intentId)
             .orElseThrow { PaymentIntentNotFoundException("Payment code not found") }
         if (intent.status != PaymentIntentStatus.PENDING) {
@@ -410,8 +411,19 @@ class MerchantService(
         val merchantWallet = walletRepository.findById(merchant.walletId)
             .orElseThrow { MerchantNoWalletException("Merchant settlement wallet not found") }
 
-        val fee = intent.amount.multiply(feeRate).setScale(2, RoundingMode.HALF_UP)
-        val netToMerchant = intent.amount.subtract(fee)
+        // Real merchant coupon discount (2026-07-25) -- see MerchantCouponService's own
+        // doc comment for why an invalid/ineligible coupon throws here rather than being
+        // silently ignored: this changes the actual amount charged, unlike an auxiliary
+        // side effect. Computed and validated before any ledger leg is posted, off the
+        // real intent.amount the merchant originally set.
+        val discountAmount = couponId?.let { merchantCouponService.validateAndComputeDiscount(merchant, payerUserId, it, intent.amount) } ?: BigDecimal.ZERO
+        val chargeAmount = intent.amount.subtract(discountAmount)
+        if (chargeAmount <= BigDecimal.ZERO) {
+            throw InvalidCouponException("This coupon would reduce the payment to zero -- itunda doesn't support 100%-off payments")
+        }
+
+        val fee = chargeAmount.multiply(feeRate).setScale(2, RoundingMode.HALF_UP)
+        val netToMerchant = chargeAmount.subtract(fee)
         // channel-labeled memo/description (2026-07-13, added for Face Pay) -- keeps a
         // real, honest audit trail of which authentication factor collected a given
         // payment (QR scan vs Face Pay biometric match) rather than always saying "QR".
@@ -420,7 +432,7 @@ class MerchantService(
         val result = ledgerService.postLedgerTransaction(
             payerWallet.currency,
             listOf(
-                LedgerLeg(payerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, intent.amount, "$channelLabel payment - ${merchant.businessName}"),
+                LedgerLeg(payerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, chargeAmount, "$channelLabel payment - ${merchant.businessName}"),
                 LedgerLeg(merchantWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "$channelLabel collection - ${intent.description}"),
                 LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, fee, "$channelLabel payment fee - ${merchant.businessName}"),
             ),
@@ -445,7 +457,7 @@ class MerchantService(
             recipientId = merchant.ownerUserId,
             fromWalletId = payerWallet.id,
             toWalletId = merchantWallet.id,
-            amount = intent.amount,
+            amount = chargeAmount,
             fee = fee,
             currency = payerWallet.currency,
             type = TransactionType.PAYMENT,
@@ -454,7 +466,7 @@ class MerchantService(
             channel = channel,
             completedAt = Instant.now(),
         )
-        fraudRuleEngine.evaluate(payerUserId, merchant.ownerUserId, intent.amount, transaction.id)
+        fraudRuleEngine.evaluate(payerUserId, merchant.ownerUserId, chargeAmount, transaction.id)
         transactionRepository.save(transaction)
 
         intent.status = PaymentIntentStatus.COMPLETED
@@ -472,9 +484,15 @@ class MerchantService(
         // here would still roll back this method's own transaction), so this needs its
         // own explicit try/catch, not just the inner service's propagation setting.
         val cashbackEarned = try {
-            shoppingCashbackService.awardCashback(payerWallet, intent.amount, merchant.businessName)
+            shoppingCashbackService.awardCashback(payerWallet, chargeAmount, merchant.businessName)
         } catch (e: Exception) {
             BigDecimal.ZERO
+        }
+
+        // Real coupon redemption record -- kept in this same @Transactional method so it
+        // commits atomically with the payment it discounted, never orphaned from it.
+        if (couponId != null) {
+            merchantCouponService.recordRedemption(merchant, payerUserId, couponId, result.transactionId, discountAmount)
         }
 
         // Real-time "money received" notification for the merchant owner (2026-07-22) --
@@ -492,10 +510,10 @@ class MerchantService(
                     userId = merchant.ownerUserId,
                     type = "MONEY_RECEIVED",
                     title = "Payment received",
-                    body = "You received ${intent.amount} RWF via $channelLabel.",
+                    body = "You received $chargeAmount RWF via $channelLabel.",
                     isRead = false,
                     createdAt = Instant.now(),
-                    dataJson = "{\"amount\":\"${intent.amount}\",\"payerId\":\"$payerUserId\"}",
+                    dataJson = "{\"amount\":\"$chargeAmount\",\"payerId\":\"$payerUserId\"}",
                 ),
             )
         } catch (e: Exception) {
@@ -505,7 +523,9 @@ class MerchantService(
         val resultMap = mapOf(
             "transactionId" to result.transactionId,
             "merchantName" to merchant.businessName,
-            "amount" to intent.amount,
+            "amount" to chargeAmount,
+            "originalAmount" to intent.amount,
+            "discountAmount" to discountAmount,
             "fee" to fee,
             "status" to "COMPLETED",
             "channel" to channel,

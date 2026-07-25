@@ -195,4 +195,14 @@ interface TransactionRepository : JpaRepository<Transaction, String> {
         from: Instant,
         to: Instant,
     ): List<Transaction>
+
+    // Real 단골 (regular customer) detection for MerchantCouponService -- a merchant
+    // collection's Transaction row has recipientId = the merchant owner's userId (same
+    // real join key as the report query above), senderId = the paying customer.
+    fun countBySenderIdAndRecipientIdAndTypeAndStatus(
+        senderId: String,
+        recipientId: String,
+        type: TransactionType,
+        status: TransactionStatus,
+    ): Long
 }

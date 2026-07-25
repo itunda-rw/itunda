@@ -32,6 +32,7 @@ data class SetLocationRequest(val latitude: Double, val longitude: Double)
 data class SetCategoryRequest(val category: String)
 data class SetPhotoUrlRequest(val photoUrl: String)
 data class SetMinOrderAmountRequest(val minOrderAmount: BigDecimal?)
+data class CollectPaymentRequest(val couponId: String? = null)
 data class ChargeCardRequest(
     val amount: BigDecimal,
     val description: String,
@@ -134,11 +135,13 @@ class MerchantController(
     @PostMapping("/collect/{intentId}")
     fun collect(
         @PathVariable intentId: String,
+        @RequestBody(required = false) request: CollectPaymentRequest?,
         @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/merchant/collect/$intentId", idempotencyKey, intentId) {
-            200 to merchantService.collect(currentUser.userId, intentId)
+        val couponId = request?.couponId
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/merchant/collect/$intentId", idempotencyKey, mapOf("intentId" to intentId, "couponId" to couponId)) {
+            200 to merchantService.collect(currentUser.userId, intentId, couponId = couponId)
         }
         return ResponseEntity.status(status).body(body)
     }
@@ -244,6 +247,22 @@ class MerchantController(
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =
         ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
+
+    @ExceptionHandler(InvalidCouponException::class)
+    fun handleInvalidCoupon(ex: InvalidCouponException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_COUPON", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(CouponNotFoundException::class)
+    fun handleCouponNotFound(ex: CouponNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("COUPON_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(CouponNotEligibleException::class)
+    fun handleCouponNotEligible(ex: CouponNotEligibleException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("COUPON_NOT_ELIGIBLE", ex.message ?: "Forbidden"))
+
+    @ExceptionHandler(CouponAlreadyRedeemedException::class)
+    fun handleCouponAlreadyRedeemed(ex: CouponAlreadyRedeemedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("COUPON_ALREADY_REDEEMED", ex.message ?: "Conflict"))
 
     @ExceptionHandler(InvalidCoordinatesException::class)
     fun handleInvalidCoordinates(ex: InvalidCoordinatesException) =
