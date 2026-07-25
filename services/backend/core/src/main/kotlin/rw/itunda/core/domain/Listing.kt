@@ -101,6 +101,17 @@ class Listing(
     // without it, and only sales that recorded a real buyer can ever carry a review.
     @Column(name = "buyer_id", nullable = true, length = 64)
     var buyerId: String? = null,
+
+    // Real seller-paid sponsored placement (2026-07-25), independently converged on by
+    // Coupang's own real self-serve seller Ads product and Baemin's real 오픈리스트/
+    // 울트라콜 flat-fee listing slots -- see MarketplaceService.boostListing's own doc
+    // comment for the real flat-fee mechanic (matching 울트라콜, not Coupang's
+    // per-click auction, the simpler and more honestly-buildable of the two real
+    // sourced models). Null/expired means "not boosted," the pre-existing default for
+    // every listing -- browse ranks a currently-boosted listing first, never fabricates
+    // a "Sponsored" badge on one that hasn't actually been paid for.
+    @Column(name = "boosted_until", nullable = true)
+    var boostedUntil: Instant? = null,
 ) {
     protected constructor() : this(
         id = "", sellerId = "", title = "", description = "", price = BigDecimal.ZERO, category = "",

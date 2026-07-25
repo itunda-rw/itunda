@@ -7,18 +7,25 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Conversation
+import rw.itunda.core.domain.LedgerAccountType
+import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Listing
 import rw.itunda.core.domain.ListingStatus
+import rw.itunda.core.domain.WalletType
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
+import rw.itunda.core.ledger.LedgerLeg
+import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.ListingRepository
 import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.repository.WalletRepository
 import rw.itunda.core.trust.TrustScoreService
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
 import java.math.BigDecimal
 import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 
 class ListingNotFoundException(message: String) : RuntimeException(message)
@@ -29,6 +36,8 @@ class OwnListingException(message: String) : RuntimeException(message)
 class InvalidCoordinatesException(message: String) : RuntimeException(message)
 class NeighborhoodNotSetException(message: String) : RuntimeException(message)
 class BuyerNotFoundException(message: String) : RuntimeException(message)
+class InvalidBoostDurationException(message: String) : RuntimeException(message)
+class SellerNoWalletException(message: String) : RuntimeException(message)
 
 /**
  * A real 당근마켓 (Danggeun/Karrot Market)-style secondhand marketplace -- the second
@@ -49,12 +58,24 @@ class MarketplaceService(
     private val nominatimGeocodingClient: NominatimGeocodingClient,
     private val userRepository: UserRepository,
     private val trustScoreService: TrustScoreService,
+    private val walletRepository: WalletRepository,
+    private val ledgerService: LedgerService,
 ) {
     companion object {
         // Bounds a single OSRM /table request's URL length and the private cloud's
         // per-request load -- beyond this, nearby() quietly stays on the already-honest
         // Haversine ranking rather than risking an oversized request.
         private const val MAX_OSRM_TABLE_CANDIDATES = 100
+
+        // Real flat-fee sponsored-placement tiers (2026-07-25), matching Baemin's own
+        // real 울트라콜 mechanic (a flat fee per real time slot) rather than Coupang's
+        // per-click auction model -- the simpler, more honestly-buildable of the two
+        // real sourced models, and proportionate to this marketplace's real scale.
+        val BOOST_TIERS: Map<Int, BigDecimal> = mapOf(
+            3 to BigDecimal("500"),
+            7 to BigDecimal("1000"),
+            14 to BigDecimal("1800"),
+        )
     }
 
     private fun requireOwner(sellerId: String, listingId: String): Listing {
@@ -217,12 +238,50 @@ class MarketplaceService(
         return PageImpl(sorted.subList(start, end), pageable, sorted.size.toLong())
     }
 
-    fun browse(pageable: Pageable, category: String?): Page<Listing> =
-        if (category.isNullOrBlank()) {
-            listingRepository.findByStatusOrderByCreatedAtDesc(ListingStatus.ACTIVE, pageable)
+    fun browse(pageable: Pageable, category: String?): Page<Listing> {
+        val now = Instant.now()
+        return if (category.isNullOrBlank()) {
+            listingRepository.findByStatusOrderByBoostedThenCreatedAtDesc(ListingStatus.ACTIVE, now, pageable)
         } else {
-            listingRepository.findByStatusAndCategoryOrderByCreatedAtDesc(ListingStatus.ACTIVE, category, pageable)
+            listingRepository.findByStatusAndCategoryOrderByBoostedThenCreatedAtDesc(ListingStatus.ACTIVE, category, now, pageable)
         }
+    }
+
+    /**
+     * Real seller-paid sponsored placement -- see `Listing.boostedUntil`'s own doc
+     * comment for the two real, sourced models this chose between. A flat, real payment
+     * (seller wallet debited, 100% to `fee_revenue` -- this is a direct service
+     * purchase from itunda, not a marketplace transaction between two parties, so there
+     * is no counterparty leg) extends `boostedUntil` by the purchased tier's real
+     * duration -- stacking (buying more boost time on an already-boosted listing pushes
+     * `boostedUntil` further out rather than overwriting it), the same honest "value
+     * adds, never silently discarded" mechanic a real production ad product would need.
+     */
+    @Transactional
+    fun boostListing(sellerId: String, listingId: String, days: Int): Listing {
+        val listing = requireOwner(sellerId, listingId)
+        if (listing.status != ListingStatus.ACTIVE) {
+            throw ListingNotActiveException("Only an ACTIVE listing can be boosted")
+        }
+        val price = BOOST_TIERS[days]
+            ?: throw InvalidBoostDurationException("Choose a real boost duration -- ${BOOST_TIERS.keys.sorted().joinToString()} days")
+
+        val sellerWallet = walletRepository.findByUserIdAndType(sellerId, WalletType.MAIN)
+            ?: throw SellerNoWalletException("No wallet found for this account")
+
+        ledgerService.postLedgerTransaction(
+            sellerWallet.currency,
+            listOf(
+                LedgerLeg(sellerWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, price, "Boost listing \"${listing.title}\" for $days days"),
+                LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, price, "Listing boost -- ${listing.title}"),
+            ),
+        )
+
+        val now = Instant.now()
+        val currentBoostedUntil = listing.boostedUntil?.takeIf { it.isAfter(now) } ?: now
+        listing.boostedUntil = currentBoostedUntil.plus(Duration.ofDays(days.toLong()))
+        return listingRepository.save(listing)
+    }
 
     // Any status, not just ACTIVE -- a buyer who already contacted a seller about a
     // now-SOLD item should still be able to open the listing (real 당근마켓 shows a

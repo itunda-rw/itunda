@@ -325,6 +325,7 @@ they close in itunda's current implementation.
 | 당근알바 (Karrot Jobs) — official product page | daangn.com/kr/jobs/about | Three-step flow: 알바공고 작성하기 (post) → 지원자 확인하기 (review applicants) → 채팅으로 약속 잡기 (arrange via chat, only *after* reviewing applicants, not before); proximity-first framing ("걸어서 10분 거리" — within a 10-minute walk); phone number never exposed, all contact routes through in-app chat |
 | 당근부동산 (Karrot Real Estate) — official product page + press coverage | realty.daangn.com/about, digitaltoday.co.kr, about.daangn.com press archive | **Mandatory** per-listing ownership verification (made mandatory specifically to stop fraud, per their own 2025 press release): owner-posted listings are cross-checked against 등기부등본 (title deed registry) and labeled "집주인 확인 매물" (owner-confirmed listing); non-owner posters (e.g. tenants) must submit a lease agreement or get the owner's confirmation instead; separate realtor/agent accounts can only post brokered listings, never mixed with owner-direct ones |
 | 토스뱅크 (Toss Bank) — official product pages | tossbank.com/product-service/savings/{space-account, moim-account}, press coverage (alphabiz.co.kr, heraldcorp.com) | 나눠모으기 통장: multiple named, color-coded sub-purposes within one real account, daily compound interest, no manual "claim" step; 모임통장: consent-based co-ownership (any withdrawal/card-issuance right requires existing co-owners' approval), shared 모임카드; **먼저 이자받는 정기예금** (2025): a 12-month locked deposit that pays the *entire year's* interest immediately at signup (2.80% pre-tax) instead of at maturity — principal stays locked, tax is withheld at closing, not at the interest payout |
+| 배달의민족 owner ad products (오픈리스트/울트라콜) + Coupang seller Ads | self.baemin.com, ads.coupang.com, aijeju.co.kr fee breakdown | Baemin runs 4 distinct real ad formats: 울트라콜 (flat monthly fee per real listing slot), 오픈리스트 (% of order value), 우리가게클릭 (CPC), 배민1 (delivery commission) — a real menu of self-serve formats, not one "boost" button; Coupang's own Ads platform is self-serve PPC with AI auto-bidding. Two unrelated companies independently monetize marketplace visibility as a real, direct seller-paid product |
 
 ### Recommendations (ranked)
 
@@ -397,6 +398,19 @@ they close in itunda's current implementation.
     poster has no way to review candidates before opening a conversation with each one.
     *Target: new `JobApplication` entity (résumé snapshot per Karrot's real "snapshot at submit
     time" mechanic), `JobPostService.contactPoster` → gated behind an application review step*
+
+11. **[sourced] Implemented 2026-07-25.** Add seller-paid sponsored placement to Marketplace --
+    independently converged on by Coupang's real self-serve seller Ads product and Baemin's real
+    오픈리스트/울트라콜 flat-fee listing slots, itunda's Marketplace had zero monetization of any
+    kind. Chose Baemin's flat-fee-per-real-time-slot mechanic (울트라콜) over Coupang's per-click
+    auction -- the simpler, more honestly-buildable of the two real sourced models at this
+    marketplace's real scale. A real payment (seller wallet debited, 100% to itunda's
+    `fee_revenue` -- a direct service purchase, not a marketplace transaction between two
+    parties) extends `Listing.boostedUntil`; `browse()` ranks a currently-boosted listing first
+    and the client shows a real "Sponsored" badge only when boostedUntil is genuinely still
+    future, never fabricated on an unpaid listing.
+    *Shipped: `Listing.boostedUntil`, `MarketplaceService.boostListing` (3/7/14-day real flat-fee
+    tiers), `POST /api/v1/marketplace/listings/{id}/boost`, Marketplace's "Boost" action + Sponsored badge*
 
 ### Unresolved / worth a follow-up
 

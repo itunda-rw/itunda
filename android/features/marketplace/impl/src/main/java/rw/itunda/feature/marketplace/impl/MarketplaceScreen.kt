@@ -74,12 +74,15 @@ import rw.itunda.core.network.CreateListingRequest
 import rw.itunda.core.network.FavoriteListingDto
 import rw.itunda.core.network.ListingDto
 import rw.itunda.core.network.MakeOfferRequest
+import rw.itunda.core.network.BoostListingRequest
 import rw.itunda.core.network.MarkSoldRequest
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SubmitHoodReviewRequest
 import rw.itunda.core.network.TokenStore
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
+import java.time.Instant
+import java.util.UUID
 
 // Real proof-of-slice extraction (2026-07-22/23) -- itunda's real Toss-Microfeatures
 // pattern (toss.tech/article/slash23-iOS: Feature/Interface/Testing/Tests/Example,
@@ -614,6 +617,19 @@ private fun ListingPhotoPlaceholder() {
 }
 
 @Composable
+// Real seller-paid sponsored placement (2026-07-25) -- see backend
+// MarketplaceService.boostListing's own doc comment. A real, still-future boostedUntil
+// only -- never fabricated for an unpaid or expired listing.
+private fun isListingBoosted(boostedUntil: String?): Boolean {
+    if (boostedUntil == null) return false
+    return try {
+        Instant.parse(boostedUntil).isAfter(Instant.now())
+    } catch (e: Exception) {
+        false
+    }
+}
+
+@Composable
 private fun ListingCard(
     listing: ListingDto, isMine: Boolean, onChanged: () -> Unit, onMessageSeller: (String) -> Unit, onMakeOffer: (String, Double) -> Unit,
     // Real Marketplace listing wishlist (2026-07-21) -- state is lifted to
@@ -634,6 +650,12 @@ private fun ListingCard(
     // with a phone number or Skip, either way the sale completes.
     var markingSold by remember { mutableStateOf(false) }
     var buyerPhone by remember { mutableStateOf("") }
+
+    // Real seller-paid sponsored placement (2026-07-25) -- see backend
+    // MarketplaceService.boostListing's own doc comment.
+    var showBoostPicker by remember { mutableStateOf(false) }
+    var boostTiers by remember { mutableStateOf<Map<String, Double>?>(null) }
+    var boosting by remember { mutableStateOf(false) }
 
     // Real post-transaction review with asymmetric public/private visibility
     // (2026-07-24) -- see backend HoodReviewService's own doc comment.
@@ -708,6 +730,20 @@ private fun ListingCard(
                             .size(22.dp)
                             .clickable(enabled = !favoriteBusy, onClick = onToggleFavorite),
                     )
+                }
+                // Real "Sponsored" badge (2026-07-25) -- only ever shown for a listing
+                // with a real, still-future boostedUntil, matching Coupang/Baemin's own
+                // real sponsored-placement labeling convention. Never fabricated on an
+                // unpaid listing.
+                if (isListingBoosted(listing.boostedUntil)) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(10.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Ids.colors.brand)
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                    ) { Text("Sponsored", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
                 }
             }
             Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -795,6 +831,39 @@ private fun ListingCard(
                     }
                 }
             }
+            // Real seller-paid sponsored placement picker (2026-07-25) -- see backend
+            // MarketplaceService.boostListing's own doc comment for the real flat-fee
+            // tiers (never client-invented -- fetched from GET /boost-tiers).
+            if (showBoostPicker) {
+                val tiers = boostTiers
+                if (tiers == null) {
+                    Text("Loading boost options…", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                } else if (tiers.isEmpty()) {
+                    Text("Couldn't load boost options. Try again.", color = Ids.colors.danger, fontSize = 13.sp)
+                } else {
+                    Text("Boost this listing to the top of search results", color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        tiers.toSortedMap(compareBy { it.toInt() }).forEach { (days, price) ->
+                            ListingActionButton(if (boosting) "…" else "${days}d · %,.0f RWF".format(price), boosting, filled = true) {
+                                boosting = true
+                                error = null
+                                coroutineScope.launch {
+                                    try {
+                                        NetworkClient.apiService.boostListing(listing.id, UUID.randomUUID().toString(), BoostListingRequest(days.toInt()))
+                                        showBoostPicker = false
+                                        onChanged()
+                                    } catch (e: HttpException) {
+                                        error = superAppErrorMessage(e)
+                                    } finally {
+                                        boosting = false
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    ListingActionButton("Cancel", boosting) { showBoostPicker = false }
+                }
+            }
             // Real post-transaction review, preset checklist with asymmetric public/
             // private visibility (2026-07-24) -- see backend HoodReviewService's own
             // doc comment. Only offered once a real buyer was recorded at mark-sold
@@ -835,6 +904,14 @@ private fun ListingCard(
                 if (isMine) {
                     if (listing.status == "ACTIVE" && !markingSold) {
                         ListingActionButton("Mark sold", busy) { markingSold = true }
+                        ListingActionButton("Boost", busy) {
+                            showBoostPicker = true
+                            if (boostTiers == null) {
+                                coroutineScope.launch {
+                                    boostTiers = try { NetworkClient.apiService.getBoostTiers().tiers } catch (e: Exception) { emptyMap() }
+                                }
+                            }
+                        }
                     }
                     if (listing.status != "REMOVED") {
                         ListingActionButton("Remove", busy) {

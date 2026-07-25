@@ -3,8 +3,11 @@ package rw.itunda.core.repository
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.Listing
 import rw.itunda.core.domain.ListingStatus
+import java.time.Instant
 
 interface ListingRepository : JpaRepository<Listing, String> {
     // Real pagination from day one (see MessagingRepositories.kt's own note on why --
@@ -12,6 +15,29 @@ interface ListingRepository : JpaRepository<Listing, String> {
     // already-shipped unbounded endpoint is real, avoidable extra work).
     fun findByStatusOrderByCreatedAtDesc(status: ListingStatus, pageable: Pageable): Page<Listing>
     fun findByStatusAndCategoryOrderByCreatedAtDesc(status: ListingStatus, category: String, pageable: Pageable): Page<Listing>
+
+    // Real seller-paid sponsored placement (2026-07-25) -- see MarketplaceService
+    // .boostListing's own doc comment. A currently-boosted (paid, not-yet-expired)
+    // listing sorts first, ties broken by createdAt desc same as the unboosted browse
+    // queries above -- this is the only real ranking signal `browse()` uses now, not a
+    // separate endpoint, since real Coupang/Baemin sponsored placement always surfaces
+    // inside the same search results a buyer already sees, never a separate feed.
+    @Query(
+        "SELECT l FROM Listing l WHERE l.status = :status " +
+            "ORDER BY CASE WHEN l.boostedUntil IS NOT NULL AND l.boostedUntil > :now THEN 0 ELSE 1 END, l.createdAt DESC",
+    )
+    fun findByStatusOrderByBoostedThenCreatedAtDesc(@Param("status") status: ListingStatus, @Param("now") now: Instant, pageable: Pageable): Page<Listing>
+
+    @Query(
+        "SELECT l FROM Listing l WHERE l.status = :status AND l.category = :category " +
+            "ORDER BY CASE WHEN l.boostedUntil IS NOT NULL AND l.boostedUntil > :now THEN 0 ELSE 1 END, l.createdAt DESC",
+    )
+    fun findByStatusAndCategoryOrderByBoostedThenCreatedAtDesc(
+        @Param("status") status: ListingStatus,
+        @Param("category") category: String,
+        @Param("now") now: Instant,
+        pageable: Pageable,
+    ): Page<Listing>
     fun findBySellerIdOrderByCreatedAtDesc(sellerId: String, pageable: Pageable): Page<Listing>
 
     // Real proximity search input (2026-07-18) -- see MarketplaceService.nearby. No real

@@ -10,12 +10,19 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.MissingRequestHeaderException
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.domain.HoodTransactionType
+import rw.itunda.core.idempotency.IdempotencyConflictException
+import rw.itunda.core.idempotency.IdempotencyInProgressException
+import rw.itunda.core.idempotency.IdempotencyService
+import rw.itunda.core.ledger.InsufficientFundsException
+import rw.itunda.core.ledger.WalletFrozenException
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.review.HoodReviewAlreadySubmittedException
 import rw.itunda.core.review.HoodReviewNoCounterpartyException
@@ -30,6 +37,7 @@ import rw.itunda.core.web.toResponseDto
 import rw.itunda.core.web.trustScores
 import rw.itunda.marketplace.BuyerNotFoundException
 import rw.itunda.marketplace.FavoriteListingNotFoundException
+import rw.itunda.marketplace.InvalidBoostDurationException
 import rw.itunda.marketplace.InvalidCoordinatesException
 import rw.itunda.marketplace.InvalidListingException
 import rw.itunda.marketplace.InvalidOfferAmountException
@@ -44,6 +52,7 @@ import rw.itunda.marketplace.OwnListingException
 import rw.itunda.marketplace.OwnOfferException
 import rw.itunda.marketplace.PriceOfferNotFoundException
 import rw.itunda.marketplace.PriceOfferService
+import rw.itunda.marketplace.SellerNoWalletException
 import java.math.BigDecimal
 
 data class CreateListingRequest(
@@ -61,6 +70,7 @@ data class MakeOfferRequest(val amount: BigDecimal)
 data class RespondToOfferRequest(val action: OfferResponseAction, val counterAmount: BigDecimal? = null)
 data class MarkSoldRequest(val buyerPhoneNumber: String? = null)
 data class SubmitHoodReviewRequest(val goodPoints: List<String> = emptyList(), val uncomfortablePoints: List<String> = emptyList())
+data class BoostListingRequest(val days: Int)
 
 // Real 당근마켓-style marketplace -- see MarketplaceService's own doc comment. Normal
 // itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
@@ -72,6 +82,7 @@ class MarketplaceController(
     private val listingFavoriteService: ListingFavoriteService,
     private val userRepository: UserRepository,
     private val hoodReviewService: HoodReviewService,
+    private val idempotencyService: IdempotencyService,
 ) {
 
     @PostMapping("/listings")
@@ -155,6 +166,28 @@ class MarketplaceController(
         val scores = trustScores(userRepository, page.content.map { it.sellerId })
         return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
     }
+
+    // Real seller-paid sponsored placement -- see MarketplaceService.boostListing's own
+    // doc comment. Real money movement (unlike every other write in this controller,
+    // which settles buyer/seller in person), so this is the first marketplace endpoint
+    // to require a real Idempotency-Key.
+    @PostMapping("/listings/{listingId}/boost")
+    fun boostListing(
+        @PathVariable listingId: String,
+        @RequestBody request: BoostListingRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/marketplace/listings/$listingId/boost", idempotencyKey, request) {
+            val listing = marketplaceService.boostListing(currentUser.userId, listingId, request.days)
+            200 to mapOf("success" to true, "listing" to listing)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    @GetMapping("/boost-tiers")
+    fun getBoostTiers(): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "tiers" to MarketplaceService.BOOST_TIERS.toSortedMap()))
 
     @PostMapping("/listings/{listingId}/mark-sold")
     fun markSold(
@@ -337,4 +370,32 @@ class MarketplaceController(
     @ExceptionHandler(HoodReviewAlreadySubmittedException::class)
     fun handleReviewAlreadySubmitted(ex: HoodReviewAlreadySubmittedException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("REVIEW_ALREADY_SUBMITTED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(InvalidBoostDurationException::class)
+    fun handleInvalidBoostDuration(ex: InvalidBoostDurationException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_BOOST_DURATION", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(SellerNoWalletException::class)
+    fun handleSellerNoWallet(ex: SellerNoWalletException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(InsufficientFundsException::class)
+    fun handleInsufficientFunds(ex: InsufficientFundsException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_FUNDS", ex.message ?: "Insufficient funds"))
+
+    @ExceptionHandler(WalletFrozenException::class)
+    fun handleWalletFrozen(ex: WalletFrozenException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+
+    @ExceptionHandler(IdempotencyConflictException::class)
+    fun handleIdempotencyConflict(ex: IdempotencyConflictException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENCY_KEY_CONFLICT", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(IdempotencyInProgressException::class)
+    fun handleIdempotencyInProgress(ex: IdempotencyInProgressException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENT_REQUEST_PROCESSING", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(MissingRequestHeaderException::class)
+    fun handleMissingHeader(ex: MissingRequestHeaderException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key header is required"))
 }

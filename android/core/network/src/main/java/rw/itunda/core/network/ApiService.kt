@@ -465,8 +465,14 @@ data class ListingDto(
     // mark-sold time, see backend Listing.kt's own doc comment. Only set once a real
     // review becomes possible for this transaction.
     val buyerId: String? = null,
+    // Real seller-paid sponsored placement (2026-07-25) -- see backend Listing.kt's own
+    // doc comment. Null/expired means "not boosted" -- clients should only show a
+    // "Sponsored" badge when this is a real, still-future ISO instant.
+    val boostedUntil: String? = null,
 )
 data class MarkSoldRequest(val buyerPhoneNumber: String? = null)
+data class BoostListingRequest(val days: Int)
+data class BoostTiersResponse(val success: Boolean, val tiers: Map<String, Double>)
 // Real post-transaction review with asymmetric public/private visibility (2026-07-24)
 // -- see backend HoodTransactionReview.kt's own doc comment. goodPoints/
 // uncomfortablePoints are preset tag ids (never free text), matching Karrot's own real
@@ -1466,6 +1472,14 @@ interface ApiService {
 
     @POST("api/v1/marketplace/listings/{id}/mark-sold")
     suspend fun markListingSold(@Path("id") listingId: String, @Body request: MarkSoldRequest = MarkSoldRequest()): ListingResponse
+
+    // Real seller-paid sponsored placement (2026-07-25) -- see
+    // rw.itunda.marketplace.web.MarketplaceController.boostListing.
+    @GET("api/v1/marketplace/boost-tiers")
+    suspend fun getBoostTiers(): BoostTiersResponse
+
+    @POST("api/v1/marketplace/listings/{id}/boost")
+    suspend fun boostListing(@Path("id") listingId: String, @Header("Idempotency-Key") idempotencyKey: String, @Body request: BoostListingRequest): ListingResponse
 
     // Real post-transaction review with asymmetric public/private visibility
     // (2026-07-24) -- see backend HoodReviewService's own doc comment.
