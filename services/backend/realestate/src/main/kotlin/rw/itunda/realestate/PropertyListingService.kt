@@ -221,6 +221,16 @@ class PropertyListingService(
         // Real Karrot-Score-style trust badge (2026-07-21) -- see TrustScoreService's own
         // doc comment; identical shape to MarketplaceService.markSold/JobPostService.markFilled.
         trustScoreService.computeScore(listerId)
+        // Real review-prompt system message (2026-07-25) -- see
+        // MarketplaceService.markSold's own doc comment for the full sourced account;
+        // identical shape here.
+        listing.counterpartyId?.let { counterpartyId ->
+            val conversation = messagingService.startOrGetConversation(listerId, counterpartyId)
+            messagingService.sendMessage(
+                listerId, conversation.id,
+                "✅ Marked \"${listing.title}\" as taken. If everything went well, leave a review so other neighbors know what to expect!",
+            )
+        }
         return saved
     }
 

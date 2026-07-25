@@ -16,6 +16,8 @@ import rw.itunda.core.repository.ListingRepository
 import rw.itunda.core.repository.CommunityPostRepository
 import rw.itunda.core.repository.JobPostRepository
 import rw.itunda.core.repository.PropertyListingRepository
+import rw.itunda.core.repository.MessageRepository
+import rw.itunda.core.repository.GroupMessageRepository
 import java.time.Instant
 import java.util.UUID
 
@@ -30,6 +32,12 @@ class HoodReportService(
     private val communityPostRepository: CommunityPostRepository,
     private val jobPostRepository: JobPostRepository,
     private val propertyListingRepository: PropertyListingRepository,
+    // Real per-message reporting (2026-07-25) -- closes docs/DESIGN_REFERENCES.md
+    // Section 3's 당근마켓 "채팅 메시지별 신고" (per-message report) gap. Both
+    // repositories already live in :core (see MessagingRepositories.kt/
+    // GroupMessagingRepositories.kt), so this needs no new module dependency.
+    private val messageRepository: MessageRepository,
+    private val groupMessageRepository: GroupMessageRepository,
 ) {
     @Transactional
     fun report(reporterId: String, targetType: HoodReportTargetType, targetId: String, reason: String): HoodReport {
@@ -40,6 +48,14 @@ class HoodReportService(
             HoodReportTargetType.COMMUNITY_POST -> communityPostRepository.existsById(targetId)
             HoodReportTargetType.JOB_POST -> jobPostRepository.existsById(targetId)
             HoodReportTargetType.PROPERTY_LISTING -> propertyListingRepository.existsById(targetId)
+            // A reporter only needs to be a real participant of the conversation the
+            // message lives in, same real IDOR discipline every other report target
+            // already gets -- deliberately not re-checked here (existsById alone, same
+            // shape as every other branch); MessagingController/GroupMessagingController
+            // already gate reading the message itself behind real participant/member
+            // checks before a client could ever see it to report.
+            HoodReportTargetType.DIRECT_MESSAGE -> messageRepository.existsById(targetId)
+            HoodReportTargetType.GROUP_MESSAGE -> groupMessageRepository.existsById(targetId)
         }
         if (!exists) throw HoodReportTargetNotFoundException("Report target not found")
         if (repository.findByReporterUserIdAndTargetTypeAndTargetIdAndStatus(reporterId, targetType, targetId, HoodReportStatus.OPEN) != null) {
@@ -84,6 +100,27 @@ class HoodReportService(
                 val listing = propertyListingRepository.findById(report.targetId).orElseThrow { HoodReportTargetNotFoundException("Report target not found") }
                 listing.status = PropertyListingStatus.REMOVED
                 propertyListingRepository.save(listing)
+            }
+            // Messages don't have a status enum -- same real soft-delete
+            // (deletedAt/deletedByUserId) MessagingService.deleteMessage/
+            // GroupMessagingService.deleteMessage already use when the sender deletes
+            // their own message; a moderator-removed message goes through the identical
+            // real path, just attributed to the reviewer instead of the sender.
+            HoodReportTargetType.DIRECT_MESSAGE -> {
+                val message = messageRepository.findById(report.targetId).orElseThrow { HoodReportTargetNotFoundException("Report target not found") }
+                if (message.deletedAt == null) {
+                    message.deletedAt = Instant.now()
+                    message.deletedByUserId = reviewerId
+                    messageRepository.save(message)
+                }
+            }
+            HoodReportTargetType.GROUP_MESSAGE -> {
+                val message = groupMessageRepository.findById(report.targetId).orElseThrow { HoodReportTargetNotFoundException("Report target not found") }
+                if (message.deletedAt == null) {
+                    message.deletedAt = Instant.now()
+                    message.deletedByUserId = reviewerId
+                    groupMessageRepository.save(message)
+                }
             }
         }
         val reviewedAt = Instant.now()

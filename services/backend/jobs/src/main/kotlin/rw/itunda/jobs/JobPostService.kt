@@ -206,6 +206,16 @@ class JobPostService(
         // Real Karrot-Score-style trust badge (2026-07-21) -- see TrustScoreService's own
         // doc comment; identical shape to MarketplaceService.markSold.
         trustScoreService.computeScore(posterId)
+        // Real review-prompt system message (2026-07-25) -- see
+        // MarketplaceService.markSold's own doc comment for the full sourced account;
+        // identical shape here.
+        post.workerId?.let { workerId ->
+            val conversation = messagingService.startOrGetConversation(posterId, workerId)
+            messagingService.sendMessage(
+                posterId, conversation.id,
+                "✅ Marked \"${post.title}\" as filled. If everything went well, leave a review so other neighbors know what to expect!",
+            )
+        }
         return saved
     }
 

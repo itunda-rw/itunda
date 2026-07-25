@@ -266,6 +266,22 @@ class MarketplaceService(
         // doc comment. Recomputed right here, not lazily on next view, so the seller's
         // badge reflects this completed sale immediately.
         trustScoreService.computeScore(sellerId)
+        // Real 당근마켓-style review-prompt system message (2026-07-25) -- Karrot's own
+        // real product sends a chat message into the transaction's conversation the
+        // moment a seller marks a listing sold, prompting the buyer to leave a review
+        // (medium.com/daangn's own tech blog on their review-experiment work). Only
+        // possible once a real buyer was actually captured above -- an unidentified
+        // buyer has no conversation to send into, same "no counterparty, no review"
+        // constraint HoodReviewService itself already enforces. Sent as the seller's own
+        // message (this codebase has no system/bot sender concept yet), same convention
+        // SplitBillService's settlement-confirmation message already established.
+        listing.buyerId?.let { buyerId ->
+            val conversation = messagingService.startOrGetConversation(sellerId, buyerId)
+            messagingService.sendMessage(
+                sellerId, conversation.id,
+                "✅ Marked \"${listing.title}\" as sold. If everything went well, leave a review so other neighbors know what to expect!",
+            )
+        }
         return saved
     }
 

@@ -8,7 +8,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.time.Instant
 
-enum class HoodReportTargetType { MARKETPLACE_LISTING, COMMUNITY_POST, JOB_POST, PROPERTY_LISTING }
+enum class HoodReportTargetType { MARKETPLACE_LISTING, COMMUNITY_POST, JOB_POST, PROPERTY_LISTING, DIRECT_MESSAGE, GROUP_MESSAGE }
 enum class HoodReportStatus { OPEN, RESOLVED }
 
 @Entity
