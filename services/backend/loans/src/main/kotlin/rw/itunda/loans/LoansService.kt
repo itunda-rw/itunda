@@ -23,6 +23,7 @@ class LoanAlreadyPaidException(message: String) : RuntimeException(message)
 class LoanAmountInvalidException(message: String) : RuntimeException(message)
 class LoanApplicationDeclinedException(message: String) : RuntimeException(message)
 class NoWalletException(message: String) : RuntimeException(message)
+class NoBetterRateAvailableException(message: String) : RuntimeException(message)
 
 // Real affordability/risk-model governance (2026-07-13) -- see
 // docs/TOSS_PARITY_MATRIX.md's Credit row ("affordability/risk-model governance ... still
@@ -139,6 +140,88 @@ class LoansService(
             ),
             "remaining" to loan.outstanding,
             "newBalance" to wallet.balance,
+        )
+    }
+
+    /**
+     * Real 대환대출 (loan refinancing) -- see toss.im/tossfeed/article/toss-refinancing and
+     * tossbank.com/product-service/loans/switching-platform: pay off a loan carrying a
+     * higher rate by taking out a new one at a lower rate, with the new loan's
+     * disbursement settling the old loan directly rather than the borrower having to
+     * find the payoff amount out of pocket first ("기존 대출을 갚으면서, 새로 대출이
+     * 실행" -- the existing loan is repaid as the new one executes).
+     *
+     * Honestly scoped to itunda's own book only, not a real cross-institution
+     * comparison: `LenderCatalog`'s own doc comment already establishes that the partner
+     * banks (BK/Equity/Urwego) have no real live loan-origination integration behind
+     * them, so there is nothing genuine to "switch into" at another institution --
+     * itunda IS both the source and destination lender here, the same real role Toss
+     * Bank itself plays in its own real 대환대출 flow when a user refinances INTO Toss
+     * Bank from elsewhere. Eligibility reuses the exact same real underwriting gate
+     * `applyForLoan` already enforces (current credit score, not the score at original
+     * disbursement -- a real reason to refinance is that your score has genuinely
+     * improved since then), picking the single lowest real rate the borrower currently
+     * qualifies for that's strictly better than what they're already paying and whose
+     * cap can cover the real remaining balance.
+     *
+     * Posts two real, separate ledger transactions (new-loan disbursement, then old-loan
+     * payoff) rather than one that nets to a zero wallet delta -- the real audit trail
+     * should show both events actually happened, not be silently collapsed into a field
+     * mutation just because the user's own wallet balance doesn't move.
+     */
+    @Transactional
+    fun refinanceLoan(userId: String, loanId: String): Map<String, Any?> {
+        val loan = loanAccountRepository.findById(loanId).orElseThrow { LoanNotFoundException("Loan not found") }
+        if (loan.userId != userId) throw LoanNotOwnedException("That loan does not belong to you")
+        if (loan.status != LoanStatus.ACTIVE) throw LoanAlreadyPaidException("Only an active loan can be refinanced")
+
+        val score = creditScoreService.computeScore(userId).score
+        val eligibleOffer = LoanCatalog.offers
+            .filter { it.lenderId == "lender_itunda" }
+            .filter { it.interestRate < loan.interestRate }
+            .filter { it.maxAmount >= loan.outstanding }
+            .filter { offer ->
+                if (score < MIN_SCORE_TO_QUALIFY) return@filter false
+                val isHighAmount = loan.outstanding > offer.maxAmount.multiply(HIGH_AMOUNT_FRACTION)
+                !isHighAmount || score >= HIGH_AMOUNT_SCORE_THRESHOLD
+            }
+            .minByOrNull { it.interestRate }
+            ?: throw NoBetterRateAvailableException("No itunda offer currently beats this loan's ${loan.interestRate}% rate for your credit profile")
+
+        val wallet = walletRepository.findById(loan.walletId).orElseThrow { NoWalletException("Wallet not found") }
+        val refinanceAmount = loan.outstanding
+        val oldInterestRate = loan.interestRate
+
+        ledgerService.postLedgerTransaction(
+            wallet.currency,
+            listOf(
+                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, refinanceAmount, "${eligibleOffer.name} refinance disbursement"),
+                LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.DEBIT, refinanceAmount, "${eligibleOffer.name} refinance principal owed"),
+            ),
+        )
+        val newLoan = loanAccountRepository.save(
+            LoanAccount(
+                id = "loan_${UUID.randomUUID()}", userId = userId, walletId = wallet.id, offerId = eligibleOffer.id,
+                principal = refinanceAmount, outstanding = refinanceAmount, interestRate = eligibleOffer.interestRate,
+                status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
+            ),
+        )
+
+        ledgerService.postLedgerTransaction(
+            wallet.currency,
+            listOf(
+                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, refinanceAmount, "Refinance payoff of loan ${loan.id}"),
+                LedgerLeg("loan_payable", LedgerAccountType.LOAN_PAYABLE, LedgerDirection.CREDIT, refinanceAmount, "Refinance payoff of loan ${loan.id}"),
+            ),
+        )
+        loan.outstanding = BigDecimal.ZERO
+        loan.status = LoanStatus.PAID
+        loanAccountRepository.save(loan)
+
+        return mapOf(
+            "oldLoanId" to loan.id, "oldInterestRate" to oldInterestRate,
+            "newLoanId" to newLoan.id, "newInterestRate" to newLoan.interestRate, "newLoanName" to eligibleOffer.name,
+            "amount" to refinanceAmount, "creditScore" to score,
         )
     }
 }

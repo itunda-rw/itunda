@@ -23,6 +23,7 @@ import java.math.BigDecimal
 
 data class ApplyLoanRequest(val loanId: String, val amount: BigDecimal)
 data class RepayLoanRequest(val loanId: String, val amount: BigDecimal)
+data class RefinanceLoanRequest(val loanId: String)
 
 @RestController
 @RequestMapping("/api/v1/loans")
@@ -64,6 +65,23 @@ class LoansController(private val loansService: LoansService, private val idempo
         }
         return ResponseEntity.status(status).body(body)
     }
+
+    // Real 대환대출 (loan refinancing) -- see LoansService.refinanceLoan's own doc comment.
+    @PostMapping("/refinance")
+    fun refinance(
+        @RequestBody request: RefinanceLoanRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/loans/refinance", idempotencyKey, request) {
+            val result = loansService.refinanceLoan(currentUser.userId, request.loanId)
+            200 to (mapOf("success" to true, "message" to "Loan refinanced successfully") + result)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    @ExceptionHandler(NoBetterRateAvailableException::class)
+    fun handleNoBetterRate(ex: NoBetterRateAvailableException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("NO_BETTER_RATE_AVAILABLE", ex.message ?: "No better rate available"))
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENCY_KEY_CONFLICT", ex.message ?: "Conflict"))

@@ -227,6 +227,137 @@ class LoansServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        When("refinancing a real active loan_1 (5.0%) for a high-scoring borrower") {
+            // outstanding is small relative to loan_3's real 5,000,000 max, so the
+            // high-amount gate doesn't even engage -- a real qualifying score of 700
+            // clears the base minimum either way.
+            val loan = LoanAccount(
+                id = "loan_refi_1", userId = "user_1", walletId = "wallet_1", offerId = "loan_1",
+                principal = BigDecimal("400000"), outstanding = BigDecimal("300000"), interestRate = 5.0,
+                status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
+            )
+            every { loanAccountRepository.findById("loan_refi_1") } returns Optional.of(loan)
+            every { creditScoreService.computeScore("user_1") } returns CreditScoreResult(700, emptyList(), Instant.now())
+            every { walletRepository.findById("wallet_1") } returns Optional.of(wallet("wallet_1", "user_1"))
+            every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_refi", emptyList())
+            val newLoanSlot = mutableListOf<LoanAccount>()
+            every { loanAccountRepository.save(capture(newLoanSlot)) } answers { firstArg() }
+
+            val result = service.refinanceLoan("user_1", "loan_refi_1")
+
+            Then("it real-picks the single lowest-rate itunda offer it qualifies for -- loan_3's real 2.8%, not just any lower rate") {
+                result["newInterestRate"] shouldBe 2.8
+                result["oldInterestRate"] shouldBe 5.0
+                result["amount"] shouldBe BigDecimal("300000")
+            }
+            Then("it posts two real, separate ledger transactions -- new disbursement, then old payoff -- and retires the old loan") {
+                verify(exactly = 2) { ledgerService.postLedgerTransaction(any(), any()) }
+                loan.status shouldBe LoanStatus.PAID
+                loan.outstanding shouldBe BigDecimal.ZERO
+                val newLoan = newLoanSlot.first { it.id != loan.id }
+                newLoan.status shouldBe LoanStatus.ACTIVE
+                newLoan.principal shouldBe BigDecimal("300000")
+                newLoan.interestRate shouldBe 2.8
+            }
+        }
+
+        When("refinancing when no itunda offer beats the real current rate") {
+            // Already at loan_3's real 2.8% -- the best rate in the whole real itunda catalog.
+            val loan = LoanAccount(
+                id = "loan_refi_2", userId = "user_1", walletId = "wallet_1", offerId = "loan_3",
+                principal = BigDecimal("400000"), outstanding = BigDecimal("300000"), interestRate = 2.8,
+                status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
+            )
+            every { loanAccountRepository.findById("loan_refi_2") } returns Optional.of(loan)
+            every { creditScoreService.computeScore("user_1") } returns CreditScoreResult(700, emptyList(), Instant.now())
+
+            Then("it throws NoBetterRateAvailableException before touching the ledger") {
+                try {
+                    service.refinanceLoan("user_1", "loan_refi_2")
+                    error("expected NoBetterRateAvailableException")
+                } catch (e: NoBetterRateAvailableException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("refinancing with a real score too low to qualify for anything") {
+            val loan = LoanAccount(
+                id = "loan_refi_3", userId = "user_1", walletId = "wallet_1", offerId = "loan_1",
+                principal = BigDecimal("400000"), outstanding = BigDecimal("300000"), interestRate = 5.0,
+                status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
+            )
+            every { loanAccountRepository.findById("loan_refi_3") } returns Optional.of(loan)
+            every { creditScoreService.computeScore("user_1") } returns CreditScoreResult(300, emptyList(), Instant.now())
+
+            Then("it throws NoBetterRateAvailableException, matching applyForLoan's own real underwriting gate") {
+                try {
+                    service.refinanceLoan("user_1", "loan_refi_3")
+                    error("expected NoBetterRateAvailableException")
+                } catch (e: NoBetterRateAvailableException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("refinancing a real outstanding balance too large for any lower-rate offer's cap") {
+            // loan_2 (3.5%) caps at 2,000,000 and loan_3 (2.8%) caps at 5,000,000 -- an
+            // outstanding balance above both means no itunda offer can even cover the
+            // payoff, regardless of score.
+            val loan = LoanAccount(
+                id = "loan_refi_4", userId = "user_1", walletId = "wallet_1", offerId = "loan_1",
+                principal = BigDecimal("6000000"), outstanding = BigDecimal("5500000"), interestRate = 5.0,
+                status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
+            )
+            every { loanAccountRepository.findById("loan_refi_4") } returns Optional.of(loan)
+            every { creditScoreService.computeScore("user_1") } returns CreditScoreResult(700, emptyList(), Instant.now())
+
+            Then("it throws NoBetterRateAvailableException rather than refinancing into an offer that can't cover the real balance") {
+                try {
+                    service.refinanceLoan("user_1", "loan_refi_4")
+                    error("expected NoBetterRateAvailableException")
+                } catch (e: NoBetterRateAvailableException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("a different user tries to refinance someone else's loan") {
+            val loan = LoanAccount(
+                id = "loan_refi_5", userId = "owner_1", walletId = "wallet_owner", offerId = "loan_1",
+                principal = BigDecimal("400000"), outstanding = BigDecimal("300000"), interestRate = 5.0,
+                status = LoanStatus.ACTIVE, disbursedAt = Instant.now(),
+            )
+            every { loanAccountRepository.findById("loan_refi_5") } returns Optional.of(loan)
+
+            Then("it throws LoanNotOwnedException before ever checking credit score") {
+                try {
+                    service.refinanceLoan("attacker", "loan_refi_5")
+                    error("expected LoanNotOwnedException")
+                } catch (e: LoanNotOwnedException) {
+                    verify(exactly = 0) { creditScoreService.computeScore(any()) }
+                }
+            }
+        }
+
+        When("trying to refinance an already-paid loan") {
+            val loan = LoanAccount(
+                id = "loan_refi_6", userId = "user_1", walletId = "wallet_1", offerId = "loan_1",
+                principal = BigDecimal("400000"), outstanding = BigDecimal.ZERO, interestRate = 5.0,
+                status = LoanStatus.PAID, disbursedAt = Instant.now(),
+            )
+            every { loanAccountRepository.findById("loan_refi_6") } returns Optional.of(loan)
+
+            Then("it throws LoanAlreadyPaidException -- there's nothing left to refinance") {
+                try {
+                    service.refinanceLoan("user_1", "loan_refi_6")
+                    error("expected LoanAlreadyPaidException")
+                } catch (e: LoanAlreadyPaidException) {
+                    verify(exactly = 0) { creditScoreService.computeScore(any()) }
+                }
+            }
+        }
     }
 
     Given("the multi-lender marketplace") {
