@@ -72,6 +72,9 @@ class LedgerAccount(
             // Real Kakao Hair Shop-style prepay-to-book holding (2026-07-25) -- see
             // BookingDeposit.kt's own doc comment.
             "booking_deposit_holding" to "Booking Deposit Escrow Holding",
+            // Real Kakao T-style ride-hailing fare holding (2026-07-26) -- see
+            // RideTrip.kt's own doc comment.
+            "ride_holding" to "Ride Fare Holding",
         )
     }
 }

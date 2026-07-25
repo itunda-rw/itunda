@@ -41,6 +41,11 @@ enum class LedgerAccountType {
     // left their wallet at booking time, it just hasn't reached the merchant (or been
     // refunded/forfeited) yet.
     BOOKING_DEPOSIT_HOLDING,
+    // Real Kakao T-style ride-hailing fare holding (2026-07-26) -- see RideTrip.kt's own
+    // doc comment. Same real escrow-clearing-account shape EATS_DELIVERY_HOLDING already
+    // establishes: the passenger's real fare leaves their wallet at request time, held
+    // until the trip completes (or refunded if cancelled before a driver is assigned).
+    RIDE_HOLDING,
 }
 
 /**

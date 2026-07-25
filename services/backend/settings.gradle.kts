@@ -35,5 +35,6 @@ include(
     ":gift",
     ":splitbill",
     ":agents",
+    ":rideshare",
     ":app"
 )

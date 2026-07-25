@@ -45,6 +45,7 @@ dependencies {
     implementation(project(":eats"))
     implementation(project(":maps"))
     implementation(project(":gift"))
+    implementation(project(":rideshare"))
     implementation(project(":splitbill"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-security")
