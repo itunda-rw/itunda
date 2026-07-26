@@ -77,6 +77,7 @@ import RouteMiniMap from './RouteMiniMap';
 import LiveRiderMap from './LiveRiderMap';
 import { searchPlaces, type PlaceSearchResult } from './lib/maps';
 import { fetchMiniAppCatalog, type PartnerMiniApp } from './lib/partners';
+import { checkScamStatus, reportScam, type ScamCheckResult } from './lib/scamReports';
 import { fetchMyVehicles, fetchVehicleValuation, registerVehicle, removeVehicle, updateVehicleMileage, type Vehicle, type VehicleValuation } from './lib/vehicles';
 import {
   fetchChildOverview, fetchMyChildren, fetchMyGuardians, fetchMyInvites, inviteChild, respondToInvite, revokeFamilyLink,
@@ -189,6 +190,36 @@ function DeviceStepUpPrompt({ onVerified, onCancel }: { onVerified: () => void; 
   );
 }
 
+// Real Toss 사기계좌 조회-style report action -- see lib/scamReports.ts's own doc
+// comment.
+function ReportScamLink({ identifier }: { identifier: string }) {
+  const [reporting, setReporting] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const handleReport = async () => {
+    const reason = window.prompt(`Why are you reporting ${identifier}?`);
+    if (!reason || !reason.trim()) return;
+    setReporting(true);
+    try {
+      await reportScam(identifier, reason.trim());
+      setDone(true);
+    } catch {
+      // Real, non-critical from the sender's own transfer flow's point of view --
+      // a failed report shouldn't block or disrupt the transfer screen around it.
+    } finally {
+      setReporting(false);
+    }
+  };
+
+  if (done) return <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Thanks -- this number has been reported.</p>;
+
+  return (
+    <button type="button" onClick={handleReport} disabled={reporting} style={{ fontSize: '12px', color: 'var(--toss-grey-500)', textAlign: 'left' }}>
+      {reporting ? 'Reporting…' : 'Report this number as a scam'}
+    </button>
+  );
+}
+
 function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
@@ -207,6 +238,12 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
   const [showAddContact, setShowAddContact] = useState(false);
   const [newContactName, setNewContactName] = useState('');
   const [newContactPhone, setNewContactPhone] = useState('');
+  // Real Toss 사기계좌 조회-style pre-transfer warning -- see lib/scamReports.ts's own
+  // doc comment. A warning, not a hard block -- Toss's own real feature lets a sender
+  // proceed past it too, it just withdraws their fraud-reimbursement protection for
+  // doing so (this codebase has no such protection scheme to withdraw, so proceeding
+  // here is simply the sender's own informed choice).
+  const [scamCheck, setScamCheck] = useState<ScamCheckResult | null>(null);
 
   const loadContacts = () => fetchContacts().then(setContacts).catch(() => {});
   useEffect(() => { loadContacts(); }, []);
@@ -225,7 +262,12 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
   const handleReview = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setScamCheck(null);
     setReviewing(true);
+    checkScamStatus(recipient.trim()).then(setScamCheck).catch(() => {
+      // Real, non-critical -- a failed safety check must never block a real transfer
+      // the sender is otherwise entitled to make.
+    });
   };
 
   const handleConfirm = async () => {
@@ -269,6 +311,14 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
           <span>To {recipient}</span>
           <span style={{ fontWeight: 700 }}>Amount: {Number(amount).toLocaleString()} RWF</span>
         </div>
+        {scamCheck?.warn && (
+          <div style={{ backgroundColor: '#FDECEA', border: '1px solid #E53935', borderRadius: '8px', padding: '10px 12px' }}>
+            <p style={{ fontSize: '13px', fontWeight: 700, color: '#E53935' }}>Caution needed before this transfer</p>
+            <p style={{ fontSize: '12px', color: '#E53935', marginTop: '2px' }}>
+              This recipient has been reported by {scamCheck.reportCount} other itunda users. Double-check before sending.
+            </p>
+          </div>
+        )}
         {needsDeviceVerification ? (
           <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={onClose} />
         ) : (
@@ -280,6 +330,7 @@ function TransferFlow({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
               </button>
             </div>
             {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+            <ReportScamLink identifier={recipient.trim()} />
           </>
         )}
       </div>
