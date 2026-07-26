@@ -161,6 +161,10 @@ export interface GroupMessage {
   // comment; identical shape to Message.forwardedFromMessageId/forwardedFromType.
   forwardedFromMessageId?: string | null;
   forwardedFromType?: 'DIRECT' | 'GROUP' | null;
+  // Real Kakao-style per-message read-receipt countdown (2026-07-26) -- see
+  // GroupMessagingService.getUnreadCounts's own doc comment. How many OTHER real
+  // members haven't read up through this message yet.
+  unreadCount: number;
 }
 
 // memberPhoneNumbers is the real human-friendly entry point (same reasoning as
@@ -202,6 +206,18 @@ export const toggleGroupReaction = (groupMessageId: string, emoji: string) =>
     method: 'POST',
     body: JSON.stringify({ emoji }),
   }).then((r) => r.reactions);
+
+// Real group-chat pin (2026-07-26) -- see GroupMessagingService.setPinnedMessage's own
+// doc comment; mirrors pinConversationMessage/unpinConversationMessage/
+// fetchPinnedConversationMessage's exact 1:1 shape.
+export const pinGroupMessage = (groupId: string, messageId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/messages/groups/${groupId}/pin/${messageId}`, { method: 'POST' });
+
+export const unpinGroupMessage = (groupId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/messages/groups/${groupId}/pin`, { method: 'DELETE' });
+
+export const fetchPinnedGroupMessage = (groupId: string) =>
+  apiFetch<{ success: boolean; message: GroupMessage | null }>(`/api/v1/messages/groups/${groupId}/pin`).then((r) => r.message);
 
 export interface GroupMember {
   userId: string;
@@ -270,12 +286,25 @@ interface ReactionPushPayload {
   reactions: ReactionGroup[];
 }
 
+// Real group-chat read-receipt push (2026-07-26) -- see
+// RealtimeMessagePublisher.publishGroupReadReceiptChange's own doc comment. Fired
+// whenever any real member's read cursor advances; the client's own response is to
+// just refetch the thread (the server is the source of truth for each message's real
+// remaining unreadCount, not something worth recomputing client-side from this alone).
+interface GroupReadReceiptPushPayload {
+  type: 'group_read_receipt';
+  groupConversationId: string;
+  readByUserId: string;
+  lastReadAt: string;
+}
+
 type SocketPushPayload =
   | MessagePushPayload
   | GroupMessagePushPayload
   | PresencePushPayload
   | TypingPushPayload
-  | ReactionPushPayload;
+  | ReactionPushPayload
+  | GroupReadReceiptPushPayload;
 
 // Real on-demand presence check, for any set of user ids (a group thread's members,
 // or a 1:1 partner not covered by the real-time push above).
@@ -316,7 +345,7 @@ export function connectMessagingSocket(onMessage: (payload: SocketPushPayload) =
   socket.addEventListener('message', (event) => {
     try {
       const payload = JSON.parse(event.data) as SocketPushPayload;
-      if (payload.type === 'message' || payload.type === 'group_message' || payload.type === 'presence' || payload.type === 'typing' || payload.type === 'reaction') {
+      if (payload.type === 'message' || payload.type === 'group_message' || payload.type === 'presence' || payload.type === 'typing' || payload.type === 'reaction' || payload.type === 'group_read_receipt') {
         onMessage(payload);
       }
     } catch {

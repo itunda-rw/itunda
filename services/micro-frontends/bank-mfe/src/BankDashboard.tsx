@@ -31,8 +31,8 @@ import {
   type Portfolio, type PortfolioValuePoint, type PricePoint, type Stock,
 } from './lib/stocks';
 import {
-  addGroupMember, connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages, fetchPinnedConversationMessage,
-  blockConversationParticipant, deleteGroupMessage, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, forwardGroupMessage, forwardMessage, leaveGroup, pinConversationMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationQuiet, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unpinConversationMessage,
+  addGroupMember, connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages, fetchPinnedConversationMessage, fetchPinnedGroupMessage,
+  blockConversationParticipant, deleteGroupMessage, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, forwardGroupMessage, forwardMessage, leaveGroup, pinConversationMessage, pinGroupMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationQuiet, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unpinConversationMessage, unpinGroupMessage,
   type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup, type TalkContact,
 } from './lib/messaging';
@@ -2453,6 +2453,10 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
   const [replyingTo, setReplyingTo] = useState<GroupMessage | null>(null);
   // Real message forwarding (2026-07-25) -- see lib/messaging.ts's own doc comment.
   const [forwardingMessage, setForwardingMessage] = useState<GroupMessage | null>(null);
+  // Real group-chat pin (2026-07-26) -- see GroupMessagingService.setPinnedMessage's
+  // own doc comment; mirrors ConversationThread's own identical 1:1 state.
+  const [pinnedMessage, setPinnedMessage] = useState<GroupMessage | null>(null);
+  const [updatingPin, setUpdatingPin] = useState(false);
   const [sending, setSending] = useState(false);
   const [typingUserIds, setTypingUserIds] = useState<Record<string, boolean>>({});
   // Real split-bill/manage-members (found 2026-07-22 fully built on the backend with
@@ -2470,8 +2474,11 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
       .then(setMessages)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this group.'));
 
+  const loadPin = () => fetchPinnedGroupMessage(group.groupId).then(setPinnedMessage).catch(() => {});
+
   useEffect(() => {
     load();
+    loadPin();
     // Real 4s poll as an always-correct fallback, same reasoning as ConversationThread's
     // own identical poll -- kept even with the live socket below.
     const interval = setInterval(load, 4000);
@@ -2512,6 +2519,15 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
       if (payload.type === 'reaction') {
         if (payload.groupConversationId !== group.groupId) return;
         setMessages((prev) => prev?.map((m) => (m.id === payload.messageId ? { ...m, reactions: payload.reactions } : m)) ?? prev);
+        return;
+      }
+      if (payload.type === 'group_read_receipt') {
+        // Real live read-receipt countdown (2026-07-26) -- see
+        // RealtimeMessagePublisher.publishGroupReadReceiptChange's own doc comment. The
+        // server is the source of truth for each message's exact remaining unreadCount;
+        // simplest correct client response is a real refetch, not a local guess.
+        if (payload.groupConversationId !== group.groupId) return;
+        load();
         return;
       }
       if (payload.type !== 'group_message' || payload.groupConversationId !== group.groupId) return;
@@ -2566,6 +2582,26 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
       // Best-effort -- a failed reaction toggle just leaves the badge as it was, never
       // blocks the thread.
     }
+  };
+
+  const handlePin = async (message: GroupMessage) => {
+    setUpdatingPin(true);
+    try {
+      await pinGroupMessage(group.groupId, message.id);
+      setPinnedMessage(message);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not pin this message.');
+    } finally { setUpdatingPin(false); }
+  };
+
+  const handleUnpin = async () => {
+    setUpdatingPin(true);
+    try {
+      await unpinGroupMessage(group.groupId);
+      setPinnedMessage(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not unpin this message.');
+    } finally { setUpdatingPin(false); }
   };
 
   const handleDelete = async (messageId: string) => {
@@ -2635,6 +2671,13 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
         </div>
       </div>
 
+      {pinnedMessage && (
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '8px 10px', marginBottom: '8px', borderRadius: '10px', background: 'var(--toss-grey-100)', fontSize: '12px' }}>
+          <span aria-hidden="true">📌</span><span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pinnedMessage.body}</span>
+          <button type="button" onClick={handleUnpin} disabled={updatingPin} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-600)', fontSize: '12px' }}>Unpin</button>
+        </div>
+      )}
+
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px' }}>
         {messages === null && <div className="toss-card skeleton" style={{ height: '120px' }} />}
         {messages !== null && messages.length === 0 && (
@@ -2678,8 +2721,13 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
               <button type="button" onClick={() => handleCopy(m.body)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Copy</button>
               {!(m as GroupMessage & { deletedAt?: string | null }).deletedAt && <button type="button" onClick={() => setForwardingMessage(m)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Forward</button>}
               {isMine && !(m as GroupMessage & { deletedAt?: string | null }).deletedAt && <button type="button" onClick={() => handleDelete(m.id)} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>Delete</button>}
+              <button type="button" onClick={() => handlePin(m)} disabled={updatingPin} style={{ border: 'none', background: 'none', color: 'var(--toss-grey-500)', fontSize: '11px', padding: '4px 0' }}>{pinnedMessage?.id === m.id ? 'Pinned' : 'Pin'}</button>
               <span style={{ fontSize: '10px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>
-                {chatMessageTime(m.sentAt)}
+                {/* Real Kakao-style read-receipt countdown -- see
+                    GroupMessagingService.getUnreadCounts's own doc comment. Only shown
+                    on my own messages, same convention 1:1's own "1" indicator uses;
+                    disappears at 0, exactly matching real KakaoTalk. */}
+                {isMine && m.unreadCount > 0 ? `${m.unreadCount} · ` : ''}{chatMessageTime(m.sentAt)}
               </span>
             </div>
           );
