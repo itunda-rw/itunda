@@ -39,8 +39,10 @@ import rw.itunda.eats.EatsOrderItemRequest
 import rw.itunda.eats.EatsOrderNotFoundException
 import rw.itunda.eats.EatsOrderNotYetDeliveredException
 import rw.itunda.eats.EatsOrderService
+import rw.itunda.eats.EatsReviewNotFoundException
 import rw.itunda.eats.EatsReviewService
 import rw.itunda.eats.EmptyEatsOrderException
+import rw.itunda.eats.InvalidEatsReviewReplyException
 import rw.itunda.eats.InvalidEatsCoordinatesException
 import rw.itunda.eats.InvalidEatsDeliveryAddressException
 import rw.itunda.eats.InvalidEatsDeliveryNotesException
@@ -82,9 +84,12 @@ data class UpdateRiderLocationRequest(val latitude: Double, val longitude: Doubl
 data class SubmitEatsReviewRequest(
     val restaurantRating: Int,
     val restaurantComment: String? = null,
-    val riderRating: Int,
+    // Nullable (2026-07-26) -- a real Baemin-style PICKUP order has no rider to rate;
+    // see EatsReview.kt's own doc comment for the full account.
+    val riderRating: Int? = null,
     val riderComment: String? = null,
 )
+data class ReplyToEatsReviewRequest(val reply: String)
 
 // Real Coupang Eats-style food ordering + delivery. Restaurant browsing/menus
 // deliberately reuse the existing GET /api/v1/shopping/merchants and GET
@@ -316,6 +321,17 @@ class EatsController(
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "review" to review))
     }
 
+    // Real owner-side reply (2026-07-26) -- see EatsReviewService's own doc comment.
+    @PostMapping("/reviews/{reviewId}/reply")
+    fun replyToRestaurantReview(
+        @PathVariable reviewId: String,
+        @RequestBody request: ReplyToEatsReviewRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val review = eatsReviewService.replyToRestaurantReview(currentUser.userId, reviewId, request.reply)
+        return ResponseEntity.ok(mapOf("success" to true, "review" to review))
+    }
+
     @GetMapping("/restaurants/{restaurantId}/reviews")
     fun getRestaurantReviews(
         @PathVariable restaurantId: String,
@@ -437,6 +453,14 @@ class EatsController(
     @ExceptionHandler(InvalidEatsRatingException::class)
     fun handleInvalidRating(ex: InvalidEatsRatingException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_RATING", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(EatsReviewNotFoundException::class)
+    fun handleReviewNotFound(ex: EatsReviewNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("REVIEW_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(InvalidEatsReviewReplyException::class)
+    fun handleInvalidReply(ex: InvalidEatsReviewReplyException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_REVIEW_REPLY", ex.message ?: "Bad request"))
 
     @ExceptionHandler(InvalidEatsOrderStatusTransitionException::class)
     fun handleInvalidTransition(ex: InvalidEatsOrderStatusTransitionException) =

@@ -6,13 +6,19 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.EatsOrderStatus
 import rw.itunda.core.domain.EatsReview
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.repository.EatsOrderRepository
 import rw.itunda.core.repository.EatsReviewRepository
+import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.NotificationRepository
+import java.time.Instant
 import java.util.UUID
 
 class EatsOrderNotYetDeliveredException(message: String) : RuntimeException(message)
 class EatsOrderAlreadyReviewedException(message: String) : RuntimeException(message)
 class InvalidEatsRatingException(message: String) : RuntimeException(message)
+class EatsReviewNotFoundException(message: String) : RuntimeException(message)
+class InvalidEatsReviewReplyException(message: String) : RuntimeException(message)
 
 data class RatingSummary(val average: Double?, val count: Long)
 
@@ -29,11 +35,21 @@ data class RatingSummary(val average: Double?, val count: Long)
  * constraint on `order_id` backs the same application-level check, not just the
  * application check alone (a genuine race between two concurrent submit attempts for
  * the same order still can't create two rows).
+ *
+ * `replyToRestaurantReview` (2026-07-26) closes a gap `MerchantBookingReview`'s own doc
+ * comment explicitly named ("the genuinely new part `ProductReview`/`EatsReview` don't
+ * have") when owner-side review replies first shipped for bookings -- see
+ * `EatsReview.kt`'s own doc comment for the full account. Identical shape to
+ * `MerchantBookingReviewService.replyToReview`: one editable reply per review, only the
+ * restaurant's own real owner can post it, and the reviewing buyer gets a real
+ * notification.
  */
 @Service
 class EatsReviewService(
     private val eatsOrderRepository: EatsOrderRepository,
     private val eatsReviewRepository: EatsReviewRepository,
+    private val merchantRepository: MerchantRepository,
+    private val notificationRepository: NotificationRepository,
 ) {
     @Transactional
     fun submitReview(
@@ -41,11 +57,11 @@ class EatsReviewService(
         orderId: String,
         restaurantRating: Int,
         restaurantComment: String?,
-        riderRating: Int,
+        riderRating: Int?,
         riderComment: String?,
     ): EatsReview {
-        if (restaurantRating !in 1..5 || riderRating !in 1..5) {
-            throw InvalidEatsRatingException("Ratings must be between 1 and 5")
+        if (restaurantRating !in 1..5) {
+            throw InvalidEatsRatingException("Restaurant rating must be between 1 and 5")
         }
         val order = eatsOrderRepository.findById(orderId).orElseThrow { EatsOrderNotFoundException("Order not found") }
         if (order.buyerId != buyerId) {
@@ -59,15 +75,26 @@ class EatsReviewService(
         if (eatsReviewRepository.findByOrderId(orderId) != null) {
             throw EatsOrderAlreadyReviewedException("This order has already been reviewed")
         }
-        // order.riderId is guaranteed non-null here -- DELIVERED is only reachable via
-        // RIDER_ASSIGNED -> PICKED_UP -> DELIVERED, all of which require a real assigned
-        // rider (see EatsOrderService's own forward-only status chain).
-        val riderId = order.riderId ?: throw EatsOrderNotYetDeliveredException("Only a delivered order can be reviewed")
+        // Real bug fix (2026-07-26): order.riderId is NOT guaranteed non-null here -- a
+        // real Baemin-style PICKUP order reaches DELIVERED via EatsOrderService
+        // .completePickup with no rider ever assigned (see EatsReview.kt's own doc
+        // comment for the full account of the live-caught regression this fixes). A
+        // PICKUP order simply has no rider to rate; riderRating is only validated/kept
+        // when a real rider actually exists on the order.
+        val resolvedRiderRating = if (order.riderId != null) {
+            if (riderRating == null || riderRating !in 1..5) {
+                throw InvalidEatsRatingException("Rider rating must be between 1 and 5")
+            }
+            riderRating
+        } else {
+            null
+        }
+        val resolvedRiderComment = if (order.riderId != null) riderComment else null
 
         return eatsReviewRepository.save(
             EatsReview(
                 id = "eats_review_${UUID.randomUUID()}", orderId = orderId, buyerId = buyerId,
-                restaurantId = order.restaurantId, riderId = riderId,
+                restaurantId = order.restaurantId, riderId = order.riderId,
                 // Real bound, matching GiftService.sendGift's `note?.trim()?.take(200)` and
                 // ProductReviewService.submitReview's own identical fix (2026-07-20) --
                 // both comment columns are VARCHAR(1000) under this DB's real
@@ -75,7 +102,7 @@ class EatsReviewService(
                 // DataIntegrityViolationException (an unhandled 500, not a clean 400) on an
                 // over-length insert rather than silently truncating.
                 restaurantRating = restaurantRating, restaurantComment = restaurantComment?.trim()?.take(1000)?.ifBlank { null },
-                riderRating = riderRating, riderComment = riderComment?.trim()?.take(1000)?.ifBlank { null },
+                riderRating = resolvedRiderRating, riderComment = resolvedRiderComment?.trim()?.take(1000)?.ifBlank { null },
             ),
         )
     }
@@ -91,5 +118,33 @@ class EatsReviewService(
     fun getRiderRating(riderId: String): RatingSummary {
         val summary = eatsReviewRepository.getRiderRatingSummary(riderId)
         return RatingSummary(summary.average, summary.count)
+    }
+
+    // Real owner-side reply -- see this class's own doc comment for the full account.
+    // Editable: re-posting overwrites the same reply + timestamp, matching
+    // MerchantBookingReviewService.replyToReview's exact simplicity.
+    @Transactional
+    fun replyToRestaurantReview(ownerUserId: String, reviewId: String, reply: String): EatsReview {
+        val trimmedReply = reply.trim()
+        if (trimmedReply.isEmpty() || trimmedReply.length > 1000) {
+            throw InvalidEatsReviewReplyException("Reply must be 1-1000 characters")
+        }
+        val restaurant = merchantRepository.findByOwnerUserId(ownerUserId)
+            ?: throw RestaurantNotFoundException("This account is not registered as a merchant")
+        val review = eatsReviewRepository.findById(reviewId).orElseThrow { EatsReviewNotFoundException("Review not found") }
+        if (review.restaurantId != restaurant.id) {
+            throw EatsReviewNotFoundException("Review not found")
+        }
+        review.ownerReply = trimmedReply
+        review.ownerRepliedAt = Instant.now()
+        val saved = eatsReviewRepository.save(review)
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = review.buyerId, type = "EATS_REVIEW_REPLY",
+                title = "${restaurant.businessName} replied to your review", body = trimmedReply, isRead = false,
+                createdAt = Instant.now(), dataJson = "{\"reviewId\":\"${review.id}\"}",
+            ),
+        )
+        return saved
     }
 }

@@ -5579,16 +5579,21 @@ function ReviewOrderCard({ order, onSubmitted }: { order: EatsOrder; onSubmitted
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
+  // Real bug fix (2026-07-26): a PICKUP order has riderId: null for its whole
+  // lifecycle -- there's genuinely no rider to rate, so the rider star row is hidden
+  // and never required, matching the backend's own real fix for the same order.
+  const hasRider = order.fulfillmentType !== 'PICKUP';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (restaurantRating === 0 || riderRating === 0) {
-      setError('Rate both the restaurant and the rider.');
+    if (restaurantRating === 0 || (hasRider && riderRating === 0)) {
+      setError(hasRider ? 'Rate both the restaurant and the rider.' : 'Rate the restaurant.');
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
-      await submitEatsReview(order.id, restaurantRating, restaurantComment, riderRating, riderComment);
+      await submitEatsReview(order.id, restaurantRating, restaurantComment, hasRider ? riderRating : null, riderComment);
       setDone(true);
       onSubmitted();
     } catch (err) {
@@ -5627,17 +5632,19 @@ function ReviewOrderCard({ order, onSubmitted }: { order: EatsOrder; onSubmitted
           style={{ marginTop: '6px', width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
         />
       </div>
-      <div>
-        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px' }}>Rider</p>
-        <StarRatingInput value={riderRating} onChange={setRiderRating} />
-        <input
-          type="text"
-          value={riderComment}
-          onChange={(e) => setRiderComment(e.target.value)}
-          placeholder="How was the delivery? (optional)"
-          style={{ marginTop: '6px', width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
-        />
-      </div>
+      {hasRider && (
+        <div>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '4px' }}>Rider</p>
+          <StarRatingInput value={riderRating} onChange={setRiderRating} />
+          <input
+            type="text"
+            value={riderComment}
+            onChange={(e) => setRiderComment(e.target.value)}
+            placeholder="How was the delivery? (optional)"
+            style={{ marginTop: '6px', width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+        </div>
+      )}
       {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
       <div style={{ display: 'flex', gap: '10px' }}>
         <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>

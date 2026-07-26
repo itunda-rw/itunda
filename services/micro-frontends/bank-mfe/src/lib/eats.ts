@@ -106,6 +106,11 @@ export interface EatsOrder {
   deliveryLatitude?: number | null;
   deliveryLongitude?: number | null;
   distanceKm?: number | null;
+  // Real Baemin-style 포장주문 (Pickup) order type (2026-07-26) -- see
+  // EatsOrderService.placeOrder's own doc comment. A PICKUP order has riderId: null
+  // for its whole lifecycle, so a review of one has no rider to rate -- see
+  // ReviewOrderCard's own use of this field.
+  fulfillmentType?: 'DELIVERY' | 'PICKUP';
 }
 
 export const placeEatsOrder = (
@@ -209,11 +214,15 @@ export interface EatsReview {
   orderId: string;
   buyerId: string;
   restaurantId: string;
-  riderId: string;
+  riderId: string | null;
   restaurantRating: number;
   restaurantComment: string | null;
-  riderRating: number;
+  riderRating: number | null;
   riderComment: string | null;
+  // Real owner-side reply (2026-07-26) -- see EatsReviewService.replyToRestaurantReview's
+  // own doc comment.
+  ownerReply: string | null;
+  ownerRepliedAt: string | null;
   createdAt: string;
 }
 
@@ -222,11 +231,14 @@ export interface RatingSummary {
   count: number;
 }
 
+// riderRating/riderComment are optional (2026-07-26) -- a real Baemin-style PICKUP
+// order review has no rider to rate; see EatsReview.kt's own doc comment for the full
+// account of the real bug this fixes (every PICKUP order was previously unreviewable).
 export const submitEatsReview = (
   orderId: string,
   restaurantRating: number,
   restaurantComment: string,
-  riderRating: number,
+  riderRating: number | null,
   riderComment: string,
 ) =>
   apiFetch<{ success: boolean; review: EatsReview }>(`/api/v1/eats/orders/${orderId}/review`, {
@@ -235,7 +247,7 @@ export const submitEatsReview = (
       restaurantRating,
       restaurantComment: restaurantComment.trim() || null,
       riderRating,
-      riderComment: riderComment.trim() || null,
+      riderComment: riderRating == null ? null : riderComment.trim() || null,
     }),
   }).then((r) => r.review);
 
