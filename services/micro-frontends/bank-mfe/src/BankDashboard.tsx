@@ -18,8 +18,8 @@ import { collectWithFacePay, enrollFacePay, fetchFacePayStatus, revokeFacePay } 
 import { sendDirect } from './lib/p2p';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
 import { fetchLinkedAccounts, fetchOverview, linkAccount, unlinkAccount, type LinkedAccount, type Overview } from './lib/overview';
-import { applyForLoan, fetchLoanOffers, fetchMyLoans, repayLoan, type LoanAccount, type LoanOffer } from './lib/loans';
-import { fetchCreditScore, type CreditScoreResult } from './lib/creditScore';
+import { applyForLoan, fetchLoanOffers, fetchMyLoans, refinanceLoan, repayLoan, type LoanAccount, type LoanOffer } from './lib/loans';
+import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreResult, type CreditScoreSuggestion } from './lib/creditScore';
 import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type KycSubmission } from './lib/identity';
 import { addContact, fetchContacts, type Contact } from './lib/contacts';
 import { createSupportTicket, fetchSupportTickets, type SupportTicket, type SupportTicketCategory } from './lib/support';
@@ -717,6 +717,24 @@ function LoansView() {
     }
   };
 
+  // Real 대환대출 (loan refinancing, 2026-07-26) -- see LoansService.refinanceLoan's
+  // own doc comment.
+  const [refinanceResult, setRefinanceResult] = useState<{ oldRate: number; newRate: number; newLoanName: string } | null>(null);
+  const handleRefinance = async (loan: LoanAccount) => {
+    setBusyId(loan.id);
+    setError(null);
+    setRefinanceResult(null);
+    try {
+      const result = await refinanceLoan(loan.id);
+      setRefinanceResult({ oldRate: result.oldInterestRate, newRate: result.newInterestRate, newLoanName: result.newLoanName });
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No better rate is available for this loan right now.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div style={{ display: 'flex', gap: '8px' }}>
@@ -724,6 +742,12 @@ function LoansView() {
         <button className="toss-btn toss-btn-secondary" onClick={() => setMode('MY_LOANS')}>My loans ({myLoans?.length ?? 0})</button>
       </div>
       {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {refinanceResult && (
+        <div className="toss-card" style={{ padding: '16px', border: '1px solid var(--toss-blue)' }}>
+          <p style={{ fontSize: '13px', fontWeight: 700 }}>Refinanced into {refinanceResult.newLoanName}</p>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{refinanceResult.oldRate}% → {refinanceResult.newRate}%</p>
+        </div>
+      )}
       {mode === 'OFFERS' && (
         offers === null ? <div className="toss-card skeleton" style={{ height: '160px' }} /> : offers.map((offer) => (
           <LoanOfferCard key={offer.id} offer={offer} busy={busyId === offer.id} onApply={(amount) => handleApply(offer, amount)} />
@@ -747,6 +771,9 @@ function LoansView() {
                 />
                 <button className="toss-btn toss-btn-primary" disabled={busyId === loan.id} onClick={() => handleRepay(loan)}>
                   {busyId === loan.id ? 'Repaying…' : 'Repay'}
+                </button>
+                <button className="toss-btn toss-btn-secondary" disabled={busyId === loan.id} onClick={() => handleRefinance(loan)}>
+                  {busyId === loan.id ? 'Checking…' : 'Refinance to a lower rate'}
                 </button>
               </div>
             )}
@@ -784,12 +811,20 @@ function LoanOfferCard({ offer, busy, onApply }: { offer: LoanOffer; busy: boole
 // score -- computed live from a user's own real transaction/loan/savings/KYC history.
 function CreditScoreView() {
   const [result, setResult] = useState<CreditScoreResult | null>(null);
+  const [suggestions, setSuggestions] = useState<CreditScoreSuggestion[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCreditScore()
       .then(setResult)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your credit score.'));
+    // Real Toss 신용플러스-style suggestions (2026-07-26) -- see
+    // CreditScoreService.getImprovementSuggestions's own doc comment. Loaded alongside
+    // the score itself, not gated behind it -- a real failure here shouldn't block the
+    // score from rendering.
+    fetchCreditScoreSuggestions()
+      .then(setSuggestions)
+      .catch(() => setSuggestions([]));
   }, []);
 
   if (!result) {
@@ -815,6 +850,20 @@ function CreditScoreView() {
           </div>
         ))}
       </div>
+      {suggestions !== null && suggestions.length > 0 && (
+        <div className="toss-card" style={{ padding: '16px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>What would raise your score</h3>
+          {suggestions.map((s) => (
+            <div key={s.action} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
+              <div>
+                <p>{s.action}</p>
+                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{s.description}</p>
+              </div>
+              <span style={{ color: 'var(--toss-blue)', fontWeight: 700 }}>+{s.pointsGain}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

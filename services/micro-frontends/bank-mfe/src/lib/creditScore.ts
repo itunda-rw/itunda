@@ -20,3 +20,16 @@ export interface CreditScoreResult {
 
 export const fetchCreditScore = () =>
   apiFetch<{ success: boolean } & CreditScoreResult>('/api/v1/credit-score').then((r) => r);
+
+// Real Toss 신용플러스 (Credit Plus)-style "what would move your score" suggestions
+// (2026-07-26) -- see CreditScoreService.getImprovementSuggestions's own doc comment.
+// Found with zero client UI anywhere, same gap class as the score itself had until
+// 2026-07-22.
+export interface CreditScoreSuggestion {
+  action: string;
+  pointsGain: number;
+  description: string;
+}
+
+export const fetchCreditScoreSuggestions = () =>
+  apiFetch<{ success: boolean; suggestions: CreditScoreSuggestion[] }>('/api/v1/credit-score/suggestions').then((r) => r.suggestions);

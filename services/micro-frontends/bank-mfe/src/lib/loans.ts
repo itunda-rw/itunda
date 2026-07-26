@@ -57,3 +57,24 @@ export const repayLoan = (loanId: string, amount: number) =>
     headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ loanId, amount }),
   });
+
+// Real 대환대출 (loan refinancing, 2026-07-26) -- see LoansService.refinanceLoan's own
+// doc comment. Itunda's own book only, not a real cross-institution comparison.
+export interface RefinanceResult {
+  success: boolean;
+  message: string;
+  oldLoanId: string;
+  oldInterestRate: number;
+  newLoanId: string;
+  newInterestRate: number;
+  newLoanName: string;
+  amount: number;
+  creditScore: number;
+}
+
+export const refinanceLoan = (loanId: string) =>
+  apiFetch<RefinanceResult>('/api/v1/loans/refinance', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ loanId }),
+  });
