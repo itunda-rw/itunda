@@ -1,0 +1,181 @@
+package rw.itunda.p2p
+
+import io.kotest.core.spec.IsolationMode
+import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.shouldBe
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.slot
+import io.mockk.verify
+import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.ScheduledTransferStatus
+import rw.itunda.core.domain.Transaction
+import rw.itunda.core.domain.TransactionStatus
+import rw.itunda.core.domain.TransactionType
+import rw.itunda.core.domain.User
+import rw.itunda.core.domain.Wallet
+import rw.itunda.core.domain.WalletType
+import rw.itunda.core.ledger.InsufficientFundsException
+import rw.itunda.core.repository.ScheduledTransferRepository
+import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.repository.WalletRepository
+import java.math.BigDecimal
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.util.Optional
+
+/**
+ * Real Toss 예약송금 (scheduled/reserved one-time transfer) equivalent -- see
+ * ScheduledTransfer.kt's own doc comment. P2pService itself is mocked, not exercised
+ * for real -- its own money-movement logic is already covered by P2pServiceTest; this
+ * file is about scheduled-transfer-specific logic: future-date validation, ownership,
+ * and the one-time (not recurring) execution/failure semantics.
+ */
+class ScheduledTransferServiceTest : BehaviorSpec({
+
+    fun wallet(id: String, userId: String) = Wallet(
+        id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
+        type = WalletType.MAIN, balance = BigDecimal("100000"), availableBalance = BigDecimal("100000"),
+    )
+
+    Given("a real user with a wallet and a real recipient") {
+        val scheduledTransferRepository = mockk<ScheduledTransferRepository>(relaxed = true)
+        every { scheduledTransferRepository.save(any()) } answers { firstArg() }
+        val walletRepository = mockk<WalletRepository>()
+        val userRepository = mockk<UserRepository>()
+        val p2pService = mockk<P2pService>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = ScheduledTransferService(scheduledTransferRepository, walletRepository, userRepository, p2pService, rateLimiter)
+
+        val senderWallet = wallet("wallet_sender", "sender_1")
+        val recipientWallet = wallet("wallet_recipient", "recipient_1")
+        val recipientUser = User(id = "recipient_1", phoneNumber = "+250788000002", firstName = "Alice", lastName = "M", passwordHash = "x")
+
+        When("creating a scheduled transfer for a genuine future date") {
+            every { walletRepository.findByUserIdAndType("sender_1", WalletType.MAIN) } returns senderWallet
+            every { userRepository.findByPhoneNumber("+250788000002") } returns recipientUser
+            every { walletRepository.findByUserIdAndType("recipient_1", WalletType.MAIN) } returns recipientWallet
+            every { userRepository.findById("recipient_1") } returns Optional.of(recipientUser)
+
+            val futureDate = LocalDate.now(ZoneOffset.UTC).plusDays(5)
+            val result = service.create("sender_1", "+250788000002", BigDecimal("10000"), futureDate, "Rent")
+
+            Then("it saves a real PENDING scheduled transfer with the resolved recipient name") {
+                result.status shouldBe ScheduledTransferStatus.PENDING
+                result.recipientName shouldBe "Alice M"
+                result.scheduledDate shouldBe futureDate
+                result.amount shouldBe BigDecimal("10000")
+            }
+        }
+
+        When("the scheduled date is today or in the past") {
+            Then("today is rejected -- a real 1회 scheduled transfer only ever runs on a genuine future date") {
+                try {
+                    service.create("sender_1", "+250788000002", BigDecimal("10000"), LocalDate.now(ZoneOffset.UTC), "Rent")
+                    throw AssertionError("expected ScheduledTransferInvalidDateException")
+                } catch (e: ScheduledTransferInvalidDateException) {
+                    // expected
+                }
+            }
+
+            Then("yesterday is rejected") {
+                try {
+                    service.create("sender_1", "+250788000002", BigDecimal("10000"), LocalDate.now(ZoneOffset.UTC).minusDays(1), "Rent")
+                    throw AssertionError("expected ScheduledTransferInvalidDateException")
+                } catch (e: ScheduledTransferInvalidDateException) {
+                    // expected
+                }
+            }
+        }
+
+        When("scheduling a transfer to yourself") {
+            every { walletRepository.findByUserIdAndType("sender_1", WalletType.MAIN) } returns senderWallet
+            every { userRepository.findByPhoneNumber("+250788000001") } returns null
+            every { walletRepository.findByAccountNumber("+250788000001") } returns senderWallet
+
+            Then("it's rejected") {
+                try {
+                    service.create("sender_1", "+250788000001", BigDecimal("10000"), LocalDate.now(ZoneOffset.UTC).plusDays(1), "")
+                    throw AssertionError("expected P2pSelfPaymentException")
+                } catch (e: P2pSelfPaymentException) {
+                    // expected
+                }
+            }
+        }
+
+        When("the amount is zero or negative") {
+            Then("it's rejected before any lookup") {
+                try {
+                    service.create("sender_1", "+250788000002", BigDecimal.ZERO, LocalDate.now(ZoneOffset.UTC).plusDays(1), "")
+                    throw AssertionError("expected P2pInvalidAmountException")
+                } catch (e: P2pInvalidAmountException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real pending scheduled transfer") {
+        val scheduledTransferRepository = mockk<ScheduledTransferRepository>(relaxed = true)
+        every { scheduledTransferRepository.save(any()) } answers { firstArg() }
+        val walletRepository = mockk<WalletRepository>()
+        val userRepository = mockk<UserRepository>()
+        val p2pService = mockk<P2pService>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = ScheduledTransferService(scheduledTransferRepository, walletRepository, userRepository, p2pService, rateLimiter)
+
+        val pending = ScheduledTransferFixture.pending()
+
+        When("cancelling it") {
+            every { scheduledTransferRepository.findByIdAndUserId(pending.id, "sender_1") } returns pending
+
+            val result = service.cancel("sender_1", pending.id)
+
+            Then("it becomes CANCELLED with a real timestamp") {
+                result.status shouldBe rw.itunda.core.domain.ScheduledTransferStatus.CANCELLED
+                (result.cancelledAt != null) shouldBe true
+            }
+        }
+
+        When("its scheduled date arrives and the real transfer succeeds") {
+            every { p2pService.sendDirect("sender_1", "+250788000002", BigDecimal("10000"), "Rent") } returns
+                (
+                    Transaction(
+                        id = "ledgertxn_1", referenceNumber = "REF1", senderId = "sender_1", recipientId = "recipient_1",
+                        fromWalletId = "wallet_sender", toWalletId = "wallet_recipient", amount = BigDecimal("10000"), fee = BigDecimal.ZERO,
+                        currency = "RWF", type = TransactionType.TRANSFER, status = TransactionStatus.COMPLETED, description = "Transfer - Rent",
+                    ) to BigDecimal("90000")
+                    )
+
+            val succeeded = service.executeOne(ScheduledTransferFixture.pending())
+
+            Then("it's marked EXECUTED with the real transaction id, never fabricated") {
+                succeeded shouldBe true
+            }
+
+            Then("it reuses P2pService.sendDirect's exact real money movement, not a duplicate ledger path") {
+                verify(exactly = 1) { p2pService.sendDirect("sender_1", "+250788000002", BigDecimal("10000"), "Rent") }
+            }
+        }
+
+        When("its scheduled date arrives but the sender no longer has enough balance") {
+            every { p2pService.sendDirect(any(), any(), any(), any()) } throws InsufficientFundsException("Insufficient balance")
+
+            val succeeded = service.executeOne(ScheduledTransferFixture.pending())
+
+            Then("it's honestly marked FAILED, never thrown, never retried -- a one-time transfer has no next cycle") {
+                succeeded shouldBe false
+            }
+        }
+    }
+}) {
+    override fun isolationMode() = IsolationMode.InstancePerLeaf
+}
+
+private object ScheduledTransferFixture {
+    fun pending() = rw.itunda.core.domain.ScheduledTransfer(
+        id = "scheduledtransfer_1", userId = "sender_1", walletId = "wallet_sender",
+        recipientIdentifier = "+250788000002", recipientName = "Alice M",
+        amount = BigDecimal("10000"), description = "Rent", scheduledDate = LocalDate.now(ZoneOffset.UTC).plusDays(1),
+    )
+}

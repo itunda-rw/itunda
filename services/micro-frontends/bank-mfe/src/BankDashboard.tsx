@@ -77,6 +77,7 @@ import RouteMiniMap from './RouteMiniMap';
 import LiveRiderMap from './LiveRiderMap';
 import { searchPlaces, type PlaceSearchResult } from './lib/maps';
 import { fetchMiniAppCatalog, type PartnerMiniApp } from './lib/partners';
+import { cancelScheduledTransfer, createScheduledTransfer, fetchMyScheduledTransfers, type ScheduledTransfer } from './lib/scheduledTransfers';
 import {
   acceptRideTrip, cancelRideTrip, completeRideTrip, declineRideTrip, fetchAvailableTrips, fetchMyDriverProfile, fetchMyDriverTrips,
   fetchMyTrips, registerAsDriver, requestRideTrip, setDriverAvailability, startRideTrip, updateDriverLocation,
@@ -465,6 +466,127 @@ function HomeView() {
       )}
       <QuickActions />
       <TransactionHistory transactions={transactions} unusuallyLargeIds={unusuallyLargeIds} />
+      <ScheduledTransfersCard />
+    </div>
+  );
+}
+
+const SCHEDULED_TRANSFER_STATUS_LABEL: Record<ScheduledTransfer['status'], string> = {
+  PENDING: 'Scheduled',
+  EXECUTED: 'Sent',
+  CANCELLED: 'Cancelled',
+  FAILED: 'Failed',
+};
+
+// Real Toss 예약송금 (scheduled/reserved one-time transfer) -- see
+// lib/scheduledTransfers.ts's own doc comment. Distinct from AutoTransfer (recurring,
+// which itself still has no bank-mfe client anywhere -- left as its own separately
+// named, still-deferred gap; not expanded in this pass).
+function ScheduledTransfersCard() {
+  const [transfers, setTransfers] = useState<ScheduledTransfer[] | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [recipient, setRecipient] = useState('');
+  const [amount, setAmount] = useState('');
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [description, setDescription] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    fetchMyScheduledTransfers().then(setTransfers).catch(() => {});
+  };
+
+  useEffect(load, []);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsedAmount = Number(amount);
+    if (!recipient.trim() || !(parsedAmount > 0) || !scheduledDate) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await createScheduledTransfer(recipient.trim(), parsedAmount, scheduledDate, description);
+      setRecipient('');
+      setAmount('');
+      setScheduledDate('');
+      setDescription('');
+      setShowCreate(false);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not schedule this transfer.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCancel = async (id: string) => {
+    setBusyId(id);
+    setError(null);
+    try {
+      await cancelScheduledTransfer(id);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not cancel this scheduled transfer.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const pending = (transfers ?? []).filter((t) => t.status === 'PENDING');
+  const past = (transfers ?? []).filter((t) => t.status !== 'PENDING');
+  const minDate = new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 10);
+
+  return (
+    <div className="toss-card" style={{ padding: '16px', marginTop: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Scheduled transfers</h3>
+        <button className="toss-btn toss-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+          {showCreate ? 'Cancel' : '+ Schedule'}
+        </button>
+      </div>
+
+      {showCreate && (
+        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+          <input
+            type="text" placeholder="Phone or account number" value={recipient} onChange={(e) => setRecipient(e.target.value)} required
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <input
+            type="number" placeholder="Amount (RWF)" value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <input
+            type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} min={minDate} required
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <input
+            type="text" placeholder="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? 'Scheduling…' : 'Schedule transfer'}</button>
+        </form>
+      )}
+
+      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+
+      {pending.length === 0 && past.length === 0 && (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No scheduled transfers yet.</p>
+      )}
+
+      {[...pending, ...past.slice(0, 3)].map((t) => (
+        <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+          <div>
+            <p style={{ fontSize: '13px', fontWeight: 700 }}>{t.recipientName} · {t.amount.toLocaleString()} RWF</p>
+            <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{t.scheduledDate} · {SCHEDULED_TRANSFER_STATUS_LABEL[t.status]}</p>
+          </div>
+          {t.status === 'PENDING' && (
+            <button className="toss-btn toss-btn-secondary" disabled={busyId === t.id} onClick={() => handleCancel(t.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+              {busyId === t.id ? '…' : 'Cancel'}
+            </button>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
