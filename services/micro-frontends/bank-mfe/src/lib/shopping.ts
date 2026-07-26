@@ -107,3 +107,23 @@ export const collectPayment = (intentId: string) =>
     method: 'POST',
     headers: { 'Idempotency-Key': randomUUID() },
   });
+
+// Real Naver Smart Store-style "알림받기" (follow a store for its own broadcast
+// notices) -- see MerchantFollowService.kt's own doc comment. Distinct from the
+// wishlist heart above: following opts a customer into the merchant's own promotional
+// messages, not just a private bookmark.
+export interface FollowedMerchant {
+  merchantId: string;
+  businessName: string;
+  category: string | null;
+  followedAt: string;
+}
+
+export const fetchMyFollowedMerchants = () =>
+  apiFetch<{ success: boolean; follows: FollowedMerchant[] }>('/api/v1/merchant/follows?size=200').then((r) => r.follows);
+
+export const followMerchant = (merchantId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/merchant/${merchantId}/follow`, { method: 'POST' });
+
+export const unfollowMerchant = (merchantId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/merchant/${merchantId}/follow`, { method: 'DELETE' });

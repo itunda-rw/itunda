@@ -24,7 +24,7 @@ import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreResult, 
 import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type KycSubmission } from './lib/identity';
 import { addContact, fetchContacts, type Contact } from './lib/contacts';
 import { createSupportTicket, fetchSupportTickets, type SupportTicket, type SupportTicketCategory } from './lib/support';
-import { collectPayment, fetchMerchantCategories, fetchShopDeals, fetchShoppingCatalog, searchProducts, type CollectPaymentResult, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
+import { collectPayment, fetchMerchantCategories, fetchMyFollowedMerchants, fetchShopDeals, fetchShoppingCatalog, followMerchant, searchProducts, unfollowMerchant, type CollectPaymentResult, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
 import {
   buyStock, fetchPortfolio, fetchPortfolioHistory, fetchStockHistory, fetchStocks, fetchWatchlist,
   sellStock, unwatchStock, watchStock,
@@ -7222,6 +7222,8 @@ function ProductCatalogView({
   const [error, setError] = useState<string | null>(null);
   const [favoritedIds, setFavoritedIds] = useState<Set<string>>(new Set());
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [following, setFollowing] = useState(false);
+  const [followBusy, setFollowBusy] = useState(false);
 
   const load = () => {
     setError(null);
@@ -7233,9 +7235,31 @@ function ProductCatalogView({
       .catch(() => {
         // Real, non-critical -- a wishlist-status fetch failure shouldn't block browsing.
       });
+    // Real Naver Smart Store-style "알림받기" follow status -- non-critical, same
+    // discipline as the wishlist fetch above.
+    fetchMyFollowedMerchants()
+      .then((follows) => setFollowing(follows.some((f) => f.merchantId === merchant.merchantId)))
+      .catch(() => {});
   };
 
   useEffect(load, [merchant.merchantId]);
+
+  const toggleFollow = async () => {
+    setFollowBusy(true);
+    try {
+      if (following) {
+        await unfollowMerchant(merchant.merchantId);
+        setFollowing(false);
+      } else {
+        await followMerchant(merchant.merchantId);
+        setFollowing(true);
+      }
+    } catch {
+      // Real, non-critical -- a follow-toggle failure shouldn't block browsing.
+    } finally {
+      setFollowBusy(false);
+    }
+  };
 
   const toggleFavorite = async (productId: string) => {
     setTogglingId(productId);
@@ -7277,7 +7301,16 @@ function ProductCatalogView({
         <button onClick={onBack} style={{ display: 'flex', color: 'var(--toss-grey-700)' }} aria-label="Back to merchants">
           <ArrowLeft size={20} />
         </button>
-        <h3 style={{ fontSize: '16px', fontWeight: 700 }}>{catalog.businessName}</h3>
+        <h3 style={{ fontSize: '16px', fontWeight: 700, flex: 1 }}>{catalog.businessName}</h3>
+        <button
+          type="button"
+          onClick={toggleFollow}
+          disabled={followBusy}
+          className={following ? 'toss-btn toss-btn-secondary' : 'toss-btn toss-btn-primary'}
+          style={{ padding: '6px 14px', fontSize: '13px' }}
+        >
+          {following ? 'Following' : 'Follow'}
+        </button>
       </div>
       {catalog.products.length === 0 ? (
         <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No products yet.</p></div>
