@@ -126,6 +126,25 @@ class AuthService(
             ),
         )
 
+        // Real bug found and fixed 2026-07-27, same "only ever seeded, never
+        // provisioned" gap as SAVINGS/InterestJar above, one more layer over:
+        // StocksService.buyStock requires a real WalletType.INVESTMENT wallet and only
+        // the seeded demo user (SeedDataRunner) ever got one -- POST /api/v1/stocks/buy
+        // 404'd (WALLET_NOT_FOUND, via NoWalletException) for every real registered
+        // user, meaning the entire real Toss Securities/Kakao Pay Securities-style
+        // stock-buying feature was silently unusable outside the demo account.
+        walletRepository.save(
+            Wallet(
+                id = "wallet_${UUID.randomUUID()}",
+                userId = user.id,
+                accountNumber = generateAccountNumber(),
+                accountName = "${user.firstName}'s Investment Account",
+                type = WalletType.INVESTMENT,
+                balance = BigDecimal.ZERO,
+                availableBalance = BigDecimal.ZERO,
+            ),
+        )
+
         // Real device binding (2026-07-20) -- the device used to register already
         // proved password ownership in this same request, so it's auto-trusted rather
         // than needing a separate step-up immediately after signing up.

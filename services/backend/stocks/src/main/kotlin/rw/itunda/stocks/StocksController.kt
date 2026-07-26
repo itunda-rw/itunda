@@ -24,6 +24,7 @@ import rw.itunda.core.web.ApiError
 import java.math.BigDecimal
 
 data class TradeStockRequest(val stockId: String, val shares: BigDecimal)
+data class FundInvestmentRequest(val amount: BigDecimal)
 
 @RestController
 @RequestMapping("/api/v1/stocks")
@@ -54,6 +55,22 @@ class StocksController(private val stocksService: StocksService, private val ide
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "history" to stocksService.getPortfolioHistory(currentUser.userId, days)))
+
+    // Real bug fix (2026-07-27) -- see StocksService.fundInvestmentWallet's own doc
+    // comment. Real money-moving internal transfer, so Idempotency-Key required, same
+    // convention as every other money-moving POST in this codebase.
+    @PostMapping("/fund")
+    fun fund(
+        @RequestBody request: FundInvestmentRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/stocks/fund", idempotencyKey, request) {
+            val transaction = stocksService.fundInvestmentWallet(currentUser.userId, request.amount)
+            200 to mapOf("success" to true, "transaction" to transaction)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
 
     @PostMapping("/buy")
     fun buy(
@@ -123,6 +140,9 @@ class StocksController(private val stocksService: StocksService, private val ide
 
     @ExceptionHandler(NoWalletException::class)
     fun handleNoWallet(ex: NoWalletException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(InvalidFundingAmountException::class)
+    fun handleInvalidFunding(ex: InvalidFundingAmountException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AMOUNT", ex.message ?: "Bad request"))
 
     @ExceptionHandler(NotEnoughSharesException::class)
     fun handleNotEnough(ex: NotEnoughSharesException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_SHARES", ex.message ?: "Insufficient shares"))

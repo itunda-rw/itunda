@@ -25,6 +25,7 @@ class StockNotFoundException(message: String) : RuntimeException(message)
 class NoWalletException(message: String) : RuntimeException(message)
 class NotEnoughSharesException(message: String) : RuntimeException(message)
 class InvalidPriceHistoryRangeException(message: String) : RuntimeException(message)
+class InvalidFundingAmountException(message: String) : RuntimeException(message)
 
 data class PortfolioValuePoint(val date: LocalDate, val value: BigDecimal)
 
@@ -72,6 +73,31 @@ class StocksService(
             "totalReturnPercent" to if (totalCost > BigDecimal.ZERO) totalValue.subtract(totalCost).divide(totalCost, 4, RoundingMode.HALF_UP).multiply(BigDecimal(100)) else BigDecimal.ZERO,
             "holdings" to enriched,
         )
+    }
+
+    // Real bug found and fixed 2026-07-27, alongside the same-day AuthService.register
+    // fix that finally provisions a real WalletType.INVESTMENT wallet for every new
+    // user: even with that wallet now provisioned, it starts at a real zero balance,
+    // and nothing anywhere in this codebase ever let a user move money INTO it -- so
+    // `buyStock` would have real-422'd (InsufficientFundsException) for every real
+    // first purchase regardless. A real, honest internal wallet-to-wallet transfer,
+    // same shape `P2pService.sendDirect` already established for a different pair of
+    // real wallets -- no clearing account needed since both real WALLET-type accounts
+    // belong to the exact same real user.
+    @Transactional
+    fun fundInvestmentWallet(userId: String, amount: BigDecimal): Map<String, Any?> {
+        if (amount <= BigDecimal.ZERO) throw InvalidFundingAmountException("Amount must be greater than zero")
+        val mainWallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN) ?: throw NoWalletException("No wallet found for this account")
+        val investmentWallet = walletRepository.findByUserIdAndType(userId, WalletType.INVESTMENT) ?: throw NoWalletException("No investment wallet found for this account")
+
+        val result = ledgerService.postLedgerTransaction(
+            mainWallet.currency,
+            listOf(
+                LedgerLeg(mainWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Transfer to investment account"),
+                LedgerLeg(investmentWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Transfer to investment account"),
+            ),
+        )
+        return mapOf("id" to result.transactionId, "amount" to amount, "completedAt" to Instant.now().toString())
     }
 
     @Transactional

@@ -322,6 +322,94 @@ class StocksServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real bug fix (2026-07-27) -- see StocksService.fundInvestmentWallet's own doc
+    // comment: without this, a real INVESTMENT wallet existed but nothing could ever
+    // move money into it, so buyStock would still 422 (InsufficientFundsException)
+    // for every real first purchase.
+    Given("a real user with both a real MAIN and a real INVESTMENT wallet") {
+        val walletRepository = mockk<WalletRepository>()
+        val holdingRepository = mockk<HoldingRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val stockWatchlistRepository = mockk<StockWatchlistRepository>(relaxed = true)
+        val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
+        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository)
+
+        val mainWallet = Wallet(
+            id = "wallet_main", userId = "user_1", accountNumber = "ACC-MAIN", accountName = "Main",
+            type = WalletType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"),
+        )
+        every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns mainWallet
+        every { walletRepository.findByUserIdAndType("user_1", WalletType.INVESTMENT) } returns investmentWallet()
+
+        When("funding the investment wallet with a real positive amount") {
+            every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_fund_1", emptyList())
+
+            val result = service.fundInvestmentWallet("user_1", BigDecimal("10000"))
+
+            Then("it posts a real balanced MAIN-debit/INVESTMENT-credit ledger transaction") {
+                verify(exactly = 1) {
+                    ledgerService.postLedgerTransaction(
+                        mainWallet.currency,
+                        listOf(
+                            rw.itunda.core.ledger.LedgerLeg(mainWallet.id, rw.itunda.core.domain.LedgerAccountType.WALLET, rw.itunda.core.domain.LedgerDirection.DEBIT, BigDecimal("10000"), "Transfer to investment account"),
+                            rw.itunda.core.ledger.LedgerLeg("wallet_inv", rw.itunda.core.domain.LedgerAccountType.WALLET, rw.itunda.core.domain.LedgerDirection.CREDIT, BigDecimal("10000"), "Transfer to investment account"),
+                        ),
+                    )
+                }
+                result["id"] shouldBe "ledgertxn_fund_1"
+            }
+        }
+
+        When("funding with a zero amount") {
+            Then("it throws InvalidFundingAmountException before touching the ledger") {
+                try {
+                    service.fundInvestmentWallet("user_1", BigDecimal.ZERO)
+                    error("expected InvalidFundingAmountException")
+                } catch (e: InvalidFundingAmountException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("funding with a negative amount") {
+            Then("it throws InvalidFundingAmountException before touching the ledger") {
+                try {
+                    service.fundInvestmentWallet("user_1", BigDecimal("-500"))
+                    error("expected InvalidFundingAmountException")
+                } catch (e: InvalidFundingAmountException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+    }
+
+    Given("a real user missing a real INVESTMENT wallet, trying to fund it anyway") {
+        val walletRepository = mockk<WalletRepository>()
+        val holdingRepository = mockk<HoldingRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val stockWatchlistRepository = mockk<StockWatchlistRepository>(relaxed = true)
+        val stockTradeRepository = mockk<StockTradeRepository>(relaxed = true)
+        val service = StocksService(walletRepository, holdingRepository, ledgerService, stockWatchlistRepository, stockTradeRepository)
+
+        val mainWallet = Wallet(
+            id = "wallet_main", userId = "user_2", accountNumber = "ACC-MAIN2", accountName = "Main",
+            type = WalletType.MAIN, balance = BigDecimal("50000"), availableBalance = BigDecimal("50000"),
+        )
+        every { walletRepository.findByUserIdAndType("user_2", WalletType.MAIN) } returns mainWallet
+        every { walletRepository.findByUserIdAndType("user_2", WalletType.INVESTMENT) } returns null
+
+        When("funding is attempted") {
+            Then("it throws NoWalletException rather than a null-pointer") {
+                try {
+                    service.fundInvestmentWallet("user_2", BigDecimal("1000"))
+                    error("expected NoWalletException")
+                } catch (e: NoWalletException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

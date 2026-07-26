@@ -79,14 +79,17 @@ class AuthServiceTest : BehaviorSpec({
 
             val response = service.register(RegisterRequest("+250788000001", "a@b.rw", "Jean", "B", "password123"))
 
-            Then("it rate-limits, creates a user, provisions real zero-balance MAIN and SAVINGS wallets, and issues real tokens") {
+            Then("it rate-limits, creates a user, provisions real zero-balance MAIN, SAVINGS, and INVESTMENT wallets, and issues real tokens") {
                 verify(exactly = 1) { rateLimiter.checkLimit("auth:register:+250788000001", 3, any()) }
                 val walletSlot = mutableListOf<Wallet>()
                 // Fixed 2026-07-13: registration used to only provision MAIN, so
                 // POST /api/v1/savings/goals 404'd (WALLET_NOT_FOUND) for every real user --
-                // this asserts both wallets exist, not just that *a* wallet got saved.
-                verify(exactly = 2) { walletRepository.save(capture(walletSlot)) }
-                walletSlot.map { it.type }.toSet() shouldBe setOf(WalletType.MAIN, WalletType.SAVINGS)
+                // this asserts all three wallets exist, not just that *a* wallet got saved.
+                // INVESTMENT added 2026-07-27: the same real gap, one layer deeper --
+                // StocksService.buyStock required a real INVESTMENT wallet only the seeded
+                // demo user ever had, so POST /api/v1/stocks/buy 404'd for every real user.
+                verify(exactly = 3) { walletRepository.save(capture(walletSlot)) }
+                walletSlot.map { it.type }.toSet() shouldBe setOf(WalletType.MAIN, WalletType.SAVINGS, WalletType.INVESTMENT)
                 walletSlot.all { it.balance.signum() == 0 } shouldBe true
                 jwtService.verify(response.accessToken) shouldNotBe null
                 jwtService.verify(response.refreshToken)!!.isRefresh shouldBe true
