@@ -5,14 +5,20 @@ import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.KeywordAlert
+import rw.itunda.core.domain.KeywordAlertQuietHours
 import rw.itunda.core.domain.Listing
 import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.KeywordAlertQuietHoursRepository
 import rw.itunda.core.repository.KeywordAlertRepository
+import java.time.Instant
+import java.time.LocalTime
+import java.time.ZoneId
 import java.util.UUID
 
 class InvalidKeywordException(message: String) : RuntimeException(message)
 class KeywordAlertCapReachedException(message: String) : RuntimeException(message)
 class KeywordAlertNotFoundException(message: String) : RuntimeException(message)
+class InvalidQuietHoursException(message: String) : RuntimeException(message)
 
 /**
  * Real 당근마켓 Keyword Alert (키워드 알림) -- Karrot Market's own official FAQ
@@ -39,18 +45,27 @@ class KeywordAlertNotFoundException(message: String) : RuntimeException(message)
  *
  * Honestly scoped: matches on listing TITLE only (not description), keeping the DB-side
  * match query simple and cheap at current scale -- a named, not silently absent,
- * limitation. Karrot's own real "quiet hours" (do-not-disturb window) sub-feature from
- * the same FAQ page is a real, well-scoped follow-up, not attempted in this pass.
+ * limitation.
+ *
+ * **Real 방해금지 시간 (quiet hours) closed 2026-07-27**, Karrot's own official
+ * separate FAQ (cs.kr.karrotmarket.com/wv/faqs/19): a real per-user start/end time
+ * during which no notifications ring. Scoped here to keyword-alert pushes specifically,
+ * not a real app-wide mute-everything setting (that would touch every notification
+ * call site in this codebase, a much larger, separately-scoped feature). Compared
+ * against real `Africa/Kigali` local clock time, not UTC -- see
+ * `KeywordAlertQuietHours.kt`'s own doc comment for why.
  */
 @Service
 class KeywordAlertService(
     private val keywordAlertRepository: KeywordAlertRepository,
+    private val keywordAlertQuietHoursRepository: KeywordAlertQuietHoursRepository,
     private val pushNotificationService: PushNotificationService,
 ) {
     companion object {
         // Real, sourced cap -- Karrot's own official FAQ names exactly 30 keywords per
         // real user.
         const val MAX_KEYWORDS_PER_USER = 30
+        val RWANDA_ZONE: ZoneId = ZoneId.of("Africa/Kigali")
     }
 
     @Transactional
@@ -83,6 +98,37 @@ class KeywordAlertService(
         }
     }
 
+    @Transactional
+    fun setQuietHours(userId: String, startTime: LocalTime, endTime: LocalTime, enabled: Boolean): KeywordAlertQuietHours {
+        if (startTime == endTime) throw InvalidQuietHoursException("Start and end time cannot be the same")
+        val existing = keywordAlertQuietHoursRepository.findByUserId(userId)
+        val setting = existing ?: KeywordAlertQuietHours(
+            id = "keyword_alert_quiet_${UUID.randomUUID()}", userId = userId, startTime = startTime, endTime = endTime, enabled = enabled,
+        )
+        if (existing != null) {
+            setting.startTime = startTime
+            setting.endTime = endTime
+            setting.enabled = enabled
+            setting.updatedAt = Instant.now()
+        }
+        return keywordAlertQuietHoursRepository.save(setting)
+    }
+
+    fun getQuietHours(userId: String): KeywordAlertQuietHours? = keywordAlertQuietHoursRepository.findByUserId(userId)
+
+    // Real wraps-past-midnight-aware window check -- e.g. a real 22:00 start / 08:00
+    // end window correctly covers 23:30 AND 03:00, not just times between the two
+    // clock values in naive numeric order.
+    private fun isWithinQuietHours(quietHours: KeywordAlertQuietHours, now: Instant): Boolean {
+        if (!quietHours.enabled) return false
+        val localTime = now.atZone(RWANDA_ZONE).toLocalTime()
+        return if (quietHours.startTime <= quietHours.endTime) {
+            localTime >= quietHours.startTime && localTime < quietHours.endTime
+        } else {
+            localTime >= quietHours.startTime || localTime < quietHours.endTime
+        }
+    }
+
     /**
      * Called from the controller layer right after a real listing is created -- see
      * this class's own doc comment for why. Best-effort: any failure here is swallowed,
@@ -92,7 +138,14 @@ class KeywordAlertService(
         try {
             val lowercasedTitle = listing.title.lowercase()
             val matches = keywordAlertRepository.findMatchingAlerts(lowercasedTitle)
+            if (matches.isEmpty()) return
+            val now = Instant.now()
+            val quietHoursByUser = keywordAlertQuietHoursRepository.findByUserIdIn(matches.map { it.userId }.distinct()).associateBy { it.userId }
             for (alert in matches) {
+                val quietHours = quietHoursByUser[alert.userId]
+                if (quietHours != null && isWithinQuietHours(quietHours, now)) {
+                    continue
+                }
                 pushNotificationService.sendToUser(
                     alert.userId,
                     "New listing matches \"${alert.keyword}\"",

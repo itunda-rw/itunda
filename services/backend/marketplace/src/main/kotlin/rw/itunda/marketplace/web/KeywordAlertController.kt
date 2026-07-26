@@ -17,11 +17,14 @@ import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.marketplace.InvalidKeywordException
+import rw.itunda.marketplace.InvalidQuietHoursException
 import rw.itunda.marketplace.KeywordAlertCapReachedException
 import rw.itunda.marketplace.KeywordAlertNotFoundException
 import rw.itunda.marketplace.KeywordAlertService
+import java.time.LocalTime
 
 data class AddKeywordAlertRequest(val keyword: String)
+data class SetQuietHoursRequest(val startTime: LocalTime, val endTime: LocalTime, val enabled: Boolean = true)
 
 // Real 당근마켓-style Keyword Alert -- see KeywordAlertService's own doc comment.
 @RestController
@@ -54,6 +57,23 @@ class KeywordAlertController(private val keywordAlertService: KeywordAlertServic
         keywordAlertService.removeAlert(currentUser.userId, alertId)
         return ResponseEntity.ok(mapOf("success" to true))
     }
+
+    @PostMapping("/quiet-hours")
+    fun setQuietHours(
+        @RequestBody request: SetQuietHoursRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val setting = keywordAlertService.setQuietHours(currentUser.userId, request.startTime, request.endTime, request.enabled)
+        return ResponseEntity.ok(mapOf("success" to true, "quietHours" to setting))
+    }
+
+    @GetMapping("/quiet-hours")
+    fun getQuietHours(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "quietHours" to keywordAlertService.getQuietHours(currentUser.userId)))
+
+    @ExceptionHandler(InvalidQuietHoursException::class)
+    fun handleInvalidQuietHours(ex: InvalidQuietHoursException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_QUIET_HOURS", ex.message ?: "Bad request"))
 
     @ExceptionHandler(InvalidKeywordException::class)
     fun handleInvalidKeyword(ex: InvalidKeywordException) =

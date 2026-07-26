@@ -9,6 +9,7 @@ import io.mockk.verify
 import rw.itunda.core.domain.KeywordAlert
 import rw.itunda.core.domain.Listing
 import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.repository.KeywordAlertQuietHoursRepository
 import rw.itunda.core.repository.KeywordAlertRepository
 import java.math.BigDecimal
 
@@ -22,7 +23,9 @@ class KeywordAlertServiceTest : BehaviorSpec({
     Given("a user registering a real keyword alert") {
         val keywordAlertRepository = mockk<KeywordAlertRepository>()
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = KeywordAlertService(keywordAlertRepository, pushNotificationService)
+        val keywordAlertQuietHoursRepository = mockk<KeywordAlertQuietHoursRepository>(relaxed = true)
+        every { keywordAlertQuietHoursRepository.findByUserIdIn(any()) } returns emptyList()
+        val service = KeywordAlertService(keywordAlertRepository, keywordAlertQuietHoursRepository, pushNotificationService)
 
         When("registering a brand-new keyword") {
             every { keywordAlertRepository.findByUserIdAndKeyword("user_1", "bicycle") } returns null
@@ -88,7 +91,9 @@ class KeywordAlertServiceTest : BehaviorSpec({
     Given("a user removing a real keyword alert") {
         val keywordAlertRepository = mockk<KeywordAlertRepository>()
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = KeywordAlertService(keywordAlertRepository, pushNotificationService)
+        val keywordAlertQuietHoursRepository = mockk<KeywordAlertQuietHoursRepository>(relaxed = true)
+        every { keywordAlertQuietHoursRepository.findByUserIdIn(any()) } returns emptyList()
+        val service = KeywordAlertService(keywordAlertRepository, keywordAlertQuietHoursRepository, pushNotificationService)
 
         When("removing their own real alert") {
             every { keywordAlertRepository.deleteByUserIdAndId("user_1", "alert_1") } returns 1L
@@ -115,7 +120,9 @@ class KeywordAlertServiceTest : BehaviorSpec({
     Given("a real new listing being checked against registered keyword alerts") {
         val keywordAlertRepository = mockk<KeywordAlertRepository>()
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
-        val service = KeywordAlertService(keywordAlertRepository, pushNotificationService)
+        val keywordAlertQuietHoursRepository = mockk<KeywordAlertQuietHoursRepository>(relaxed = true)
+        every { keywordAlertQuietHoursRepository.findByUserIdIn(any()) } returns emptyList()
+        val service = KeywordAlertService(keywordAlertRepository, keywordAlertQuietHoursRepository, pushNotificationService)
 
         When("the listing title real-matches two real registered alerts, from two different users") {
             val newListing = listing("listing_1", "Mountain Bicycle for sale")
@@ -149,6 +156,77 @@ class KeywordAlertServiceTest : BehaviorSpec({
 
             Then("it never propagates -- a keyword-alert failure must never look like the listing creation itself failed") {
                 service.notifyMatchingAlerts(newListing)
+            }
+        }
+
+        When("a matching user has real, currently-active quiet hours") {
+            val newListing = listing("listing_4", "Quiet hours bicycle")
+            every { keywordAlertRepository.findMatchingAlerts("quiet hours bicycle") } returns listOf(
+                KeywordAlert(id = "alert_4", userId = "user_quiet", keyword = "bicycle"),
+            )
+            // Real always-on window (00:00-23:59), so this test is never flaky against
+            // the real current wall-clock time -- the point under test is the ENABLED
+            // quiet-hours check itself, not a specific real hour of day.
+            every { keywordAlertQuietHoursRepository.findByUserIdIn(listOf("user_quiet")) } returns listOf(
+                rw.itunda.core.domain.KeywordAlertQuietHours(
+                    id = "quiet_1", userId = "user_quiet",
+                    startTime = java.time.LocalTime.of(0, 0), endTime = java.time.LocalTime.of(23, 59), enabled = true,
+                ),
+            )
+
+            service.notifyMatchingAlerts(newListing)
+
+            Then("the real push is honestly suppressed, matching Karrot's own real do-not-disturb behavior") {
+                verify(exactly = 0) { pushNotificationService.sendToUser("user_quiet", any(), any(), any()) }
+            }
+        }
+
+        When("a matching user has quiet hours configured but currently disabled") {
+            val newListing = listing("listing_5", "Disabled quiet hours bicycle")
+            every { keywordAlertRepository.findMatchingAlerts("disabled quiet hours bicycle") } returns listOf(
+                KeywordAlert(id = "alert_5", userId = "user_disabled_quiet", keyword = "bicycle"),
+            )
+            every { keywordAlertQuietHoursRepository.findByUserIdIn(listOf("user_disabled_quiet")) } returns listOf(
+                rw.itunda.core.domain.KeywordAlertQuietHours(
+                    id = "quiet_2", userId = "user_disabled_quiet",
+                    startTime = java.time.LocalTime.of(0, 0), endTime = java.time.LocalTime.of(23, 59), enabled = false,
+                ),
+            )
+
+            service.notifyMatchingAlerts(newListing)
+
+            Then("a disabled setting never suppresses a real push, even during its own configured window") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_disabled_quiet", any(), any(), any()) }
+            }
+        }
+    }
+
+    Given("real wraps-past-midnight quiet hours logic (22:00 start, 08:00 end)") {
+        val keywordAlertRepository = mockk<KeywordAlertRepository>(relaxed = true)
+        val keywordAlertQuietHoursRepository = mockk<KeywordAlertQuietHoursRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = KeywordAlertService(keywordAlertRepository, keywordAlertQuietHoursRepository, pushNotificationService)
+
+        When("configuring a real wrapping window") {
+            every { keywordAlertQuietHoursRepository.findByUserId("user_1") } returns null
+            every { keywordAlertQuietHoursRepository.save(any()) } answers { firstArg() }
+
+            val result = service.setQuietHours("user_1", java.time.LocalTime.of(22, 0), java.time.LocalTime.of(8, 0), true)
+
+            Then("it saves the real start/end exactly as given, even though end is numerically before start") {
+                result.startTime shouldBe java.time.LocalTime.of(22, 0)
+                result.endTime shouldBe java.time.LocalTime.of(8, 0)
+            }
+        }
+
+        When("start and end time are identical") {
+            Then("it's rejected as a real, meaningless window") {
+                try {
+                    service.setQuietHours("user_1", java.time.LocalTime.of(9, 0), java.time.LocalTime.of(9, 0), true)
+                    error("expected InvalidQuietHoursException")
+                } catch (e: InvalidQuietHoursException) {
+                    // expected
+                }
             }
         }
     }
