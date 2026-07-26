@@ -36,5 +36,6 @@ include(
     ":splitbill",
     ":agents",
     ":rideshare",
+    ":vehicle",
     ":app"
 )

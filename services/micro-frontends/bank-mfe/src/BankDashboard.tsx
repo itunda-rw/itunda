@@ -77,6 +77,7 @@ import RouteMiniMap from './RouteMiniMap';
 import LiveRiderMap from './LiveRiderMap';
 import { searchPlaces, type PlaceSearchResult } from './lib/maps';
 import { fetchMiniAppCatalog, type PartnerMiniApp } from './lib/partners';
+import { fetchMyVehicles, fetchVehicleValuation, registerVehicle, removeVehicle, updateVehicleMileage, type Vehicle, type VehicleValuation } from './lib/vehicles';
 import { cancelScheduledTransfer, createScheduledTransfer, fetchMyScheduledTransfers, type ScheduledTransfer } from './lib/scheduledTransfers';
 import {
   cancelAutoTransfer, createAutoTransfer, fetchMyAutoTransfers, pauseAutoTransfer, resumeAutoTransfer,
@@ -1479,6 +1480,7 @@ function MyView() {
         <div style={rowStyle}><span>Jobs posted</span><span>{myJobPostsCount}</span></div>
         <div style={rowStyle}><span>Property listed</span><span>{myPropertyListingsCount}</span></div>
       </div>
+      <MyVehiclesCard />
       {miniApps.length > 0 && (
         <div className="toss-card" style={{ padding: '16px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Mini apps</h3>
@@ -1502,6 +1504,169 @@ function MyView() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Real Toss 내 차 시세 (my car's market value) -- see lib/vehicles.ts's own doc comment
+// for the full sourced account and honest scope boundary (a documented general
+// depreciation estimate, not a real Carmart-style data partnership).
+function MyVehiclesCard() {
+  const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
+  const [valuations, setValuations] = useState<Record<string, VehicleValuation>>({});
+  const [showCreate, setShowCreate] = useState(false);
+  const [make, setMake] = useState('');
+  const [model, setModel] = useState('');
+  const [modelYear, setModelYear] = useState(String(new Date().getFullYear()));
+  const [purchasePrice, setPurchasePrice] = useState('');
+  const [purchaseDate, setPurchaseDate] = useState('');
+  const [mileageKm, setMileageKm] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    fetchMyVehicles()
+      .then((list) => {
+        setVehicles(list);
+        Promise.all(list.map((v) => fetchVehicleValuation(v.id).then((val) => [v.id, val] as const)))
+          .then((pairs) => setValuations(Object.fromEntries(pairs)))
+          .catch(() => {});
+      })
+      .catch(() => {});
+  };
+
+  useEffect(load, []);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const price = Number(purchasePrice);
+    const mileage = Number(mileageKm);
+    const year = Number(modelYear);
+    if (!make.trim() || !model.trim() || !(price > 0) || !purchaseDate || mileage < 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await registerVehicle(make.trim(), model.trim(), year, price, purchaseDate, mileage);
+      setMake('');
+      setModel('');
+      setPurchasePrice('');
+      setPurchaseDate('');
+      setMileageKm('');
+      setShowCreate(false);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not register this vehicle.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleUpdateMileage = async (vehicle: Vehicle) => {
+    const input = window.prompt('Update mileage (km)', String(vehicle.mileageKm));
+    if (input == null) return;
+    const newMileage = Number(input);
+    if (!(newMileage >= 0)) return;
+    setBusyId(vehicle.id);
+    setError(null);
+    try {
+      await updateVehicleMileage(vehicle.id, newMileage);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update mileage.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleRemove = async (id: string) => {
+    setBusyId(id);
+    setError(null);
+    try {
+      await removeVehicle(id);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not remove this vehicle.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="toss-card" style={{ padding: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>My vehicles</h3>
+        <button className="toss-btn toss-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+          {showCreate ? 'Cancel' : '+ Add'}
+        </button>
+      </div>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '10px' }}>
+        Estimated resale value based on age and mileage -- itunda's own general estimate, not a market comp.
+      </p>
+
+      {showCreate && (
+        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+          <input
+            type="text" placeholder="Make (e.g. Toyota)" value={make} onChange={(e) => setMake(e.target.value)} required
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <input
+            type="text" placeholder="Model (e.g. RAV4)" value={model} onChange={(e) => setModel(e.target.value)} required
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <input
+            type="number" placeholder="Model year" value={modelYear} onChange={(e) => setModelYear(e.target.value)} required
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <input
+            type="number" placeholder="Purchase price (RWF)" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} min="1" required
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <input
+            type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} max={new Date().toISOString().slice(0, 10)} required
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <input
+            type="number" placeholder="Current mileage (km)" value={mileageKm} onChange={(e) => setMileageKm(e.target.value)} min="0" required
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? 'Adding…' : 'Add vehicle'}</button>
+        </form>
+      )}
+
+      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+
+      {(vehicles ?? []).length === 0 && <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No vehicles added yet.</p>}
+
+      {(vehicles ?? []).map((v) => {
+        const valuation = valuations[v.id];
+        return (
+          <div key={v.id} style={{ padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <p style={{ fontSize: '13px', fontWeight: 700 }}>{v.modelYear} {v.make} {v.model}</p>
+                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{v.mileageKm.toLocaleString()} km</p>
+              </div>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button className="toss-btn toss-btn-secondary" disabled={busyId === v.id} onClick={() => handleUpdateMileage(v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+                  Update km
+                </button>
+                <button className="toss-btn toss-btn-secondary" disabled={busyId === v.id} onClick={() => handleRemove(v.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+                  Remove
+                </button>
+              </div>
+            </div>
+            {valuation && (
+              <div style={{ marginTop: '8px', display: 'flex', gap: '12px', fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+                <span>Now: <strong style={{ color: 'var(--toss-grey-900)' }}>{valuation.currentEstimatedValue.toLocaleString()} RWF</strong></span>
+                <span>+1y: {valuation.estimatedValueIn1Year.toLocaleString()}</span>
+                <span>+2y: {valuation.estimatedValueIn2Years.toLocaleString()}</span>
+                <span>+3y: {valuation.estimatedValueIn3Years.toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
