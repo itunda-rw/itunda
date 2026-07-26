@@ -62,6 +62,10 @@ class SubscriptionDetectionServiceTest : BehaviorSpec({
                 result.subscriptions[0].monthlyEquivalent shouldBe BigDecimal("5000")
                 result.estimatedMonthlyTotal shouldBe BigDecimal("5000")
             }
+            Then("it correctly reports no real price change -- the last two real charges match") {
+                result.subscriptions[0].priceIncreased shouldBe false
+                result.subscriptions[0].previousAmount shouldBe null
+            }
         }
     }
 
@@ -127,7 +131,7 @@ class SubscriptionDetectionServiceTest : BehaviorSpec({
         }
     }
 
-    Given("two payments to the same merchant but DIFFERENT amounts, 30 days apart") {
+    Given("two payments to the same merchant but a real price increase, 30 days apart") {
         val transactionRepository = mockk<TransactionRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val service = SubscriptionDetectionService(transactionRepository, merchantRepository)
@@ -136,11 +140,36 @@ class SubscriptionDetectionServiceTest : BehaviorSpec({
             txn("merchant_owner_4", BigDecimal("3000"), daysAgo = 30),
             txn("merchant_owner_4", BigDecimal("4500"), daysAgo = 0),
         )
+        every { merchantRepository.findByOwnerUserId("merchant_owner_4") } returns merchant("merchant_owner_4", "Spotify Rwanda")
 
         When("detecting subscriptions") {
             val result = service.detectSubscriptions("user_1")
 
-            Then("nothing is flagged -- a real subscription charges a fixed price each cycle, not a varying amount") {
+            Then("it's still real-flagged as the same recurring series -- the cadence didn't break just because the price did (2026-07-26 fix: this used to be silently missed entirely)") {
+                result.subscriptions.size shouldBe 1
+                result.subscriptions[0].amount shouldBe BigDecimal("4500")
+            }
+            Then("it real-surfaces the genuine price increase, matching Toss's own real subscription-price-change alert") {
+                result.subscriptions[0].priceIncreased shouldBe true
+                result.subscriptions[0].previousAmount shouldBe BigDecimal("3000")
+            }
+        }
+    }
+
+    Given("a genuinely non-recurring merchant relationship: irregular amounts AND irregular timing") {
+        val transactionRepository = mockk<TransactionRepository>()
+        val merchantRepository = mockk<MerchantRepository>()
+        val service = SubscriptionDetectionService(transactionRepository, merchantRepository)
+
+        every { transactionRepository.findBySenderIdAndTypeInAndStatusOrderByCreatedAtAsc(any(), any(), any()) } returns listOf(
+            txn("merchant_owner_5", BigDecimal("3000"), daysAgo = 12),
+            txn("merchant_owner_5", BigDecimal("4500"), daysAgo = 3),
+        )
+
+        When("detecting subscriptions") {
+            val result = service.detectSubscriptions("user_1")
+
+            Then("nothing is flagged -- real cadence consistency (not amount) is still what actually gates a real subscription; irregular timing alone correctly stays a real false-positive guard") {
                 result.subscriptions.size shouldBe 0
             }
         }

@@ -39,3 +39,22 @@ export const fetchWallets = () =>
 
 export const fetchTransactions = () =>
   apiFetch<{ success: boolean; transactions: Transaction[] }>('/api/v1/wallet/transactions').then((r) => r.transactions);
+
+// Real recurring-payment ("subscription") detection over a user's own real
+// transaction history -- see SubscriptionDetectionService's own doc comment for the
+// real Toss "구독 관리" capability this closes, including the 2026-07-26 price-change
+// alert. Found with zero client UI anywhere.
+export interface DetectedSubscription {
+  displayName: string;
+  amount: number;
+  cadence: 'WEEKLY' | 'MONTHLY';
+  occurrenceCount: number;
+  lastPaidAt: string;
+  nextExpectedAt: string;
+  monthlyEquivalent: number;
+  priceIncreased: boolean;
+  previousAmount: number | null;
+}
+
+export const fetchSubscriptions = () =>
+  apiFetch<{ success: boolean; subscriptions: DetectedSubscription[]; estimatedMonthlyTotal: number }>('/api/v1/wallet/subscriptions');

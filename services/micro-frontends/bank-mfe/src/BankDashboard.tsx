@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowUpRight, Bike, Heart, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
-import { fetchTransactions, fetchWallets, type Transaction, type Wallet } from './lib/wallet';
+import { fetchSubscriptions, fetchTransactions, fetchWallets, type DetectedSubscription, type Transaction, type Wallet } from './lib/wallet';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
 import { claimInterest, createGoal, depositToGoal, fetchGoals, fetchInterestJar, type InterestJar, type SavingsGoal } from './lib/savings';
 import {
@@ -76,7 +76,7 @@ import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
 import LiveRiderMap from './LiveRiderMap';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'MAP' | 'DEVICES' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'MAP' | 'DEVICES' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
@@ -864,6 +864,56 @@ function CreditScoreView() {
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+// Real recurring-payment ("subscription") detection (2026-07-26) -- see
+// SubscriptionDetectionService's own doc comment for the real Toss "구독 관리"
+// capability this closes, including the same-day price-change alert. Found with zero
+// client UI anywhere.
+function SubscriptionsView() {
+  const [subscriptions, setSubscriptions] = useState<DetectedSubscription[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchSubscriptions()
+      .then((r) => { setSubscriptions(r.subscriptions); setTotal(r.estimatedMonthlyTotal); })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your subscriptions.'));
+  }, []);
+
+  if (subscriptions === null) {
+    return error ? <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '160px' }} />;
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div className="toss-card" style={{ padding: '24px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Estimated monthly total</p>
+        <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{total.toLocaleString()} RWF</h2>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Detected from your own real payment history, not a linked-card feed.</p>
+      </div>
+      {subscriptions.length === 0 ? (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No recurring payments detected yet.</p>
+      ) : (
+        subscriptions.map((s) => (
+          <div key={`${s.displayName}-${s.cadence}`} className="toss-card" style={{ padding: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <h4 style={{ fontSize: '14px', fontWeight: 700 }}>{s.displayName}</h4>
+                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{s.cadence === 'WEEKLY' ? 'Weekly' : 'Monthly'} · {s.occurrenceCount} payments seen</p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ fontSize: '14px', fontWeight: 700 }}>{s.amount.toLocaleString()} RWF</p>
+                {s.priceIncreased && s.previousAmount !== null && (
+                  <p style={{ fontSize: '11px', color: '#E53935' }}>↑ from {s.previousAmount.toLocaleString()} RWF</p>
+                )}
+              </div>
+            </div>
+          </div>
+        ))
       )}
     </div>
   );
@@ -8911,6 +8961,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'OVERVIEW', label: 'Overview' },
     { id: 'LOANS', label: 'Loans' },
     { id: 'CREDIT_SCORE', label: 'Credit score' },
+    { id: 'SUBSCRIPTIONS', label: 'Subscriptions' },
     { id: 'IDENTITY', label: 'Verify' },
     { id: 'SUPPORT', label: 'Support' },
   ];
@@ -8971,6 +9022,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'OVERVIEW' && <OverviewView />}
       {tab === 'LOANS' && <LoansView />}
       {tab === 'CREDIT_SCORE' && <CreditScoreView />}
+      {tab === 'SUBSCRIPTIONS' && <SubscriptionsView />}
       {tab === 'IDENTITY' && <IdentityView />}
       {tab === 'SUPPORT' && <SupportView />}
     </div>
