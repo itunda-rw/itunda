@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.JobPostStatus
 import rw.itunda.core.domain.ListingStatus
 import rw.itunda.core.domain.PropertyListingStatus
+import rw.itunda.core.repository.HoodTransactionReviewRepository
 import rw.itunda.core.repository.JobPostRepository
 import rw.itunda.core.repository.ListingRepository
 import rw.itunda.core.repository.PropertyListingRepository
@@ -43,9 +44,21 @@ data class TrustScoreResult(val score: Int, val factors: List<TrustScoreFactor>,
  *
  * Kept simple and honest for v1, matching this project's own "don't invent a complex
  * algorithm you can't justify" discipline: a real function of completed Hood
- * transactions, KYC verification, and account tenure. No review system exists yet to
- * also weight into this (see docs/TOSS_PARITY_MATRIX.md's Marketplace/Jobs/RealEstate
- * rows) -- a named v1 scope, not a hidden omission.
+ * transactions, KYC verification, account tenure, and (2026-07-26) real positive peer
+ * reviews.
+ *
+ * **Real bug found and fixed 2026-07-26**: `HoodReviewService.submitReview` has called
+ * `trustScoreService.computeScore(revieweeId)` on every good review since 2026-07-24,
+ * with a doc comment explicitly claiming "only a real, freshly-submitted good review
+ * moves the needle" -- and `HoodTransactionReviewRepository.countByRevieweeIdAndGoodPointsNot`
+ * existed for exactly this purpose since the same day -- but this service never actually
+ * read that repository at all. Every "trust-score bump" a good review triggered was a
+ * silent no-op: the exact same four factors got recomputed to the exact same score,
+ * regardless of how many good reviews a user had. Sourced from Karrot's own real 매너온도
+ * mechanics (medium.com/daangn's own Karrot Score writeup): "최근에 받은 후기와 매너 평가는
+ * 매너온도에 더 많이 반영" -- reviews are a real, explicitly-named input to the score, not
+ * an optional add-on. Fixed by actually reading the count and adding it as a named
+ * factor below.
  */
 @Service
 class TrustScoreService(
@@ -53,6 +66,7 @@ class TrustScoreService(
     private val listingRepository: ListingRepository,
     private val jobPostRepository: JobPostRepository,
     private val propertyListingRepository: PropertyListingRepository,
+    private val hoodTransactionReviewRepository: HoodTransactionReviewRepository,
 ) {
     companion object {
         const val INITIAL_SCORE = 30
@@ -60,6 +74,7 @@ class TrustScoreService(
         private const val KYC_BONUS = 50
         private const val MAX_ACCOUNT_AGE_POINTS = 100
         private const val POINTS_PER_TRANSACTION = 15
+        private const val POINTS_PER_GOOD_REVIEW = 10
     }
 
     @Transactional
@@ -94,6 +109,20 @@ class TrustScoreService(
             factors += TrustScoreFactor(
                 "Completed Hood transactions", transactionPoints,
                 "$completedTransactions marketplace/job/property transaction(s) marked sold/filled/taken",
+            )
+        }
+
+        // Real Karrot-Score-style review weighting -- see this class's own doc comment
+        // for the "silent no-op" bug this fixes. Counts reviews where the reviewer left
+        // at least one real preset good point (see HoodReviewService.GOOD_POINTS) --
+        // uncomfortablePoints never leave the two parties' own private view, so they
+        // can't and don't factor in here.
+        val goodReviewCount = hoodTransactionReviewRepository.countByRevieweeIdAndGoodPointsNot(userId, "")
+        if (goodReviewCount > 0) {
+            val reviewPoints = (goodReviewCount * POINTS_PER_GOOD_REVIEW).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            factors += TrustScoreFactor(
+                "Positive neighbor reviews", reviewPoints,
+                "$goodReviewCount real completed-transaction review(s) with at least one good point",
             )
         }
 
