@@ -82,6 +82,10 @@ import {
   fetchChildOverview, fetchMyChildren, fetchMyGuardians, fetchMyInvites, inviteChild, respondToInvite, revokeFamilyLink,
   type ChildOverview, type FamilyLinkView,
 } from './lib/family';
+import {
+  cancelProductSubscription, fetchMyProductSubscriptions, pauseProductSubscription, resumeProductSubscription, subscribeToProduct,
+  type ProductSubscription,
+} from './lib/productSubscriptions';
 import { cancelScheduledTransfer, createScheduledTransfer, fetchMyScheduledTransfers, type ScheduledTransfer } from './lib/scheduledTransfers';
 import {
   cancelAutoTransfer, createAutoTransfer, fetchMyAutoTransfers, pauseAutoTransfer, resumeAutoTransfer,
@@ -1486,6 +1490,7 @@ function MyView() {
       </div>
       <MyVehiclesCard />
       <FamilyLinkCard />
+      <MyProductSubscriptionsCard />
       {miniApps.length > 0 && (
         <div className="toss-card" style={{ padding: '16px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Mini apps</h3>
@@ -1839,6 +1844,115 @@ function FamilyLinkCard() {
       )}
 
       {!hasAnything && <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No family members linked yet.</p>}
+    </div>
+  );
+}
+
+// Real Coupang 정기배송 (subscribe & save) -- see lib/productSubscriptions.ts's own doc
+// comment for the full sourced account. A minimal delivery-address prompt rather than a
+// full address form, matching this pass's compact-card scope.
+function SubscribeAndSaveButton({ merchantId, productId }: { merchantId: string; productId: string }) {
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubscribe = async () => {
+    const address = window.prompt('Delivery address for this recurring order');
+    if (!address) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await subscribeToProduct(merchantId, productId, 1, 30, address);
+      setDone(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not set up this subscription.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (done) {
+    return <p style={{ fontSize: '12px', color: 'var(--toss-blue)', textAlign: 'center' }}>Subscribed -- 5% off every delivery, every 30 days.</p>;
+  }
+
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={handleSubscribe} style={{ fontSize: '12px', padding: '8px 14px' }}>
+        {busy ? 'Setting up…' : 'Subscribe & save 5% (every 30 days)'}
+      </button>
+      {error && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '4px' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
+const PRODUCT_SUBSCRIPTION_STATUS_LABEL: Record<ProductSubscription['status'], string> = {
+  ACTIVE: 'Active', PAUSED: 'Paused', CANCELLED: 'Cancelled',
+};
+
+// Real Coupang 정기배송-style subscription list -- see lib/productSubscriptions.ts's
+// own doc comment.
+function MyProductSubscriptionsCard() {
+  const [subscriptions, setSubscriptions] = useState<ProductSubscription[] | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    fetchMyProductSubscriptions().then(setSubscriptions).catch(() => {});
+  };
+
+  useEffect(load, []);
+
+  const handleToggle = async (s: ProductSubscription) => {
+    setBusyId(s.id);
+    setError(null);
+    try {
+      if (s.status === 'ACTIVE') await pauseProductSubscription(s.id);
+      else await resumeProductSubscription(s.id);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update this subscription.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleCancel = async (id: string) => {
+    setBusyId(id);
+    setError(null);
+    try {
+      await cancelProductSubscription(id);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not cancel this subscription.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  if (!subscriptions || subscriptions.length === 0) return null;
+
+  return (
+    <div className="toss-card" style={{ padding: '16px' }}>
+      <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>Subscribe & save</h3>
+      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+      {subscriptions.map((s) => (
+        <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+          <div>
+            <p style={{ fontSize: '13px', fontWeight: 700 }}>Qty {s.quantity} · every {s.intervalDays}d</p>
+            <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{PRODUCT_SUBSCRIPTION_STATUS_LABEL[s.status]} · {s.deliveryCount} delivered</p>
+          </div>
+          {s.status !== 'CANCELLED' && (
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button className="toss-btn toss-btn-secondary" disabled={busyId === s.id} onClick={() => handleToggle(s)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+                {busyId === s.id ? '…' : s.status === 'ACTIVE' ? 'Pause' : 'Resume'}
+              </button>
+              <button className="toss-btn toss-btn-secondary" disabled={busyId === s.id} onClick={() => handleCancel(s.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -8296,6 +8410,7 @@ function ProductDetailView({
           <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 700, fontSize: '16px' }}>{qty}</span>
           <button onClick={() => onSetQty(merchant, product, qty + 1)} className="toss-btn toss-btn-secondary" style={{ padding: '8px 16px' }}>+</button>
         </div>
+        <SubscribeAndSaveButton merchantId={merchant.merchantId} productId={product.id} />
         <button className="toss-btn toss-btn-primary" onClick={() => onSetQty(merchant, product, Math.max(1, qty))}>
           {qty > 0 ? 'Update cart' : 'Add to cart'}
         </button>

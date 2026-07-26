@@ -12,6 +12,12 @@ dependencyManagement {
 
 dependencies {
     implementation(project(":core"))
+    implementation(project(":auth"))
+    // For ShoppingCashbackService.awardCashback -- real Coupang 정기배송-style
+    // subscription discount reuses the exact same real rebate mechanism
+    // MerchantService.collect() already established for QR-payment cashback, not a
+    // second discount pipeline.
+    implementation(project(":merchant"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
