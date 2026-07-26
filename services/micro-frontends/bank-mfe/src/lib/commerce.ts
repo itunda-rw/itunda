@@ -113,6 +113,31 @@ export const fetchProductReviews = (productId: string) =>
     (r) => r.reviews,
   );
 
+// Real Coupang-style pre-purchase product Q&A (상품문의) (2026-07-26) -- see
+// ProductInquiryService's own doc comment on the backend. Genuinely distinct from a
+// review above: no order/purchase required at all, a real pre-purchase question.
+export interface ProductInquiry {
+  id: string;
+  productId: string;
+  merchantId: string;
+  buyerId: string;
+  question: string;
+  answer: string | null;
+  answeredAt: string | null;
+  createdAt: string;
+}
+
+export const askProductInquiry = (productId: string, question: string) =>
+  apiFetch<{ success: boolean; inquiry: ProductInquiry }>(`/api/v1/orders/products/${productId}/inquiries`, {
+    method: 'POST',
+    body: JSON.stringify({ question }),
+  }).then((r) => r.inquiry);
+
+export const fetchProductInquiries = (productId: string) =>
+  apiFetch<{ success: boolean; inquiries: ProductInquiry[] }>(`/api/v1/orders/products/${productId}/inquiries`).then(
+    (r) => r.inquiries,
+  );
+
 export const fetchProductRating = (productId: string) =>
   apiFetch<{ success: boolean; average: number | null; count: number }>(`/api/v1/orders/products/${productId}/rating`);
 

@@ -68,9 +68,9 @@ import {
   type AddressSuggestion, type EatsOrder, type EatsOrderStatus, type FavoriteRestaurant, type MenuItem, type RatingSummary, type Rider,
 } from './lib/eats';
 import {
-  addProductFavorite, advanceOrderStatus, cancelOrder, fetchMerchantOrders, fetchMerchantProducts, fetchMyFavoriteProducts, fetchMyOrders, fetchOrderDetail,
-  fetchProductRating, fetchProductReviews, placeOrder, removeProductFavorite, submitProductReview,
-  type CommerceOrder, type CommerceOrderItem, type CommerceOrderStatus, type CommerceProduct, type FavoriteProduct, type ProductReview,
+  addProductFavorite, advanceOrderStatus, askProductInquiry, cancelOrder, fetchMerchantOrders, fetchMerchantProducts, fetchMyFavoriteProducts, fetchMyOrders, fetchOrderDetail,
+  fetchProductInquiries, fetchProductRating, fetchProductReviews, placeOrder, removeProductFavorite, submitProductReview,
+  type CommerceOrder, type CommerceOrderItem, type CommerceOrderStatus, type CommerceProduct, type FavoriteProduct, type ProductInquiry, type ProductReview,
 } from './lib/commerce';
 import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
@@ -6867,6 +6867,80 @@ function ProductRatingBadge({ productId }: { productId: string }) {
   );
 }
 
+// Real Coupang-style pre-purchase product Q&A (상품문의) (2026-07-26) -- see
+// ProductInquiryService's own doc comment on the backend. Genuinely distinct from
+// ProductRatingBadge's reviews above: no order/purchase required at all, so this is
+// always visible on a product's detail page, not gated behind having bought it.
+function ProductInquirySection({ productId }: { productId: string }) {
+  const [inquiries, setInquiries] = useState<ProductInquiry[] | null>(null);
+  const [question, setQuestion] = useState('');
+  const [asking, setAsking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    fetchProductInquiries(productId).then(setInquiries).catch(() => setInquiries([]));
+  };
+
+  useEffect(load, [productId]);
+
+  const handleAsk = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!question.trim()) return;
+    setAsking(true);
+    setError(null);
+    try {
+      await askProductInquiry(productId, question.trim());
+      setQuestion('');
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not submit your question.');
+    } finally {
+      setAsking(false);
+    }
+  };
+
+  return (
+    <div style={{ borderTop: '1px solid var(--toss-grey-100)', paddingTop: '12px' }}>
+      <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-grey-900)', marginBottom: '8px' }}>Questions & answers</p>
+      <form onSubmit={handleAsk} style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+        <input
+          type="text"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          placeholder="Ask the seller a question"
+          style={{ flex: 1, padding: '8px 10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+        />
+        <button type="submit" className="toss-btn toss-btn-secondary" disabled={asking || !question.trim()} style={{ padding: '8px 14px' }}>
+          Ask
+        </button>
+      </form>
+      {error && <p style={{ fontSize: '12px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+      {inquiries === null ? (
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Loading questions…</p>
+      ) : inquiries.length === 0 ? (
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No questions yet -- be the first to ask.</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {inquiries.map((q) => (
+            <div key={q.id} style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>
+              <span style={{ fontWeight: 700 }}>Q. </span>{q.question}
+              {q.answer ? (
+                <div style={{ marginTop: '2px', marginLeft: '12px', color: 'var(--toss-grey-500)' }}>
+                  <span style={{ fontWeight: 700 }}>A. </span>{q.answer}
+                </div>
+              ) : (
+                <div style={{ marginTop: '2px', marginLeft: '12px', color: 'var(--toss-grey-400)', fontStyle: 'italic' }}>
+                  Awaiting seller response
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProductReviewRow({ item }: { item: CommerceOrderItem }) {
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState(0);
@@ -7198,6 +7272,7 @@ function ProductDetailView({
         {product.description && (
           <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{product.description}</p>
         )}
+        <ProductInquirySection productId={product.id} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', paddingTop: '4px', borderTop: '1px solid var(--toss-grey-100)' }}>
           <button onClick={() => onSetQty(merchant, product, Math.max(0, qty - 1))} className="toss-btn toss-btn-secondary" style={{ padding: '8px 16px' }}>−</button>
           <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 700, fontSize: '16px' }}>{qty}</span>
