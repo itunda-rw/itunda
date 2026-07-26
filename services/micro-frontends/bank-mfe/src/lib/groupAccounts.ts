@@ -10,6 +10,7 @@ export interface GroupAccount {
   name: string;
   ownerId: string;
   walletId: string;
+  monthlyDuesAmount: number | null;
   createdAt: string;
 }
 
@@ -58,3 +59,33 @@ export const withdrawFromGroupAccount = (id: string, amount: number) =>
     headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ amount }),
   });
+
+// Real KakaoBank 회비 (dues) management (2026-07-26) -- see
+// GroupAccountService.setDuesAmount's own doc comment.
+export interface GroupAccountDuesMember {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  contributedAmount: number;
+  paid: boolean;
+}
+
+export interface GroupAccountDuesStatus {
+  duesAmount: number | null;
+  cycleMonth: string;
+  members: GroupAccountDuesMember[];
+}
+
+export const setGroupAccountDuesAmount = (id: string, amount: number | null) =>
+  apiFetch<{ success: boolean; groupAccount: GroupAccount }>(`/api/v1/group-accounts/${id}/dues`, {
+    method: 'PUT',
+    body: JSON.stringify({ amount }),
+  }).then((r) => r.groupAccount);
+
+export const fetchGroupAccountDues = (id: string) =>
+  apiFetch<{ success: boolean; dues: GroupAccountDuesStatus }>(`/api/v1/group-accounts/${id}/dues`).then((r) => r.dues);
+
+export const requestUnpaidGroupAccountDues = (id: string) =>
+  apiFetch<{ success: boolean; remindedCount: number }>(`/api/v1/group-accounts/${id}/dues/remind`, { method: 'POST' }).then(
+    (r) => r.remindedCount,
+  );

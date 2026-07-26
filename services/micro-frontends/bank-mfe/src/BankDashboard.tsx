@@ -6,8 +6,9 @@ import { fetchTransactions, fetchWallets, type Transaction, type Wallet } from '
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
 import { claimInterest, createGoal, depositToGoal, fetchGoals, fetchInterestJar, type InterestJar, type SavingsGoal } from './lib/savings';
 import {
-  createGroupAccount, depositToGroupAccount, fetchGroupAccount, fetchMyGroupAccounts, inviteGroupAccountMember, withdrawFromGroupAccount,
-  type GroupAccount, type GroupAccountDetail,
+  createGroupAccount, depositToGroupAccount, fetchGroupAccount, fetchGroupAccountDues, fetchMyGroupAccounts, inviteGroupAccountMember,
+  requestUnpaidGroupAccountDues, setGroupAccountDuesAmount, withdrawFromGroupAccount,
+  type GroupAccount, type GroupAccountDetail, type GroupAccountDuesStatus,
 } from './lib/groupAccounts';
 import {
   cancelWeeklySavingsPlan, createWeeklySavingsPlan, fetchWeeklySavingsPlan, fetchWeeklySavingsPlans, withdrawWeeklySavingsPlan,
@@ -8168,11 +8169,65 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
   const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
   const myUserId = getStoredUser()?.id;
 
+  // Real KakaoBank 회비 (dues) management (2026-07-26) -- see
+  // GroupAccountService.setDuesAmount's own doc comment.
+  const [dues, setDues] = useState<GroupAccountDuesStatus | null>(null);
+  const [duesAmountInput, setDuesAmountInput] = useState('');
+  const [duesBusy, setDuesBusy] = useState(false);
+  const [remindedCount, setRemindedCount] = useState<number | null>(null);
+
+  const loadDues = () => {
+    fetchGroupAccountDues(id).then(setDues).catch(() => {});
+  };
+
   const load = () => {
     setError(null);
     fetchGroupAccount(id).then(setDetail).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this group account.'));
+    loadDues();
   };
   useEffect(load, []);
+
+  const handleSetDues = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDuesBusy(true);
+    setError(null);
+    try {
+      await setGroupAccountDuesAmount(id, Number(duesAmountInput));
+      setDuesAmountInput('');
+      loadDues();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not set the dues amount.');
+    } finally {
+      setDuesBusy(false);
+    }
+  };
+
+  const handleClearDues = async () => {
+    setDuesBusy(true);
+    setError(null);
+    try {
+      await setGroupAccountDuesAmount(id, null);
+      loadDues();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not clear the dues amount.');
+    } finally {
+      setDuesBusy(false);
+    }
+  };
+
+  const handleRemindUnpaid = async () => {
+    setDuesBusy(true);
+    setError(null);
+    setRemindedCount(null);
+    try {
+      const count = await requestUnpaidGroupAccountDues(id);
+      setRemindedCount(count);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send reminders.');
+    } finally {
+      setDuesBusy(false);
+    }
+  };
 
   const isOwner = detail?.groupAccount.ownerId === myUserId;
 
@@ -8251,6 +8306,54 @@ function GroupAccountDetailView({ id, onBack }: { id: string; onBack: () => void
             {m.isOwner && <span style={{ color: 'var(--toss-blue)', fontWeight: 700 }}>Organizer</span>}
           </div>
         ))}
+      </div>
+
+      <div className="toss-card" style={{ marginBottom: '16px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Monthly dues</h3>
+        {dues === null ? (
+          <div className="skeleton" style={{ height: '40px', borderRadius: '8px' }} />
+        ) : dues.duesAmount === null ? (
+          isOwner ? (
+            <form onSubmit={handleSetDues} style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="number" min="1" required value={duesAmountInput} onChange={(e) => setDuesAmountInput(e.target.value)}
+                placeholder="Monthly dues (RWF)"
+                style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+              />
+              <button type="submit" className="toss-btn toss-btn-primary" disabled={duesBusy}>{duesBusy ? '…' : 'Set'}</button>
+            </form>
+          ) : (
+            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>The organizer hasn't set a monthly dues amount.</p>
+          )
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <p style={{ fontSize: '13px' }}>{dues.duesAmount.toLocaleString()} RWF / month · {dues.cycleMonth}</p>
+            {dues.members.map((m) => {
+              const duesAmount = dues.duesAmount as number;
+              return (
+                <div key={m.userId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                  <span>{m.firstName} {m.lastName}{m.userId === myUserId ? ' (you)' : ''}</span>
+                  <span style={{ color: m.paid ? '#1E8E4F' : 'var(--toss-grey-500)', fontWeight: m.paid ? 700 : 400 }}>
+                    {m.paid ? '✓ Paid' : `${m.contributedAmount.toLocaleString()} / ${duesAmount.toLocaleString()}`}
+                  </span>
+                </div>
+              );
+            })}
+            {isOwner && (
+              <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={duesBusy} onClick={handleRemindUnpaid}>
+                  {duesBusy ? '…' : 'Remind unpaid members'}
+                </button>
+                <button className="toss-btn toss-btn-secondary" disabled={duesBusy} onClick={handleClearDues}>Clear</button>
+              </div>
+            )}
+            {remindedCount !== null && (
+              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+                {remindedCount === 0 ? 'Everyone has already paid or been reminded this month.' : `Reminded ${remindedCount} member${remindedCount === 1 ? '' : 's'}.`}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {needsDeviceVerification ? (
