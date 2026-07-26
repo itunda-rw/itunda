@@ -10,7 +10,9 @@ import CoreNetwork
 // distance/duration instead of just a distance number, without duplicating any routing
 // logic. Straight port of bank-mfe's RouteMiniMap.tsx / Android's RouteMiniMap.kt (item 8
 // on the Maps "100%" roadmap).
-private let routeMiniTilesURL = "http://192.168.252.3:8090/rwanda/{z}/{x}/{y}.mvt"
+// Address corrected 2026-07-27: itunda-dc-b (192.168.252.3) was decommissioned; the
+// surviving sole node is itunda-dc-a, 192.168.252.4 -- see MapScreenView.swift's own note.
+private let routeMiniTilesURL = "http://192.168.252.4:8090/rwanda/{z}/{x}/{y}.mvt"
 private let routeMiniStyleJSON = """
 {
   "version": 8,

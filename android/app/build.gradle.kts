@@ -110,21 +110,29 @@ android {
 
         // Same real gap as API_BASE_URL above, just discovered later (2026-07-21):
         // MapScreen.kt had these two hardcoded straight at the private cloud's
-        // internal-only Multipass bridge address (192.168.252.3), unreachable for any
-        // device other than the Mac itself or another device on the same bridge --
-        // a real device testing over the public HTTPS endpoint got a permanently
-        // blank map with no way to fix it short of a rebuild. Mirrors bank-mfe's own
+        // internal-only Multipass bridge address, unreachable for any device other
+        // than the Mac itself or another device on the same bridge -- a real device
+        // testing over the public HTTPS endpoint got a permanently blank map with no
+        // way to fix it short of a rebuild. Mirrors bank-mfe's own
         // VITE_TILES_BASE_URL/VITE_GLYPHS_BASE_URL env vars (same LAN default, same
         // override mechanism), so both platforms follow the same real pattern.
+        //
+        // Address corrected 2026-07-27: itunda-dc-b (192.168.252.3, the address these
+        // defaults used to point at) was decommissioned -- the surviving sole node is
+        // itunda-dc-a, 192.168.252.4. bank-mfe's own equivalent was fixed the same day
+        // by switching to a same-origin relative path through the public nginx proxy,
+        // but that trick doesn't exist for a native client that always calls a fixed
+        // base URL -- this default stays a LAN address (matching apiBaseUrl's own
+        // dev-convenience default above), just the current correct one.
         buildConfigField(
             "String",
             "TILES_BASE_URL",
-            "\"${project.findProperty("tilesBaseUrl") ?: "http://192.168.252.3:8090"}\""
+            "\"${project.findProperty("tilesBaseUrl") ?: "http://192.168.252.4:8090"}\""
         )
         buildConfigField(
             "String",
             "GLYPHS_BASE_URL",
-            "\"${project.findProperty("glyphsBaseUrl") ?: "http://192.168.252.3:8091"}\""
+            "\"${project.findProperty("glyphsBaseUrl") ?: "http://192.168.252.4:8091"}\""
         )
     }
 

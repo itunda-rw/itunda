@@ -150,10 +150,10 @@ private const val RWANDA_CENTER_LNG = 30.0619
 // color picker, matching this app's own design-system palette.
 private const val DEFAULT_BOOKMARK_FOLDER = "Saved places"
 private val BOOKMARK_COLOR_PALETTE = listOf("#F5A623", "#3182F6", "#8B5CF6", "#E53935", "#22B07D", "#4E5968")
-// Both driven by BuildConfig now (2026-07-21), not hardcoded to the private cloud's
-// internal-only 192.168.252.3 address -- see app/build.gradle.kts' TILES_BASE_URL/
-// GLYPHS_BASE_URL doc comment for why a physical device on the public HTTPS endpoint
-// got a permanently blank map otherwise.
+// Both driven by BuildConfig now (2026-07-21), not hardcoded to a private-cloud address
+// directly -- see app/build.gradle.kts' TILES_BASE_URL/GLYPHS_BASE_URL doc comment for
+// why a physical device on the public HTTPS endpoint got a permanently blank map
+// otherwise, and for the 2026-07-27 dc-b->dc-a address correction.
 private val TILES_URL: String get() = "${MapConfig.tilesBaseUrl}/rwanda/{z}/{x}/{y}.mvt"
 // Real self-hosted glyphs (font PBF) server (2026-07-19) -- closes item 5, the last item
 // on the Maps "100%" roadmap. See bank-mfe's lib/maps.ts GLYPHS_URL doc comment for the

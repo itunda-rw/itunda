@@ -9,13 +9,17 @@ import CoreNetwork
 // MapScreen.kt) uses.
 private let rwandaCenterLat = -1.9441
 private let rwandaCenterLng = 30.0619
-private let tilesURL = "http://192.168.252.3:8090/rwanda/{z}/{x}/{y}.mvt"
+// Address corrected 2026-07-27: itunda-dc-b (192.168.252.3) was decommissioned; the
+// surviving sole node is itunda-dc-a, 192.168.252.4. Still a LAN-only address, same as
+// Android's own equivalent BuildConfig default -- no same-origin-relative-path trick
+// exists for a native client the way bank-mfe's own fix used.
+private let tilesURL = "http://192.168.252.4:8090/rwanda/{z}/{x}/{y}.mvt"
 // Real self-hosted glyphs (font PBF) server (2026-07-19) -- closes item 5, the last item
 // on the Maps "100%" roadmap. See bank-mfe's lib/maps.ts GLYPHS_URL doc comment for the
 // full account (real pre-generated Noto Sans Regular/Bold glyph PBFs, served statically
-// by nginx on itunda-dc-b, ~14MB RSS -- an order of magnitude lighter than OSRM/
-// Nominatim despite being this host's fourth persistent private-cloud service).
-private let glyphsURL = "http://192.168.252.3:8091/{fontstack}/{range}.pbf"
+// by nginx, ~14MB RSS -- an order of magnitude lighter than OSRM/Nominatim despite being
+// one more persistent private-cloud service).
+private let glyphsURL = "http://192.168.252.4:8091/{fontstack}/{range}.pbf"
 
 // Real bookmark-folder defaults/palette (2026-07-22) -- kept in sync by hand with
 // MapsService.DEFAULT_BOOKMARK_FOLDER/DEFAULT_BOOKMARK_COLOR on the backend, same plain-
