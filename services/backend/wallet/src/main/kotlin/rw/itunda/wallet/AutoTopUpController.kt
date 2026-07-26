@@ -48,10 +48,10 @@ class AutoTopUpController(private val autoTopUpService: AutoTopUpService) {
         return ResponseEntity.ok(mapOf("success" to true, "setting" to setting))
     }
 
-    // Real, exercisable manual/demo trigger -- see AutoTopUpService's own doc comment
-    // for why this is the real entrypoint this pass, with a background scheduler sweep
-    // as a genuine, well-scoped follow-up. Idempotent no-op (200, triggered: false) if
-    // real conditions (threshold, daily cap, linked-account status) aren't met.
+    // Real, exercisable manual/demo trigger -- kept even after AutoTopUpScheduler's own
+    // real background automation closed this feature's original gap, since it's still
+    // useful for an on-demand check. Idempotent no-op (200, triggered: false) if real
+    // conditions (threshold, daily cap, linked-account status) aren't met.
     @PostMapping("/trigger")
     fun trigger(@PathVariable walletId: String, @AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true) + autoTopUpService.evaluateAndTopUp(currentUser.userId, walletId).let {

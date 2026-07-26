@@ -258,6 +258,7 @@ interface UserEmoticonPackRepository : JpaRepository<UserEmoticonPack, String> {
 
 interface WalletAutoTopUpSettingRepository : JpaRepository<WalletAutoTopUpSetting, String> {
     fun findByWalletId(walletId: String): WalletAutoTopUpSetting?
+    fun findByEnabledTrue(): List<WalletAutoTopUpSetting>
 }
 
 interface KeywordAlertRepository : JpaRepository<KeywordAlert, String> {

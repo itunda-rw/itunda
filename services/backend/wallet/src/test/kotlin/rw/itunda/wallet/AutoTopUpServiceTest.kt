@@ -236,6 +236,29 @@ class AutoTopUpServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("a mix of real enabled and disabled auto top-up settings") {
+        val walletAutoTopUpSettingRepository = mockk<WalletAutoTopUpSettingRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val linkedAccountRepository = mockk<LinkedAccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val providerConnector = mockk<ProviderConnector>()
+        val service = AutoTopUpService(walletAutoTopUpSettingRepository, walletRepository, linkedAccountRepository, ledgerService, transactionRepository, providerConnector)
+
+        When("AutoTopUpScheduler asks which real settings it should sweep") {
+            val enabledOnly = listOf(
+                WalletAutoTopUpSetting(id = "auto_topup_7", userId = "user_1", walletId = "wallet_1", linkedAccountId = "linked_1", thresholdAmount = BigDecimal("2000"), topUpAmount = BigDecimal("10000"), enabled = true),
+            )
+            every { walletAutoTopUpSettingRepository.findByEnabledTrue() } returns enabledOnly
+
+            val result = service.getEnabledSettings()
+
+            Then("it returns only the real enabled settings, matching the scheduler's own real automation gap this closes") {
+                result shouldBe enabledOnly
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

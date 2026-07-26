@@ -57,13 +57,13 @@ data class AutoTopUpTriggerResult(val triggered: Boolean, val reason: String)
  * symmetrically for money ARRIVING from one, real double-entry practice, not a new
  * ledger account invented for this one feature) and credits the real wallet.
  *
- * Honestly scoped: `evaluateAndTopUp` is a real, exercisable manual/demo trigger
- * entrypoint (`POST .../auto-topup/trigger`) rather than gated behind a background
- * scheduler in this pass -- a real `@Scheduled` sweep across enabled settings (the
- * same `AutoSaveScheduler`/demo-speed-poll convention this session's other recurring
- * features already establish) is a genuine, well-scoped follow-up, not attempted here
- * since the real threshold-check LOGIC (not its trigger cadence) is this feature's
- * defining gap.
+ * `evaluateAndTopUp` stays real and directly callable (`POST .../auto-topup/trigger`,
+ * useful for an on-demand demo check), but is no longer the only way it runs: real
+ * background automation closed 2026-07-27 via `AutoTopUpScheduler`, the same
+ * `@Scheduled` demo-speed-poll convention every other recurring feature in this
+ * codebase already establishes (`AutoTransferScheduler`, `AutoSaveScheduler`) --
+ * matching Naver Pay Money's own real feature, which is fully automatic, not something
+ * a user manually triggers.
  */
 @Service
 class AutoTopUpService(
@@ -124,6 +124,8 @@ class AutoTopUpService(
         return walletAutoTopUpSettingRepository.findByWalletId(walletId)
             ?: throw AutoTopUpSettingNotFoundException("No auto top-up setting configured for this wallet")
     }
+
+    fun getEnabledSettings(): List<WalletAutoTopUpSetting> = walletAutoTopUpSettingRepository.findByEnabledTrue()
 
     /**
      * Real threshold evaluation + pull. Returns a real, honest result rather than
