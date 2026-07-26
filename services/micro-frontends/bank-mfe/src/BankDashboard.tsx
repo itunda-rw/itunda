@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowUpRight, Bike, Heart, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Bike, Car, Heart, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchWallets, type DetectedSubscription, type Transaction, type Wallet } from './lib/wallet';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
@@ -75,8 +75,14 @@ import {
 import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
 import LiveRiderMap from './LiveRiderMap';
+import { searchPlaces, type PlaceSearchResult } from './lib/maps';
+import {
+  acceptRideTrip, cancelRideTrip, completeRideTrip, declineRideTrip, fetchAvailableTrips, fetchMyDriverProfile, fetchMyDriverTrips,
+  fetchMyTrips, registerAsDriver, requestRideTrip, setDriverAvailability, startRideTrip, updateDriverLocation,
+  type RideDriver, type RideTrip,
+} from './lib/rideshare';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'MAP' | 'DEVICES' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
@@ -6752,6 +6758,366 @@ function RestaurantOrdersView() {
   );
 }
 
+const RIDE_STATUS_LABEL: Record<RideTrip['status'], string> = {
+  REQUESTED: 'Finding a driver…',
+  DRIVER_ASSIGNED: 'Driver assigned',
+  IN_PROGRESS: 'Trip in progress',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
+};
+
+function PlaceSearchInput({ label, placeholder, value, onSelect }: {
+  label: string; placeholder: string; value: PlaceSearchResult | null; onSelect: (place: PlaceSearchResult) => void;
+}) {
+  const [query, setQuery] = useState(value?.displayName ?? '');
+  const [results, setResults] = useState<PlaceSearchResult[] | null>(null);
+
+  useEffect(() => {
+    if (!query || query === value?.displayName) { setResults(null); return; }
+    const handle = setTimeout(() => {
+      searchPlaces(query).then(setResults).catch(() => setResults([]));
+    }, 350);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+
+  return (
+    <div style={{ position: 'relative', marginBottom: '12px' }}>
+      <label style={{ fontSize: '12px', color: 'var(--toss-grey-500)', fontWeight: 700, display: 'block', marginBottom: '4px' }}>{label}</label>
+      <input
+        type="text" value={query} placeholder={placeholder}
+        onChange={(e) => setQuery(e.target.value)}
+        style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      />
+      {results && results.length > 0 && (
+        <div className="toss-card" style={{ position: 'absolute', zIndex: 10, width: '100%', marginTop: '4px', padding: '4px', maxHeight: '220px', overflowY: 'auto' }}>
+          {results.map((r, i) => (
+            <button
+              key={`${r.latitude}-${r.longitude}-${i}`} type="button"
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px', fontSize: '13px', borderRadius: '6px' }}
+              onClick={() => { onSelect(r); setQuery(r.displayName); setResults(null); }}
+            >
+              {r.displayName}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RideTripCard({ trip, action }: { trip: RideTrip; action?: React.ReactNode }) {
+  return (
+    <div className="toss-card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+        <div style={{ flex: 1 }}>
+          <p style={{ fontSize: '13px', fontWeight: 700 }}>{trip.pickupAddress}</p>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', margin: '2px 0' }}>→ {trip.dropoffAddress}</p>
+          <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{trip.distanceKm.toFixed(1)} km · {trip.fare.toLocaleString()} RWF</p>
+        </div>
+        <span style={{
+          fontSize: '11px', fontWeight: 700, padding: '4px 8px', borderRadius: '6px',
+          color: trip.status === 'CANCELLED' ? '#E53935' : trip.status === 'COMPLETED' ? 'var(--toss-grey-500)' : 'var(--toss-blue)',
+          backgroundColor: trip.status === 'CANCELLED' ? '#FDECEA' : trip.status === 'COMPLETED' ? 'var(--toss-grey-100)' : '#E8F0FE',
+        }}>
+          {RIDE_STATUS_LABEL[trip.status]}
+        </span>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function RidesView() {
+  const [subTab, setSubTab] = useState<'RIDE' | 'DRIVE'>('RIDE');
+
+  // Passenger side
+  const [pickup, setPickup] = useState<PlaceSearchResult | null>(null);
+  const [dropoff, setDropoff] = useState<PlaceSearchResult | null>(null);
+  const [myTrips, setMyTrips] = useState<RideTrip[] | null>(null);
+  const [requesting, setRequesting] = useState(false);
+  const [rideError, setRideError] = useState<string | null>(null);
+  const [busyTripId, setBusyTripId] = useState<string | null>(null);
+
+  const loadMyTrips = () => {
+    fetchMyTrips().then(setMyTrips).catch((err) => setRideError(err instanceof ApiError ? err.message : 'Could not load your trips.'));
+  };
+
+  useEffect(() => {
+    if (subTab !== 'RIDE') return;
+    loadMyTrips();
+    const interval = setInterval(loadMyTrips, 4000);
+    return () => clearInterval(interval);
+  }, [subTab]);
+
+  const activeTrip = (myTrips ?? []).find((t) => t.status === 'REQUESTED' || t.status === 'DRIVER_ASSIGNED' || t.status === 'IN_PROGRESS');
+  const pastTrips = (myTrips ?? []).filter((t) => t.status === 'COMPLETED' || t.status === 'CANCELLED');
+
+  const handleRequestRide = async () => {
+    if (!pickup || !dropoff) return;
+    setRequesting(true);
+    setRideError(null);
+    try {
+      await requestRideTrip(pickup.displayName, pickup.latitude, pickup.longitude, dropoff.displayName, dropoff.latitude, dropoff.longitude);
+      setPickup(null);
+      setDropoff(null);
+      loadMyTrips();
+    } catch (err) {
+      setRideError(err instanceof ApiError ? err.message : 'Could not request a ride.');
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const handleCancelTrip = async (tripId: string) => {
+    setBusyTripId(tripId);
+    try {
+      await cancelRideTrip(tripId);
+      loadMyTrips();
+    } catch (err) {
+      setRideError(err instanceof ApiError ? err.message : 'Could not cancel this trip.');
+    } finally {
+      setBusyTripId(null);
+    }
+  };
+
+  // Driver side
+  const [driver, setDriver] = useState<RideDriver | null | undefined>(undefined);
+  const [registeringDriver, setRegisteringDriver] = useState(false);
+  const [availableTrips, setAvailableTrips] = useState<RideTrip[] | null>(null);
+  const [myDriverTrips, setMyDriverTrips] = useState<RideTrip[] | null>(null);
+  const [driverError, setDriverError] = useState<string | null>(null);
+  const [busyDriverTripId, setBusyDriverTripId] = useState<string | null>(null);
+
+  const loadDriver = () => {
+    fetchMyDriverProfile()
+      .then(setDriver)
+      .catch((err) => {
+        if (err instanceof ApiError && err.code === 'RIDE_DRIVER_NOT_REGISTERED') setDriver(null);
+        else setDriverError(err instanceof ApiError ? err.message : 'Could not load your driver profile.');
+      });
+  };
+
+  useEffect(() => {
+    if (subTab === 'DRIVE') loadDriver();
+  }, [subTab]);
+
+  const loadDriverTrips = () => {
+    Promise.all([fetchAvailableTrips(), fetchMyDriverTrips()])
+      .then(([a, m]) => { setAvailableTrips(a); setMyDriverTrips(m); })
+      .catch((err) => setDriverError(err instanceof ApiError ? err.message : 'Could not load trips.'));
+  };
+
+  useEffect(() => {
+    if (subTab !== 'DRIVE' || !driver) return;
+    loadDriverTrips();
+    const interval = setInterval(loadDriverTrips, 4000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subTab, driver?.id]);
+
+  const handleRegisterDriver = async () => {
+    setRegisteringDriver(true);
+    setDriverError(null);
+    try {
+      setDriver(await registerAsDriver());
+    } catch (err) {
+      setDriverError(err instanceof ApiError ? err.message : 'Could not register as a driver.');
+    } finally {
+      setRegisteringDriver(false);
+    }
+  };
+
+  const handleToggleAvailable = async () => {
+    if (!driver) return;
+    try {
+      const updated = await setDriverAvailability(!driver.available);
+      setDriver(updated);
+      if (updated.available && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+          updateDriverLocation(pos.coords.latitude, pos.coords.longitude).then(setDriver).catch(() => {});
+        });
+      }
+    } catch (err) {
+      setDriverError(err instanceof ApiError ? err.message : 'Could not update your availability.');
+    }
+  };
+
+  const handleDriverTripAction = async (tripId: string, action: (id: string) => Promise<RideTrip>) => {
+    setBusyDriverTripId(tripId);
+    setDriverError(null);
+    try {
+      await action(tripId);
+      loadDriverTrips();
+    } catch (err) {
+      setDriverError(err instanceof ApiError ? err.message : 'Could not update this trip.');
+    } finally {
+      setBusyDriverTripId(null);
+    }
+  };
+
+  const activeDriverTrips = (myDriverTrips ?? []).filter((t) => t.status === 'DRIVER_ASSIGNED' || t.status === 'IN_PROGRESS');
+  const pastDriverTrips = (myDriverTrips ?? []).filter((t) => t.status === 'COMPLETED' || t.status === 'CANCELLED');
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+        {(['RIDE', 'DRIVE'] as const).map((v) => (
+          <button
+            key={v} onClick={() => setSubTab(v)}
+            style={{
+              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
+              color: subTab === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+              backgroundColor: subTab === v ? 'var(--toss-blue)' : 'transparent',
+            }}
+          >
+            {v === 'RIDE' ? 'Get a ride' : 'Drive'}
+          </button>
+        ))}
+      </div>
+
+      {subTab === 'RIDE' && (
+        <div>
+          {activeTrip ? (
+            <div style={{ marginBottom: '20px' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your ride</h4>
+              <RideTripCard
+                trip={activeTrip}
+                action={activeTrip.status !== 'IN_PROGRESS' && (
+                  <button className="toss-btn toss-btn-danger" disabled={busyTripId === activeTrip.id} onClick={() => handleCancelTrip(activeTrip.id)}>
+                    {busyTripId === activeTrip.id ? 'Cancelling…' : 'Cancel ride'}
+                  </button>
+                )}
+              />
+            </div>
+          ) : (
+            <div className="toss-card" style={{ marginBottom: '20px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Car size={18} color="var(--toss-blue)" /> Request a ride
+              </h3>
+              <PlaceSearchInput label="Pickup" placeholder="Where from?" value={pickup} onSelect={setPickup} />
+              <PlaceSearchInput label="Dropoff" placeholder="Where to?" value={dropoff} onSelect={setDropoff} />
+              <button className="toss-btn toss-btn-primary" disabled={!pickup || !dropoff || requesting} onClick={handleRequestRide} style={{ width: '100%' }}>
+                {requesting ? 'Requesting…' : 'Request ride'}
+              </button>
+            </div>
+          )}
+
+          {rideError && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '12px' }} role="alert">{rideError}</p>}
+
+          {pastTrips.length > 0 && (
+            <div>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Past rides</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {pastTrips.map((t) => <RideTripCard key={t.id} trip={t} />)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {subTab === 'DRIVE' && (
+        <div>
+          {driver === undefined ? (
+            <div className="toss-card skeleton" style={{ height: '180px' }} />
+          ) : driver === null ? (
+            <div className="toss-card" style={{ textAlign: 'center', padding: '28px' }}>
+              <Car size={32} color="var(--toss-blue)" style={{ marginBottom: '10px' }} />
+              <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>Drive with Itunda</h3>
+              <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+                Earn a real fare for every trip you complete, paid straight to your wallet.
+              </p>
+              <button className="toss-btn toss-btn-primary" onClick={handleRegisterDriver} disabled={registeringDriver}>
+                {registeringDriver ? 'Registering…' : 'Become a driver'}
+              </button>
+              {driverError && <p style={{ fontSize: '13px', color: '#E53935', marginTop: '12px' }} role="alert">{driverError}</p>}
+            </div>
+          ) : (
+            <div>
+              <div className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div>
+                  <p style={{ fontSize: '15px', fontWeight: 700 }}>{driver.available ? "You're online" : "You're offline"}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{driver.available ? 'Visible for new trip requests' : 'Go online to see trip requests'}</p>
+                </div>
+                <button className={driver.available ? 'toss-btn toss-btn-danger' : 'toss-btn toss-btn-primary'} onClick={handleToggleAvailable}>
+                  {driver.available ? 'Go offline' : 'Go online'}
+                </button>
+              </div>
+
+              {driverError && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '12px' }} role="alert">{driverError}</p>}
+
+              {activeDriverTrips.length > 0 && (
+                <div style={{ marginBottom: '20px' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your active trip</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {activeDriverTrips.map((t) => (
+                      <RideTripCard
+                        key={t.id} trip={t}
+                        action={
+                          <button
+                            className="toss-btn toss-btn-primary" disabled={busyDriverTripId === t.id}
+                            onClick={() => handleDriverTripAction(t.id, t.status === 'DRIVER_ASSIGNED' ? startRideTrip : completeRideTrip)}
+                          >
+                            {busyDriverTripId === t.id ? 'Updating…' : t.status === 'DRIVER_ASSIGNED' ? 'Start trip' : 'Complete trip'}
+                          </button>
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {driver.available && (
+                <div style={{ marginBottom: '20px' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Trip requests near you</h4>
+                  {availableTrips === null ? (
+                    <div className="toss-card skeleton" style={{ height: '100px' }} />
+                  ) : availableTrips.length === 0 ? (
+                    <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No trip requests waiting right now.</p></div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {availableTrips.map((t) => (
+                        <RideTripCard
+                          key={t.id} trip={t}
+                          action={
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                className="toss-btn toss-btn-primary" disabled={busyDriverTripId === t.id}
+                                onClick={() => handleDriverTripAction(t.id, acceptRideTrip)}
+                              >
+                                {busyDriverTripId === t.id ? 'Accepting…' : 'Accept'}
+                              </button>
+                              <button
+                                className="toss-btn toss-btn-secondary" disabled={busyDriverTripId === t.id}
+                                onClick={() => handleDriverTripAction(t.id, declineRideTrip)}
+                              >
+                                Decline
+                              </button>
+                            </div>
+                          }
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {pastDriverTrips.length > 0 && (
+                <div>
+                  <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Completed</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {pastDriverTrips.map((t) => <RideTripCard key={t.id} trip={t} />)}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EatsView() {
   const [mode, setMode] = useState<'ORDER' | 'DELIVER'>('ORDER');
 
@@ -9088,6 +9454,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'COMMUNITY', label: 'Community' },
     { id: 'JOBS', label: 'Jobs' },
     { id: 'PROPERTY', label: 'Property' },
+    { id: 'RIDES', label: 'Rides' },
     { id: 'MAP', label: 'Map' },
     { id: 'CERTIFICATE', label: 'Certificate' },
     { id: 'SHOPPING', label: 'Shopping' },
@@ -9149,6 +9516,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'COMMUNITY' && <CommunityView onOpenGroupChat={handleMessageSeller} />}
       {tab === 'JOBS' && <JobsView onMessagePoster={handleMessageSeller} />}
       {tab === 'PROPERTY' && <PropertyView onMessageLister={handleMessageSeller} />}
+      {tab === 'RIDES' && <RidesView />}
       {tab === 'MAP' && <MapView />}
       {tab === 'CERTIFICATE' && <CertificateView />}
       {tab === 'SHOPPING' && <ShoppingView />}
