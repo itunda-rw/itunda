@@ -162,6 +162,20 @@ spec:
               key: secret
         - name: UPLOAD_DIR
           value: "/uploads"
+        # Real self-hosted OSRM/Nominatim (2026-07-27) -- these containers run directly
+        # on this same node (itunda-dc-a, 192.168.252.4), not as k8s-managed pods, reached
+        # via the node's own IP + published host ports. These vars were never actually
+        # set on this manifest (only ever patched ad hoc onto the live cluster object,
+        # a Deployment predating this Rollout) -- every maps search/reverse/directions
+        # call silently no-op'd via application.yml's own "empty means fall back" default
+        # until this was found and fixed live. Committing them here so a future
+        # `kubectl apply -f` of this manifest can't silently regress the same outage.
+        - name: OSRM_BASE_URL
+          value: "http://192.168.252.4:5000"
+        - name: OSRM_FOOT_BASE_URL
+          value: "http://192.168.252.4:5001"
+        - name: NOMINATIM_BASE_URL
+          value: "http://192.168.252.4:8088"
         volumeMounts:
         - name: uploads
           mountPath: /uploads

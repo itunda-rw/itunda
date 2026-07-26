@@ -4,20 +4,28 @@ import { apiFetch } from './api';
 // Maps roadmap (see docs/TOSS_PARITY_MATRIX.md's Maps row). A real Rwanda-only vector
 // tile archive (built via Planetiler from a real Geofabrik OSM extract) served by
 // itunda's own self-hosted `pmtiles serve` process on the private cloud, not a
-// Google/Kakao/Naver Maps API key. Empty-string default here would break MapLibre, so
-// this always resolves to a real reachable URL in every environment this app runs in.
-export const TILES_BASE_URL = import.meta.env.VITE_TILES_BASE_URL ?? 'http://192.168.252.3:8090';
+// Google/Kakao/Naver Maps API key.
+//
+// Real regression found + fixed 2026-07-26: this used to default to an absolute
+// `192.168.252.x` address -- itunda's own internal-only Multipass bridge IP, reachable
+// from the Mac host and its own dev server, but never from a real remote browser. The
+// public nginx (`itunda.conf`) already reverse-proxies `/tiles/`/`/glyphs/` same-origin
+// (see its own comment, 2026-07-21) specifically to close that gap -- this default just
+// wasn't pointed at it, so every real client silently tried the unreachable private IP
+// instead of the working public path. Relative paths here, same convention
+// `VITE_API_BASE_URL=` (empty string) already establishes for `apiFetch`.
+export const TILES_BASE_URL = import.meta.env.VITE_TILES_BASE_URL ?? '/tiles';
 
 export const TILES_SOURCE_URL = `${TILES_BASE_URL}/rwanda/{z}/{x}/{y}.mvt`;
 
 // Real self-hosted glyphs (font PBF) server (2026-07-19) -- closes item 5, the last item
 // on the Maps "100%" roadmap. Real pre-generated Noto Sans Regular/Bold glyph PBFs
 // (github.com/openmaptiles/fonts, the standard self-hosted-MapLibre glyph source),
-// served statically by nginx on itunda-dc-b alongside the tile server -- purely static
-// byte-range serving, not a live rendering service, so it carries none of OSRM/
-// Nominatim's RAM cost despite being this host's fourth persistent private-cloud
-// service. `{fontstack}` is url-encoded by MapLibre itself from a layer's `text-font`.
-export const GLYPHS_URL = import.meta.env.VITE_GLYPHS_BASE_URL ?? 'http://192.168.252.3:8091/{fontstack}/{range}.pbf';
+// served statically by nginx alongside the tile server -- purely static byte-range
+// serving, not a live rendering service, so it carries none of OSRM/Nominatim's RAM
+// cost despite being one more persistent private-cloud service. `{fontstack}` is
+// url-encoded by MapLibre itself from a layer's `text-font`.
+export const GLYPHS_URL = import.meta.env.VITE_GLYPHS_BASE_URL ?? '/glyphs/{fontstack}/{range}.pbf';
 
 // Kigali -- the same default center EatsOrderServiceTest/MarketplaceServiceTest use for
 // their real-coordinate fixtures, kept consistent across this codebase.
