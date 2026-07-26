@@ -46,6 +46,10 @@ import rw.itunda.commerce.OrderService
 import rw.itunda.commerce.ProductAlreadyReviewedException
 import rw.itunda.commerce.ProductReviewNotFoundException
 import rw.itunda.commerce.ProductFavoriteService
+import rw.itunda.commerce.InvalidProductInquiryException
+import rw.itunda.commerce.InvalidProductInquiryAnswerException
+import rw.itunda.commerce.ProductInquiryNotFoundException
+import rw.itunda.commerce.ProductInquiryService
 import rw.itunda.commerce.ProductNotYetDeliveredException
 import rw.itunda.commerce.ProductReviewService
 import rw.itunda.commerce.ReturnAlreadyRequestedException
@@ -64,6 +68,8 @@ data class PlaceOrderRequest(val merchantId: String, val items: List<OrderItemRe
 data class UpdateOrderStatusRequest(val status: OrderStatus)
 data class SubmitProductReviewRequest(val rating: Int, val comment: String? = null)
 data class ReplyToProductReviewRequest(val reply: String)
+data class AskProductInquiryRequest(val question: String)
+data class AnswerProductInquiryRequest(val answer: String)
 data class RequestReturnRequest(val type: OrderReturnType, val reasonCode: String, val reasonNote: String? = null)
 data class DecideReturnRequest(val approve: Boolean)
 
@@ -79,6 +85,7 @@ class OrderController(
     private val productReviewService: ProductReviewService,
     private val productFavoriteService: ProductFavoriteService,
     private val orderReturnService: OrderReturnService,
+    private val productInquiryService: ProductInquiryService,
 ) {
     @PostMapping
     fun placeOrder(
@@ -275,6 +282,47 @@ class OrderController(
         return ResponseEntity.ok(mapOf("success" to true, "average" to summary.average, "count" to summary.count))
     }
 
+    // Real Coupang-style pre-purchase product Q&A (2026-07-26) -- see
+    // ProductInquiryService's own doc comment for the full account, including why this
+    // needs no real order/purchase at all, unlike the review endpoints above.
+    @PostMapping("/products/{productId}/inquiries")
+    fun askProductInquiry(
+        @PathVariable productId: String,
+        @RequestBody request: AskProductInquiryRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val inquiry = productInquiryService.askQuestion(currentUser.userId, productId, request.question)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "inquiry" to inquiry))
+    }
+
+    @GetMapping("/products/{productId}/inquiries")
+    fun getProductInquiries(
+        @PathVariable productId: String,
+        @PageableDefault(size = 20) pageable: Pageable,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = productInquiryService.getProductInquiries(productId, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "inquiries" to page.content) + pageMeta(page))
+    }
+
+    @GetMapping("/inquiries/my-questions")
+    fun getMyInquiries(
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = productInquiryService.getMyInquiries(currentUser.userId, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "inquiries" to page.content) + pageMeta(page))
+    }
+
+    @PostMapping("/inquiries/{inquiryId}/answer")
+    fun answerProductInquiry(
+        @PathVariable inquiryId: String,
+        @RequestBody request: AnswerProductInquiryRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val inquiry = productInquiryService.answerQuestion(currentUser.userId, inquiryId, request.answer)
+        return ResponseEntity.ok(mapOf("success" to true, "inquiry" to inquiry))
+    }
+
     // Real product wishlist (2026-07-20) -- see ProductFavoriteService's own doc
     // comment. Mirrors EatsController's own favorite-restaurant endpoints field-for-field.
     @PostMapping("/products/{productId}/favorite")
@@ -331,6 +379,18 @@ class OrderController(
     @ExceptionHandler(InvalidProductReviewReplyException::class)
     fun handleInvalidProductReviewReply(ex: InvalidProductReviewReplyException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_REVIEW_REPLY", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidProductInquiryException::class)
+    fun handleInvalidProductInquiry(ex: InvalidProductInquiryException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_INQUIRY", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(ProductInquiryNotFoundException::class)
+    fun handleProductInquiryNotFound(ex: ProductInquiryNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("INQUIRY_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(InvalidProductInquiryAnswerException::class)
+    fun handleInvalidProductInquiryAnswer(ex: InvalidProductInquiryAnswerException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_ANSWER", ex.message ?: "Bad request"))
 
     @ExceptionHandler(MerchantNotFoundException::class)
     fun handleMerchantNotFound(ex: MerchantNotFoundException) =
