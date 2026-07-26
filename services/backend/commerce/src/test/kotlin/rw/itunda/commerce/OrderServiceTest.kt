@@ -108,6 +108,45 @@ class OrderServiceTest : BehaviorSpec({
             }
         }
 
+        When("a real buyer's order falls below the merchant's real minimum order amount") {
+            val merchantWithMin = Merchant(
+                id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store",
+                status = MerchantStatus.ACTIVE, minOrderAmount = BigDecimal("10000"),
+            )
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchantWithMin)
+            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
+
+            Then("it's honestly rejected -- this real, already-shipped field was never actually enforced anywhere before") {
+                try {
+                    service.placeOrder("buyer_1", "merchant_1", listOf(OrderItemRequest("product_1", 3)), "addr")
+                    error("expected MinOrderAmountNotMetException")
+                } catch (e: MinOrderAmountNotMetException) {
+                    // expected -- 3 x 2000 = 6000, below the real 10000 minimum
+                }
+            }
+        }
+
+        When("a real buyer's order meets the merchant's real minimum order amount exactly") {
+            val merchantWithMin = Merchant(
+                id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store",
+                status = MerchantStatus.ACTIVE, minOrderAmount = BigDecimal("6000"),
+            )
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchantWithMin)
+            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_minexact", emptyList())
+            every { orderRepository.save(any()) } answers { firstArg() }
+
+            val detail = service.placeOrder("buyer_1", "merchant_1", listOf(OrderItemRequest("product_1", 3)), "addr")
+
+            Then("it succeeds -- meeting the minimum exactly is not the same as falling below it") {
+                detail.order.totalAmount shouldBe BigDecimal("6000")
+            }
+        }
+
         When("ordering from your own store") {
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
 

@@ -49,6 +49,7 @@ class RiderNotRegisteredException(message: String) : RuntimeException(message)
 class RiderNotAvailableException(message: String) : RuntimeException(message)
 class RiderAlreadyOnDeliveryException(message: String) : RuntimeException(message)
 class DeliveryAlreadyClaimedException(message: String) : RuntimeException(message)
+class MinOrderAmountNotMetException(message: String) : RuntimeException(message)
 
 data class OrderItemRequest(val productId: String, val quantity: Int)
 data class OrderDetail(val order: Order, val items: List<OrderItem>)
@@ -161,6 +162,19 @@ class OrderService(
             Resolved(product.id, product.name, unitPrice, req.quantity)
         }
         val totalAmount = resolved.fold(BigDecimal.ZERO) { acc, r -> acc + r.unitPrice.multiply(BigDecimal(r.quantity)) }
+
+        // Real 가게별 최소주문금액 (per-merchant minimum order amount) enforcement --
+        // `Merchant.minOrderAmount`/`setMinOrderAmount` were already real and
+        // merchant-settable, shown to buyers in `ShoppingController`'s own catalog
+        // response, but never actually checked at order time anywhere in this backend
+        // -- the same real gap found and fixed the same day in
+        // `EatsOrderService.placeOrder`, by re-reading this already-shipped field's own
+        // callers before building a new feature.
+        val minOrderAmount = merchant.minOrderAmount
+        if (minOrderAmount != null && totalAmount < minOrderAmount) {
+            throw MinOrderAmountNotMetException("This store requires a minimum order of $minOrderAmount RWF")
+        }
+
         val fee = totalAmount.multiply(feeRate).setScale(2, RoundingMode.HALF_UP)
         val netToMerchant = totalAmount.subtract(fee)
 

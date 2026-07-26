@@ -37,6 +37,7 @@ import rw.itunda.commerce.InvalidQuantityException
 import rw.itunda.commerce.InvalidReturnReasonException
 import rw.itunda.commerce.MerchantNoWalletException
 import rw.itunda.commerce.MerchantNotFoundException
+import rw.itunda.commerce.MinOrderAmountNotMetException
 import rw.itunda.commerce.OrderItemNotFoundException
 import rw.itunda.commerce.OrderItemRequest
 import rw.itunda.commerce.OrderNotFoundException
@@ -407,6 +408,10 @@ class OrderController(
     @ExceptionHandler(EmptyOrderException::class)
     fun handleEmptyOrder(ex: EmptyOrderException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("EMPTY_ORDER", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(MinOrderAmountNotMetException::class)
+    fun handleMinOrderAmountNotMet(ex: MinOrderAmountNotMetException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MIN_ORDER_AMOUNT_NOT_MET", ex.message ?: "Unprocessable"))
 
     @ExceptionHandler(InvalidDeliveryAddressException::class)
     fun handleInvalidAddress(ex: InvalidDeliveryAddressException) =

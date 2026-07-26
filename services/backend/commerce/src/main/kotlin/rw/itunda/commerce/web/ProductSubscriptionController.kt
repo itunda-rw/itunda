@@ -20,6 +20,7 @@ import rw.itunda.commerce.InvalidProductSubscriptionException
 import rw.itunda.commerce.InvalidQuantityException
 import rw.itunda.commerce.MerchantNoWalletException
 import rw.itunda.commerce.MerchantNotFoundException
+import rw.itunda.commerce.MinOrderAmountNotMetException
 import rw.itunda.commerce.ProductSubscriptionNotFoundException
 import rw.itunda.commerce.ProductSubscriptionProductNotFoundException
 import rw.itunda.commerce.ProductSubscriptionService
@@ -106,6 +107,10 @@ class ProductSubscriptionController(
     @ExceptionHandler(InvalidQuantityException::class)
     fun handleInvalidQuantity(ex: InvalidQuantityException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_QUANTITY", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(MinOrderAmountNotMetException::class)
+    fun handleMinOrderAmountNotMet(ex: MinOrderAmountNotMetException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MIN_ORDER_AMOUNT_NOT_MET", ex.message ?: "Unprocessable"))
 
     @ExceptionHandler(BuyerNoWalletException::class, MerchantNoWalletException::class)
     fun handleNoWallet(ex: RuntimeException) =

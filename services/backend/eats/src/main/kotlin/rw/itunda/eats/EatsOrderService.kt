@@ -65,6 +65,7 @@ class MissingRequiredMenuOptionException(message: String) : RuntimeException(mes
 class InvalidMenuOptionSelectionException(message: String) : RuntimeException(message)
 class ScheduledOrdersNotSupportedException(message: String) : RuntimeException(message)
 class InvalidScheduledOrderTimeException(message: String) : RuntimeException(message)
+class MinOrderAmountNotMetException(message: String) : RuntimeException(message)
 
 // Real menu-options selection (2026-07-21, v1: required single-select only) --
 // `selectedChoiceIds` is empty for the overwhelming majority of pre-existing menu items
@@ -371,6 +372,20 @@ class EatsOrderService(
             Resolved(menuItem.id, menuItem.name, menuItem.price.add(optionsDelta), req.quantity, selectedOptionsJson)
         }
         val itemsSubtotal = resolved.fold(BigDecimal.ZERO) { acc, r -> acc + r.unitPrice.multiply(BigDecimal(r.quantity)) }
+
+        // Real 가게별 최소주문금액 (per-restaurant minimum order amount) enforcement --
+        // `Merchant.minOrderAmount`/`setMinOrderAmount` were already real and
+        // merchant-settable, shown to buyers in `ShoppingController`'s own catalog
+        // response, but never actually checked anywhere at order time -- a real gap
+        // found by re-reading this already-shipped field's own callers before building
+        // a new feature, the same technique that already found the TrustScoreService/
+        // GiftVoucherService bugs earlier this session. A restaurant that opted into a
+        // real minimum now actually enforces it, not just displays it.
+        val minOrderAmount = restaurant.minOrderAmount
+        if (minOrderAmount != null && itemsSubtotal < minOrderAmount) {
+            throw MinOrderAmountNotMetException("This restaurant requires a minimum order of $minOrderAmount RWF")
+        }
+
         val platformFee = itemsSubtotal.multiply(platformFeeRate).setScale(2, RoundingMode.HALF_UP)
         val netToRestaurant = itemsSubtotal.subtract(platformFee)
 

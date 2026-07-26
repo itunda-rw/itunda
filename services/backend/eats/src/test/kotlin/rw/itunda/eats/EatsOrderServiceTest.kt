@@ -173,6 +173,45 @@ class EatsOrderServiceTest : BehaviorSpec({
             }
         }
 
+        When("a real buyer's order falls below the restaurant's real minimum order amount") {
+            val restaurantWithMin = Merchant(
+                id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill",
+                status = MerchantStatus.ACTIVE, minOrderAmount = BigDecimal("10000"),
+            )
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithMin)
+            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+
+            Then("it's honestly rejected -- this real, already-shipped field was never actually enforced anywhere before") {
+                try {
+                    service.placeOrder("buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 2)), "KG 9 Ave")
+                    throw AssertionError("expected MinOrderAmountNotMetException")
+                } catch (e: MinOrderAmountNotMetException) {
+                    // expected -- 2 x 3000 = 6000, below the real 10000 minimum
+                }
+            }
+        }
+
+        When("a real buyer's order meets the restaurant's real minimum order amount exactly") {
+            val restaurantWithMin = Merchant(
+                id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill",
+                status = MerchantStatus.ACTIVE, minOrderAmount = BigDecimal("6000"),
+            )
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurantWithMin)
+            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_minexact", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            val detail = service.placeOrder("buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 2)), "KG 9 Ave")
+
+            Then("it succeeds -- meeting the minimum exactly is not the same as falling below it") {
+                detail.order.itemsSubtotal shouldBe BigDecimal("6000")
+            }
+        }
+
         When("a real buyer places a real 배달의민족 예약주문 (scheduled order) at a restaurant that opted in") {
             val schedulingRestaurant = Merchant(
                 id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill",
