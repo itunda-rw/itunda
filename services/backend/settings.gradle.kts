@@ -37,5 +37,6 @@ include(
     ":agents",
     ":rideshare",
     ":vehicle",
+    ":family",
     ":app"
 )

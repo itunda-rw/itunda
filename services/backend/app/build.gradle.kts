@@ -47,6 +47,7 @@ dependencies {
     implementation(project(":gift"))
     implementation(project(":rideshare"))
     implementation(project(":vehicle"))
+    implementation(project(":family"))
     implementation(project(":splitbill"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-security")

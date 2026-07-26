@@ -78,6 +78,10 @@ import LiveRiderMap from './LiveRiderMap';
 import { searchPlaces, type PlaceSearchResult } from './lib/maps';
 import { fetchMiniAppCatalog, type PartnerMiniApp } from './lib/partners';
 import { fetchMyVehicles, fetchVehicleValuation, registerVehicle, removeVehicle, updateVehicleMileage, type Vehicle, type VehicleValuation } from './lib/vehicles';
+import {
+  fetchChildOverview, fetchMyChildren, fetchMyGuardians, fetchMyInvites, inviteChild, respondToInvite, revokeFamilyLink,
+  type ChildOverview, type FamilyLinkView,
+} from './lib/family';
 import { cancelScheduledTransfer, createScheduledTransfer, fetchMyScheduledTransfers, type ScheduledTransfer } from './lib/scheduledTransfers';
 import {
   cancelAutoTransfer, createAutoTransfer, fetchMyAutoTransfers, pauseAutoTransfer, resumeAutoTransfer,
@@ -1481,6 +1485,7 @@ function MyView() {
         <div style={rowStyle}><span>Property listed</span><span>{myPropertyListingsCount}</span></div>
       </div>
       <MyVehiclesCard />
+      <FamilyLinkCard />
       {miniApps.length > 0 && (
         <div className="toss-card" style={{ padding: '16px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Mini apps</h3>
@@ -1667,6 +1672,173 @@ function MyVehiclesCard() {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// Real Toss 유스 (Toss Youth)-style guardian-child link -- see lib/family.ts's own doc
+// comment for the full sourced account and honest scope boundary (real read-only
+// spending oversight only; allowance reuses AutoTransfer/ScheduledTransfer above).
+function FamilyLinkCard() {
+  const [invites, setInvites] = useState<FamilyLinkView['link'][] | null>(null);
+  const [children, setChildren] = useState<FamilyLinkView[] | null>(null);
+  const [guardians, setGuardians] = useState<FamilyLinkView[] | null>(null);
+  const [showInvite, setShowInvite] = useState(false);
+  const [childPhone, setChildPhone] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [openOverviewFor, setOpenOverviewFor] = useState<string | null>(null);
+  const [overview, setOverview] = useState<ChildOverview | null>(null);
+
+  const load = () => {
+    fetchMyInvites().then(setInvites).catch(() => {});
+    fetchMyChildren().then(setChildren).catch(() => {});
+    fetchMyGuardians().then(setGuardians).catch(() => {});
+  };
+
+  useEffect(load, []);
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!childPhone.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await inviteChild(childPhone.trim());
+      setChildPhone('');
+      setShowInvite(false);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send this invitation.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRespond = async (id: string, accept: boolean) => {
+    setBusyId(id);
+    setError(null);
+    try {
+      await respondToInvite(id, accept);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not respond to this invitation.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleRevoke = async (id: string) => {
+    setBusyId(id);
+    setError(null);
+    try {
+      await revokeFamilyLink(id);
+      setOpenOverviewFor(null);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not unlink this account.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleToggleOverview = async (childUserId: string) => {
+    if (openOverviewFor === childUserId) {
+      setOpenOverviewFor(null);
+      return;
+    }
+    setOpenOverviewFor(childUserId);
+    try {
+      setOverview(await fetchChildOverview(childUserId));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not load this overview.');
+    }
+  };
+
+  const hasAnything = (invites?.length ?? 0) > 0 || (children?.length ?? 0) > 0 || (guardians?.length ?? 0) > 0;
+
+  return (
+    <div className="toss-card" style={{ padding: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Family</h3>
+        <button className="toss-btn toss-btn-secondary" onClick={() => setShowInvite((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+          {showInvite ? 'Cancel' : '+ Link a family member'}
+        </button>
+      </div>
+
+      {showInvite && (
+        <form onSubmit={handleInvite} style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+          <input
+            type="text" placeholder="Phone number" value={childPhone} onChange={(e) => setChildPhone(e.target.value)} required
+            style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? '…' : 'Invite'}</button>
+        </form>
+      )}
+
+      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+
+      {(invites ?? []).length > 0 && (
+        <div style={{ marginBottom: '10px' }}>
+          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-500)', marginBottom: '6px' }}>Pending invitations</p>
+          {(invites ?? []).map((inv) => (
+            <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0' }}>
+              <p style={{ fontSize: '13px' }}>Family link request</p>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button className="toss-btn toss-btn-primary" disabled={busyId === inv.id} onClick={() => handleRespond(inv.id, true)} style={{ fontSize: '12px', padding: '6px 10px' }}>Accept</button>
+                <button className="toss-btn toss-btn-secondary" disabled={busyId === inv.id} onClick={() => handleRespond(inv.id, false)} style={{ fontSize: '12px', padding: '6px 10px' }}>Decline</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {(children ?? []).length > 0 && (
+        <div style={{ marginBottom: '10px' }}>
+          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-500)', marginBottom: '6px' }}>Linked children</p>
+          {(children ?? []).map((c) => (
+            <div key={c.link.id} style={{ padding: '6px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <p style={{ fontSize: '13px', fontWeight: 700 }}>{c.childName}</p>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button className="toss-btn toss-btn-secondary" onClick={() => handleToggleOverview(c.link.childUserId)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+                    {openOverviewFor === c.link.childUserId ? 'Hide' : 'View'}
+                  </button>
+                  <button className="toss-btn toss-btn-secondary" disabled={busyId === c.link.id} onClick={() => handleRevoke(c.link.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+                    Unlink
+                  </button>
+                </div>
+              </div>
+              {openOverviewFor === c.link.childUserId && overview && (
+                <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+                  <p>Balance: <strong style={{ color: 'var(--toss-grey-900)' }}>{overview.walletBalance.toLocaleString()} RWF</strong></p>
+                  {overview.recentTransactions.slice(0, 5).map((t) => (
+                    <p key={t.id}>{t.description} · {t.amount.toLocaleString()} RWF</p>
+                  ))}
+                  {overview.recentTransactions.length === 0 && <p>No transactions yet.</p>}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {(guardians ?? []).length > 0 && (
+        <div>
+          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-500)', marginBottom: '6px' }}>Your guardians</p>
+          {(guardians ?? []).map((g) => (
+            <div key={g.link.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+              <p style={{ fontSize: '13px' }}>{g.guardianName}</p>
+              <button className="toss-btn toss-btn-secondary" disabled={busyId === g.link.id} onClick={() => handleRevoke(g.link.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+                Unlink
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!hasAnything && <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No family members linked yet.</p>}
     </div>
   );
 }

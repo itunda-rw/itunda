@@ -1,0 +1,140 @@
+package rw.itunda.family
+
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.FamilyLink
+import rw.itunda.core.domain.FamilyLinkStatus
+import rw.itunda.core.domain.Notification
+import rw.itunda.core.domain.Transaction
+import rw.itunda.core.domain.WalletType
+import rw.itunda.core.repository.FamilyLinkRepository
+import rw.itunda.core.repository.NotificationRepository
+import rw.itunda.core.repository.TransactionRepository
+import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.repository.WalletRepository
+import java.math.BigDecimal
+import java.time.Duration
+import java.time.Instant
+import java.util.UUID
+
+class FamilyLinkNotFoundException(message: String) : RuntimeException(message)
+class FamilyLinkChildNotFoundException(message: String) : RuntimeException(message)
+class FamilyLinkSelfException(message: String) : RuntimeException(message)
+class FamilyLinkAlreadyExistsException(message: String) : RuntimeException(message)
+class FamilyLinkNotPendingException(message: String) : RuntimeException(message)
+class FamilyLinkNotActiveException(message: String) : RuntimeException(message)
+class FamilyLinkUnauthorizedException(message: String) : RuntimeException(message)
+
+data class FamilyLinkView(val link: FamilyLink, val guardianName: String, val childName: String)
+data class ChildOverview(val childUserId: String, val childName: String, val walletBalance: BigDecimal, val recentTransactions: List<Transaction>)
+
+/**
+ * Real Toss 유스 (Toss Youth)-style guardian-child account link -- see FamilyLink.kt's
+ * own doc comment for the full sourced account and honest scope boundary. Allowance
+ * itself reuses the already-real `AutoTransfer`/`ScheduledTransfer` features by design
+ * -- this service only ever manages the relationship and read-only oversight, never a
+ * second money-movement path.
+ */
+@Service
+class FamilyLinkService(
+    private val familyLinkRepository: FamilyLinkRepository,
+    private val userRepository: UserRepository,
+    private val walletRepository: WalletRepository,
+    private val transactionRepository: TransactionRepository,
+    private val notificationRepository: NotificationRepository,
+    private val rateLimiter: RateLimiter,
+) {
+    @Transactional
+    fun inviteChild(guardianUserId: String, childPhoneNumber: String): FamilyLink {
+        rateLimiter.checkLimit("family:invite:$guardianUserId", limit = 10, window = Duration.ofHours(1))
+
+        val trimmedPhone = childPhoneNumber.trim()
+        val child = userRepository.findByPhoneNumber(trimmedPhone) ?: throw FamilyLinkChildNotFoundException("No itunda account found for this phone number")
+        if (child.id == guardianUserId) throw FamilyLinkSelfException("Cannot link your own account as a child")
+
+        val existing = familyLinkRepository.findByGuardianUserIdAndChildUserIdAndStatusIn(
+            guardianUserId, child.id, listOf(FamilyLinkStatus.PENDING, FamilyLinkStatus.ACTIVE),
+        )
+        if (existing.isNotEmpty()) throw FamilyLinkAlreadyExistsException("A link with this account already exists or is pending")
+
+        val guardian = userRepository.findById(guardianUserId).orElseThrow { FamilyLinkChildNotFoundException("Guardian account not found") }
+        val link = familyLinkRepository.save(FamilyLink(id = "familylink_${UUID.randomUUID()}", guardianUserId = guardianUserId, childUserId = child.id))
+
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = child.id, type = "FAMILY_LINK_INVITED",
+                title = "Family link invitation", body = "${guardian.firstName} ${guardian.lastName} wants to link your account as a family member.",
+                isRead = false, createdAt = Instant.now(), dataJson = "{\"linkId\":\"${link.id}\"}",
+            ),
+        )
+        return link
+    }
+
+    fun getMyInvitesAsChild(childUserId: String): List<FamilyLink> = familyLinkRepository.findByChildUserIdAndStatus(childUserId, FamilyLinkStatus.PENDING)
+
+    @Transactional
+    fun respondToInvite(childUserId: String, linkId: String, accept: Boolean): FamilyLink {
+        val link = familyLinkRepository.findByIdAndChildUserId(linkId, childUserId) ?: throw FamilyLinkNotFoundException("Invitation not found")
+        if (link.status != FamilyLinkStatus.PENDING) throw FamilyLinkNotPendingException("This invitation has already been responded to")
+        link.status = if (accept) FamilyLinkStatus.ACTIVE else FamilyLinkStatus.DECLINED
+        link.respondedAt = Instant.now()
+        val saved = familyLinkRepository.save(link)
+
+        if (accept) {
+            val child = userRepository.findById(childUserId).orElse(null)
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = link.guardianUserId, type = "FAMILY_LINK_ACCEPTED",
+                    title = "Family link accepted", body = "${child?.firstName ?: "Your family member"} accepted your family link invitation.",
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"linkId\":\"${link.id}\"}",
+                ),
+            )
+        }
+        return saved
+    }
+
+    fun getMyChildren(guardianUserId: String): List<FamilyLinkView> =
+        familyLinkRepository.findByGuardianUserIdAndStatus(guardianUserId, FamilyLinkStatus.ACTIVE).map(::toView)
+
+    fun getMyGuardians(childUserId: String): List<FamilyLinkView> =
+        familyLinkRepository.findByChildUserIdAndStatus(childUserId, FamilyLinkStatus.ACTIVE).map(::toView)
+
+    private fun toView(link: FamilyLink): FamilyLinkView {
+        val guardian = userRepository.findById(link.guardianUserId).orElse(null)
+        val child = userRepository.findById(link.childUserId).orElse(null)
+        return FamilyLinkView(
+            link = link,
+            guardianName = guardian?.let { "${it.firstName} ${it.lastName}" } ?: "Unknown",
+            childName = child?.let { "${it.firstName} ${it.lastName}" } ?: "Unknown",
+        )
+    }
+
+    @Transactional
+    fun revokeLink(userId: String, linkId: String): FamilyLink {
+        val link = familyLinkRepository.findByIdAndGuardianUserId(linkId, userId)
+            ?: familyLinkRepository.findByIdAndChildUserId(linkId, userId)
+            ?: throw FamilyLinkNotFoundException("Family link not found")
+        if (link.status != FamilyLinkStatus.ACTIVE) throw FamilyLinkNotActiveException("Only an active family link can be revoked")
+        link.status = FamilyLinkStatus.REVOKED
+        link.respondedAt = Instant.now()
+        return familyLinkRepository.save(link)
+    }
+
+    // Real read-only oversight -- the guardian's own view of a real child's wallet
+    // balance and transaction history, gated by a real ACTIVE FamilyLink, never a
+    // spend-limit enforcement mechanism (see FamilyLink.kt's own doc comment for why).
+    fun getChildOverview(guardianUserId: String, childUserId: String): ChildOverview {
+        val link = familyLinkRepository.findByGuardianUserIdAndChildUserIdAndStatus(guardianUserId, childUserId, FamilyLinkStatus.ACTIVE)
+            ?: throw FamilyLinkUnauthorizedException("No active family link with this account")
+        val child = userRepository.findById(childUserId).orElseThrow { FamilyLinkChildNotFoundException("Child account not found") }
+        val wallet = walletRepository.findByUserIdAndType(childUserId, WalletType.MAIN)
+        val transactions = transactionRepository.findBySenderIdOrRecipientIdOrderByCreatedAtDesc(childUserId, childUserId).take(20)
+        return ChildOverview(
+            childUserId = childUserId,
+            childName = "${child.firstName} ${child.lastName}",
+            walletBalance = wallet?.balance ?: BigDecimal.ZERO,
+            recentTransactions = transactions,
+        )
+    }
+}
