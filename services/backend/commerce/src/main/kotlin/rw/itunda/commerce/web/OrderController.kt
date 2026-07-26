@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import rw.itunda.core.domain.OrderReturnType
 import rw.itunda.core.domain.OrderStatus
 import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
@@ -31,22 +32,33 @@ import rw.itunda.commerce.InvalidDeliveryAddressException
 import rw.itunda.commerce.InvalidOrderStatusTransitionException
 import rw.itunda.commerce.InvalidProductRatingException
 import rw.itunda.commerce.InvalidQuantityException
+import rw.itunda.commerce.InvalidReturnReasonException
 import rw.itunda.commerce.MerchantNoWalletException
 import rw.itunda.commerce.MerchantNotFoundException
 import rw.itunda.commerce.OrderItemNotFoundException
 import rw.itunda.commerce.OrderItemRequest
 import rw.itunda.commerce.OrderNotFoundException
 import rw.itunda.commerce.OrderProductNotFoundException
+import rw.itunda.commerce.OrderReturnService
 import rw.itunda.commerce.OrderService
 import rw.itunda.commerce.ProductAlreadyReviewedException
 import rw.itunda.commerce.ProductFavoriteService
 import rw.itunda.commerce.ProductNotYetDeliveredException
 import rw.itunda.commerce.ProductReviewService
+import rw.itunda.commerce.ReturnAlreadyRequestedException
+import rw.itunda.commerce.ReturnOrderNotDeliveredException
+import rw.itunda.commerce.ReturnOrderNotFoundException
+import rw.itunda.commerce.ReturnRequestAlreadyDecidedException
+import rw.itunda.commerce.ReturnRequestNotFoundException
+import rw.itunda.commerce.ReturnRequestNotSellerException
+import rw.itunda.commerce.ReturnWindowExpiredException
 import rw.itunda.commerce.SelfOrderException
 
 data class PlaceOrderRequest(val merchantId: String, val items: List<OrderItemRequest>, val deliveryAddress: String)
 data class UpdateOrderStatusRequest(val status: OrderStatus)
 data class SubmitProductReviewRequest(val rating: Int, val comment: String? = null)
+data class RequestReturnRequest(val type: OrderReturnType, val reasonCode: String, val reasonNote: String? = null)
+data class DecideReturnRequest(val approve: Boolean)
 
 // Real Coupang-style checkout -- see OrderService's own doc comment for the full
 // account, including the honest "self-declared fulfillment, no real courier network"
@@ -58,6 +70,7 @@ class OrderController(
     private val idempotencyService: IdempotencyService,
     private val productReviewService: ProductReviewService,
     private val productFavoriteService: ProductFavoriteService,
+    private val orderReturnService: OrderReturnService,
 ) {
     @PostMapping
     fun placeOrder(
@@ -118,6 +131,47 @@ class OrderController(
     ): ResponseEntity<Map<String, Any?>> {
         val order = orderService.cancelOrder(currentUser.userId, orderId)
         return ResponseEntity.ok(mapOf("success" to true, "order" to order))
+    }
+
+    // Real post-delivery Return & Exchange requests (2026-07-26) -- see
+    // OrderReturnService's own doc comment for the full account, including why this is
+    // genuinely distinct from cancelOrder above.
+    @PostMapping("/{orderId}/return")
+    fun requestReturn(
+        @PathVariable orderId: String,
+        @RequestBody request: RequestReturnRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val returnRequest = orderReturnService.requestReturn(currentUser.userId, orderId, request.type, request.reasonCode, request.reasonNote)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "returnRequest" to returnRequest))
+    }
+
+    @GetMapping("/returns/my-requests")
+    fun getMyReturnRequests(
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = orderReturnService.getMyReturnRequests(currentUser.userId, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "returnRequests" to page.content) + pageMeta(page))
+    }
+
+    @GetMapping("/returns/merchant-queue")
+    fun getMerchantReturnQueue(
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = orderReturnService.getMerchantReturnQueue(currentUser.userId, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "returnRequests" to page.content) + pageMeta(page))
+    }
+
+    @PostMapping("/returns/{returnRequestId}/decide")
+    fun decideReturnRequest(
+        @PathVariable returnRequestId: String,
+        @RequestBody request: DecideReturnRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val returnRequest = orderReturnService.decide(currentUser.userId, returnRequestId, request.approve)
+        return ResponseEntity.ok(mapOf("success" to true, "returnRequest" to returnRequest))
     }
 
     // Real post-delivery product reviews (2026-07-20) -- see ProductReviewService's own
@@ -238,6 +292,38 @@ class OrderController(
     @ExceptionHandler(InvalidOrderStatusTransitionException::class)
     fun handleInvalidTransition(ex: InvalidOrderStatusTransitionException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("INVALID_ORDER_STATUS_TRANSITION", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(ReturnOrderNotFoundException::class)
+    fun handleReturnOrderNotFound(ex: ReturnOrderNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("ORDER_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(ReturnOrderNotDeliveredException::class)
+    fun handleReturnOrderNotDelivered(ex: ReturnOrderNotDeliveredException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("ORDER_NOT_DELIVERED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(ReturnWindowExpiredException::class)
+    fun handleReturnWindowExpired(ex: ReturnWindowExpiredException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("RETURN_WINDOW_EXPIRED", ex.message ?: "Return window expired"))
+
+    @ExceptionHandler(ReturnAlreadyRequestedException::class)
+    fun handleReturnAlreadyRequested(ex: ReturnAlreadyRequestedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("RETURN_ALREADY_REQUESTED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(InvalidReturnReasonException::class)
+    fun handleInvalidReturnReason(ex: InvalidReturnReasonException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_RETURN_REASON", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(ReturnRequestNotFoundException::class)
+    fun handleReturnRequestNotFound(ex: ReturnRequestNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RETURN_REQUEST_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(ReturnRequestNotSellerException::class)
+    fun handleReturnRequestNotSeller(ex: ReturnRequestNotSellerException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("RETURN_REQUEST_NOT_YOURS", ex.message ?: "Forbidden"))
+
+    @ExceptionHandler(ReturnRequestAlreadyDecidedException::class)
+    fun handleReturnRequestAlreadyDecided(ex: ReturnRequestAlreadyDecidedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("RETURN_REQUEST_ALREADY_DECIDED", ex.message ?: "Conflict"))
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) =

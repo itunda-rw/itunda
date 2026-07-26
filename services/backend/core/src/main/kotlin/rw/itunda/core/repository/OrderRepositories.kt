@@ -5,6 +5,8 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import rw.itunda.core.domain.Order
 import rw.itunda.core.domain.OrderItem
+import rw.itunda.core.domain.OrderReturnRequest
+import rw.itunda.core.domain.OrderReturnStatus
 
 interface OrderRepository : JpaRepository<Order, String> {
     // Real pagination from day one -- this session's own established convention since
@@ -15,4 +17,10 @@ interface OrderRepository : JpaRepository<Order, String> {
 
 interface OrderItemRepository : JpaRepository<OrderItem, String> {
     fun findByOrderId(orderId: String): List<OrderItem>
+}
+
+interface OrderReturnRequestRepository : JpaRepository<OrderReturnRequest, String> {
+    fun findByOrderId(orderId: String): List<OrderReturnRequest>
+    fun findByBuyerIdOrderByCreatedAtDesc(buyerId: String, pageable: Pageable): Page<OrderReturnRequest>
+    fun findByMerchantIdAndStatusOrderByCreatedAtAsc(merchantId: String, status: OrderReturnStatus, pageable: Pageable): Page<OrderReturnRequest>
 }
