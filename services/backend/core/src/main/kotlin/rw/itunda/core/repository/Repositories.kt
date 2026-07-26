@@ -33,6 +33,7 @@ import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.UserEmoticonPack
 import rw.itunda.core.domain.Wallet
+import rw.itunda.core.domain.WalletAutoTopUpSetting
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.domain.WeeklySavingsInstallment
 import rw.itunda.core.domain.WeeklySavingsPlan
@@ -250,4 +251,8 @@ interface EmoticonRepository : JpaRepository<Emoticon, String> {
 interface UserEmoticonPackRepository : JpaRepository<UserEmoticonPack, String> {
     fun findByUserId(userId: String): List<UserEmoticonPack>
     fun findByUserIdAndPackId(userId: String, packId: String): UserEmoticonPack?
+}
+
+interface WalletAutoTopUpSettingRepository : JpaRepository<WalletAutoTopUpSetting, String> {
+    fun findByWalletId(walletId: String): WalletAutoTopUpSetting?
 }
