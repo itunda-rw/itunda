@@ -1,6 +1,8 @@
 package rw.itunda.core.repository
 
 import jakarta.persistence.LockModeType
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
@@ -21,6 +23,7 @@ import rw.itunda.core.domain.Holding
 import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.LedgerAccount
 import rw.itunda.core.domain.LedgerEntry
+import rw.itunda.core.domain.KeywordAlert
 import rw.itunda.core.domain.LoanAccount
 import rw.itunda.core.domain.PhoneVerificationToken
 import rw.itunda.core.domain.Emoticon
@@ -255,4 +258,19 @@ interface UserEmoticonPackRepository : JpaRepository<UserEmoticonPack, String> {
 
 interface WalletAutoTopUpSettingRepository : JpaRepository<WalletAutoTopUpSetting, String> {
     fun findByWalletId(walletId: String): WalletAutoTopUpSetting?
+}
+
+interface KeywordAlertRepository : JpaRepository<KeywordAlert, String> {
+    fun findByUserIdOrderByCreatedAtDesc(userId: String, pageable: Pageable): Page<KeywordAlert>
+    fun countByUserId(userId: String): Long
+    fun findByUserIdAndKeyword(userId: String, keyword: String): KeywordAlert?
+    fun deleteByUserIdAndId(userId: String, id: String): Long
+
+    // Real match query backing KeywordAlertService.notifyMatchingAlerts -- run once per
+    // new listing, not once per registered alert. `keyword` is always stored trimmed +
+    // lowercased at registration time (see KeywordAlert's own doc comment), so this is
+    // a plain case-insensitive substring check against an already-lowercased title, not
+    // a second normalization step here.
+    @Query("SELECT k FROM KeywordAlert k WHERE :lowercasedTitle LIKE CONCAT('%', k.keyword, '%')")
+    fun findMatchingAlerts(@Param("lowercasedTitle") lowercasedTitle: String): List<KeywordAlert>
 }

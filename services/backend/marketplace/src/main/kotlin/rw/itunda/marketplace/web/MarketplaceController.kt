@@ -44,6 +44,7 @@ import rw.itunda.marketplace.InvalidDisputeReasonException
 import rw.itunda.marketplace.InvalidEscrowStatusException
 import rw.itunda.marketplace.InvalidListingException
 import rw.itunda.marketplace.InvalidOfferAmountException
+import rw.itunda.marketplace.KeywordAlertService
 import rw.itunda.marketplace.ListingFavoriteService
 import rw.itunda.marketplace.ListingNotActiveException
 import rw.itunda.marketplace.ListingNotFoundException
@@ -88,6 +89,7 @@ class MarketplaceController(
     private val userRepository: UserRepository,
     private val hoodReviewService: HoodReviewService,
     private val idempotencyService: IdempotencyService,
+    private val keywordAlertService: KeywordAlertService,
 ) {
 
     @PostMapping("/listings")
@@ -99,6 +101,10 @@ class MarketplaceController(
             currentUser.userId, request.title, request.description, request.price, request.category,
             request.latitude, request.longitude, request.meetingPlace, request.photoUrl,
         )
+        // Real 당근마켓 Keyword Alert (2026-07-26) -- see KeywordAlertService's own doc
+        // comment for why this lives here, at the controller layer, rather than inside
+        // MarketplaceService.createListing itself.
+        keywordAlertService.notifyMatchingAlerts(listing)
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "listing" to listing))
     }
 
