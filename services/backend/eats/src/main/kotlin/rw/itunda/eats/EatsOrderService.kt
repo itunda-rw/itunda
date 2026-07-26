@@ -431,6 +431,28 @@ class EatsOrderService(
         }
         eatsOrderItemRepository.saveAll(orderItems)
 
+        // Real "new order" alert for the restaurant (2026-07-26) -- a genuine, live gap
+        // found while researching real Baemin/Coupang Eats own-restaurant-facing
+        // features: `placeOrder` never notified the restaurant owner at all, meaning
+        // the only way to learn a real order arrived was manually polling
+        // GET /orders/restaurant-orders. Every real food-delivery platform alerts the
+        // seller the moment an order lands -- this is the honest baseline, not a named
+        // feature. Best-effort, same "an auxiliary side-effect can't block the real
+        // operation it's attached to" discipline this class's own notifyNearestRiders
+        // already establishes.
+        try {
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = restaurant.ownerUserId, type = "NEW_EATS_ORDER",
+                    title = "New order received",
+                    body = "A new order for ${orderItems.sumOf { it.quantity }} item(s) just came in -- $totalAmount RWF",
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"orderId\":\"${order.id}\"}",
+                ),
+            )
+        } catch (e: Exception) {
+            // Non-critical -- the real order already completed and succeeded.
+        }
+
         return EatsOrderDetail(order, orderItems)
     }
 

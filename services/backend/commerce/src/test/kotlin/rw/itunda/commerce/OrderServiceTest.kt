@@ -102,6 +102,10 @@ class OrderServiceTest : BehaviorSpec({
                 feeLeg.amount shouldBe BigDecimal("90.00")
                 feeLeg.accountType shouldBe LedgerAccountType.FEE_REVENUE
             }
+
+            Then("it real-alerts the real merchant owner -- the real gap where a new order arrived with zero notification") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "seller_1" && it.type == "NEW_COMMERCE_ORDER" }) }
+            }
         }
 
         When("ordering from your own store") {

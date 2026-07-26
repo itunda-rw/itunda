@@ -140,6 +140,10 @@ class EatsOrderServiceTest : BehaviorSpec({
                 holdingLeg.amount shouldBe BigDecimal("1500")
                 holdingLeg.accountType shouldBe LedgerAccountType.EATS_DELIVERY_HOLDING
             }
+
+            Then("it real-alerts the real restaurant owner -- the real gap where a new order arrived with zero notification") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "owner_1" && it.type == "NEW_EATS_ORDER" }) }
+            }
         }
 
         When("a real buyer places a real Baemin-style 포장주문 (Pickup) order, no delivery address given") {

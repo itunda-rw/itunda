@@ -209,6 +209,25 @@ class OrderService(
         }
         orderItemRepository.saveAll(orderItems)
 
+        // Real "new order" alert for the merchant (2026-07-26) -- see
+        // EatsOrderService.placeOrder's own doc comment for the full account of this
+        // same real gap found the same day: placeOrder never notified the merchant
+        // owner at all, meaning the only way to learn a real order arrived was manually
+        // polling GET /merchant-orders. Best-effort, same "auxiliary side-effect can't
+        // block the real operation" discipline this codebase already establishes.
+        try {
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = merchant.ownerUserId, type = "NEW_COMMERCE_ORDER",
+                    title = "New order received",
+                    body = "A new order for ${orderItems.sumOf { it.quantity }} item(s) just came in -- $totalAmount RWF",
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"orderId\":\"${order.id}\"}",
+                ),
+            )
+        } catch (e: Exception) {
+            // Non-critical -- the real order already completed and succeeded.
+        }
+
         return OrderDetail(order, orderItems)
     }
 
