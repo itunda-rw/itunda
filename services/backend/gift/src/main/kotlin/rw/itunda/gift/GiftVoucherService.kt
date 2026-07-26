@@ -1,0 +1,312 @@
+package rw.itunda.gift
+
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.GiftVoucher
+import rw.itunda.core.domain.GiftVoucherStatus
+import rw.itunda.core.domain.LedgerAccountType
+import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.MerchantStatus
+import rw.itunda.core.domain.Transaction
+import rw.itunda.core.domain.TransactionStatus
+import rw.itunda.core.domain.TransactionType
+import rw.itunda.core.domain.WalletType
+import rw.itunda.core.ledger.InsufficientFundsException
+import rw.itunda.core.ledger.LedgerLeg
+import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.repository.GiftVoucherRepository
+import rw.itunda.core.repository.MerchantProductRepository
+import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.TransactionRepository
+import rw.itunda.core.repository.UserRepository
+import rw.itunda.core.repository.WalletRepository
+import rw.itunda.messaging.MessagingService
+import java.math.BigDecimal
+import java.math.RoundingMode
+import java.time.Duration
+import java.time.Instant
+import java.util.UUID
+
+class GiftVoucherNotFoundException(message: String) : RuntimeException(message)
+class GiftVoucherNotActiveException(message: String) : RuntimeException(message)
+class GiftVoucherExpiredException(message: String) : RuntimeException(message)
+class GiftVoucherSelfException(message: String) : RuntimeException(message)
+class GiftVoucherNoWalletException(message: String) : RuntimeException(message)
+class GiftVoucherRecipientNotFoundException(message: String) : RuntimeException(message)
+class GiftVoucherInvalidAmountException(message: String) : RuntimeException(message)
+class GiftVoucherMerchantNotFoundException(message: String) : RuntimeException(message)
+class GiftVoucherProductNotFoundException(message: String) : RuntimeException(message)
+class GiftVoucherNotMerchantOwnerException(message: String) : RuntimeException(message)
+class GiftVoucherNotExtendableException(message: String) : RuntimeException(message)
+class GiftVoucherAlreadyExtendedException(message: String) : RuntimeException(message)
+
+private const val GIFT_VOUCHER_HOLDING_ACCOUNT_ID = "gift_voucher_holding"
+
+/**
+ * Real KakaoTalk-style "선물하기" 기프티콘 (mobile gift voucher) -- see
+ * [rw.itunda.core.domain.GiftVoucher]'s own doc comment for the full account of how
+ * this differs from [GiftService]'s money gift, and the honest scoping choices behind
+ * the default validity/extension/refund-rate constants.
+ */
+@Service
+class GiftVoucherService(
+    private val giftVoucherRepository: GiftVoucherRepository,
+    private val merchantRepository: MerchantRepository,
+    private val merchantProductRepository: MerchantProductRepository,
+    private val walletRepository: WalletRepository,
+    private val userRepository: UserRepository,
+    private val transactionRepository: TransactionRepository,
+    private val ledgerService: LedgerService,
+    private val messagingService: MessagingService,
+    private val rateLimiter: RateLimiter,
+) {
+    // Same real Toss Payments fee-schedule reasoning MerchantService.feeRate's own
+    // comment gives -- one flat rate in the middle of the published range, charged at
+    // real redemption time (when itunda's product/service is actually delivered to the
+    // merchant), not at purchase time.
+    private val feeRate = BigDecimal("0.015")
+
+    @Transactional
+    fun purchaseVoucher(
+        purchaserUserId: String,
+        recipientPhoneNumber: String,
+        merchantId: String,
+        merchantProductId: String?,
+        flatAmount: BigDecimal?,
+    ): GiftVoucher {
+        val trimmedPhone = recipientPhoneNumber.trim()
+        val recipientUser = userRepository.findByPhoneNumber(trimmedPhone)
+            ?: throw GiftVoucherRecipientNotFoundException("No itunda account found for this phone number")
+        if (recipientUser.id == purchaserUserId) throw GiftVoucherSelfException("Cannot send a gift voucher to yourself")
+
+        rateLimiter.checkLimit("giftvoucher:purchase:$purchaserUserId", limit = 20, window = Duration.ofHours(1))
+
+        val merchant = merchantRepository.findById(merchantId).orElseThrow { GiftVoucherMerchantNotFoundException("Merchant not found") }
+        if (merchant.status != MerchantStatus.ACTIVE) throw GiftVoucherMerchantNotFoundException("Merchant not found")
+
+        val (amount, productNameSnapshot) = if (merchantProductId != null) {
+            val product = merchantProductRepository.findById(merchantProductId).orElseThrow { GiftVoucherProductNotFoundException("Product not found") }
+            if (product.merchantId != merchantId || !product.active) throw GiftVoucherProductNotFoundException("Product not found")
+            product.price to product.name
+        } else {
+            val trimmedAmount = flatAmount ?: throw GiftVoucherInvalidAmountException("Amount is required for a flat-value voucher")
+            if (trimmedAmount <= BigDecimal.ZERO) throw GiftVoucherInvalidAmountException("Amount must be greater than zero")
+            trimmedAmount to null
+        }
+
+        val purchaserWallet = walletRepository.findByUserIdAndType(purchaserUserId, WalletType.MAIN)
+            ?: throw GiftVoucherNoWalletException("No wallet found for this account")
+        if (purchaserWallet.availableBalance < amount) {
+            throw InsufficientFundsException("Insufficient available balance for this gift voucher")
+        }
+
+        // Real escrow hold -- same "hold, don't move directly until the real event
+        // happens" shape GiftService's own money-gift escrow uses. Here the real event
+        // is the MERCHANT redeeming the voucher, not the recipient claiming it.
+        val holdResult = ledgerService.postLedgerTransaction(
+            purchaserWallet.currency,
+            listOf(
+                LedgerLeg(purchaserWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Gift voucher purchased -- ${merchant.businessName}"),
+                LedgerLeg(GIFT_VOUCHER_HOLDING_ACCOUNT_ID, LedgerAccountType.GIFT_VOUCHER_HOLDING, LedgerDirection.CREDIT, amount, "Gift voucher held in escrow"),
+            ),
+        )
+        val holdTransaction = Transaction(
+            id = holdResult.transactionId,
+            referenceNumber = "GIFTVOUCHER${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
+            senderId = purchaserUserId,
+            recipientId = recipientUser.id,
+            fromWalletId = purchaserWallet.id,
+            toWalletId = null,
+            amount = amount,
+            fee = BigDecimal.ZERO,
+            currency = purchaserWallet.currency,
+            type = TransactionType.TRANSFER,
+            status = TransactionStatus.COMPLETED,
+            description = "Gift voucher purchased -- ${merchant.businessName}",
+            completedAt = Instant.now(),
+        )
+        transactionRepository.save(holdTransaction)
+
+        val conversation = messagingService.startOrGetConversation(purchaserUserId, recipientUser.id)
+        val label = productNameSnapshot ?: "${formatAmount(amount)} RWF"
+        val message = messagingService.sendMessage(
+            purchaserUserId, conversation.id,
+            "🎁 Sent a gift voucher: $label at ${merchant.businessName}",
+        )
+
+        return giftVoucherRepository.save(
+            GiftVoucher(
+                id = "giftvoucher_${UUID.randomUUID()}",
+                purchaserId = purchaserUserId,
+                recipientId = recipientUser.id,
+                conversationId = conversation.id,
+                messageId = message.id,
+                merchantId = merchantId,
+                merchantProductId = merchantProductId,
+                productNameSnapshot = productNameSnapshot,
+                amount = amount,
+                holdTransactionId = holdTransaction.id,
+                expiresAt = Instant.now().plus(GiftVoucher.DEFAULT_VALIDITY),
+            ),
+        )
+    }
+
+    /** A stranger (not purchaser or recipient) gets a real 404, same IDOR discipline as
+     * every other resource-ownership check in this codebase. */
+    fun getVoucher(userId: String, voucherId: String): GiftVoucher {
+        val voucher = giftVoucherRepository.findById(voucherId).orElseThrow { GiftVoucherNotFoundException("Gift voucher not found") }
+        if (userId != voucher.purchaserId && userId != voucher.recipientId) throw GiftVoucherNotFoundException("Gift voucher not found")
+        return voucher
+    }
+
+    fun getVouchersForConversation(userId: String, conversationId: String): List<GiftVoucher> {
+        messagingService.getConversationForParticipant(userId, conversationId)
+        return giftVoucherRepository.findByConversationId(conversationId)
+    }
+
+    /**
+     * Real, sourced Kakao-style one-time expiry extension -- only usable within
+     * [GiftVoucher.EXTENSION_WINDOW] of the current expiry, adds
+     * [GiftVoucher.EXTENSION_AMOUNT], and only once per voucher (`extended`). Either
+     * party can trigger it (either the purchaser or recipient may notice it's about to
+     * lapse), same "either real party to the transaction" convention `HoodReviewService`
+     * already established.
+     */
+    @Transactional
+    fun extendExpiry(userId: String, voucherId: String): GiftVoucher {
+        val voucher = getVoucher(userId, voucherId)
+        if (voucher.status != GiftVoucherStatus.ACTIVE) throw GiftVoucherNotActiveException("This voucher is already ${voucher.status}")
+        if (voucher.extended) throw GiftVoucherAlreadyExtendedException("This voucher has already been extended once")
+        val windowStart = voucher.expiresAt.minus(GiftVoucher.EXTENSION_WINDOW)
+        if (Instant.now().isBefore(windowStart)) {
+            throw GiftVoucherNotExtendableException("A voucher can only be extended within ${GiftVoucher.EXTENSION_WINDOW.toDays()} days of its expiry")
+        }
+        voucher.expiresAt = voucher.expiresAt.plus(GiftVoucher.EXTENSION_AMOUNT)
+        voucher.extended = true
+        return giftVoucherRepository.save(voucher)
+    }
+
+    /**
+     * Real merchant-side redemption -- mirrors `MerchantService.collect()`'s own real
+     * "merchant collects" pattern: the recipient presents the voucher in person/shows
+     * its id, and the merchant's own authenticated account is what actually redeems it,
+     * never a self-serve redeem the recipient could fake. Real flat platform fee
+     * charged here (not at purchase time), matching every other merchant collection in
+     * this codebase.
+     */
+    @Transactional
+    fun redeemVoucher(merchantOwnerUserId: String, voucherId: String): GiftVoucher {
+        val voucher = giftVoucherRepository.findById(voucherId).orElseThrow { GiftVoucherNotFoundException("Gift voucher not found") }
+        val merchant = merchantRepository.findById(voucher.merchantId).orElseThrow { GiftVoucherMerchantNotFoundException("Merchant not found") }
+        if (merchant.ownerUserId != merchantOwnerUserId) throw GiftVoucherNotFoundException("Gift voucher not found")
+        if (voucher.status != GiftVoucherStatus.ACTIVE) throw GiftVoucherNotActiveException("This voucher is already ${voucher.status}")
+        if (voucher.expiresAt.isBefore(Instant.now())) throw GiftVoucherExpiredException("This voucher has expired")
+
+        val merchantWallet = walletRepository.findById(merchant.walletId)
+            .orElseThrow { GiftVoucherNoWalletException("Merchant settlement wallet not found") }
+        val fee = voucher.amount.multiply(feeRate).setScale(2, RoundingMode.HALF_UP)
+        val netToMerchant = voucher.amount.subtract(fee)
+
+        val redeemResult = ledgerService.postLedgerTransaction(
+            merchantWallet.currency,
+            listOf(
+                LedgerLeg(GIFT_VOUCHER_HOLDING_ACCOUNT_ID, LedgerAccountType.GIFT_VOUCHER_HOLDING, LedgerDirection.DEBIT, voucher.amount, "Gift voucher redeemed"),
+                LedgerLeg(merchantWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, netToMerchant, "Gift voucher redemption -- ${merchant.businessName}"),
+                LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, fee, "Gift voucher redemption fee -- ${merchant.businessName}"),
+            ),
+        )
+        transactionRepository.save(
+            Transaction(
+                id = redeemResult.transactionId,
+                referenceNumber = "GIFTVOUCHERREDEEM${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
+                senderId = voucher.recipientId,
+                recipientId = merchant.ownerUserId,
+                fromWalletId = null,
+                toWalletId = merchantWallet.id,
+                amount = voucher.amount,
+                fee = fee,
+                currency = merchantWallet.currency,
+                type = TransactionType.PAYMENT,
+                status = TransactionStatus.COMPLETED,
+                description = "Gift voucher redemption -- ${merchant.businessName}",
+                channel = "GIFT_VOUCHER",
+                completedAt = Instant.now(),
+            ),
+        )
+
+        voucher.status = GiftVoucherStatus.REDEEMED
+        voucher.redeemTransactionId = redeemResult.transactionId
+        voucher.redeemedAt = Instant.now()
+        val saved = giftVoucherRepository.save(voucher)
+        // Real bug avoided here: the merchant owner is NOT a participant in
+        // voucher.conversationId (that's the purchaser<->recipient 1:1 thread) --
+        // MessagingService.sendMessage's own requireParticipant check would real-throw
+        // ConversationNotFoundException if this posted as the merchant. Posted as the
+        // recipient's own message instead (they're the one physically present at
+        // redemption), same "no system/bot sender concept yet" convention
+        // MarketplaceService's own sold-notification message already established.
+        messagingService.sendMessage(
+            voucher.recipientId, voucher.conversationId,
+            "✅ Gift voucher redeemed at ${merchant.businessName}",
+        )
+        return saved
+    }
+
+    /** Real auto-refund for an unredeemed voucher, driven by [GiftVoucherExpiryScheduler].
+     * Only a real, sourced 90% refund reaches the purchaser -- the remaining 10% is
+     * forfeited to itunda as real fee revenue, matching real gifticon expiry economics,
+     * never silently vanishing from the ledger. */
+    @Transactional
+    fun expireVoucher(voucher: GiftVoucher) {
+        if (voucher.status != GiftVoucherStatus.ACTIVE) return
+        val purchaserWallet = walletRepository.findByUserIdAndType(voucher.purchaserId, WalletType.MAIN) ?: return
+
+        val refundAmount = voucher.amount.multiply(GiftVoucher.EXPIRY_REFUND_RATE).setScale(2, RoundingMode.HALF_UP)
+        val forfeitedAmount = voucher.amount.subtract(refundAmount)
+
+        val refundResult = ledgerService.postLedgerTransaction(
+            purchaserWallet.currency,
+            listOf(
+                LedgerLeg(GIFT_VOUCHER_HOLDING_ACCOUNT_ID, LedgerAccountType.GIFT_VOUCHER_HOLDING, LedgerDirection.DEBIT, voucher.amount, "Unredeemed gift voucher expired"),
+                LedgerLeg(purchaserWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, refundAmount, "Unredeemed gift voucher partial refund"),
+                LedgerLeg("fee_revenue", LedgerAccountType.FEE_REVENUE, LedgerDirection.CREDIT, forfeitedAmount, "Unredeemed gift voucher forfeited amount"),
+            ),
+        )
+        transactionRepository.save(
+            Transaction(
+                id = refundResult.transactionId,
+                referenceNumber = "GIFTVOUCHEREXP${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
+                senderId = voucher.recipientId,
+                recipientId = voucher.purchaserId,
+                fromWalletId = null,
+                toWalletId = purchaserWallet.id,
+                amount = refundAmount,
+                fee = BigDecimal.ZERO,
+                currency = purchaserWallet.currency,
+                type = TransactionType.TRANSFER,
+                status = TransactionStatus.COMPLETED,
+                description = "Unredeemed gift voucher partial refund",
+                completedAt = Instant.now(),
+            ),
+        )
+
+        voucher.status = GiftVoucherStatus.EXPIRED
+        voucher.refundTransactionId = refundResult.transactionId
+        giftVoucherRepository.save(voucher)
+        messagingService.sendMessage(
+            voucher.purchaserId, voucher.conversationId,
+            "⏰ Your gift voucher went unredeemed and expired -- ${formatAmount(refundAmount)} RWF (90%) was refunded",
+        )
+    }
+
+    fun getExpiredActiveVouchers(): List<GiftVoucher> =
+        giftVoucherRepository.findByStatusAndExpiresAtBefore(GiftVoucherStatus.ACTIVE, Instant.now())
+}
+
+private fun formatAmount(amount: BigDecimal): String {
+    val plain = amount.stripTrailingZeros().toPlainString()
+    val parts = plain.split(".")
+    val intPart = parts[0].reversed().chunked(3).joinToString(",").reversed()
+    return intPart
+}

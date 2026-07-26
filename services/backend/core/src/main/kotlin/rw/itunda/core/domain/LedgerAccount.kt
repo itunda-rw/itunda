@@ -78,6 +78,9 @@ class LedgerAccount(
             // Real KakaoTalk Emoticon Store revenue (2026-07-26) -- see
             // EmoticonService.kt's own doc comment.
             "emoticon_revenue" to "Emoticon Store Revenue",
+            // Real KakaoTalk 선물하기 기프티콘 (mobile gift voucher) holding (2026-07-26) --
+            // see GiftVoucher.kt's own doc comment.
+            "gift_voucher_holding" to "Gift Voucher Escrow Holding",
         )
     }
 }

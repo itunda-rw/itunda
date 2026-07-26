@@ -53,6 +53,12 @@ enum class LedgerAccountType {
     // revenue-account shape FEE_REVENUE already establishes, just its own dedicated
     // account so emoticon sales can be reconciled independently of transaction fees.
     EMOTICON_REVENUE,
+    // Real KakaoTalk 선물하기 기프티콘 (mobile gift voucher) holding (2026-07-26) -- see
+    // GiftVoucher.kt's own doc comment. Same real escrow-clearing-account shape
+    // GIFT_HOLDING already establishes for money gifts: the purchaser's real money
+    // already left their wallet, it just hasn't reached the merchant (redemption) or
+    // been refunded (expiry) yet.
+    GIFT_VOUCHER_HOLDING,
 }
 
 /**
