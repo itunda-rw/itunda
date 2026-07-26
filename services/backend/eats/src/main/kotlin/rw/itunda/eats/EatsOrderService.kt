@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.EatsFulfillmentType
 import rw.itunda.core.domain.EatsOrder
 import rw.itunda.core.domain.EatsOrderItem
 import rw.itunda.core.domain.EatsOrderStatus
@@ -210,12 +211,21 @@ class EatsOrderService(
         deliveryLatitude: Double? = null,
         deliveryLongitude: Double? = null,
         deliveryNotes: String? = null,
+        // Real Baemin-style 포장주문 (Pickup) order type (2026-07-26) -- see this
+        // method's own doc comment further down for the full account. Defaults to
+        // DELIVERY, so every existing caller's behavior is completely unchanged.
+        fulfillmentType: EatsFulfillmentType = EatsFulfillmentType.DELIVERY,
     ): EatsOrderDetail {
         if (items.isEmpty()) {
             throw EmptyEatsOrderException("An order needs at least one item")
         }
+        // A PICKUP order needs no real delivery address -- the buyer collects in
+        // person -- so `deliveryAddress` is never required from the caller for one;
+        // this column stays NOT NULL, so a real, honest display value is stored
+        // instead of an empty string (resolved once the restaurant is looked up
+        // below).
         val trimmedAddress = deliveryAddress.trim()
-        if (trimmedAddress.isEmpty()) {
+        if (fulfillmentType == EatsFulfillmentType.DELIVERY && trimmedAddress.isEmpty()) {
             throw InvalidEatsDeliveryAddressException("A delivery address is required")
         }
         // Real bound, mirroring deliveryNotes' own already-correct length check just
@@ -241,6 +251,10 @@ class EatsOrderService(
         if (restaurant.ownerUserId == buyerId) {
             throw SelfEatsOrderException("Cannot order from your own restaurant")
         }
+        // Real, honest display value for PICKUP -- `deliveryAddress` stays NOT NULL,
+        // and a real "collect from the restaurant" order genuinely has no delivery
+        // address of its own to store.
+        val resolvedAddress = if (fulfillmentType == EatsFulfillmentType.PICKUP) "Pickup at ${restaurant.businessName}" else trimmedAddress
 
         val restaurantWallet = walletRepository.findById(restaurant.walletId)
             .orElseThrow { RestaurantNoWalletException("Restaurant settlement wallet not found") }
@@ -322,34 +336,51 @@ class EatsOrderService(
         val restaurantLat = restaurant.latitude
         val restaurantLng = restaurant.longitude
 
-        // Real geocoding fallback (2026-07-18): when the buyer didn't submit explicit
-        // coordinates, try resolving the free-text delivery address via itunda's own
-        // self-hosted Nominatim -- lets the existing deliveryAddress field drive a real
-        // distance-based fee without needing any client UI changes yet. Falls back to
-        // no coordinates (and therefore the flat fee below) if geocoding is
-        // unconfigured/unreachable/finds no match -- never a fabricated location.
-        val geocoded = if (deliveryLatitude == null && deliveryLongitude == null) {
-            nominatimGeocodingClient.geocode(trimmedAddress)
+        // Real Baemin-style 포장주문 (Pickup): a PICKUP order has no rider, no
+        // delivery, and therefore no real geocoding/distance/delivery-fee computation
+        // to do at all -- unconditionally zero, not just waived the way Baemin Club
+        // membership waives it for DELIVERY orders (see below).
+        val resolvedDeliveryLat: Double?
+        val resolvedDeliveryLng: Double?
+        val distanceKmRounded: BigDecimal?
+        val deliveryFee: BigDecimal
+        if (fulfillmentType == EatsFulfillmentType.PICKUP) {
+            resolvedDeliveryLat = null
+            resolvedDeliveryLng = null
+            distanceKmRounded = null
+            deliveryFee = BigDecimal.ZERO
         } else {
-            null
-        }
-        val resolvedDeliveryLat = deliveryLatitude ?: geocoded?.latitude
-        val resolvedDeliveryLng = deliveryLongitude ?: geocoded?.longitude
+            // Real geocoding fallback (2026-07-18): when the buyer didn't submit
+            // explicit coordinates, try resolving the free-text delivery address via
+            // itunda's own self-hosted Nominatim -- lets the existing deliveryAddress
+            // field drive a real distance-based fee without needing any client UI
+            // changes yet. Falls back to no coordinates (and therefore the flat fee
+            // below) if geocoding is unconfigured/unreachable/finds no match -- never
+            // a fabricated location.
+            val geocoded = if (deliveryLatitude == null && deliveryLongitude == null) {
+                nominatimGeocodingClient.geocode(trimmedAddress)
+            } else {
+                null
+            }
+            resolvedDeliveryLat = deliveryLatitude ?: geocoded?.latitude
+            resolvedDeliveryLng = deliveryLongitude ?: geocoded?.longitude
 
-        val distanceKm = if (resolvedDeliveryLat != null && resolvedDeliveryLng != null && restaurantLat != null && restaurantLng != null) {
-            resolveRealDistanceKm(restaurantLat, restaurantLng, resolvedDeliveryLat, resolvedDeliveryLng)
-        } else {
-            null
-        }
-        val (computedDeliveryFee, distanceKmRounded) = computeDeliveryFee(distanceKm)
-        // Real Baemin Club (배민클럽)-style free delivery (2026-07-26) -- see
-        // EatsMembership.kt's own doc comment. Only waived at a restaurant that has
-        // itself opted in (`participatesInEatsMembership`), never a blanket waiver,
-        // mirroring Baemin's own real "참여 가게" scoping.
-        val deliveryFee = if (restaurant.participatesInEatsMembership && eatsMembershipService.hasActiveMembership(buyerId)) {
-            BigDecimal.ZERO
-        } else {
-            computedDeliveryFee
+            val distanceKm = if (resolvedDeliveryLat != null && resolvedDeliveryLng != null && restaurantLat != null && restaurantLng != null) {
+                resolveRealDistanceKm(restaurantLat, restaurantLng, resolvedDeliveryLat, resolvedDeliveryLng)
+            } else {
+                null
+            }
+            val (computedDeliveryFee, roundedKm) = computeDeliveryFee(distanceKm)
+            distanceKmRounded = roundedKm
+            // Real Baemin Club (배민클럽)-style free delivery (2026-07-26) -- see
+            // EatsMembership.kt's own doc comment. Only waived at a restaurant that has
+            // itself opted in (`participatesInEatsMembership`), never a blanket
+            // waiver, mirroring Baemin's own real "참여 가게" scoping.
+            deliveryFee = if (restaurant.participatesInEatsMembership && eatsMembershipService.hasActiveMembership(buyerId)) {
+                BigDecimal.ZERO
+            } else {
+                computedDeliveryFee
+            }
         }
         val totalAmount = itemsSubtotal.add(deliveryFee)
 
@@ -385,10 +416,10 @@ class EatsOrderService(
         val order = eatsOrderRepository.save(
             EatsOrder(
                 id = "eats_order_${UUID.randomUUID()}", buyerId = buyerId, restaurantId = restaurantId,
-                deliveryAddress = trimmedAddress, itemsSubtotal = itemsSubtotal, deliveryFee = deliveryFee,
+                deliveryAddress = resolvedAddress, itemsSubtotal = itemsSubtotal, deliveryFee = deliveryFee,
                 platformFee = platformFee, totalAmount = totalAmount, transactionId = result.transactionId,
                 deliveryLatitude = resolvedDeliveryLat, deliveryLongitude = resolvedDeliveryLng, distanceKm = distanceKmRounded,
-                deliveryNotes = trimmedNotes,
+                deliveryNotes = trimmedNotes, fulfillmentType = fulfillmentType,
             ),
         )
         val orderItems = resolved.map {
@@ -456,9 +487,14 @@ class EatsOrderService(
         // order id, so they don't need to find it via browse either.
         val now = Instant.now()
         fun hasNoActiveOffer(order: EatsOrder) = order.offerExpiresAt == null || !order.offerExpiresAt!!.isAfter(now)
+        // Real Baemin-style 포장주문 (Pickup) exclusion: a PICKUP order never gets a
+        // rider dispatched or assigned -- see placeOrder/updateRestaurantStatus's own
+        // doc comments -- so it must never appear in a rider's available-deliveries
+        // list or candidate pool.
+        fun isDeliveryFulfillment(order: EatsOrder) = order.fulfillmentType == EatsFulfillmentType.DELIVERY
         if (riderLat == null || riderLng == null) {
             val page = eatsOrderRepository.findByStatusAndRiderIdIsNullOrderByCreatedAtAsc(EatsOrderStatus.READY_FOR_PICKUP, Pageable.unpaged())
-            val filtered = page.content.filter(::hasNoActiveOffer)
+            val filtered = page.content.filter(::hasNoActiveOffer).filter(::isDeliveryFulfillment)
             val start = (pageable.offset).coerceAtMost(filtered.size.toLong()).toInt()
             val end = (start + pageable.pageSize).coerceAtMost(filtered.size)
             return PageImpl(filtered.subList(start, end), pageable, filtered.size.toLong())
@@ -466,7 +502,7 @@ class EatsOrderService(
 
         val candidates = eatsOrderRepository.findByStatusAndRiderIdIsNullOrderByCreatedAtAsc(
             EatsOrderStatus.READY_FOR_PICKUP, Pageable.unpaged(),
-        ).content.filter(::hasNoActiveOffer)
+        ).content.filter(::hasNoActiveOffer).filter(::isDeliveryFulfillment)
         if (candidates.isEmpty()) return PageImpl(emptyList(), pageable, 0)
 
         val restaurantsById = merchantRepository.findAllById(candidates.map { it.restaurantId }.distinct()).associateBy { it.id }
@@ -573,8 +609,45 @@ class EatsOrderService(
             else -> {}
         }
         if (newStatus == EatsOrderStatus.READY_FOR_PICKUP) {
-            dispatchToNextCandidate(saved, restaurant)
+            // Real Baemin-style 포장주문 (Pickup): no rider should ever be offered a
+            // PICKUP order -- the buyer collects it themselves, see completePickup's
+            // own doc comment for the real terminal edge that replaces the rider chain.
+            if (saved.fulfillmentType == EatsFulfillmentType.PICKUP) {
+                notifyBuyer(saved, "Order ready", "Your order is ready -- come collect it at ${restaurant.businessName}.")
+            } else {
+                dispatchToNextCandidate(saved, restaurant)
+            }
         }
+        return saved
+    }
+
+    /**
+     * Real terminal edge for a Baemin-style 포장주문 (Pickup) order -- restaurant-only,
+     * valid only from READY_FOR_PICKUP on a PICKUP-type order, transitioning directly
+     * to DELIVERED with no RIDER_ASSIGNED/PICKED_UP hop (there is no rider) and no
+     * delivery-fee payout to make (deliveryFee is already zero, enforced unconditionally
+     * at placement time -- see placeOrder's own doc comment).
+     */
+    @Transactional
+    fun completePickup(ownerUserId: String, orderId: String): EatsOrder {
+        val restaurant = merchantRepository.findByOwnerUserId(ownerUserId)
+            ?: throw RestaurantNotFoundException("This account is not registered as a merchant")
+        val order = eatsOrderRepository.findById(orderId).orElseThrow { EatsOrderNotFoundException("Order not found") }
+        if (order.restaurantId != restaurant.id) {
+            throw EatsOrderNotFoundException("Order not found")
+        }
+        if (order.fulfillmentType != EatsFulfillmentType.PICKUP) {
+            throw InvalidEatsOrderStatusTransitionException("Only a PICKUP order can be completed this way")
+        }
+        if (order.status != EatsOrderStatus.READY_FOR_PICKUP) {
+            throw InvalidEatsOrderStatusTransitionException(
+                "Cannot complete pickup from ${order.status} -- the order must be READY_FOR_PICKUP",
+            )
+        }
+        order.status = EatsOrderStatus.DELIVERED
+        order.updatedAt = Instant.now()
+        val saved = eatsOrderRepository.save(order)
+        notifyBuyer(saved, "Order completed", "Thanks for picking up your order from ${restaurant.businessName}!")
         return saved
     }
 
@@ -837,6 +910,14 @@ class EatsOrderService(
         }
         val order = eatsOrderRepository.findById(orderId).orElseThrow { EatsOrderNotFoundException("Order not found") }
         if (order.status != EatsOrderStatus.READY_FOR_PICKUP || order.riderId != null) {
+            throw DeliveryAlreadyClaimedException("This delivery is no longer available")
+        }
+        // Real defense-in-depth for Baemin-style 포장주문 (Pickup): a PICKUP order is
+        // already excluded from getAvailableDeliveries' own browse list, but a rider
+        // who somehow has the raw order id (e.g. a stale client cache) must still be
+        // real-rejected here -- same "no different message that would leak anything"
+        // discipline the exclusive-offer check just below already uses.
+        if (order.fulfillmentType == EatsFulfillmentType.PICKUP) {
             throw DeliveryAlreadyClaimedException("This delivery is no longer available")
         }
         // Real exclusive dispatch window (2026-07-20): while a real offer to a specific

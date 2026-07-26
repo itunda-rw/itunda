@@ -20,6 +20,11 @@ import java.time.Instant
 // the reversing-ledger-entry technique this reuses from SupportService.reverseTransaction.
 enum class EatsOrderStatus { PLACED, ACCEPTED, PREPARING, READY_FOR_PICKUP, RIDER_ASSIGNED, PICKED_UP, DELIVERED, CANCELLED }
 
+// Real Baemin-style 포장주문 (Pickup) order type (2026-07-26) -- see
+// EatsOrderService.placeOrder's own doc comment for the full account. DELIVERY is the
+// default, preserving every existing/legacy order's exact current behavior unchanged.
+enum class EatsFulfillmentType { DELIVERY, PICKUP }
+
 /**
  * A real Coupang Eats-style food order -- built on top of the same real `Merchant`/
  * `MerchantProduct` catalog Commerce/Toss Shopping/Toss Place already reuse (a restaurant
@@ -129,6 +134,15 @@ class EatsOrder(
     // comment already established for a different small-scale simplification.
     @Column(name = "excluded_rider_user_ids", length = 500)
     var excludedRiderUserIds: String? = null,
+
+    // Real Baemin-style 포장주문 (Pickup) order type (2026-07-26) -- a buyer-facing
+    // fulfillment choice, distinct from READY_FOR_PICKUP (a restaurant-fulfillment
+    // status meaning "food is ready for a RIDER to collect"). A PICKUP order always
+    // has a zero deliveryFee and never gets a rider assigned -- see
+    // EatsOrderService.completePickup's own doc comment for its real terminal edge.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "fulfillment_type", nullable = false, length = 16)
+    var fulfillmentType: EatsFulfillmentType = EatsFulfillmentType.DELIVERY,
 ) {
     protected constructor() : this(
         id = "", buyerId = "", restaurantId = "", deliveryAddress = "", itemsSubtotal = BigDecimal.ZERO,

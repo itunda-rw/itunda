@@ -13,6 +13,7 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.EatsFulfillmentType
 import rw.itunda.core.domain.EatsOrder
 import rw.itunda.core.domain.EatsOrderStatus
 import rw.itunda.core.domain.LedgerAccountType
@@ -138,6 +139,33 @@ class EatsOrderServiceTest : BehaviorSpec({
                 val holdingLeg = legs.first { it.accountId == "eats_delivery_holding" }
                 holdingLeg.amount shouldBe BigDecimal("1500")
                 holdingLeg.accountType shouldBe LedgerAccountType.EATS_DELIVERY_HOLDING
+            }
+        }
+
+        When("a real buyer places a real Baemin-style 포장주문 (Pickup) order, no delivery address given") {
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            val legsSlot = slot<List<LedgerLeg>>()
+            every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_pickup", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            val detail = service.placeOrder(
+                "buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 2)), deliveryAddress = "",
+                fulfillmentType = EatsFulfillmentType.PICKUP,
+            )
+
+            Then("it real-charges zero delivery fee unconditionally and stores a real, honest display address") {
+                detail.order.fulfillmentType shouldBe EatsFulfillmentType.PICKUP
+                detail.order.deliveryFee shouldBe BigDecimal.ZERO
+                detail.order.totalAmount shouldBe BigDecimal("6000")
+                detail.order.deliveryAddress shouldBe "Pickup at Kigali Grill"
+                val holdingLeg = legsSlot.captured.first { it.accountId == "eats_delivery_holding" }
+                holdingLeg.amount shouldBe BigDecimal.ZERO
+            }
+            Then("it never calls real geocoding at all for a PICKUP order") {
+                verify(exactly = 0) { nominatimGeocodingClient.geocode(any()) }
             }
         }
 
@@ -791,6 +819,87 @@ class EatsOrderServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        When("the real restaurant marks a real Baemin-style PICKUP order READY_FOR_PICKUP") {
+            val pickupOrder = EatsOrder(
+                id = "eats_order_pickup", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "Pickup at Kigali Grill",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal.ZERO, platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("6000"), transactionId = "ledgertxn_pickup", status = EatsOrderStatus.PREPARING,
+                fulfillmentType = EatsFulfillmentType.PICKUP,
+            )
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns restaurant
+            every { eatsOrderRepository.findById("eats_order_pickup") } returns Optional.of(pickupOrder)
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            val result = service.updateRestaurantStatus("owner_1", "eats_order_pickup", EatsOrderStatus.READY_FOR_PICKUP)
+
+            Then("it real-notifies the buyer to come collect it, rather than ever dispatching a real rider") {
+                result.status shouldBe EatsOrderStatus.READY_FOR_PICKUP
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_1" && it.title == "Order ready" }) }
+                // riderRepository is a strict (non-relaxed) mock with zero stubs in this
+                // fixture -- if dispatchToNextCandidate had incorrectly run, any real
+                // call into it would throw, so a clean pass here IS the real proof no
+                // rider dispatch happened.
+            }
+        }
+
+        When("the real restaurant completes a real Baemin-style PICKUP order") {
+            val readyPickupOrder = EatsOrder(
+                id = "eats_order_pickup2", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "Pickup at Kigali Grill",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal.ZERO, platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("6000"), transactionId = "ledgertxn_pickup2", status = EatsOrderStatus.READY_FOR_PICKUP,
+                fulfillmentType = EatsFulfillmentType.PICKUP,
+            )
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns restaurant
+            every { eatsOrderRepository.findById("eats_order_pickup2") } returns Optional.of(readyPickupOrder)
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            val result = service.completePickup("owner_1", "eats_order_pickup2")
+
+            Then("it real-transitions directly to DELIVERED, no rider hop, and notifies the buyer") {
+                result.status shouldBe EatsOrderStatus.DELIVERED
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_1" && it.title == "Order completed" }) }
+            }
+        }
+
+        When("the real restaurant tries to complete-pickup a real DELIVERY-type order") {
+            val deliveryOrder = EatsOrder(
+                id = "eats_order_delivery", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "addr",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal("1500"), platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("7500"), transactionId = "ledgertxn_delivery", status = EatsOrderStatus.READY_FOR_PICKUP,
+            )
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns restaurant
+            every { eatsOrderRepository.findById("eats_order_delivery") } returns Optional.of(deliveryOrder)
+
+            Then("it throws InvalidEatsOrderStatusTransitionException -- only a real PICKUP order can be completed this way") {
+                try {
+                    service.completePickup("owner_1", "eats_order_delivery")
+                    error("expected InvalidEatsOrderStatusTransitionException")
+                } catch (e: InvalidEatsOrderStatusTransitionException) {
+                    // expected
+                }
+            }
+        }
+
+        When("the real restaurant tries to complete-pickup a PICKUP order that isn't READY_FOR_PICKUP yet") {
+            val preparingPickupOrder = EatsOrder(
+                id = "eats_order_pickup3", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "Pickup at Kigali Grill",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal.ZERO, platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("6000"), transactionId = "ledgertxn_pickup3", status = EatsOrderStatus.PREPARING,
+                fulfillmentType = EatsFulfillmentType.PICKUP,
+            )
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns restaurant
+            every { eatsOrderRepository.findById("eats_order_pickup3") } returns Optional.of(preparingPickupOrder)
+
+            Then("it throws InvalidEatsOrderStatusTransitionException") {
+                try {
+                    service.completePickup("owner_1", "eats_order_pickup3")
+                    error("expected InvalidEatsOrderStatusTransitionException")
+                } catch (e: InvalidEatsOrderStatusTransitionException) {
+                    // expected
+                }
+            }
+        }
     }
 
     Given("a real available rider and a real order ready for pickup") {
@@ -860,6 +969,26 @@ class EatsOrderServiceTest : BehaviorSpec({
 
             Then("it real-notifies the buyer that a rider was assigned") {
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_1" && it.type == "EATS_ORDER_UPDATE" }) }
+            }
+        }
+
+        When("a real rider tries to claim a real Baemin-style PICKUP order directly by id") {
+            val pickupReadyOrder = EatsOrder(
+                id = "eats_order_pickup_claim", buyerId = "buyer_1", restaurantId = "restaurant_1", deliveryAddress = "Pickup at Kigali Grill",
+                itemsSubtotal = BigDecimal("6000"), deliveryFee = BigDecimal.ZERO, platformFee = BigDecimal("90"),
+                totalAmount = BigDecimal("6000"), transactionId = "ledgertxn_pickup_claim", status = EatsOrderStatus.READY_FOR_PICKUP,
+                fulfillmentType = EatsFulfillmentType.PICKUP,
+            )
+            every { riderRepository.findByUserId("rider_user_1") } returns rider
+            every { eatsOrderRepository.findById("eats_order_pickup_claim") } returns Optional.of(pickupReadyOrder)
+
+            Then("it throws DeliveryAlreadyClaimedException -- real defense-in-depth, a PICKUP order has no rider to assign") {
+                try {
+                    service.claimDelivery("rider_user_1", "eats_order_pickup_claim")
+                    error("expected DeliveryAlreadyClaimedException")
+                } catch (e: DeliveryAlreadyClaimedException) {
+                    verify(exactly = 0) { eatsOrderRepository.save(any()) }
+                }
             }
         }
 
@@ -1583,6 +1712,25 @@ class EatsOrderServiceTest : BehaviorSpec({
             val page = service.getAvailableDeliveries("rider_user_2", PageRequest.of(0, 20))
 
             Then("it honestly falls back to createdAt order -- never a fabricated distance") {
+                page.content.map { it.id } shouldBe listOf("order_far", "order_near")
+            }
+        }
+
+        When("a real Baemin-style PICKUP order is among the real READY_FOR_PICKUP candidates") {
+            val pickupOrder = EatsOrder(
+                id = "order_pickup", buyerId = "buyer_3", restaurantId = "restaurant_near", deliveryAddress = "Pickup at Kigali Grill",
+                itemsSubtotal = BigDecimal("5000"), deliveryFee = BigDecimal.ZERO, platformFee = BigDecimal("75"),
+                totalAmount = BigDecimal("5000"), transactionId = "ledgertxn_pickup_browse", status = EatsOrderStatus.READY_FOR_PICKUP,
+                fulfillmentType = EatsFulfillmentType.PICKUP,
+            )
+            val riderWithNoLocation = Rider(id = "rider_4", userId = "rider_user_4", walletId = "wallet_rider_4")
+            every { riderRepository.findByUserId("rider_user_4") } returns riderWithNoLocation
+            val fallbackPage = org.springframework.data.domain.PageImpl(listOf(orderFromFarRestaurant, orderFromNearRestaurant, pickupOrder))
+            every { eatsOrderRepository.findByStatusAndRiderIdIsNullOrderByCreatedAtAsc(EatsOrderStatus.READY_FOR_PICKUP, any()) } returns fallbackPage
+
+            val page = service.getAvailableDeliveries("rider_user_4", PageRequest.of(0, 20))
+
+            Then("it real-excludes the PICKUP order -- no rider should ever see or claim it via browse") {
                 page.content.map { it.id } shouldBe listOf("order_far", "order_near")
             }
         }

@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
+import rw.itunda.core.domain.EatsFulfillmentType
 import rw.itunda.core.domain.EatsOrderStatus
 import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
@@ -64,10 +65,15 @@ import rw.itunda.eats.SelfEatsOrderException
 data class PlaceEatsOrderRequest(
     val restaurantId: String,
     val items: List<EatsOrderItemRequest>,
-    val deliveryAddress: String,
+    // Optional for a real Baemin-style 포장주문 (Pickup) order -- see
+    // EatsOrderService.placeOrder's own doc comment; a buyer collecting in person has
+    // no real delivery address to submit. Defaults to "" (fully backward compatible
+    // with every existing DELIVERY-only client).
+    val deliveryAddress: String = "",
     val deliveryLatitude: Double? = null,
     val deliveryLongitude: Double? = null,
     val deliveryNotes: String? = null,
+    val fulfillmentType: EatsFulfillmentType = EatsFulfillmentType.DELIVERY,
 )
 data class SubscribeMembershipRequest(val days: Int)
 data class UpdateEatsOrderStatusRequest(val status: EatsOrderStatus)
@@ -157,7 +163,7 @@ class EatsController(
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/eats/orders", idempotencyKey, request) {
             val detail = eatsOrderService.placeOrder(
                 currentUser.userId, request.restaurantId, request.items, request.deliveryAddress,
-                request.deliveryLatitude, request.deliveryLongitude, request.deliveryNotes,
+                request.deliveryLatitude, request.deliveryLongitude, request.deliveryNotes, request.fulfillmentType,
             )
             201 to mapOf("success" to true, "order" to detail.order, "items" to detail.items)
         }
@@ -240,6 +246,17 @@ class EatsController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val order = eatsOrderService.updateRestaurantStatus(currentUser.userId, orderId, request.status)
+        return ResponseEntity.ok(mapOf("success" to true, "order" to order))
+    }
+
+    // Real Baemin-style 포장주문 (Pickup) terminal edge -- see
+    // EatsOrderService.completePickup's own doc comment.
+    @PostMapping("/orders/{orderId}/complete-pickup")
+    fun completePickup(
+        @PathVariable orderId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val order = eatsOrderService.completePickup(currentUser.userId, orderId)
         return ResponseEntity.ok(mapOf("success" to true, "order" to order))
     }
 
