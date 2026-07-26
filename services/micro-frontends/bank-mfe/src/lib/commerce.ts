@@ -95,6 +95,10 @@ export interface ProductReview {
   merchantId: string;
   rating: number;
   comment: string | null;
+  // Real Coupang/Naver Smart Store-style seller reply (2026-07-26) -- see
+  // ProductReviewService.replyToProductReview's own doc comment on the backend.
+  ownerReply: string | null;
+  ownerRepliedAt: string | null;
   createdAt: string;
 }
 

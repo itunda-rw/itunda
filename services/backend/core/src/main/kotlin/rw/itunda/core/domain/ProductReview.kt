@@ -21,6 +21,13 @@ import java.time.Instant
  * over this table at read time, not a running counter cached on `MerchantProduct` --
  * same "don't touch already-tested write paths for a purely additive feature" discipline
  * `EatsReview` already established.
+ *
+ * `ownerReply`/`ownerRepliedAt` (2026-07-26) close the last leg of a real, well-known
+ * Coupang/Naver Smart Store seller-reply capability -- `MerchantBookingReview`'s own doc
+ * comment first named this gap for `ProductReview`/`EatsReview` both; `EatsReview` closed
+ * its half the same day (see that class's own doc comment). Identical shape here: one
+ * editable reply per review, only the real merchant who owns the reviewed product can
+ * post it. See `ProductReviewService.replyToProductReview` for the full account.
  */
 @Entity
 @Table(name = "product_reviews")
@@ -49,6 +56,12 @@ class ProductReview(
 
     @Column(length = 1000)
     val comment: String?,
+
+    @Column(name = "owner_reply", length = 1000)
+    var ownerReply: String? = null,
+
+    @Column(name = "owner_replied_at")
+    var ownerRepliedAt: Instant? = null,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),

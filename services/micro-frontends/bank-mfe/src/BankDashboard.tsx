@@ -6853,6 +6853,11 @@ function ProductRatingBadge({ productId }: { productId: string }) {
               <div key={r.id} style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>
                 <span style={{ color: '#F5A623' }}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
                 {r.comment && <span> — {r.comment}</span>}
+                {r.ownerReply && (
+                  <div style={{ marginTop: '2px', marginLeft: '12px', color: 'var(--toss-grey-500)' }}>
+                    ↳ Seller: {r.ownerReply}
+                  </div>
+                )}
               </div>
             ))
           )}

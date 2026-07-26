@@ -4,18 +4,24 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.OrderStatus
 import rw.itunda.core.domain.ProductReview
+import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.OrderItemRepository
 import rw.itunda.core.repository.OrderRepository
 import rw.itunda.core.repository.ProductReviewRepository
 import rw.itunda.core.repository.RatingSummaryProjection
+import java.time.Instant
 import java.util.UUID
 
 class OrderItemNotFoundException(message: String) : RuntimeException(message)
 class ProductNotYetDeliveredException(message: String) : RuntimeException(message)
 class ProductAlreadyReviewedException(message: String) : RuntimeException(message)
 class InvalidProductRatingException(message: String) : RuntimeException(message)
+class ProductReviewNotFoundException(message: String) : RuntimeException(message)
+class InvalidProductReviewReplyException(message: String) : RuntimeException(message)
 
 data class ProductRatingSummary(val average: Double?, val count: Long)
 
@@ -29,12 +35,18 @@ data class ProductRatingSummary(val average: Double?, val count: Long)
  * Real ownership + state checks: only the real buyer of an order that's actually
  * `DELIVERED` can review one of its line items, and only once per line item -- a real
  * DB unique constraint on `order_item_id` backs the same application-level check.
+ *
+ * `replyToProductReview` (2026-07-26) closes the last leg of the real, well-known
+ * Coupang/Naver Smart Store seller-reply gap -- see `ProductReview.kt`'s own doc
+ * comment. Identical shape to `EatsReviewService.replyToRestaurantReview`.
  */
 @Service
 class ProductReviewService(
     private val orderRepository: OrderRepository,
     private val orderItemRepository: OrderItemRepository,
     private val productReviewRepository: ProductReviewRepository,
+    private val merchantRepository: MerchantRepository,
+    private val notificationRepository: NotificationRepository,
 ) {
     @Transactional
     fun submitReview(buyerId: String, orderItemId: String, rating: Int, comment: String?): ProductReview {
@@ -82,5 +94,33 @@ class ProductReviewService(
     fun getProductRating(productId: String): ProductRatingSummary {
         val summary: RatingSummaryProjection = productReviewRepository.getProductRatingSummary(productId)
         return ProductRatingSummary(summary.average, summary.count)
+    }
+
+    // Real owner-side reply -- see this class's own doc comment. Editable: re-posting
+    // overwrites the same reply + timestamp, matching EatsReviewService/
+    // MerchantBookingReviewService's own exact simplicity.
+    @Transactional
+    fun replyToProductReview(ownerUserId: String, reviewId: String, reply: String): ProductReview {
+        val trimmedReply = reply.trim()
+        if (trimmedReply.isEmpty() || trimmedReply.length > 1000) {
+            throw InvalidProductReviewReplyException("Reply must be 1-1000 characters")
+        }
+        val merchant = merchantRepository.findByOwnerUserId(ownerUserId)
+            ?: throw MerchantNotFoundException("This account is not registered as a merchant")
+        val review = productReviewRepository.findById(reviewId).orElseThrow { ProductReviewNotFoundException("Review not found") }
+        if (review.merchantId != merchant.id) {
+            throw ProductReviewNotFoundException("Review not found")
+        }
+        review.ownerReply = trimmedReply
+        review.ownerRepliedAt = Instant.now()
+        val saved = productReviewRepository.save(review)
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = review.buyerId, type = "PRODUCT_REVIEW_REPLY",
+                title = "${merchant.businessName} replied to your review", body = trimmedReply, isRead = false,
+                createdAt = Instant.now(), dataJson = "{\"reviewId\":\"${review.id}\"}",
+            ),
+        )
+        return saved
     }
 }

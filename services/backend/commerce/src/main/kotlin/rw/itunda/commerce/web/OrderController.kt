@@ -32,6 +32,7 @@ import rw.itunda.commerce.FavoriteProductNotFoundException
 import rw.itunda.commerce.InvalidDeliveryAddressException
 import rw.itunda.commerce.InvalidOrderStatusTransitionException
 import rw.itunda.commerce.InvalidProductRatingException
+import rw.itunda.commerce.InvalidProductReviewReplyException
 import rw.itunda.commerce.InvalidQuantityException
 import rw.itunda.commerce.InvalidReturnReasonException
 import rw.itunda.commerce.MerchantNoWalletException
@@ -43,6 +44,7 @@ import rw.itunda.commerce.OrderProductNotFoundException
 import rw.itunda.commerce.OrderReturnService
 import rw.itunda.commerce.OrderService
 import rw.itunda.commerce.ProductAlreadyReviewedException
+import rw.itunda.commerce.ProductReviewNotFoundException
 import rw.itunda.commerce.ProductFavoriteService
 import rw.itunda.commerce.ProductNotYetDeliveredException
 import rw.itunda.commerce.ProductReviewService
@@ -61,6 +63,7 @@ import rw.itunda.commerce.SelfOrderException
 data class PlaceOrderRequest(val merchantId: String, val items: List<OrderItemRequest>, val deliveryAddress: String)
 data class UpdateOrderStatusRequest(val status: OrderStatus)
 data class SubmitProductReviewRequest(val rating: Int, val comment: String? = null)
+data class ReplyToProductReviewRequest(val reply: String)
 data class RequestReturnRequest(val type: OrderReturnType, val reasonCode: String, val reasonNote: String? = null)
 data class DecideReturnRequest(val approve: Boolean)
 
@@ -246,6 +249,17 @@ class OrderController(
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "review" to review))
     }
 
+    // Real owner-side reply (2026-07-26) -- see ProductReviewService's own doc comment.
+    @PostMapping("/reviews/{reviewId}/reply")
+    fun replyToProductReview(
+        @PathVariable reviewId: String,
+        @RequestBody request: ReplyToProductReviewRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val review = productReviewService.replyToProductReview(currentUser.userId, reviewId, request.reply)
+        return ResponseEntity.ok(mapOf("success" to true, "review" to review))
+    }
+
     @GetMapping("/products/{productId}/reviews")
     fun getProductReviews(
         @PathVariable productId: String,
@@ -309,6 +323,14 @@ class OrderController(
     @ExceptionHandler(InvalidProductRatingException::class)
     fun handleInvalidProductRating(ex: InvalidProductRatingException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_RATING", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(ProductReviewNotFoundException::class)
+    fun handleProductReviewNotFound(ex: ProductReviewNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("REVIEW_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(InvalidProductReviewReplyException::class)
+    fun handleInvalidProductReviewReply(ex: InvalidProductReviewReplyException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_REVIEW_REPLY", ex.message ?: "Bad request"))
 
     @ExceptionHandler(MerchantNotFoundException::class)
     fun handleMerchantNotFound(ex: MerchantNotFoundException) =
