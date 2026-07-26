@@ -40,6 +40,16 @@ export const fetchWallets = () =>
 export const fetchTransactions = () =>
   apiFetch<{ success: boolean; transactions: Transaction[] }>('/api/v1/wallet/transactions').then((r) => r.transactions);
 
+// Real Toss Timeline-style unusual-spend flag -- see WalletService.getTransactionTimeline's
+// own doc comment for the full sourced account.
+export interface TransactionTimelineEntry {
+  transaction: Transaction;
+  unusuallyLarge: boolean;
+}
+
+export const fetchTransactionTimeline = () =>
+  apiFetch<{ success: boolean; timeline: TransactionTimelineEntry[] }>('/api/v1/wallet/transactions/timeline').then((r) => r.timeline);
+
 // Real recurring-payment ("subscription") detection over a user's own real
 // transaction history -- see SubscriptionDetectionService's own doc comment for the
 // real Toss "구독 관리" capability this closes, including the 2026-07-26 price-change

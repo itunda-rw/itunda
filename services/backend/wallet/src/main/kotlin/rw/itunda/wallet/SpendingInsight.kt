@@ -1,5 +1,6 @@
 package rw.itunda.wallet
 
+import rw.itunda.core.domain.Transaction
 import java.math.BigDecimal
 
 data class SpendingCategory(val name: String, val amount: BigDecimal)
@@ -14,3 +15,7 @@ data class BudgetView(
     val percentUsed: Int,
     val status: BudgetStatus,
 )
+
+// Real Toss Timeline-style unusual-spend flag -- see WalletService.getTransactionTimeline's
+// own doc comment for the full account.
+data class TransactionTimelineEntry(val transaction: Transaction, val unusuallyLarge: Boolean)

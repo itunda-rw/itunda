@@ -67,6 +67,11 @@ class WalletService(
 ) {
     private val quoteStore = QuoteStore()
 
+    // Real Toss Timeline-style unusual-spend heuristic constants -- see
+    // getTransactionTimeline's own doc comment for the full account.
+    private val UNUSUAL_SPEND_MULTIPLIER = BigDecimal("2.5")
+    private val MIN_PRIOR_DEBITS_FOR_BASELINE = 3
+
     fun getWallets(userId: String): List<Wallet> = walletRepository.findByUserId(userId)
 
     // Real spending categorization (2026-07-13) -- deliberately built over the ledger, not
@@ -231,6 +236,45 @@ class WalletService(
     // transaction-history screen on both platforms.
     fun getTransactionHistory(userId: String): List<Transaction> =
         transactionRepository.findBySenderIdOrRecipientIdOrderByCreatedAtDesc(userId, userId)
+
+    /**
+     * Real Toss Timeline (타임라인)-style unusual-spend flag (2026-07-26) -- see
+     * blog.toss.im/2020/01/09/toss/experience/toss-user-interview-timeline (Toss's own
+     * user-interview writeup of the real feature: "평소보다 큰 지출은 빨간색으로 표시되어
+     * 어디에 과도하게 돈을 썼는지 쉽게 볼 수 있습니다" -- an unusually large expense is
+     * shown in red right in the transaction list, distinct from the monthly-aggregate
+     * [getBudgets] limit this backend already had). Toss's own exact comparison formula
+     * isn't published, so this is itunda's own honest heuristic, not a claimed reproduction:
+     * a COMPLETED debit (this user's own money leaving) is flagged when it exceeds
+     * [UNUSUAL_SPEND_MULTIPLIER] times the average of this user's own PRIOR completed
+     * debits, and only once at least [MIN_PRIOR_DEBITS_FOR_BASELINE] prior debits exist --
+     * a brand-new account's very first purchase has no real baseline to be "unusual"
+     * against, so it's never flagged. Deliberately computed chronologically forward (a
+     * transaction is only compared against debits that happened BEFORE it), never using
+     * a later transaction to judge an earlier one -- the same "no lookahead" discipline
+     * SubscriptionDetectionService's own price-change comparison already established.
+     * Purely additive: [getTransactionHistory] above is completely unchanged, this is a
+     * new, separate read path over the exact same real Transaction rows.
+     */
+    fun getTransactionTimeline(userId: String): List<TransactionTimelineEntry> {
+        val transactions = transactionRepository.findBySenderIdOrRecipientIdOrderByCreatedAtDesc(userId, userId)
+        val ascending = transactions.sortedBy { it.createdAt }
+        val priorDebitAmounts = mutableListOf<BigDecimal>()
+        val unusuallyLargeById = mutableMapOf<String, Boolean>()
+        for (t in ascending) {
+            if (t.senderId != userId || t.status != TransactionStatus.COMPLETED) continue
+            val unusuallyLarge = if (priorDebitAmounts.size >= MIN_PRIOR_DEBITS_FOR_BASELINE) {
+                val average = priorDebitAmounts.fold(BigDecimal.ZERO) { acc, a -> acc + a }
+                    .divide(BigDecimal(priorDebitAmounts.size), 4, RoundingMode.HALF_UP)
+                t.amount > average.multiply(UNUSUAL_SPEND_MULTIPLIER)
+            } else {
+                false
+            }
+            unusuallyLargeById[t.id] = unusuallyLarge
+            priorDebitAmounts.add(t.amount)
+        }
+        return transactions.map { TransactionTimelineEntry(it, unusuallyLargeById[it.id] ?: false) }
+    }
 
     fun getWalletById(walletId: String, userId: String): Wallet {
         val wallet = walletRepository.findById(walletId).orElse(null)

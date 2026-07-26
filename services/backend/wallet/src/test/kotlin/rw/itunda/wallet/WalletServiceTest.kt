@@ -317,6 +317,81 @@ class WalletServiceTest : BehaviorSpec({
             }
         }
     }
+
+    Given("a real Toss Timeline-style unusual-spend check over a user's own transaction history") {
+        val walletRepository = mockk<WalletRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val eventPublisher = mockk<EventPublisher>(relaxed = true)
+        val providerConnector = mockk<ProviderConnector>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val spendingBudgetRepository = mockk<SpendingBudgetRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, spendingBudgetRepository, notificationRepository)
+
+        fun debitTxn(id: String, amount: String, createdAt: java.time.Instant, status: rw.itunda.core.domain.TransactionStatus = rw.itunda.core.domain.TransactionStatus.COMPLETED) = rw.itunda.core.domain.Transaction(
+            id = id, referenceNumber = "REF-$id", senderId = "user_1", recipientId = "merchant_1",
+            amount = BigDecimal(amount), fee = BigDecimal.ZERO, currency = "RWF",
+            type = rw.itunda.core.domain.TransactionType.PAYMENT, status = status, description = "test", createdAt = createdAt,
+        )
+
+        When("a user with 3 real prior small debits makes a much larger 4th one") {
+            val base = java.time.Instant.parse("2026-07-01T00:00:00Z")
+            val history = listOf(
+                debitTxn("t4", "50000", base.plusSeconds(4000)),
+                debitTxn("t3", "1000", base.plusSeconds(3000)),
+                debitTxn("t2", "1200", base.plusSeconds(2000)),
+                debitTxn("t1", "800", base.plusSeconds(1000)),
+            )
+            every { transactionRepository.findBySenderIdOrRecipientIdOrderByCreatedAtDesc("user_1", "user_1") } returns history
+
+            val timeline = service.getTransactionTimeline("user_1")
+
+            Then("only the real outlier (50000, ~50x the ~1000 average of the 3 priors) is flagged") {
+                val flagsById = timeline.associate { it.transaction.id to it.unusuallyLarge }
+                flagsById["t4"] shouldBe true
+                flagsById["t3"] shouldBe false
+                flagsById["t2"] shouldBe false
+                flagsById["t1"] shouldBe false
+            }
+
+            Then("it real-preserves the original descending order") {
+                timeline.map { it.transaction.id } shouldBe listOf("t4", "t3", "t2", "t1")
+            }
+        }
+
+        When("a brand-new account's very first debit is large, with no real baseline yet") {
+            val history = listOf(debitTxn("t1", "1000000", java.time.Instant.parse("2026-07-01T00:00:00Z")))
+            every { transactionRepository.findBySenderIdOrRecipientIdOrderByCreatedAtDesc("user_1", "user_1") } returns history
+
+            val timeline = service.getTransactionTimeline("user_1")
+
+            Then("it's never flagged -- fewer than the real minimum 3 prior debits to judge against") {
+                timeline.first().unusuallyLarge shouldBe false
+            }
+        }
+
+        When("a real CANCELLED transaction sits among otherwise-normal debits") {
+            val base = java.time.Instant.parse("2026-07-01T00:00:00Z")
+            val history = listOf(
+                debitTxn("t5", "1500", base.plusSeconds(5000)),
+                debitTxn("t4", "900000", base.plusSeconds(4000), status = rw.itunda.core.domain.TransactionStatus.CANCELLED),
+                debitTxn("t3", "1000", base.plusSeconds(3000)),
+                debitTxn("t2", "1200", base.plusSeconds(2000)),
+                debitTxn("t1", "800", base.plusSeconds(1000)),
+            )
+            every { transactionRepository.findBySenderIdOrRecipientIdOrderByCreatedAtDesc("user_1", "user_1") } returns history
+
+            val timeline = service.getTransactionTimeline("user_1")
+
+            Then("the cancelled transaction never counts toward the real baseline or gets flagged itself") {
+                val flagsById = timeline.associate { it.transaction.id to it.unusuallyLarge }
+                flagsById["t4"] shouldBe false
+                flagsById["t5"] shouldBe false
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

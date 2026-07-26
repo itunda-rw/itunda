@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowUpRight, Bike, Heart, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
-import { fetchSubscriptions, fetchTransactions, fetchWallets, type DetectedSubscription, type Transaction, type Wallet } from './lib/wallet';
+import { fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchWallets, type DetectedSubscription, type Transaction, type Wallet } from './lib/wallet';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
 import { claimInterest, createGoal, depositToGoal, fetchGoals, fetchInterestJar, type InterestJar, type SavingsGoal } from './lib/savings';
 import {
@@ -344,7 +344,7 @@ function QuickActions() {
   );
 }
 
-function TransactionHistory({ transactions }: { transactions: Transaction[] }) {
+function TransactionHistory({ transactions, unusuallyLargeIds }: { transactions: Transaction[]; unusuallyLargeIds?: Set<string> }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -364,6 +364,7 @@ function TransactionHistory({ transactions }: { transactions: Transaction[] }) {
           <AnimatePresence>
             {transactions.slice(0, 10).map((tx, idx) => {
               const isCredit = tx.channel === 'CASHBACK' || tx.type === 'DEPOSIT';
+              const isUnusual = unusuallyLargeIds?.has(tx.id) ?? false;
               return (
                 <motion.div
                   key={tx.id}
@@ -378,10 +379,17 @@ function TransactionHistory({ transactions }: { transactions: Transaction[] }) {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <span style={{ color: 'var(--toss-grey-900)', fontWeight: '600', fontSize: '16px' }}>{tx.description}</span>
-                      <span style={{ color: 'var(--toss-grey-500)', fontSize: '13px', fontWeight: '500' }}>{new Date(tx.createdAt).toLocaleString()}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ color: 'var(--toss-grey-500)', fontSize: '13px', fontWeight: '500' }}>{new Date(tx.createdAt).toLocaleString()}</span>
+                        {isUnusual && (
+                          <span style={{ color: '#E53935', fontSize: '11px', fontWeight: '700', backgroundColor: '#FEECEE', padding: '2px 6px', borderRadius: '6px' }}>
+                            Unusually large
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <span style={{ fontWeight: '700', fontSize: '16px', color: isCredit ? 'var(--toss-blue)' : 'var(--toss-grey-900)' }}>
+                  <span style={{ fontWeight: '700', fontSize: '16px', color: isUnusual ? '#E53935' : isCredit ? 'var(--toss-blue)' : 'var(--toss-grey-900)' }}>
                     {isCredit ? '+' : ''}{tx.amount.toLocaleString()} RWF
                   </span>
                 </motion.div>
@@ -397,6 +405,7 @@ function TransactionHistory({ transactions }: { transactions: Transaction[] }) {
 function HomeView() {
   const [wallet, setWallet] = useState<Wallet | null | undefined>(undefined);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [unusuallyLargeIds, setUnusuallyLargeIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [showTransfer, setShowTransfer] = useState(false);
 
@@ -408,6 +417,11 @@ function HomeView() {
         setTransactions(txs);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your account.'));
+    // Real Toss Timeline-style unusual-spend flag -- fetched independently of the main
+    // wallet/transactions load so a failure here never blocks the core balance view.
+    fetchTransactionTimeline()
+      .then((entries) => setUnusuallyLargeIds(new Set(entries.filter((e) => e.unusuallyLarge).map((e) => e.transaction.id))))
+      .catch(() => {});
   };
 
   useEffect(load, []);
@@ -443,7 +457,7 @@ function HomeView() {
         />
       )}
       <QuickActions />
-      <TransactionHistory transactions={transactions} />
+      <TransactionHistory transactions={transactions} unusuallyLargeIds={unusuallyLargeIds} />
     </div>
   );
 }

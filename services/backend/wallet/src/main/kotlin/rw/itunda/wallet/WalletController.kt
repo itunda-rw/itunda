@@ -52,6 +52,13 @@ class WalletController(
     fun getTransactionHistory(@AuthenticationPrincipal currentUser: CurrentUser) =
         ResponseEntity.ok(mapOf("success" to true, "transactions" to walletService.getTransactionHistory(currentUser.userId)))
 
+    // Real Toss Timeline-style unusual-spend flag (2026-07-26) -- see
+    // WalletService.getTransactionTimeline's own doc comment. A new, separate read path
+    // over the exact same real transactions -- /transactions above is unchanged.
+    @GetMapping("/transactions/timeline")
+    fun getTransactionTimeline(@AuthenticationPrincipal currentUser: CurrentUser) =
+        ResponseEntity.ok(mapOf("success" to true, "timeline" to walletService.getTransactionTimeline(currentUser.userId)))
+
     // Real spending categorization (2026-07-13) -- see WalletService.getSpendingInsight
     // for why this is built over the ledger, not the transactions table.
     @GetMapping("/spending")
