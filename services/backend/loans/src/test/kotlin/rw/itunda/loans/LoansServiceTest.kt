@@ -15,6 +15,7 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.LoanAccountRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Instant
@@ -39,7 +40,8 @@ class LoansServiceTest : BehaviorSpec({
         val loanAccountRepository = mockk<LoanAccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val creditScoreService = mockk<CreditScoreService>()
-        val service = LoansService(walletRepository, loanAccountRepository, ledgerService, creditScoreService)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val service = LoansService(walletRepository, loanAccountRepository, ledgerService, creditScoreService, notificationRepository)
 
         When("applying for a high amount (80% of the offer's max) with a real qualifying score") {
             every { loanAccountRepository.findByUserId("user_1") } returns emptyList()
@@ -47,6 +49,7 @@ class LoansServiceTest : BehaviorSpec({
             every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
             every { loanAccountRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
 
             val result = service.applyForLoan("user_1", "loan_1", BigDecimal("400000"))
 
@@ -54,6 +57,12 @@ class LoansServiceTest : BehaviorSpec({
                 result["status"] shouldBe "approved"
                 result["creditScore"] shouldBe 700
                 verify(exactly = 1) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+
+            Then("it real-alerts the account owner, a Toss 자산 보호 알림-style security notification") {
+                verify(exactly = 1) {
+                    notificationRepository.save(match { it.userId == "user_1" && it.type == "NEW_LOAN_DISBURSED" })
+                }
             }
         }
 
@@ -114,6 +123,7 @@ class LoansServiceTest : BehaviorSpec({
             every { walletRepository.findByUserIdAndType("user_mid2", WalletType.MAIN) } returns wallet("wallet_mid2", "user_mid2")
             every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_mid", emptyList())
             every { loanAccountRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
 
             Then("450 clears the base minimum, so a low-tier amount is approved") {
                 val result = service.applyForLoan("user_mid2", "loan_1", BigDecimal("50000"))
@@ -365,7 +375,8 @@ class LoansServiceTest : BehaviorSpec({
         val loanAccountRepository = mockk<LoanAccountRepository>()
         val ledgerService = mockk<LedgerService>()
         val creditScoreService = mockk<CreditScoreService>()
-        val service = LoansService(walletRepository, loanAccountRepository, ledgerService, creditScoreService)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val service = LoansService(walletRepository, loanAccountRepository, ledgerService, creditScoreService, notificationRepository)
 
         When("listing all offers with no lender filter") {
             val offers = service.getOffers()

@@ -82,6 +82,7 @@ class MerchantServiceTest : BehaviorSpec({
             every { merchantRepository.findByOwnerUserId("owner_1") } returns null
             every { walletRepository.findByUserIdAndType("owner_1", WalletType.MAIN) } returns ownerWallet
             every { merchantRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
 
             val result = service.register("owner_1", "Kigali Coffee")
 
@@ -89,6 +90,12 @@ class MerchantServiceTest : BehaviorSpec({
                 result.walletId shouldBe "wallet_merchant"
                 result.ownerUserId shouldBe "owner_1"
                 result.status shouldBe MerchantStatus.ACTIVE
+            }
+
+            Then("it real-alerts the account owner, a Toss 자산 보호 알림-style security notification") {
+                verify(exactly = 1) {
+                    notificationRepository.save(match { it.userId == "owner_1" && it.type == "NEW_MERCHANT_REGISTERED" })
+                }
             }
         }
 

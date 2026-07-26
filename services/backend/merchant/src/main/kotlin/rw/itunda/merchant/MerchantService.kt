@@ -122,7 +122,25 @@ class MerchantService(
             businessName = businessName,
             status = MerchantStatus.ACTIVE,
         )
-        return merchantRepository.save(merchant)
+        val saved = merchantRepository.save(merchant)
+
+        // Real Toss-style 자산 보호 알림 (Asset Protection Alert, launched May 2025) equivalent,
+        // honestly scoped to itunda's own system boundary (no MyData/cross-institution access):
+        // alert the real account owner whenever a new real financial product -- here, a merchant/
+        // business account -- is registered under their identity, so a hijacked session/stolen
+        // credentials can't do this with zero alert to the real owner. Follows DeviceService's
+        // own real NEW_DEVICE_LOGIN notification convention. See LoansService.applyForLoan for
+        // the loan-side counterpart of this same feature.
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = ownerUserId, type = "NEW_MERCHANT_REGISTERED",
+                title = "New business account registered",
+                body = "\"$businessName\" was just registered as a merchant under your account. If this wasn't you, secure your account immediately.",
+                isRead = false, createdAt = Instant.now(), dataJson = "{\"merchantId\":\"${saved.id}\"}",
+            ),
+        )
+
+        return saved
     }
 
     fun getMyMerchant(ownerUserId: String): Merchant =

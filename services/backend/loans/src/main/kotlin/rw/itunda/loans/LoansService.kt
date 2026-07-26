@@ -7,10 +7,12 @@ import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.LoanAccount
 import rw.itunda.core.domain.LoanStatus
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.LoanAccountRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Instant
@@ -49,6 +51,7 @@ class LoansService(
     private val loanAccountRepository: LoanAccountRepository,
     private val ledgerService: LedgerService,
     private val creditScoreService: CreditScoreService,
+    private val notificationRepository: NotificationRepository,
 ) {
     fun getOffers(lenderId: String? = null) = if (lenderId == null) LoanCatalog.offers else LoanCatalog.findByLender(lenderId)
 
@@ -105,6 +108,21 @@ class LoansService(
                 id = "loan_${UUID.randomUUID()}", userId = userId, walletId = wallet.id, offerId = loanId,
                 principal = amount, outstanding = amount, interestRate = offer.interestRate, status = LoanStatus.ACTIVE,
                 disbursedAt = Instant.now(),
+            ),
+        )
+
+        // Real Toss-style 자산 보호 알림 (Asset Protection Alert, launched May 2025) equivalent,
+        // honestly scoped to itunda's own system boundary (no MyData/cross-institution access):
+        // alert the real account owner whenever a new real financial product -- here, a loan --
+        // is disbursed under their identity, so a hijacked session/stolen credentials can't take
+        // out a loan with zero alert to the real owner. Follows DeviceService's own real
+        // NEW_DEVICE_LOGIN notification convention (clear title + explanatory body + dataJson).
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = userId, type = "NEW_LOAN_DISBURSED",
+                title = "New loan opened in your name",
+                body = "${offer.name} for ${amount} was just disbursed to your wallet. If this wasn't you, secure your account immediately.",
+                isRead = false, createdAt = Instant.now(), dataJson = "{\"loanId\":\"${loan.id}\"}",
             ),
         )
 
