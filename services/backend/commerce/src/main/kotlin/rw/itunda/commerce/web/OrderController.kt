@@ -26,6 +26,7 @@ import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.commerce.BuyerNoWalletException
+import rw.itunda.commerce.DeliveryAlreadyClaimedException
 import rw.itunda.commerce.EmptyOrderException
 import rw.itunda.commerce.FavoriteProductNotFoundException
 import rw.itunda.commerce.InvalidDeliveryAddressException
@@ -52,6 +53,9 @@ import rw.itunda.commerce.ReturnRequestAlreadyDecidedException
 import rw.itunda.commerce.ReturnRequestNotFoundException
 import rw.itunda.commerce.ReturnRequestNotSellerException
 import rw.itunda.commerce.ReturnWindowExpiredException
+import rw.itunda.commerce.RiderAlreadyOnDeliveryException
+import rw.itunda.commerce.RiderNotAvailableException
+import rw.itunda.commerce.RiderNotRegisteredException
 import rw.itunda.commerce.SelfOrderException
 
 data class PlaceOrderRequest(val merchantId: String, val items: List<OrderItemRequest>, val deliveryAddress: String)
@@ -61,8 +65,9 @@ data class RequestReturnRequest(val type: OrderReturnType, val reasonCode: Strin
 data class DecideReturnRequest(val approve: Boolean)
 
 // Real Coupang-style checkout -- see OrderService's own doc comment for the full
-// account, including the honest "self-declared fulfillment, no real courier network"
-// scope. Normal itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
+// account, including the two real fulfillment paths (merchant self-declared, or
+// itunda's own rider fleet claiming/tracking a delivery). Normal itunda-user JWT gate
+// (default SecurityConfig .anyRequest().authenticated()).
 @RestController
 @RequestMapping("/api/v1/orders")
 class OrderController(
@@ -131,6 +136,58 @@ class OrderController(
     ): ResponseEntity<Map<String, Any?>> {
         val order = orderService.cancelOrder(currentUser.userId, orderId)
         return ResponseEntity.ok(mapOf("success" to true, "order" to order))
+    }
+
+    // Real itunda-own-fleet delivery claim/tracking (2026-07-26) -- see OrderService's
+    // own doc comment. A rider registers once via POST /api/v1/eats/riders/register (the
+    // Rider entity is shared -- no separate Commerce-side registration needed) and can
+    // then claim either Eats or Commerce deliveries with the same account.
+    @GetMapping("/available-deliveries")
+    fun getAvailableDeliveries(
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = orderService.getAvailableDeliveries(currentUser.userId, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "orders" to page.content) + pageMeta(page))
+    }
+
+    @PostMapping("/{orderId}/claim-delivery")
+    fun claimDelivery(
+        @PathVariable orderId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val order = orderService.claimDelivery(currentUser.userId, orderId)
+        return ResponseEntity.ok(mapOf("success" to true, "order" to order))
+    }
+
+    @PostMapping("/{orderId}/complete-delivery")
+    fun completeDelivery(
+        @PathVariable orderId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val order = orderService.completeDelivery(currentUser.userId, orderId)
+        return ResponseEntity.ok(mapOf("success" to true, "order" to order))
+    }
+
+    @GetMapping("/my-deliveries")
+    fun getMyDeliveries(
+        @PageableDefault(size = 20) pageable: Pageable,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = orderService.getMyDeliveries(currentUser.userId, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "orders" to page.content) + pageMeta(page))
+    }
+
+    // Real live rider-location tracking (2026-07-26) -- `available: false` (not an
+    // error) is the honest, expected response whenever there's genuinely nothing to
+    // show yet, mirroring EatsController's identical endpoint exactly.
+    @GetMapping("/{orderId}/rider-location")
+    fun getRiderLocation(
+        @PathVariable orderId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val location = orderService.getRiderLocation(currentUser.userId, orderId)
+        return ResponseEntity.ok(mapOf("success" to true, "available" to (location != null), "location" to location))
     }
 
     // Real post-delivery Return & Exchange requests (2026-07-26) -- see
@@ -292,6 +349,22 @@ class OrderController(
     @ExceptionHandler(InvalidOrderStatusTransitionException::class)
     fun handleInvalidTransition(ex: InvalidOrderStatusTransitionException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("INVALID_ORDER_STATUS_TRANSITION", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(RiderNotRegisteredException::class)
+    fun handleRiderNotRegistered(ex: RiderNotRegisteredException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("RIDER_NOT_REGISTERED", ex.message ?: "Not found"))
+
+    @ExceptionHandler(RiderNotAvailableException::class)
+    fun handleRiderNotAvailable(ex: RiderNotAvailableException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("RIDER_NOT_AVAILABLE", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(RiderAlreadyOnDeliveryException::class)
+    fun handleRiderAlreadyOnDelivery(ex: RiderAlreadyOnDeliveryException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("RIDER_ALREADY_ON_DELIVERY", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(DeliveryAlreadyClaimedException::class)
+    fun handleDeliveryAlreadyClaimed(ex: DeliveryAlreadyClaimedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("DELIVERY_ALREADY_CLAIMED", ex.message ?: "Conflict"))
 
     @ExceptionHandler(ReturnOrderNotFoundException::class)
     fun handleReturnOrderNotFound(ex: ReturnOrderNotFoundException) =

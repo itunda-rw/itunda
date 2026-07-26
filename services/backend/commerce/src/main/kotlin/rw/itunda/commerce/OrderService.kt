@@ -1,6 +1,7 @@
 package rw.itunda.commerce
 
 import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -15,6 +16,7 @@ import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.fraud.FraudRuleEngine
+import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.pricing.effectiveUnitPrice
@@ -25,6 +27,7 @@ import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.OrderItemRepository
 import rw.itunda.core.repository.OrderRepository
 import rw.itunda.core.repository.ProductPriceTierRepository
+import rw.itunda.core.repository.RiderRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -42,9 +45,14 @@ class OrderProductNotFoundException(message: String) : RuntimeException(message)
 class SelfOrderException(message: String) : RuntimeException(message)
 class OrderNotFoundException(message: String) : RuntimeException(message)
 class InvalidOrderStatusTransitionException(message: String) : RuntimeException(message)
+class RiderNotRegisteredException(message: String) : RuntimeException(message)
+class RiderNotAvailableException(message: String) : RuntimeException(message)
+class RiderAlreadyOnDeliveryException(message: String) : RuntimeException(message)
+class DeliveryAlreadyClaimedException(message: String) : RuntimeException(message)
 
 data class OrderItemRequest(val productId: String, val quantity: Int)
 data class OrderDetail(val order: Order, val items: List<OrderItem>)
+data class OrderRiderLocationView(val latitude: Double, val longitude: Double, val updatedAt: Instant)
 
 /**
  * Real Coupang-style multi-item checkout -- the third and last of the three new
@@ -61,12 +69,14 @@ data class OrderDetail(val order: Order, val items: List<OrderItem>)
  * be a real price-tampering vulnerability), then snapshotted onto `OrderItem` so a
  * later catalog price change doesn't retroactively change a paid order's receipt.
  *
- * Honestly scoped: see Order.kt's own doc comment for why delivery status is real but
- * self-declared by the merchant, not a real third-party courier integration. Also
- * deliberately excludes order cancellation/refunds -- a genuinely separate feature (the
- * same reversing-ledger-entry technique `SupportService.reverseTransaction` already
- * established would be the right shape for it, just not attempted in this pass) --
- * status only ever moves forward, PLACED -> PACKED -> SHIPPED -> DELIVERED.
+ * See Order.kt's own doc comment for the two real fulfillment paths delivery status can
+ * take: merchant self-declared (no real third-party courier API exists, and never will
+ * without regulatory/vendor access this system doesn't have), or itunda's own real
+ * internal rider fleet claiming and completing the SHIPPED->DELIVERED leg with live GPS
+ * tracking (2026-07-26) -- the same real network `EatsOrderService` already built and
+ * proved out for food delivery, now doing double duty for packages too. Status only
+ * ever moves forward, PLACED -> PACKED -> SHIPPED -> DELIVERED, regardless of which path
+ * a given order takes.
  */
 @Service
 class OrderService(
@@ -81,6 +91,7 @@ class OrderService(
     private val ledgerEntryRepository: LedgerEntryRepository,
     private val notificationRepository: NotificationRepository,
     private val priceTierRepository: ProductPriceTierRepository,
+    private val riderRepository: RiderRepository,
 ) {
     // Same real Toss Payments fee-schedule reasoning MerchantService.feeRate's own
     // comment gives -- one flat rate in the middle of Toss's published 0.8%-1.8% range,
@@ -227,7 +238,15 @@ class OrderService(
      * -> SHIPPED -> DELIVERED chain -- CANCELLED is a real but separate terminal state,
      * only reachable via [cancelOrder] below, never via this method (the `currentIndex
      * == -1` guard below is what stops a CANCELLED order from being "advanced" back
-     * into the forward chain). */
+     * into the forward chain).
+     *
+     * SHIPPED/DELIVERED real-reject once a real itunda rider has claimed the delivery
+     * (see [claimDelivery]/[completeDelivery]/Order.kt's own doc comment) -- those two
+     * steps become the rider's own real events from that point on, the same "who
+     * actually did the thing declares it" discipline `EatsOrderService.updateRestaurantStatus`
+     * already keeps for its own rider-assigned orders. A merchant who never gets a rider
+     * claim can still self-declare the full chain exactly as before -- nothing here
+     * changes for that path. */
     @Transactional
     fun updateOrderStatus(ownerUserId: String, orderId: String, newStatus: OrderStatus): Order {
         val merchant = merchantRepository.findByOwnerUserId(ownerUserId)
@@ -243,6 +262,11 @@ class OrderService(
                 "Cannot move from ${order.status} to $newStatus -- status can only advance one step at a time",
             )
         }
+        if (order.riderId != null && (newStatus == OrderStatus.SHIPPED || newStatus == OrderStatus.DELIVERED)) {
+            throw InvalidOrderStatusTransitionException(
+                "A rider has already claimed this delivery -- only the rider can advance it from here",
+            )
+        }
         order.status = newStatus
         order.updatedAt = Instant.now()
         val saved = orderRepository.save(order)
@@ -253,6 +277,119 @@ class OrderService(
             else -> {}
         }
         return saved
+    }
+
+    /**
+     * Real itunda-own-fleet delivery claim (2026-07-26) -- closes the "blocked (real
+     * third-party courier/delivery-logistics integration)" line the Commerce row of
+     * docs/TOSS_PARITY_MATRIX.md used to carry, the same honest way
+     * `EatsOrderService.claimDelivery` already did for food: itunda's own `Rider`s (a
+     * shared `:core` entity, not duplicated here) claim a real PACKED order, exactly
+     * one active delivery at a time. Deliberately simpler than Eats' own exclusive-offer
+     * auto-dispatch machinery (no expiring per-rider offer window, no OSRM road-routing)
+     * -- what makes tracking real is the claim + live GPS position below, not a second
+     * copy of Eats' full dispatch sophistication; a genuinely separate, later pass could
+     * add that if this ever needs to reduce claim-race contention at real scale.
+     */
+    @Transactional
+    fun claimDelivery(riderUserId: String, orderId: String): Order {
+        val rider = riderRepository.findByUserId(riderUserId)
+            ?: throw RiderNotRegisteredException("This account is not registered as a rider")
+        if (!rider.available) {
+            throw RiderNotAvailableException("Go online before claiming a delivery")
+        }
+        if (orderRepository.existsByRiderIdAndStatusIn(rider.id, listOf(OrderStatus.SHIPPED))) {
+            throw RiderAlreadyOnDeliveryException("Finish your current delivery before claiming another")
+        }
+        val order = orderRepository.findById(orderId).orElseThrow { OrderNotFoundException("Order not found") }
+        if (order.status != OrderStatus.PACKED || order.riderId != null) {
+            throw DeliveryAlreadyClaimedException("This delivery is no longer available")
+        }
+        order.riderId = rider.id
+        order.status = OrderStatus.SHIPPED
+        order.updatedAt = Instant.now()
+        val saved = orderRepository.save(order)
+        val merchant = merchantRepository.findById(order.merchantId).orElse(null)
+        notifyBuyer(saved, "Order shipped", "${merchant?.businessName ?: "Your order"} has been picked up and is on the way.")
+        return saved
+    }
+
+    /** Rider-only terminal edge for a claimed delivery -- see [claimDelivery]'s own doc
+     * comment. Ownership-checked: only the rider who claimed this exact order may
+     * complete it. */
+    @Transactional
+    fun completeDelivery(riderUserId: String, orderId: String): Order {
+        val rider = riderRepository.findByUserId(riderUserId)
+            ?: throw RiderNotRegisteredException("This account is not registered as a rider")
+        val order = orderRepository.findById(orderId).orElseThrow { OrderNotFoundException("Order not found") }
+        if (order.riderId != rider.id || order.status != OrderStatus.SHIPPED) {
+            throw InvalidOrderStatusTransitionException("This delivery cannot be completed right now")
+        }
+        order.status = OrderStatus.DELIVERED
+        order.updatedAt = Instant.now()
+        val saved = orderRepository.save(order)
+        val merchant = merchantRepository.findById(order.merchantId).orElse(null)
+        notifyBuyer(saved, "Order delivered", "Your order from ${merchant?.businessName ?: "the seller"} has been delivered.")
+        return saved
+    }
+
+    /** Real rider "available deliveries" browse -- every real PACKED order no rider has
+     * claimed yet, distance-ranked from the rider's own live position when known (same
+     * haversine fallback discipline `EatsOrderService.getAvailableDeliveries` already
+     * uses when OSRM/road-routing isn't warranted), unranked-but-not-dropped when a
+     * merchant has no real coordinates on file yet. */
+    fun getAvailableDeliveries(riderUserId: String, pageable: Pageable): Page<Order> {
+        val rider = riderRepository.findByUserId(riderUserId)
+            ?: throw RiderNotRegisteredException("This account is not registered as a rider")
+        val riderLat = rider.currentLatitude
+        val riderLng = rider.currentLongitude
+        if (riderLat == null || riderLng == null) {
+            return orderRepository.findByStatusAndRiderIdIsNullOrderByCreatedAtAsc(OrderStatus.PACKED, pageable)
+        }
+        val candidates = orderRepository.findByStatusAndRiderIdIsNullOrderByCreatedAtAsc(OrderStatus.PACKED, Pageable.unpaged()).content
+        if (candidates.isEmpty()) return PageImpl(emptyList(), pageable, 0)
+
+        val merchantsById = merchantRepository.findAllById(candidates.map { it.merchantId }.distinct()).associateBy { it.id }
+        val (locatable, unlocatable) = candidates.partition { order ->
+            val m = merchantsById[order.merchantId]
+            m?.latitude != null && m.longitude != null
+        }
+        val ranked = locatable
+            .map { order -> val m = merchantsById.getValue(order.merchantId); order to GeoUtils.haversineKm(riderLat, riderLng, m.latitude!!, m.longitude!!) }
+            .sortedBy { (_, distanceKm) -> distanceKm }
+            .map { (order, _) -> order }
+        val sorted = ranked + unlocatable
+        val start = (pageable.offset).coerceAtMost(sorted.size.toLong()).toInt()
+        val end = (start + pageable.pageSize).coerceAtMost(sorted.size)
+        return PageImpl(sorted.subList(start, end), pageable, sorted.size.toLong())
+    }
+
+    fun getMyDeliveries(riderUserId: String, pageable: Pageable): Page<Order> {
+        val rider = riderRepository.findByUserId(riderUserId)
+            ?: throw RiderNotRegisteredException("This account is not registered as a rider")
+        return orderRepository.findByRiderIdOrderByCreatedAtDesc(rider.id, pageable)
+    }
+
+    /** Real live rider-location tracking for a buyer watching their own delivery in
+     * transit -- mirrors `EatsOrderService.getRiderLocation` exactly. `null` (not an
+     * error) is the honest, expected response whenever there's genuinely nothing to
+     * show yet (no rider claimed, or a claimed rider hasn't reported a position). */
+    fun getRiderLocation(requesterId: String, orderId: String): OrderRiderLocationView? {
+        val order = orderRepository.findById(orderId).orElseThrow { OrderNotFoundException("Order not found") }
+        val merchant = merchantRepository.findById(order.merchantId).orElse(null)
+        val rider = order.riderId?.let { riderRepository.findById(it).orElse(null) }
+        val isBuyer = order.buyerId == requesterId
+        val isSeller = merchant?.ownerUserId == requesterId
+        val isRider = rider?.userId == requesterId
+        if (!isBuyer && !isSeller && !isRider) {
+            throw OrderNotFoundException("Order not found")
+        }
+        if (order.status != OrderStatus.SHIPPED) return null
+        val lat = rider?.currentLatitude
+        val lng = rider?.currentLongitude
+        val updatedAt = rider?.locationUpdatedAt
+        if (lat == null || lng == null || updatedAt == null) return null
+        return OrderRiderLocationView(lat, lng, updatedAt)
     }
 
     /**
