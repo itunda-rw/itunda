@@ -79,6 +79,10 @@ import { searchPlaces, type PlaceSearchResult } from './lib/maps';
 import { fetchMiniAppCatalog, type PartnerMiniApp } from './lib/partners';
 import { cancelScheduledTransfer, createScheduledTransfer, fetchMyScheduledTransfers, type ScheduledTransfer } from './lib/scheduledTransfers';
 import {
+  cancelAutoTransfer, createAutoTransfer, fetchMyAutoTransfers, pauseAutoTransfer, resumeAutoTransfer,
+  type AutoTransfer, type AutoTransferFrequency,
+} from './lib/autoTransfers';
+import {
   acceptRideTrip, cancelRideTrip, completeRideTrip, declineRideTrip, fetchAvailableTrips, fetchMyDriverProfile, fetchMyDriverTrips,
   fetchMyTrips, registerAsDriver, requestRideTrip, setDriverAvailability, startRideTrip, updateDriverLocation,
   type RideDriver, type RideTrip,
@@ -467,6 +471,7 @@ function HomeView() {
       <QuickActions />
       <TransactionHistory transactions={transactions} unusuallyLargeIds={unusuallyLargeIds} />
       <ScheduledTransfersCard />
+      <AutoTransfersCard />
     </div>
   );
 }
@@ -584,6 +589,168 @@ function ScheduledTransfersCard() {
             <button className="toss-btn toss-btn-secondary" disabled={busyId === t.id} onClick={() => handleCancel(t.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
               {busyId === t.id ? '…' : 'Cancel'}
             </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const AUTO_TRANSFER_STATUS_LABEL: Record<AutoTransfer['status'], string> = {
+  ACTIVE: 'Active', PAUSED: 'Paused', CANCELLED: 'Cancelled',
+};
+const WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+// Real Toss Bank 자동이체 (auto-transfer) -- see lib/autoTransfers.ts's own doc
+// comment. Recurring, genuinely distinct from ScheduledTransfersCard's own one-time
+// 예약송금 above. First bank-mfe client for a backend that previously had none.
+function AutoTransfersCard() {
+  const [transfers, setTransfers] = useState<AutoTransfer[] | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [recipient, setRecipient] = useState('');
+  const [amount, setAmount] = useState('');
+  const [frequency, setFrequency] = useState<AutoTransferFrequency>('MONTHLY');
+  const [dayOfWeek, setDayOfWeek] = useState('1');
+  const [dayOfMonth, setDayOfMonth] = useState('1');
+  const [description, setDescription] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    fetchMyAutoTransfers().then(setTransfers).catch(() => {});
+  };
+
+  useEffect(load, []);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsedAmount = Number(amount);
+    if (!recipient.trim() || !(parsedAmount > 0)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await createAutoTransfer(
+        recipient.trim(), parsedAmount, frequency,
+        frequency === 'WEEKLY' ? Number(dayOfWeek) : null,
+        frequency === 'MONTHLY' ? Number(dayOfMonth) : null,
+        description,
+      );
+      setRecipient('');
+      setAmount('');
+      setDescription('');
+      setShowCreate(false);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not set up this auto-transfer.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleToggle = async (t: AutoTransfer) => {
+    setBusyId(t.id);
+    setError(null);
+    try {
+      if (t.status === 'ACTIVE') await pauseAutoTransfer(t.id);
+      else await resumeAutoTransfer(t.id);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update this auto-transfer.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleCancel = async (id: string) => {
+    setBusyId(id);
+    setError(null);
+    try {
+      await cancelAutoTransfer(id);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not cancel this auto-transfer.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const active = (transfers ?? []).filter((t) => t.status !== 'CANCELLED');
+  const cancelled = (transfers ?? []).filter((t) => t.status === 'CANCELLED');
+
+  return (
+    <div className="toss-card" style={{ padding: '16px', marginTop: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Auto-transfers</h3>
+        <button className="toss-btn toss-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+          {showCreate ? 'Cancel' : '+ Set up'}
+        </button>
+      </div>
+
+      {showCreate && (
+        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+          <input
+            type="text" placeholder="Phone or account number" value={recipient} onChange={(e) => setRecipient(e.target.value)} required
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <input
+            type="number" placeholder="Amount (RWF)" value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <select
+            value={frequency} onChange={(e) => setFrequency(e.target.value as AutoTransferFrequency)}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          >
+            <option value="WEEKLY">Weekly</option>
+            <option value="MONTHLY">Monthly</option>
+          </select>
+          {frequency === 'WEEKLY' ? (
+            <select
+              value={dayOfWeek} onChange={(e) => setDayOfWeek(e.target.value)}
+              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            >
+              {WEEKDAY_NAMES.map((name, i) => <option key={name} value={i + 1}>{name}</option>)}
+            </select>
+          ) : (
+            <select
+              value={dayOfMonth} onChange={(e) => setDayOfMonth(e.target.value)}
+              style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            >
+              {Array.from({ length: 28 }, (_, i) => i + 1).map((d) => <option key={d} value={d}>Day {d} of the month</option>)}
+            </select>
+          )}
+          <input
+            type="text" placeholder="Description (optional)" value={description} onChange={(e) => setDescription(e.target.value)}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? 'Setting up…' : 'Set up auto-transfer'}</button>
+        </form>
+      )}
+
+      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+
+      {active.length === 0 && cancelled.length === 0 && (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No auto-transfers set up yet.</p>
+      )}
+
+      {[...active, ...cancelled.slice(0, 2)].map((t) => (
+        <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+          <div>
+            <p style={{ fontSize: '13px', fontWeight: 700 }}>{t.recipientName} · {t.amount.toLocaleString()} RWF</p>
+            <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+              {t.frequency === 'WEEKLY' ? `Weekly (${WEEKDAY_NAMES[(t.dayOfWeek ?? 1) - 1]})` : `Monthly (day ${t.dayOfMonth})`} · {AUTO_TRANSFER_STATUS_LABEL[t.status]}
+              {t.lastFailureReason && ` · ${t.lastFailureReason}`}
+            </p>
+          </div>
+          {t.status !== 'CANCELLED' && (
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button className="toss-btn toss-btn-secondary" disabled={busyId === t.id} onClick={() => handleToggle(t)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+                {busyId === t.id ? '…' : t.status === 'ACTIVE' ? 'Pause' : 'Resume'}
+              </button>
+              <button className="toss-btn toss-btn-secondary" disabled={busyId === t.id} onClick={() => handleCancel(t.id)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+                Cancel
+              </button>
+            </div>
           )}
         </div>
       ))}
