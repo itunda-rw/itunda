@@ -47,14 +47,11 @@ object PartnerMiniAppPermissions {
  * Honest, explicit scope boundary (read before assuming this is more than it is): this
  * is a REAL registry + REAL human review workflow + a REAL published catalog of
  * approved mini-apps (`getCatalog()`) -- every part of that is genuinely functional,
- * not a demo. What this deliberately does NOT include: the mobile Saronite host does
- * not yet actually download, verify, sandbox, and render a third-party bundle at
- * runtime (that's a separate, comparably large piece of native engineering -- bundle
- * signing/verification, a real sandboxed JS execution boundary, and real runtime
- * enforcement of `PartnerMiniAppPermissions` -- matching the honest, dated, multi-pass
- * scoping this repo already gave the iOS mini-app host itself). A partner today gets a
- * real account, a real reviewed listing, and a real catalog entry; actually running
- * their code on a real device is the next, distinct, larger step.
+ * not a demo. Android's own host (`PartnerMiniAppLoader.kt`) already really downloads,
+ * loads, and runs an approved bundle on a real device -- see `docs/TOSS_PARITY_MATRIX.md`'s
+ * Partner SDK row for that account, this comment used to (wrongly) claim otherwise.
+ * bank-mfe only got a catalog-browse client (2026-07-26); it doesn't attempt to run a
+ * bundle at all, same as iOS's current scope.
  */
 @Service
 class PartnerService(

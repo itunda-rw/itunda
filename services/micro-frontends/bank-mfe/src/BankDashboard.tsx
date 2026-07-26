@@ -76,6 +76,7 @@ import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
 import LiveRiderMap from './LiveRiderMap';
 import { searchPlaces, type PlaceSearchResult } from './lib/maps';
+import { fetchMiniAppCatalog, type PartnerMiniApp } from './lib/partners';
 import {
   acceptRideTrip, cancelRideTrip, completeRideTrip, declineRideTrip, fetchAvailableTrips, fetchMyDriverProfile, fetchMyDriverTrips,
   fetchMyTrips, registerAsDriver, requestRideTrip, setDriverAvailability, startRideTrip, updateDriverLocation,
@@ -1138,6 +1139,7 @@ function MyView() {
   const [myListingsCount, setMyListingsCount] = useState(0);
   const [myJobPostsCount, setMyJobPostsCount] = useState(0);
   const [myPropertyListingsCount, setMyPropertyListingsCount] = useState(0);
+  const [miniApps, setMiniApps] = useState<PartnerMiniApp[]>([]);
 
   useEffect(() => {
     // Each fetch independent and best-effort -- one product's API hiccup must never
@@ -1151,6 +1153,7 @@ function MyView() {
     fetchMyListings().then((r) => setMyListingsCount(r.listings.length)).catch(() => {});
     fetchMyJobPosts().then((r) => setMyJobPostsCount(r.posts.length)).catch(() => {});
     fetchMyPropertyListings().then((r) => setMyPropertyListingsCount(r.listings.length)).catch(() => {});
+    fetchMiniAppCatalog().then(setMiniApps).catch(() => {});
   }, []);
 
   const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: '13px' };
@@ -1187,6 +1190,29 @@ function MyView() {
         <div style={rowStyle}><span>Jobs posted</span><span>{myJobPostsCount}</span></div>
         <div style={rowStyle}><span>Property listed</span><span>{myPropertyListingsCount}</span></div>
       </div>
+      {miniApps.length > 0 && (
+        <div className="toss-card" style={{ padding: '16px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Mini apps</h3>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '10px' }}>
+            Third-party apps reviewed and approved to run inside itunda.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {miniApps.map((app) => (
+              <div key={app.id} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                {app.iconUrl ? (
+                  <img src={app.iconUrl} alt="" style={{ width: '36px', height: '36px', borderRadius: '8px', flexShrink: 0 }} />
+                ) : (
+                  <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: 'var(--toss-grey-100)', flexShrink: 0 }} />
+                )}
+                <div>
+                  <p style={{ fontSize: '13px', fontWeight: 700 }}>{app.name}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{app.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

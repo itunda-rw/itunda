@@ -9,12 +9,12 @@ import org.springframework.web.bind.annotation.RestController
 import rw.itunda.core.web.pageMeta
 import rw.itunda.partners.PartnerService
 
-// The real "app store" surface a mobile Saronite host client would fetch to know which
-// third-party mini-apps are approved and available -- requires a normal itunda-user
-// JWT (default SecurityConfig .anyRequest().authenticated(), no ADMIN role needed),
-// unlike /api/v1/partners/** (partner-authenticated) or /api/v1/system/partners/**
-// (ADMIN-only review). See PartnerService's own doc comment for why the mobile side
-// doesn't actually consume/render this into a running mini-app yet.
+// The real "app store" surface every itunda client fetches to know which third-party
+// mini-apps are approved and available -- requires a normal itunda-user JWT (default
+// SecurityConfig .anyRequest().authenticated(), no ADMIN role needed), unlike
+// /api/v1/partners/** (partner-authenticated) or /api/v1/system/partners/** (ADMIN-only
+// review). Android's own host really downloads and runs an approved bundle from this
+// same catalog (see PartnerMiniAppLoader.kt); bank-mfe/iOS only browse it so far.
 @RestController
 @RequestMapping("/api/v1/mini-apps")
 class MiniAppCatalogController(private val partnerService: PartnerService) {
