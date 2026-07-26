@@ -123,6 +123,16 @@ class Merchant(
     // restaurant, mirroring Baemin's own real "참여 가게" scoping.
     @Column(name = "participates_in_eats_membership", nullable = false)
     var participatesInEatsMembership: Boolean = false,
+
+    // Real 배달의민족 예약주문 (scheduled ordering) opt-in (2026-07-26) -- sourced from
+    // Baemin's own real, actively-growing feature (ceo.baemin.com's own seller guide:
+    // "가게 관리 > 예약주문 설정" -- not every restaurant supports it, only the ones
+    // whose owner explicitly turns it on). Same real per-restaurant opt-in shape
+    // `participatesInEatsMembership` already establishes -- never a blanket capability
+    // every restaurant is forced into. See EatsOrderService.placeOrder's own doc
+    // comment for the real scheduling window this enables.
+    @Column(name = "accepts_scheduled_orders", nullable = false)
+    var acceptsScheduledOrders: Boolean = false,
 ) {
     protected constructor() : this(id = "", ownerUserId = "", walletId = "", businessName = "")
 }

@@ -63,6 +63,8 @@ class InvalidEatsDeliveryNotesException(message: String) : RuntimeException(mess
 class NoActiveOfferException(message: String) : RuntimeException(message)
 class MissingRequiredMenuOptionException(message: String) : RuntimeException(message)
 class InvalidMenuOptionSelectionException(message: String) : RuntimeException(message)
+class ScheduledOrdersNotSupportedException(message: String) : RuntimeException(message)
+class InvalidScheduledOrderTimeException(message: String) : RuntimeException(message)
 
 // Real menu-options selection (2026-07-21, v1: required single-select only) --
 // `selectedChoiceIds` is empty for the overwhelming majority of pre-existing menu items
@@ -123,6 +125,11 @@ class EatsOrderService(
         // notification when an order reaches READY_FOR_PICKUP -- see
         // notifyNearestRiders's own doc comment for the full account.
         private const val NEAREST_RIDERS_TO_NOTIFY = 5
+
+        // Real 배달의민족 예약주문 (scheduled ordering) window -- Baemin's own real
+        // feature is scoped to "오늘"/"내일" (today/tomorrow), a real, bounded window,
+        // not an open-ended future date. See placeOrder's own doc comment.
+        val SCHEDULED_ORDER_MAX_WINDOW: java.time.Duration = java.time.Duration.ofDays(2)
 
         // Real exclusive accept window for automatic dispatch -- see
         // dispatchToNextCandidate's own doc comment for the full account. Long enough
@@ -202,6 +209,17 @@ class EatsOrderService(
     )
     private val riderStatusOrder = listOf(EatsOrderStatus.RIDER_ASSIGNED, EatsOrderStatus.PICKED_UP, EatsOrderStatus.DELIVERED)
 
+    // Real 배달의민족 예약주문 (scheduled ordering) (2026-07-26) -- sourced from
+    // Baemin's own real, actively-growing seller-facing feature
+    // (ceo.baemin.com/guide's own "예약주문 설정" doc: a per-restaurant opt-in, not
+    // every real restaurant supports it). `scheduledFor` is honestly just a real,
+    // buyer-stated preferred time recorded on the order and shown to the restaurant --
+    // this doesn't build a second dispatch scheduler that auto-delays notifying the
+    // restaurant until the scheduled time (Baemin's own real prep-time/dispatch
+    // algorithm isn't published), the same "record the real preference, don't fabricate
+    // the smart-dispatch logic behind it" honesty this session applies elsewhere.
+    // Bounded to SCHEDULED_ORDER_MAX_WINDOW ahead, matching Baemin's own real
+    // "오늘"/"내일" (today/tomorrow) scope, not an open-ended future date.
     @Transactional
     fun placeOrder(
         buyerId: String,
@@ -215,6 +233,10 @@ class EatsOrderService(
         // method's own doc comment further down for the full account. Defaults to
         // DELIVERY, so every existing caller's behavior is completely unchanged.
         fulfillmentType: EatsFulfillmentType = EatsFulfillmentType.DELIVERY,
+        // Real 배달의민족 예약주문 (scheduled ordering) (2026-07-26) -- null (the
+        // default) means ASAP, every existing caller's behavior completely unchanged.
+        // See this method's own doc comment for the real opt-in/window rules.
+        scheduledFor: Instant? = null,
     ): EatsOrderDetail {
         if (items.isEmpty()) {
             throw EmptyEatsOrderException("An order needs at least one item")
@@ -255,6 +277,25 @@ class EatsOrderService(
         // and a real "collect from the restaurant" order genuinely has no delivery
         // address of its own to store.
         val resolvedAddress = if (fulfillmentType == EatsFulfillmentType.PICKUP) "Pickup at ${restaurant.businessName}" else trimmedAddress
+
+        // Real 배달의민족 예약주문 (scheduled ordering) validation -- only a real
+        // restaurant that's explicitly opted in supports it (Merchant.kt's own doc
+        // comment: sourced from ceo.baemin.com's own seller guide, not every real
+        // restaurant supports this). Bounded to SCHEDULED_ORDER_MAX_WINDOW ahead --
+        // Baemin's own real feature is scoped to "오늘"/"내일" (today/tomorrow), a
+        // real, bounded window, not an open-ended future date.
+        if (scheduledFor != null) {
+            if (!restaurant.acceptsScheduledOrders) {
+                throw ScheduledOrdersNotSupportedException("This restaurant doesn't accept scheduled orders")
+            }
+            val now = Instant.now()
+            if (!scheduledFor.isAfter(now)) {
+                throw InvalidScheduledOrderTimeException("Scheduled time must be in the future")
+            }
+            if (scheduledFor.isAfter(now.plus(SCHEDULED_ORDER_MAX_WINDOW))) {
+                throw InvalidScheduledOrderTimeException("Scheduled time must be within ${SCHEDULED_ORDER_MAX_WINDOW.toDays()} days")
+            }
+        }
 
         val restaurantWallet = walletRepository.findById(restaurant.walletId)
             .orElseThrow { RestaurantNoWalletException("Restaurant settlement wallet not found") }
@@ -419,7 +460,7 @@ class EatsOrderService(
                 deliveryAddress = resolvedAddress, itemsSubtotal = itemsSubtotal, deliveryFee = deliveryFee,
                 platformFee = platformFee, totalAmount = totalAmount, transactionId = result.transactionId,
                 deliveryLatitude = resolvedDeliveryLat, deliveryLongitude = resolvedDeliveryLng, distanceKm = distanceKmRounded,
-                deliveryNotes = trimmedNotes, fulfillmentType = fulfillmentType,
+                deliveryNotes = trimmedNotes, fulfillmentType = fulfillmentType, scheduledFor = scheduledFor,
             ),
         )
         val orderItems = resolved.map {
@@ -441,11 +482,12 @@ class EatsOrderService(
         // operation it's attached to" discipline this class's own notifyNearestRiders
         // already establishes.
         try {
+            val scheduleNote = if (scheduledFor != null) " (scheduled for $scheduledFor)" else ""
             notificationRepository.save(
                 Notification(
                     id = "notif_${UUID.randomUUID()}", userId = restaurant.ownerUserId, type = "NEW_EATS_ORDER",
                     title = "New order received",
-                    body = "A new order for ${orderItems.sumOf { it.quantity }} item(s) just came in -- $totalAmount RWF",
+                    body = "A new order for ${orderItems.sumOf { it.quantity }} item(s) just came in -- $totalAmount RWF$scheduleNote",
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"orderId\":\"${order.id}\"}",
                 ),
             )

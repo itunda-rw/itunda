@@ -62,7 +62,10 @@ import rw.itunda.eats.RiderNoWalletException
 import rw.itunda.eats.RiderNotAvailableException
 import rw.itunda.eats.RiderNotRegisteredException
 import rw.itunda.eats.RiderService
+import rw.itunda.eats.ScheduledOrdersNotSupportedException
+import rw.itunda.eats.InvalidScheduledOrderTimeException
 import rw.itunda.eats.SelfEatsOrderException
+import java.time.Instant
 
 data class PlaceEatsOrderRequest(
     val restaurantId: String,
@@ -76,6 +79,10 @@ data class PlaceEatsOrderRequest(
     val deliveryLongitude: Double? = null,
     val deliveryNotes: String? = null,
     val fulfillmentType: EatsFulfillmentType = EatsFulfillmentType.DELIVERY,
+    // Real 배달의민족 예약주문 (scheduled ordering) (2026-07-26) -- see
+    // EatsOrderService.placeOrder's own doc comment. Null (the default) means ASAP,
+    // every existing client's behavior completely unchanged.
+    val scheduledFor: Instant? = null,
 )
 data class SubscribeMembershipRequest(val days: Int)
 data class UpdateEatsOrderStatusRequest(val status: EatsOrderStatus)
@@ -169,6 +176,7 @@ class EatsController(
             val detail = eatsOrderService.placeOrder(
                 currentUser.userId, request.restaurantId, request.items, request.deliveryAddress,
                 request.deliveryLatitude, request.deliveryLongitude, request.deliveryNotes, request.fulfillmentType,
+                request.scheduledFor,
             )
             201 to mapOf("success" to true, "order" to detail.order, "items" to detail.items)
         }
@@ -461,6 +469,14 @@ class EatsController(
     @ExceptionHandler(InvalidEatsReviewReplyException::class)
     fun handleInvalidReply(ex: InvalidEatsReviewReplyException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_REVIEW_REPLY", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(ScheduledOrdersNotSupportedException::class)
+    fun handleScheduledOrdersNotSupported(ex: ScheduledOrdersNotSupportedException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("SCHEDULED_ORDERS_NOT_SUPPORTED", ex.message ?: "Unprocessable"))
+
+    @ExceptionHandler(InvalidScheduledOrderTimeException::class)
+    fun handleInvalidScheduledOrderTime(ex: InvalidScheduledOrderTimeException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_SCHEDULED_ORDER_TIME", ex.message ?: "Bad request"))
 
     @ExceptionHandler(InvalidEatsOrderStatusTransitionException::class)
     fun handleInvalidTransition(ex: InvalidEatsOrderStatusTransitionException) =

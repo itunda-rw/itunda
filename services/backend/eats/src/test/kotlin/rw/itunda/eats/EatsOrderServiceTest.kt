@@ -173,6 +173,85 @@ class EatsOrderServiceTest : BehaviorSpec({
             }
         }
 
+        When("a real buyer places a real 배달의민족 예약주문 (scheduled order) at a restaurant that opted in") {
+            val schedulingRestaurant = Merchant(
+                id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill",
+                status = MerchantStatus.ACTIVE, acceptsScheduledOrders = true,
+            )
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(schedulingRestaurant)
+            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { ledgerService.postLedgerTransaction("RWF", any()) } returns LedgerPostResult("ledgertxn_sched", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+            val scheduledFor = Instant.now().plus(1, java.time.temporal.ChronoUnit.HOURS)
+
+            val detail = service.placeOrder(
+                "buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 1)), "addr",
+                scheduledFor = scheduledFor,
+            )
+
+            Then("it real-stores the buyer's requested time") {
+                detail.order.scheduledFor shouldBe scheduledFor
+            }
+        }
+
+        When("a real buyer tries to schedule an order at a restaurant that hasn't opted in") {
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+
+            Then("it throws ScheduledOrdersNotSupportedException before ever moving real money") {
+                try {
+                    service.placeOrder(
+                        "buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 1)), "addr",
+                        scheduledFor = Instant.now().plus(1, java.time.temporal.ChronoUnit.HOURS),
+                    )
+                    error("expected ScheduledOrdersNotSupportedException")
+                } catch (e: ScheduledOrdersNotSupportedException) {
+                    // expected
+                }
+            }
+        }
+
+        When("a real buyer tries to schedule an order in the past") {
+            val schedulingRestaurant = Merchant(
+                id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill",
+                status = MerchantStatus.ACTIVE, acceptsScheduledOrders = true,
+            )
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(schedulingRestaurant)
+
+            Then("it throws InvalidScheduledOrderTimeException") {
+                try {
+                    service.placeOrder(
+                        "buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 1)), "addr",
+                        scheduledFor = Instant.now().minus(1, java.time.temporal.ChronoUnit.HOURS),
+                    )
+                    error("expected InvalidScheduledOrderTimeException")
+                } catch (e: InvalidScheduledOrderTimeException) {
+                    // expected
+                }
+            }
+        }
+
+        When("a real buyer tries to schedule an order beyond the real 2-day window") {
+            val schedulingRestaurant = Merchant(
+                id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill",
+                status = MerchantStatus.ACTIVE, acceptsScheduledOrders = true,
+            )
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(schedulingRestaurant)
+
+            Then("it throws InvalidScheduledOrderTimeException") {
+                try {
+                    service.placeOrder(
+                        "buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 1)), "addr",
+                        scheduledFor = Instant.now().plus(5, java.time.temporal.ChronoUnit.DAYS),
+                    )
+                    error("expected InvalidScheduledOrderTimeException")
+                } catch (e: InvalidScheduledOrderTimeException) {
+                    // expected
+                }
+            }
+        }
+
         When("a real buyer places an order with real delivery notes") {
             every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
             every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)

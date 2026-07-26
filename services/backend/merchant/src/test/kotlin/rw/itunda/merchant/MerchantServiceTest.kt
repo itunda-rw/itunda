@@ -126,6 +126,17 @@ class MerchantServiceTest : BehaviorSpec({
             }
         }
 
+        When("a real merchant opts into 배달의민족 예약주문 (scheduled orders)") {
+            every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
+            every { merchantRepository.save(any()) } answers { firstArg() }
+
+            val result = service.setAcceptsScheduledOrders("owner_1", true)
+
+            Then("it real-flips the flag") {
+                result.acceptsScheduledOrders shouldBe true
+            }
+        }
+
         When("setting a real valid location") {
             every { merchantRepository.findByOwnerUserId("owner_1") } returns merchant
             every { merchantRepository.save(any()) } answers { firstArg() }

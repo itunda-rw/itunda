@@ -143,6 +143,13 @@ class EatsOrder(
     @Enumerated(EnumType.STRING)
     @Column(name = "fulfillment_type", nullable = false, length = 16)
     var fulfillmentType: EatsFulfillmentType = EatsFulfillmentType.DELIVERY,
+
+    // Real 배달의민족 예약주문 (scheduled ordering) (2026-07-26) -- see
+    // EatsOrderService.placeOrder's own doc comment for the real window/opt-in rules.
+    // Null (the default) means ASAP -- every existing/legacy order's exact current
+    // behavior, completely unchanged.
+    @Column(name = "scheduled_for")
+    val scheduledFor: Instant? = null,
 ) {
     protected constructor() : this(
         id = "", buyerId = "", restaurantId = "", deliveryAddress = "", itemsSubtotal = BigDecimal.ZERO,

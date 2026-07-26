@@ -201,6 +201,16 @@ class MerchantService(
         return merchantRepository.save(merchant)
     }
 
+    // Real 배달의민족 예약주문 (scheduled ordering) opt-in (2026-07-26) -- see
+    // Merchant.kt's own doc comment. A restaurant explicitly opts into accepting
+    // buyer-scheduled future delivery/pickup times -- never forced on.
+    @Transactional
+    fun setAcceptsScheduledOrders(ownerUserId: String, accepts: Boolean): Merchant {
+        val merchant = getMyMerchant(ownerUserId)
+        merchant.acceptsScheduledOrders = accepts
+        return merchantRepository.save(merchant)
+    }
+
     // Real category/cuisine (2026-07-19) -- powers restaurant categories + search/filter
     // for Eats (and Shopping, since both browse the same Merchant directory). Same
     // separate-settable-field pattern as setWebhookUrl/setLocation.

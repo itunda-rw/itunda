@@ -32,6 +32,7 @@ data class SetLocationRequest(val latitude: Double, val longitude: Double)
 data class SetCategoryRequest(val category: String)
 data class SetCashbackRateRequest(val rate: BigDecimal?)
 data class SetParticipatesInEatsMembershipRequest(val participates: Boolean)
+data class SetAcceptsScheduledOrdersRequest(val accepts: Boolean)
 data class SetPhotoUrlRequest(val photoUrl: String)
 data class SetMinOrderAmountRequest(val minOrderAmount: BigDecimal?)
 data class CollectPaymentRequest(val couponId: String? = null)
@@ -131,6 +132,17 @@ class MerchantController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val merchant = merchantService.setParticipatesInEatsMembership(currentUser.userId, request.participates)
+        return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
+    }
+
+    // Real 배달의민족 예약주문 (scheduled ordering) opt-in (2026-07-26) -- see
+    // Merchant.kt's own doc comment.
+    @PostMapping("/scheduled-orders-participation")
+    fun setAcceptsScheduledOrders(
+        @RequestBody request: SetAcceptsScheduledOrdersRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val merchant = merchantService.setAcceptsScheduledOrders(currentUser.userId, request.accepts)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
