@@ -46,6 +46,13 @@ enum class LedgerAccountType {
     // establishes: the passenger's real fare leaves their wallet at request time, held
     // until the trip completes (or refunded if cancelled before a driver is assigned).
     RIDE_HOLDING,
+    // Real KakaoTalk Emoticon Store revenue (2026-07-26) -- see EmoticonService's own
+    // doc comment. A direct sale, not an escrow hold: unlike GIFT_HOLDING/RIDE_HOLDING
+    // (money in flight to another real user, pending an event), a purchased emoticon
+    // pack is itunda's own product -- the same real "itunda earns this outright"
+    // revenue-account shape FEE_REVENUE already establishes, just its own dedicated
+    // account so emoticon sales can be reconciled independently of transaction fees.
+    EMOTICON_REVENUE,
 }
 
 /**

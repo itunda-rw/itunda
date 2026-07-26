@@ -119,6 +119,15 @@ class MessagingWebSocketHandler(
                     "senderId" to message.senderId,
                     "body" to message.body,
                     "sentAt" to message.sentAt.toString(),
+                    // Real, pre-existing gap fixed 2026-07-26 -- see
+                    // MessagingController.getMessages's own identical fix. A live
+                    // recipient's real-time push never carried these real fields
+                    // either, only the sender's own immediate POST response did.
+                    "replyToMessageId" to message.replyToMessageId,
+                    "imageUrl" to message.imageUrl,
+                    "emoticonId" to message.emoticonId,
+                    "forwardedFromMessageId" to message.forwardedFromMessageId,
+                    "forwardedFromType" to message.forwardedFromType,
                 ),
             ),
         )
@@ -136,6 +145,14 @@ class MessagingWebSocketHandler(
                     "senderId" to message.senderId,
                     "body" to message.body,
                     "sentAt" to message.sentAt.toString(),
+                    // Real, pre-existing gap fixed 2026-07-26 -- see this class's own
+                    // publishNewMessage fix for the full account.
+                    "replyToMessageId" to message.replyToMessageId,
+                    "imageUrl" to message.imageUrl,
+                    "emoticonId" to message.emoticonId,
+                    "forwardedFromMessageId" to message.forwardedFromMessageId,
+                    "forwardedFromType" to message.forwardedFromType,
+                    "mentionedUserIds" to message.mentionedUserIds,
                 ),
             ),
         )

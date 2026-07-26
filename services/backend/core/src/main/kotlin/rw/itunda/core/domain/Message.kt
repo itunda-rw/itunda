@@ -62,6 +62,14 @@ class Message(
     // /api/v1/uploads/ URLs before storing -- see that method's own doc comment).
     @Column(name = "image_url", length = 255)
     val imageUrl: String? = null,
+
+    // Real Emoticon Store send (2026-07-26) -- see EmoticonService's own doc comment.
+    // Same "content field alongside body, never replacing it" shape imageUrl already
+    // establishes -- an emoticon-only send still gets a real placeholder body (see
+    // MessagingService.sendMessage's own doc comment) so every preview/notification
+    // surface has real text to show without special-casing null bodies everywhere.
+    @Column(name = "emoticon_id", length = 64)
+    val emoticonId: String? = null,
 ) {
     protected constructor() : this(id = "", conversationId = "", senderId = "", body = "")
 }

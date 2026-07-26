@@ -75,6 +75,9 @@ class LedgerAccount(
             // Real Kakao T-style ride-hailing fare holding (2026-07-26) -- see
             // RideTrip.kt's own doc comment.
             "ride_holding" to "Ride Fare Holding",
+            // Real KakaoTalk Emoticon Store revenue (2026-07-26) -- see
+            // EmoticonService.kt's own doc comment.
+            "emoticon_revenue" to "Emoticon Store Revenue",
         )
     }
 }

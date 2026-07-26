@@ -23,12 +23,15 @@ import rw.itunda.core.domain.LedgerAccount
 import rw.itunda.core.domain.LedgerEntry
 import rw.itunda.core.domain.LoanAccount
 import rw.itunda.core.domain.PhoneVerificationToken
+import rw.itunda.core.domain.Emoticon
+import rw.itunda.core.domain.EmoticonPack
 import rw.itunda.core.domain.SavingsGoal
 import rw.itunda.core.domain.StockTrade
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.User
+import rw.itunda.core.domain.UserEmoticonPack
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.domain.WeeklySavingsInstallment
@@ -234,4 +237,17 @@ interface TransactionRepository : JpaRepository<Transaction, String> {
         types: List<TransactionType>,
         status: TransactionStatus,
     ): List<Transaction>
+}
+
+interface EmoticonPackRepository : JpaRepository<EmoticonPack, String> {
+    fun findByActiveTrue(): List<EmoticonPack>
+}
+
+interface EmoticonRepository : JpaRepository<Emoticon, String> {
+    fun findByPackIdOrderBySortOrderAsc(packId: String): List<Emoticon>
+}
+
+interface UserEmoticonPackRepository : JpaRepository<UserEmoticonPack, String> {
+    fun findByUserId(userId: String): List<UserEmoticonPack>
+    fun findByUserIdAndPackId(userId: String, packId: String): UserEmoticonPack?
 }

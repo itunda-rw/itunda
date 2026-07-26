@@ -132,6 +132,11 @@ class GroupMessage(
     // full account; identical shape here.
     @Column(name = "image_url", length = 255)
     val imageUrl: String? = null,
+
+    // Real Emoticon Store send (2026-07-26) -- see Message.kt's own doc comment for the
+    // full account; identical shape here.
+    @Column(name = "emoticon_id", length = 64)
+    val emoticonId: String? = null,
 ) {
     protected constructor() : this(id = "", groupConversationId = "", senderId = "", body = "")
 }

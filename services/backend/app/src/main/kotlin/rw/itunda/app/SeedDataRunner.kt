@@ -4,6 +4,8 @@ import org.springframework.boot.CommandLineRunner
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Component
 import rw.itunda.core.domain.Contact
+import rw.itunda.core.domain.Emoticon
+import rw.itunda.core.domain.EmoticonPack
 import rw.itunda.core.domain.Holding
 import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.LedgerAccount
@@ -18,6 +20,8 @@ import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.repository.ContactRepository
+import rw.itunda.core.repository.EmoticonPackRepository
+import rw.itunda.core.repository.EmoticonRepository
 import rw.itunda.core.repository.HoldingRepository
 import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.LedgerAccountRepository
@@ -61,6 +65,8 @@ class SeedDataRunner(
     private val listingRepository: ListingRepository,
     private val merchantRepository: MerchantRepository,
     private val merchantProductRepository: MerchantProductRepository,
+    private val emoticonPackRepository: EmoticonPackRepository,
+    private val emoticonRepository: EmoticonRepository,
 ) : CommandLineRunner {
 
     override fun run(vararg args: String?) {
@@ -457,6 +463,26 @@ class SeedDataRunner(
                 listOf(
                     MerchantProduct(id = "product_seed_11", merchantId = "merchant_seed_5", name = "Cotton T-shirt", price = BigDecimal("8000"), imageUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/T-shirt.jpg"),
                     MerchantProduct(id = "product_seed_12", merchantId = "merchant_seed_5", name = "Sneakers", price = BigDecimal("35000"), imageUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Sneakers.jpg"),
+                ),
+            )
+        }
+
+        // Real Emoticon Store catalog seed (2026-07-26) -- server-managed, not
+        // user-generated, so it's seeded here the same way LedgerAccount.SEED_IDS is,
+        // not created through any real user-facing endpoint.
+        if (!emoticonPackRepository.existsById("pack_seed_1")) {
+            emoticonPackRepository.save(
+                EmoticonPack(
+                    id = "pack_seed_1", title = "Sunny Days", artistName = "itunda Art",
+                    thumbnailUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Emoji_u1f600.svg",
+                    price = BigDecimal("500"),
+                ),
+            )
+            emoticonRepository.saveAll(
+                listOf(
+                    Emoticon(id = "emoticon_seed_1", packId = "pack_seed_1", imageUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Emoji_u1f600.svg", sortOrder = 0),
+                    Emoticon(id = "emoticon_seed_2", packId = "pack_seed_1", imageUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Emoji_u1f602.svg", sortOrder = 1),
+                    Emoticon(id = "emoticon_seed_3", packId = "pack_seed_1", imageUrl = "https://commons.wikimedia.org/wiki/Special:FilePath/Emoji_u1f970.svg", sortOrder = 2),
                 ),
             )
         }

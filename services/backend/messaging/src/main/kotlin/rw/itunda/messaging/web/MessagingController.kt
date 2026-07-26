@@ -104,6 +104,15 @@ class MessagingController(
             mapOf(
                 "id" to m.id, "conversationId" to m.conversationId, "senderId" to m.senderId, "body" to if (m.deletedAt == null) m.body else "This message was deleted",
                 "sentAt" to m.sentAt, "readAt" to m.readAt, "deletedAt" to m.deletedAt, "replyToMessageId" to m.replyToMessageId, "reactions" to (reactionsByMessageId[m.id] ?: emptyList()),
+                // Real, pre-existing gap fixed 2026-07-26, found while live-verifying
+                // the new Emoticon Store send path: imageUrl/forwardedFromMessageId/
+                // forwardedFromType were real fields on Message (composer photo send
+                // 2026-07-25, forwarding 2026-07-25) but never surfaced here -- a
+                // recipient re-fetching this conversation's history (not just the
+                // sender's own immediate POST response) never saw a photo, a forwarded-
+                // message label, or now an emoticon, only ever the placeholder body text.
+                "imageUrl" to m.imageUrl, "emoticonId" to m.emoticonId,
+                "forwardedFromMessageId" to m.forwardedFromMessageId, "forwardedFromType" to m.forwardedFromType,
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "messages" to messages) + pageMeta(page))

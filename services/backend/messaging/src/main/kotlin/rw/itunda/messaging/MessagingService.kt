@@ -163,6 +163,13 @@ class MessagingService(
         forwardedFromMessageId: String? = null,
         forwardedFromType: String? = null,
         imageUrl: String? = null,
+        // Real Emoticon Store send (2026-07-26) -- see EmoticonService's own doc
+        // comment. Ownership of the emoticon's pack is verified by the caller
+        // (EmoticonService.requireOwnedEmoticon) BEFORE this method is ever invoked --
+        // this method trusts the id it's given the same way it already trusts a
+        // pre-validated imageUrl, rather than re-deriving ownership here and coupling
+        // this already-tested method to the Emoticon repositories.
+        emoticonId: String? = null,
     ): Message {
         // Real composer photo send (2026-07-25) -- an image-only send is real ("📷
         // Photo" is what every preview/notification surface shows), not an empty
@@ -174,7 +181,7 @@ class MessagingService(
         if (imageUrl != null && !imageUrl.startsWith("/api/v1/uploads/")) {
             throw InvalidMessageImageException("imageUrl must be a real uploaded file from /api/v1/uploads")
         }
-        val trimmed = body.trim().ifEmpty { if (imageUrl != null) "📷 Photo" else "" }
+        val trimmed = body.trim().ifEmpty { if (emoticonId != null) "😀 Emoticon" else if (imageUrl != null) "📷 Photo" else "" }
         if (trimmed.isEmpty()) {
             throw EmptyMessageException("Message body cannot be empty")
         }
@@ -204,7 +211,7 @@ class MessagingService(
                 id = "message_${UUID.randomUUID()}", conversationId = conversationId, senderId = userId, body = trimmed,
                 replyToMessageId = replyToMessageId,
                 forwardedFromMessageId = forwardedFromMessageId, forwardedFromType = forwardedFromType,
-                imageUrl = imageUrl,
+                imageUrl = imageUrl, emoticonId = emoticonId,
             ),
         )
         conversation.lastMessageAt = message.sentAt

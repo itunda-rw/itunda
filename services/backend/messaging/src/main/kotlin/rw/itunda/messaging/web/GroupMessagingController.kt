@@ -99,6 +99,13 @@ class GroupMessagingController(
                 "id" to m.id, "groupConversationId" to m.groupConversationId, "senderId" to m.senderId, "body" to if (m.deletedAt == null) m.body else "This message was deleted",
                 "sentAt" to m.sentAt, "deletedAt" to m.deletedAt, "replyToMessageId" to m.replyToMessageId, "reactions" to (reactionsByMessageId[m.id] ?: emptyList()),
                 "unreadCount" to (unreadCountByMessageId[m.id] ?: 0),
+                // Real, pre-existing gap fixed 2026-07-26 -- see MessagingController
+                // .getMessages's own identical fix for the full account; same real
+                // fields (composer photo send, forwarding, @mentions, now emoticons)
+                // that were real columns on GroupMessage but never surfaced on refetch.
+                "imageUrl" to m.imageUrl, "emoticonId" to m.emoticonId,
+                "forwardedFromMessageId" to m.forwardedFromMessageId, "forwardedFromType" to m.forwardedFromType,
+                "mentionedUserIds" to m.mentionedUserIds,
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "messages" to messages) + pageMeta(page))

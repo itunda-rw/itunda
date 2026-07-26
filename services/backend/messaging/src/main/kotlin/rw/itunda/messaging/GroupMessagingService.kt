@@ -204,13 +204,17 @@ class GroupMessagingService(
         forwardedFromMessageId: String? = null,
         forwardedFromType: String? = null,
         imageUrl: String? = null,
+        // Real Emoticon Store send (2026-07-26) -- see MessagingService.sendMessage's
+        // own doc comment on the identical trust boundary here (ownership already
+        // verified by EmoticonService before this is ever invoked).
+        emoticonId: String? = null,
     ): GroupMessage {
         // Real composer photo send (2026-07-25) -- see MessagingService.sendMessage's
         // own doc comment for the full account; identical shape here.
         if (imageUrl != null && !imageUrl.startsWith("/api/v1/uploads/")) {
             throw InvalidGroupMessageImageException("imageUrl must be a real uploaded file from /api/v1/uploads")
         }
-        val trimmed = body.trim().ifEmpty { if (imageUrl != null) "📷 Photo" else "" }
+        val trimmed = body.trim().ifEmpty { if (emoticonId != null) "😀 Emoticon" else if (imageUrl != null) "📷 Photo" else "" }
         if (trimmed.isEmpty()) {
             throw EmptyGroupMessageException("Message body cannot be empty")
         }
@@ -235,7 +239,7 @@ class GroupMessagingService(
                 replyToMessageId = replyToMessageId,
                 forwardedFromMessageId = forwardedFromMessageId, forwardedFromType = forwardedFromType,
                 mentionedUserIds = mentionedUserIds.takeIf { it.isNotEmpty() }?.joinToString(","),
-                imageUrl = imageUrl,
+                imageUrl = imageUrl, emoticonId = emoticonId,
             ),
         )
         group.lastMessageAt = message.sentAt
