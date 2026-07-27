@@ -436,11 +436,15 @@ class OrderService(
      *
      * Deliberately, honestly scoped to only PLACED orders -- the same "before real
      * fulfillment work has started" boundary this session already uses elsewhere. Once
-     * a seller has marked an order PACKED, cancelling would need a real return/dispute
-     * flow (goods may already be in motion), a genuinely different feature not attempted
-     * here. Either the real buyer or the real seller can cancel from PLACED (a buyer
-     * changing their mind, or a seller who can't fulfil it -- e.g. out of stock -- both
-     * real, common reasons at this stage).
+     * a seller has marked an order PACKED, cancelling needs a real return/dispute flow
+     * instead (goods may already be in motion) -- see `OrderReturnService`, a genuinely
+     * different feature covering DELIVERED orders specifically (correction: an earlier
+     * version of this comment called that feature "not attempted here"; it was built
+     * the same day as this method, just as its own dedicated service rather than a
+     * method on this class -- this comment simply never got updated to say so). Either
+     * the real buyer or the real seller can cancel from PLACED (a buyer changing their
+     * mind, or a seller who can't fulfil it -- e.g. out of stock -- both real, common
+     * reasons at this stage).
      */
     @Transactional
     fun cancelOrder(requesterId: String, orderId: String): Order {
