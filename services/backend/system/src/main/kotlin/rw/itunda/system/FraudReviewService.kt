@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.FraudFlag
 import rw.itunda.core.domain.FraudFlagDecision
 import rw.itunda.core.domain.Notification
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.FraudFlagRepository
 import rw.itunda.core.repository.NotificationRepository
 import java.time.Instant
@@ -30,11 +31,20 @@ class FraudFlagAlreadyReviewedException(message: String) : RuntimeException(mess
  * `NEW_DEVICE_LOGIN` alert convention. A `CLEARED` decision (a false positive) sends
  * nothing -- the same way Toss's own real flow never bothers a customer whose flagged
  * transaction turned out to be legitimate.
+ *
+ * **Real push added 2026-07-28** -- reuses the same `PushNotificationService` path
+ * `MerchantBookingService`/`MerchantBookingReviewService` already proved live. A
+ * confirmed-fraud alert is exactly the kind of thing an account owner needs to see
+ * immediately, not next time they happen to open the app and poll `/notifications` --
+ * unlike those two auxiliary cases, best-effort here still applies (a push failure must
+ * never make the reviewer's own decide() action look like it failed), but the real
+ * urgency argument is stronger for security alerts than for a booking reply.
  */
 @Service
 class FraudReviewService(
     private val fraudFlagRepository: FraudFlagRepository,
     private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
 
     fun getQueue(pageable: Pageable): Page<FraudFlag> = fraudFlagRepository.findByReviewedFalseOrderByCreatedAtAsc(pageable)
@@ -52,14 +62,16 @@ class FraudReviewService(
         val saved = fraudFlagRepository.save(flag)
 
         if (decision == FraudFlagDecision.CONFIRMED) {
+            val title = "Suspicious activity confirmed on your account"
+            val body = "We reviewed a flagged transaction on your account and confirmed it as suspicious. Contact support if you don't recognize this activity."
             notificationRepository.save(
                 Notification(
                     id = "notif_${UUID.randomUUID()}", userId = flag.userId, type = "FRAUD_CONFIRMED",
-                    title = "Suspicious activity confirmed on your account",
-                    body = "We reviewed a flagged transaction on your account and confirmed it as suspicious. Contact support if you don't recognize this activity.",
+                    title = title, body = body,
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"flagId\":\"${saved.id}\",\"transactionId\":\"${saved.transactionId}\"}",
                 ),
             )
+            pushNotificationService.sendToUser(flag.userId, title, body, mapOf("flagId" to saved.id))
         }
 
         return saved

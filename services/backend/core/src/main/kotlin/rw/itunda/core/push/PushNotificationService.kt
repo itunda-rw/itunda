@@ -15,12 +15,15 @@ import rw.itunda.core.repository.DeviceTokenRepository
  *
  * **Deliberately not wired into every existing `Notification` call site in this pass**
  * (a repo-wide grep found 19 of them) -- rewiring all 19 in one pass would touch a lot
- * of already-tested, unrelated call sites at once. Wired into two real, named, sourced
+ * of already-tested, unrelated call sites at once. Wired into three real, named, sourced
  * gaps so far: `MerchantBookingService`'s "new booking request" notify (2026-07-26, per
- * Naver Smart Place's own real "push notifications on new bookings" feature) and
+ * Naver Smart Place's own real "push notifications on new bookings" feature),
  * `MerchantBookingReviewService`'s owner-reply notify (2026-07-27, the sibling gap that
- * same research line named). The remaining ~17 sites stay a real, valuable, still-open
- * follow-up rather than silently left unaddressed.
+ * same research line named), and `FraudReviewService.decide`'s confirmed-fraud security
+ * alert (2026-07-28, per Toss's own real customer-facing FDS flow -- a security alert is
+ * exactly the kind of thing that shouldn't wait for the next in-app poll). The remaining
+ * ~16 sites stay a real, valuable, still-open follow-up rather than silently left
+ * unaddressed.
  */
 @Service
 class PushNotificationService(
