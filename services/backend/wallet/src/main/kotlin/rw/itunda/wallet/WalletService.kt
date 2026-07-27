@@ -140,7 +140,7 @@ class WalletService(
                 // LedgerAccountType be handled since this is an exhaustive `when`. INTEREST_INCOME
                 // (2026-07-27) is the same shape -- OverdraftService.accrueInterest's own real
                 // counterpart leg is LOAN_PAYABLE, never a direct WALLET debit.
-                LedgerAccountType.REWARDS_EXPENSE, LedgerAccountType.INTEREST_EXPENSE, LedgerAccountType.INSURANCE_CLAIMS_EXPENSE, LedgerAccountType.INTEREST_INCOME, null -> "Other"
+                LedgerAccountType.REWARDS_EXPENSE, LedgerAccountType.INTEREST_EXPENSE, LedgerAccountType.INSURANCE_CLAIMS_EXPENSE, LedgerAccountType.INTEREST_INCOME, LedgerAccountType.AGENT_COMMISSION_EXPENSE, null -> "Other"
                 LedgerAccountType.WALLET -> "Other"
             }
             totals[category] = (totals[category] ?: BigDecimal.ZERO) + debit.amount

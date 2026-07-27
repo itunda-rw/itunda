@@ -81,6 +81,19 @@ class LedgerAccount(
             // Real KakaoTalk 선물하기 기프티콘 (mobile gift voucher) holding (2026-07-26) --
             // see GiftVoucher.kt's own doc comment.
             "gift_voucher_holding" to "Gift Voucher Escrow Holding",
+            // Real Toss Bank/KakaoBank 마이너스통장 (overdraft) interest income
+            // (2026-07-27) -- see OverdraftAccount.kt's own doc comment. Real bug found
+            // live: this row was missed when INTEREST_INCOME was added, so the very
+            // first real accrual would have real-500'd with "Unknown ledger account" --
+            // caught only because a SEPARATE feature (agent commission, added the same
+            // day) exercised this exact same class of bug live first.
+            "interest_income" to "Overdraft Interest Income",
+            // Real MTN MoMo-style agent cash-in/cash-out commission expense
+            // (2026-07-27) -- see AgentCommissionSchedule.kt's own doc comment. The real
+            // bug that surfaced this row was missing: a real live cash-in 500'd with
+            // "Unknown ledger account agent_commission_expense" the first time this
+            // feature was ever actually exercised end-to-end.
+            "agent_commission_expense" to "Agent Commission Expense",
         )
     }
 }

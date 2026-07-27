@@ -290,13 +290,25 @@ class AgentService(
         require(wallet.type == WalletType.MAIN) { "Cash-in is only available for a main account" }
         require(wallet.isActive) { "This account is frozen pending review" }
 
-        val ledger = ledgerService.postLedgerTransaction(
-            wallet.currency,
-            listOf(
-                LedgerLeg(agent.cashAccountId, LedgerAccountType.AGENT_CASH, LedgerDirection.DEBIT, amount, "Cash accepted at ${agent.displayName} receipt $receipt"),
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Cash-in at ${agent.displayName} receipt $receipt"),
-            ),
+        // Real MTN MoMo-style agent commission -- see AgentCommissionSchedule's own doc
+        // comment. Folded into this SAME ledger transaction (one atomic settlement,
+        // matching how a real fee-inclusive transfer already posts more than 2 legs in
+        // this codebase) rather than a second call -- honestly skipped, never blocking
+        // the real customer cash-in, if the operator who accepted it has no real wallet
+        // of their own to receive it (shouldn't happen for a real registered operator,
+        // but this is customer money moving, not something to risk on that assumption).
+        val commission = AgentCommissionSchedule.computeCommission(amount)
+        val operatorWallet = walletRepository.findByUserIdAndType(acceptedByUserId, WalletType.MAIN)
+        val legs = mutableListOf(
+            LedgerLeg(agent.cashAccountId, LedgerAccountType.AGENT_CASH, LedgerDirection.DEBIT, amount, "Cash accepted at ${agent.displayName} receipt $receipt"),
+            LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, amount, "Cash-in at ${agent.displayName} receipt $receipt"),
         )
+        if (operatorWallet != null) {
+            legs.add(LedgerLeg("agent_commission_expense", LedgerAccountType.AGENT_COMMISSION_EXPENSE, LedgerDirection.DEBIT, commission, "Agent commission - cash-in receipt $receipt"))
+            legs.add(LedgerLeg(operatorWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, commission, "Agent commission - cash-in receipt $receipt"))
+        }
+
+        val ledger = ledgerService.postLedgerTransaction(wallet.currency, legs)
         val cashIn = agentCashInRepository.save(AgentCashIn(
             id = "cashin_${UUID.randomUUID()}", agentId = agent.id, walletId = wallet.id, receiptNumber = receipt,
             ledgerTransactionId = ledger.transactionId, amount = amount, acceptedByUserId = acceptedByUserId,
@@ -314,7 +326,10 @@ class AgentService(
             isRead = false, createdAt = cashIn.createdAt,
             dataJson = "{\"agentId\":\"${agent.id}\",\"receiptNumber\":\"$receipt\",\"transactionId\":\"${ledger.transactionId}\"}",
         ))
-        return mapOf("cashIn" to cashIn, "transaction" to transaction, "newBalance" to wallet.balance)
+        return mapOf(
+            "cashIn" to cashIn, "transaction" to transaction, "newBalance" to wallet.balance,
+            "operatorCommission" to (if (operatorWallet != null) commission else BigDecimal.ZERO),
+        )
     }
 
     fun cashInForOperator(userId: String, accountNumber: String, amount: BigDecimal, receiptNumber: String): Map<String, Any?> {
@@ -358,13 +373,22 @@ class AgentService(
             throw AgentInsufficientCashException("This agent has insufficient cash on hand")
         }
 
-        val ledger = ledgerService.postLedgerTransaction(
-            wallet.currency,
-            listOf(
-                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Cash-out at ${agent.displayName} receipt $receipt"),
-                LedgerLeg(agent.cashAccountId, LedgerAccountType.AGENT_CASH, LedgerDirection.CREDIT, amount, "Cash paid at ${agent.displayName} receipt $receipt"),
-            ),
+        // Real MTN MoMo-style agent commission -- see AgentCommissionSchedule's own doc
+        // comment and cashIn's own identical call-site comment for the full account.
+        // Paid out of itunda's own real commission expense, never out of the real
+        // customer's own cash-out amount above.
+        val commission = AgentCommissionSchedule.computeCommission(amount)
+        val operatorWallet = walletRepository.findByUserIdAndType(paidByUserId, WalletType.MAIN)
+        val legs = mutableListOf(
+            LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, amount, "Cash-out at ${agent.displayName} receipt $receipt"),
+            LedgerLeg(agent.cashAccountId, LedgerAccountType.AGENT_CASH, LedgerDirection.CREDIT, amount, "Cash paid at ${agent.displayName} receipt $receipt"),
         )
+        if (operatorWallet != null) {
+            legs.add(LedgerLeg("agent_commission_expense", LedgerAccountType.AGENT_COMMISSION_EXPENSE, LedgerDirection.DEBIT, commission, "Agent commission - cash-out receipt $receipt"))
+            legs.add(LedgerLeg(operatorWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, commission, "Agent commission - cash-out receipt $receipt"))
+        }
+
+        val ledger = ledgerService.postLedgerTransaction(wallet.currency, legs)
         val cashOut = agentCashOutRepository.save(AgentCashOut(
             id = "cashout_${UUID.randomUUID()}", agentId = agent.id, walletId = wallet.id, receiptNumber = receipt,
             ledgerTransactionId = ledger.transactionId, amount = amount, paidByUserId = paidByUserId,
@@ -382,7 +406,10 @@ class AgentService(
             isRead = false, createdAt = cashOut.createdAt,
             dataJson = "{\"agentId\":\"${agent.id}\",\"receiptNumber\":\"$receipt\",\"transactionId\":\"${ledger.transactionId}\"}",
         ))
-        return mapOf("cashOut" to cashOut, "transaction" to transaction, "newBalance" to wallet.balance)
+        return mapOf(
+            "cashOut" to cashOut, "transaction" to transaction, "newBalance" to wallet.balance,
+            "operatorCommission" to (if (operatorWallet != null) commission else BigDecimal.ZERO),
+        )
     }
 
     fun cashOutForOperator(userId: String, accountNumber: String, amount: BigDecimal, receiptNumber: String, authorizationCode: String): Map<String, Any?> {

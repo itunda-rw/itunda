@@ -66,6 +66,11 @@ enum class LedgerAccountType {
     // from a transaction fee, so this gets its own dedicated account rather than being
     // folded into FEE_REVENUE and muddying that account's own real reconciliation.
     INTEREST_INCOME,
+    // Real MTN MoMo-style agent cash-in/cash-out commission expense (2026-07-27) -- see
+    // AgentCommissionSchedule.kt's own doc comment. A real "itunda pays this out"
+    // expense account, the same shape REWARDS_EXPENSE/INTEREST_EXPENSE already
+    // establish, distinct from AGENT_CASH (the agent's own physical float/till).
+    AGENT_COMMISSION_EXPENSE,
 }
 
 /**

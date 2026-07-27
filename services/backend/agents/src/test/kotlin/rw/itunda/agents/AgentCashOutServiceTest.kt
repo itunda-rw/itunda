@@ -53,6 +53,11 @@ class AgentCashOutServiceTest : BehaviorSpec({
         every { agentRepository.findByIdForUpdate(agent.id) } returns Optional.of(agent)
         every { cashOutRepository.sumAmountByAgentIdBetween(any(), any(), any()) } returns BigDecimal.ZERO
         every { walletRepository.findByAccountNumber(wallet.accountNumber) } returns wallet
+        // Real agent commission (2026-07-27) -- see AgentCommissionSchedule's own doc
+        // comment. This existing test's own operator ("admin_1") has no real wallet
+        // stubbed here, so commission is honestly skipped -- the pre-existing 2-leg
+        // assertion below stays correct unchanged.
+        every { walletRepository.findByUserIdAndType("admin_1", WalletType.MAIN) } returns null
         every { withdrawalAuthorizationService.consume("AUTH001", wallet.id, BigDecimal("25000")) } returns mockk()
         every { ledgerAccountRepository.findByIdForUpdate(agent.cashAccountId) } returns Optional.of(LedgerAccount(agent.cashAccountId, "Agent cash", BigDecimal("-30000")))
         every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
