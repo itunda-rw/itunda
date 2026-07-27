@@ -24,6 +24,14 @@ import java.time.Instant
  * for the money to go. `roundToNearest` is a real merchant-set... no, user-set
  * increment (e.g. round every transfer up to the nearest 100/500/1,000 RWF), not a
  * fabricated default.
+ *
+ * `targetStockId` (added 2026-07-27) is this same mechanism's second real destination,
+ * modeled on Kakao Pay Securities' own real "동전 모으기" ("coin collection") product:
+ * a qualifying payment's round-up change auto-invests into a chosen stock (fractional
+ * shares, matching Kakao's own real 소수점 투자/"decimal-point investing" mechanism)
+ * instead of a savings goal. Exactly one of `targetGoalId`/`targetStockId` may be set
+ * when `enabled` -- these are two distinct, mutually exclusive real destinations for the
+ * same round-up event, not a fund product this codebase has no other model for.
  */
 @Entity
 @Table(name = "round_up_settings")
@@ -43,6 +51,9 @@ class RoundUpSettings(
 
     @Column(name = "target_goal_id", length = 64)
     var targetGoalId: String? = null,
+
+    @Column(name = "target_stock_id", length = 64)
+    var targetStockId: String? = null,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),

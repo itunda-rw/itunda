@@ -81,6 +81,27 @@ class StocksServiceTest : BehaviorSpec({
             }
         }
 
+        // Real bug fix (2026-07-27) -- see buyStock's own doc comment: an unrounded
+        // fractional-share cost (the shape round-up-to-invest always passes) could carry
+        // more than RWF's real 2 decimal places, which the real ledger's own balance
+        // check would crash on with ArithmeticException("Rounding necessary"). Caught
+        // live: the first real round-up-to-invest purchase 500'd the whole transfer.
+        When("buying a real fractional share amount (round-up-to-invest style)") {
+            every { holdingRepository.findByUserIdAndStockId("user_1", "s1") } returns null
+            every { holdingRepository.save(any()) } answers { firstArg() }
+            val legsSlot = mutableListOf<List<rw.itunda.core.ledger.LedgerLeg>>()
+            every { ledgerService.postLedgerTransaction(any(), capture(legsSlot)) } returns LedgerPostResult("ledgertxn_frac", emptyList())
+
+            service.buyStock("user_1", "s1", BigDecimal("1.634146"))
+
+            Then("it real-rounds the ledger cost to exactly 2 real RWF decimal places, not the raw 6dp product") {
+                val bokPrice = StockCatalog.find("s1")!!.price
+                val expectedCost = BigDecimal("1.634146").multiply(bokPrice).setScale(2, java.math.RoundingMode.HALF_UP)
+                legsSlot.last().first().amount shouldBe expectedCost
+                legsSlot.last().first().amount.scale() shouldBe 2
+            }
+        }
+
         When("buying an unknown stock id") {
             Then("it throws StockNotFoundException before touching the ledger") {
                 try {

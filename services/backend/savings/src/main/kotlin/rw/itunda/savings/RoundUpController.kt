@@ -11,9 +11,10 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
+import rw.itunda.stocks.StockNotFoundException
 import java.math.BigDecimal
 
-data class SetRoundUpSettingsRequest(val enabled: Boolean, val roundToNearest: BigDecimal, val targetGoalId: String? = null)
+data class SetRoundUpSettingsRequest(val enabled: Boolean, val roundToNearest: BigDecimal, val targetGoalId: String? = null, val targetStockId: String? = null)
 
 // Real round-up auto-saving -- see RoundUpSettings.kt's own doc comment. Not
 // money-moving directly (processRoundUp fires from inside P2pService.sendDirect, whose
@@ -33,7 +34,7 @@ class RoundUpController(private val roundUpService: RoundUpService) {
         @RequestBody request: SetRoundUpSettingsRequest,
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
-        val settings = roundUpService.setSettings(currentUser.userId, request.enabled, request.roundToNearest, request.targetGoalId)
+        val settings = roundUpService.setSettings(currentUser.userId, request.enabled, request.roundToNearest, request.targetGoalId, request.targetStockId)
         return ResponseEntity.status(HttpStatus.OK).body(mapOf("success" to true, "settings" to settings))
     }
 
@@ -45,7 +46,15 @@ class RoundUpController(private val roundUpService: RoundUpService) {
     fun handleTargetRequired(ex: RoundUpTargetRequiredException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("ROUND_UP_TARGET_REQUIRED", ex.message ?: "Bad request"))
 
+    @ExceptionHandler(RoundUpSingleTargetException::class)
+    fun handleSingleTarget(ex: RoundUpSingleTargetException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("ROUND_UP_SINGLE_TARGET_REQUIRED", ex.message ?: "Bad request"))
+
     @ExceptionHandler(GoalNotFoundException::class)
     fun handleGoalNotFound(ex: GoalNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("GOAL_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(StockNotFoundException::class)
+    fun handleStockNotFound(ex: StockNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("STOCK_NOT_FOUND", ex.message ?: "Not found"))
 }

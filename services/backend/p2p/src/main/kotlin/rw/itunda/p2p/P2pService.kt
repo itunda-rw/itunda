@@ -1,5 +1,6 @@
 package rw.itunda.p2p
 
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
@@ -22,6 +23,8 @@ import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
 import rw.itunda.savings.RoundUpService
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
@@ -57,6 +60,7 @@ class P2pService(
     private val notificationRepository: NotificationRepository,
     private val roundUpService: RoundUpService,
 ) {
+    private val log = LoggerFactory.getLogger(P2pService::class.java)
 
     fun generateRequest(requesterUserId: String, amount: BigDecimal, description: String): P2pPaymentRequest {
         require(amount > BigDecimal.ZERO) { "Amount must be greater than zero" }
@@ -228,7 +232,58 @@ class P2pService(
         // Real round-up auto-saving (2026-07-25) -- see RoundUpService's own doc
         // comment for the full account, including why P2P transfer specifically is
         // this feature's honest v1 scope.
-        roundUpService.processRoundUp(senderUserId, amount)
+        //
+        // Real three-attempt bug fix 2026-07-27, all three caught live in the same
+        // verification pass, in this order:
+        // (1) A plain synchronous call here (REQUIRED propagation) let a nested
+        //     @Transactional call failing inside processRoundUp (e.g. buyStock,
+        //     depositToGoal) mark the *shared* transaction rollback-only -- Spring then
+        //     threw a real UnexpectedRollbackException on commit, 500-ing this entire
+        //     real transfer even though the money had already correctly moved, and even
+        //     though processRoundUp's own try/catch had already handled the business
+        //     exception (a caught exception inside a proxied @Transactional method still
+        //     poisons the transaction if it escaped a DIFFERENT proxied method first).
+        // (2) Switching processRoundUp to REQUIRES_NEW (still called synchronously,
+        //     right here) fixed (1) but created a real self-deadlock: its nested
+        //     `SELECT wallet FOR UPDATE` (inside fundInvestmentWallet/depositToGoal)
+        //     blocks on the exact same sender wallet row THIS transaction already locked
+        //     and hasn't released yet (row locks live until commit, and REQUIRES_NEW
+        //     runs on a second, separate connection) -- real 30s "Lock wait timeout
+        //     exceeded", again swallowed but silently skipping every real round-up.
+        // (3) Deferring the call to Spring's real post-commit hook (this transaction's
+        //     locks are released by the time it fires) fixed the deadlock, but calling
+        //     processRoundUp with plain REQUIRED from inside afterCommit() itself real-
+        //     threw "Query requires transaction be in progress, but no transaction is
+        //     known to be in progress" -- Spring's transaction-synchronization ThreadLocal
+        //     state is genuinely ambiguous during the post-commit callback window, and
+        //     REQUIRED's "join if present" logic doesn't reliably resolve that into
+        //     starting a real new physical transaction. See processRoundUp's own doc
+        //     comment for why REQUIRES_NEW is what actually fixes this, safely this time.
+        // Final correct architecture: defer processRoundUp to a real post-commit hook
+        // (not a home-grown polling/retry scheme) AND keep it REQUIRES_NEW, so it always
+        // unconditionally opens a genuinely fresh transaction with this caller's locks
+        // already released and nothing left for it to poison. Guarded by
+        // isSynchronizationActive(): plain unit tests construct P2pService directly
+        // (bypassing Spring's @Transactional proxy entirely), so no synchronization is
+        // ever active there -- the direct-call fallback keeps this method callable
+        // outside a real Spring transaction too.
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+                override fun afterCommit() {
+                    try {
+                        roundUpService.processRoundUp(senderUserId, amount)
+                    } catch (e: Exception) {
+                        log.warn("Round-up skipped for transfer {}: {}", transaction.id, e.message)
+                    }
+                }
+            })
+        } else {
+            try {
+                roundUpService.processRoundUp(senderUserId, amount)
+            } catch (e: Exception) {
+                log.warn("Round-up skipped for transfer {}: {}", transaction.id, e.message)
+            }
+        }
 
         val updatedSenderWallet = walletRepository.findById(senderWallet.id).orElseThrow { P2pNoWalletException("No wallet found for this account") }
         return transaction to updatedSenderWallet.balance

@@ -104,7 +104,14 @@ class StocksService(
     fun buyStock(userId: String, stockId: String, shares: BigDecimal): Map<String, Any?> {
         val stock = StockCatalog.find(stockId) ?: throw StockNotFoundException("Stock not found")
         val wallet = walletRepository.findByUserIdAndType(userId, WalletType.INVESTMENT) ?: throw NoWalletException("No investment wallet found for this account")
-        val cost = shares.multiply(stock.price)
+        // Real bug found and fixed 2026-07-27: shares is caller-supplied BigDecimal with
+        // no scale constraint (round-up-to-invest passes real fractional shares scaled to
+        // 6dp) -- an unrounded cost could carry more than RWF's real 2 decimal places,
+        // which LedgerService.postLedgerTransaction's own balance check (`setScale(2)`,
+        // no RoundingMode) would then real-crash on with ArithmeticException("Rounding
+        // necessary") for any non-exact fractional-share cost. Caught live: the first
+        // real round-up-to-invest purchase 500'd the entire triggering P2P transfer.
+        val cost = shares.multiply(stock.price).setScale(2, RoundingMode.HALF_UP)
 
         val result = ledgerService.postLedgerTransaction(
             wallet.currency,
