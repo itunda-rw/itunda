@@ -34,6 +34,7 @@ import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.EatsOrderItemRepository
 import rw.itunda.core.repository.EatsOrderRepository
 import rw.itunda.core.repository.LedgerEntryRepository
@@ -92,6 +93,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { nominatimGeocodingClient.geocode(any()) } returns null
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         // Real buyer order-status notifications (2026-07-20) -- explicit stub, same
         // known "relaxed mockk can't correctly infer JpaRepository's generic save()
         // signature" gotcha this project's own tests already document repeatedly
@@ -106,6 +108,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // test predates this feature" convention already used for the single-order
             // delivery guard's own default stubs.
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            pushNotificationService,
         )
 
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
@@ -143,6 +146,10 @@ class EatsOrderServiceTest : BehaviorSpec({
 
             Then("it real-alerts the real restaurant owner -- the real gap where a new order arrived with zero notification") {
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "owner_1" && it.type == "NEW_EATS_ORDER" }) }
+            }
+
+            Then("the restaurant owner also gets a real push notification, not just the in-app one") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("owner_1", "New order received", any(), any()) }
             }
         }
 
@@ -654,6 +661,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { nominatimGeocodingClient.geocode(any()) } returns null
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         // Real buyer order-status notifications (2026-07-20) -- explicit stub, same
         // known "relaxed mockk can't correctly infer JpaRepository's generic save()
         // signature" gotcha this project's own tests already document repeatedly
@@ -668,6 +676,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // test predates this feature" convention already used for the single-order
             // delivery guard's own default stubs.
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            pushNotificationService,
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
         val order = EatsOrder(
@@ -1055,6 +1064,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { nominatimGeocodingClient.geocode(any()) } returns null
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         // Real buyer order-status notifications (2026-07-20) -- explicit stub, same
         // known "relaxed mockk can't correctly infer JpaRepository's generic save()
         // signature" gotcha this project's own tests already document repeatedly
@@ -1069,6 +1079,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // test predates this feature" convention already used for the single-order
             // delivery guard's own default stubs.
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            pushNotificationService,
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
         val readyOrder = EatsOrder(
@@ -1250,6 +1261,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         // Real buyer order-status notifications (2026-07-20) -- explicit stub, same
         // known "relaxed mockk can't correctly infer JpaRepository's generic save()
         // signature" gotcha this project's own tests already document repeatedly
@@ -1264,6 +1276,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // test predates this feature" convention already used for the single-order
             // delivery guard's own default stubs.
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            pushNotificationService,
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE, latitude = -1.9536, longitude = 30.0605)
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
@@ -1341,6 +1354,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         // Real buyer order-status notifications (2026-07-20) -- explicit stub, same
         // known "relaxed mockk can't correctly infer JpaRepository's generic save()
         // signature" gotcha this project's own tests already document repeatedly
@@ -1355,6 +1369,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // test predates this feature" convention already used for the single-order
             // delivery guard's own default stubs.
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            pushNotificationService,
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE, latitude = -1.9536, longitude = 30.0605)
 
@@ -1449,6 +1464,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         every { nominatimGeocodingClient.geocode(any()) } returns null
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         // Real buyer order-status notifications (2026-07-20) -- explicit stub, same
         // known "relaxed mockk can't correctly infer JpaRepository's generic save()
         // signature" gotcha this project's own tests already document repeatedly
@@ -1463,6 +1479,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // test predates this feature" convention already used for the single-order
             // delivery guard's own default stubs.
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            pushNotificationService,
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
         val riderWallet = wallet("wallet_rider", "rider_user_1")
@@ -1564,6 +1581,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         // Real buyer order-status notifications (2026-07-20) -- explicit stub, same
         // known "relaxed mockk can't correctly infer JpaRepository's generic save()
         // signature" gotcha this project's own tests already document repeatedly
@@ -1578,6 +1596,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // test predates this feature" convention already used for the single-order
             // delivery guard's own default stubs.
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            pushNotificationService,
         )
         val riderWithLocation = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", currentLatitude = -1.95, currentLongitude = 30.06, locationUpdatedAt = java.time.Instant.parse("2026-07-19T12:00:00Z"))
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Test Spot", status = MerchantStatus.ACTIVE)
@@ -1701,6 +1720,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val rateLimiter = mockk<RateLimiter>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         // Real buyer order-status notifications (2026-07-20) -- explicit stub, same
         // known "relaxed mockk can't correctly infer JpaRepository's generic save()
         // signature" gotcha this project's own tests already document repeatedly
@@ -1715,6 +1735,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // test predates this feature" convention already used for the single-order
             // delivery guard's own default stubs.
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            pushNotificationService,
         )
 
         When("a real query matches real Nominatim suggestions") {
@@ -1780,6 +1801,7 @@ class EatsOrderServiceTest : BehaviorSpec({
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         // Real buyer order-status notifications (2026-07-20) -- explicit stub, same
         // known "relaxed mockk can't correctly infer JpaRepository's generic save()
         // signature" gotcha this project's own tests already document repeatedly
@@ -1794,6 +1816,7 @@ class EatsOrderServiceTest : BehaviorSpec({
             // test predates this feature" convention already used for the single-order
             // delivery guard's own default stubs.
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            pushNotificationService,
         )
 
         // Kigali city center vs. Huye (real Rwandan towns, ~135km apart) -- a rider

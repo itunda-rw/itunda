@@ -27,6 +27,7 @@ import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.EatsOrderItemRepository
 import rw.itunda.core.repository.EatsOrderRepository
 import rw.itunda.core.repository.LedgerEntryRepository
@@ -112,6 +113,7 @@ class EatsOrderService(
     private val rateLimiter: RateLimiter,
     private val notificationRepository: NotificationRepository,
     private val eatsMembershipService: EatsMembershipService,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private val logger = LoggerFactory.getLogger(EatsOrderService::class.java)
 
@@ -496,16 +498,22 @@ class EatsOrderService(
         // feature. Best-effort, same "an auxiliary side-effect can't block the real
         // operation it's attached to" discipline this class's own notifyNearestRiders
         // already establishes.
+        //
+        // Real push wired in (2026-07-28), same day as its commerce sibling
+        // (OrderService.placeOrder) -- food cools while it sits unnoticed, making this
+        // arguably the most time-sensitive of the "new order" merchant alerts.
         try {
             val scheduleNote = if (scheduledFor != null) " (scheduled for $scheduledFor)" else ""
+            val title = "New order received"
+            val body = "A new order for ${orderItems.sumOf { it.quantity }} item(s) just came in -- $totalAmount RWF$scheduleNote"
             notificationRepository.save(
                 Notification(
                     id = "notif_${UUID.randomUUID()}", userId = restaurant.ownerUserId, type = "NEW_EATS_ORDER",
-                    title = "New order received",
-                    body = "A new order for ${orderItems.sumOf { it.quantity }} item(s) just came in -- $totalAmount RWF$scheduleNote",
+                    title = title, body = body,
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"orderId\":\"${order.id}\"}",
                 ),
             )
+            pushNotificationService.sendToUser(restaurant.ownerUserId, title, body, mapOf("orderId" to order.id))
         } catch (e: Exception) {
             // Non-critical -- the real order already completed and succeeded.
         }
