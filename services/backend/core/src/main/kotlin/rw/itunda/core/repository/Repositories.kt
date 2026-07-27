@@ -231,6 +231,18 @@ interface TransactionRepository : JpaRepository<Transaction, String> {
         from: Instant,
     ): List<Transaction>
 
+    // Real MiniWalletService daily/monthly deposit-cap enforcement (2026-07-28) -- see
+    // that class's own doc comment. Coarse repo filter (this wallet's own real deposits
+    // since a real window start), exact cap comparison in the service, same discipline
+    // the recurring-payment-detection/FamilyLink spend-limit queries above establish.
+    @Query("select coalesce(sum(t.amount), 0) from Transaction t where t.toWalletId = :walletId and t.type = :type and t.status = :status and t.createdAt >= :from")
+    fun sumAmountByToWalletIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(
+        @Param("walletId") walletId: String,
+        @Param("type") type: TransactionType,
+        @Param("status") status: TransactionStatus,
+        @Param("from") from: Instant,
+    ): java.math.BigDecimal
+
     // Real 단골 (regular customer) detection for MerchantCouponService -- a merchant
     // collection's Transaction row has recipientId = the merchant owner's userId (same
     // real join key as the report query above), senderId = the paying customer.

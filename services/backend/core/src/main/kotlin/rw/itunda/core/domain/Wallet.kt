@@ -29,7 +29,10 @@ import java.time.Instant
 // proprietors) equivalent -- see MerchantBusinessAccountService's own doc comment. One
 // per registered Merchant (unlike GROUP/WEEKLY_SAVINGS/FOREIGN_CURRENCY above), so this
 // one IS resolved via the plain findByUserIdAndType, same as MAIN/SAVINGS.
-enum class WalletType { MAIN, SAVINGS, INVESTMENT, LOAN, GROUP, WEEKLY_SAVINGS, UPFRONT_DEPOSIT, FOREIGN_CURRENCY, BUSINESS }
+// MINI added 2026-07-28 -- see MiniWalletService's own doc comment. No exhaustive
+// `when (WalletType)` exists anywhere in this codebase (checked before adding), so this
+// carries none of the blast-radius risk a new LedgerAccountType value would.
+enum class WalletType { MAIN, SAVINGS, INVESTMENT, LOAN, GROUP, WEEKLY_SAVINGS, UPFRONT_DEPOSIT, FOREIGN_CURRENCY, BUSINESS, MINI }
 
 /** Mirrors backend/src/types/index.ts Wallet. Money is BigDecimal, not float, on purpose. */
 @Entity
