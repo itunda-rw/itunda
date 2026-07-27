@@ -17,6 +17,7 @@ import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.P2pPaymentRequestRepository
 import rw.itunda.core.repository.TransactionRepository
@@ -63,6 +64,7 @@ class P2pService(
     private val roundUpService: RoundUpService,
     private val familyLinkService: FamilyLinkService,
     private val autoTopUpService: AutoTopUpService,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private val log = LoggerFactory.getLogger(P2pService::class.java)
 
@@ -333,22 +335,31 @@ class P2pService(
     // Best-effort: a notification failure must never roll back or fail money that
     // already moved, same "auxiliary side-effect can't block real money movement"
     // discipline `MerchantService.collect`'s own cashback-award try/catch established.
+    //
+    // Real push wired in (2026-07-28) -- see `PushNotificationService`'s own doc comment
+    // for the wider rollout this joins. Picked as the highest-priority remaining site of
+    // the ~16 named there: an instant "money received" push is real Toss's own single
+    // most iconic, signature notification -- of every notification type in this backend,
+    // this is the one a user would notice missing first.
     private fun notifyMoneyReceived(recipientUserId: String, senderUserId: String, amount: BigDecimal) {
         try {
             val sender = userRepository.findById(senderUserId).orElse(null)
             val senderName = sender?.let { "${it.firstName} ${it.lastName}" } ?: "Someone"
+            val title = "Money received"
+            val body = "$senderName sent you $amount RWF."
             notificationRepository.save(
                 Notification(
                     id = "notif_${UUID.randomUUID()}",
                     userId = recipientUserId,
                     type = "MONEY_RECEIVED",
-                    title = "Money received",
-                    body = "$senderName sent you $amount RWF.",
+                    title = title,
+                    body = body,
                     isRead = false,
                     createdAt = Instant.now(),
                     dataJson = "{\"amount\":\"$amount\",\"senderId\":\"$senderUserId\"}",
                 ),
             )
+            pushNotificationService.sendToUser(recipientUserId, title, body, mapOf("amount" to amount.toString(), "senderId" to senderUserId))
         } catch (e: Exception) {
             // Non-critical -- the real transfer already completed and succeeded.
         }

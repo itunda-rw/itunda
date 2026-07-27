@@ -21,9 +21,12 @@ import rw.itunda.core.repository.DeviceTokenRepository
  * `MerchantBookingReviewService`'s owner-reply notify (2026-07-27, the sibling gap that
  * same research line named), and `FraudReviewService.decide`'s confirmed-fraud security
  * alert (2026-07-28, per Toss's own real customer-facing FDS flow -- a security alert is
- * exactly the kind of thing that shouldn't wait for the next in-app poll). The remaining
- * ~16 sites stay a real, valuable, still-open follow-up rather than silently left
- * unaddressed.
+ * exactly the kind of thing that shouldn't wait for the next in-app poll), and
+ * `P2pService.notifyMoneyReceived`'s real-time "money received" push (2026-07-28) -- of
+ * every notification type in this backend, this is the one closest to real Toss's own
+ * signature, most-relied-on notification, picked as the highest-priority remaining site
+ * from the ~16 named above. The remaining ~15 sites stay a real, valuable, still-open
+ * follow-up rather than silently left unaddressed.
  */
 @Service
 class PushNotificationService(
