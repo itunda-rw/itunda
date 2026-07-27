@@ -11,6 +11,7 @@ import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.LoanAccountRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.WalletRepository
@@ -52,6 +53,7 @@ class LoansService(
     private val ledgerService: LedgerService,
     private val creditScoreService: CreditScoreService,
     private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     fun getOffers(lenderId: String? = null) = if (lenderId == null) LoanCatalog.offers else LoanCatalog.findByLender(lenderId)
 
@@ -117,14 +119,21 @@ class LoansService(
         // is disbursed under their identity, so a hijacked session/stolen credentials can't take
         // out a loan with zero alert to the real owner. Follows DeviceService's own real
         // NEW_DEVICE_LOGIN notification convention (clear title + explanatory body + dataJson).
+        //
+        // Real push wired in (2026-07-28), same real security-alert urgency
+        // DeviceService.recordLoginDevice's own push already established: a hijacked
+        // account taking out a real loan needs the real owner to know the instant it
+        // happens, not whenever they next open the app.
+        val title = "New loan opened in your name"
+        val body = "${offer.name} for ${amount} was just disbursed to your wallet. If this wasn't you, secure your account immediately."
         notificationRepository.save(
             Notification(
                 id = "notif_${UUID.randomUUID()}", userId = userId, type = "NEW_LOAN_DISBURSED",
-                title = "New loan opened in your name",
-                body = "${offer.name} for ${amount} was just disbursed to your wallet. If this wasn't you, secure your account immediately.",
+                title = title, body = body,
                 isRead = false, createdAt = Instant.now(), dataJson = "{\"loanId\":\"${loan.id}\"}",
             ),
         )
+        pushNotificationService.sendToUser(userId, title, body, mapOf("loanId" to loan.id))
 
         return mapOf(
             "id" to loan.id, "type" to offer.name, "amount" to loan.principal,

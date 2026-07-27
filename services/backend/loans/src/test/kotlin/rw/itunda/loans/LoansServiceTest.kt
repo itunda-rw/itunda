@@ -14,6 +14,7 @@ import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.LoanAccountRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.WalletRepository
@@ -41,7 +42,8 @@ class LoansServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val creditScoreService = mockk<CreditScoreService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = LoansService(walletRepository, loanAccountRepository, ledgerService, creditScoreService, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = LoansService(walletRepository, loanAccountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
 
         When("applying for a high amount (80% of the offer's max) with a real qualifying score") {
             every { loanAccountRepository.findByUserId("user_1") } returns emptyList()
@@ -63,6 +65,10 @@ class LoansServiceTest : BehaviorSpec({
                 verify(exactly = 1) {
                     notificationRepository.save(match { it.userId == "user_1" && it.type == "NEW_LOAN_DISBURSED" })
                 }
+            }
+
+            Then("the account owner also gets a real push notification, not just the in-app one") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", "New loan opened in your name", any(), any()) }
             }
         }
 
@@ -376,7 +382,8 @@ class LoansServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val creditScoreService = mockk<CreditScoreService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = LoansService(walletRepository, loanAccountRepository, ledgerService, creditScoreService, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = LoansService(walletRepository, loanAccountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
 
         When("listing all offers with no lender filter") {
             val offers = service.getOffers()
