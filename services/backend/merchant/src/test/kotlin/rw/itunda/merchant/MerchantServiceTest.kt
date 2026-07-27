@@ -25,6 +25,7 @@ import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -70,7 +71,8 @@ class MerchantServiceTest : BehaviorSpec({
         val ledgerEntryRepository = mockk<LedgerEntryRepository>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val merchantCouponService = mockk<MerchantCouponService>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService)
 
         val ownerWallet = wallet("wallet_merchant", "owner_1")
         val merchant = Merchant(
@@ -225,6 +227,7 @@ class MerchantServiceTest : BehaviorSpec({
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { walletRepository.findByUserIdAndType("payer_1", WalletType.MAIN) } returns payerWallet
             every { walletRepository.findById("wallet_merchant") } returns Optional.of(ownerWallet)
+            every { notificationRepository.save(any()) } answers { firstArg() }
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns
                 LedgerPostResult("ledgertxn_test", emptyList())
             every { paymentIntentRepository.save(any()) } answers { firstArg() }
@@ -268,6 +271,9 @@ class MerchantServiceTest : BehaviorSpec({
                         match { it.userId == "owner_1" && it.type == "MONEY_RECEIVED" && it.body.contains("5000") },
                     )
                 }
+            }
+            Then("the merchant owner also gets a real push notification, not just the in-app one") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("owner_1", "Payment received", match { it.contains("5000") }, any()) }
             }
         }
 
@@ -762,7 +768,8 @@ class MerchantServiceTest : BehaviorSpec({
         val ledgerEntryRepository = mockk<LedgerEntryRepository>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val merchantCouponService = mockk<MerchantCouponService>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService)
 
         val merchant = Merchant(id = "merchant_3", ownerUserId = "owner_3", walletId = "wallet_3", businessName = "Test Shop")
         every { merchantRepository.findByOwnerUserId("owner_3") } returns merchant
@@ -803,7 +810,8 @@ class MerchantServiceTest : BehaviorSpec({
         val ledgerEntryRepository = mockk<LedgerEntryRepository>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val merchantCouponService = mockk<MerchantCouponService>(relaxed = true)
-        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = MerchantService(merchantRepository, paymentIntentRepository, walletRepository, ledgerService, webhookDeliveryService, transactionRepository, fraudRuleEngine, demoCardAuthorizationService, shoppingCashbackService, rateLimiter, ledgerEntryRepository, notificationRepository, merchantCouponService, pushNotificationService)
 
         val merchant = Merchant(id = "merchant_4", ownerUserId = "owner_4", walletId = "wallet_4", businessName = "Report Cafe")
         every { merchantRepository.findByOwnerUserId("owner_4") } returns merchant

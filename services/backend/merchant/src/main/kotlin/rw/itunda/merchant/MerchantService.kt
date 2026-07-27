@@ -18,6 +18,7 @@ import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.domain.Notification
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -98,6 +99,7 @@ class MerchantService(
     private val ledgerEntryRepository: LedgerEntryRepository,
     private val notificationRepository: NotificationRepository,
     private val merchantCouponService: MerchantCouponService,
+    private val pushNotificationService: PushNotificationService,
 ) {
     // Toss Payments' real published fee schedule tiers wallet-based payments
     // ("Toss Pay") at 0.8%-1.8% depending on merchant volume (see
@@ -579,19 +581,28 @@ class MerchantService(
         // notice next time they opened Reports. Best-effort, same discipline as the
         // cashback try/catch immediately above -- never blocks a payment that already
         // succeeded.
+        //
+        // Real push wired in (2026-07-28), same pass as its P2P sibling
+        // (rw.itunda.p2p.P2pService.notifyMoneyReceived) -- a merchant owner is at least
+        // as likely to be away from the app at the moment a customer pays (mid-checkout,
+        // handing a phone back) as a P2P recipient is, making the proactive push just as
+        // valuable here.
         try {
+            val title = "Payment received"
+            val body = "You received $chargeAmount RWF via $channelLabel."
             notificationRepository.save(
                 Notification(
                     id = "notif_${UUID.randomUUID()}",
                     userId = merchant.ownerUserId,
                     type = "MONEY_RECEIVED",
-                    title = "Payment received",
-                    body = "You received $chargeAmount RWF via $channelLabel.",
+                    title = title,
+                    body = body,
                     isRead = false,
                     createdAt = Instant.now(),
                     dataJson = "{\"amount\":\"$chargeAmount\",\"payerId\":\"$payerUserId\"}",
                 ),
             )
+            pushNotificationService.sendToUser(merchant.ownerUserId, title, body, mapOf("amount" to chargeAmount.toString(), "payerId" to payerUserId))
         } catch (e: Exception) {
             // Non-critical -- the real payment already completed and succeeded.
         }
