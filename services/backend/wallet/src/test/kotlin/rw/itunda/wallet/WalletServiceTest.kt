@@ -19,6 +19,7 @@ import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.provider.ProviderConnector
 import rw.itunda.core.provider.ProviderDeclinedException
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.SpendingBudgetRepository
@@ -58,7 +59,8 @@ class WalletServiceTest : BehaviorSpec({
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val spendingBudgetRepository = mockk<SpendingBudgetRepository>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, spendingBudgetRepository, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, spendingBudgetRepository, notificationRepository, pushNotificationService)
 
         val senderWallet = wallet("wallet_1", "user_1", "10000")
 
@@ -189,7 +191,8 @@ class WalletServiceTest : BehaviorSpec({
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val spendingBudgetRepository = mockk<SpendingBudgetRepository>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, spendingBudgetRepository, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, spendingBudgetRepository, notificationRepository, pushNotificationService)
 
         fun entry(id: String, txnId: String, accountId: String, accountType: LedgerAccountType, direction: LedgerDirection, amount: String, memo: String = "test") = LedgerEntry(
             id = id, transactionId = txnId, accountId = accountId, accountType = accountType, direction = direction,
@@ -287,7 +290,8 @@ class WalletServiceTest : BehaviorSpec({
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val spendingBudgetRepository = mockk<SpendingBudgetRepository>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, spendingBudgetRepository, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, spendingBudgetRepository, notificationRepository, pushNotificationService)
 
         fun entry(id: String, txnId: String, accountId: String, accountType: LedgerAccountType, direction: LedgerDirection, amount: String, memo: String = "test") = LedgerEntry(
             id = id, transactionId = txnId, accountId = accountId, accountType = accountType, direction = direction,
@@ -328,7 +332,8 @@ class WalletServiceTest : BehaviorSpec({
         val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
         val spendingBudgetRepository = mockk<SpendingBudgetRepository>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, spendingBudgetRepository, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, spendingBudgetRepository, notificationRepository, pushNotificationService)
 
         fun debitTxn(id: String, amount: String, createdAt: java.time.Instant, status: rw.itunda.core.domain.TransactionStatus = rw.itunda.core.domain.TransactionStatus.COMPLETED) = rw.itunda.core.domain.Transaction(
             id = id, referenceNumber = "REF-$id", senderId = "user_1", recipientId = "merchant_1",
@@ -390,6 +395,42 @@ class WalletServiceTest : BehaviorSpec({
                 flagsById["t4"] shouldBe false
                 flagsById["t5"] shouldBe false
             }
+        }
+    }
+
+    // Real budget-threshold push (2026-07-28) -- see maybeNotifyBudgetThreshold's own
+    // doc comment.
+    Given("a real overall budget already past its real monthly limit, never yet notified") {
+        val walletRepository = mockk<WalletRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerEntryRepository = mockk<LedgerEntryRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val eventPublisher = mockk<EventPublisher>(relaxed = true)
+        val providerConnector = mockk<ProviderConnector>(relaxed = true)
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val spendingBudgetRepository = mockk<SpendingBudgetRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = WalletService(walletRepository, transactionRepository, ledgerEntryRepository, ledgerService, eventPublisher, providerConnector, fraudRuleEngine, spendingBudgetRepository, notificationRepository, pushNotificationService)
+
+        val month = YearMonth.now().toString()
+        val budget = SpendingBudget(id = "budget_1", userId = "user_1", category = null, monthlyLimit = BigDecimal("1000"), month = month)
+        val debit = LedgerEntry(
+            id = "entry_1", transactionId = "txn_1", accountId = "wallet_1", accountType = LedgerAccountType.WALLET,
+            direction = LedgerDirection.DEBIT, amount = BigDecimal("1200"), currency = "RWF", balanceAfter = BigDecimal.ZERO, memo = "test",
+        )
+        every { spendingBudgetRepository.findByUserIdAndMonth("user_1", month) } returns listOf(budget)
+        every { walletRepository.findByUserId("user_1") } returns listOf(wallet("wallet_1", "user_1", "0"))
+        every { ledgerEntryRepository.findByAccountIdOrderByCreatedAtDesc("wallet_1") } returns listOf(debit)
+        every { ledgerEntryRepository.findByTransactionIdIn(listOf("txn_1")) } returns emptyList()
+        every { notificationRepository.save(any()) } answers { firstArg() }
+        every { spendingBudgetRepository.save(any()) } answers { firstArg() }
+
+        service.getBudgets("user_1")
+
+        Then("it real-saves an in-app BUDGET_OVER notification and a real push, both exactly once") {
+            verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_1" && it.type == "BUDGET_OVER" }) }
+            verify(exactly = 1) { pushNotificationService.sendToUser("user_1", "Budget exceeded", any()) }
         }
     }
 }) {

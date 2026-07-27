@@ -23,6 +23,7 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.provider.ProviderConnector
 import rw.itunda.core.provider.ProviderDeclinedException
 import rw.itunda.core.provider.RailCatalog
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.SpendingBudgetRepository
@@ -64,6 +65,7 @@ class WalletService(
     private val fraudRuleEngine: FraudRuleEngine,
     private val spendingBudgetRepository: SpendingBudgetRepository,
     private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private val quoteStore = QuoteStore()
 
@@ -208,27 +210,38 @@ class WalletService(
     // already reads this table; nothing in this backend had ever written to it
     // outside of demo seed data before this). notifiedNear/notifiedOver guard against
     // re-notifying on every single GET /budgets poll.
+    //
+    // Real push wired in (2026-07-28) -- a budget alert triggered by a GET /budgets poll
+    // is exactly the kind of thing a user would otherwise never see until they happen to
+    // check their budgets screen; the whole point of a spending alert is catching it
+    // before the NEXT purchase, not after.
     private fun maybeNotifyBudgetThreshold(budget: SpendingBudget, status: BudgetStatus) {
         val label = budget.category ?: "overall spending"
         if (status == BudgetStatus.OVER && !budget.notifiedOver) {
             budget.notifiedOver = true
+            val title = "Budget exceeded"
+            val body = "You've gone over your $label budget for this month."
             notificationRepository.save(
                 Notification(
                     id = "notif_${UUID.randomUUID()}", userId = budget.userId, type = "BUDGET_OVER",
-                    title = "Budget exceeded", body = "You've gone over your $label budget for this month.",
+                    title = title, body = body,
                     isRead = false, createdAt = Instant.now(), dataJson = null,
                 ),
             )
+            pushNotificationService.sendToUser(budget.userId, title, body)
             spendingBudgetRepository.save(budget)
         } else if (status == BudgetStatus.NEAR && !budget.notifiedNear) {
             budget.notifiedNear = true
+            val title = "Approaching budget limit"
+            val body = "You've used 80% or more of your $label budget for this month."
             notificationRepository.save(
                 Notification(
                     id = "notif_${UUID.randomUUID()}", userId = budget.userId, type = "BUDGET_NEAR",
-                    title = "Approaching budget limit", body = "You've used 80% or more of your $label budget for this month.",
+                    title = title, body = body,
                     isRead = false, createdAt = Instant.now(), dataJson = null,
                 ),
             )
+            pushNotificationService.sendToUser(budget.userId, title, body)
             spendingBudgetRepository.save(budget)
         }
     }
