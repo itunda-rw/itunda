@@ -452,6 +452,88 @@ class GroupMessagingServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real group photo/description (2026-07-28) -- see GroupMessagingService
+    // .setGroupPhotoUrl/setGroupDescription's own doc comments.
+    Given("a real group and a real member of it") {
+        val groupConversationRepository = mockk<GroupConversationRepository>()
+        val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>()
+        val groupMessageRepository = mockk<GroupMessageRepository>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val groupMessageReactionRepository = mockk<GroupMessageReactionRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
+        val service = GroupMessagingService(
+            groupConversationRepository, groupConversationMemberRepository, groupMessageRepository,
+            userRepository, notificationRepository, groupMessageReactionRepository, rateLimiter, realtimeMessagePublisher,
+        )
+
+        val group = GroupConversation(id = "group_1", name = "Kigali Friends", createdBy = "user_a")
+        val memberA = GroupConversationMember(id = "gm_a", groupConversationId = "group_1", userId = "user_a")
+
+        every { groupConversationRepository.findById("group_1") } returns Optional.of(group)
+        every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "user_a") } returns memberA
+        every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "user_stranger") } returns null
+        every { groupConversationRepository.save(any()) } answers { firstArg() }
+
+        When("any real member sets a real group photo -- flat membership, not gated to createdBy") {
+            val result = service.setGroupPhotoUrl("user_a", "group_1", "  https://uploads.example/group.jpg  ")
+
+            Then("it real-trims and saves the URL") {
+                result.photoUrl shouldBe "https://uploads.example/group.jpg"
+            }
+        }
+
+        When("a real member sets a real group description") {
+            val result = service.setGroupDescription("user_a", "group_1", "  Friends from Kigali  ")
+
+            Then("it real-trims and saves the description") {
+                result.description shouldBe "Friends from Kigali"
+            }
+        }
+
+        When("a blank photo URL is submitted") {
+            val result = service.setGroupPhotoUrl("user_a", "group_1", "   ")
+
+            Then("it real-clears the photo back to unset rather than storing an empty string") {
+                result.photoUrl shouldBe null
+            }
+        }
+
+        When("a photo URL over the real 2048-character bound is submitted") {
+            Then("it throws GroupPhotoUrlTooLongException before ever touching the group row") {
+                try {
+                    service.setGroupPhotoUrl("user_a", "group_1", "x".repeat(2049))
+                    error("expected GroupPhotoUrlTooLongException")
+                } catch (e: GroupPhotoUrlTooLongException) {
+                    verify(exactly = 0) { groupConversationRepository.save(any()) }
+                }
+            }
+        }
+
+        When("a description over the real 500-character bound is submitted") {
+            Then("it throws GroupDescriptionTooLongException before ever touching the group row") {
+                try {
+                    service.setGroupDescription("user_a", "group_1", "x".repeat(501))
+                    error("expected GroupDescriptionTooLongException")
+                } catch (e: GroupDescriptionTooLongException) {
+                    verify(exactly = 0) { groupConversationRepository.save(any()) }
+                }
+            }
+        }
+
+        When("someone who isn't a real member tries to set the group photo") {
+            Then("it real-404s rather than revealing the group exists") {
+                try {
+                    service.setGroupPhotoUrl("user_stranger", "group_1", "https://uploads.example/group.jpg")
+                    error("expected GroupNotFoundException")
+                } catch (e: GroupNotFoundException) {
+                    // expected
+                }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

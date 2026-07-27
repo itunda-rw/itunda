@@ -43,6 +43,17 @@ class GroupConversation(
     @Column(name = "pinned_message_id", length = 64)
     var pinnedMessageId: String? = null,
 
+    // Real group photo/description (2026-07-28) -- see GroupMessagingService
+    // .setGroupPhotoUrl/setGroupDescription's own doc comments, closing one of the two
+    // real gaps this class's own doc comment named as not attempted in v1 (admin/
+    // owner roles beyond createdBy remain the one still-open gap). Both nullable --
+    // unset is the pre-existing default for every group created before this.
+    @Column(name = "photo_url", length = 2048)
+    var photoUrl: String? = null,
+
+    @Column(length = 500)
+    var description: String? = null,
+
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 ) {

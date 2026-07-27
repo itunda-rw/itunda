@@ -31,6 +31,8 @@ class AlreadyGroupMemberException(message: String) : RuntimeException(message)
 class EmptyGroupMessageException(message: String) : RuntimeException(message)
 class GroupMessageTooLongException(message: String) : RuntimeException(message)
 class GroupNameTooLongException(message: String) : RuntimeException(message)
+class GroupPhotoUrlTooLongException(message: String) : RuntimeException(message)
+class GroupDescriptionTooLongException(message: String) : RuntimeException(message)
 class GroupMessageNotFoundException(message: String) : RuntimeException(message)
 class GroupMessageDeleteForbiddenException(message: String) : RuntimeException(message)
 class InvalidGroupReactionException(message: String) : RuntimeException(message)
@@ -62,10 +64,14 @@ data class GroupMemberInfo(val userId: String, val name: String)
  * instead of a single recipient. Reuses the exact same `RateLimiter` per-sender
  * convention 1:1 `MessagingService.sendMessage` already established.
  *
- * Honestly scoped v1: a group's membership is flat (no admin/owner role beyond
- * `createdBy` being recorded, no kick/promote), and there's no group photo/description
- * -- real, deliberately not attempted in this pass since the defining gap was "can more
- * than two people chat at once at all," not group-management tooling.
+ * Honestly scoped v1: a group's membership is flat -- no admin/owner role beyond
+ * `createdBy` being recorded, no kick/promote -- real, deliberately not attempted in
+ * this pass since the defining gap was "can more than two people chat at once at all,"
+ * not group-management tooling; this remains the one still-open follow-up. **Group
+ * photo/description closed 2026-07-28** -- see `setGroupPhotoUrl`/`setGroupDescription`'s
+ * own doc comments, open to any real member (same flat-membership discipline
+ * `setPinnedMessage` already established, not gated to `createdBy` since this codebase
+ * doesn't have a real admin/owner concept yet).
  */
 @Service
 class GroupMessagingService(
@@ -450,6 +456,38 @@ class GroupMessagingService(
         }
         group.pinnedMessageId = messageId
         groupConversationRepository.save(group)
+    }
+
+    /**
+     * Real group photo (2026-07-28), open to any real member -- same flat-membership
+     * discipline `setPinnedMessage` already establishes, since this codebase has no
+     * real admin/owner concept yet (see this class's own doc comment). A URL, not a
+     * binary upload -- this backend has no file-storage layer, same honest
+     * simplification `AuthService.updateProfilePhoto`/`SplitBillService.attachReceipt`
+     * already use. Blank clears it back to unset.
+     */
+    @Transactional
+    fun setGroupPhotoUrl(userId: String, groupId: String, photoUrl: String): GroupConversation {
+        val group = requireMember(userId, groupId)
+        val trimmed = photoUrl.trim()
+        if (trimmed.length > 2048) {
+            throw GroupPhotoUrlTooLongException("Group photo URL must be 2048 characters or fewer")
+        }
+        group.photoUrl = trimmed.ifEmpty { null }
+        return groupConversationRepository.save(group)
+    }
+
+    /** Real group description (2026-07-28) -- see `setGroupPhotoUrl`'s own doc comment
+     * for the shared open-to-any-member/no-file-storage/blank-clears conventions. */
+    @Transactional
+    fun setGroupDescription(userId: String, groupId: String, description: String): GroupConversation {
+        val group = requireMember(userId, groupId)
+        val trimmed = description.trim()
+        if (trimmed.length > 500) {
+            throw GroupDescriptionTooLongException("Group description must be 500 characters or fewer")
+        }
+        group.description = trimmed.ifEmpty { null }
+        return groupConversationRepository.save(group)
     }
 
     /** Resolves the shared pin only after the usual non-disclosing membership check. */

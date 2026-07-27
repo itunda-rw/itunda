@@ -31,6 +31,8 @@ import rw.itunda.messaging.GroupNameRequiredException
 import rw.itunda.messaging.GroupNameTooLongException
 import rw.itunda.messaging.GroupNeedsMoreMembersException
 import rw.itunda.messaging.GroupNotFoundException
+import rw.itunda.messaging.GroupPhotoUrlTooLongException
+import rw.itunda.messaging.GroupDescriptionTooLongException
 import rw.itunda.messaging.InvalidForwardDestinationException
 import rw.itunda.messaging.InvalidGroupReactionException
 import rw.itunda.messaging.InvalidGroupMessageImageException
@@ -49,6 +51,10 @@ data class AddGroupMemberRequest(val userId: String)
 data class ToggleGroupReactionRequest(val emoji: String)
 // Real message forwarding (2026-07-25) -- see MessageForwardService's own doc comment.
 data class ForwardGroupMessageRequest(val destinationType: String, val destinationId: String)
+// Real group photo/description (2026-07-28) -- see GroupMessagingService
+// .setGroupPhotoUrl/setGroupDescription's own doc comments.
+data class SetGroupPhotoUrlRequest(val photoUrl: String)
+data class SetGroupDescriptionRequest(val description: String)
 
 // Real group chat -- see GroupMessagingService's own doc comment for the full account.
 // Normal itunda-user JWT gate, same as every other user-facing feature in this backend.
@@ -137,6 +143,28 @@ class GroupMessagingController(
     fun deleteMessage(@PathVariable groupId: String, @PathVariable messageId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Boolean>> {
         groupMessagingService.deleteMessage(currentUser.userId, groupId, messageId)
         return ResponseEntity.ok(mapOf("success" to true))
+    }
+
+    // Real group photo/description (2026-07-28) -- see GroupMessagingService
+    // .setGroupPhotoUrl/setGroupDescription's own doc comments.
+    @PostMapping("/{groupId}/photo")
+    fun setGroupPhotoUrl(
+        @PathVariable groupId: String,
+        @RequestBody request: SetGroupPhotoUrlRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val group = groupMessagingService.setGroupPhotoUrl(currentUser.userId, groupId, request.photoUrl)
+        return ResponseEntity.ok(mapOf("success" to true, "group" to group))
+    }
+
+    @PostMapping("/{groupId}/description")
+    fun setGroupDescription(
+        @PathVariable groupId: String,
+        @RequestBody request: SetGroupDescriptionRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val group = groupMessagingService.setGroupDescription(currentUser.userId, groupId, request.description)
+        return ResponseEntity.ok(mapOf("success" to true, "group" to group))
     }
 
     // Real group-chat pin (2026-07-26) -- see GroupMessagingService.setPinnedMessage's
@@ -230,6 +258,14 @@ class GroupMessagingController(
     @ExceptionHandler(GroupNameTooLongException::class)
     fun handleGroupNameTooLong(ex: GroupNameTooLongException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("GROUP_NAME_TOO_LONG", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(GroupPhotoUrlTooLongException::class)
+    fun handleGroupPhotoUrlTooLong(ex: GroupPhotoUrlTooLongException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("GROUP_PHOTO_URL_TOO_LONG", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(GroupDescriptionTooLongException::class)
+    fun handleGroupDescriptionTooLong(ex: GroupDescriptionTooLongException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("GROUP_DESCRIPTION_TOO_LONG", ex.message ?: "Bad request"))
 
     @ExceptionHandler(GroupNeedsMoreMembersException::class)
     fun handleGroupNeedsMoreMembers(ex: GroupNeedsMoreMembersException) =
