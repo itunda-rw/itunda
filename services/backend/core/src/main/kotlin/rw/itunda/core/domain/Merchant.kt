@@ -105,6 +105,18 @@ class Merchant(
     @Column(name = "api_key_hash", length = 64, nullable = true)
     var apiKeyHash: String? = null,
 
+    // Real Toss Payments-style grace-period key reissue (2026-07-28) -- see
+    // MerchantService.generateApiKey's own doc comment for why this closes a real,
+    // sourced gap the old hard-cutover rotation had. NULL means either no rotation has
+    // ever happened, or the previous key's grace period has already elapsed (checked at
+    // resolve time, not swept by a scheduler -- same "check the timestamp directly on
+    // read" simplicity KeywordAlertQuietHours already establishes).
+    @Column(name = "previous_api_key_hash", length = 64, nullable = true)
+    var previousApiKeyHash: String? = null,
+
+    @Column(name = "previous_api_key_expires_at", nullable = true)
+    var previousApiKeyExpiresAt: Instant? = null,
+
     // Real Naver Pay-style boosted merchant cashback opt-in (2026-07-26) -- Naver Pay's
     // own real membership program pays "최대 5%" (up to 5%) back on real "N Pay+"-marked
     // purchases, well above the flat 1% every itunda QR payment already earns via

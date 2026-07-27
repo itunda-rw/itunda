@@ -107,6 +107,10 @@ class MerchantService(
     // MERCHANT_SERVICES.md spec's "QR payments: 1.5%" did independently.
     private val feeRate = BigDecimal("0.015")
 
+    // Real Toss Payments-sourced grace period (2026-07-28) -- see generateApiKey's own
+    // doc comment for the citation.
+    private val keyGracePeriod: Duration = Duration.ofDays(7)
+
     @Transactional
     fun register(ownerUserId: String, businessName: String): Merchant {
         if (merchantRepository.findByOwnerUserId(ownerUserId) != null) {
@@ -270,21 +274,38 @@ class MerchantService(
     // distinction exists here yet, so claiming a "live" prefix would be dishonest).
     // Only the logged-in merchant owner can call this (normal JWT auth, see
     // MerchantController) -- the resulting secret key is what their OWN backend server
-    // then uses non-interactively, with no itunda user login involved at all. Calling
-    // this again rotates the key -- the old one stops working immediately, since only
-    // the hash is ever stored.
+    // then uses non-interactively, with no itunda user login involved at all.
+    //
+    // **Real grace-period rotation added 2026-07-28** -- Toss Payments' own official
+    // developer release notes (docs.tosspayments.com/resources/release-note, June 2026:
+    // self-service secret/security key reissue, "existing keys enter a 7-day
+    // deprecation window, enabling seamless rotation without service interruption").
+    // Calling this again no longer cuts the old key off immediately -- it moves the
+    // CURRENT key into `previousApiKeyHash` with a real 7-day expiry
+    // (`KEY_GRACE_PERIOD`), so a merchant's own server can roll out the new key across
+    // its own fleet without a hard cutover mid-rotation. `resolveMerchantByApiKey`
+    // checks the previous key too, but only while its real expiry hasn't passed.
     @Transactional
     fun generateApiKey(ownerUserId: String): String {
         val merchant = getMyMerchant(ownerUserId)
         val rawKey = generateRawApiKey()
+        merchant.previousApiKeyHash = merchant.apiKeyHash
+        merchant.previousApiKeyExpiresAt = if (merchant.apiKeyHash != null) Instant.now().plus(keyGracePeriod) else null
         merchant.apiKeyHash = hashApiKey(rawKey)
         merchantRepository.save(merchant)
         return rawKey
     }
 
     fun resolveMerchantByApiKey(apiKey: String): Merchant {
-        val merchant = merchantRepository.findByApiKeyHash(hashApiKey(apiKey))
-            ?: throw InvalidApiKeyException("Invalid or unknown API key")
+        val hashed = hashApiKey(apiKey)
+        val merchant = merchantRepository.findByApiKeyHash(hashed) ?: run {
+            val candidate = merchantRepository.findByPreviousApiKeyHash(hashed) ?: throw InvalidApiKeyException("Invalid or unknown API key")
+            val expiresAt = candidate.previousApiKeyExpiresAt
+            if (expiresAt == null || expiresAt.isBefore(Instant.now())) {
+                throw InvalidApiKeyException("Invalid or unknown API key")
+            }
+            candidate
+        }
         if (merchant.status != MerchantStatus.ACTIVE) {
             throw InvalidApiKeyException("This merchant account is suspended")
         }

@@ -462,9 +462,12 @@ class MerchantServiceTest : BehaviorSpec({
                 savedKeySlot.captured.apiKeyHash shouldNotBe rawKey1
             }
 
-            Then("regenerating produces a genuinely different key, rotating out the old one") {
+            Then("regenerating produces a genuinely different key, moving the OLD hash into a real 7-day grace period rather than a hard cutover") {
+                val firstHash = savedKeySlot.captured.apiKeyHash
                 val rawKey2 = service.generateApiKey("owner_1")
                 (rawKey1 == rawKey2) shouldBe false
+                savedKeySlot.captured.previousApiKeyHash shouldBe firstHash
+                savedKeySlot.captured.previousApiKeyExpiresAt shouldNotBe null
             }
         }
 
@@ -483,10 +486,48 @@ class MerchantServiceTest : BehaviorSpec({
 
         When("resolving by an unknown API key") {
             every { merchantRepository.findByApiKeyHash(any()) } returns null
+            every { merchantRepository.findByPreviousApiKeyHash(any()) } returns null
 
             Then("it real-throws InvalidApiKeyException rather than a null merchant slipping through") {
                 try {
                     service.resolveMerchantByApiKey("sk_test_bogus")
+                    error("expected InvalidApiKeyException")
+                } catch (e: InvalidApiKeyException) {
+                    // expected
+                }
+            }
+        }
+
+        // Real Toss Payments-style grace-period key reissue (2026-07-28) -- see
+        // MerchantService.generateApiKey's own doc comment.
+        When("resolving by a real PREVIOUS key still inside its real 7-day grace period") {
+            every { merchantRepository.findByApiKeyHash(any()) } returns null
+            val graceMerchant = Merchant(
+                id = "merchant_7", ownerUserId = "owner_7", walletId = "wallet_7",
+                businessName = "Rotated Key Shop", status = MerchantStatus.ACTIVE,
+                apiKeyHash = "current_hash_7", previousApiKeyHash = "previous_hash_7",
+                previousApiKeyExpiresAt = Instant.now().plusSeconds(3600),
+            )
+            every { merchantRepository.findByPreviousApiKeyHash(any()) } returns graceMerchant
+
+            Then("it still real-resolves the merchant via the previous key -- a real in-flight rotation isn't a hard cutover") {
+                service.resolveMerchantByApiKey("sk_test_previous").id shouldBe "merchant_7"
+            }
+        }
+
+        When("resolving by a real PREVIOUS key whose real grace period has already elapsed") {
+            every { merchantRepository.findByApiKeyHash(any()) } returns null
+            val expiredMerchant = Merchant(
+                id = "merchant_8", ownerUserId = "owner_8", walletId = "wallet_8",
+                businessName = "Expired Key Shop", status = MerchantStatus.ACTIVE,
+                apiKeyHash = "current_hash_8", previousApiKeyHash = "previous_hash_8",
+                previousApiKeyExpiresAt = Instant.now().minusSeconds(3600),
+            )
+            every { merchantRepository.findByPreviousApiKeyHash(any()) } returns expiredMerchant
+
+            Then("it real-throws InvalidApiKeyException -- the grace period is real, not indefinite") {
+                try {
+                    service.resolveMerchantByApiKey("sk_test_expired_previous")
                     error("expected InvalidApiKeyException")
                 } catch (e: InvalidApiKeyException) {
                     // expected

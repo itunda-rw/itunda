@@ -17,6 +17,10 @@ interface MerchantRepository : JpaRepository<Merchant, String> {
     // Merchant.apiKeyHash's own doc comment. Mirrors PartnerRepository.findByApiKeyHash
     // exactly.
     fun findByApiKeyHash(apiKeyHash: String): Merchant?
+
+    // Real Toss Payments-style grace-period key reissue (2026-07-28) -- see
+    // MerchantService.generateApiKey's own doc comment.
+    fun findByPreviousApiKeyHash(previousApiKeyHash: String): Merchant?
     // Paginated -- see PageResponse.kt's doc comment; Toss Shopping's merchant catalog
     // grows as more merchants register and had no bound at all before this.
     fun findByStatus(status: MerchantStatus, pageable: Pageable): Page<Merchant>
