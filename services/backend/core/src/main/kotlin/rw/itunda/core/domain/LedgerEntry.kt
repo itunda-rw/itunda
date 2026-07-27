@@ -59,6 +59,13 @@ enum class LedgerAccountType {
     // already left their wallet, it just hasn't reached the merchant (redemption) or
     // been refunded (expiry) yet.
     GIFT_VOUCHER_HOLDING,
+    // Real Toss Bank/KakaoBank 마이너스통장 (overdraft/revolving line-of-credit) interest
+    // income (2026-07-27) -- see OverdraftAccount.kt's own doc comment. A real, direct
+    // "itunda earns this outright" revenue account, the same shape FEE_REVENUE/
+    // EMOTICON_REVENUE already establish -- interest income is conceptually distinct
+    // from a transaction fee, so this gets its own dedicated account rather than being
+    // folded into FEE_REVENUE and muddying that account's own real reconciliation.
+    INTEREST_INCOME,
 }
 
 /**

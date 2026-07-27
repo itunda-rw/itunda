@@ -24,10 +24,16 @@ import java.math.BigDecimal
 data class ApplyLoanRequest(val loanId: String, val amount: BigDecimal)
 data class RepayLoanRequest(val loanId: String, val amount: BigDecimal)
 data class RefinanceLoanRequest(val loanId: String)
+data class OpenOverdraftRequest(val requestedLimit: BigDecimal)
+data class OverdraftAmountRequest(val amount: BigDecimal)
 
 @RestController
 @RequestMapping("/api/v1/loans")
-class LoansController(private val loansService: LoansService, private val idempotencyService: IdempotencyService) {
+class LoansController(
+    private val loansService: LoansService,
+    private val idempotencyService: IdempotencyService,
+    private val overdraftService: OverdraftService,
+) {
 
     @GetMapping("/offers")
     fun getOffers(@RequestParam(required = false) lenderId: String?) =
@@ -79,6 +85,72 @@ class LoansController(private val loansService: LoansService, private val idempo
         }
         return ResponseEntity.status(status).body(body)
     }
+
+    // Real Toss Bank/KakaoBank 마이너스통장 (overdraft/revolving line-of-credit) -- see
+    // OverdraftAccount.kt's own doc comment for the full sourced account.
+    @PostMapping("/overdraft/open")
+    fun openOverdraft(
+        @RequestBody request: OpenOverdraftRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/loans/overdraft/open", idempotencyKey, request) {
+            val account = overdraftService.openOverdraft(currentUser.userId, request.requestedLimit)
+            201 to mapOf("success" to true, "account" to account)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    @GetMapping("/overdraft")
+    fun getMyOverdraft(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "account" to overdraftService.getMyOverdraft(currentUser.userId)))
+
+    @PostMapping("/overdraft/draw")
+    fun drawOverdraft(
+        @RequestBody request: OverdraftAmountRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/loans/overdraft/draw", idempotencyKey, request) {
+            val result = overdraftService.draw(currentUser.userId, request.amount)
+            200 to (mapOf("success" to true) + result)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    @PostMapping("/overdraft/repay")
+    fun repayOverdraft(
+        @RequestBody request: OverdraftAmountRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/loans/overdraft/repay", idempotencyKey, request) {
+            val result = overdraftService.repay(currentUser.userId, request.amount)
+            200 to (mapOf("success" to true) + result)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    @ExceptionHandler(OverdraftAlreadyActiveException::class)
+    fun handleOverdraftAlreadyActive(ex: OverdraftAlreadyActiveException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("OVERDRAFT_ALREADY_ACTIVE", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(OverdraftLimitInvalidException::class)
+    fun handleOverdraftLimitInvalid(ex: OverdraftLimitInvalidException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_OVERDRAFT_LIMIT", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(OverdraftApplicationDeclinedException::class)
+    fun handleOverdraftDeclined(ex: OverdraftApplicationDeclinedException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("OVERDRAFT_APPLICATION_DECLINED", ex.message ?: "Declined"))
+
+    @ExceptionHandler(OverdraftNotActiveException::class)
+    fun handleOverdraftNotActive(ex: OverdraftNotActiveException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("OVERDRAFT_NOT_ACTIVE", ex.message ?: "Not found"))
+
+    @ExceptionHandler(OverdraftLimitExceededException::class)
+    fun handleOverdraftLimitExceeded(ex: OverdraftLimitExceededException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("OVERDRAFT_LIMIT_EXCEEDED", ex.message ?: "Unprocessable"))
+
+    @ExceptionHandler(OverdraftInvalidAmountException::class)
+    fun handleOverdraftInvalidAmount(ex: OverdraftInvalidAmountException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AMOUNT", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(OverdraftNoWalletException::class)
+    fun handleOverdraftNoWallet(ex: OverdraftNoWalletException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
 
     @ExceptionHandler(NoBetterRateAvailableException::class)
     fun handleNoBetterRate(ex: NoBetterRateAvailableException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("NO_BETTER_RATE_AVAILABLE", ex.message ?: "No better rate available"))
