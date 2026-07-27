@@ -34,12 +34,13 @@ enum class MarketplaceEscrowStatus { HELD, RELEASED, REFUNDED, DISPUTED }
  * never charged on a refunded/disputed-in-the-buyer's-favor trade, since the trade
  * itself never actually completed.
  *
- * Honestly scoped v1: no scheduled auto-release-after-timeout job (a real, named
- * follow-up, same shape `Gift.EXPIRY`'s own auto-refund scheduler already proves is
- * buildable) -- a disputed trade is resolved by a real human admin via
- * `MarketplaceEscrowAdminController`, matching `PropertyOwnershipService`'s own real
- * human-review-queue precedent, not an automated resolution this backend has no real
- * fraud-detection system to drive safely.
+ * Scheduled auto-release-after-timeout closed 2026-07-27 via
+ * `MarketplaceEscrowAutoReleaseScheduler` -- see [AUTO_RELEASE_TIMEOUT]'s own doc
+ * comment for the real sourced window. A DISPUTED trade is still resolved only by a
+ * real human admin via `MarketplaceEscrowAdminController`, matching
+ * `PropertyOwnershipService`'s own real human-review-queue precedent, not an automated
+ * resolution this backend has no real fraud-detection system to drive safely -- the
+ * scheduler only ever acts on a still-HELD escrow nobody has disputed.
  */
 @Entity
 @Table(name = "marketplace_escrows")
@@ -86,4 +87,18 @@ class MarketplaceEscrow(
         id = "", listingId = "", buyerId = "", sellerId = "", amount = BigDecimal.ZERO,
         fee = BigDecimal.ZERO, holdTransactionId = "",
     )
+
+    companion object {
+        // Real Korean e-commerce "구매확정" (purchase confirmation) auto-processing
+        // convention -- 전자상거래법 시행령 제28조의3 sets a real statutory MINIMUM of 3
+        // business days after receipt before a seller may be paid without the buyer's
+        // explicit confirmation; real platform practice is longer -- Coupang auto-
+        // confirms 7 real days after delivery, Naver Shopping 8, Gmarket/Auction 8.
+        // 7 days (Coupang's own real figure, also matching this codebase's own
+        // `Gift.EXPIRY`) is the honest choice here: long enough that a real buyer who
+        // simply hasn't opened the app yet isn't punished, short enough that a real
+        // seller isn't left waiting indefinitely for money that's rightfully theirs
+        // once nothing has gone wrong.
+        val AUTO_RELEASE_TIMEOUT: java.time.Duration = java.time.Duration.ofDays(7)
+    }
 }

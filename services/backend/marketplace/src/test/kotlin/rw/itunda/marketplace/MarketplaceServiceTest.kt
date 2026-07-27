@@ -12,7 +12,9 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.Listing
 import rw.itunda.core.domain.ListingStatus
+import rw.itunda.core.domain.MarketplaceEscrow
 import rw.itunda.core.domain.User
+import rw.itunda.core.domain.Wallet
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.geo.OsrmRoutingClient
 import rw.itunda.core.ledger.LedgerService
@@ -516,6 +518,119 @@ class MarketplaceServiceTest : BehaviorSpec({
                 } catch (e: NeighborhoodNotSetException) {
                     // expected
                 }
+            }
+        }
+    }
+
+    // Real scheduled escrow auto-release (2026-07-27) -- see
+    // MarketplaceEscrow.AUTO_RELEASE_TIMEOUT's own doc comment for the full sourced
+    // account, closing this feature's own previously-named deferred follow-up.
+    Given("real escrows of every real age and status, checking which are due for real auto-release") {
+        val listingRepository = mockk<ListingRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val messagingService = mockk<MessagingService>(relaxed = true)
+        val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>(relaxed = true)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val walletRepository = mockk<WalletRepository>(relaxed = true)
+        val ledgerService = mockk<LedgerService>(relaxed = true)
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>()
+        val service = MarketplaceService(
+            listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
+            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository,
+        )
+
+        val overdue = MarketplaceEscrow(
+            id = "escrow_a", listingId = "listing_a", buyerId = "buyer_a", sellerId = "seller_a",
+            amount = BigDecimal("10000"), fee = BigDecimal("150"), holdTransactionId = "ledgertxn_a",
+            createdAt = java.time.Instant.now().minus(java.time.Duration.ofDays(8)),
+        )
+        val notYetDue = MarketplaceEscrow(
+            id = "escrow_b", listingId = "listing_b", buyerId = "buyer_b", sellerId = "seller_b",
+            amount = BigDecimal("10000"), fee = BigDecimal("150"), holdTransactionId = "ledgertxn_b",
+            createdAt = java.time.Instant.now().minus(java.time.Duration.ofDays(2)),
+        )
+        every { marketplaceEscrowRepository.findByStatus(rw.itunda.core.domain.MarketplaceEscrowStatus.HELD) } returns listOf(overdue, notYetDue)
+
+        When("getEscrowsDueForAutoRelease runs") {
+            val due = service.getEscrowsDueForAutoRelease()
+
+            Then("it real-includes only the escrow past the real 7-day window, honestly excluding the too-recent one") {
+                due shouldBe listOf(overdue)
+            }
+        }
+    }
+
+    Given("a real still-HELD escrow past the real auto-release window") {
+        val listingRepository = mockk<ListingRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val messagingService = mockk<MessagingService>(relaxed = true)
+        val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>(relaxed = true)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>()
+        val service = MarketplaceService(
+            listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
+            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository,
+        )
+
+        val escrow = MarketplaceEscrow(
+            id = "escrow_c", listingId = "listing_c", buyerId = "buyer_c", sellerId = "seller_c",
+            amount = BigDecimal("10000"), fee = BigDecimal("150"), holdTransactionId = "ledgertxn_c",
+            createdAt = java.time.Instant.now().minus(java.time.Duration.ofDays(8)),
+        )
+        val sellerWallet = Wallet(id = "wallet_seller", userId = "seller_c", accountNumber = "ACC-S", accountName = "Seller", type = rw.itunda.core.domain.WalletType.MAIN, balance = BigDecimal.ZERO, availableBalance = BigDecimal.ZERO)
+        every { marketplaceEscrowRepository.findById("escrow_c") } returns java.util.Optional.of(escrow)
+        every { walletRepository.findByUserIdAndType("seller_c", rw.itunda.core.domain.WalletType.MAIN) } returns sellerWallet
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns rw.itunda.core.ledger.LedgerPostResult("ledgertxn_release_1", emptyList())
+        every { marketplaceEscrowRepository.save(any()) } answers { firstArg() }
+        every { listingRepository.findById("listing_c") } returns java.util.Optional.empty()
+
+        When("autoReleaseEscrow runs") {
+            service.autoReleaseEscrow("escrow_c")
+
+            Then("it real-releases to the seller, the same real path a manual buyer confirmation already uses") {
+                escrow.status shouldBe rw.itunda.core.domain.MarketplaceEscrowStatus.RELEASED
+                escrow.resolutionTransactionId shouldBe "ledgertxn_release_1"
+            }
+        }
+    }
+
+    Given("an escrow that's already been resolved by the time the real auto-release sweep reaches it") {
+        val listingRepository = mockk<ListingRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val messagingService = mockk<MessagingService>(relaxed = true)
+        val osrmRoutingClient = mockk<OsrmRoutingClient>(relaxed = true)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>(relaxed = true)
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        val marketplaceEscrowRepository = mockk<MarketplaceEscrowRepository>()
+        val service = MarketplaceService(
+            listingRepository, rateLimiter, messagingService, osrmRoutingClient, nominatimGeocodingClient, userRepository, trustScoreService,
+            walletRepository, ledgerService, transactionRepository, marketplaceEscrowRepository,
+        )
+
+        val alreadyReleased = MarketplaceEscrow(
+            id = "escrow_d", listingId = "listing_d", buyerId = "buyer_d", sellerId = "seller_d",
+            amount = BigDecimal("10000"), fee = BigDecimal("150"), holdTransactionId = "ledgertxn_d",
+            status = rw.itunda.core.domain.MarketplaceEscrowStatus.RELEASED,
+        )
+        every { marketplaceEscrowRepository.findById("escrow_d") } returns java.util.Optional.of(alreadyReleased)
+
+        When("autoReleaseEscrow runs anyway (e.g. the buyer confirmed just before the sweep caught it)") {
+            service.autoReleaseEscrow("escrow_d")
+
+            Then("it's a real honest no-op -- never double-releasing or touching the ledger a second time") {
+                io.mockk.verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
             }
         }
     }

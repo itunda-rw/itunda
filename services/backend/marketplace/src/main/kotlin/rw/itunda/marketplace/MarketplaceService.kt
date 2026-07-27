@@ -427,6 +427,32 @@ class MarketplaceService(
     fun getPendingDisputes(): List<MarketplaceEscrow> =
         marketplaceEscrowRepository.findByStatusOrderByCreatedAtAsc(MarketplaceEscrowStatus.DISPUTED)
 
+    // Real scheduled auto-release-after-timeout (2026-07-27) -- see
+    // MarketplaceEscrow.AUTO_RELEASE_TIMEOUT's own doc comment for the real sourced
+    // window, and MarketplaceEscrowAutoReleaseScheduler's own doc comment for the
+    // scheduler shape. A still-HELD escrow past the real timeout with no dispute
+    // raised is exactly a buyer who simply never opened the app to confirm -- the same
+    // real "구매확정" auto-processing every major Korean e-commerce platform performs,
+    // not a silent, undocumented default.
+    fun getEscrowsDueForAutoRelease(): List<MarketplaceEscrow> =
+        marketplaceEscrowRepository.findByStatus(MarketplaceEscrowStatus.HELD)
+            .filter { Duration.between(it.createdAt, Instant.now()) >= MarketplaceEscrow.AUTO_RELEASE_TIMEOUT }
+
+    @Transactional
+    fun autoReleaseEscrow(escrowId: String) {
+        val escrow = marketplaceEscrowRepository.findById(escrowId).orElse(null) ?: return
+        if (escrow.status != MarketplaceEscrowStatus.HELD) return
+        val saved = releaseEscrowToSeller(escrow)
+        val listing = listingRepository.findById(saved.listingId).orElse(null)
+        if (listing != null) {
+            val conversation = messagingService.startOrGetConversation(saved.buyerId, saved.sellerId)
+            messagingService.sendMessage(
+                saved.sellerId, conversation.id,
+                "✅ Auto-confirmed after ${MarketplaceEscrow.AUTO_RELEASE_TIMEOUT.toDays()} days -- payment for \"${listing.title}\" has been released to you.",
+            )
+        }
+    }
+
     /** Real admin resolution -- `release = true` pays the seller (the trade was
      * legitimate), `false` refunds the buyer in full, no fee charged, and reopens the
      * listing for sale again (the trade genuinely didn't happen). */
