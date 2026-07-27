@@ -11,6 +11,7 @@ import rw.itunda.core.domain.GroupConversationMember
 import rw.itunda.core.domain.GroupMessage
 import rw.itunda.core.domain.GroupMessageReaction
 import rw.itunda.core.domain.Notification
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.realtime.ReactionGroup
 import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.GroupConversationMemberRepository
@@ -83,6 +84,7 @@ class GroupMessagingService(
     private val groupMessageReactionRepository: GroupMessageReactionRepository,
     private val rateLimiter: RateLimiter,
     private val realtimeMessagePublisher: RealtimeMessagePublisher,
+    private val pushNotificationService: PushNotificationService,
 ) {
     @Transactional
     fun createGroup(creatorUserId: String, name: String, memberUserIds: List<String>): GroupConversation {
@@ -274,6 +276,18 @@ class GroupMessagingService(
                 )
             },
         )
+        // Real push wired in (2026-07-28) -- deliberately mention-only, not every
+        // ordinary group message: a busy group can send dozens of messages an hour, and
+        // pushing for each one would be exactly the notification spam real messaging
+        // apps (Slack, KakaoTalk) avoid by pushing only for an explicit @mention, same
+        // "higher-signal" reasoning the GROUP_MENTION notification type above already
+        // establishes.
+        recipientIds.filter { it in mentionedUserIds }.forEach { recipientId ->
+            pushNotificationService.sendToUser(
+                recipientId, "$senderName mentioned you in ${group.name}", trimmed.take(120),
+                mapOf("groupConversationId" to groupId),
+            )
+        }
         realtimeMessagePublisher.publishNewGroupMessage(groupId, recipientIds, message)
         return message
     }

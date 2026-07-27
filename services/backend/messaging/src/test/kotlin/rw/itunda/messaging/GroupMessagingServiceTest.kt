@@ -15,6 +15,7 @@ import rw.itunda.core.domain.GroupConversationMember
 import rw.itunda.core.domain.GroupMessage
 import rw.itunda.core.domain.GroupMessageReaction
 import rw.itunda.core.domain.User
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.realtime.ReactionGroup
 import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.GroupConversationMemberRepository
@@ -40,9 +41,11 @@ class GroupMessagingServiceTest : BehaviorSpec({
         val groupMessageReactionRepository = mockk<GroupMessageReactionRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = GroupMessagingService(
             groupConversationRepository, groupConversationMemberRepository, groupMessageRepository,
             userRepository, notificationRepository, groupMessageReactionRepository, rateLimiter, realtimeMessagePublisher,
+            pushNotificationService,
         )
 
         When("creating a group with two real other members") {
@@ -141,9 +144,11 @@ class GroupMessagingServiceTest : BehaviorSpec({
         val groupMessageReactionRepository = mockk<GroupMessageReactionRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = GroupMessagingService(
             groupConversationRepository, groupConversationMemberRepository, groupMessageRepository,
             userRepository, notificationRepository, groupMessageReactionRepository, rateLimiter, realtimeMessagePublisher,
+            pushNotificationService,
         )
 
         val group = GroupConversation(id = "group_1", name = "Kigali Friends", createdBy = "user_a")
@@ -178,6 +183,28 @@ class GroupMessagingServiceTest : BehaviorSpec({
                 message.senderId shouldBe "user_a"
                 verify { realtimeMessagePublisher.publishNewGroupMessage("group_1", match { it.toSet() == setOf("user_b", "user_c") }, message) }
                 verify { notificationRepository.saveAll(match<List<rw.itunda.core.domain.Notification>> { it.size == 2 && it.map { n -> n.userId }.toSet() == setOf("user_b", "user_c") }) }
+            }
+
+            Then("an ordinary message with no @mention never sends a real push -- only mentions do, to avoid spamming every message") {
+                verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any()) }
+            }
+        }
+
+        When("a real member sends a message that real @mentions another real member") {
+            every { groupConversationRepository.findById("group_1") } returns Optional.of(group)
+            every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "user_a") } returns members[0]
+            every { groupConversationRepository.save(any()) } answers { firstArg() }
+            every { groupMessageRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.saveAll(any<List<rw.itunda.core.domain.Notification>>()) } answers { firstArg() }
+            every { groupConversationMemberRepository.findByGroupConversationId("group_1") } returns members
+            every { userRepository.findById("user_a") } returns Optional.of(user("user_a", "Alice"))
+            every { userRepository.findAllById(any<List<String>>()) } returns listOf(user("user_a", "Alice"), user("user_b", "Beata"), user("user_c", "Claude"))
+
+            service.sendMessage("user_a", "group_1", "Hey @Beata check this out")
+
+            Then("only the real mentioned member gets a real push, not the whole group") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_b", "Alice Test mentioned you in Kigali Friends", any(), any()) }
+                verify(exactly = 0) { pushNotificationService.sendToUser("user_c", any(), any(), any()) }
             }
         }
 
@@ -464,9 +491,11 @@ class GroupMessagingServiceTest : BehaviorSpec({
         val groupMessageReactionRepository = mockk<GroupMessageReactionRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = GroupMessagingService(
             groupConversationRepository, groupConversationMemberRepository, groupMessageRepository,
             userRepository, notificationRepository, groupMessageReactionRepository, rateLimiter, realtimeMessagePublisher,
+            pushNotificationService,
         )
 
         val group = GroupConversation(id = "group_1", name = "Kigali Friends", createdBy = "user_a")
