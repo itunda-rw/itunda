@@ -24,6 +24,7 @@ import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
 import rw.itunda.family.FamilyLinkService
 import rw.itunda.savings.RoundUpService
+import rw.itunda.wallet.AutoTopUpService
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.math.BigDecimal
@@ -61,6 +62,7 @@ class P2pService(
     private val notificationRepository: NotificationRepository,
     private val roundUpService: RoundUpService,
     private val familyLinkService: FamilyLinkService,
+    private val autoTopUpService: AutoTopUpService,
 ) {
     private val log = LoggerFactory.getLogger(P2pService::class.java)
 
@@ -185,7 +187,7 @@ class P2pService(
         // for a real mutating money-movement endpoint.
         rateLimiter.checkLimit("p2p:send:$senderUserId", limit = 30, window = Duration.ofHours(1))
 
-        val senderWallet = walletRepository.findByUserIdAndType(senderUserId, WalletType.MAIN)
+        var senderWallet = walletRepository.findByUserIdAndType(senderUserId, WalletType.MAIN)
             ?: throw P2pNoWalletException("No wallet found for this account")
 
         val recipientUser = userRepository.findByPhoneNumber(trimmedIdentifier)
@@ -198,7 +200,23 @@ class P2pService(
             throw P2pSelfPaymentException("Cannot send money to your own account")
         }
         if (senderWallet.availableBalance < amount) {
-            throw InsufficientFundsException("Insufficient available balance for this transfer")
+            // Real Naver Pay Money "결제 시 부족분 자동 충전" (auto-charge the shortfall at
+            // payment time) -- see AutoTopUpService.topUpShortfall's own doc comment for
+            // the full sourced account and why this is safe to call synchronously here
+            // (before this transfer's own ledger legs are posted, so before any row lock
+            // on the sender's wallet is taken -- not the post-commit-hook pattern
+            // RoundUpService needed for its own, structurally different, AFTER-the-fact
+            // auxiliary action). A no-op (falls through to the same real
+            // InsufficientFundsException) for the overwhelming common case of a sender
+            // with no auto top-up configured or enabled.
+            val shortfall = amount.subtract(senderWallet.availableBalance)
+            val topUpResult = autoTopUpService.topUpShortfall(senderUserId, senderWallet.id, shortfall)
+            if (topUpResult.triggered) {
+                senderWallet = walletRepository.findById(senderWallet.id).orElseThrow { P2pNoWalletException("No wallet found for this account") }
+            }
+            if (senderWallet.availableBalance < amount) {
+                throw InsufficientFundsException("Insufficient available balance for this transfer")
+            }
         }
         // Real FamilyLink daily spend-limit enforcement (2026-07-27) -- see
         // FamilyLinkService.enforceSpendLimit's own doc comment. A real gate before

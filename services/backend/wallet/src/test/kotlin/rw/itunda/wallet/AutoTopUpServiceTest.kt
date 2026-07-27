@@ -259,6 +259,123 @@ class AutoTopUpServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real Naver Pay Money "결제 시 부족분 자동 충전" (2026-07-27) -- see
+    // AutoTopUpService.topUpShortfall's own doc comment.
+    Given("a real wallet with a real enabled auto top-up setting, hitting a real shortfall") {
+        val walletAutoTopUpSettingRepository = mockk<WalletAutoTopUpSettingRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val linkedAccountRepository = mockk<LinkedAccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        every { transactionRepository.save(any()) } answers { firstArg() }
+        val providerConnector = mockk<ProviderConnector>(relaxed = true)
+        val service = AutoTopUpService(walletAutoTopUpSettingRepository, walletRepository, linkedAccountRepository, ledgerService, transactionRepository, providerConnector)
+
+        val setting = WalletAutoTopUpSetting(
+            id = "auto_topup_1", userId = "user_1", walletId = "wallet_1", linkedAccountId = "linked_1",
+            thresholdAmount = BigDecimal("2000"), topUpAmount = BigDecimal("10000"), enabled = true,
+        )
+        every { walletRepository.findById("wallet_1") } returns Optional.of(wallet("wallet_1", "user_1", "500"))
+        every { walletAutoTopUpSettingRepository.findByWalletId("wallet_1") } returns setting
+        every { linkedAccountRepository.findById("linked_1") } returns Optional.of(linkedAccount("linked_1", "user_1"))
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_shortfall_1", emptyList())
+
+        When("a real 350 RWF shortfall is reported") {
+            val result = service.topUpShortfall("user_1", "wallet_1", BigDecimal("350"))
+
+            Then("it real-tops-up rounded UP to the nearest real 1,000 RWF unit, not the configured recurring topUpAmount") {
+                result.triggered shouldBe true
+                val legsSlot = slot<List<LedgerLeg>>()
+                verify(exactly = 1) { ledgerService.postLedgerTransaction(any(), capture(legsSlot)) }
+                legsSlot.captured.first { it.accountId == "wallet_1" }.amount shouldBe BigDecimal("1000")
+            }
+
+            Then("it never touches the recurring scheduler's own real daily trigger cadence") {
+                setting.triggersToday shouldBe 0
+                setting.lastTriggerDate shouldBe null
+            }
+        }
+    }
+
+    Given("a real wallet with auto top-up disabled, hitting a real shortfall") {
+        val walletAutoTopUpSettingRepository = mockk<WalletAutoTopUpSettingRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val linkedAccountRepository = mockk<LinkedAccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        every { transactionRepository.save(any()) } answers { firstArg() }
+        val providerConnector = mockk<ProviderConnector>(relaxed = true)
+        val service = AutoTopUpService(walletAutoTopUpSettingRepository, walletRepository, linkedAccountRepository, ledgerService, transactionRepository, providerConnector)
+
+        val setting = WalletAutoTopUpSetting(
+            id = "auto_topup_2", userId = "user_1", walletId = "wallet_1", linkedAccountId = "linked_1",
+            thresholdAmount = BigDecimal("2000"), topUpAmount = BigDecimal("10000"), enabled = false,
+        )
+        every { walletRepository.findById("wallet_1") } returns Optional.of(wallet("wallet_1", "user_1", "500"))
+        every { walletAutoTopUpSettingRepository.findByWalletId("wallet_1") } returns setting
+
+        When("a real shortfall is reported") {
+            val result = service.topUpShortfall("user_1", "wallet_1", BigDecimal("350"))
+
+            Then("it honestly does not trigger, and the ledger is never touched") {
+                result.triggered shouldBe false
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+    }
+
+    Given("a real wallet with no auto top-up setting configured at all") {
+        val walletAutoTopUpSettingRepository = mockk<WalletAutoTopUpSettingRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val linkedAccountRepository = mockk<LinkedAccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        every { transactionRepository.save(any()) } answers { firstArg() }
+        val providerConnector = mockk<ProviderConnector>(relaxed = true)
+        val service = AutoTopUpService(walletAutoTopUpSettingRepository, walletRepository, linkedAccountRepository, ledgerService, transactionRepository, providerConnector)
+
+        every { walletRepository.findById("wallet_1") } returns Optional.of(wallet("wallet_1", "user_1", "500"))
+        every { walletAutoTopUpSettingRepository.findByWalletId("wallet_1") } returns null
+
+        When("a real shortfall is reported") {
+            val result = service.topUpShortfall("user_1", "wallet_1", BigDecimal("350"))
+
+            Then("it honestly does not trigger, matching the overwhelming common case") {
+                result.triggered shouldBe false
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+    }
+
+    Given("a real wallet whose provider declines the real shortfall pull") {
+        val walletAutoTopUpSettingRepository = mockk<WalletAutoTopUpSettingRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val linkedAccountRepository = mockk<LinkedAccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        every { transactionRepository.save(any()) } answers { firstArg() }
+        val providerConnector = mockk<ProviderConnector>()
+        val service = AutoTopUpService(walletAutoTopUpSettingRepository, walletRepository, linkedAccountRepository, ledgerService, transactionRepository, providerConnector)
+
+        val setting = WalletAutoTopUpSetting(
+            id = "auto_topup_3", userId = "user_1", walletId = "wallet_1", linkedAccountId = "linked_1",
+            thresholdAmount = BigDecimal("2000"), topUpAmount = BigDecimal("10000"), enabled = true,
+        )
+        every { walletRepository.findById("wallet_1") } returns Optional.of(wallet("wallet_1", "user_1", "500"))
+        every { walletAutoTopUpSettingRepository.findByWalletId("wallet_1") } returns setting
+        every { linkedAccountRepository.findById("linked_1") } returns Optional.of(linkedAccount("linked_1", "user_1"))
+        every { providerConnector.attempt(any(), any()) } throws ProviderDeclinedException("Insufficient funds on linked account")
+
+        When("a real shortfall is reported") {
+            val result = service.topUpShortfall("user_1", "wallet_1", BigDecimal("350"))
+
+            Then("the real wallet balance is left honestly untouched") {
+                result.triggered shouldBe false
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

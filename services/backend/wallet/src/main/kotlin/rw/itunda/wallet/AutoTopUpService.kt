@@ -19,6 +19,7 @@ import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletAutoTopUpSettingRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -191,5 +192,76 @@ class AutoTopUpService(
         walletAutoTopUpSettingRepository.save(setting)
 
         return AutoTopUpTriggerResult(true, "Topped up ${setting.topUpAmount} ${wallet.currency}")
+    }
+
+    companion object {
+        // Real Naver Pay Money shortfall-charge rounding -- Naver's own real feature
+        // ("결제 시 부족분 자동 충전") rounds the pull up to a real KRW 10,000 unit; RWF has
+        // no equivalent well-known round unit anywhere in this codebase, so this reuses
+        // the largest of this app's own already-real round-up increments
+        // (`RoundUpService.SUPPORTED_INCREMENTS`) as the honest RWF-scale adaptation.
+        val SHORTFALL_ROUNDING_UNIT: BigDecimal = BigDecimal("1000")
+    }
+
+    /**
+     * Real Naver Pay Money "결제 시 부족분 자동 충전" (auto-charge the shortfall at payment
+     * time) -- a genuinely distinct real feature from `evaluateAndTopUp` above (which is
+     * documented as "a standing per-wallet rule... not a payment-time hook"). Where
+     * `evaluateAndTopUp` runs on a real background cadence and pulls a fixed, user-
+     * configured `topUpAmount` once the balance drifts below a threshold, this runs
+     * synchronously at the exact moment a real payment would otherwise fail for
+     * insufficient funds, and pulls only just enough to cover THIS specific shortfall
+     * (rounded up to a real RWF increment), reusing the caller's existing enabled
+     * `WalletAutoTopUpSetting`'s linked account -- not its configured `topUpAmount` or
+     * `thresholdAmount`, which are that other, separate mechanism's own real settings.
+     * Deliberately does not touch `triggersToday`/`dailyTriggerCap`/`lastTriggerDate` --
+     * those track the recurring background sweep's own real daily cadence, a genuinely
+     * different real-world quota than "how many times a payment needed rescuing today."
+     * Called from `P2pService.sendDirect` in the SAME already-open transaction, before
+     * that transfer's own ledger legs are posted (so before any row lock on the sender's
+     * wallet is taken) -- deliberately not the post-commit-hook + REQUIRES_NEW pattern
+     * `RoundUpService.processRoundUp` needed, since this runs BEFORE the triggering
+     * transfer's own money movement, not as an auxiliary side effect after it.
+     */
+    @Transactional
+    fun topUpShortfall(userId: String, walletId: String, shortfallAmount: BigDecimal): AutoTopUpTriggerResult {
+        val wallet = requireOwnedWallet(userId, walletId)
+        val setting = walletAutoTopUpSettingRepository.findByWalletId(walletId)
+            ?: return AutoTopUpTriggerResult(false, "No auto top-up setting configured for this wallet")
+        if (!setting.enabled) return AutoTopUpTriggerResult(false, "Auto top-up is disabled for this wallet")
+
+        val linkedAccount = linkedAccountRepository.findById(setting.linkedAccountId).orElse(null)
+            ?: return AutoTopUpTriggerResult(false, "Linked account not found")
+        if (linkedAccount.status != LinkedAccountStatus.LINKED) {
+            return AutoTopUpTriggerResult(false, "The linked account is no longer LINKED")
+        }
+
+        val roundedAmount = shortfallAmount.divide(SHORTFALL_ROUNDING_UNIT, 0, RoundingMode.UP).multiply(SHORTFALL_ROUNDING_UNIT)
+
+        val rail = RailCatalog.resolve(linkedAccount.provider)
+        try {
+            providerConnector.attempt(rail, "Shortfall auto top-up pull for wallet ${wallet.id}")
+        } catch (e: ProviderDeclinedException) {
+            return AutoTopUpTriggerResult(false, "Provider declined the pull: ${e.message}")
+        }
+
+        val ledger = ledgerService.postLedgerTransaction(
+            wallet.currency,
+            listOf(
+                LedgerLeg("rail_suspense", LedgerAccountType.RAIL_SUSPENSE, LedgerDirection.DEBIT, roundedAmount, "Shortfall auto top-up for wallet ${wallet.id}"),
+                LedgerLeg(wallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, roundedAmount, "Shortfall auto top-up for wallet ${wallet.id}"),
+            ),
+        )
+        transactionRepository.save(
+            Transaction(
+                id = ledger.transactionId, referenceNumber = "SHORTFALLTOPUP${System.currentTimeMillis()}${UUID.randomUUID().toString().take(4)}",
+                senderId = linkedAccount.id, recipientId = userId, toWalletId = wallet.id,
+                amount = roundedAmount, fee = BigDecimal.ZERO, currency = wallet.currency,
+                type = TransactionType.DEPOSIT, status = TransactionStatus.COMPLETED,
+                description = "Shortfall auto top-up from ${linkedAccount.provider}", channel = "auto_topup_shortfall", completedAt = Instant.now(),
+            ),
+        )
+
+        return AutoTopUpTriggerResult(true, "Topped up $roundedAmount ${wallet.currency} to cover the real shortfall")
     }
 }

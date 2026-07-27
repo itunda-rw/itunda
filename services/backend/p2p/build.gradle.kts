@@ -26,6 +26,10 @@ dependencies {
     // sends (2026-07-27), see FamilyLink.kt's own doc comment. :family only depends on
     // :core/:auth, so this is not circular.
     implementation(project(":family"))
+    // For AutoTopUpService -- real Naver Pay Money "결제 시 부족분 자동 충전" (shortfall
+    // auto-charge at payment time), 2026-07-27, see AutoTopUpService.topUpShortfall's
+    // own doc comment. :wallet only depends on :core, so this is not circular.
+    implementation(project(":wallet"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
