@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.MerchantFollow
 import rw.itunda.core.domain.Notification
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantFollowRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -40,6 +41,7 @@ class MerchantFollowService(
     private val merchantRepository: MerchantRepository,
     private val notificationRepository: NotificationRepository,
     private val rateLimiter: RateLimiter,
+    private val pushNotificationService: PushNotificationService,
 ) {
     companion object {
         const val BROADCAST_LIMIT = 3
@@ -106,6 +108,14 @@ class MerchantFollowService(
                     dataJson = "{\"merchantId\":\"${merchant.id}\",\"businessName\":\"${merchant.businessName}\"}",
                 ),
             )
+            // Real push wired in (2026-07-28) -- unlike GroupMessagingService's own
+            // deliberate mention-only scoping (avoiding spam in a group nobody opted
+            // into), every one of these recipients explicitly opted in by following this
+            // specific merchant, the same "real subscription, real signal" reasoning
+            // Naver's own real "알림받기" feature this mirrors is built on. A merchant is
+            // also rate-limited to BROADCAST_LIMIT per BROADCAST_WINDOW, so this can
+            // never itself become the spam it's meant to avoid.
+            pushNotificationService.sendToUser(follow.userId, trimmedTitle, trimmedBody, mapOf("merchantId" to merchant.id))
         }
         return BroadcastResult(followers.size)
     }

@@ -10,6 +10,7 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantFollow
 import rw.itunda.core.domain.MerchantStatus
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantFollowRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -22,7 +23,8 @@ class MerchantFollowServiceTest : BehaviorSpec({
         val merchantRepository = mockk<MerchantRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = MerchantFollowService(merchantFollowRepository, merchantRepository, notificationRepository, rateLimiter)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = MerchantFollowService(merchantFollowRepository, merchantRepository, notificationRepository, rateLimiter, pushNotificationService)
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
 
@@ -70,7 +72,8 @@ class MerchantFollowServiceTest : BehaviorSpec({
         val merchantRepository = mockk<MerchantRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = MerchantFollowService(merchantFollowRepository, merchantRepository, notificationRepository, rateLimiter)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = MerchantFollowService(merchantFollowRepository, merchantRepository, notificationRepository, rateLimiter, pushNotificationService)
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
 
@@ -102,7 +105,8 @@ class MerchantFollowServiceTest : BehaviorSpec({
         val merchantRepository = mockk<MerchantRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = MerchantFollowService(merchantFollowRepository, merchantRepository, notificationRepository, rateLimiter)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = MerchantFollowService(merchantFollowRepository, merchantRepository, notificationRepository, rateLimiter, pushNotificationService)
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_1", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
         val followers = listOf(
@@ -121,6 +125,11 @@ class MerchantFollowServiceTest : BehaviorSpec({
                 result.recipientCount shouldBe 2
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "follower_1" && it.type == "MERCHANT_BROADCAST" }) }
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "follower_2" && it.type == "MERCHANT_BROADCAST" }) }
+            }
+
+            Then("every real follower also gets a real push, not just the in-app notification") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("follower_1", "20% off today", "Come visit us for a real discount!", any()) }
+                verify(exactly = 1) { pushNotificationService.sendToUser("follower_2", "20% off today", "Come visit us for a real discount!", any()) }
             }
         }
 
@@ -156,7 +165,8 @@ class MerchantFollowServiceTest : BehaviorSpec({
         val merchantRepository = mockk<MerchantRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = MerchantFollowService(merchantFollowRepository, merchantRepository, notificationRepository, rateLimiter)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = MerchantFollowService(merchantFollowRepository, merchantRepository, notificationRepository, rateLimiter, pushNotificationService)
 
         When("unfollowing succeeds without throwing, even if they never followed") {
             service.unfollow("user_1", "merchant_1")
