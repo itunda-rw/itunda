@@ -3,6 +3,7 @@ import { hardcodedUserId } from './hardcoded-user-id';
 import { fakeSuccess } from './fake-success';
 import { jwtRevocation } from './jwt-revocation';
 import { rateLimiting } from './rate-limiting';
+import { theBugThatWasntInfrastructure } from './the-bug-that-wasnt-infrastructure';
 
 export interface Post {
   slug: string;
@@ -14,7 +15,7 @@ export interface Post {
   content: string;
 }
 
-export const posts: Post[] = [fakeSuccess, hardcodedUserId, idempotencyKeys, jwtRevocation, rateLimiting].sort(
+export const posts: Post[] = [fakeSuccess, hardcodedUserId, idempotencyKeys, jwtRevocation, rateLimiting, theBugThatWasntInfrastructure].sort(
   (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
 );
 
