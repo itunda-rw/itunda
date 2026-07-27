@@ -7,6 +7,8 @@ import rw.itunda.core.domain.FamilyLink
 import rw.itunda.core.domain.FamilyLinkStatus
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Transaction
+import rw.itunda.core.domain.TransactionStatus
+import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.repository.FamilyLinkRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -16,6 +18,8 @@ import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.UUID
 
 class FamilyLinkNotFoundException(message: String) : RuntimeException(message)
@@ -25,6 +29,8 @@ class FamilyLinkAlreadyExistsException(message: String) : RuntimeException(messa
 class FamilyLinkNotPendingException(message: String) : RuntimeException(message)
 class FamilyLinkNotActiveException(message: String) : RuntimeException(message)
 class FamilyLinkUnauthorizedException(message: String) : RuntimeException(message)
+class FamilyLinkInvalidSpendLimitException(message: String) : RuntimeException(message)
+class FamilySpendLimitExceededException(message: String) : RuntimeException(message)
 
 data class FamilyLinkView(val link: FamilyLink, val guardianName: String, val childName: String)
 data class ChildOverview(val childUserId: String, val childName: String, val walletBalance: BigDecimal, val recentTransactions: List<Transaction>)
@@ -119,6 +125,39 @@ class FamilyLinkService(
         link.status = FamilyLinkStatus.REVOKED
         link.respondedAt = Instant.now()
         return familyLinkRepository.save(link)
+    }
+
+    // Real spend-limit enforcement (2026-07-27) -- see FamilyLink.kt's own doc comment
+    // for the full sourced account. Guardian-only, gated by a real ACTIVE link with
+    // that child -- same authorization shape getChildOverview already established.
+    // null clears the limit (an honest, explicit opt-out, not just "very large number").
+    @Transactional
+    fun setSpendLimit(guardianUserId: String, childUserId: String, dailySpendLimit: BigDecimal?): FamilyLink {
+        val link = familyLinkRepository.findByGuardianUserIdAndChildUserIdAndStatus(guardianUserId, childUserId, FamilyLinkStatus.ACTIVE)
+            ?: throw FamilyLinkUnauthorizedException("No active family link with this account")
+        if (dailySpendLimit != null && dailySpendLimit <= BigDecimal.ZERO) {
+            throw FamilyLinkInvalidSpendLimitException("Spend limit must be greater than zero")
+        }
+        link.dailySpendLimit = dailySpendLimit
+        return familyLinkRepository.save(link)
+    }
+
+    // Real spend-limit enforcement -- see FamilyLink.kt's own doc comment. Called from
+    // P2pService.sendDirect before the real ledger movement, matching this codebase's
+    // "the real gate must fire before money moves" discipline used everywhere else
+    // (WalletFrozenException, minOrderAmount, etc). A no-op (not an exception) when the
+    // sender isn't a child on any ACTIVE link with a real limit set -- the overwhelming
+    // common case, and this must stay cheap for every single real P2P send in the app.
+    fun enforceSpendLimit(childUserId: String, amount: BigDecimal) {
+        val link = familyLinkRepository.findByChildUserIdAndStatusAndDailySpendLimitIsNotNull(childUserId, FamilyLinkStatus.ACTIVE) ?: return
+        val limit = link.dailySpendLimit ?: return
+        val startOfDayUtc = LocalDate.now(ZoneOffset.UTC).atStartOfDay(ZoneOffset.UTC).toInstant()
+        val spentToday = transactionRepository
+            .findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(childUserId, TransactionType.TRANSFER, TransactionStatus.COMPLETED, startOfDayUtc)
+            .sumOf { it.amount }
+        if (spentToday.add(amount) > limit) {
+            throw FamilySpendLimitExceededException("This transfer would exceed your real daily spend limit set by your guardian")
+        }
     }
 
     // Real read-only oversight -- the guardian's own view of a real child's wallet

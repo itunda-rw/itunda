@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import java.math.BigDecimal
 import java.time.Instant
 
 enum class FamilyLinkStatus { PENDING, ACTIVE, DECLINED, REVOKED }
@@ -27,9 +28,18 @@ enum class FamilyLinkStatus { PENDING, ACTIVE, DECLINED, REVOKED }
  * needs no new mechanism at all -- the guardian just points the already-real
  * `AutoTransfer`/`ScheduledTransfer` features at the child's phone number, the same
  * "reuse the real money-movement path, don't invent a second one" discipline this
- * codebase has followed all session. Real spend-limit ENFORCEMENT (blocking a child's
- * own transfer once a cap is hit) is a deliberately deferred, named follow-up -- this
- * v1 is oversight, not control.
+ * codebase has followed all session.
+ *
+ * `dailySpendLimit` (added 2026-07-27) closes this row's own previously-named deferred
+ * follow-up: real spend-limit enforcement, modeled on KakaoBank mini's real published
+ * 일일이체한도 (daily transfer limit) for youth accounts -- the closest real, sourced,
+ * implementable analogue to Toss Youth's own card-network-level cap, since itunda has
+ * no card network to enforce against. NULL means unrestricted (this link's original,
+ * pre-existing behavior) -- honestly opt-in, never a silent new restriction on an
+ * existing link. Enforced only against the child's own real P2P sends (see
+ * `P2pService.sendDirect`'s own call-site comment), the same "P2P is the single most
+ * frequent real money-out action, widen flow-by-flow rather than claim blanket
+ * coverage" honest-scoping precedent `RoundUpSettings` already established twice.
  */
 @Entity
 @Table(name = "family_links")
@@ -53,6 +63,9 @@ class FamilyLink(
 
     @Column(name = "responded_at")
     var respondedAt: Instant? = null,
+
+    @Column(name = "daily_spend_limit", precision = 18, scale = 2)
+    var dailySpendLimit: BigDecimal? = null,
 ) {
     protected constructor() : this(id = "", guardianUserId = "", childUserId = "")
 }

@@ -15,15 +15,18 @@ import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.family.FamilyLinkAlreadyExistsException
 import rw.itunda.family.FamilyLinkChildNotFoundException
+import rw.itunda.family.FamilyLinkInvalidSpendLimitException
 import rw.itunda.family.FamilyLinkNotActiveException
 import rw.itunda.family.FamilyLinkNotFoundException
 import rw.itunda.family.FamilyLinkNotPendingException
 import rw.itunda.family.FamilyLinkSelfException
 import rw.itunda.family.FamilyLinkService
 import rw.itunda.family.FamilyLinkUnauthorizedException
+import java.math.BigDecimal
 
 data class InviteChildRequest(val childPhoneNumber: String)
 data class RespondToInviteRequest(val accept: Boolean)
+data class SetSpendLimitRequest(val dailySpendLimit: BigDecimal?)
 
 // Real Toss 유스 (Toss Youth)-style guardian-child account link -- see
 // FamilyLinkService's own doc comment for the full sourced account.
@@ -61,6 +64,17 @@ class FamilyLinkController(private val familyLinkService: FamilyLinkService) {
     fun childOverview(@PathVariable childUserId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "overview" to familyLinkService.getChildOverview(currentUser.userId, childUserId)))
 
+    // Real spend-limit enforcement (2026-07-27) -- see FamilyLinkService.setSpendLimit's
+    // own doc comment. Not money-moving itself, no Idempotency-Key requirement, same
+    // convention RoundUpController's own settings endpoint already uses.
+    @PostMapping("/children/{childUserId}/spend-limit")
+    fun setSpendLimit(
+        @PathVariable childUserId: String,
+        @RequestBody request: SetSpendLimitRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "link" to familyLinkService.setSpendLimit(currentUser.userId, childUserId, request.dailySpendLimit)))
+
     @PostMapping("/links/{id}/revoke")
     fun revoke(@PathVariable id: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "link" to familyLinkService.revokeLink(currentUser.userId, id)))
@@ -92,6 +106,10 @@ class FamilyLinkController(private val familyLinkService: FamilyLinkService) {
     @ExceptionHandler(FamilyLinkUnauthorizedException::class)
     fun handleUnauthorized(ex: FamilyLinkUnauthorizedException) =
         ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("FAMILY_LINK_UNAUTHORIZED", ex.message ?: "Forbidden"))
+
+    @ExceptionHandler(FamilyLinkInvalidSpendLimitException::class)
+    fun handleInvalidSpendLimit(ex: FamilyLinkInvalidSpendLimitException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_SPEND_LIMIT", ex.message ?: "Bad request"))
 
     @ExceptionHandler(RateLimitExceededException::class)
     fun handleRateLimit(ex: RateLimitExceededException) =

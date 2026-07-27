@@ -20,6 +20,7 @@ import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.WalletFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
+import rw.itunda.family.FamilySpendLimitExceededException
 import rw.itunda.p2p.P2pInvalidAmountException
 import rw.itunda.p2p.P2pNoWalletException
 import rw.itunda.p2p.P2pRecipientNotFoundException
@@ -102,6 +103,10 @@ class P2pController(private val p2pService: P2pService, private val idempotencyS
     @ExceptionHandler(WalletFrozenException::class)
     fun handleWalletFrozen(ex: WalletFrozenException) =
         ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+
+    @ExceptionHandler(FamilySpendLimitExceededException::class)
+    fun handleFamilySpendLimit(ex: FamilySpendLimitExceededException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("FAMILY_SPEND_LIMIT_EXCEEDED", ex.message ?: "Spend limit exceeded"))
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) =

@@ -27,6 +27,7 @@ import rw.itunda.core.repository.P2pPaymentRequestRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.family.FamilyLinkService
 import rw.itunda.savings.RoundUpService
 import java.math.BigDecimal
 import java.time.Duration
@@ -50,9 +51,10 @@ class P2pServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>(relaxed = true)
         val service = P2pService(
             p2pPaymentRequestRepository, walletRepository, userRepository, transactionRepository, ledgerService,
-            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService,
+            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService, familyLinkService,
         )
 
         val request = P2pPaymentRequest(id = "p2p_1", requesterUserId = "requester_1", amount = BigDecimal("2000"), description = "Lunch", expiresAt = Instant.now().plusSeconds(900))
@@ -118,9 +120,10 @@ class P2pServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>(relaxed = true)
         val service = P2pService(
             p2pPaymentRequestRepository, walletRepository, userRepository, transactionRepository, ledgerService,
-            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService,
+            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService, familyLinkService,
         )
 
         val request = P2pPaymentRequest(id = "p2p_2", requesterUserId = "user_5", amount = BigDecimal("1000"), description = "test", expiresAt = Instant.now().plusSeconds(900))
@@ -148,9 +151,10 @@ class P2pServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>(relaxed = true)
         val service = P2pService(
             p2pPaymentRequestRepository, walletRepository, userRepository, transactionRepository, ledgerService,
-            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService,
+            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService, familyLinkService,
         )
 
         val request = P2pPaymentRequest(id = "p2p_3", requesterUserId = "requester_2", amount = BigDecimal("1000"), description = "test", expiresAt = Instant.now().minusSeconds(1))
@@ -180,9 +184,10 @@ class P2pServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>(relaxed = true)
         val service = P2pService(
             p2pPaymentRequestRepository, walletRepository, userRepository, transactionRepository, ledgerService,
-            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService,
+            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService, familyLinkService,
         )
 
         val request = P2pPaymentRequest(id = "p2p_4", requesterUserId = "requester_3", amount = BigDecimal("5000"), description = "test", expiresAt = Instant.now().plusSeconds(900))
@@ -212,9 +217,10 @@ class P2pServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>(relaxed = true)
         val service = P2pService(
             p2pPaymentRequestRepository, walletRepository, userRepository, transactionRepository, ledgerService,
-            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService,
+            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService, familyLinkService,
         )
         every { rateLimiter.checkLimit("p2p:request:requester_9", limit = 20, window = Duration.ofHours(1)) } throws RateLimitExceededException("Too many requests")
 
@@ -240,9 +246,10 @@ class P2pServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>(relaxed = true)
         val service = P2pService(
             p2pPaymentRequestRepository, walletRepository, userRepository, transactionRepository, ledgerService,
-            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService,
+            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService, familyLinkService,
         )
 
         val request = P2pPaymentRequest(id = "p2p_5", requesterUserId = "requester_4", amount = BigDecimal("1000"), description = "test", expiresAt = Instant.now().plusSeconds(900))
@@ -271,9 +278,10 @@ class P2pServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>(relaxed = true)
         val service = P2pService(
             p2pPaymentRequestRepository, walletRepository, userRepository, transactionRepository, ledgerService,
-            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService,
+            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService, familyLinkService,
         )
 
         val recipientUser = User(id = "recipient_1", phoneNumber = "+250788000099", firstName = "R", lastName = "T", passwordHash = "x")
@@ -312,6 +320,45 @@ class P2pServiceTest : BehaviorSpec({
                 notificationSlot.captured.type shouldBe "MONEY_RECEIVED"
                 notificationSlot.captured.body shouldBe "Eric Uwase sent you 2000 RWF."
             }
+
+            Then("it real-checks the real FamilyLink spend limit before the ledger moves any money") {
+                io.mockk.verify(exactly = 1) { familyLinkService.enforceSpendLimit("sender_1", BigDecimal("2000")) }
+            }
+        }
+    }
+
+    Given("a real linked child whose transfer would exceed their real guardian-set daily spend limit") {
+        val p2pPaymentRequestRepository = mockk<P2pPaymentRequestRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val fraudRuleEngine = mockk<FraudRuleEngine>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>()
+        val service = P2pService(
+            p2pPaymentRequestRepository, walletRepository, userRepository, transactionRepository, ledgerService,
+            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService, familyLinkService,
+        )
+
+        every { walletRepository.findByUserIdAndType("child_1", WalletType.MAIN) } returns wallet("wallet_child", "child_1", "10000")
+        every { userRepository.findByPhoneNumber("+250788000099") } returns
+            User(id = "recipient_1", phoneNumber = "+250788000099", firstName = "R", lastName = "T", passwordHash = "x")
+        every { walletRepository.findByUserIdAndType("recipient_1", WalletType.MAIN) } returns wallet("wallet_recipient", "recipient_1", "0")
+        every { familyLinkService.enforceSpendLimit("child_1", BigDecimal("2000")) } throws
+            rw.itunda.family.FamilySpendLimitExceededException("This transfer would exceed your real daily spend limit set by your guardian")
+
+        When("the child tries to send past their real limit") {
+            Then("it's real-blocked before the ledger is ever touched") {
+                try {
+                    service.sendDirect("child_1", "+250788000099", BigDecimal("2000"), "")
+                    throw AssertionError("expected FamilySpendLimitExceededException")
+                } catch (e: rw.itunda.family.FamilySpendLimitExceededException) {
+                    io.mockk.verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
         }
     }
 
@@ -325,9 +372,10 @@ class P2pServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>(relaxed = true)
         val service = P2pService(
             p2pPaymentRequestRepository, walletRepository, userRepository, transactionRepository, ledgerService,
-            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService,
+            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService, familyLinkService,
         )
 
         every { walletRepository.findByUserIdAndType("sender_2", WalletType.MAIN) } returns wallet("wallet_sender2", "sender_2", "10000")
@@ -361,9 +409,10 @@ class P2pServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>(relaxed = true)
         val service = P2pService(
             p2pPaymentRequestRepository, walletRepository, userRepository, transactionRepository, ledgerService,
-            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService,
+            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService, familyLinkService,
         )
 
         every { walletRepository.findByUserIdAndType("sender_3", WalletType.MAIN) } returns wallet("wallet_sender3", "sender_3", "10000")
@@ -392,9 +441,10 @@ class P2pServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>(relaxed = true)
         val service = P2pService(
             p2pPaymentRequestRepository, walletRepository, userRepository, transactionRepository, ledgerService,
-            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService,
+            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService, familyLinkService,
         )
 
         val selfUser = User(id = "user_self", phoneNumber = "+250788000077", firstName = "S", lastName = "T", passwordHash = "x")
@@ -423,9 +473,10 @@ class P2pServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val roundUpService = mockk<RoundUpService>(relaxed = true)
+        val familyLinkService = mockk<FamilyLinkService>(relaxed = true)
         val service = P2pService(
             p2pPaymentRequestRepository, walletRepository, userRepository, transactionRepository, ledgerService,
-            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService,
+            fraudRuleEngine, rateLimiter, notificationRepository, roundUpService, familyLinkService,
         )
 
         val recipientUser = User(id = "recipient_9", phoneNumber = "+250788000088", firstName = "R", lastName = "T", passwordHash = "x")

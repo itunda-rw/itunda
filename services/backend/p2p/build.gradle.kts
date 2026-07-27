@@ -22,6 +22,10 @@ dependencies {
     // established -- itunda's backend modules aren't isolated from each other the way
     // the Android client's own Toss-Microfeatures split is.
     implementation(project(":savings"))
+    // For FamilyLinkService -- real daily spend-limit enforcement on a child's own P2P
+    // sends (2026-07-27), see FamilyLink.kt's own doc comment. :family only depends on
+    // :core/:auth, so this is not circular.
+    implementation(project(":family"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

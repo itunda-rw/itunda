@@ -22,6 +22,7 @@ import rw.itunda.core.repository.P2pPaymentRequestRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
+import rw.itunda.family.FamilyLinkService
 import rw.itunda.savings.RoundUpService
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
@@ -59,6 +60,7 @@ class P2pService(
     private val rateLimiter: RateLimiter,
     private val notificationRepository: NotificationRepository,
     private val roundUpService: RoundUpService,
+    private val familyLinkService: FamilyLinkService,
 ) {
     private val log = LoggerFactory.getLogger(P2pService::class.java)
 
@@ -198,6 +200,12 @@ class P2pService(
         if (senderWallet.availableBalance < amount) {
             throw InsufficientFundsException("Insufficient available balance for this transfer")
         }
+        // Real FamilyLink daily spend-limit enforcement (2026-07-27) -- see
+        // FamilyLinkService.enforceSpendLimit's own doc comment. A real gate before
+        // money moves, same discipline WalletFrozenException/minOrderAmount already
+        // established; a no-op for the overwhelming common case of a sender who isn't a
+        // linked child with a real limit set.
+        familyLinkService.enforceSpendLimit(senderUserId, amount)
 
         val trimmedDescription = description.trim().ifEmpty { "Transfer" }
         val result = ledgerService.postLedgerTransaction(

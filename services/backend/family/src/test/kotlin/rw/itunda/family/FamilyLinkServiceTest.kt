@@ -193,6 +193,120 @@ class FamilyLinkServiceTest : BehaviorSpec({
                 }
             }
         }
+
+        When("the guardian sets a real daily spend limit") {
+            every { familyLinkRepository.findByGuardianUserIdAndChildUserIdAndStatus("guardian_1", "child_1", FamilyLinkStatus.ACTIVE) } returns
+                FamilyLink(id = "familylink_1", guardianUserId = "guardian_1", childUserId = "child_1", status = FamilyLinkStatus.ACTIVE)
+            val savedSlot = mutableListOf<FamilyLink>()
+            every { familyLinkRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            service.setSpendLimit("guardian_1", "child_1", BigDecimal("5000"))
+
+            Then("it persists the real limit on the link") {
+                savedSlot.first().dailySpendLimit shouldBe BigDecimal("5000")
+            }
+        }
+
+        When("the guardian clears a real spend limit with null") {
+            every { familyLinkRepository.findByGuardianUserIdAndChildUserIdAndStatus("guardian_1", "child_1", FamilyLinkStatus.ACTIVE) } returns
+                FamilyLink(id = "familylink_1", guardianUserId = "guardian_1", childUserId = "child_1", status = FamilyLinkStatus.ACTIVE, dailySpendLimit = BigDecimal("5000"))
+            val savedSlot = mutableListOf<FamilyLink>()
+            every { familyLinkRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+            service.setSpendLimit("guardian_1", "child_1", null)
+
+            Then("it honestly removes the restriction, not just sets a very large number") {
+                savedSlot.first().dailySpendLimit shouldBe null
+            }
+        }
+
+        When("setting a real zero or negative spend limit") {
+            every { familyLinkRepository.findByGuardianUserIdAndChildUserIdAndStatus("guardian_1", "child_1", FamilyLinkStatus.ACTIVE) } returns
+                FamilyLink(id = "familylink_1", guardianUserId = "guardian_1", childUserId = "child_1", status = FamilyLinkStatus.ACTIVE)
+
+            Then("it's rejected before saving") {
+                try {
+                    service.setSpendLimit("guardian_1", "child_1", BigDecimal.ZERO)
+                    throw AssertionError("expected FamilyLinkInvalidSpendLimitException")
+                } catch (e: FamilyLinkInvalidSpendLimitException) {
+                    // expected
+                }
+            }
+        }
+
+        When("a stranger without an active link tries to set a spend limit") {
+            every { familyLinkRepository.findByGuardianUserIdAndChildUserIdAndStatus("stranger_1", "child_1", FamilyLinkStatus.ACTIVE) } returns null
+
+            Then("it's honestly rejected") {
+                try {
+                    service.setSpendLimit("stranger_1", "child_1", BigDecimal("5000"))
+                    throw AssertionError("expected FamilyLinkUnauthorizedException")
+                } catch (e: FamilyLinkUnauthorizedException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real child linked with a real active daily spend limit") {
+        val familyLinkRepository = mockk<FamilyLinkRepository>()
+        val userRepository = mockk<UserRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = FamilyLinkService(familyLinkRepository, userRepository, walletRepository, transactionRepository, notificationRepository, rateLimiter)
+
+        val link = FamilyLink(id = "familylink_1", guardianUserId = "guardian_1", childUserId = "child_1", status = FamilyLinkStatus.ACTIVE, dailySpendLimit = BigDecimal("5000"))
+        every { familyLinkRepository.findByChildUserIdAndStatusAndDailySpendLimitIsNotNull("child_1", FamilyLinkStatus.ACTIVE) } returns link
+
+        When("a real transfer would stay within the real limit") {
+            every {
+                transactionRepository.findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual("child_1", TransactionType.TRANSFER, TransactionStatus.COMPLETED, any())
+            } returns listOf(
+                Transaction(id = "txn_1", referenceNumber = "REF1", senderId = "child_1", recipientId = "user_2", amount = BigDecimal("1000"), fee = BigDecimal.ZERO, currency = "RWF", type = TransactionType.TRANSFER, status = TransactionStatus.COMPLETED, description = "x"),
+            )
+
+            Then("it real-allows the transfer, no exception") {
+                service.enforceSpendLimit("child_1", BigDecimal("3000"))
+            }
+        }
+
+        When("a real transfer would exceed the real limit combined with today's real prior sends") {
+            every {
+                transactionRepository.findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual("child_1", TransactionType.TRANSFER, TransactionStatus.COMPLETED, any())
+            } returns listOf(
+                Transaction(id = "txn_1", referenceNumber = "REF1", senderId = "child_1", recipientId = "user_2", amount = BigDecimal("4000"), fee = BigDecimal.ZERO, currency = "RWF", type = TransactionType.TRANSFER, status = TransactionStatus.COMPLETED, description = "x"),
+            )
+
+            Then("it real-blocks the transfer") {
+                try {
+                    service.enforceSpendLimit("child_1", BigDecimal("1500"))
+                    throw AssertionError("expected FamilySpendLimitExceededException")
+                } catch (e: FamilySpendLimitExceededException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real user who is not a linked child with any real spend limit") {
+        val familyLinkRepository = mockk<FamilyLinkRepository>()
+        val userRepository = mockk<UserRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val transactionRepository = mockk<TransactionRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = FamilyLinkService(familyLinkRepository, userRepository, walletRepository, transactionRepository, notificationRepository, rateLimiter)
+
+        every { familyLinkRepository.findByChildUserIdAndStatusAndDailySpendLimitIsNotNull("user_5", FamilyLinkStatus.ACTIVE) } returns null
+
+        When("enforceSpendLimit is called for a transfer of any real amount") {
+            Then("it's a real no-op, never touching the transaction repository") {
+                service.enforceSpendLimit("user_5", BigDecimal("999999"))
+                io.mockk.verify(exactly = 0) { transactionRepository.findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(any(), any(), any(), any()) }
+            }
+        }
     }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf

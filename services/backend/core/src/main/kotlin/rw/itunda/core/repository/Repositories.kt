@@ -219,6 +219,18 @@ interface TransactionRepository : JpaRepository<Transaction, String> {
         to: Instant,
     ): List<Transaction>
 
+    // Real FamilyLink daily spend-limit enforcement (2026-07-27) -- see FamilyLink.kt's
+    // own doc comment. The child's own real sends since a real UTC day boundary,
+    // summed in the service (same "coarse repo filter, exact logic in the service"
+    // discipline the recurring-payment-detection query above already uses), not a new
+    // running-total counter column that could drift from the real ledger.
+    fun findBySenderIdAndTypeAndStatusAndCreatedAtGreaterThanEqual(
+        senderId: String,
+        type: TransactionType,
+        status: TransactionStatus,
+        from: Instant,
+    ): List<Transaction>
+
     // Real 단골 (regular customer) detection for MerchantCouponService -- a merchant
     // collection's Transaction row has recipientId = the merchant owner's userId (same
     // real join key as the report query above), senderId = the paying customer.
