@@ -15,11 +15,12 @@ import rw.itunda.core.repository.DeviceTokenRepository
  *
  * **Deliberately not wired into every existing `Notification` call site in this pass**
  * (a repo-wide grep found 19 of them) -- rewiring all 19 in one pass would touch a lot
- * of already-tested, unrelated call sites at once. Wired into the one real, named,
- * sourced gap this feature closes (`MerchantBookingService`'s "new booking request"
- * notify, per Naver Smart Place's own real "push notifications on new bookings"
- * feature) as a live proof, with the other 18 sites named as a real, valuable,
- * still-open follow-up rather than silently left unaddressed.
+ * of already-tested, unrelated call sites at once. Wired into two real, named, sourced
+ * gaps so far: `MerchantBookingService`'s "new booking request" notify (2026-07-26, per
+ * Naver Smart Place's own real "push notifications on new bookings" feature) and
+ * `MerchantBookingReviewService`'s owner-reply notify (2026-07-27, the sibling gap that
+ * same research line named). The remaining ~17 sites stay a real, valuable, still-open
+ * follow-up rather than silently left unaddressed.
  */
 @Service
 class PushNotificationService(

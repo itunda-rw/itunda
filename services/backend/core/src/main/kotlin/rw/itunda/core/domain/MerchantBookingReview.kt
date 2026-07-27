@@ -23,13 +23,14 @@ import java.time.Instant
  * versioning" simplicity `RoundUpSettings`'s own upsert already uses), never
  * fabricated or auto-generated.
  *
- * **Honestly scoped**: this closes owner-side review replies only. Naver Smart Place's
- * other named feature in the same research line, real push notifications on new
- * bookings, is a genuinely separate, larger gap -- this backend's `Notification` rows
- * are 100% in-app/poll-based today (confirmed by a full repo-wide sweep: no FCM/APNs/
- * device-token infrastructure exists anywhere), and building real push delivery would
- * be a cross-cutting platform capability benefiting every notification type, not
- * something scoped to bookings alone. Not built here; named as a real, still-open gap.
+ * **Naver Smart Place's other named feature in the same research line, real push
+ * notifications on new bookings, closed separately** (`MerchantBookingService.notify`,
+ * 2026-07-26, via the real `PushNotificationService`/`DeviceTokenRepository`
+ * infrastructure that feature introduced). **Owner-reply push closed here 2026-07-27**
+ * (`MerchantBookingReviewService.replyToReview`), reusing that same real push path --
+ * this doc comment previously (incorrectly, once the sibling feature landed) called push
+ * infrastructure entirely absent from this codebase; both real, named gaps are now
+ * closed.
  */
 @Entity
 @Table(name = "merchant_booking_reviews")

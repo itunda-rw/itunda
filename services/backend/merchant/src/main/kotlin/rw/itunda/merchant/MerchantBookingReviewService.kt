@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.MerchantBookingReview
 import rw.itunda.core.domain.MerchantBookingStatus
 import rw.itunda.core.domain.Notification
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantBookingRepository
 import rw.itunda.core.repository.MerchantBookingReviewRepository
 import rw.itunda.core.repository.MerchantRepository
@@ -25,8 +26,10 @@ data class MerchantRatingSummary(val average: Double?, val count: Long)
 
 /**
  * Real post-appointment reviews + owner-side reply -- see `MerchantBookingReview.kt`'s
- * own doc comment for the full account, including the honest "push notifications on new
- * bookings" gap this deliberately doesn't also close.
+ * own doc comment for the full account. `replyToReview`'s real push (2026-07-27) reuses
+ * the same `PushNotificationService` `MerchantBookingService`'s own "new booking
+ * request" notify already proved live -- see that class's `notify` for the identical
+ * best-effort discipline.
  */
 @Service
 class MerchantBookingReviewService(
@@ -34,6 +37,7 @@ class MerchantBookingReviewService(
     private val merchantBookingRepository: MerchantBookingRepository,
     private val merchantBookingReviewRepository: MerchantBookingReviewRepository,
     private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     @Transactional
     fun submitReview(customerId: String, bookingId: String, rating: Int, comment: String?): MerchantBookingReview {
@@ -92,13 +96,18 @@ class MerchantBookingReviewService(
         review.ownerReply = trimmedReply
         review.ownerRepliedAt = Instant.now()
         val saved = merchantBookingReviewRepository.save(review)
+        val title = "${merchant.businessName} replied to your review"
         notificationRepository.save(
             Notification(
                 id = "notif_${UUID.randomUUID()}", userId = review.customerId, type = "MERCHANT_BOOKING_REVIEW_REPLY",
-                title = "${merchant.businessName} replied to your review", body = trimmedReply, isRead = false,
+                title = title, body = trimmedReply, isRead = false,
                 createdAt = Instant.now(), dataJson = "{\"reviewId\":\"${review.id}\"}",
             ),
         )
+        // Real push (2026-07-27), same best-effort discipline MerchantBookingService's
+        // own notify already establishes -- never allowed to make posting a reply look
+        // like it failed.
+        pushNotificationService.sendToUser(review.customerId, title, trimmedReply, mapOf("reviewId" to review.id))
         return saved
     }
 }

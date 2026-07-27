@@ -31,6 +31,7 @@ import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -140,9 +141,18 @@ class MerchantBookingService(
         val nowTime = now()
 
         return windows.flatMap { window ->
-            generateSequence(window.startTime) { it.plusMinutes(durationMinutes.toLong()) }
-                .takeWhile { !it.plusMinutes(durationMinutes.toLong()).isAfter(window.endTime) }
-                .map { slotStart -> BookingSlot(slotStart, slotStart.plusMinutes(durationMinutes.toLong())) }
+            // Bounded by a real slot COUNT (setAvailability already enforces
+            // startTime.isBefore(endTime)), never by comparing wrapped LocalTime values --
+            // LocalTime.plusMinutes silently wraps past midnight (e.g. 23:30 + 30min =
+            // 00:00), so a takeWhile driven by isAfter(window.endTime) never terminates
+            // once a window's close time is within one slot of midnight. Found live via
+            // this exact case (a 00:00-23:30 window with 30-min slots spun the request
+            // thread forever, pinning a CPU core until kubelet killed the pod).
+            val slotCount = Duration.between(window.startTime, window.endTime).toMinutes() / durationMinutes
+            (0 until slotCount).map { i ->
+                val slotStart = window.startTime.plusMinutes(i * durationMinutes.toLong())
+                BookingSlot(slotStart, slotStart.plusMinutes(durationMinutes.toLong()))
+            }
                 .filter { slot -> !isToday || slot.startTime.isAfter(nowTime) }
                 .filter { slot -> busy.none { it.startTime.isBefore(slot.endTime) && slot.startTime.isBefore(it.endTime) } }
         }.sortedBy { it.startTime }
