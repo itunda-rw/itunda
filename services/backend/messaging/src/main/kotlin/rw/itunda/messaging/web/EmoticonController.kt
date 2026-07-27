@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RestController
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
+import rw.itunda.messaging.EmoticonGiftRecipientNotFoundException
+import rw.itunda.messaging.EmoticonGiftToSelfException
 import rw.itunda.messaging.EmoticonNoWalletException
 import rw.itunda.messaging.EmoticonNotFoundException
 import rw.itunda.messaging.EmoticonPackAlreadyOwnedException
@@ -23,6 +25,7 @@ import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.WalletFrozenException
 
 data class SendEmoticonRequest(val emoticonId: String)
+data class GiftEmoticonPackRequest(val recipientPhoneNumber: String)
 
 // Real KakaoTalk Emoticon Store -- see EmoticonService's own doc comment.
 @RestController
@@ -44,6 +47,19 @@ class EmoticonController(private val emoticonService: EmoticonService) {
     fun purchasePack(@PathVariable packId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
         val owned = emoticonService.purchasePack(currentUser.userId, packId)
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "ownedPack" to owned))
+    }
+
+    // Real gifting-a-pack-to-another-user (2026-07-28) -- see EmoticonService's own doc
+    // comment. Recipient identified by phone number, same convention P2pController's own
+    // /send already establishes.
+    @PostMapping("/packs/{packId}/gift")
+    fun giftPack(
+        @PathVariable packId: String,
+        @RequestBody request: GiftEmoticonPackRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val gifted = emoticonService.giftPack(currentUser.userId, request.recipientPhoneNumber, packId)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "giftedPack" to gifted))
     }
 
     // Send an owned emoticon into a real 1:1 conversation, same path family as
@@ -88,6 +104,14 @@ class EmoticonController(private val emoticonService: EmoticonService) {
     @ExceptionHandler(EmoticonNoWalletException::class)
     fun handleNoWallet(ex: EmoticonNoWalletException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(EmoticonGiftRecipientNotFoundException::class)
+    fun handleGiftRecipientNotFound(ex: EmoticonGiftRecipientNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("GIFT_RECIPIENT_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(EmoticonGiftToSelfException::class)
+    fun handleGiftToSelf(ex: EmoticonGiftToSelfException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("GIFT_TO_SELF", ex.message ?: "Bad request"))
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) =

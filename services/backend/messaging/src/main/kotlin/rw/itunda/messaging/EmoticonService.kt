@@ -8,15 +8,19 @@ import rw.itunda.core.domain.EmoticonAcquisitionSource
 import rw.itunda.core.domain.EmoticonPack
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.UserEmoticonPack
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.EmoticonPackRepository
 import rw.itunda.core.repository.EmoticonRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserEmoticonPackRepository
+import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
 import java.time.Duration
+import java.time.Instant
 import java.util.UUID
 
 class EmoticonPackNotFoundException(message: String) : RuntimeException(message)
@@ -24,19 +28,31 @@ class EmoticonNotFoundException(message: String) : RuntimeException(message)
 class EmoticonPackAlreadyOwnedException(message: String) : RuntimeException(message)
 class EmoticonPackNotOwnedException(message: String) : RuntimeException(message)
 class EmoticonNoWalletException(message: String) : RuntimeException(message)
+class EmoticonGiftRecipientNotFoundException(message: String) : RuntimeException(message)
+class EmoticonGiftToSelfException(message: String) : RuntimeException(message)
 
 /**
  * Real KakaoTalk Emoticon Store -- see EmoticonPack's own doc comment for the full
- * sourcing and honest scoping (no Emoticon Plus subscription tier, no gifting-a-pack,
- * both real follow-ups). A user buys a pack once through the real wallet-to-wallet-
- * style ledger movement every other purchase in this backend already uses (debit the
- * buyer's WALLET, credit the new `EMOTICON_REVENUE` clearing account -- itunda's own
- * product, a direct sale, not an escrow hold the way Gift/Marketplace/Booking/Ride
- * money-in-flight is), then can send any emoticon from an owned pack as real message
- * content in both 1:1 and group chat -- structurally distinct from the existing
- * toggleable emoji-reaction row (MessageReaction/GroupMessageReaction), which reacts
- * to someone else's message rather than sending a purchasable sticker as its own
+ * sourcing and honest scoping (no Emoticon Plus subscription tier, still a real,
+ * separate, not-attempted-here follow-up). A user buys a pack once through the real
+ * wallet-to-wallet-style ledger movement every other purchase in this backend already
+ * uses (debit the buyer's WALLET, credit the new `EMOTICON_REVENUE` clearing account --
+ * itunda's own product, a direct sale, not an escrow hold the way Gift/Marketplace/
+ * Booking/Ride money-in-flight is), then can send any emoticon from an owned pack as
+ * real message content in both 1:1 and group chat -- structurally distinct from the
+ * existing toggleable emoji-reaction row (MessageReaction/GroupMessageReaction), which
+ * reacts to someone else's message rather than sending a purchasable sticker as its own
  * message.
+ *
+ * **Real gifting-a-pack-to-another-user added 2026-07-28**, closing the second of
+ * `EmoticonPack.kt`'s own two named follow-ups -- `UserEmoticonPack.source`'s
+ * `EmoticonAcquisitionSource.GIFTED` value already existed in the schema from day one,
+ * just never had a real code path that produced it until now. `giftPack` reuses
+ * `purchasePack`'s exact real ledger movement (the giver pays, same WALLET-debit/
+ * `EMOTICON_REVENUE`-credit pair) but credits the *recipient's* `UserEmoticonPack`, not
+ * the giver's -- resolved by phone number, the same real convention `P2pService
+ * .sendDirect` already establishes for "type in someone's phone number," not a
+ * fabricated in-app "friend" concept this codebase doesn't have.
  */
 @Service
 class EmoticonService(
@@ -44,6 +60,8 @@ class EmoticonService(
     private val emoticonRepository: EmoticonRepository,
     private val userEmoticonPackRepository: UserEmoticonPackRepository,
     private val walletRepository: WalletRepository,
+    private val userRepository: UserRepository,
+    private val notificationRepository: NotificationRepository,
     private val ledgerService: LedgerService,
     private val messagingService: MessagingService,
     private val groupMessagingService: GroupMessagingService,
@@ -87,6 +105,43 @@ class EmoticonService(
         return userEmoticonPackRepository.save(
             UserEmoticonPack(id = "user_emoticon_pack_${UUID.randomUUID()}", userId = userId, packId = packId, source = EmoticonAcquisitionSource.PURCHASED),
         )
+    }
+
+    @Transactional
+    fun giftPack(giverUserId: String, recipientPhoneNumber: String, packId: String): UserEmoticonPack {
+        rateLimiter.checkLimit("emoticon:gift:$giverUserId", limit = 20, window = Duration.ofHours(1))
+
+        val pack = emoticonPackRepository.findById(packId).orElseThrow { EmoticonPackNotFoundException("Emoticon pack not found") }
+        val recipient = userRepository.findByPhoneNumber(recipientPhoneNumber.trim())
+            ?: throw EmoticonGiftRecipientNotFoundException("No itunda account found for this phone number")
+        if (recipient.id == giverUserId) {
+            throw EmoticonGiftToSelfException("Send this to someone else -- you can't gift yourself a pack")
+        }
+        if (userEmoticonPackRepository.findByUserIdAndPackId(recipient.id, packId) != null) {
+            throw EmoticonPackAlreadyOwnedException("This recipient already owns this emoticon pack")
+        }
+        val giverWallet = walletRepository.findByUserIdAndType(giverUserId, WalletType.MAIN)
+            ?: throw EmoticonNoWalletException("No wallet found for this account")
+
+        ledgerService.postLedgerTransaction(
+            giverWallet.currency,
+            listOf(
+                LedgerLeg(giverWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, pack.price, "Emoticon pack gift - ${pack.title}"),
+                LedgerLeg("emoticon_revenue", LedgerAccountType.EMOTICON_REVENUE, LedgerDirection.CREDIT, pack.price, "Emoticon pack gift sale - ${pack.title}"),
+            ),
+        )
+
+        val gifted = userEmoticonPackRepository.save(
+            UserEmoticonPack(id = "user_emoticon_pack_${UUID.randomUUID()}", userId = recipient.id, packId = packId, source = EmoticonAcquisitionSource.GIFTED),
+        )
+        notificationRepository.save(
+            Notification(
+                id = "notif_${UUID.randomUUID()}", userId = recipient.id, type = "EMOTICON_PACK_GIFTED",
+                title = "You received a gift!", body = "Someone sent you the \"${pack.title}\" emoticon pack.",
+                isRead = false, createdAt = Instant.now(), dataJson = "{\"packId\":\"$packId\"}",
+            ),
+        )
+        return gifted
     }
 
     /** Ownership check shared by both send paths -- resolves the real emoticon and

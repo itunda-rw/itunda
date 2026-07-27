@@ -21,10 +21,12 @@ enum class EmoticonAcquisitionSource { PURCHASED, GIFTED }
  * for other non-user-generated product catalogs.
  *
  * Deliberately, honestly scoped: the real Emoticon Plus monthly-subscription
- * all-you-can-use tier and gifting a pack to another user are both real Kakao
- * features, each its own well-scoped follow-up -- not attempted in this pass. This is
- * the one-time-purchase-per-pack half only, the same real "buy it once, own it" model
- * every purchase this backend already supports (shopping, insurance enrollment) uses.
+ * all-you-can-use tier remains a real, separate, not-attempted-here follow-up -- this
+ * is the one-time-purchase-per-pack half only, the same real "buy it once, own it"
+ * model every purchase this backend already supports (shopping, insurance enrollment)
+ * uses. **Gifting a pack to another user, the sibling follow-up this comment used to
+ * name as also open, closed 2026-07-28** -- see `EmoticonService.giftPack`'s own doc
+ * comment.
  */
 @Entity
 @Table(name = "emoticon_packs")

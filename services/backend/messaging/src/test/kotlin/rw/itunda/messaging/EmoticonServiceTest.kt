@@ -13,6 +13,7 @@ import rw.itunda.core.domain.EmoticonAcquisitionSource
 import rw.itunda.core.domain.EmoticonPack
 import rw.itunda.core.domain.GroupMessage
 import rw.itunda.core.domain.Message
+import rw.itunda.core.domain.User
 import rw.itunda.core.domain.UserEmoticonPack
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
@@ -21,7 +22,9 @@ import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.EmoticonPackRepository
 import rw.itunda.core.repository.EmoticonRepository
+import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserEmoticonPackRepository
+import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.util.Optional
@@ -45,9 +48,11 @@ class EmoticonServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>()
         val groupMessagingService = mockk<GroupMessagingService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val service = EmoticonService(
             emoticonPackRepository, emoticonRepository, userEmoticonPackRepository, walletRepository,
-            ledgerService, messagingService, groupMessagingService, rateLimiter,
+            userRepository, notificationRepository, ledgerService, messagingService, groupMessagingService, rateLimiter,
         )
 
         When("purchasing a pack they don't already own") {
@@ -119,6 +124,96 @@ class EmoticonServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a user gifting a real emoticon pack to another user") {
+        val emoticonPackRepository = mockk<EmoticonPackRepository>()
+        val emoticonRepository = mockk<EmoticonRepository>()
+        val userEmoticonPackRepository = mockk<UserEmoticonPackRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val messagingService = mockk<MessagingService>()
+        val groupMessagingService = mockk<GroupMessagingService>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val service = EmoticonService(
+            emoticonPackRepository, emoticonRepository, userEmoticonPackRepository, walletRepository,
+            userRepository, notificationRepository, ledgerService, messagingService, groupMessagingService, rateLimiter,
+        )
+
+        val recipient = User(id = "user_recipient", phoneNumber = "+250788000002", firstName = "Recipient", lastName = "Test")
+
+        When("gifting a pack the recipient doesn't already own") {
+            every { emoticonPackRepository.findById("pack_1") } returns Optional.of(pack)
+            every { userRepository.findByPhoneNumber("+250788000002") } returns recipient
+            every { userEmoticonPackRepository.findByUserIdAndPackId("user_recipient", "pack_1") } returns null
+            every { walletRepository.findByUserIdAndType("user_giver", WalletType.MAIN) } returns wallet("wallet_giver", "user_giver")
+            val legsSlot = slot<List<LedgerLeg>>()
+            every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_2", emptyList())
+            every { userEmoticonPackRepository.save(any()) } answers { firstArg() }
+
+            val result = service.giftPack("user_giver", "+250788000002", "pack_1")
+
+            Then("it real-debits the GIVER's wallet and credits emoticon_revenue for the pack's exact price") {
+                val legs = legsSlot.captured
+                legs.first { it.accountId == "wallet_giver" }.amount shouldBe BigDecimal("500")
+                legs.first { it.accountId == "emoticon_revenue" }.amount shouldBe BigDecimal("500")
+            }
+            Then("ownership real-lands on the RECIPIENT, not the giver, recorded as GIFTED") {
+                result.userId shouldBe "user_recipient"
+                result.packId shouldBe "pack_1"
+                result.source shouldBe EmoticonAcquisitionSource.GIFTED
+            }
+            Then("it real-notifies the recipient of the gift") {
+                verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_recipient" && it.type == "EMOTICON_PACK_GIFTED" }) }
+            }
+        }
+
+        When("the recipient's phone number doesn't resolve to any real itunda account") {
+            every { emoticonPackRepository.findById("pack_1") } returns Optional.of(pack)
+            every { userRepository.findByPhoneNumber("+250788999999") } returns null
+
+            Then("it throws EmoticonGiftRecipientNotFoundException, a real 404, before ever touching the ledger") {
+                try {
+                    service.giftPack("user_giver", "+250788999999", "pack_1")
+                    error("expected EmoticonGiftRecipientNotFoundException")
+                } catch (e: EmoticonGiftRecipientNotFoundException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("trying to gift a pack to yourself") {
+            val self = User(id = "user_giver", phoneNumber = "+250788000001", firstName = "Giver", lastName = "Test")
+            every { emoticonPackRepository.findById("pack_1") } returns Optional.of(pack)
+            every { userRepository.findByPhoneNumber("+250788000001") } returns self
+
+            Then("it throws EmoticonGiftToSelfException before ever touching the ledger") {
+                try {
+                    service.giftPack("user_giver", "+250788000001", "pack_1")
+                    error("expected EmoticonGiftToSelfException")
+                } catch (e: EmoticonGiftToSelfException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
+        When("the recipient already owns the pack") {
+            every { emoticonPackRepository.findById("pack_1") } returns Optional.of(pack)
+            every { userRepository.findByPhoneNumber("+250788000002") } returns recipient
+            every { userEmoticonPackRepository.findByUserIdAndPackId("user_recipient", "pack_1") } returns
+                UserEmoticonPack(id = "existing", userId = "user_recipient", packId = "pack_1", source = EmoticonAcquisitionSource.PURCHASED)
+
+            Then("it throws EmoticonPackAlreadyOwnedException before ever touching the ledger") {
+                try {
+                    service.giftPack("user_giver", "+250788000002", "pack_1")
+                    error("expected EmoticonPackAlreadyOwnedException")
+                } catch (e: EmoticonPackAlreadyOwnedException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+    }
+
     Given("a user sending a real owned emoticon") {
         val emoticonPackRepository = mockk<EmoticonPackRepository>()
         val emoticonRepository = mockk<EmoticonRepository>()
@@ -128,9 +223,11 @@ class EmoticonServiceTest : BehaviorSpec({
         val messagingService = mockk<MessagingService>()
         val groupMessagingService = mockk<GroupMessagingService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val service = EmoticonService(
             emoticonPackRepository, emoticonRepository, userEmoticonPackRepository, walletRepository,
-            ledgerService, messagingService, groupMessagingService, rateLimiter,
+            userRepository, notificationRepository, ledgerService, messagingService, groupMessagingService, rateLimiter,
         )
 
         val emoticon = Emoticon(id = "emoticon_1", packId = "pack_1", imageUrl = "/uploads/smile.png")
