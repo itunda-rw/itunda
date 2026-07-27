@@ -22,8 +22,11 @@ import rw.itunda.rewards.RewardTaskNotFoundException
 import rw.itunda.rewards.RewardsNoWalletException
 import rw.itunda.rewards.RewardsService
 import rw.itunda.rewards.RewardsUserNotFoundException
+import rw.itunda.rewards.InvalidStepCountException
+import rw.itunda.rewards.StepRewardService
 
 data class ClaimRewardRequest(val taskId: String)
+data class ReportStepsRequest(val steps: Int)
 
 // The Saronite reward-tasks mini-app's native bridge (android/.../SaroniteBridge.kt) has
 // called these two routes since it was built -- see docs/API_SPECIFICATION.md's Rewards
@@ -31,7 +34,11 @@ data class ClaimRewardRequest(val taskId: String)
 // previously a false "real" claim.
 @RestController
 @RequestMapping("/api/v1/rewards")
-class RewardsController(private val rewardsService: RewardsService, private val idempotencyService: IdempotencyService) {
+class RewardsController(
+    private val rewardsService: RewardsService,
+    private val idempotencyService: IdempotencyService,
+    private val stepRewardService: StepRewardService,
+) {
 
     @GetMapping("/tasks")
     fun getTasks(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any>> {
@@ -70,6 +77,37 @@ class RewardsController(private val rewardsService: RewardsService, private val 
         }
         return ResponseEntity.status(status).body(body)
     }
+
+    // Real Toss 만보기 (walking rewards) -- see StepRewardService's own doc comment.
+    // Naturally idempotent (a tier only ever credits once, checked against a real
+    // stored flag before crediting), same convention AutoTopUpController.trigger
+    // already uses for a conditionally-money-moving endpoint -- no Idempotency-Key.
+    @PostMapping("/steps")
+    fun reportSteps(
+        @RequestBody request: ReportStepsRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val result = stepRewardService.reportSteps(currentUser.userId, request.steps)
+        return ResponseEntity.ok(
+            mapOf(
+                "success" to true,
+                "steps" to result.reward.steps,
+                "newlyEarnedTiers" to result.newlyEarned.map { it.stepsRequired },
+                "newlyEarnedAmount" to result.newlyEarned.sumOf { it.rewardAmount },
+                "totalEarnedToday" to result.totalEarnedToday,
+            ),
+        )
+    }
+
+    @GetMapping("/steps/today")
+    fun getTodaySteps(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val reward = stepRewardService.getToday(currentUser.userId)
+        return ResponseEntity.ok(mapOf("success" to true, "steps" to (reward?.steps ?: 0)))
+    }
+
+    @ExceptionHandler(InvalidStepCountException::class)
+    fun handleInvalidStepCount(ex: InvalidStepCountException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_STEP_COUNT", ex.message ?: "Bad request"))
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) =
