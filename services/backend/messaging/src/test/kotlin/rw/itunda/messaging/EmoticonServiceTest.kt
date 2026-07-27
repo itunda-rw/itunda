@@ -140,7 +140,7 @@ class EmoticonServiceTest : BehaviorSpec({
             userRepository, notificationRepository, ledgerService, messagingService, groupMessagingService, rateLimiter,
         )
 
-        val recipient = User(id = "user_recipient", phoneNumber = "+250788000002", firstName = "Recipient", lastName = "Test")
+        val recipient = User(id = "user_recipient", phoneNumber = "+250788000002", firstName = "Recipient", lastName = "Test", passwordHash = "hash")
 
         When("gifting a pack the recipient doesn't already own") {
             every { emoticonPackRepository.findById("pack_1") } returns Optional.of(pack)
@@ -150,6 +150,7 @@ class EmoticonServiceTest : BehaviorSpec({
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("ledgertxn_2", emptyList())
             every { userEmoticonPackRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
 
             val result = service.giftPack("user_giver", "+250788000002", "pack_1")
 
@@ -183,7 +184,7 @@ class EmoticonServiceTest : BehaviorSpec({
         }
 
         When("trying to gift a pack to yourself") {
-            val self = User(id = "user_giver", phoneNumber = "+250788000001", firstName = "Giver", lastName = "Test")
+            val self = User(id = "user_giver", phoneNumber = "+250788000001", firstName = "Giver", lastName = "Test", passwordHash = "hash")
             every { emoticonPackRepository.findById("pack_1") } returns Optional.of(pack)
             every { userRepository.findByPhoneNumber("+250788000001") } returns self
 

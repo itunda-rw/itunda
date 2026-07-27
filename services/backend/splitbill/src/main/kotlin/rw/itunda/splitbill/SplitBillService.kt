@@ -37,6 +37,7 @@ class SplitBillAlreadyPaidException(message: String) : RuntimeException(message)
 class SplitBillNoWalletException(message: String) : RuntimeException(message)
 class SplitBillDescriptionRequiredException(message: String) : RuntimeException(message)
 class SplitBillInvalidVarianceLevelException(message: String) : RuntimeException(message)
+class SplitBillInvalidReceiptUrlException(message: String) : RuntimeException(message)
 
 data class SplitBillWithParticipants(val splitBill: SplitBill, val participants: List<SplitBillParticipant>)
 
@@ -50,9 +51,11 @@ data class SplitBillWithParticipants(val splitBill: SplitBill, val participants:
  * Honestly scoped v1, per the design doc's own explicit warning that "a plain even-split
  * alone would just be re-doing Toss": this ports the even-split mechanic (the floor) plus
  * exactly one of KakaoPay's real differentiators -- silent rounding-remainder absorption,
- * the most tractable of the four named in the design doc. Deliberately deferred, named as
- * real follow-ups, not attempted here: the randomized "사다리타기" ladder-game mode, the
- * up-to-5-tracked-rounds mechanic, scheduled reminder nudges, and photo receipt attach.
+ * the most tractable of the four named in the design doc. Of the other three real,
+ * named follow-ups, three are now closed: the randomized "사다리타기" ladder-game mode
+ * (`ladderSplit`, 2026-07-25), scheduled reminder nudges (`SplitBillReminderScheduler`,
+ * 2026-07-27), and photo receipt attach (`attachReceipt`, 2026-07-28). The
+ * up-to-5-tracked-rounds mechanic remains the one still-open, deferred follow-up.
  */
 @Service
 class SplitBillService(
@@ -230,6 +233,31 @@ class SplitBillService(
         val isParticipant = participants.any { it.userId == userId }
         if (!isOrganizer && !isParticipant) throw SplitBillNotFoundException("Split bill not found")
         return SplitBillWithParticipants(splitBill, participants)
+    }
+
+    /**
+     * Real photo receipt attach (2026-07-28), closing one of the two real follow-ups
+     * `SplitBill.kt`'s own doc comment still named as open. Organizer-only -- same real
+     * 404 (not 403) IDOR discipline `getSplitBill`/`payShare` already establish, not a
+     * fabricated permission error. A URL, not a binary upload -- this backend has no
+     * file-storage layer, the same honest simplification `AuthService
+     * .updateProfilePhoto`/`IdentityController`'s own documentReference already use.
+     * Re-attachable (overwrites, no versioning) -- same "the end state is what the
+     * caller actually wants" simplicity `RoundUpSettings`'s own upsert already
+     * establishes, not something that needs its own history here.
+     */
+    @Transactional
+    fun attachReceipt(organizerId: String, splitBillId: String, imageUrl: String): SplitBill {
+        val splitBill = splitBillRepository.findById(splitBillId).orElseThrow { SplitBillNotFoundException("Split bill not found") }
+        if (splitBill.organizerId != organizerId) {
+            throw SplitBillNotFoundException("Split bill not found")
+        }
+        val trimmedUrl = imageUrl.trim()
+        if (trimmedUrl.isEmpty() || trimmedUrl.length > 2048) {
+            throw SplitBillInvalidReceiptUrlException("Receipt image URL must be between 1 and 2048 characters")
+        }
+        splitBill.receiptImageUrl = trimmedUrl
+        return splitBillRepository.save(splitBill)
     }
 
     /** Real per-group split-bill history -- same shape as `GiftService.getGiftsForConversation`,

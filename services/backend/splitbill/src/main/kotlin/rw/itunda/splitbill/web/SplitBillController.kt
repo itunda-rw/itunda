@@ -23,6 +23,7 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.splitbill.SplitBillAlreadyPaidException
 import rw.itunda.splitbill.SplitBillDescriptionRequiredException
 import rw.itunda.splitbill.SplitBillInvalidAmountException
+import rw.itunda.splitbill.SplitBillInvalidReceiptUrlException
 import rw.itunda.splitbill.SplitBillInvalidVarianceLevelException
 import rw.itunda.splitbill.SplitBillNeedsParticipantsException
 import rw.itunda.splitbill.SplitBillNoWalletException
@@ -30,6 +31,8 @@ import rw.itunda.splitbill.SplitBillNotFoundException
 import rw.itunda.splitbill.SplitBillParticipantNotGroupMemberException
 import rw.itunda.splitbill.SplitBillService
 import java.math.BigDecimal
+
+data class AttachSplitBillReceiptRequest(val imageUrl: String)
 
 data class CreateSplitBillRequest(
     val totalAmount: BigDecimal,
@@ -85,6 +88,19 @@ class SplitBillController(private val splitBillService: SplitBillService, privat
         )
     }
 
+    // Real photo receipt attach (2026-07-28) -- see SplitBillService.attachReceipt's own
+    // doc comment. Not money-moving, no Idempotency-Key requirement, same discipline
+    // MerchantBookingController's own non-money-moving writes already establish.
+    @PostMapping("/{id}/receipt")
+    fun attachReceipt(
+        @PathVariable id: String,
+        @RequestBody request: AttachSplitBillReceiptRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val splitBill = splitBillService.attachReceipt(currentUser.userId, id, request.imageUrl)
+        return ResponseEntity.ok(mapOf("success" to true, "splitBill" to splitBill))
+    }
+
     @PostMapping("/{id}/pay")
     fun payShare(
         @PathVariable id: String,
@@ -117,6 +133,10 @@ class SplitBillController(private val splitBillService: SplitBillService, privat
     @ExceptionHandler(SplitBillInvalidVarianceLevelException::class)
     fun handleInvalidVarianceLevel(ex: SplitBillInvalidVarianceLevelException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_LADDER_VARIANCE_LEVEL", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(SplitBillInvalidReceiptUrlException::class)
+    fun handleInvalidReceiptUrl(ex: SplitBillInvalidReceiptUrlException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_RECEIPT_URL", ex.message ?: "Bad request"))
 
     @ExceptionHandler(SplitBillParticipantNotGroupMemberException::class)
     fun handleParticipantNotGroupMember(ex: SplitBillParticipantNotGroupMemberException) =

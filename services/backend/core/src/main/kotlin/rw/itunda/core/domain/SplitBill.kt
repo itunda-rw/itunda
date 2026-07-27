@@ -36,8 +36,9 @@ enum class SplitBillMode { EVEN, LADDER }
  * "사다리타기" (ladder-game) randomized mode -- see `SplitBillService.ladderSplit`'s own
  * doc comment for the 3 variance levels, sourced from `docs/DESIGN_REFERENCES.md`
  * Section 6. Scheduled reminder nudges closed 2026-07-27 -- see
- * `SplitBillReminderScheduler`'s own doc comment. Multi-round tracking (up to 5) and
- * photo receipt attach remain deferred, named follow-ups.
+ * `SplitBillReminderScheduler`'s own doc comment. Photo receipt attach closed 2026-07-28
+ * -- see `SplitBillService.attachReceipt`'s own doc comment. Multi-round tracking (up
+ * to 5) remains the one still-open, deferred follow-up.
  */
 @Entity
 @Table(name = "split_bills")
@@ -78,6 +79,13 @@ class SplitBill(
     // this variance" -- survives for every viewer, not just the organizer who chose it.
     @Column(name = "ladder_variance_level")
     var ladderVarianceLevel: Int? = null,
+
+    // Real photo receipt attach (2026-07-28) -- see SplitBillService.attachReceipt's own
+    // doc comment. A URL, not a binary upload, same "no file-storage layer in this
+    // backend" simplification IdentityController's documentReference/AuthService's
+    // UpdateProfilePhotoRequest already established. NULL means no receipt attached yet.
+    @Column(name = "receipt_image_url", length = 2048)
+    var receiptImageUrl: String? = null,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),

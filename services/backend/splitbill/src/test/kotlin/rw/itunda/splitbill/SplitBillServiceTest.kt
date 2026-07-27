@@ -246,6 +246,72 @@ class SplitBillServiceTest : BehaviorSpec({
         }
     }
 
+    // Real photo receipt attach (2026-07-28) -- see SplitBillService.attachReceipt's own
+    // doc comment.
+    Given("a real split bill and its real organizer") {
+        val splitBillRepository = mockk<SplitBillRepository>()
+        val splitBillParticipantRepository = mockk<SplitBillParticipantRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val groupMessagingService = mockk<GroupMessagingService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = SplitBillService(
+            splitBillRepository, splitBillParticipantRepository, walletRepository,
+            transactionRepository, ledgerService, groupMessagingService, rateLimiter,
+        )
+
+        val splitBill = SplitBill(
+            id = "splitbill_1", organizerId = "user_organizer", groupConversationId = "group_1",
+            messageId = "group_message_1", totalAmount = BigDecimal("1000.00"), description = "Dinner",
+        )
+        every { splitBillRepository.findById("splitbill_1") } returns Optional.of(splitBill)
+        every { splitBillRepository.save(any()) } answers { firstArg() }
+
+        When("the real organizer attaches a real receipt photo") {
+            val result = service.attachReceipt("user_organizer", "splitbill_1", "https://uploads.example/receipt.jpg")
+
+            Then("it real-saves the URL on the split bill") {
+                result.receiptImageUrl shouldBe "https://uploads.example/receipt.jpg"
+            }
+        }
+
+        When("someone who isn't the real organizer tries to attach a receipt") {
+            Then("it real-404s rather than revealing the split bill exists") {
+                try {
+                    service.attachReceipt("user_stranger", "splitbill_1", "https://uploads.example/receipt.jpg")
+                    error("expected SplitBillNotFoundException")
+                } catch (e: SplitBillNotFoundException) {
+                    // expected
+                }
+            }
+        }
+
+        When("the organizer submits a blank receipt URL") {
+            Then("it throws SplitBillInvalidReceiptUrlException before ever touching the split bill row") {
+                try {
+                    service.attachReceipt("user_organizer", "splitbill_1", "   ")
+                    error("expected SplitBillInvalidReceiptUrlException")
+                } catch (e: SplitBillInvalidReceiptUrlException) {
+                    verify(exactly = 0) { splitBillRepository.save(any()) }
+                }
+            }
+        }
+
+        When("a split bill that doesn't exist") {
+            every { splitBillRepository.findById("splitbill_ghost") } returns Optional.empty()
+
+            Then("it throws SplitBillNotFoundException") {
+                try {
+                    service.attachReceipt("user_organizer", "splitbill_ghost", "https://uploads.example/receipt.jpg")
+                    error("expected SplitBillNotFoundException")
+                } catch (e: SplitBillNotFoundException) {
+                    // expected
+                }
+            }
+        }
+    }
+
     // Real scheduled reminder nudges (2026-07-27) -- see SplitBillReminderScheduler's
     // own doc comment.
     Given("a real OPEN split bill with a real never-yet-reminded PENDING participant") {
