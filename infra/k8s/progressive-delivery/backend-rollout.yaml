@@ -176,11 +176,27 @@ spec:
           value: "http://192.168.252.4:5001"
         - name: NOMINATIM_BASE_URL
           value: "http://192.168.252.4:8088"
+        # Real heap-ergonomics fix (2026-07-27) -- the JVM's default MaxHeapSize is 25%
+        # of the container's *memory limit*, so even a generous limit gave only ~512MB
+        # of real heap unless told otherwise. Discovered live while chasing an
+        # intermittent multi-second-to-90-second hang that turned out to have a
+        # different root cause entirely (a real infinite loop in
+        # MerchantBookingService.getAvailableSlots, see that file's own git history) --
+        # kept anyway since a 25%-of-limit heap is genuinely too tight for this app's
+        # size now, real hygiene on its own merits.
+        - name: JAVA_TOOL_OPTIONS
+          value: "-XX:MaxRAMPercentage=70 -XX:InitialRAMPercentage=50"
         volumeMounts:
         - name: uploads
           mountPath: /uploads
         resources:
-          # cpu request lowered 500m->200m (2026-07-24): this single-node,
+          # No explicit limits (2026-07-27) -- governed entirely by the itunda-limits
+          # namespace LimitRange instead (see infra/k8s/private-cloud/limitrange.yaml),
+          # whose defaults were raised the same pass (memory 512Mi->2Gi, cpu 500m->2)
+          # after a real cgroup cpu.stat check showed this container throttled in 49%
+          # of scheduling periods under the old 1-core cap -- invisible to a JVM thread
+          # dump (a throttled thread still shows RUNNABLE, it's just not scheduled by
+          # the kernel). cpu request lowered 500m->200m (2026-07-24): this single-node,
           # 2-vCPU cluster runs at ~100% CPU *requests* just from system pods
           # (kube-apiserver/etcd/controller-manager/istiod) plus the other
           # itunda services -- 500m left zero headroom and caused real
@@ -188,27 +204,32 @@ spec:
           requests:
             memory: "512Mi"
             cpu: "200m"
-          limits:
-            memory: "1Gi"
-            cpu: "1000m"
         startupProbe:
           httpGet:
             path: /actuator/health
             port: 4001
           failureThreshold: 30
           periodSeconds: 10
+          timeoutSeconds: 5
         readinessProbe:
           httpGet:
             path: /actuator/health
             port: 4001
           initialDelaySeconds: 30
           periodSeconds: 10
+          timeoutSeconds: 5
         livenessProbe:
           httpGet:
             path: /actuator/health
             port: 4001
           initialDelaySeconds: 45
           periodSeconds: 15
+          # Real fix (2026-07-27) -- Kubernetes' own 1s default timeout is far too tight
+          # for a JVM under any real GC/request-processing load; this cluster's
+          # payment-service/ledger-service each had 60-70 restarts before this same fix
+          # was applied to all 4 services, all consistent with kubelet hard-killing
+          # containers that were still alive, just briefly slow to answer a probe.
+          timeoutSeconds: 5
       # Real photo upload storage (2026-07-24) -- see UploadController's own doc
       # comment. hostPath, not a PVC/storage class, because this private-cloud
       # deployment is a genuine single node (itunda-dc-a) -- a hostPath here is

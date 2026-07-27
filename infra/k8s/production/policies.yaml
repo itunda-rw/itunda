@@ -228,9 +228,18 @@ metadata:
 spec:
   limits:
   - type: Container
+    # Defaults raised 2026-07-27 (cpu 500m->2, memory 512Mi->2Gi, defaultRequest.memory
+    # 128Mi->256Mi) after a real cgroup cpu.stat check showed the backend container
+    # throttled in 49% of scheduling periods under the old 500m-equivalent cap --
+    # invisible to a JVM thread dump (a throttled thread still shows RUNNABLE, it's
+    # just not scheduled by the kernel). Also discovered live: patching this LimitRange
+    # does NOT retroactively fix already-scheduled pods, and a pod created in the
+    # narrow window between two related patches can get stamped with a stale
+    # intermediate default permanently -- always verify the ACTUAL running pod's
+    # resources (not just this spec) after a multi-step change like this one.
     default:
-      cpu: "500m"
-      memory: 512Mi
+      cpu: "2"
+      memory: 2Gi
     defaultRequest:
       cpu: "100m"
-      memory: 128Mi
+      memory: 256Mi

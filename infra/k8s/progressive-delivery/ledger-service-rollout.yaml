@@ -145,15 +145,23 @@ spec:
             port: 8082
           failureThreshold: 30
           periodSeconds: 10
+          timeoutSeconds: 5
         readinessProbe:
           httpGet:
             path: /actuator/health
             port: 8082
           initialDelaySeconds: 30
           periodSeconds: 10
+          timeoutSeconds: 5
         livenessProbe:
           httpGet:
             path: /actuator/health
             port: 8082
           initialDelaySeconds: 45
           periodSeconds: 15
+          # Real fix (2026-07-27) -- Kubernetes' 1s default timeout was too tight for
+          # this fleet under real load; this service alone had 60+ restarts before this
+          # fix, all consistent with kubelet hard-killing containers that were briefly
+          # slow to answer a probe, not actually unhealthy. Raised to 5s across all 4
+          # itunda services.
+          timeoutSeconds: 5

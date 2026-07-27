@@ -124,15 +124,22 @@ spec:
             port: 3000
           failureThreshold: 12
           periodSeconds: 5
+          timeoutSeconds: 5
         readinessProbe:
           httpGet:
             path: /health
             port: 3000
           initialDelaySeconds: 5
           periodSeconds: 10
+          timeoutSeconds: 5
         livenessProbe:
           httpGet:
             path: /health
             port: 3000
           initialDelaySeconds: 30
           periodSeconds: 15
+          # Real fix (2026-07-27) -- Kubernetes' 1s default timeout is too tight for
+          # this fleet under real load; raised to 5s across all 4 itunda services
+          # after chronic restarts traced to kubelet hard-killing containers that were
+          # briefly slow to answer a probe, not actually unhealthy.
+          timeoutSeconds: 5
