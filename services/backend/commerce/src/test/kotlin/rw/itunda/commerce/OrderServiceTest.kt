@@ -22,6 +22,7 @@ import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
@@ -64,10 +65,11 @@ class OrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
         val riderRepository = mockk<RiderRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             walletRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
-            notificationRepository, priceTierRepository, riderRepository,
+            notificationRepository, priceTierRepository, riderRepository, pushNotificationService,
         )
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
@@ -105,6 +107,10 @@ class OrderServiceTest : BehaviorSpec({
 
             Then("it real-alerts the real merchant owner -- the real gap where a new order arrived with zero notification") {
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "seller_1" && it.type == "NEW_COMMERCE_ORDER" }) }
+            }
+
+            Then("the merchant owner also gets a real push notification, not just the in-app one") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("seller_1", "New order received", any(), any()) }
             }
         }
 
@@ -232,10 +238,11 @@ class OrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
         val riderRepository = mockk<RiderRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             walletRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
-            notificationRepository, priceTierRepository, riderRepository,
+            notificationRepository, priceTierRepository, riderRepository, pushNotificationService,
         )
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val order = Order(
@@ -407,10 +414,11 @@ class OrderServiceTest : BehaviorSpec({
         every { notificationRepository.save(any()) } answers { firstArg() }
         val priceTierRepository = mockk<ProductPriceTierRepository>(relaxed = true)
         val riderRepository = mockk<RiderRepository>()
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = OrderService(
             merchantRepository, merchantProductRepository, orderRepository, orderItemRepository,
             walletRepository, ledgerService, transactionRepository, fraudRuleEngine, ledgerEntryRepository,
-            notificationRepository, priceTierRepository, riderRepository,
+            notificationRepository, priceTierRepository, riderRepository, pushNotificationService,
         )
         val merchant = Merchant(id = "merchant_1", ownerUserId = "seller_1", walletId = "wallet_merchant", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)

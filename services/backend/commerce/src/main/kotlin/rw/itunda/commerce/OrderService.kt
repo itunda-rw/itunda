@@ -20,6 +20,7 @@ import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.pricing.effectiveUnitPrice
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
@@ -93,6 +94,7 @@ class OrderService(
     private val notificationRepository: NotificationRepository,
     private val priceTierRepository: ProductPriceTierRepository,
     private val riderRepository: RiderRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     // Same real Toss Payments fee-schedule reasoning MerchantService.feeRate's own
     // comment gives -- one flat rate in the middle of Toss's published 0.8%-1.8% range,
@@ -229,15 +231,22 @@ class OrderService(
         // owner at all, meaning the only way to learn a real order arrived was manually
         // polling GET /merchant-orders. Best-effort, same "auxiliary side-effect can't
         // block the real operation" discipline this codebase already establishes.
+        //
+        // Real push wired in (2026-07-28), same real "fulfillment can't start until the
+        // merchant notices" urgency as MerchantService.collect's own payment-received
+        // push -- a merchant relying on the in-app poll alone could leave a real order
+        // unfulfilled for hours.
         try {
+            val title = "New order received"
+            val body = "A new order for ${orderItems.sumOf { it.quantity }} item(s) just came in -- $totalAmount RWF"
             notificationRepository.save(
                 Notification(
                     id = "notif_${UUID.randomUUID()}", userId = merchant.ownerUserId, type = "NEW_COMMERCE_ORDER",
-                    title = "New order received",
-                    body = "A new order for ${orderItems.sumOf { it.quantity }} item(s) just came in -- $totalAmount RWF",
+                    title = title, body = body,
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"orderId\":\"${order.id}\"}",
                 ),
             )
+            pushNotificationService.sendToUser(merchant.ownerUserId, title, body, mapOf("orderId" to order.id))
         } catch (e: Exception) {
             // Non-critical -- the real order already completed and succeeded.
         }
