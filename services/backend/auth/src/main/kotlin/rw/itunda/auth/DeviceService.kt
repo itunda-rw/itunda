@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.TrustedDevice
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TrustedDeviceRepository
 import rw.itunda.core.repository.UserRepository
@@ -28,6 +29,7 @@ class DeviceService(
     private val userRepository: UserRepository,
     private val notificationRepository: NotificationRepository,
     private val rateLimiter: RateLimiter,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private val passwordEncoder = BCryptPasswordEncoder()
 
@@ -56,7 +58,9 @@ class DeviceService(
      * bank UX (a new device can sign in and look around; it just can't move money until
      * it proves itself -- see DeviceVerificationFilter). Fires a real notification on
      * the user's own already-trusted devices/history the same way every other
-     * security-relevant event in this codebase does. */
+     * security-relevant event in this codebase does. Pushes too (2026-07-28), same
+     * urgency as FraudReviewService's confirmed-fraud alert -- a real account owner
+     * needs to know the instant an unrecognized device signs in, not next app-open. */
     @Transactional
     fun recordLoginDevice(userId: String, deviceId: String?, deviceName: String?) {
         if (deviceId == null) return
@@ -77,13 +81,20 @@ class DeviceService(
                 trusted = false,
             ),
         )
+        val title = "New device signed in"
+        val body = "A login from a new device (${deviceName ?: "unknown device"}) was detected. It can't send money until verified."
         notificationRepository.save(
             Notification(
                 id = "notif_${UUID.randomUUID()}", userId = userId, type = "NEW_DEVICE_LOGIN",
-                title = "New device signed in", body = "A login from a new device (${deviceName ?: "unknown device"}) was detected. It can't send money until verified.",
+                title = title, body = body,
                 isRead = false, createdAt = Instant.now(), dataJson = "{\"deviceId\":\"$trimmedId\"}",
             ),
         )
+        // Real push wired in (2026-07-28) -- same real security-alert urgency
+        // FraudReviewService.decide's confirmed-fraud push already established: if this
+        // wasn't the real account owner, they need to know the instant it happens, not
+        // whenever they next happen to open the app.
+        pushNotificationService.sendToUser(userId, title, body, mapOf("deviceId" to trimmedId))
     }
 
     fun getMyDevices(userId: String): List<TrustedDevice> = trustedDeviceRepository.findByUserIdOrderByLastSeenAtDesc(userId)
