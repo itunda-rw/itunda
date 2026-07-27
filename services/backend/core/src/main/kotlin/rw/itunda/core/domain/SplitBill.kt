@@ -35,8 +35,9 @@ enum class SplitBillMode { EVEN, LADDER }
  * [totalAmount]. [mode]/[ladderVarianceLevel] (2026-07-25) add KakaoPay's real
  * "사다리타기" (ladder-game) randomized mode -- see `SplitBillService.ladderSplit`'s own
  * doc comment for the 3 variance levels, sourced from `docs/DESIGN_REFERENCES.md`
- * Section 6. Multi-round tracking and scheduled reminder nudges remain deferred,
- * named follow-ups.
+ * Section 6. Scheduled reminder nudges closed 2026-07-27 -- see
+ * `SplitBillReminderScheduler`'s own doc comment. Multi-round tracking (up to 5) and
+ * photo receipt attach remain deferred, named follow-ups.
  */
 @Entity
 @Table(name = "split_bills")
@@ -123,6 +124,12 @@ class SplitBillParticipant(
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
+
+    // Real scheduled reminder nudges (2026-07-27) -- see SplitBillReminderScheduler's
+    // own doc comment. null means never reminded yet -- a fresh, still-unpaid
+    // participant is immediately due for their first real nudge.
+    @Column(name = "last_reminder_sent_at")
+    var lastReminderSentAt: Instant? = null,
 ) {
     protected constructor() : this(
         id = "", splitBillId = "", userId = "", shareAmount = BigDecimal.ZERO,

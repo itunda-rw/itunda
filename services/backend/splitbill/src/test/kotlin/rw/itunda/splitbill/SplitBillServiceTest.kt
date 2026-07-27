@@ -245,6 +245,89 @@ class SplitBillServiceTest : BehaviorSpec({
             }
         }
     }
+
+    // Real scheduled reminder nudges (2026-07-27) -- see SplitBillReminderScheduler's
+    // own doc comment.
+    Given("a real OPEN split bill with a real never-yet-reminded PENDING participant") {
+        val splitBillRepository = mockk<SplitBillRepository>()
+        val splitBillParticipantRepository = mockk<SplitBillParticipantRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val groupMessagingService = mockk<GroupMessagingService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = SplitBillService(splitBillRepository, splitBillParticipantRepository, walletRepository, transactionRepository, ledgerService, groupMessagingService, rateLimiter)
+
+        val bill = SplitBill(id = "splitbill_1", organizerId = "organizer_1", groupConversationId = "group_1", messageId = "msg_1", totalAmount = BigDecimal("3000"), description = "Dinner")
+        val participant = SplitBillParticipant(id = "participant_1", splitBillId = "splitbill_1", userId = "user_a", shareAmount = BigDecimal("1000"))
+        every { splitBillRepository.findByStatus(SplitBillStatus.OPEN) } returns listOf(bill)
+        every { splitBillParticipantRepository.findBySplitBillId("splitbill_1") } returns listOf(participant)
+        val savedSlot = mutableListOf<SplitBillParticipant>()
+        every { splitBillParticipantRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+        When("the real sweep runs") {
+            val remindedCount = service.sendDueReminders()
+
+            Then("it real-nudges the group chat as the organizer and stamps the real reminder timestamp") {
+                remindedCount shouldBe 1
+                verify(exactly = 1) { groupMessagingService.sendMessage("organizer_1", "group_1", any()) }
+                (savedSlot.first().lastReminderSentAt != null) shouldBe true
+            }
+        }
+    }
+
+    Given("a real OPEN split bill whose PENDING participant was already real-reminded recently") {
+        val splitBillRepository = mockk<SplitBillRepository>()
+        val splitBillParticipantRepository = mockk<SplitBillParticipantRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val groupMessagingService = mockk<GroupMessagingService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = SplitBillService(splitBillRepository, splitBillParticipantRepository, walletRepository, transactionRepository, ledgerService, groupMessagingService, rateLimiter)
+
+        val bill = SplitBill(id = "splitbill_1", organizerId = "organizer_1", groupConversationId = "group_1", messageId = "msg_1", totalAmount = BigDecimal("3000"), description = "Dinner")
+        val participant = SplitBillParticipant(
+            id = "participant_1", splitBillId = "splitbill_1", userId = "user_a", shareAmount = BigDecimal("1000"),
+            lastReminderSentAt = java.time.Instant.now().minusSeconds(3600),
+        )
+        every { splitBillRepository.findByStatus(SplitBillStatus.OPEN) } returns listOf(bill)
+        every { splitBillParticipantRepository.findBySplitBillId("splitbill_1") } returns listOf(participant)
+
+        When("the real sweep runs less than 24 real hours later") {
+            val remindedCount = service.sendDueReminders()
+
+            Then("it honestly skips this participant -- not a spammy repeat") {
+                remindedCount shouldBe 0
+                verify(exactly = 0) { groupMessagingService.sendMessage(any(), any(), any()) }
+            }
+        }
+    }
+
+    Given("a real OPEN split bill whose participant already PAID their share") {
+        val splitBillRepository = mockk<SplitBillRepository>()
+        val splitBillParticipantRepository = mockk<SplitBillParticipantRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val groupMessagingService = mockk<GroupMessagingService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = SplitBillService(splitBillRepository, splitBillParticipantRepository, walletRepository, transactionRepository, ledgerService, groupMessagingService, rateLimiter)
+
+        val bill = SplitBill(id = "splitbill_1", organizerId = "organizer_1", groupConversationId = "group_1", messageId = "msg_1", totalAmount = BigDecimal("3000"), description = "Dinner")
+        val paidParticipant = SplitBillParticipant(id = "participant_1", splitBillId = "splitbill_1", userId = "user_a", shareAmount = BigDecimal("1000"), status = SplitBillParticipantStatus.PAID)
+        every { splitBillRepository.findByStatus(SplitBillStatus.OPEN) } returns listOf(bill)
+        every { splitBillParticipantRepository.findBySplitBillId("splitbill_1") } returns listOf(paidParticipant)
+
+        When("the real sweep runs") {
+            val remindedCount = service.sendDueReminders()
+
+            Then("it never nudges someone who already real-paid") {
+                remindedCount shouldBe 0
+                verify(exactly = 0) { groupMessagingService.sendMessage(any(), any(), any()) }
+            }
+        }
+    }
 }) {
     override fun isolationMode() = IsolationMode.InstancePerLeaf
 }

@@ -1,5 +1,6 @@
 package rw.itunda.splitbill
 
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.auth.RateLimiter
@@ -63,6 +64,8 @@ class SplitBillService(
     private val groupMessagingService: GroupMessagingService,
     private val rateLimiter: RateLimiter,
 ) {
+    private val log = LoggerFactory.getLogger(SplitBillService::class.java)
+
     /**
      * Create a real split bill within an existing group conversation -- the organizer
      * already fronted [totalAmount] outside this system and is requesting it back from
@@ -310,6 +313,45 @@ class SplitBillService(
         }
 
         return savedParticipant
+    }
+
+    // Real scheduled reminder nudges -- see SplitBillReminderScheduler's own doc
+    // comment. A real chat-embedded nudge (same "chat-embedded financial action" shell
+    // this whole feature already uses), sent as the organizer -- the same real person a
+    // participant would expect to hear from asking "did you pay yet?" -- into the same
+    // group thread the original request itself lives in, not a separate push channel.
+    // Resilient per-participant: one bad row (e.g. a since-left group member) must
+    // never block the reminder sweep for every other real due participant.
+    fun sendDueReminders(): Int {
+        var remindedCount = 0
+        val openBills = splitBillRepository.findByStatus(SplitBillStatus.OPEN)
+        for (bill in openBills) {
+            val pendingParticipants = splitBillParticipantRepository.findBySplitBillId(bill.id)
+                .filter { it.status == SplitBillParticipantStatus.PENDING }
+            for (participant in pendingParticipants) {
+                val lastReminder = participant.lastReminderSentAt
+                val due = lastReminder == null || Duration.between(lastReminder, Instant.now()) >= REMINDER_INTERVAL
+                if (!due) continue
+                try {
+                    groupMessagingService.sendMessage(
+                        bill.organizerId, bill.groupConversationId,
+                        "⏰ Reminder: you still owe ${formatAmount(participant.shareAmount)} RWF for \"${bill.description}\"",
+                    )
+                    participant.lastReminderSentAt = Instant.now()
+                    splitBillParticipantRepository.save(participant)
+                    remindedCount++
+                } catch (e: Exception) {
+                    log.warn("Split bill reminder skipped for participant {}: {}", participant.id, e.message)
+                }
+            }
+        }
+        return remindedCount
+    }
+
+    companion object {
+        // Real KakaoPay-style 정산 reminder cadence -- once every real 24 hours per
+        // still-unpaid participant, not a spammy repeat.
+        private val REMINDER_INTERVAL: Duration = Duration.ofHours(24)
     }
 }
 
