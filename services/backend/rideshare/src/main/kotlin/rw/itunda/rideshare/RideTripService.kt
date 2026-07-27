@@ -20,6 +20,7 @@ import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.RideDriverRepository
 import rw.itunda.core.repository.RideTripRepository
@@ -62,7 +63,10 @@ class RideNoActiveOfferException(message: String) : RuntimeException(message)
  *
  * The real 15-second offer window (`RideTrip.OFFER_WINDOW`) isn't an invented number --
  * it's directly Kakao's own sourced cancellation-surge threshold, chosen so itunda's own
- * dispatch reassigns before a real passenger would be likely to bail.
+ * dispatch reassigns before a real passenger would be likely to bail. Real push wired
+ * into the ride-offer notification (2026-07-28, see `dispatchToNextDriver`'s own doc
+ * comment) -- the single most time-critical notification site in this backend, since a
+ * driver who misses it within the 15-second window loses the offer entirely.
  *
  * Fare escrow/payout/refund mirrors `EatsOrderService`'s own delivery-fee-holding
  * pattern exactly (a real, already-proven shape, not reinvented): held in `ride_holding`
@@ -78,6 +82,7 @@ class RideTripService(
     private val transactionRepository: TransactionRepository,
     private val notificationRepository: NotificationRepository,
     private val rateLimiter: RateLimiter,
+    private val pushNotificationService: PushNotificationService,
 ) {
     companion object {
         private val platformFeeRate = BigDecimal("0.015")
@@ -222,13 +227,24 @@ class RideTripService(
             rideTripRepository.save(trip)
             next.totalOffers += 1
             rideDriverRepository.save(next)
+            val title = "New ride request"
+            val body = "Pickup at ${trip.pickupAddress} -- ${trip.fare} RWF fare."
             notificationRepository.save(
                 Notification(
                     id = "notif_${UUID.randomUUID()}", userId = next.userId, type = "RIDE_TRIP_OFFER",
-                    title = "New ride request", body = "Pickup at ${trip.pickupAddress} -- ${trip.fare} RWF fare.",
+                    title = title, body = body,
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${trip.id}\"}",
                 ),
             )
+            // Real push wired in (2026-07-28) -- of every notification site in this
+            // backend, this is the single most time-critical: the real 15-second
+            // OFFER_WINDOW above means a driver who doesn't see this within seconds
+            // loses the offer to the next-ranked driver entirely, not just "misses it
+            // for a while" the way every other in-app-only notification here does.
+            // PushNotificationService.sendToUser never throws (best-effort per-token
+            // internally), so this can't turn a successful dispatch into a logged
+            // "dispatch failed" warning below.
+            pushNotificationService.sendToUser(next.userId, title, body, mapOf("tripId" to trip.id))
         } catch (e: Exception) {
             log.warn("Ride dispatch failed for trip {}: {}", trip.id, e.message)
         }

@@ -15,6 +15,7 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.RideDriverRepository
 import rw.itunda.core.repository.RideTripRepository
@@ -42,7 +43,8 @@ class RideTripServiceTest : BehaviorSpec({
         transactionRepository: TransactionRepository = mockk<TransactionRepository>(relaxed = true).also { every { it.save(any()) } answers { firstArg() } },
         notificationRepository: NotificationRepository = mockk(relaxed = true),
         rateLimiter: RateLimiter = mockk(relaxed = true),
-    ) = RideTripService(rideDriverRepository, rideTripRepository, walletRepository, ledgerService, transactionRepository, notificationRepository, rateLimiter)
+        pushNotificationService: PushNotificationService = mockk(relaxed = true),
+    ) = RideTripService(rideDriverRepository, rideTripRepository, walletRepository, ledgerService, transactionRepository, notificationRepository, rateLimiter, pushNotificationService)
 
     Given("a real passenger with sufficient balance and one real nearby driver") {
         val rideDriverRepository = mockk<RideDriverRepository>()
@@ -51,9 +53,11 @@ class RideTripServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
             walletRepository = walletRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
+            pushNotificationService = pushNotificationService,
         )
 
         val passengerWallet = Wallet(
@@ -84,6 +88,10 @@ class RideTripServiceTest : BehaviorSpec({
                 savedSlot.captured.offeredDriverId shouldBe "driver_1"
                 (savedSlot.captured.offerExpiresAt != null) shouldBe true
                 verify { notificationRepository.save(match { it.type == "RIDE_TRIP_OFFER" && it.userId == "driver_user_1" }) }
+            }
+
+            Then("the offered driver also gets a real push notification, not just the in-app one -- critical given the 15-second window") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("driver_user_1", "New ride request", any(), any()) }
             }
         }
     }
@@ -146,9 +154,11 @@ class RideTripServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
             walletRepository = walletRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
+            pushNotificationService = pushNotificationService,
         )
 
         val driver = RideDriver(id = "driver_3", userId = "driver_user_3", walletId = "wallet_driver_3", available = true)
@@ -218,9 +228,11 @@ class RideTripServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = newService(
             rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
             walletRepository = walletRepository, ledgerService = ledgerService, notificationRepository = notificationRepository,
+            pushNotificationService = pushNotificationService,
         )
 
         val passengerWallet = Wallet(
