@@ -38,7 +38,9 @@ enum class SplitBillMode { EVEN, LADDER }
  * Section 6. Scheduled reminder nudges closed 2026-07-27 -- see
  * `SplitBillReminderScheduler`'s own doc comment. Photo receipt attach closed 2026-07-28
  * -- see `SplitBillService.attachReceipt`'s own doc comment. Multi-round tracking (up
- * to 5) remains the one still-open, deferred follow-up.
+ * to 5) closed 2026-07-28 -- see `SplitBillService.requestNextRound`'s own doc comment.
+ * Every one of KakaoPay's four named 정산하기 differentiators from
+ * `docs/DESIGN_REFERENCES.md` is now real.
  */
 @Entity
 @Table(name = "split_bills")
@@ -86,6 +88,12 @@ class SplitBill(
     // UpdateProfilePhotoRequest already established. NULL means no receipt attached yet.
     @Column(name = "receipt_image_url", length = 2048)
     var receiptImageUrl: String? = null,
+
+    // Real KakaoPay-style up-to-5 sequential settlement "round" counter (2026-07-28) --
+    // see SplitBillService.requestNextRound's own doc comment. Starts at 1 (the original
+    // request itself is round 1); never exceeds MAX_ROUNDS.
+    @Column(name = "current_round", nullable = false)
+    var currentRound: Int = 1,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),

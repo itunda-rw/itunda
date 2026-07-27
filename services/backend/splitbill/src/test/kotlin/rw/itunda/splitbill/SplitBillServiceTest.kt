@@ -312,6 +312,108 @@ class SplitBillServiceTest : BehaviorSpec({
         }
     }
 
+    // Real up-to-5 settlement-round escalation (2026-07-28) -- see
+    // SplitBillService.requestNextRound's own doc comment.
+    Given("a real OPEN split bill with one real PENDING participant and its real organizer") {
+        val splitBillRepository = mockk<SplitBillRepository>()
+        val splitBillParticipantRepository = mockk<SplitBillParticipantRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val transactionRepository = mockk<TransactionRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val groupMessagingService = mockk<GroupMessagingService>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val service = SplitBillService(
+            splitBillRepository, splitBillParticipantRepository, walletRepository,
+            transactionRepository, ledgerService, groupMessagingService, rateLimiter,
+        )
+
+        val splitBill = SplitBill(
+            id = "splitbill_1", organizerId = "user_organizer", groupConversationId = "group_1",
+            messageId = "group_message_1", totalAmount = BigDecimal("1000.00"), description = "Dinner",
+        )
+        val pendingParticipant = SplitBillParticipant(
+            id = "participant_1", splitBillId = "splitbill_1", userId = "user_a", shareAmount = BigDecimal("500.00"),
+        )
+        every { splitBillRepository.findById("splitbill_1") } returns Optional.of(splitBill)
+        every { splitBillRepository.save(any()) } answers { firstArg() }
+        every { splitBillParticipantRepository.findBySplitBillId("splitbill_1") } returns listOf(pendingParticipant)
+
+        When("the real organizer requests the next settlement round") {
+            val result = service.requestNextRound("user_organizer", "splitbill_1")
+
+            Then("it real-increments the round counter and re-announces to the group") {
+                result.currentRound shouldBe 2
+                verify(exactly = 1) { groupMessagingService.sendMessage("user_organizer", "group_1", any()) }
+            }
+        }
+
+        When("someone who isn't the real organizer tries to request the next round") {
+            Then("it real-404s rather than revealing the split bill exists") {
+                try {
+                    service.requestNextRound("user_stranger", "splitbill_1")
+                    error("expected SplitBillNotFoundException")
+                } catch (e: SplitBillNotFoundException) {
+                    // expected
+                }
+            }
+        }
+
+        When("every participant has already paid") {
+            every { splitBillParticipantRepository.findBySplitBillId("splitbill_1") } returns listOf(
+                SplitBillParticipant(
+                    id = "participant_1", splitBillId = "splitbill_1", userId = "user_a", shareAmount = BigDecimal("500.00"),
+                    status = SplitBillParticipantStatus.PAID,
+                ),
+            )
+
+            Then("it throws SplitBillNoPendingParticipantsException before touching the round counter") {
+                try {
+                    service.requestNextRound("user_organizer", "splitbill_1")
+                    error("expected SplitBillNoPendingParticipantsException")
+                } catch (e: SplitBillNoPendingParticipantsException) {
+                    verify(exactly = 0) { splitBillRepository.save(any()) }
+                }
+            }
+        }
+
+        When("the split bill is already SETTLED") {
+            val settledBill = SplitBill(
+                id = "splitbill_settled", organizerId = "user_organizer", groupConversationId = "group_1",
+                messageId = "group_message_1", totalAmount = BigDecimal("1000.00"), description = "Dinner",
+                status = SplitBillStatus.SETTLED,
+            )
+            every { splitBillRepository.findById("splitbill_settled") } returns Optional.of(settledBill)
+
+            Then("it throws SplitBillAlreadySettledException") {
+                try {
+                    service.requestNextRound("user_organizer", "splitbill_settled")
+                    error("expected SplitBillAlreadySettledException")
+                } catch (e: SplitBillAlreadySettledException) {
+                    // expected
+                }
+            }
+        }
+
+        When("the split bill is already at the maximum of 5 rounds") {
+            val maxedBill = SplitBill(
+                id = "splitbill_maxed", organizerId = "user_organizer", groupConversationId = "group_1",
+                messageId = "group_message_1", totalAmount = BigDecimal("1000.00"), description = "Dinner",
+                currentRound = 5,
+            )
+            every { splitBillRepository.findById("splitbill_maxed") } returns Optional.of(maxedBill)
+            every { splitBillParticipantRepository.findBySplitBillId("splitbill_maxed") } returns listOf(pendingParticipant)
+
+            Then("it throws SplitBillMaxRoundsReachedException") {
+                try {
+                    service.requestNextRound("user_organizer", "splitbill_maxed")
+                    error("expected SplitBillMaxRoundsReachedException")
+                } catch (e: SplitBillMaxRoundsReachedException) {
+                    verify(exactly = 0) { splitBillRepository.save(any()) }
+                }
+            }
+        }
+    }
+
     // Real scheduled reminder nudges (2026-07-27) -- see SplitBillReminderScheduler's
     // own doc comment.
     Given("a real OPEN split bill with a real never-yet-reminded PENDING participant") {

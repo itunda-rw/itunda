@@ -38,6 +38,9 @@ class SplitBillNoWalletException(message: String) : RuntimeException(message)
 class SplitBillDescriptionRequiredException(message: String) : RuntimeException(message)
 class SplitBillInvalidVarianceLevelException(message: String) : RuntimeException(message)
 class SplitBillInvalidReceiptUrlException(message: String) : RuntimeException(message)
+class SplitBillAlreadySettledException(message: String) : RuntimeException(message)
+class SplitBillNoPendingParticipantsException(message: String) : RuntimeException(message)
+class SplitBillMaxRoundsReachedException(message: String) : RuntimeException(message)
 
 data class SplitBillWithParticipants(val splitBill: SplitBill, val participants: List<SplitBillParticipant>)
 
@@ -52,10 +55,10 @@ data class SplitBillWithParticipants(val splitBill: SplitBill, val participants:
  * alone would just be re-doing Toss": this ports the even-split mechanic (the floor) plus
  * exactly one of KakaoPay's real differentiators -- silent rounding-remainder absorption,
  * the most tractable of the four named in the design doc. Of the other three real,
- * named follow-ups, three are now closed: the randomized "사다리타기" ladder-game mode
+ * named follow-ups, all four are now closed: the randomized "사다리타기" ladder-game mode
  * (`ladderSplit`, 2026-07-25), scheduled reminder nudges (`SplitBillReminderScheduler`,
- * 2026-07-27), and photo receipt attach (`attachReceipt`, 2026-07-28). The
- * up-to-5-tracked-rounds mechanic remains the one still-open, deferred follow-up.
+ * 2026-07-27), photo receipt attach (`attachReceipt`, 2026-07-28), and up-to-5-tracked
+ * settlement rounds (`requestNextRound`, 2026-07-28).
  */
 @Service
 class SplitBillService(
@@ -260,6 +263,46 @@ class SplitBillService(
         return splitBillRepository.save(splitBill)
     }
 
+    /**
+     * Real KakaoPay-style explicit settlement "round" escalation -- distinct from
+     * [sendDueReminders]'s automatic, silent, every-24h per-participant nudge. Round 1 is
+     * the original request itself (sent at [createSplitBill] time); the organizer calling
+     * this explicitly starts a NEW round, re-announcing the request in the same group
+     * thread to whoever is still unpaid, with the round number itself now visible as a
+     * real, growing signal of how overdue the settlement is. Capped at [MAX_ROUNDS]
+     * (KakaoPay's own real "up to 5" ceiling, `docs/DESIGN_REFERENCES.md` Section 6/7) --
+     * prevents indefinite re-nudging spam, mirroring the reminder cadence's own
+     * anti-spam discipline in a different shape (organizer-initiated cap, not a time
+     * interval).
+     */
+    @Transactional
+    fun requestNextRound(organizerId: String, splitBillId: String): SplitBill {
+        val splitBill = splitBillRepository.findById(splitBillId).orElseThrow { SplitBillNotFoundException("Split bill not found") }
+        if (splitBill.organizerId != organizerId) {
+            throw SplitBillNotFoundException("Split bill not found")
+        }
+        if (splitBill.status != SplitBillStatus.OPEN) {
+            throw SplitBillAlreadySettledException("This split bill is already settled")
+        }
+        val pendingParticipants = splitBillParticipantRepository.findBySplitBillId(splitBillId)
+            .filter { it.status == SplitBillParticipantStatus.PENDING }
+        if (pendingParticipants.isEmpty()) {
+            throw SplitBillNoPendingParticipantsException("Every participant has already paid")
+        }
+        if (splitBill.currentRound >= MAX_ROUNDS) {
+            throw SplitBillMaxRoundsReachedException("Already at the maximum of $MAX_ROUNDS settlement rounds")
+        }
+        splitBill.currentRound += 1
+        val saved = splitBillRepository.save(splitBill)
+
+        val owedList = pendingParticipants.joinToString(", ") { "${formatAmount(it.shareAmount)} RWF" }
+        groupMessagingService.sendMessage(
+            organizerId, splitBill.groupConversationId,
+            "🔁 Settlement round ${saved.currentRound}/$MAX_ROUNDS for \"${splitBill.description}\" -- still owed: $owedList",
+        )
+        return saved
+    }
+
     /** Real per-group split-bill history -- same shape as `GiftService.getGiftsForConversation`,
      * IDOR-checked via `GroupMessagingService.getGroupForMember` rather than trusting the
      * caller's own claimed userId against each row. */
@@ -380,6 +423,10 @@ class SplitBillService(
         // Real KakaoPay-style 정산 reminder cadence -- once every real 24 hours per
         // still-unpaid participant, not a spammy repeat.
         private val REMINDER_INTERVAL: Duration = Duration.ofHours(24)
+
+        // Real KakaoPay-style ceiling on organizer-initiated settlement rounds -- see
+        // requestNextRound's own doc comment.
+        const val MAX_ROUNDS: Int = 5
     }
 }
 

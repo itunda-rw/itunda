@@ -21,11 +21,14 @@ import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.splitbill.SplitBillAlreadyPaidException
+import rw.itunda.splitbill.SplitBillAlreadySettledException
 import rw.itunda.splitbill.SplitBillDescriptionRequiredException
 import rw.itunda.splitbill.SplitBillInvalidAmountException
 import rw.itunda.splitbill.SplitBillInvalidReceiptUrlException
 import rw.itunda.splitbill.SplitBillInvalidVarianceLevelException
+import rw.itunda.splitbill.SplitBillMaxRoundsReachedException
 import rw.itunda.splitbill.SplitBillNeedsParticipantsException
+import rw.itunda.splitbill.SplitBillNoPendingParticipantsException
 import rw.itunda.splitbill.SplitBillNoWalletException
 import rw.itunda.splitbill.SplitBillNotFoundException
 import rw.itunda.splitbill.SplitBillParticipantNotGroupMemberException
@@ -101,6 +104,18 @@ class SplitBillController(private val splitBillService: SplitBillService, privat
         return ResponseEntity.ok(mapOf("success" to true, "splitBill" to splitBill))
     }
 
+    // Real up-to-5 settlement-round escalation (2026-07-28) -- see
+    // SplitBillService.requestNextRound's own doc comment. Not money-moving, no
+    // Idempotency-Key requirement, same discipline attachReceipt above establishes.
+    @PostMapping("/{id}/next-round")
+    fun requestNextRound(
+        @PathVariable id: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val splitBill = splitBillService.requestNextRound(currentUser.userId, id)
+        return ResponseEntity.ok(mapOf("success" to true, "splitBill" to splitBill))
+    }
+
     @PostMapping("/{id}/pay")
     fun payShare(
         @PathVariable id: String,
@@ -149,6 +164,18 @@ class SplitBillController(private val splitBillService: SplitBillService, privat
     @ExceptionHandler(SplitBillNoWalletException::class)
     fun handleNoWallet(ex: SplitBillNoWalletException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(SplitBillAlreadySettledException::class)
+    fun handleAlreadySettled(ex: SplitBillAlreadySettledException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("SPLIT_BILL_ALREADY_SETTLED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(SplitBillNoPendingParticipantsException::class)
+    fun handleNoPendingParticipants(ex: SplitBillNoPendingParticipantsException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("SPLIT_BILL_NO_PENDING_PARTICIPANTS", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(SplitBillMaxRoundsReachedException::class)
+    fun handleMaxRoundsReached(ex: SplitBillMaxRoundsReachedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("SPLIT_BILL_MAX_ROUNDS_REACHED", ex.message ?: "Conflict"))
 
     @ExceptionHandler(InsufficientFundsException::class)
     fun handleInsufficientFunds(ex: InsufficientFundsException) =
