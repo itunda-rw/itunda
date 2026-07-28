@@ -59,6 +59,9 @@ data class PublicUser(
     val neighborhood: String? = null,
     val neighborhoodVerifiedAt: String? = null,
     val neighborhoodVerificationCount: Int = 0,
+    // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
+    // MiniWalletService.kt's own doc comment. Set via AuthApi.setBirthDate.
+    val birthDate: String? = null,
 )
 
 data class AuthResponse(
@@ -97,6 +100,12 @@ interface AuthApi {
     @POST("api/v1/auth/profile/neighborhood")
     suspend fun setNeighborhood(@Body request: SetNeighborhoodRequest): ProfileResponse
 
+    // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
+    // AuthService.setBirthDate's own doc comment. birthDate is an ISO-8601 date
+    // string ("YYYY-MM-DD").
+    @POST("api/v1/auth/profile/birth-date")
+    suspend fun setBirthDate(@Body request: SetBirthDateRequest): ProfileResponse
+
     // Real device binding (2026-07-21 port) -- mirrors bank-mfe's lib/device.ts
     // fetchMyDevices/verifyDevice/revokeDevice exactly (same real endpoints, same
     // shapes). See AuthController.kt on the backend for the real contract: verify
@@ -114,6 +123,7 @@ interface AuthApi {
 
 data class ProfileResponse(val success: Boolean, val user: PublicUser)
 data class SetNeighborhoodRequest(val latitude: Double, val longitude: Double)
+data class SetBirthDateRequest(val birthDate: String)
 
 // Mirrors services/backend/core/.../domain/TrustedDevice.kt exactly.
 data class TrustedDeviceDto(
@@ -2137,6 +2147,15 @@ interface ApiService {
 
     @POST("api/v1/upfront-deposits/{id}/withdraw")
     suspend fun withdrawUpfrontDeposit(@Path("id") id: String): UpfrontDepositResponse
+
+    // Real KakaoBank mini-style capped starter wallet (rw.itunda.wallet.
+    // MiniWalletService, 2026-07-28) -- first mobile client for this feature (item 100),
+    // mirroring bank-mfe's lib/miniWallet.ts equivalent added one item earlier.
+    @POST("api/v1/wallet/mini/open")
+    suspend fun openMiniWallet(): OpenMiniWalletResponse
+
+    @POST("api/v1/wallet/mini/deposit")
+    suspend fun depositMiniWallet(@Body request: DepositMiniWalletRequest): DepositMiniWalletResponse
 }
 
 data class UpfrontDepositDto(
@@ -2149,6 +2168,12 @@ data class UpfrontDepositResponse(val success: Boolean, val deposit: UpfrontDepo
 data class UpfrontDepositsResponse(val success: Boolean, val deposits: List<UpfrontDepositDto>)
 
 data class TransactionHistoryResponse(val success: Boolean, val transactions: List<TransactionDto>)
+
+// Real KakaoBank mini-style capped starter wallet -- see MiniWalletService.kt's own
+// doc comment (real balance/daily/monthly caps plus a real 7-18 age-eligibility gate).
+data class OpenMiniWalletResponse(val success: Boolean, val wallet: Wallet)
+data class DepositMiniWalletRequest(val amount: java.math.BigDecimal)
+data class DepositMiniWalletResponse(val success: Boolean, val id: String, val amount: java.math.BigDecimal, val completedAt: String)
 
 // Real offline-action-queue replay (2026-07-13) -- mirrors
 // services/backend/offline/src/main/kotlin/rw/itunda/offline/web/ActionsBatchController.kt
@@ -2200,6 +2225,17 @@ fun isKycRequiredError(e: retrofit2.HttpException): Boolean {
     } catch (_: Exception) {
         false
     }
+}
+
+// Generic form of isDeviceNotVerifiedError/isKycRequiredError above, for call sites
+// (like the Mini wallet's birth-date/age gate, 2026-07-28) that need to distinguish
+// between multiple real ApiError codes on the same HTTP status rather than just a
+// single yes/no check.
+fun apiErrorCode(e: retrofit2.HttpException): String? = try {
+    val body = e.response()?.errorBody()?.string() ?: return null
+    com.google.gson.JsonParser.parseString(body).asJsonObject.get("code")?.asString
+} catch (_: Exception) {
+    null
 }
 
 // Network Client Singleton

@@ -248,6 +248,7 @@ fun ItundaAppScreen(
         // screen (2026-07-25) -- same "backend existed with zero mobile UI" gap
         // WeeklySavingsScreen closed above.
         var showUpfrontDeposit by rememberSaveable { mutableStateOf(false) }
+        var showMiniWallet by rememberSaveable { mutableStateOf(false) }
         // Real 토스뱅크 외화통장 (foreign-currency account) screen (2026-07-25) -- same
         // "backend existed with zero mobile UI" gap-close pattern as the two above.
         var showForeignCurrency by rememberSaveable { mutableStateOf(false) }
@@ -690,6 +691,13 @@ fun ItundaAppScreen(
             UpfrontDepositScreen(onBack = { showUpfrontDeposit = false })
             return@IdsTheme
         }
+        // Real KakaoBank mini-style capped starter wallet screen (2026-07-28, item 100)
+        // -- first mobile client for this feature. Same pattern.
+        if (showMiniWallet) {
+            BackHandler { showMiniWallet = false }
+            MiniWalletScreen(onBack = { showMiniWallet = false })
+            return@IdsTheme
+        }
         // Real 토스뱅크 외화통장 screen (2026-07-25) -- same pattern.
         if (showForeignCurrency) {
             BackHandler { showForeignCurrency = false }
@@ -791,6 +799,7 @@ fun ItundaAppScreen(
                             onOpenIdentity = { showIdentity = true },
                             onOpenWeeklySavings = { showWeeklySavings = true },
                             onOpenUpfrontDeposit = { showUpfrontDeposit = true },
+                            onOpenMiniWallet = { showMiniWallet = true },
                             onOpenForeignCurrency = { showForeignCurrency = true },
                             onOpenTransferHub = { showTransferHub = true },
                             onClaimInterest = { savingsFlowStep = SavingsFlowStep.ClaimInterest },
@@ -1309,6 +1318,7 @@ private fun MenuScreen(
     onOpenIdentity: () -> Unit = {},
     onOpenWeeklySavings: () -> Unit = {},
     onOpenUpfrontDeposit: () -> Unit = {},
+    onOpenMiniWallet: () -> Unit = {},
     onOpenForeignCurrency: () -> Unit = {},
     onOpenTransferHub: () -> Unit = {},
     onClaimInterest: () -> Unit = {},
@@ -1437,6 +1447,7 @@ private fun MenuScreen(
                 FlatRow("Digital certificate", subtitle = "Sign agreements in Itunda", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenCertificate),
                 FlatRow("26-week savings", subtitle = "Escalating weekly deposit plan", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
                 FlatRow("12-month deposit", subtitle = "Interest paid upfront, principal locked", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenUpfrontDeposit),
+                FlatRow("Mini account", subtitle = "Capped starter wallet, ages 7-18", icon = Icons.Outlined.Savings, iconColor = AccentTeal, onClick = onOpenMiniWallet),
                 FlatRow("Foreign currency", subtitle = "Hold and convert USD, EUR, GBP", icon = Icons.Outlined.CurrencyExchange, iconColor = AccentBlue, onClick = onOpenForeignCurrency),
                 FlatRow("Mobile plan", subtitle = "MTN, Airtel, broadband", icon = Icons.Outlined.Public, iconColor = AccentTeal)
             ))
