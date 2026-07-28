@@ -20,6 +20,7 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.EmoticonPackRepository
 import rw.itunda.core.repository.EmoticonRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -50,9 +51,11 @@ class EmoticonServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = EmoticonService(
             emoticonPackRepository, emoticonRepository, userEmoticonPackRepository, walletRepository,
             userRepository, notificationRepository, ledgerService, messagingService, groupMessagingService, rateLimiter,
+            pushNotificationService,
         )
 
         When("purchasing a pack they don't already own") {
@@ -135,9 +138,11 @@ class EmoticonServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = EmoticonService(
             emoticonPackRepository, emoticonRepository, userEmoticonPackRepository, walletRepository,
             userRepository, notificationRepository, ledgerService, messagingService, groupMessagingService, rateLimiter,
+            pushNotificationService,
         )
 
         val recipient = User(id = "user_recipient", phoneNumber = "+250788000002", firstName = "Recipient", lastName = "Test", passwordHash = "hash")
@@ -166,6 +171,10 @@ class EmoticonServiceTest : BehaviorSpec({
             }
             Then("it real-notifies the recipient of the gift") {
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "user_recipient" && it.type == "EMOTICON_PACK_GIFTED" }) }
+            }
+
+            Then("the recipient also gets a real mobile push notification, not just the in-app one") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_recipient", "You received a gift!", any(), any()) }
             }
         }
 
@@ -226,9 +235,11 @@ class EmoticonServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val userRepository = mockk<UserRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = EmoticonService(
             emoticonPackRepository, emoticonRepository, userEmoticonPackRepository, walletRepository,
             userRepository, notificationRepository, ledgerService, messagingService, groupMessagingService, rateLimiter,
+            pushNotificationService,
         )
 
         val emoticon = Emoticon(id = "emoticon_1", packId = "pack_1", imageUrl = "/uploads/smile.png")

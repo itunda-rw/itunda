@@ -13,6 +13,7 @@ import rw.itunda.core.domain.UserEmoticonPack
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.EmoticonPackRepository
 import rw.itunda.core.repository.EmoticonRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -66,6 +67,7 @@ class EmoticonService(
     private val messagingService: MessagingService,
     private val groupMessagingService: GroupMessagingService,
     private val rateLimiter: RateLimiter,
+    private val pushNotificationService: PushNotificationService,
 ) {
     fun listPacks(): List<EmoticonPack> = emoticonPackRepository.findByActiveTrue()
 
@@ -134,13 +136,16 @@ class EmoticonService(
         val gifted = userEmoticonPackRepository.save(
             UserEmoticonPack(id = "user_emoticon_pack_${UUID.randomUUID()}", userId = recipient.id, packId = packId, source = EmoticonAcquisitionSource.GIFTED),
         )
+        val title = "You received a gift!"
+        val body = "Someone sent you the \"${pack.title}\" emoticon pack."
         notificationRepository.save(
             Notification(
                 id = "notif_${UUID.randomUUID()}", userId = recipient.id, type = "EMOTICON_PACK_GIFTED",
-                title = "You received a gift!", body = "Someone sent you the \"${pack.title}\" emoticon pack.",
+                title = title, body = body,
                 isRead = false, createdAt = Instant.now(), dataJson = "{\"packId\":\"$packId\"}",
             ),
         )
+        pushNotificationService.sendToUser(recipient.id, title, body, mapOf("packId" to packId))
         return gifted
     }
 
