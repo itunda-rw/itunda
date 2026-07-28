@@ -19,6 +19,7 @@ import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantBillingPlanRepository
 import rw.itunda.core.repository.MerchantBillingSubscriptionRepository
 import rw.itunda.core.repository.MerchantRepository
@@ -52,10 +53,17 @@ class MerchantBillingServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         every { transactionRepository.save(any()) } answers { firstArg() }
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        // Same known "relaxed mockk can't correctly infer JpaRepository's generic
+        // save() signature" gotcha this project's own tests already document
+        // repeatedly -- explicit stub, doubly needed here since executeCharge wraps
+        // both the notification save and the new push call in one try/catch, so an
+        // internally-thrown ClassCastException on save() silently skips the push too.
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = MerchantBillingService(
             merchantBillingPlanRepository, merchantBillingSubscriptionRepository, merchantRepository,
-            walletRepository, ledgerService, transactionRepository, notificationRepository, rateLimiter,
+            walletRepository, ledgerService, transactionRepository, notificationRepository, rateLimiter, pushNotificationService,
         )
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_merchant", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)
@@ -92,6 +100,10 @@ class MerchantBillingServiceTest : BehaviorSpec({
                 verify(exactly = 1) { notificationRepository.save(capture(notificationSlot)) }
                 notificationSlot.captured.userId shouldBe "customer_1"
                 notificationSlot.captured.type shouldBe "MERCHANT_BILLING_CHARGED"
+            }
+
+            Then("the customer also gets a real mobile push notification, not just the in-app one") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("customer_1", "Subscription charged", any(), any()) }
             }
         }
 
@@ -157,10 +169,17 @@ class MerchantBillingServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         every { transactionRepository.save(any()) } answers { firstArg() }
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        // Same known "relaxed mockk can't correctly infer JpaRepository's generic
+        // save() signature" gotcha this project's own tests already document
+        // repeatedly -- explicit stub, doubly needed here since executeCharge wraps
+        // both the notification save and the new push call in one try/catch, so an
+        // internally-thrown ClassCastException on save() silently skips the push too.
+        every { notificationRepository.save(any()) } answers { firstArg() }
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = MerchantBillingService(
             merchantBillingPlanRepository, merchantBillingSubscriptionRepository, merchantRepository,
-            walletRepository, ledgerService, transactionRepository, notificationRepository, rateLimiter,
+            walletRepository, ledgerService, transactionRepository, notificationRepository, rateLimiter, pushNotificationService,
         )
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_merchant", businessName = "Kigali Coffee", status = MerchantStatus.ACTIVE)

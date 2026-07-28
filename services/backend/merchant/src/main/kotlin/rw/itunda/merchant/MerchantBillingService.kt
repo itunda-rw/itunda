@@ -19,6 +19,7 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantBillingPlanRepository
 import rw.itunda.core.repository.MerchantBillingSubscriptionRepository
 import rw.itunda.core.repository.MerchantRepository
@@ -56,6 +57,7 @@ class MerchantBillingService(
     private val transactionRepository: TransactionRepository,
     private val notificationRepository: NotificationRepository,
     private val rateLimiter: RateLimiter,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private val log = LoggerFactory.getLogger(MerchantBillingService::class.java)
 
@@ -228,13 +230,16 @@ class MerchantBillingService(
         subscription.chargeCount += 1
         subscription.lastChargedAt = Instant.now()
         try {
+            val title = "Subscription charged"
+            val body = "${plan.amount} RWF charged for ${plan.name} at ${merchant.businessName}"
             notificationRepository.save(
                 Notification(
                     id = "notif_${UUID.randomUUID()}", userId = subscription.customerId, type = "MERCHANT_BILLING_CHARGED",
-                    title = "Subscription charged", body = "${plan.amount} RWF charged for ${plan.name} at ${merchant.businessName}",
+                    title = title, body = body,
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"subscriptionId\":\"${subscription.id}\"}",
                 ),
             )
+            pushNotificationService.sendToUser(subscription.customerId, title, body, mapOf("subscriptionId" to subscription.id))
         } catch (e: Exception) {
             // Non-critical -- the real charge already completed and succeeded.
         }
