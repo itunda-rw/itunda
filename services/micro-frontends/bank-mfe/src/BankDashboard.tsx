@@ -40,7 +40,7 @@ import {
   fetchEmoticonImageMap, fetchEmoticonPacks, fetchOwnedEmoticonPacks, fetchPackEmoticons, giftEmoticonPack, purchaseEmoticonPack, sendEmoticon,
   type Emoticon, type EmoticonPack, type OwnedEmoticonPack,
 } from './lib/emoticons';
-import { fetchGiftVouchersForConversation, purchaseGiftVoucher, type GiftVoucher, type GiftVoucherStatus } from './lib/giftVouchers';
+import { extendGiftVoucherExpiry, fetchGiftVouchersForConversation, purchaseGiftVoucher, type GiftVoucher, type GiftVoucherStatus } from './lib/giftVouchers';
 import { createSplitBill, fetchSplitBillsForGroup, paySplitBillShare, type SplitBillWithParticipants } from './lib/splitBill';
 import {
   addKeywordAlert, addListingFavorite, contactSeller, createListing, fetchKeywordAlertQuietHours, fetchKeywordAlerts, fetchListings,
@@ -3020,12 +3020,27 @@ function GiftBubble({
 // (GiftVoucherService.redeemVoucher's own doc comment: a customer presents the
 // voucher in person for the merchant to validate, never a self-serve recipient
 // redeem), so this bubble is status-only -- no claim action, unlike GiftBubble.
-function GiftVoucherBubble({ voucher, isMine }: { voucher: GiftVoucher; isMine: boolean }) {
+// Real Kakao-sourced one-time expiry extension (item 141) -- either the purchaser or
+// recipient may trigger it (GiftVoucherService.extendExpiry's own doc comment: "either
+// real party to the transaction"), only within EXTENSION_WINDOW (30 days) of expiry,
+// and only once per voucher (`extended`). Client-side date check here is a soft UX
+// convenience only -- the backend's own real validation is authoritative.
+const GIFT_VOUCHER_EXTENSION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
+function GiftVoucherBubble({
+  voucher, isMine, onExtend,
+}: {
+  voucher: GiftVoucher; isMine: boolean; onExtend: (voucherId: string) => void;
+}) {
+  const [extending, setExtending] = useState(false);
   const statusLabel: Record<GiftVoucherStatus, string> = {
     ACTIVE: 'Present this at the store to redeem',
     REDEEMED: 'Redeemed',
     EXPIRED: 'Expired',
   };
+  const withinExtensionWindow = new Date(voucher.expiresAt).getTime() - Date.now() <= GIFT_VOUCHER_EXTENSION_WINDOW_MS;
+  const canExtend = voucher.status === 'ACTIVE' && !voucher.extended && withinExtensionWindow;
+
   return (
     <div
       style={{
@@ -3039,6 +3054,24 @@ function GiftVoucherBubble({ voucher, isMine }: { voucher: GiftVoucher; isMine: 
       <p style={{ fontSize: '12px', opacity: 0.8 }}>{statusLabel[voucher.status]}</p>
       {voucher.status === 'ACTIVE' && (
         <p style={{ fontSize: '11px', opacity: 0.7 }}>Expires {new Date(voucher.expiresAt).toLocaleDateString()}</p>
+      )}
+      {canExtend && (
+        <button
+          className="toss-btn toss-btn-secondary"
+          style={{ fontSize: '12px', padding: '6px 10px', alignSelf: 'flex-start' }}
+          disabled={extending}
+          onClick={async () => {
+            setExtending(true);
+            try {
+              await extendGiftVoucherExpiry(voucher.id);
+              onExtend(voucher.id);
+            } finally {
+              setExtending(false);
+            }
+          }}
+        >
+          {extending ? '…' : 'Extend expiry'}
+        </button>
       )}
     </div>
   );
@@ -3765,7 +3798,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
               {gift ? (
                 <GiftBubble gift={gift} isMine={isMine} currentUserId={currentUser?.id} onClaim={handleClaimGift} />
               ) : voucher ? (
-                <GiftVoucherBubble voucher={voucher} isMine={isMine} />
+                <GiftVoucherBubble voucher={voucher} isMine={isMine} onExtend={() => loadVouchers()} />
               ) : offer ? (
                 <OfferBubble offer={offer} isMine={isMine} currentUserId={currentUser?.id} onRespond={handleRespondToOffer} />
               ) : m.emoticonId ? (
