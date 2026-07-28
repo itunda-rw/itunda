@@ -230,6 +230,47 @@ public struct WalletsResponse: Decodable { public let success: Bool; public let 
 public struct SpendingCategoryDto: Decodable { public let name: String; public let amount: Double }
 public struct SpendingInsightResponse: Decodable { public let success: Bool; public let categories: [SpendingCategoryDto]; public let totalSpent: Double }
 
+// Real Kakao T-style ride-hailing -- mirrors RideDriver.kt/RideTrip.kt exactly.
+public struct RideDriverDto: Decodable {
+    public let id: String
+    public let userId: String
+    public let walletId: String
+    public let status: String
+    public let available: Bool
+    public let currentLatitude: Double?
+    public let currentLongitude: Double?
+    public let locationUpdatedAt: String?
+}
+public struct RideDriverResponse: Decodable { public let success: Bool; public let driver: RideDriverDto }
+public struct SetRideDriverAvailabilityRequest: Encodable { public let available: Bool }
+public struct UpdateRideDriverLocationRequest: Encodable { public let latitude: Double; public let longitude: Double }
+public struct RideTripDto: Decodable {
+    public let id: String
+    public let passengerId: String
+    public let driverId: String?
+    public let pickupAddress: String
+    public let pickupLatitude: Double
+    public let pickupLongitude: Double
+    public let dropoffAddress: String
+    public let dropoffLatitude: Double
+    public let dropoffLongitude: Double
+    public let distanceKm: Double
+    public let fare: Double
+    public let platformFee: Double
+    public let status: String
+    public let createdAt: String
+}
+public struct RideTripResponse: Decodable { public let success: Bool; public let trip: RideTripDto }
+public struct RideTripsResponse: Decodable { public let success: Bool; public let trips: [RideTripDto] }
+public struct RequestRideTripRequest: Encodable {
+    public let pickupAddress: String
+    public let pickupLatitude: Double
+    public let pickupLongitude: Double
+    public let dropoffAddress: String
+    public let dropoffLatitude: Double
+    public let dropoffLongitude: Double
+}
+
 public struct SavingsGoal: Decodable {
     public let id: String
     public let userId: String
@@ -271,6 +312,58 @@ extension NetworkClient {
     // this feature (item 108, found backend-only via a fresh matrix scan; bank-mfe/
     // Android ported the same day as items 106/107).
     public func getSpendingInsight() async throws -> SpendingInsightResponse { try await get("api/v1/wallet/spending") }
+
+    // Real Kakao T-style ride-hailing (rw.itunda.rideshare, real since 2026-07-26) --
+    // first iOS client for this feature (item 110, found via a fresh matrix scan;
+    // bank-mfe has had it since the same day, Android ported it the same day as item
+    // 109). Mirrors bank-mfe's lib/rideshare.ts and Android's ApiService.kt exactly.
+    public func registerAsRideDriver() async throws -> RideDriverResponse {
+        try await authenticatedPost("api/v1/rides/drivers/register", body: EmptyBody())
+    }
+
+    public func getMyRideDriverProfile() async throws -> RideDriverResponse { try await get("api/v1/rides/drivers/me") }
+
+    public func setRideDriverAvailability(available: Bool) async throws -> RideDriverResponse {
+        try await authenticatedPost("api/v1/rides/drivers/availability", body: SetRideDriverAvailabilityRequest(available: available))
+    }
+
+    public func updateRideDriverLocation(latitude: Double, longitude: Double) async throws -> RideDriverResponse {
+        try await authenticatedPost("api/v1/rides/drivers/location", body: UpdateRideDriverLocationRequest(latitude: latitude, longitude: longitude))
+    }
+
+    public func requestRideTrip(
+        pickupAddress: String, pickupLatitude: Double, pickupLongitude: Double,
+        dropoffAddress: String, dropoffLatitude: Double, dropoffLongitude: Double
+    ) async throws -> RideTripResponse {
+        try await authenticatedPost(
+            "api/v1/rides/trips",
+            body: RequestRideTripRequest(
+                pickupAddress: pickupAddress, pickupLatitude: pickupLatitude, pickupLongitude: pickupLongitude,
+                dropoffAddress: dropoffAddress, dropoffLatitude: dropoffLatitude, dropoffLongitude: dropoffLongitude
+            ),
+            idempotencyKey: UUID().uuidString
+        )
+    }
+
+    public func getAvailableRideTrips() async throws -> RideTripsResponse { try await get("api/v1/rides/trips/available") }
+    public func getMyRideTrips() async throws -> RideTripsResponse { try await get("api/v1/rides/trips/my-trips") }
+    public func getMyRideDriverTrips() async throws -> RideTripsResponse { try await get("api/v1/rides/trips/my-driver-trips") }
+
+    public func acceptRideTrip(id: String) async throws -> RideTripResponse {
+        try await authenticatedPost("api/v1/rides/trips/\(id)/accept", body: EmptyBody())
+    }
+    public func declineRideTrip(id: String) async throws -> RideTripResponse {
+        try await authenticatedPost("api/v1/rides/trips/\(id)/decline", body: EmptyBody())
+    }
+    public func startRideTrip(id: String) async throws -> RideTripResponse {
+        try await authenticatedPost("api/v1/rides/trips/\(id)/start", body: EmptyBody())
+    }
+    public func completeRideTrip(id: String) async throws -> RideTripResponse {
+        try await authenticatedPost("api/v1/rides/trips/\(id)/complete", body: EmptyBody())
+    }
+    public func cancelRideTrip(id: String) async throws -> RideTripResponse {
+        try await authenticatedPost("api/v1/rides/trips/\(id)/cancel", body: EmptyBody())
+    }
     public func getSavingsGoals() async throws -> SavingsGoalsResponse { try await get("api/v1/savings/goals") }
     public func getInterestJar() async throws -> InterestJarResponse { try await get("api/v1/savings/interest-jar") }
     public func getTransactionHistory() async throws -> TransactionHistoryResponse { try await get("api/v1/wallet/transactions") }
