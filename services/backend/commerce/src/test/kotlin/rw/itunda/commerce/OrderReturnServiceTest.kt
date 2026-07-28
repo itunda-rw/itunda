@@ -20,6 +20,7 @@ import rw.itunda.core.domain.OrderStatus
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -53,7 +54,8 @@ class OrderReturnServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
-        val service = OrderReturnService(orderRepository, orderReturnRequestRepository, merchantRepository, ledgerEntryRepository, ledgerService, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = OrderReturnService(orderRepository, orderReturnRequestRepository, merchantRepository, ledgerEntryRepository, ledgerService, notificationRepository, pushNotificationService)
 
         When("the order was delivered 2 real days ago, within the 7-day window") {
             every { orderRepository.findById("order_1") } returns Optional.of(deliveredOrder(Instant.now().minus(2, ChronoUnit.DAYS)))
@@ -71,6 +73,10 @@ class OrderReturnServiceTest : BehaviorSpec({
             }
             Then("it real-notifies the merchant owner, not the buyer") {
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "seller_1" && it.type == "COMMERCE_RETURN_REQUESTED" }) }
+            }
+
+            Then("the merchant owner also gets a real mobile push notification, not just the in-app one") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("seller_1", "New return request", any(), any()) }
             }
         }
 
@@ -155,7 +161,8 @@ class OrderReturnServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
-        val service = OrderReturnService(orderRepository, orderReturnRequestRepository, merchantRepository, ledgerEntryRepository, ledgerService, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = OrderReturnService(orderRepository, orderReturnRequestRepository, merchantRepository, ledgerEntryRepository, ledgerService, notificationRepository, pushNotificationService)
 
         val pendingReturn = OrderReturnRequest(
             id = "return_1", orderId = "order_1", buyerId = "buyer_1", merchantId = "merchant_1",
@@ -190,6 +197,10 @@ class OrderReturnServiceTest : BehaviorSpec({
             }
             Then("it real-notifies the buyer") {
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_1" && it.type == "COMMERCE_RETURN_DECIDED" }) }
+            }
+
+            Then("the buyer also gets a real mobile push notification, not just the in-app one") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("buyer_1", "Return approved", any(), any()) }
             }
         }
 

@@ -12,6 +12,7 @@ import rw.itunda.core.domain.OrderReturnType
 import rw.itunda.core.domain.OrderStatus
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.LedgerEntryRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -64,6 +65,7 @@ class OrderReturnService(
     private val ledgerEntryRepository: LedgerEntryRepository,
     private val ledgerService: LedgerService,
     private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     companion object {
         val RETURN_WINDOW: Duration = Duration.ofDays(7)
@@ -101,13 +103,16 @@ class OrderReturnService(
         )
         val merchant = merchantRepository.findById(order.merchantId).orElse(null)
         if (merchant != null) {
+            val title = "New ${type.name.lowercase()} request"
+            val body = "A buyer requested a ${type.name.lowercase()} for order ${order.id}."
             notificationRepository.save(
                 Notification(
                     id = "notif_${UUID.randomUUID()}", userId = merchant.ownerUserId, type = "COMMERCE_RETURN_REQUESTED",
-                    title = "New ${type.name.lowercase()} request", body = "A buyer requested a ${type.name.lowercase()} for order ${order.id}.",
+                    title = title, body = body,
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"orderId\":\"${order.id}\",\"returnRequestId\":\"${request.id}\"}",
                 ),
             )
+            pushNotificationService.sendToUser(merchant.ownerUserId, title, body, mapOf("orderId" to order.id, "returnRequestId" to request.id))
         }
         return request
     }
@@ -155,14 +160,16 @@ class OrderReturnService(
         request.updatedAt = Instant.now()
         val saved = orderReturnRequestRepository.save(request)
 
+        val decidedTitle = if (approve) "${request.type.name.lowercase().replaceFirstChar { it.uppercase() }} approved" else "${request.type.name.lowercase().replaceFirstChar { it.uppercase() }} rejected"
+        val decidedBody = if (approve && request.type == OrderReturnType.RETURN) "Your refund has been processed." else if (approve) "The seller approved your exchange." else "The seller rejected your request."
         notificationRepository.save(
             Notification(
                 id = "notif_${UUID.randomUUID()}", userId = request.buyerId, type = "COMMERCE_RETURN_DECIDED",
-                title = if (approve) "${request.type.name.lowercase().replaceFirstChar { it.uppercase() }} approved" else "${request.type.name.lowercase().replaceFirstChar { it.uppercase() }} rejected",
-                body = if (approve && request.type == OrderReturnType.RETURN) "Your refund has been processed." else if (approve) "The seller approved your exchange." else "The seller rejected your request.",
+                title = decidedTitle, body = decidedBody,
                 isRead = false, createdAt = Instant.now(), dataJson = "{\"orderId\":\"${request.orderId}\",\"returnRequestId\":\"${request.id}\"}",
             ),
         )
+        pushNotificationService.sendToUser(request.buyerId, decidedTitle, decidedBody, mapOf("orderId" to request.orderId, "returnRequestId" to request.id))
         return saved
     }
 }
