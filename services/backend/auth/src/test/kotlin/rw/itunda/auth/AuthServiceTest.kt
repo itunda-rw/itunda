@@ -24,6 +24,8 @@ import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.Optional
 
 /**
@@ -580,6 +582,40 @@ class AuthServiceTest : BehaviorSpec({
                     error("expected RateLimitExceededException")
                 } catch (e: RateLimitExceededException) {
                     verify(exactly = 0) { nominatimGeocodingClient.reverseGeocode(any(), any()) }
+                }
+            }
+        }
+
+        When("setting a real, plausible past birth date") {
+            val user = User(id = "user_7", phoneNumber = "+250788000009", firstName = "A", lastName = "B", passwordHash = "x")
+            every { userRepository.findById("user_7") } returns Optional.of(user)
+            every { userRepository.save(any()) } answers { firstArg() }
+
+            val result = service.setBirthDate("user_7", LocalDate.of(2015, 6, 1))
+
+            Then("the real birth date is persisted and returned") {
+                result.birthDate shouldBe LocalDate.of(2015, 6, 1)
+            }
+        }
+
+        When("setting a birth date that's today or in the future") {
+            Then("it throws InvalidBirthDateException before ever touching the repository") {
+                try {
+                    service.setBirthDate("user_7", LocalDate.now(ZoneOffset.UTC).plusDays(1))
+                    error("expected InvalidBirthDateException")
+                } catch (e: InvalidBirthDateException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
+                }
+            }
+        }
+
+        When("setting an implausibly old birth date") {
+            Then("it throws InvalidBirthDateException") {
+                try {
+                    service.setBirthDate("user_7", LocalDate.now(ZoneOffset.UTC).minusYears(121))
+                    error("expected InvalidBirthDateException")
+                } catch (e: InvalidBirthDateException) {
+                    verify(exactly = 0) { userRepository.save(any()) }
                 }
             }
         }

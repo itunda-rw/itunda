@@ -105,6 +105,15 @@ class AuthController(private val authService: AuthService, private val deviceSer
             ),
         )
 
+    // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
+    // AuthService.setBirthDate's own doc comment.
+    @PostMapping("/profile/birth-date")
+    fun setBirthDate(
+        @RequestBody request: SetBirthDateRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any>> =
+        ResponseEntity.ok(mapOf("success" to true, "user" to authService.setBirthDate(currentUser.userId, request.birthDate)))
+
     // Real device binding (2026-07-20) -- see TrustedDevice's own doc comment. Real
     // Toss-style device management: list every real device this account has ever
     // signed in from, which ones are trusted (can move money) vs merely seen.
@@ -193,4 +202,8 @@ class AuthController(private val authService: AuthService, private val deviceSer
     @ExceptionHandler(InvalidProfilePhotoUrlException::class)
     fun handleInvalidProfilePhotoUrl(ex: InvalidProfilePhotoUrlException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PROFILE_PHOTO_URL", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidBirthDateException::class)
+    fun handleInvalidBirthDate(ex: InvalidBirthDateException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_BIRTH_DATE", ex.message ?: "Bad request"))
 }

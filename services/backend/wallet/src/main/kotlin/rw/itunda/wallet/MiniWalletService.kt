@@ -12,10 +12,12 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.TransactionRepository
+import rw.itunda.core.repository.UserRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
+import java.time.Period
 import java.time.ZoneOffset
 import java.util.UUID
 
@@ -23,6 +25,8 @@ class InvalidMiniWalletDepositAmountException(message: String) : RuntimeExceptio
 class MiniWalletBalanceCapExceededException(message: String) : RuntimeException(message)
 class MiniWalletDailyLimitExceededException(message: String) : RuntimeException(message)
 class MiniWalletMonthlyLimitExceededException(message: String) : RuntimeException(message)
+class MiniWalletBirthDateRequiredException(message: String) : RuntimeException(message)
+class MiniWalletAgeIneligibleException(message: String) : RuntimeException(message)
 
 /**
  * Real KakaoBank 카카오뱅크 mini-style limited youth/starter wallet -- Card Gorilla's own
@@ -35,14 +39,20 @@ class MiniWalletMonthlyLimitExceededException(message: String) : RuntimeExceptio
  * already established elsewhere (`AgentCommissionSchedule`'s bands, `HIGH_VALUE_THRESHOLD`)
  * rather than a fabricated currency conversion.
  *
- * **Honestly, deliberately scoped down from the real product**: no age-eligibility gate
- * (`User` has no birthdate/age field anywhere in this backend -- adding real age
- * verification would mean a new registration-flow field, a materially bigger change than
- * this pass), and no merchant-category restriction (blocking specific merchant types
- * needs a real merchant-category classification this codebase doesn't have for card
- * transactions yet). What's real here: the three numeric caps themselves, enforced on a
- * dedicated, real, capped wallet type any account can open and self-fund from their own
- * `MAIN` wallet -- the same real `WALLET`-to-`WALLET` ledger movement
+ * **Real age-eligibility gate added 2026-07-28**, closing this row's own previously-named
+ * gap: KakaoBank's real mini is 만 7세~18세 (age 7-18 inclusive) -- confirmed via
+ * hankyung.com's and sedaily.com's own coverage of the real 2023 age-lowering ("가입 연령
+ * 7∼18세로 확대"), the same articles' family this feature's other caps were sourced from.
+ * `User.birthDate` (opt-in, set once via `AuthService.setBirthDate`) backs this: an
+ * account with no birth date on file, or an age outside 7-18, real-422s opening a Mini
+ * wallet rather than silently allowing it. **Still honestly out of scope**: the real
+ * product's under-14 legal-guardian-consent requirement (a genuine guardian-approval
+ * workflow this codebase has no concept of yet -- named here as a real, separate,
+ * not-yet-started follow-up), and merchant-category restriction (blocking specific
+ * merchant types needs a real merchant-category classification this codebase doesn't
+ * have for card transactions yet). What's real here beyond the caps themselves: a
+ * dedicated, real, capped wallet type any AGE-ELIGIBLE account can open and self-fund
+ * from their own `MAIN` wallet -- the same real `WALLET`-to-`WALLET` ledger movement
  * `StocksService.fundInvestmentWallet` already proved live, just with real spending caps
  * a normal `MAIN`/`SAVINGS` wallet doesn't carry.
  */
@@ -51,11 +61,14 @@ class MiniWalletService(
     private val walletRepository: WalletRepository,
     private val transactionRepository: TransactionRepository,
     private val ledgerService: LedgerService,
+    private val userRepository: UserRepository,
 ) {
     companion object {
         val MAX_BALANCE: BigDecimal = BigDecimal("500000")
         val DAILY_DEPOSIT_LIMIT: BigDecimal = BigDecimal("300000")
         val MONTHLY_DEPOSIT_LIMIT: BigDecimal = BigDecimal("2000000")
+        const val MIN_AGE: Int = 7
+        const val MAX_AGE: Int = 18
     }
 
     // No collision-avoidance loop, same accepted-risk precedent
@@ -68,6 +81,13 @@ class MiniWalletService(
     @Transactional
     fun openMiniWallet(userId: String): Wallet {
         walletRepository.findByUserIdAndType(userId, WalletType.MINI)?.let { return it }
+        val user = userRepository.findById(userId).orElseThrow { WalletNotFoundException("No wallet found for this account") }
+        val birthDate = user.birthDate
+            ?: throw MiniWalletBirthDateRequiredException("Set your birth date before opening a Mini wallet")
+        val age = Period.between(birthDate, LocalDate.now(ZoneOffset.UTC)).years
+        if (age < MIN_AGE || age > MAX_AGE) {
+            throw MiniWalletAgeIneligibleException("Mini wallet is only available for ages $MIN_AGE-$MAX_AGE")
+        }
         val mainWallet = walletRepository.findByUserIdAndType(userId, WalletType.MAIN)
             ?: throw WalletNotFoundException("No wallet found for this account")
         return walletRepository.save(

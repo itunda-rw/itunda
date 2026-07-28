@@ -64,4 +64,12 @@ class MiniWalletController(private val miniWalletService: MiniWalletService) {
     @ExceptionHandler(WalletFrozenException::class)
     fun handleWalletFrozen(ex: WalletFrozenException) =
         ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("WALLET_FROZEN", ex.message ?: "Wallet is frozen"))
+
+    @ExceptionHandler(MiniWalletBirthDateRequiredException::class)
+    fun handleBirthDateRequired(ex: MiniWalletBirthDateRequiredException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MINI_WALLET_BIRTH_DATE_REQUIRED", ex.message ?: "Birth date required"))
+
+    @ExceptionHandler(MiniWalletAgeIneligibleException::class)
+    fun handleAgeIneligible(ex: MiniWalletAgeIneligibleException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MINI_WALLET_AGE_INELIGIBLE", ex.message ?: "Age ineligible"))
 }

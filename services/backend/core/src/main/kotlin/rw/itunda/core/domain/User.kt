@@ -5,6 +5,7 @@ import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
 import java.time.Instant
+import java.time.LocalDate
 
 /**
  * Mirrors backend/src/types/index.ts User + the seed row in
@@ -105,6 +106,14 @@ class User(
     // Marketplace/Jobs/RealEstate rows), a named v1 scope, not a hidden omission.
     @Column(name = "trust_score", nullable = false)
     var trustScore: Int = 30,
+
+    // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
+    // rw.itunda.wallet.MiniWalletService's own doc comment for the sourced KakaoBank
+    // 만 7세~18세 real eligibility window this backs. Nullable and opt-in, same shape
+    // as neighborhood/profilePhotoUrl above -- an existing account has none until it
+    // sets one via AuthService.setBirthDate.
+    @Column(name = "birth_date")
+    var birthDate: LocalDate? = null,
 ) {
     // JPA requires a no-arg constructor; Kotlin generates one only when every
     // property has a default, which id/phoneNumber/etc. intentionally don't.

@@ -12,3 +12,4 @@ class InvalidVerificationTokenException(message: String) : RuntimeException(mess
 class InvalidCoordinatesException(message: String) : RuntimeException(message)
 class NeighborhoodNotResolvedException(message: String) : RuntimeException(message)
 class InvalidProfilePhotoUrlException(message: String) : RuntimeException(message)
+class InvalidBirthDateException(message: String) : RuntimeException(message)

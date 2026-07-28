@@ -1,6 +1,7 @@
 package rw.itunda.auth
 
 import java.time.Instant
+import java.time.LocalDate
 
 data class RegisterRequest(
     val phoneNumber: String,
@@ -44,6 +45,7 @@ data class PublicUser(
     val neighborhood: String?,
     val neighborhoodVerifiedAt: Instant? = null,
     val neighborhoodVerificationCount: Int = 0,
+    val birthDate: LocalDate? = null,
 )
 
 data class AuthResponse(
@@ -65,6 +67,10 @@ data class ConfirmPhoneVerificationRequest(val code: String)
 // A coordinate in, never a self-declared free-text neighborhood name -- AuthService
 // reverse-geocodes it through itunda's own self-hosted Nominatim.
 data class SetNeighborhoodRequest(val latitude: Double, val longitude: Double)
+
+// Real age-eligibility gate for the Mini wallet (2026-07-28) -- see User.birthDate's own
+// doc comment. Set once; AuthService validates it's a real, plausible past date.
+data class SetBirthDateRequest(val birthDate: LocalDate)
 
 // Real device binding (2026-07-20) -- see TrustedDevice's own doc comment. Re-proves
 // password ownership on the caller's own current device (resolved from their JWT).

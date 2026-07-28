@@ -21,6 +21,8 @@ import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.UUID
 
 /**
@@ -263,6 +265,25 @@ class AuthService(
         return user.toPublic()
     }
 
+    // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
+    // MiniWalletService's own doc comment for the sourced 만 7세~18세 real eligibility
+    // window this backs. Set once; a real, plausible past date only -- neither a future
+    // date (obviously wrong input) nor implausibly far in the past (a fat-fingered year).
+    @Transactional
+    fun setBirthDate(userId: String, birthDate: LocalDate): PublicUser {
+        val today = LocalDate.now(ZoneOffset.UTC)
+        if (!birthDate.isBefore(today)) {
+            throw InvalidBirthDateException("Birth date must be in the past")
+        }
+        if (birthDate.isBefore(today.minusYears(120))) {
+            throw InvalidBirthDateException("Birth date is not plausible")
+        }
+        val user = userRepository.findById(userId).orElseThrow { UserNotFoundException("User not found") }
+        user.birthDate = birthDate
+        userRepository.save(user)
+        return user.toPublic()
+    }
+
     // Real, single-use, 30-minute token -- see EmailVerificationToken's doc comment.
     // Delivered via a real Notification (this backend's own existing in-app delivery
     // mechanism, already used for budget alerts) rather than a real email, since there
@@ -387,5 +408,6 @@ class AuthService(
         phoneVerified = phoneVerified,
         neighborhood = neighborhood, neighborhoodVerifiedAt = neighborhoodVerifiedAt,
         neighborhoodVerificationCount = neighborhoodVerificationCount,
+        birthDate = birthDate,
     )
 }
