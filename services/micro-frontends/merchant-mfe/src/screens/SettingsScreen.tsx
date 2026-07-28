@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { ApiError } from '../lib/api';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, type TrustedDevice } from '../lib/device';
-import { getMyIdentitySubmissions, setCategory, setParticipatesInEatsMembership, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant } from '../lib/merchant';
+import { broadcastToFollowers, fetchFollowerCount, getMyIdentitySubmissions, setCategory, setParticipatesInEatsMembership, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant } from '../lib/merchant';
 
 export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merchant; onUpdated: (merchant: Merchant) => void }) {
   const [webhookUrl, setWebhookUrlInput] = useState(merchant.webhookUrl ?? '');
@@ -66,8 +66,95 @@ export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merc
 
       <CategoryCard merchant={merchant} onUpdated={onUpdated} />
       <EatsMembershipParticipationCard merchant={merchant} onUpdated={onUpdated} />
+      <FollowersCard />
       <KybCard merchant={merchant} />
       <DevicesCard />
+    </div>
+  );
+}
+
+// Real Naver Smart Store-style "관심고객" (interested-customer) follower count +
+// broadcast-to-followers (item 118) -- the merchant-owner-facing half of
+// MerchantFollowService; the customer-facing follow/unfollow toggle already shipped
+// on bank-mfe/Android/iOS (item 117). First client anywhere for this half, found via
+// the same content-grep sweep that found item 117.
+function FollowersCard() {
+  const [count, setCount] = useState<number | null>(null);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sentCount, setSentCount] = useState<number | null>(null);
+
+  const load = () => {
+    fetchFollowerCount().then(setCount).catch(() => {
+      // Real, non-critical -- a merchant not yet registered under this account just
+      // sees a blank count rather than a hard error blocking the rest of Settings.
+    });
+  };
+  useEffect(load, []);
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSentCount(null);
+    setSending(true);
+    try {
+      const recipients = await broadcastToFollowers(title, body);
+      setSentCount(recipients);
+      setTitle('');
+      setBody('');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send this broadcast.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="toss-card">
+      <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>Followers</h2>
+      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+        {count === null ? 'Loading…' : `${count} customer${count === 1 ? '' : 's'} following your store`}
+      </p>
+      <form onSubmit={handleSend} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Title</span>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="New arrivals this week"
+            maxLength={100}
+            required
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+          />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Message</span>
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Tell your followers what's new."
+            maxLength={500}
+            required
+            rows={3}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px', resize: 'vertical' }}
+          />
+        </label>
+        <button type="submit" className="toss-btn toss-btn-primary" disabled={sending || count === 0}>
+          {sending ? 'Sending…' : 'Broadcast to followers'}
+        </button>
+        {count === 0 && !error && (
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', margin: 0 }}>You need at least one follower to send a broadcast.</p>
+        )}
+        {error && (
+          <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>
+        )}
+        {sentCount !== null && !error && (
+          <p style={{ fontSize: '13px', color: 'var(--toss-blue)', margin: 0 }}>Sent to {sentCount} follower{sentCount === 1 ? '' : 's'}.</p>
+        )}
+      </form>
     </div>
   );
 }

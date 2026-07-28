@@ -163,6 +163,20 @@ export const setParticipatesInEatsMembership = (participates: boolean) =>
     body: JSON.stringify({ participates }),
   }).then((r) => r.merchant);
 
+// Real Naver Smart Store-style "관심고객" (interested-customer) follower count +
+// broadcast-to-followers -- see MerchantFollowService.kt's own doc comment. Distinct
+// from the customer-facing follow/unfollow already ported to bank-mfe/Android/iOS
+// (item 117): this is the merchant-owner-facing half of the same feature, first client
+// anywhere for it (item 118).
+export const fetchFollowerCount = () =>
+  apiFetch<{ success: boolean; count: number }>('/api/v1/merchant/followers/count').then((r) => r.count);
+
+export const broadcastToFollowers = (title: string, body: string) =>
+  apiFetch<{ success: boolean; recipientCount: number }>('/api/v1/merchant/followers/broadcast', {
+    method: 'POST',
+    body: JSON.stringify({ title, body }),
+  }).then((r) => r.recipientCount);
+
 // Real demo card-processing flow -- see MerchantService.chargeCard's own doc comment
 // on the backend for why this is a real Luhn-validated + simulated authorization, not
 // a real PSP integration. Idempotency-Key required, same convention as every other
