@@ -253,6 +253,33 @@ allTargets.append(
     )
 )
 
+// Real standalone agent-operator app (item 131) -- the physical cash-in/cash-out till
+// operator's own app, the third slice of the "dedicated app per role" effort (rider
+// and merchant apps already done). An agent operator is assigned via ops-mfe's Agents
+// tab (item 129), then signs in here with their existing itunda account -- this app
+// has no register/onboarding screen of its own, matching RiderApp's own precedent.
+// Same rationale as ItundaRiderApp/ItundaMerchantApp: same workspace, no dependency
+// on ItundaApp, no Podfile entry, only CoreDesignSystem. Ported from Android's own
+// :agentapp module, which already had this real cash-in/cash-out/till-count feature
+// set built and working.
+allTargets.append(
+    Target.target(
+        name: "ItundaAgentApp",
+        destinations: .iOS,
+        product: .app,
+        bundleId: "rw.itunda.agent",
+        infoPlist: .extendingDefault(with: [
+            "NSAppTransportSecurity": [
+                "NSAllowsArbitraryLoads": true,
+            ],
+        ]),
+        sources: ["AgentApp/Sources/**"],
+        dependencies: [
+            .target(name: "CoreDesignSystem"),
+        ]
+    )
+)
+
 // Added 2026-07-11 to actually check accessibility focus order (docs/
 // ACCESSIBILITY.md's one remaining open item) against the app's real accessibility
 // tree via XCUITest -- the same underlying tree VoiceOver reads -- rather than
