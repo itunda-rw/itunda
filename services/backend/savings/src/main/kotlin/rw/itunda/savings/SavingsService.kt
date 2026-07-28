@@ -13,6 +13,7 @@ import rw.itunda.core.domain.SavingsGoalStatus
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.SavingsGoalRepository
@@ -55,6 +56,7 @@ class SavingsService(
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
     private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private val log = LoggerFactory.getLogger(SavingsService::class.java)
 
@@ -225,18 +227,21 @@ class SavingsService(
         val lastNudgedAt = jar.lastNudgedAt
         val due = lastNudgedAt == null || Duration.between(lastNudgedAt, Instant.now()).toDays() >= UNCLAIMED_INTEREST_NUDGE_INTERVAL_DAYS
         if (!due) return
+        val title = "You have interest waiting"
+        val body = "${jar.earnedThisMonth} RWF in savings interest is ready to claim -- it's just sitting there until you do."
         notificationRepository.save(
             Notification(
                 id = "notif_${UUID.randomUUID()}",
                 userId = jar.userId,
                 type = "UNCLAIMED_INTEREST",
-                title = "You have interest waiting",
-                body = "${jar.earnedThisMonth} RWF in savings interest is ready to claim -- it's just sitting there until you do.",
+                title = title,
+                body = body,
                 isRead = false,
                 createdAt = Instant.now(),
                 dataJson = "{\"earnedThisMonth\":\"${jar.earnedThisMonth}\"}",
             ),
         )
+        pushNotificationService.sendToUser(jar.userId, title, body, mapOf("earnedThisMonth" to jar.earnedThisMonth.toPlainString()))
         jar.lastNudgedAt = Instant.now()
     }
 }

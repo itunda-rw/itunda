@@ -16,6 +16,7 @@ import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.SavingsGoalRepository
@@ -40,7 +41,8 @@ class SavingsServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, notificationRepository, pushNotificationService)
 
         When("depositing to an owned goal from the default MAIN wallet") {
             val goal = SavingsGoal(
@@ -182,7 +184,8 @@ class SavingsServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, notificationRepository, pushNotificationService)
 
         fun goal(id: String, monthlyContribution: String, lastAutoContributionAt: Instant?, status: SavingsGoalStatus = SavingsGoalStatus.active) = SavingsGoal(
             id = id, userId = "user_1", walletId = "wallet_savings", name = "Goal $id",
@@ -244,7 +247,8 @@ class SavingsServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, notificationRepository, pushNotificationService)
 
         fun jar(userId: String, nextPayoutAt: Instant, rate: Double = 7.5) = InterestJar(
             userId = userId, walletId = "wallet_$userId", balance = BigDecimal.ZERO, rate = rate,
@@ -285,6 +289,10 @@ class SavingsServiceTest : BehaviorSpec({
                     notificationRepository.save(match { it.userId == "user_1" && it.type == "UNCLAIMED_INTEREST" })
                 }
                 theJar.lastNudgedAt shouldNotBe null
+            }
+
+            Then("the account owner also gets a real mobile push notification, not just the in-app one") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", "You have interest waiting", any(), any()) }
             }
         }
 
@@ -330,7 +338,8 @@ class SavingsServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = SavingsService(walletRepository, savingsGoalRepository, interestJarRepository, ledgerService, rateLimiter, notificationRepository, pushNotificationService)
         every { rateLimiter.checkLimit("savings:goal:user_9", limit = 10, window = Duration.ofHours(1)) } throws RateLimitExceededException("Too many requests")
 
         When("they try to create another real goal") {
