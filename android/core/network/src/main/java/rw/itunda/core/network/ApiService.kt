@@ -1308,6 +1308,14 @@ interface ApiService {
     @GET("api/v1/wallet")
     suspend fun getWallets(): WalletResponse
 
+    // Real Kakao Pay 소비 리포트-style spending categorization (rw.itunda.wallet.
+    // WalletService.getSpendingInsight, real since 2026-07-13) -- first Android client
+    // for this feature (item 107, found backend-only via a fresh matrix scan; bank-mfe
+    // ported the same day as item 106). Ledger-based, not the transactions table -- see
+    // the backend's own doc comment for the full account.
+    @GET("api/v1/wallet/spending")
+    suspend fun getSpendingInsight(): SpendingInsightResponse
+
     // Real 토스뱅크 외화통장 (foreign-currency account) equivalent (2026-07-25) -- see
     // rw.itunda.wallet.web.ForeignCurrencyController.
     @POST("api/v1/wallet/foreign-currency/wallets")
@@ -2208,6 +2216,9 @@ data class UpfrontDepositResponse(val success: Boolean, val deposit: UpfrontDepo
 data class UpfrontDepositsResponse(val success: Boolean, val deposits: List<UpfrontDepositDto>)
 
 data class TransactionHistoryResponse(val success: Boolean, val transactions: List<TransactionDto>)
+
+data class SpendingCategoryDto(val name: String, val amount: java.math.BigDecimal)
+data class SpendingInsightResponse(val success: Boolean, val categories: List<SpendingCategoryDto>, val totalSpent: java.math.BigDecimal)
 
 // Real Kakao Bank 모임통장 (group/shared account) equivalent -- mirrors
 // GroupAccount.kt/GroupAccountService.kt exactly.
