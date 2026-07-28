@@ -38,9 +38,10 @@ import {
 } from './lib/messaging';
 import { createSplitBill, fetchSplitBillsForGroup, paySplitBillShare, type SplitBillWithParticipants } from './lib/splitBill';
 import {
-  addListingFavorite, contactSeller, createListing, fetchListings, fetchListingsMyNeighborhood, fetchMyFavoriteListings,
-  fetchMyListings, fetchMyPurchases, fetchOffersForConversation, makeOffer, markListingSold, removeListing, removeListingFavorite,
-  respondToOffer, submitListingReview, type FavoriteListing, type Listing, type PriceOffer, type TrustScores,
+  addKeywordAlert, addListingFavorite, contactSeller, createListing, fetchKeywordAlertQuietHours, fetchKeywordAlerts, fetchListings,
+  fetchListingsMyNeighborhood, fetchMyFavoriteListings, fetchMyListings, fetchMyPurchases, fetchOffersForConversation, makeOffer,
+  markListingSold, removeKeywordAlert, removeListing, removeListingFavorite, respondToOffer, setKeywordAlertQuietHours,
+  submitListingReview, type FavoriteListing, type KeywordAlert, type KeywordAlertQuietHours, type Listing, type PriceOffer, type TrustScores,
 } from './lib/marketplace';
 import { fetchProfile, setBirthDate, setNeighborhood } from './lib/neighborhood';
 import { depositToMiniWallet, openMiniWallet } from './lib/miniWallet';
@@ -4860,10 +4861,141 @@ function ListingWishlistView() {
   );
 }
 
+// Real 당근마켓-style Keyword Alert -- see lib/marketplace.ts's own doc comment. First
+// client UI for this feature on any platform (item 114, found via a content-grep
+// sweep confirming zero client anywhere despite a mature backend). Real, published
+// Karrot 30-keyword-per-user cap enforced server-side; this view surfaces the
+// backend's own real KEYWORD_ALERT_CAP_REACHED error rather than guessing the limit.
+function KeywordAlertsView() {
+  const [alerts, setAlerts] = useState<KeywordAlert[] | null>(null);
+  const [keyword, setKeyword] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [quietHours, setQuietHoursState] = useState<KeywordAlertQuietHours | null | undefined>(undefined);
+  const [quietStart, setQuietStart] = useState('22:00');
+  const [quietEnd, setQuietEnd] = useState('08:00');
+  const [savingQuietHours, setSavingQuietHours] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchKeywordAlerts().then(setAlerts).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your alerts.'));
+    fetchKeywordAlertQuietHours()
+      .then((qh) => {
+        setQuietHoursState(qh);
+        if (qh) { setQuietStart(qh.startTime); setQuietEnd(qh.endTime); }
+      })
+      .catch(() => setQuietHoursState(null));
+  };
+  useEffect(load, []);
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!keyword.trim()) return;
+    setAdding(true);
+    setError(null);
+    try {
+      await addKeywordAlert(keyword.trim());
+      setKeyword('');
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not add this alert.');
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleRemove = async (alertId: string) => {
+    setRemovingId(alertId);
+    try {
+      await removeKeywordAlert(alertId);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not remove this alert.');
+    } finally {
+      setRemovingId(null);
+    }
+  };
+
+  const handleSaveQuietHours = async (enabled: boolean) => {
+    setSavingQuietHours(true);
+    setError(null);
+    try {
+      const updated = await setKeywordAlertQuietHours(quietStart, quietEnd, enabled);
+      setQuietHoursState(updated);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not save quiet hours.');
+    } finally {
+      setSavingQuietHours(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <form onSubmit={handleAdd} className="toss-card" style={{ display: 'flex', gap: '8px' }}>
+        <input
+          type="text" value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="Alert me for (e.g. iPhone 15)"
+          style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+        />
+        <button type="submit" className="toss-btn toss-btn-primary" disabled={adding || !keyword.trim()}>{adding ? '…' : 'Add'}</button>
+      </form>
+
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+
+      {alerts === null ? (
+        <div className="toss-card skeleton" style={{ height: '80px' }} />
+      ) : alerts.length === 0 ? (
+        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No keyword alerts yet -- add one to get notified when a matching listing is posted.</p></div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {alerts.map((a) => (
+            <div key={a.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <p style={{ fontSize: '14px', fontWeight: 700 }}>{a.keyword}</p>
+              <button
+                className="toss-btn toss-btn-secondary" disabled={removingId === a.id} onClick={() => handleRemove(a.id)}
+                style={{ padding: '8px 12px', fontSize: '12px' }}
+              >
+                {removingId === a.id ? 'Removing…' : 'Remove'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {quietHours !== undefined && (
+        <div className="toss-card">
+          <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Quiet hours</h3>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '10px' }}>
+            Don't send alert notifications during these hours.
+          </p>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+            <input
+              type="time" value={quietStart} onChange={(e) => setQuietStart(e.target.value)}
+              style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            />
+            <input
+              type="time" value={quietEnd} onChange={(e) => setQuietEnd(e.target.value)}
+              style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            />
+          </div>
+          <button
+            className={quietHours?.enabled ? 'toss-btn toss-btn-secondary' : 'toss-btn toss-btn-primary'}
+            disabled={savingQuietHours}
+            onClick={() => handleSaveQuietHours(!quietHours?.enabled)}
+            style={{ width: '100%' }}
+          >
+            {savingQuietHours ? '…' : quietHours?.enabled ? 'Turn off quiet hours' : 'Turn on quiet hours'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId: string) => void }) {
   // Real "My purchases" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
   // recommendation #6, see backend ListingRepository's own doc comment.
-  const [view, setView] = useState<'BROWSE' | 'MINE' | 'PURCHASES' | 'NEIGHBORHOOD' | 'WISHLIST'>('BROWSE');
+  const [view, setView] = useState<'BROWSE' | 'MINE' | 'PURCHASES' | 'NEIGHBORHOOD' | 'WISHLIST' | 'ALERTS'>('BROWSE');
   const [listings, setListings] = useState<Listing[] | null>(null);
   // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc comment.
   const [trustScores, setTrustScores] = useState<TrustScores>({});
@@ -4900,7 +5032,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
         });
       return;
     }
-    if (view === 'WISHLIST') return;
+    if (view === 'WISHLIST' || view === 'ALERTS') return;
     const fetcher = view === 'BROWSE' ? fetchListings() : view === 'PURCHASES' ? fetchMyPurchases() : fetchMyListings();
     fetcher
       .then((result) => {
@@ -4934,7 +5066,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'PURCHASES', 'WISHLIST'] as const).map((v) => (
+        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'PURCHASES', 'WISHLIST', 'ALERTS'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -4944,13 +5076,15 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
               backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'PURCHASES' ? 'Purchases' : '♡ Wishlist'}
+            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'PURCHASES' ? 'Purchases' : v === 'WISHLIST' ? '♡ Wishlist' : '🔔 Alerts'}
           </button>
         ))}
       </div>
 
       {view === 'WISHLIST' ? (
         <ListingWishlistView />
+      ) : view === 'ALERTS' ? (
+        <KeywordAlertsView />
       ) : (
         <>
           {view === 'MINE' && <NewListingCard onCreated={load} />}

@@ -176,3 +176,45 @@ export const removeListingFavorite = (listingId: string) =>
 
 export const fetchMyFavoriteListings = () =>
   apiFetch<{ success: boolean; favorites: FavoriteListing[] }>('/api/v1/marketplace/listings/favorites').then((r) => r.favorites);
+
+// Real 당근마켓-style Keyword Alert (rw.itunda.marketplace.KeywordAlertService, real
+// since before this session) -- first client UI for this feature on any platform
+// (item 114, found via a content-grep sweep confirming zero client anywhere).
+// Karrot's own real, published 30-keyword-per-user cap.
+export interface KeywordAlert {
+  id: string;
+  userId: string;
+  keyword: string;
+  createdAt: string;
+}
+
+export interface KeywordAlertQuietHours {
+  id: string;
+  userId: string;
+  startTime: string;
+  endTime: string;
+  enabled: boolean;
+}
+
+export const fetchKeywordAlerts = () =>
+  apiFetch<{ success: boolean; alerts: KeywordAlert[] }>('/api/v1/marketplace/keyword-alerts').then((r) => r.alerts);
+
+export const addKeywordAlert = (keyword: string) =>
+  apiFetch<{ success: boolean; alert: KeywordAlert }>('/api/v1/marketplace/keyword-alerts', {
+    method: 'POST',
+    body: JSON.stringify({ keyword }),
+  }).then((r) => r.alert);
+
+export const removeKeywordAlert = (alertId: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/marketplace/keyword-alerts/${alertId}`, { method: 'DELETE' });
+
+export const fetchKeywordAlertQuietHours = () =>
+  apiFetch<{ success: boolean; quietHours: KeywordAlertQuietHours | null }>('/api/v1/marketplace/keyword-alerts/quiet-hours').then(
+    (r) => r.quietHours,
+  );
+
+export const setKeywordAlertQuietHours = (startTime: string, endTime: string, enabled: boolean) =>
+  apiFetch<{ success: boolean; quietHours: KeywordAlertQuietHours }>('/api/v1/marketplace/keyword-alerts/quiet-hours', {
+    method: 'POST',
+    body: JSON.stringify({ startTime, endTime, enabled }),
+  }).then((r) => r.quietHours);
