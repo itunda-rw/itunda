@@ -2166,6 +2166,49 @@ interface ApiService {
     @POST("api/v1/wallet/mini/deposit")
     suspend fun depositMiniWallet(@Body request: DepositMiniWalletRequest): DepositMiniWalletResponse
 
+    // Real Kakao T-style ride-hailing (rw.itunda.rideshare, real since 2026-07-26) --
+    // first Android client for this feature (item 109, found via a fresh matrix scan:
+    // bank-mfe has had it since the same day, Android/iOS never did). Mirrors
+    // bank-mfe's lib/rideshare.ts exactly.
+    @POST("api/v1/rides/drivers/register")
+    suspend fun registerAsRideDriver(): RideDriverResponse
+
+    @GET("api/v1/rides/drivers/me")
+    suspend fun getMyRideDriverProfile(): RideDriverResponse
+
+    @POST("api/v1/rides/drivers/availability")
+    suspend fun setRideDriverAvailability(@Body request: SetRideDriverAvailabilityRequest): RideDriverResponse
+
+    @POST("api/v1/rides/drivers/location")
+    suspend fun updateRideDriverLocation(@Body request: UpdateRideDriverLocationRequest): RideDriverResponse
+
+    @POST("api/v1/rides/trips")
+    suspend fun requestRideTrip(@Body request: RequestRideTripRequest, @Header("Idempotency-Key") idempotencyKey: String): RideTripResponse
+
+    @GET("api/v1/rides/trips/available")
+    suspend fun getAvailableRideTrips(): RideTripsResponse
+
+    @GET("api/v1/rides/trips/my-trips")
+    suspend fun getMyRideTrips(): RideTripsResponse
+
+    @GET("api/v1/rides/trips/my-driver-trips")
+    suspend fun getMyRideDriverTrips(): RideTripsResponse
+
+    @POST("api/v1/rides/trips/{tripId}/accept")
+    suspend fun acceptRideTrip(@Path("tripId") tripId: String): RideTripResponse
+
+    @POST("api/v1/rides/trips/{tripId}/decline")
+    suspend fun declineRideTrip(@Path("tripId") tripId: String): RideTripResponse
+
+    @POST("api/v1/rides/trips/{tripId}/start")
+    suspend fun startRideTrip(@Path("tripId") tripId: String): RideTripResponse
+
+    @POST("api/v1/rides/trips/{tripId}/complete")
+    suspend fun completeRideTrip(@Path("tripId") tripId: String): RideTripResponse
+
+    @POST("api/v1/rides/trips/{tripId}/cancel")
+    suspend fun cancelRideTrip(@Path("tripId") tripId: String): RideTripResponse
+
     // Real Kakao Bank 모임통장 (group/shared account) equivalent -- first Android client
     // for this feature (item 104, found via a fresh matrix scan: zero client on either
     // mobile platform despite being real and live since well before this session).
@@ -2216,6 +2259,27 @@ data class UpfrontDepositResponse(val success: Boolean, val deposit: UpfrontDepo
 data class UpfrontDepositsResponse(val success: Boolean, val deposits: List<UpfrontDepositDto>)
 
 data class TransactionHistoryResponse(val success: Boolean, val transactions: List<TransactionDto>)
+
+// Real Kakao T-style ride-hailing -- mirrors RideDriver.kt/RideTrip.kt exactly.
+data class RideDriverDto(
+    val id: String, val userId: String, val walletId: String, val status: String, val available: Boolean,
+    val currentLatitude: Double?, val currentLongitude: Double?, val locationUpdatedAt: String?,
+)
+data class RideDriverResponse(val success: Boolean, val driver: RideDriverDto)
+data class SetRideDriverAvailabilityRequest(val available: Boolean)
+data class UpdateRideDriverLocationRequest(val latitude: Double, val longitude: Double)
+data class RideTripDto(
+    val id: String, val passengerId: String, val driverId: String?, val pickupAddress: String,
+    val pickupLatitude: Double, val pickupLongitude: Double, val dropoffAddress: String,
+    val dropoffLatitude: Double, val dropoffLongitude: Double, val distanceKm: Double,
+    val fare: java.math.BigDecimal, val platformFee: java.math.BigDecimal, val status: String, val createdAt: String,
+)
+data class RideTripResponse(val success: Boolean, val trip: RideTripDto)
+data class RideTripsResponse(val success: Boolean, val trips: List<RideTripDto>)
+data class RequestRideTripRequest(
+    val pickupAddress: String, val pickupLatitude: Double, val pickupLongitude: Double,
+    val dropoffAddress: String, val dropoffLatitude: Double, val dropoffLongitude: Double,
+)
 
 data class SpendingCategoryDto(val name: String, val amount: java.math.BigDecimal)
 data class SpendingInsightResponse(val success: Boolean, val categories: List<SpendingCategoryDto>, val totalSpent: java.math.BigDecimal)
