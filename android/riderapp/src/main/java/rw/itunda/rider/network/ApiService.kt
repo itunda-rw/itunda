@@ -89,6 +89,15 @@ data class NotificationDto(
 data class NotificationsResponse(val success: Boolean, val notifications: List<NotificationDto>, val unreadCount: Int)
 data class MarkReadResponse(val success: Boolean)
 
+// Real push device-token registration (item 130) -- see the consumer app's own
+// ApiService.kt doc comment (item 120): PushNotificationService.sendToUser silently
+// no-ops for every real user with no registered token, and this dedicated rider app --
+// the one place a rider actually needs an instant DELIVERY_OFFER/RIDE_TRIP_OFFER push,
+// a real, short accept-or-lose countdown window -- never registered one at all.
+enum class DevicePlatform { ANDROID, IOS, WEB }
+data class RegisterDeviceTokenRequest(val platform: DevicePlatform, val token: String)
+data class SuccessResponse(val success: Boolean)
+
 interface ApiService {
     @POST("api/v1/eats/riders/register")
     suspend fun registerRider(): RiderResponse
@@ -128,6 +137,9 @@ interface ApiService {
 
     @POST("api/v1/notifications/{id}/read")
     suspend fun markNotificationRead(@Path("id") id: String): MarkReadResponse
+
+    @POST("api/v1/notifications/device-tokens")
+    suspend fun registerDeviceToken(@Body request: RegisterDeviceTokenRequest): SuccessResponse
 }
 
 /**
@@ -140,13 +152,18 @@ object NetworkClient {
     private const val BASE_URL = BuildConfig.API_BASE_URL
 
     private var tokenStore: TokenStore? = null
+    private var deviceStore: DeviceStore? = null
 
     fun init(context: Context) {
         tokenStore = TokenStore(context.applicationContext)
+        deviceStore = DeviceStore(context.applicationContext)
     }
 
     fun currentTokenStore(): TokenStore =
         tokenStore ?: throw IllegalStateException("NetworkClient.init() was never called")
+
+    fun currentDeviceStore(): DeviceStore =
+        deviceStore ?: throw IllegalStateException("NetworkClient.init() was never called")
 
     private val authInterceptor = Interceptor { chain ->
         val token = tokenStore?.getAccessToken()

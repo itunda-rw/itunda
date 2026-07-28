@@ -40,6 +40,14 @@ interface AgentApi {
 
 interface AuthApi { @POST("api/v1/auth/login") suspend fun login(@Body request: LoginRequest): AuthResponse }
 
+// Real push device-token registration (item 130) -- see riderapp's own NetworkClient.kt
+// doc comment, same pass: PushNotificationService.sendToUser silently no-ops for every
+// real user with no registered token, and this app never registered one at all.
+enum class DevicePlatform { ANDROID, IOS, WEB }
+data class RegisterDeviceTokenRequest(val platform: DevicePlatform, val token: String)
+data class SuccessResponse(val success: Boolean)
+interface NotificationsApi { @POST("api/v1/notifications/device-tokens") suspend fun registerDeviceToken(@Body request: RegisterDeviceTokenRequest): SuccessResponse }
+
 class TokenStore(context: Context) {
     private val masterKey = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
     private val prefs = EncryptedSharedPreferences.create(context, "itunda_agent_session", masterKey, EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV, EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM)
@@ -51,12 +59,18 @@ class TokenStore(context: Context) {
 
 object NetworkClient {
     private var tokenStore: TokenStore? = null
-    fun init(context: Context) { tokenStore = TokenStore(context.applicationContext) }
+    private var deviceStore: DeviceStore? = null
+    fun init(context: Context) {
+        tokenStore = TokenStore(context.applicationContext)
+        deviceStore = DeviceStore(context.applicationContext)
+    }
     fun session(): TokenStore = requireNotNull(tokenStore) { "NetworkClient.init() was never called" }
+    fun device(): DeviceStore = requireNotNull(deviceStore) { "NetworkClient.init() was never called" }
     private val client = OkHttpClient.Builder().addInterceptor(Interceptor { chain ->
         chain.proceed(chain.request().newBuilder().apply { session().token()?.let { addHeader("Authorization", "Bearer $it") } }.build())
     }).build()
     private val retrofit by lazy { Retrofit.Builder().baseUrl(BuildConfig.API_BASE_URL).client(client).addConverterFactory(GsonConverterFactory.create()).build() }
     val agentApi: AgentApi by lazy { retrofit.create(AgentApi::class.java) }
     val authApi: AuthApi by lazy { retrofit.create(AuthApi::class.java) }
+    val notificationsApi: NotificationsApi by lazy { retrofit.create(NotificationsApi::class.java) }
 }

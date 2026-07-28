@@ -19,8 +19,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import rw.itunda.agent.network.DevicePlatform
 import rw.itunda.agent.network.LoginRequest
 import rw.itunda.agent.network.NetworkClient
+import rw.itunda.agent.network.RegisterDeviceTokenRequest
 import rw.itunda.core.designsystem.components.IdsButton
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.designsystem.theme.IdsTypography
@@ -52,6 +54,18 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     // Validate the role before leaving the sign-in screen. A normal
                     // consumer login must not look like a usable cashier session.
                     NetworkClient.agentApi.me()
+                    // Real push device-token registration (item 130) -- best-effort,
+                    // fire-and-forget: a registration failure must never block an
+                    // otherwise successful login. See NetworkClient.kt's own doc comment.
+                    scope.launch {
+                        try {
+                            NetworkClient.notificationsApi.registerDeviceToken(
+                                RegisterDeviceTokenRequest(DevicePlatform.ANDROID, NetworkClient.device().getOrCreateDeviceId()),
+                            )
+                        } catch (e: Exception) {
+                            // Best-effort, see doc comment above.
+                        }
+                    }
                     onLoggedIn()
                 } catch (_: Exception) {
                     NetworkClient.session().clear()

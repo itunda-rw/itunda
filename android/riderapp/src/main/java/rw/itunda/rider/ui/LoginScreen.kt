@@ -25,8 +25,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
+import rw.itunda.rider.network.DevicePlatform
 import rw.itunda.rider.network.LoginRequest
 import rw.itunda.rider.network.NetworkClient
+import rw.itunda.rider.network.RegisterDeviceTokenRequest
 import java.io.IOException
 
 @Composable
@@ -80,6 +82,18 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                     try {
                         val res = NetworkClient.authApi.login(LoginRequest(phoneNumber.trim(), password))
                         NetworkClient.currentTokenStore().saveSession(res.user.id, res.accessToken, res.refreshToken)
+                        // Real push device-token registration (item 130) -- best-effort,
+                        // fire-and-forget: a registration failure must never block an
+                        // otherwise successful login. See ApiService.kt's own doc comment.
+                        scope.launch {
+                            try {
+                                NetworkClient.apiService.registerDeviceToken(
+                                    RegisterDeviceTokenRequest(DevicePlatform.ANDROID, NetworkClient.currentDeviceStore().getOrCreateDeviceId()),
+                                )
+                            } catch (e: Exception) {
+                                // Best-effort, see doc comment above.
+                            }
+                        }
                         onLoggedIn()
                     } catch (e: HttpException) {
                         error = if (e.code() == 401) "Incorrect phone number or password." else "Couldn't reach itunda. Try again."

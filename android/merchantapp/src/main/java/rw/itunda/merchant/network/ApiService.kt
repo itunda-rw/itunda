@@ -256,7 +256,19 @@ interface ApiService {
 
     @GET("api/v1/merchant/products/{id}/price-tiers")
     suspend fun getPriceTiers(@Path("id") productId: String): PriceTiersResponse
+
+    // Real push device-token registration (item 130) -- see riderapp's own
+    // ApiService.kt doc comment, same pass: PushNotificationService.sendToUser
+    // silently no-ops for every real user with no registered token, and this
+    // dedicated merchant app -- the one place a merchant owner actually needs an
+    // instant new-order/booking push -- never registered one at all.
+    @POST("api/v1/notifications/device-tokens")
+    suspend fun registerDeviceToken(@Body request: RegisterDeviceTokenRequest): SuccessResponse
 }
+
+enum class DevicePlatform { ANDROID, IOS, WEB }
+data class RegisterDeviceTokenRequest(val platform: DevicePlatform, val token: String)
+data class SuccessResponse(val success: Boolean)
 
 /**
  * Real, minimal Retrofit/OkHttp client, mirroring :riderapp's own NetworkClient
