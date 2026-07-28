@@ -82,6 +82,33 @@ export interface MarketplaceEscrowDispute {
   updatedAt: string;
 }
 
+// Real Hood (Marketplace/Community/Jobs/PropertyListing/messaging) content-moderation
+// report queue (item 127) -- `HoodReportAdminController` had zero client anywhere
+// despite the customer-facing "report" creation endpoint being real and in use; found
+// via the same endpoint-coverage sweep that found items 125/126.
+export interface HoodReport {
+  id: string;
+  reporterUserId: string;
+  targetType: 'MARKETPLACE_LISTING' | 'COMMUNITY_POST' | 'JOB_POST' | 'PROPERTY_LISTING' | 'DIRECT_MESSAGE' | 'GROUP_MESSAGE';
+  targetId: string;
+  reason: string;
+  status: 'OPEN' | 'RESOLVED';
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export const fetchHoodReportsQueue = (page = 0) =>
+  apiFetch<{ success: boolean; reports: HoodReport[]; page: number; totalElements: number; totalPages: number }>(
+    `/api/v1/system/hood-reports?page=${page}`,
+  ).then((r) => ({ items: r.reports, totalElements: r.totalElements, hasMore: r.page + 1 < r.totalPages }));
+
+export const resolveHoodReport = (reportId: string) =>
+  apiFetch(`/api/v1/system/hood-reports/${reportId}/resolve`, { method: 'POST' });
+
+export const removeHoodReportTarget = (reportId: string) =>
+  apiFetch(`/api/v1/system/hood-reports/${reportId}/remove-target`, { method: 'POST' });
+
 // Real MTN MoMo/Airtel Money-style physical cash-in/cash-out agent network (item 126)
 // -- a till reconciliation this out of balance needs real human admin review before
 // the variance is written off, same "real human review, not auto-resolved" discipline
