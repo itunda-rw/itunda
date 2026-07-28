@@ -916,6 +916,10 @@ public struct MessageDto: Decodable, Identifiable {
     public let deletedAt: String?
     public let replyToMessageId: String? = nil
     public let reactions: [ReactionGroupDto]
+    // Real KakaoTalk Emoticon Store (item 136) -- see EmoticonPackDto's own doc
+    // comment. Only ever set on a message actually created via the real
+    // /api/v1/emoticons/.../send endpoints.
+    public let emoticonId: String?
 
     // A custom init(from:) below suppresses Swift's automatic memberwise initializer,
     // so this is needed explicitly for real call sites that construct a MessageDto
@@ -929,6 +933,7 @@ public struct MessageDto: Decodable, Identifiable {
         self.readAt = readAt
         self.deletedAt = nil
         self.reactions = reactions
+        self.emoticonId = nil
     }
 
     // Custom decode: the real-time WebSocket push for a brand-new message omits
@@ -944,9 +949,10 @@ public struct MessageDto: Decodable, Identifiable {
         readAt = try container.decodeIfPresent(String.self, forKey: .readAt)
         deletedAt = try container.decodeIfPresent(String.self, forKey: .deletedAt)
         reactions = try container.decodeIfPresent([ReactionGroupDto].self, forKey: .reactions) ?? []
+        emoticonId = try container.decodeIfPresent(String.self, forKey: .emoticonId)
     }
 
-    private enum CodingKeys: String, CodingKey { case id, conversationId, senderId, body, sentAt, readAt, deletedAt, reactions }
+    private enum CodingKeys: String, CodingKey { case id, conversationId, senderId, body, sentAt, readAt, deletedAt, reactions, emoticonId }
 }
 
 // Real WebSocket push envelopes (2026-07-18) -- see
@@ -1200,6 +1206,29 @@ public struct GiftDto: Decodable, Identifiable {
 public struct SendGiftInConversationRequest: Encodable { public let amount: Double; public let note: String? }
 public struct GiftResponse: Decodable { public let success: Bool; public let gift: GiftDto }
 public struct GiftsResponse: Decodable { public let success: Bool; public let gifts: [GiftDto] }
+
+// Real KakaoTalk Emoticon Store (item 136) -- see backend Emoticon.kt's own doc
+// comment. Mirrors bank-mfe's lib/emoticons.ts (item 133) and Android's ApiService.kt
+// (item 135) exactly.
+public struct EmoticonPackDto: Decodable, Identifiable { public let id: String; public let title: String; public let artistName: String; public let thumbnailUrl: String; public let price: Double; public let active: Bool; public let createdAt: String }
+public struct EmoticonDto: Decodable, Identifiable { public let id: String; public let packId: String; public let imageUrl: String; public let sortOrder: Int }
+public struct OwnedEmoticonPackDto: Decodable, Identifiable { public let id: String; public let userId: String; public let packId: String; public let source: String; public let acquiredAt: String }
+public struct EmoticonPacksResponse: Decodable { public let success: Bool; public let packs: [EmoticonPackDto] }
+public struct EmoticonsResponse: Decodable { public let success: Bool; public let emoticons: [EmoticonDto] }
+public struct OwnedEmoticonPacksResponse: Decodable { public let success: Bool; public let packs: [OwnedEmoticonPackDto] }
+public struct OwnedEmoticonPackResponse: Decodable { public let success: Bool; public let ownedPack: OwnedEmoticonPackDto }
+// EmoticonController.giftPack returns the key "giftedPack", not "ownedPack" -- a
+// distinct response shape from purchase's own response (a real bug caught building
+// Android's own port, item 135 -- not reusing one response type here either).
+public struct GiftedEmoticonPackResponse: Decodable { public let success: Bool; public let giftedPack: OwnedEmoticonPackDto }
+public struct GiftEmoticonPackRequest: Encodable {
+    public let recipientPhoneNumber: String
+    public init(recipientPhoneNumber: String) { self.recipientPhoneNumber = recipientPhoneNumber }
+}
+public struct SendEmoticonRequest: Encodable {
+    public let emoticonId: String
+    public init(emoticonId: String) { self.emoticonId = emoticonId }
+}
 
 // Real 동네생활-style community board (2026-07-19) -- see rw.itunda.community.web.CommunityController.
 public struct CommunityCategoryDto: Decodable, Identifiable { public let id: String; public let label: String }
@@ -1991,6 +2020,26 @@ extension NetworkClient {
 
     public func getGiftsForConversation(conversationId: String) async throws -> GiftsResponse {
         try await get("api/v1/gifts/conversations/\(conversationId)")
+    }
+
+    // Real KakaoTalk Emoticon Store (item 136) -- mirrors bank-mfe's lib/emoticons.ts
+    // (item 133) and Android's ApiService.kt (item 135) exactly.
+    public func getEmoticonPacks() async throws -> EmoticonPacksResponse { try await get("api/v1/emoticons/packs") }
+
+    public func getPackEmoticons(packId: String) async throws -> EmoticonsResponse { try await get("api/v1/emoticons/packs/\(packId)") }
+
+    public func getOwnedEmoticonPacks() async throws -> OwnedEmoticonPacksResponse { try await get("api/v1/emoticons/packs/owned") }
+
+    public func purchaseEmoticonPack(packId: String) async throws -> OwnedEmoticonPackResponse {
+        try await authenticatedPost("api/v1/emoticons/packs/\(packId)/purchase", body: EmptyBody())
+    }
+
+    public func giftEmoticonPack(packId: String, recipientPhoneNumber: String) async throws -> GiftedEmoticonPackResponse {
+        try await authenticatedPost("api/v1/emoticons/packs/\(packId)/gift", body: GiftEmoticonPackRequest(recipientPhoneNumber: recipientPhoneNumber))
+    }
+
+    public func sendEmoticon(conversationId: String, emoticonId: String) async throws -> MessageResponse {
+        try await authenticatedPost("api/v1/emoticons/conversations/\(conversationId)/send", body: SendEmoticonRequest(emoticonId: emoticonId))
     }
 
     // Real 동네생활-style community board (2026-07-19) -- see rw.itunda.community.web.CommunityController.

@@ -1021,6 +1021,11 @@ private struct ChatThreadScreen: View {
     @State private var giftAmount = ""
     @State private var giftNote = ""
     @State private var sendingGift = false
+    // Real KakaoTalk Emoticon Store (item 136) -- see EmoticonPickerPanel's own doc
+    // comment.
+    @State private var emoticonPickerOpen = false
+    @State private var emoticonStoreOpen = false
+    @State private var emoticonImageById: [String: String] = [:]
     @State private var showingBlockConfirmation = false
     @State private var blocking = false
     @State private var isBlocked = false
@@ -1111,6 +1116,7 @@ private struct ChatThreadScreen: View {
                                     message: message, isMine: message.senderId == currentUserId, currentUserId: currentUserId,
                                     offer: offersByMessageId[message.id],
                                     gift: giftsByMessageId[message.id],
+                                    emoticonImageUrl: message.emoticonId.flatMap { emoticonImageById[$0] },
                                     onToggleReaction: reactionHandler,
                                     onRespondToOffer: offerHandler,
                                     onClaimGift: giftHandler,
@@ -1193,6 +1199,20 @@ private struct ChatThreadScreen: View {
                 .padding(.horizontal, IDS.Layout.screenHorizontal)
             }
 
+            if emoticonPickerOpen {
+                EmoticonPickerPanel(
+                    onSend: { emoticonId in
+                        Task {
+                            _ = try? await NetworkClient.shared.sendEmoticon(conversationId: conversation.conversationId, emoticonId: emoticonId)
+                            emoticonPickerOpen = false
+                            await refresh()
+                        }
+                    },
+                    onOpenStore: { emoticonStoreOpen = true }
+                )
+                .padding(.horizontal, IDS.Layout.screenHorizontal)
+            }
+
             HStack {
                 Button(action: { giftComposerOpen.toggle() }) {
                     Text("🎁")
@@ -1201,6 +1221,13 @@ private struct ChatThreadScreen: View {
                         .clipShape(Circle())
                 }
                 .accessibilityLabel("Send a gift")
+                Button(action: { emoticonPickerOpen.toggle() }) {
+                    Text("😊")
+                        .frame(width: 44, height: 44)
+                        .background(IDS.Colors.chipBackground)
+                        .clipShape(Circle())
+                }
+                .accessibilityLabel("Send an emoticon")
                 TextField("Message", text: Binding(
                     get: { draft },
                     set: { newValue in
@@ -1234,6 +1261,20 @@ private struct ChatThreadScreen: View {
         .task {
             quiet = (try? await NetworkClient.shared.getConversationQuiet(conversationId: conversation.conversationId).quiet) ?? false
             pinnedMessage = try? await NetworkClient.shared.getPinnedConversationMessage(conversationId: conversation.conversationId).message
+        }
+        // Real KakaoTalk Emoticon Store (item 136) -- no GET-emoticon-by-id endpoint
+        // exists, so rendering a received emoticon needs a client-built id->imageUrl
+        // map across the small, curated, server-seeded catalog. Mirrors bank-mfe/
+        // Android's own image-map loaders (items 133/135).
+        .task {
+            guard let packs = try? await NetworkClient.shared.getEmoticonPacks().packs else { return }
+            var map: [String: String] = [:]
+            for pack in packs {
+                if let emoticons = try? await NetworkClient.shared.getPackEmoticons(packId: pack.id).emoticons {
+                    for e in emoticons { map[e.id] = e.imageUrl }
+                }
+            }
+            emoticonImageById = map
         }
         // Real poll, kept as an always-correct fallback delivery path alongside the
         // real WebSocket push below -- matches bank-mfe/Android exactly (poll interval
@@ -1292,6 +1333,9 @@ private struct ChatThreadScreen: View {
         .onDisappear {
             socketTask?.cancel(with: .goingAway, reason: nil)
             typingClearTask?.cancel()
+        }
+        .sheet(isPresented: $emoticonStoreOpen) {
+            EmoticonStoreView(onClose: { emoticonStoreOpen = false })
         }
     }
 
@@ -1608,6 +1652,244 @@ private struct GiftBubble: View {
     }
 }
 
+// Real KakaoTalk Emoticon Store (item 136) -- a received emoticon renders as just the
+// sticker image, no chat-bubble background, matching real KakaoTalk and bank-mfe/
+// Android's own EmoticonBubble (items 133/135).
+private struct EmoticonBubble: View {
+    let imageUrl: String?
+
+    var body: some View {
+        if let imageUrl, let url = URL(string: imageUrl) {
+            AsyncImage(url: url) { image in
+                image.resizable().aspectRatio(contentMode: .fit)
+            } placeholder: {
+                ProgressView()
+            }
+            .frame(width: 96, height: 96)
+        } else {
+            Text("[emoticon]").font(.footnote).italic().foregroundColor(IDS.Colors.textSecondary)
+        }
+    }
+}
+
+// Real emoticon picker (item 136) -- shows the sender's own owned packs only (each
+// tappable emoticon sends immediately); a real "Get more" link opens the full store.
+// Mirrors bank-mfe/Android's own EmoticonPickerPanel (items 133/135).
+private struct EmoticonPickerPanel: View {
+    let onSend: (String) -> Void
+    let onOpenStore: () -> Void
+
+    @State private var ownedPacks: [OwnedEmoticonPackDto]?
+    @State private var packTitles: [String: String] = [:]
+    @State private var selectedPackId: String?
+    @State private var packEmoticons: [EmoticonDto]?
+
+    private let columns = Array(repeating: GridItem(.flexible()), count: 4)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let ownedPacks {
+                if ownedPacks.isEmpty {
+                    VStack(spacing: 8) {
+                        Text("You don't own any emoticon packs yet.").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                        Button(action: onOpenStore) {
+                            Text("Browse Emoticon Store").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                .padding(.horizontal, 12).padding(.vertical, 8)
+                                .background(IDS.Colors.card).cornerRadius(10)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(ownedPacks, id: \.packId) { op in
+                                Button(action: { selectedPackId = op.packId }) {
+                                    Text(packTitles[op.packId] ?? op.packId).font(.caption2).bold()
+                                        .foregroundColor(selectedPackId == op.packId ? .white : IDS.Colors.textPrimary)
+                                        .padding(.horizontal, 10).padding(.vertical, 6)
+                                        .background(selectedPackId == op.packId ? IDS.Colors.brand : IDS.Colors.card)
+                                        .cornerRadius(8)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            Button(action: onOpenStore) {
+                                Text("Get more").font(.caption2).bold().foregroundColor(IDS.Colors.textPrimary)
+                                    .padding(.horizontal, 10).padding(.vertical, 6)
+                                    .background(IDS.Colors.card).cornerRadius(8)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    if let packEmoticons {
+                        LazyVGrid(columns: columns, spacing: 8) {
+                            ForEach(packEmoticons) { e in
+                                Button(action: { onSend(e.id) }) {
+                                    AsyncImage(url: URL(string: e.imageUrl)) { image in
+                                        image.resizable().aspectRatio(contentMode: .fit)
+                                    } placeholder: {
+                                        ProgressView()
+                                    }
+                                    .aspectRatio(1, contentMode: .fit)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    } else {
+                        ProgressView()
+                    }
+                }
+            } else {
+                ProgressView()
+            }
+        }
+        .padding(12)
+        .background(IDS.Colors.chipBackground)
+        .cornerRadius(12)
+        .task {
+            async let owned = try? NetworkClient.shared.getOwnedEmoticonPacks().packs
+            async let allPacks = try? NetworkClient.shared.getEmoticonPacks().packs
+            let ownedResult = (await owned) ?? []
+            ownedPacks = ownedResult
+            packTitles = Dictionary(uniqueKeysWithValues: ((await allPacks) ?? []).map { ($0.id, $0.title) })
+            if let first = ownedResult.first { selectedPackId = first.packId }
+        }
+        .task(id: selectedPackId) {
+            guard let selectedPackId else { return }
+            packEmoticons = nil
+            packEmoticons = (try? await NetworkClient.shared.getPackEmoticons(packId: selectedPackId).emoticons) ?? []
+        }
+    }
+}
+
+// Real Emoticon Store (item 136) -- browse every real active pack, buy (once-off
+// purchase, same "buy it once, own it" model Shop/Insurance already use), or gift to
+// a friend by phone number. Mirrors bank-mfe/Android's own EmoticonStoreModal/Dialog
+// (items 133/135).
+private struct EmoticonStoreView: View {
+    let onClose: () -> Void
+
+    @State private var packs: [EmoticonPackDto]?
+    @State private var ownedPackIds: Set<String> = []
+    @State private var busyPackId: String?
+    @State private var giftingPackId: String?
+    @State private var giftPhone = ""
+    @State private var error: String?
+    @State private var message: String?
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    if let error {
+                        Text(error).font(.footnote).foregroundColor(.red)
+                    }
+                    if let message {
+                        Text(message).font(.footnote).foregroundColor(IDS.Colors.brand)
+                    }
+                    if let packs {
+                        ForEach(packs) { pack in
+                            let owned = ownedPackIds.contains(pack.id)
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack(spacing: 10) {
+                                    AsyncImage(url: URL(string: pack.thumbnailUrl)) { image in
+                                        image.resizable().aspectRatio(contentMode: .fit)
+                                    } placeholder: { ProgressView() }
+                                        .frame(width: 48, height: 48)
+                                    VStack(alignment: .leading) {
+                                        Text(pack.title).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                        Text("\(pack.artistName) · \(Int(pack.price)) RWF").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                    }
+                                    Spacer()
+                                    Button(action: { Task { await buy(pack.id) } }) {
+                                        Text(owned ? "Owned" : (busyPackId == pack.id ? "…" : "Buy")).font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                            .padding(.horizontal, 10).padding(.vertical, 6)
+                                            .background(IDS.Colors.card).cornerRadius(8)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(owned || busyPackId != nil)
+                                    Button(action: { giftingPackId = (giftingPackId == pack.id) ? nil : pack.id }) {
+                                        Text("Gift").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                            .padding(.horizontal, 10).padding(.vertical, 6)
+                                            .background(IDS.Colors.card).cornerRadius(8)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(busyPackId != nil)
+                                }
+                                if giftingPackId == pack.id {
+                                    HStack {
+                                        TextField("Recipient phone number", text: $giftPhone)
+                                            .padding(8)
+                                            .background(IDS.Colors.card)
+                                            .cornerRadius(8)
+                                        Button(action: { Task { await gift(pack.id) } }) {
+                                            Text(busyPackId == pack.id ? "…" : "Send gift").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                                .padding(.horizontal, 10).padding(.vertical, 6)
+                                                .background(IDS.Colors.card).cornerRadius(8)
+                                        }
+                                        .buttonStyle(.plain)
+                                        .disabled(busyPackId != nil || giftPhone.trimmingCharacters(in: .whitespaces).isEmpty)
+                                    }
+                                }
+                            }
+                            .padding(10)
+                            .background(IDS.Colors.chipBackground)
+                            .cornerRadius(10)
+                        }
+                    } else {
+                        ProgressView()
+                    }
+                }
+                .padding(IDS.Layout.screenHorizontal)
+            }
+            .navigationTitle("🛍 Emoticon Store")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Close", action: onClose)
+                }
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        do {
+            packs = try await NetworkClient.shared.getEmoticonPacks().packs
+            ownedPackIds = Set(try await NetworkClient.shared.getOwnedEmoticonPacks().packs.map { $0.packId })
+        } catch {
+            self.error = "Could not load the Emoticon Store."
+        }
+    }
+
+    private func buy(_ packId: String) async {
+        busyPackId = packId
+        error = nil
+        defer { busyPackId = nil }
+        do {
+            _ = try await NetworkClient.shared.purchaseEmoticonPack(packId: packId)
+            await load()
+        } catch {
+            self.error = "Could not purchase this pack."
+        }
+    }
+
+    private func gift(_ packId: String) async {
+        busyPackId = packId
+        error = nil
+        message = nil
+        defer { busyPackId = nil }
+        do {
+            _ = try await NetworkClient.shared.giftEmoticonPack(packId: packId, recipientPhoneNumber: giftPhone.trimmingCharacters(in: .whitespaces))
+            message = "Pack gifted!"
+            giftingPackId = nil
+            giftPhone = ""
+        } catch {
+            self.error = "Could not gift this pack."
+        }
+    }
+}
+
 extension ISO8601DateFormatter {
     convenience init(withFractionalSeconds: Bool) {
         self.init()
@@ -1630,6 +1912,7 @@ private struct MessageBubble: View {
     let currentUserId: String?
     let offer: OfferBubbleData?
     let gift: GiftDto?
+    var emoticonImageUrl: String? = nil
     let onToggleReaction: (String) -> Void
     let onRespondToOffer: (String, String, Double?) -> Void
     let onClaimGift: (String) -> Void
@@ -1648,6 +1931,8 @@ private struct MessageBubble: View {
                     GiftBubble(gift: gift, isMine: isMine, currentUserId: currentUserId, onClaim: onClaimGift)
                 } else if let offer {
                     OfferBubble(offer: offer, isMine: isMine, currentUserId: currentUserId, onRespond: onRespondToOffer)
+                } else if message.emoticonId != nil {
+                    EmoticonBubble(imageUrl: emoticonImageUrl)
                 } else {
                     Text(message.body)
                         .font(.subheadline)
