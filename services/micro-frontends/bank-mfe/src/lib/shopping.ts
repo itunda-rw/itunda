@@ -177,3 +177,23 @@ export const cancelBillingSubscription = (subscriptionId: string) =>
   apiFetch<{ success: boolean; subscription: MerchantBillingSubscription }>(`/api/v1/merchant/billing-subscriptions/${subscriptionId}/cancel`, {
     method: 'POST',
   }).then((r) => r.subscription);
+
+// Real 당근(Karrot) 반경 타기팅-style radius-targeted local ads (item 148 -- the
+// customer-facing browse half; merchant-mfe's item 147 built the paid create/extend
+// side). "Pull" discovery, same as every other nearby() in this codebase: the caller's
+// live coordinate is a request param, not a stored location itunda doesn't keep.
+export interface NearbyMerchantAd {
+  ad: {
+    id: string;
+    merchantId: string;
+    title: string;
+    description: string | null;
+    radiusMeters: number;
+    activeUntil: string;
+  };
+  businessName: string;
+  distanceKm: number;
+}
+
+export const fetchNearbyAds = (latitude: number, longitude: number) =>
+  apiFetch<{ success: boolean; ads: NearbyMerchantAd[] }>(`/api/v1/merchant/ads/nearby?latitude=${latitude}&longitude=${longitude}`).then((r) => r.ads);

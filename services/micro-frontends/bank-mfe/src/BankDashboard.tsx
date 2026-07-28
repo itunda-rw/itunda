@@ -24,7 +24,7 @@ import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreResult, 
 import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type KycSubmission } from './lib/identity';
 import { addContact, fetchContacts, type Contact } from './lib/contacts';
 import { createSupportTicket, fetchSupportTickets, type SupportTicket, type SupportTicketCategory } from './lib/support';
-import { cancelBillingSubscription, collectPayment, fetchMerchantBillingPlans, fetchMerchantCategories, fetchMyBillingSubscriptions, fetchMyFollowedMerchants, fetchShopDeals, fetchShoppingCatalog, followMerchant, searchProducts, subscribeToBillingPlan, unfollowMerchant, type CollectPaymentResult, type MerchantBillingPlan, type MerchantBillingSubscription, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
+import { cancelBillingSubscription, collectPayment, fetchMerchantBillingPlans, fetchMerchantCategories, fetchMyBillingSubscriptions, fetchMyFollowedMerchants, fetchNearbyAds, fetchShopDeals, fetchShoppingCatalog, followMerchant, searchProducts, subscribeToBillingPlan, unfollowMerchant, type CollectPaymentResult, type MerchantBillingPlan, type MerchantBillingSubscription, type NearbyMerchantAd, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
 import {
   buyStock, fetchPortfolio, fetchPortfolioHistory, fetchStockHistory, fetchStocks, fetchWatchlist,
   sellStock, unwatchStock, watchStock,
@@ -10005,6 +10005,20 @@ function ShopView() {
     fetchShopDeals().then(setDeals).catch(() => {});
   }, []);
 
+  // Real Karrot 반경 타기팅-style nearby ads (item 148) -- silent, non-blocking: a
+  // customer who denies/lacks location just never sees this rail, same discipline
+  // NeighborhoodSetupPrompt's own opt-in geolocation already establishes elsewhere.
+  const [nearbyAds, setNearbyAds] = useState<NearbyMerchantAd[]>([]);
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        fetchNearbyAds(position.coords.latitude, position.coords.longitude).then(setNearbyAds).catch(() => {});
+      },
+      () => {},
+    );
+  }, []);
+
   // Real Coupang-style commerce (rw.itunda.commerce) -- deliberately reuses the same
   // GET /api/v1/shopping/merchants catalog the Shopping tab (Toss Shopping cashback
   // browsing) already uses, matching how Android/iOS's own Shop tab reuses the same
@@ -10168,6 +10182,30 @@ function ShopView() {
             </button>
           )}
         </form>
+      )}
+
+      {/* Real Karrot 반경 타기팅-style nearby ads rail (item 148) -- see lib/shopping.ts's
+          own doc comment. Tapping one opens that merchant's real catalog, same
+          minimal-ShoppingMerchant shortcut openSearchResult already uses just above. */}
+      {view === 'BROWSE' && searchResults === null && nearbyAds.length > 0 && (
+        <div style={{ marginBottom: '16px' }}>
+          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)', marginBottom: '8px' }}>📍 Near you</p>
+          <div style={{ display: 'flex', gap: '10px', overflowX: 'auto' }}>
+            {nearbyAds.map((a) => (
+              <button
+                key={a.ad.id}
+                onClick={() => setSelected({ merchantId: a.ad.merchantId, businessName: a.businessName, category: null, cashbackRate: '1%' })}
+                className="toss-card"
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left', width: '160px', flexShrink: 0, gap: '4px' }}
+              >
+                <p style={{ fontSize: '13px', fontWeight: 700 }}>{a.ad.title}</p>
+                <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{a.businessName}</p>
+                {a.ad.description && <p style={{ fontSize: '11px', color: 'var(--toss-grey-700)' }}>{a.ad.description}</p>}
+                <p style={{ fontSize: '11px', color: 'var(--toss-blue)', fontWeight: 600 }}>{a.distanceKm.toFixed(1)} km away</p>
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Real "Deals" rail (2026-07-25) -- only shown on the unfiltered landing state,
