@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import QRCode from 'qrcode';
-import { CreditCard, RefreshCw } from 'lucide-react';
+import { CreditCard, RefreshCw, Ticket } from 'lucide-react';
 import { ApiError } from '../lib/api';
-import { chargeCard, generateQr, paymentIntentQrPayload, type CardChargeResult, type PaymentIntent } from '../lib/merchant';
+import { chargeCard, generateQr, paymentIntentQrPayload, redeemGiftVoucher, type CardChargeResult, type PaymentIntent, type RedeemedGiftVoucher } from '../lib/merchant';
 import { DeviceStepUpPrompt } from '../components/DeviceStepUpPrompt';
 
-type Mode = 'QR' | 'CARD';
+type Mode = 'QR' | 'CARD' | 'VOUCHER';
 
 export default function CollectScreen() {
   const [mode, setMode] = useState<Mode>('QR');
@@ -13,7 +13,7 @@ export default function CollectScreen() {
   return (
     <div style={{ maxWidth: '400px' }}>
       <div className="toss-card" style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px' }}>
-        {(['QR', 'CARD'] as const).map((m) => (
+        {(['QR', 'CARD', 'VOUCHER'] as const).map((m) => (
           <button
             key={m}
             onClick={() => setMode(m)}
@@ -27,11 +27,99 @@ export default function CollectScreen() {
               backgroundColor: mode === m ? 'var(--toss-blue)' : 'transparent',
             }}
           >
-            {m === 'QR' ? 'QR code' : 'Card'}
+            {m === 'QR' ? 'QR code' : m === 'CARD' ? 'Card' : 'Voucher'}
           </button>
         ))}
       </div>
-      {mode === 'QR' ? <QrCollect /> : <CardCollect />}
+      {mode === 'QR' ? <QrCollect /> : mode === 'CARD' ? <CardCollect /> : <VoucherRedeem />}
+    </div>
+  );
+}
+
+// Real KakaoTalk-style 기프티콘 (mobile gift voucher) merchant-side redemption
+// (item 139) -- see lib/merchant.ts's own doc comment on redeemGiftVoucher: the
+// customer shows the merchant their voucher (its real id, e.g. from their own itunda
+// app), the merchant enters it here to redeem -- never a self-serve redeem the
+// customer could fake.
+function VoucherRedeem() {
+  const [voucherId, setVoucherId] = useState('');
+  const [result, setResult] = useState<RedeemedGiftVoucher | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    setResult(null);
+    try {
+      const voucher = await redeemGiftVoucher(voucherId.trim());
+      setResult(voucher);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        setNeedsDeviceVerification(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Could not redeem this voucher.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const reset = () => {
+    setResult(null);
+    setVoucherId('');
+  };
+
+  if (result) {
+    return (
+      <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px', textAlign: 'center' }}>
+        <Ticket size={40} color="var(--toss-blue)" />
+        <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Voucher redeemed</h2>
+        <p style={{ fontSize: '18px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
+          {result.productNameSnapshot ?? `${result.amount.toLocaleString()} RWF`}
+        </p>
+        <button className="toss-btn toss-btn-secondary" style={{ gap: '6px', padding: '10px 20px' }} onClick={reset}>
+          <RefreshCw size={14} /> Redeem another voucher
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="toss-card">
+      {needsDeviceVerification ? (
+        <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+      ) : (
+        <>
+          <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>Redeem a gift voucher</h2>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+            Ask the customer to show you their voucher, then enter its id here.
+          </p>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Voucher id</span>
+              <input
+                type="text"
+                value={voucherId}
+                onChange={(e) => setVoucherId(e.target.value)}
+                placeholder="giftvoucher_..."
+                required
+                style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+              />
+            </label>
+            {error && (
+              <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">
+                {error}
+              </p>
+            )}
+            <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting || !voucherId.trim()}>
+              {submitting ? 'Redeeming…' : 'Redeem'}
+            </button>
+          </form>
+        </>
+      )}
     </div>
   );
 }

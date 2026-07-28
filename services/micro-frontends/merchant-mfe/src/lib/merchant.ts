@@ -295,3 +295,22 @@ export const getPayslips = (payrollRunId: string) =>
 // see docs/ARCHITECTURE.md's mini-app host row), extended with a pay path a customer's
 // app would resolve into a POST /api/v1/merchant/collect/{intentId} call.
 export const paymentIntentQrPayload = (intentId: string) => `itunda://pay?intentId=${intentId}`;
+
+// Real KakaoTalk-style 기프티콘 (mobile gift voucher) merchant-side redemption
+// (item 139) -- see backend GiftVoucherService.redeemVoucher's own doc comment: the
+// customer presents the voucher in person, the merchant's own authenticated account
+// is what actually redeems it, never a self-serve redeem the customer could fake.
+// Real Idempotency-Key convention, same as chargeCard/collect above.
+export interface RedeemedGiftVoucher {
+  id: string;
+  productNameSnapshot: string | null;
+  amount: number;
+  status: 'ACTIVE' | 'REDEEMED' | 'EXPIRED';
+  redeemedAt: string | null;
+}
+
+export const redeemGiftVoucher = (voucherId: string) =>
+  apiFetch<{ success: boolean; voucher: RedeemedGiftVoucher }>(`/api/v1/gift-vouchers/${voucherId}/redeem`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  }).then((r) => r.voucher);
