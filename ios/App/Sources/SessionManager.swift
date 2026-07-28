@@ -80,11 +80,25 @@ final class SessionManager: ObservableObject {
             let response = try await call()
             KeychainTokenStore.shared.saveSession(userId: response.user.id, accessToken: response.accessToken, refreshToken: response.refreshToken)
             sessionState = .loggedIn(userId: response.user.id)
+            await registerDeviceToken()
             return .success
         } catch let NetworkError.httpError(statusCode) {
             return .failure(message: httpErrorMessage(statusCode))
         } catch {
             return .failure(message: "Couldn't reach itunda. Check your connection and try again.")
+        }
+    }
+
+    // Real push device-token registration (item 121) -- see NetworkClient.swift's own
+    // doc comment. Best-effort and fire-and-forget: a registration failure must never
+    // block an otherwise-successful login/register.
+    private func registerDeviceToken() async {
+        do {
+            _ = try await NetworkClient.shared.registerDeviceToken(
+                RegisterDeviceTokenRequest(platform: .ios, token: DeviceStore.shared.getOrCreateDeviceId())
+            )
+        } catch {
+            // Best-effort, see doc comment above.
         }
     }
 

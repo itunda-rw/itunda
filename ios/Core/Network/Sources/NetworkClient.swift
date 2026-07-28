@@ -765,6 +765,20 @@ public struct VerifyDeviceRequest: Encodable { public let password: String }
 public struct VerifyDeviceResponse: Decodable { public let success: Bool; public let device: TrustedDeviceDto }
 public struct RevokeDeviceResponse: Decodable { public let success: Bool }
 
+// Real push device-token registration (item 121) -- see backend DeviceToken.kt's own
+// doc comment: PushNotificationService.sendToUser silently no-ops for every real user
+// because no client anywhere ever registered a token. Mirrors bank-mfe's
+// registerDeviceToken (item 119) and Android's (item 120) exactly.
+public enum DevicePlatform: String, Encodable { case android = "ANDROID", ios = "IOS", web = "WEB" }
+public struct RegisterDeviceTokenRequest: Encodable {
+    public let platform: DevicePlatform
+    public let token: String
+    public init(platform: DevicePlatform, token: String) {
+        self.platform = platform
+        self.token = token
+    }
+}
+
 extension NetworkClient {
     public func getMyDevices() async throws -> DevicesResponse { try await get("api/v1/auth/devices") }
 
@@ -774,6 +788,10 @@ extension NetworkClient {
 
     public func revokeDevice(deviceId: String) async throws -> RevokeDeviceResponse {
         try await authenticatedDelete("api/v1/auth/devices/\(deviceId)")
+    }
+
+    public func registerDeviceToken(_ request: RegisterDeviceTokenRequest) async throws -> SuccessResponse {
+        try await authenticatedPost("api/v1/notifications/device-tokens", body: request)
     }
 }
 
