@@ -344,6 +344,61 @@ class MerchantServiceTest : BehaviorSpec({
             }
         }
 
+        // Real read-only intent preview (item 149) -- see MerchantService.previewIntent's
+        // own doc comment.
+        When("previewing a valid, pending payment intent") {
+            val intent = PaymentIntent(
+                id = "pi_preview", merchantId = "merchant_1", amount = BigDecimal("5000"),
+                description = "2 espresso", expiresAt = Instant.now().plusSeconds(600),
+            )
+            val eligibleCoupons = listOf(mockk<CouponView>())
+            every { paymentIntentRepository.findById("pi_preview") } returns Optional.of(intent)
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+            every { merchantCouponService.getCouponsForCustomer("merchant_1", "payer_1") } returns eligibleCoupons
+
+            val result = service.previewIntent("payer_1", "pi_preview")
+
+            Then("it reports the real merchant, amount, and this payer's own real coupon eligibility -- with zero side effects") {
+                result["merchantId"] shouldBe "merchant_1"
+                result["businessName"] shouldBe "Kigali Coffee"
+                result["amount"] shouldBe BigDecimal("5000")
+                result["coupons"] shouldBe eligibleCoupons
+                intent.status shouldBe PaymentIntentStatus.PENDING
+                verify(exactly = 0) { paymentIntentRepository.save(any()) }
+            }
+        }
+
+        When("previewing an expired payment intent") {
+            val expiredIntent = PaymentIntent(
+                id = "pi_preview_expired", merchantId = "merchant_1", amount = BigDecimal("1000"), description = "x",
+                expiresAt = Instant.now().minusSeconds(60),
+            )
+            every { paymentIntentRepository.findById("pi_preview_expired") } returns Optional.of(expiredIntent)
+
+            Then("it throws PaymentIntentNotPayableException without mutating the intent (unlike collect())") {
+                try {
+                    service.previewIntent("payer_1", "pi_preview_expired")
+                    error("expected PaymentIntentNotPayableException")
+                } catch (e: PaymentIntentNotPayableException) {
+                    expiredIntent.status shouldBe PaymentIntentStatus.PENDING
+                    verify(exactly = 0) { paymentIntentRepository.save(any()) }
+                }
+            }
+        }
+
+        When("previewing a payment code that doesn't exist") {
+            every { paymentIntentRepository.findById("nope_preview") } returns Optional.empty()
+
+            Then("it throws PaymentIntentNotFoundException") {
+                try {
+                    service.previewIntent("payer_1", "nope_preview")
+                    error("expected PaymentIntentNotFoundException")
+                } catch (e: PaymentIntentNotFoundException) {
+                    // expected
+                }
+            }
+        }
+
         When("the merchant has a real webhook URL registered and a payment is collected") {
             val hookedMerchant = Merchant(
                 id = "merchant_2", ownerUserId = "owner_2", walletId = "wallet_merchant2",

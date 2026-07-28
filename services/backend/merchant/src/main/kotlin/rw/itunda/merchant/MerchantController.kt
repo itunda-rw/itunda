@@ -168,6 +168,16 @@ class MerchantController(
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
     }
 
+    // Real read-only preview (item 149) -- see MerchantService.previewIntent's own doc
+    // comment. Lets a payer see the merchant/amount/their own real coupon eligibility
+    // before committing to collect().
+    @GetMapping("/intent/{intentId}")
+    fun previewIntent(
+        @PathVariable intentId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true) + merchantService.previewIntent(currentUser.userId, intentId))
+
     @PostMapping("/collect/{intentId}")
     fun collect(
         @PathVariable intentId: String,

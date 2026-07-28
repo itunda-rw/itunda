@@ -462,6 +462,29 @@ class MerchantService(
     private fun hashApiKey(rawKey: String): String =
         MessageDigest.getInstance("SHA-256").digest(rawKey.toByteArray()).joinToString("") { "%02x".format(it) }
 
+    // Real read-only intent preview (item 149) -- lets a payer see which merchant/amount
+    // a payment code resolves to, and that merchant's own real coupon eligibility, BEFORE
+    // committing to collect(). Deliberately has zero side effects (unlike collect(),
+    // which flips an expired PENDING intent to EXPIRED) -- a preview must never mutate
+    // state a payer might still back out of; collect() remains the sole authority on
+    // whether a code is actually still payable.
+    fun previewIntent(payerUserId: String, intentId: String): Map<String, Any?> {
+        val intent = paymentIntentRepository.findById(intentId)
+            .orElseThrow { PaymentIntentNotFoundException("Payment code not found") }
+        if (intent.status != PaymentIntentStatus.PENDING || intent.expiresAt.isBefore(Instant.now())) {
+            throw PaymentIntentNotPayableException("This payment code is no longer payable")
+        }
+        val merchant = merchantRepository.findById(intent.merchantId)
+            .orElseThrow { MerchantNotFoundException("Merchant not found") }
+        return mapOf(
+            "merchantId" to merchant.id,
+            "businessName" to merchant.businessName,
+            "amount" to intent.amount,
+            "description" to intent.description,
+            "coupons" to merchantCouponService.getCouponsForCustomer(merchant.id, payerUserId),
+        )
+    }
+
     @Transactional
     fun collect(payerUserId: String, intentId: String, channel: String = "QR", couponId: String? = null): Map<String, Any?> {
         val intent = paymentIntentRepository.findById(intentId)
