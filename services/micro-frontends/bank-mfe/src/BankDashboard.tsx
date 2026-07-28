@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowUpRight, Bike, Car, Heart, LogOut, MessageCircle, Plus,
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchWallets, type DetectedSubscription, type SpendingCategory, type Transaction, type Wallet } from './lib/wallet';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
-import { claimInterest, createGoal, depositToGoal, fetchGoals, fetchInterestJar, type InterestJar, type SavingsGoal } from './lib/savings';
+import { claimInterest, createGoal, depositToGoal, fetchGoals, fetchInterestJar, fetchRoundUpSettings, ROUND_UP_INCREMENTS, setRoundUpSettings, type InterestJar, type RoundUpSettings, type SavingsGoal } from './lib/savings';
 import {
   createGroupAccount, depositToGroupAccount, fetchGroupAccount, fetchGroupAccountDues, fetchMyGroupAccounts, inviteGroupAccountMember,
   requestUnpaidGroupAccountDues, setGroupAccountDuesAmount, withdrawFromGroupAccount,
@@ -9596,6 +9596,91 @@ function DevicesView() {
 
 // Real Kakao Bank SafeBox (세이프박스) equivalent -- claim-anytime interest that grows
 // for real off the actual SAVINGS wallet balance (InterestAccrualScheduler, 2026-07-20).
+// Real Kakao Pay 머니굴리기 ("rolling money") round-up auto-saving -- see
+// lib/savings.ts's own doc comment. First client UI for this feature anywhere
+// (item 112, found via a content-grep sweep: Android has a real client, bank-mfe
+// and iOS never did). Every real P2P transfer rounds up to the chosen increment and
+// deposits the spare change into the chosen goal.
+function RoundUpCard({ goals }: { goals: SavingsGoal[] }) {
+  const [settings, setSettings] = useState<RoundUpSettings | null | undefined>(undefined);
+  const [increment, setIncrement] = useState<number>(100);
+  const [goalId, setGoalId] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    fetchRoundUpSettings()
+      .then((s) => {
+        setSettings(s);
+        if (s) { setIncrement(s.roundToNearest); setGoalId(s.targetGoalId ?? ''); }
+      })
+      .catch(() => setSettings(null));
+  };
+  useEffect(load, []);
+
+  const handleToggle = async (enabled: boolean) => {
+    if (enabled && !goalId) { setError('Choose a savings goal first.'); return; }
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await setRoundUpSettings(enabled, increment, enabled ? goalId : (settings?.targetGoalId ?? null));
+      setSettings(updated);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update round-up settings.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (settings === undefined) return null;
+
+  return (
+    <div className="toss-card" style={{ marginBottom: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Round-up savings</h3>
+        {settings?.enabled && (
+          <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={() => handleToggle(false)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+            {busy ? '…' : 'Turn off'}
+          </button>
+        )}
+      </div>
+      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+      {settings?.enabled ? (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+          Every transfer rounds up to the nearest {settings.roundToNearest.toLocaleString()} RWF, saved into your goal.
+        </p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+            Round up every transfer to a real RWF increment and auto-save the spare change.
+          </p>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {ROUND_UP_INCREMENTS.map((v) => (
+              <button
+                key={v} type="button" onClick={() => setIncrement(v)}
+                className={increment === v ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+                style={{ flex: 1, fontSize: '12px', padding: '8px' }}
+              >
+                {v} RWF
+              </button>
+            ))}
+          </div>
+          <select
+            value={goalId} onChange={(e) => setGoalId(e.target.value)}
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          >
+            <option value="">Choose a savings goal</option>
+            {goals.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+          </select>
+          <button className="toss-btn toss-btn-primary" disabled={busy || !goalId} onClick={() => handleToggle(true)}>
+            {busy ? 'Turning on…' : 'Turn on round-up'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function InterestJarCard() {
   const [jar, setJar] = useState<InterestJar | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -10458,6 +10543,7 @@ function SavingsView() {
   return (
     <div>
       <InterestJarCard />
+      <RoundUpCard goals={goals ?? []} />
       <CreateGoalForm onCreated={load} />
       {error && (
         <div className="toss-card" style={{ marginBottom: '16px' }}>
