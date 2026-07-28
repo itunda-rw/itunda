@@ -1489,6 +1489,14 @@ public struct MerchantProductDto: Decodable, Identifiable {
 public struct MerchantSummaryDto: Decodable { public let id: String; public let businessName: String }
 public struct MerchantProductsResponse: Decodable { public let success: Bool; public let merchant: MerchantSummaryDto; public let products: [MerchantProductDto] }
 
+// Real Naver Smart Store-style "알림받기" (follow a store for its own broadcast
+// notices) -- see backend MerchantFollowService.kt's own doc comment. Mirrors
+// bank-mfe's lib/shopping.ts FollowedMerchant exactly.
+public struct FollowedMerchantDto: Decodable, Identifiable { public let merchantId: String; public let businessName: String; public let category: String?; public let followedAt: String; public var id: String { merchantId } }
+public struct FollowedMerchantsResponse: Decodable { public let success: Bool; public let follows: [FollowedMerchantDto] }
+public struct MerchantFollowDto: Decodable { public let id: String; public let userId: String; public let merchantId: String; public let createdAt: String }
+public struct MerchantFollowResponse: Decodable { public let success: Bool; public let follow: MerchantFollowDto }
+
 // Real Shop product wishlist (2026-07-24) -- closes docs/DESIGN_REFERENCES.md Section 5
 // recommendation #3: backend (ProductFavoriteService, 2026-07-20) and bank-mfe already
 // had this; iOS had zero wiring. Mirrors FavoriteListingDto/FavoriteJobPostDto/
@@ -2293,6 +2301,20 @@ extension NetworkClient {
 
     public func getMerchantProducts(merchantId: String) async throws -> MerchantProductsResponse {
         try await get("api/v1/shopping/merchants/\(merchantId)/products")
+    }
+
+    // Real Naver Smart Store-style "알림받기" (follow a store) -- first iOS client for
+    // this feature (item 117, found via a content-grep sweep: bank-mfe has it,
+    // Android/iOS didn't; Android ported the same day). Mirrors bank-mfe's
+    // lib/shopping.ts and Android's ApiService.kt exactly.
+    public func followMerchant(merchantId: String) async throws -> MerchantFollowResponse {
+        try await authenticatedPost("api/v1/merchant/\(merchantId)/follow", body: EmptyBody())
+    }
+    public func unfollowMerchant(merchantId: String) async throws -> SuccessResponse {
+        try await authenticatedDelete("api/v1/merchant/\(merchantId)/follow")
+    }
+    public func getMyFollowedMerchants() async throws -> FollowedMerchantsResponse {
+        try await get("api/v1/merchant/follows?size=200")
     }
 
     public func placeOrder(_ request: PlaceOrderRequest) async throws -> OrderDetailResponse {

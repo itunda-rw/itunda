@@ -78,6 +78,13 @@ private struct CommerceShopContent: View {
     @State private var favoriteProductIds: Set<String> = []
     @State private var favoritingProductId: String?
 
+    // Real Naver Smart Store-style "알림받기" (follow a store) -- first iOS client
+    // for this feature (item 117, found via a content-grep sweep: bank-mfe has it,
+    // Android/iOS didn't; Android ported the same day). Lifted here same as
+    // favoriteProductIds above.
+    @State private var followedMerchantIds: Set<String> = []
+    @State private var followBusyMerchantId: String?
+
     // Real "Deals" rail (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 5
     // recommendation #8. Every entry is a real merchant-set discount, never a
     // fabricated promo -- see backend MerchantProductRepository.findDeals's own doc
@@ -128,7 +135,10 @@ private struct CommerceShopContent: View {
                     onOpenProduct: { selectedProduct = $0 },
                     favoriteProductIds: favoriteProductIds,
                     favoritingProductId: favoritingProductId,
-                    onToggleFavorite: { productId in Task { await toggleProductFavorite(productId) } }
+                    onToggleFavorite: { productId in Task { await toggleProductFavorite(productId) } },
+                    following: followedMerchantIds.contains(merchant.merchantId),
+                    followBusy: followBusyMerchantId == merchant.merchantId,
+                    onToggleFollow: { Task { await toggleFollow(merchant.merchantId) } }
                 )
             } else {
                 browseBody
@@ -140,9 +150,35 @@ private struct CommerceShopContent: View {
                 do { categories = try await NetworkClient.shared.getMerchantCategories().categories } catch {}
             }
             await loadFavoriteProductIds()
+            await loadFollowedMerchantIds()
             if deals == nil {
                 do { deals = try await NetworkClient.shared.getShopDeals().products } catch {}
             }
+        }
+    }
+
+    private func loadFollowedMerchantIds() async {
+        do {
+            let res = try await NetworkClient.shared.getMyFollowedMerchants()
+            followedMerchantIds = Set(res.follows.map { $0.merchantId })
+        } catch {
+            // Best-effort -- see loadFavoriteProductIds's own doc comment above.
+        }
+    }
+
+    private func toggleFollow(_ merchantId: String) async {
+        followBusyMerchantId = merchantId
+        defer { followBusyMerchantId = nil }
+        do {
+            if followedMerchantIds.contains(merchantId) {
+                _ = try await NetworkClient.shared.unfollowMerchant(merchantId: merchantId)
+                followedMerchantIds.remove(merchantId)
+            } else {
+                _ = try await NetworkClient.shared.followMerchant(merchantId: merchantId)
+                followedMerchantIds.insert(merchantId)
+            }
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
         }
     }
 
@@ -383,6 +419,9 @@ private struct MerchantDetailView: View {
     var favoriteProductIds: Set<String> = []
     var favoritingProductId: String?
     var onToggleFavorite: (String) -> Void = { _ in }
+    var following: Bool = false
+    var followBusy: Bool = false
+    var onToggleFollow: () -> Void = {}
 
     private var totalItems: Int { cart.values.reduce(0) { $0 + $1.quantity } }
     private func qty(_ productId: String) -> Int { cart["\(merchant.merchantId):\(productId)"]?.quantity ?? 0 }
@@ -401,6 +440,18 @@ private struct MerchantDetailView: View {
                 .accessibilityLabel("Back")
                 Text(merchant.businessName).font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
                 Spacer()
+                // Real Naver Smart Store-style "알림받기" follow toggle -- first iOS
+                // client for this feature (item 117, found via a content-grep sweep:
+                // bank-mfe has it, Android/iOS didn't; Android ported the same day).
+                Button(action: onToggleFollow) {
+                    Text(following ? "Following" : "Follow")
+                        .font(.caption).bold()
+                        .foregroundColor(following ? IDS.Colors.textPrimary : .white)
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .background(following ? IDS.Colors.chipBackground : IDS.Colors.brand)
+                        .cornerRadius(10)
+                }
+                .disabled(followBusy)
             }
             .padding(.horizontal, 8)
 
