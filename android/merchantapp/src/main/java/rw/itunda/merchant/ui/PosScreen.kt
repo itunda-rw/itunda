@@ -213,7 +213,17 @@ private fun CardCheckout(amount: Double, description: String, onDone: () -> Unit
     var result by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var submitting by remember { mutableStateOf(false) }
+    // Real device step-up (2026-07-28 port) -- a real 403 DEVICE_NOT_VERIFIED (this
+    // device hasn't been step-up-verified yet) gets its own case, not a generic error.
+    var needsDeviceVerification by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
+    if (needsDeviceVerification) {
+        rw.itunda.merchant.ui.DeviceStepUpDialog(
+            onVerified = { needsDeviceVerification = false },
+            onCancel = { needsDeviceVerification = false },
+        )
+    }
 
     if (result != null) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
@@ -252,6 +262,12 @@ private fun CardCheckout(amount: Double, description: String, onDone: () -> Unit
                             request = ChargeCardRequest(amount, description, cardNumber.replace(" ", ""), month, year, cvc),
                         )
                         result = charge.cardLast4
+                    } catch (e: retrofit2.HttpException) {
+                        if (rw.itunda.merchant.network.isDeviceNotVerifiedError(e)) {
+                            needsDeviceVerification = true
+                        } else {
+                            error = "Could not charge this card."
+                        }
                     } catch (e: Exception) {
                         error = "Could not charge this card."
                     } finally {

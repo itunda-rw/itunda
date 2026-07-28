@@ -20,13 +20,35 @@ import java.util.UUID
 // A merchant owner logs into their existing itunda account first, then registers as
 // a merchant via this app -- no separate registration screen for a brand-new itunda
 // account, same "existing account only" design as :riderapp's own login screen.
-data class LoginRequest(val phoneNumber: String, val password: String)
+// deviceId/deviceName added 2026-07-28 -- real device binding (see DeviceStore.kt),
+// mirrors bank-mfe/merchant-mfe's own login() calls exactly.
+data class LoginRequest(val phoneNumber: String, val password: String, val deviceId: String? = null, val deviceName: String? = null)
+data class VerifyDeviceRequest(val password: String)
+data class TrustedDeviceDto(val id: String, val deviceId: String, val deviceName: String?, val trusted: Boolean)
+data class VerifyDeviceResponse(val success: Boolean, val device: TrustedDeviceDto)
 data class PublicUser(val id: String, val phoneNumber: String, val firstName: String, val lastName: String)
 data class AuthResponse(val message: String, val user: PublicUser, val accessToken: String, val refreshToken: String)
 
 interface AuthApi {
     @POST("api/v1/auth/login")
     suspend fun login(@Body request: LoginRequest): AuthResponse
+
+    @POST("api/v1/auth/devices/verify")
+    suspend fun verifyDevice(@Body request: VerifyDeviceRequest): VerifyDeviceResponse
+}
+
+// Same real check the main app's rw.itunda.core.network.isDeviceNotVerifiedError
+// establishes -- a 403 alone isn't enough (other real 403s exist elsewhere in this
+// backend), the real ApiError.code field DeviceVerificationFilter actually sets is
+// what's checked. Standalone copy since merchantapp doesn't depend on :core:network.
+fun isDeviceNotVerifiedError(e: retrofit2.HttpException): Boolean {
+    if (e.code() != 403) return false
+    return try {
+        val body = e.response()?.errorBody()?.string() ?: return false
+        com.google.gson.JsonParser.parseString(body).asJsonObject.get("code")?.asString == "DEVICE_NOT_VERIFIED"
+    } catch (_: Exception) {
+        false
+    }
 }
 
 // Mirrors rw.itunda.merchant's real Merchant/MerchantProduct/PaymentIntent entities
@@ -245,13 +267,18 @@ object NetworkClient {
     private const val BASE_URL = BuildConfig.API_BASE_URL
 
     private var tokenStore: TokenStore? = null
+    private var deviceStore: DeviceStore? = null
 
     fun init(context: Context) {
         tokenStore = TokenStore(context.applicationContext)
+        deviceStore = DeviceStore(context.applicationContext)
     }
 
     fun currentTokenStore(): TokenStore =
         tokenStore ?: throw IllegalStateException("NetworkClient.init() was never called")
+
+    fun currentDeviceStore(): DeviceStore =
+        deviceStore ?: throw IllegalStateException("NetworkClient.init() was never called")
 
     private val authInterceptor = Interceptor { chain ->
         val token = tokenStore?.getAccessToken()

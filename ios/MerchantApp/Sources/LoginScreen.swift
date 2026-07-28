@@ -53,7 +53,12 @@ struct LoginScreen: View {
         error = nil
         defer { busy = false }
         do {
-            let res = try await MerchantNetworkClient.shared.login(LoginRequest(phoneNumber: phoneNumber, password: password))
+            let res = try await MerchantNetworkClient.shared.login(LoginRequest(
+                phoneNumber: phoneNumber,
+                password: password,
+                deviceId: MerchantDeviceStore.shared.getOrCreateDeviceId(),
+                deviceName: MerchantDeviceStore.shared.getDeviceName()
+            ))
             MerchantKeychainTokenStore.shared.saveSession(userId: res.user.id, accessToken: res.accessToken, refreshToken: res.refreshToken)
             onLoggedIn()
         } catch let NetworkError.httpError(statusCode) {

@@ -3,9 +3,15 @@ import Foundation
 // Mirrors services/backend/auth's real AuthDtos exactly. A merchant owner logs into
 // their existing itunda account first, then registers a business via this app --
 // no separate registration screen for a brand-new itunda account.
-struct LoginRequest: Encodable { let phoneNumber: String; let password: String }
+struct LoginRequest: Encodable { let phoneNumber: String; let password: String; let deviceId: String?; let deviceName: String? }
 struct PublicUser: Decodable { let id: String; let phoneNumber: String; let firstName: String; let lastName: String }
 struct AuthResponse: Decodable { let message: String; let user: PublicUser; let accessToken: String; let refreshToken: String }
+
+// Real device binding (2026-07-28 port) -- mirrors ios/App's own CoreNetwork
+// verifyDevice/TrustedDevice DTOs and Android merchantapp's ApiService.kt equivalent.
+struct VerifyDeviceRequest: Encodable { let password: String }
+struct TrustedDeviceDto: Decodable { let id: String; let deviceId: String; let deviceName: String?; let trusted: Bool }
+struct VerifyDeviceResponse: Decodable { let success: Bool; let device: TrustedDeviceDto }
 
 // Mirrors rw.itunda.merchant's real Merchant/MerchantProduct/PaymentIntent entities
 // exactly (same field names merchant-mfe's own lib/merchant.ts already uses).
@@ -89,7 +95,13 @@ struct UpdateEatsOrderStatusRequest: Encodable { let status: String }
 enum NetworkError: Error {
     case invalidResponse
     case httpError(statusCode: Int)
+    // Real device binding (2026-07-28 port) -- only ever thrown for a 403 on a call
+    // that itself carried an Idempotency-Key, mirroring CoreNetwork's own
+    // authenticatedPost so this never misclassifies an unrelated 403.
+    case deviceNotVerified
 }
+
+private struct ApiErrorBody: Decodable { let code: String? }
 
 /// Real, minimal URLSession client, mirroring RiderApp's own NetworkClient.swift --
 /// this app's own copy, scoped to rw.itunda.merchant's endpoints plus the Eats
@@ -120,6 +132,10 @@ final class MerchantNetworkClient {
 
     func chargeCard(_ request: ChargeCardRequest) async throws -> CardChargeResponse {
         try await postWithHeader("api/v1/merchant/card/charge", body: request, header: ("Idempotency-Key", UUID().uuidString))
+    }
+
+    func verifyDevice(password: String) async throws -> VerifyDeviceResponse {
+        try await post("api/v1/auth/devices/verify", body: VerifyDeviceRequest(password: password))
     }
 
     func getProductCatalog() async throws -> MerchantProductsResponse { try await get("api/v1/merchant/products") }
@@ -181,7 +197,14 @@ final class MerchantNetworkClient {
         }
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
-        guard (200...299).contains(httpResponse.statusCode) else { throw NetworkError.httpError(statusCode: httpResponse.statusCode) }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if extraHeader?.0 == "Idempotency-Key", httpResponse.statusCode == 403,
+               let errorBody = try? decoder.decode(ApiErrorBody.self, from: data),
+               errorBody.code == "DEVICE_NOT_VERIFIED" {
+                throw NetworkError.deviceNotVerified
+            }
+            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
+        }
         return data
     }
 }

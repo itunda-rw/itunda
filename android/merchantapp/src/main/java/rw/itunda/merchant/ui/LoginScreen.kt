@@ -78,7 +78,10 @@ fun LoginScreen(onLoggedIn: () -> Unit) {
                 error = null
                 scope.launch {
                     try {
-                        val res = NetworkClient.authApi.login(LoginRequest(phoneNumber.trim(), password))
+                        val deviceStore = NetworkClient.currentDeviceStore()
+                        val res = NetworkClient.authApi.login(
+                            LoginRequest(phoneNumber.trim(), password, deviceStore.getOrCreateDeviceId(), deviceStore.getDeviceName()),
+                        )
                         NetworkClient.currentTokenStore().saveSession(res.user.id, res.accessToken, res.refreshToken)
                         onLoggedIn()
                     } catch (e: HttpException) {

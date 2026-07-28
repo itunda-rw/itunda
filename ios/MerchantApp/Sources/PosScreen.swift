@@ -192,9 +192,20 @@ private struct CardCheckoutView: View {
     @State private var result: String?
     @State private var error: String?
     @State private var submitting = false
+    // Real device step-up (2026-07-28 port, item 97) -- a real 403 DEVICE_NOT_VERIFIED
+    // (this device hasn't been step-up-verified yet) gets its own case, not a generic error.
+    @State private var needsDeviceVerification = false
 
     var body: some View {
-        if let result {
+        if needsDeviceVerification {
+            ZStack {
+                Color.black.opacity(0.3).ignoresSafeArea()
+                DeviceStepUpDialog(
+                    onVerified: { needsDeviceVerification = false },
+                    onCancel: { needsDeviceVerification = false }
+                )
+            }
+        } else if let result {
             VStack(spacing: 12) {
                 Text("Card charged — •••• \(result)").bold()
                 Button(action: onDone) {
@@ -238,6 +249,8 @@ private struct CardCheckoutView: View {
                 ChargeCardRequest(amount: amount, description: description, cardNumber: cardNumber.replacingOccurrences(of: " ", with: ""), expiryMonth: month, expiryYear: year, cvc: cvc)
             )
             result = charge.cardLast4
+        } catch NetworkError.deviceNotVerified {
+            needsDeviceVerification = true
         } catch {
             self.error = "Could not charge this card."
         }

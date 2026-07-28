@@ -51,7 +51,17 @@ fun BusinessAccountTab() {
     var moveAmount by remember { mutableStateOf("") }
     var moving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Real device step-up (2026-07-28 port) -- a real 403 DEVICE_NOT_VERIFIED (this
+    // device hasn't been step-up-verified yet) gets its own case, not a generic error.
+    var needsDeviceVerification by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
+    if (needsDeviceVerification) {
+        DeviceStepUpDialog(
+            onVerified = { needsDeviceVerification = false },
+            onCancel = { needsDeviceVerification = false },
+        )
+    }
 
     fun load() {
         scope.launch {
@@ -132,6 +142,12 @@ fun BusinessAccountTab() {
                                         NetworkClient.apiService.moveToBusiness(UUID.randomUUID().toString(), MoveBusinessMoneyRequest(amount))
                                         moveAmount = ""
                                         load()
+                                    } catch (e: retrofit2.HttpException) {
+                                        if (rw.itunda.merchant.network.isDeviceNotVerifiedError(e)) {
+                                            needsDeviceVerification = true
+                                        } else {
+                                            error = "Couldn't move this money. Check your personal balance."
+                                        }
                                     } catch (e: Exception) {
                                         error = "Couldn't move this money. Check your personal balance."
                                     } finally {
@@ -153,6 +169,12 @@ fun BusinessAccountTab() {
                                         NetworkClient.apiService.moveToPersonal(UUID.randomUUID().toString(), MoveBusinessMoneyRequest(amount))
                                         moveAmount = ""
                                         load()
+                                    } catch (e: retrofit2.HttpException) {
+                                        if (rw.itunda.merchant.network.isDeviceNotVerifiedError(e)) {
+                                            needsDeviceVerification = true
+                                        } else {
+                                            error = "Couldn't move this money. Check your business balance."
+                                        }
                                     } catch (e: Exception) {
                                         error = "Couldn't move this money. Check your business balance."
                                     } finally {
