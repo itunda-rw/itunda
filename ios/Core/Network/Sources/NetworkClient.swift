@@ -53,12 +53,25 @@ public struct PublicUser: Decodable {
     public let neighborhood: String?
     public let neighborhoodVerifiedAt: String?
     public let neighborhoodVerificationCount: Int?
+    // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
+    // MiniWalletService.kt's own doc comment. Set via NetworkClient.setBirthDate.
+    public let birthDate: String?
 }
 
 public struct SetNeighborhoodRequest: Encodable {
     public let latitude: Double
     public let longitude: Double
 }
+
+public struct SetBirthDateRequest: Encodable {
+    public let birthDate: String
+}
+
+// Real KakaoBank mini-style capped starter wallet -- see MiniWalletService.kt's own
+// doc comment (real balance/daily/monthly caps plus a real 7-18 age-eligibility gate).
+public struct OpenMiniWalletResponse: Decodable { public let success: Bool; public let wallet: Wallet }
+public struct DepositMiniWalletRequest: Encodable { public let amount: Double }
+public struct DepositMiniWalletResponse: Decodable { public let success: Bool; public let id: String; public let amount: Double; public let completedAt: String }
 
 public struct AuthResponse: Decodable {
     public let message: String
@@ -79,6 +92,11 @@ public enum NetworkError: Error {
     // mirroring the backend's own DeviceVerificationFilter, which only ever gates
     // requests carrying a real Idempotency-Key header.
     case deviceNotVerified
+    // Real age-eligibility gate for the Mini wallet (2026-07-28) -- purely additive,
+    // same rationale as deviceNotVerified above: thrown only from the Mini wallet's
+    // own dedicated request methods, which decode the real ApiError.code on a 422.
+    case miniWalletBirthDateRequired
+    case miniWalletAgeIneligible
 }
 
 /// Real login/session flow (2026-07-11) -- this app previously had no networking
@@ -214,6 +232,50 @@ extension NetworkClient {
     // and bank-mfe's lib/neighborhood.ts, which this mirrors exactly.
     public func setNeighborhood(latitude: Double, longitude: Double) async throws -> ProfileResponse {
         try await authenticatedPost("api/v1/auth/profile/neighborhood", body: SetNeighborhoodRequest(latitude: latitude, longitude: longitude))
+    }
+
+    // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
+    // AuthService.setBirthDate's own doc comment. birthDate is an ISO-8601 date
+    // string ("YYYY-MM-DD").
+    public func setBirthDate(_ birthDate: String) async throws -> ProfileResponse {
+        try await authenticatedPost("api/v1/auth/profile/birth-date", body: SetBirthDateRequest(birthDate: birthDate))
+    }
+
+    // Real KakaoBank mini-style capped starter wallet (rw.itunda.wallet.
+    // MiniWalletService, 2026-07-28) -- first iOS client for this feature (item 101),
+    // mirroring bank-mfe's lib/miniWallet.ts and Android's ApiService.kt equivalents.
+    // Neither endpoint carries an Idempotency-Key (MiniWalletController.kt declares
+    // none), so this uses its own dedicated request path rather than authenticatedPost's
+    // idempotency-gated one, decoding the real ApiError.code directly on a 422 instead.
+    public func openMiniWallet() async throws -> OpenMiniWalletResponse {
+        try await postMiniWallet("api/v1/wallet/mini/open", body: EmptyBody())
+    }
+
+    public func depositMiniWallet(amount: Double) async throws -> DepositMiniWalletResponse {
+        try await postMiniWallet("api/v1/wallet/mini/deposit", body: DepositMiniWalletRequest(amount: amount))
+    }
+
+    private func postMiniWallet<Body: Encodable, Response: Decodable>(_ path: String, body: Body) async throws -> Response {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = KeychainTokenStore.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.httpBody = try encoder.encode(body)
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if let errorBody = try? decoder.decode(ApiErrorBody.self, from: data) {
+                switch errorBody.code {
+                case "MINI_WALLET_BIRTH_DATE_REQUIRED": throw NetworkError.miniWalletBirthDateRequired
+                case "MINI_WALLET_AGE_INELIGIBLE": throw NetworkError.miniWalletAgeIneligible
+                default: break
+                }
+            }
+            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
+        }
+        return try decoder.decode(Response.self, from: data)
     }
     public func getNotifications() async throws -> NotificationsResponse { try await get("api/v1/notifications") }
 
