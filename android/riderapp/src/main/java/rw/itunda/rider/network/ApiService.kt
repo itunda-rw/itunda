@@ -43,6 +43,11 @@ interface AuthApi {
 data class RiderDto(val id: String, val userId: String, val walletId: String, val status: String, val available: Boolean, val createdAt: String)
 data class RiderResponse(val success: Boolean, val rider: RiderDto)
 
+// Real rider rating (item 142) -- see EatsController.getRiderRating's own doc
+// comment: a real average computed from post-delivery reviews, had zero client on
+// any platform including this dedicated rider app.
+data class RiderRatingResponse(val success: Boolean, val average: Double?, val count: Int)
+
 data class EatsOrderDto(
     val id: String,
     val buyerId: String,
@@ -104,6 +109,9 @@ interface ApiService {
 
     @GET("api/v1/eats/riders/me")
     suspend fun getMyRiderProfile(): RiderResponse
+
+    @GET("api/v1/eats/riders/{riderId}/rating")
+    suspend fun getRiderRating(@Path("riderId") riderId: String): RiderRatingResponse
 
     @POST("api/v1/eats/riders/availability")
     suspend fun setRiderAvailability(@Body request: SetRiderAvailabilityRequest): RiderResponse

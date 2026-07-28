@@ -8,6 +8,9 @@ struct RiderHomeScreen: View {
     let onLogout: () -> Void
 
     @State private var rider: RiderDto?
+    // Real rider rating (item 142) -- see NetworkClient.swift's own doc comment on
+    // getRiderRating.
+    @State private var rating: RiderRatingResponse?
     @State private var tab: HomeTab = .available
     @State private var available: [EatsOrderDto]?
     @State private var mine: [EatsOrderDto]?
@@ -25,6 +28,11 @@ struct RiderHomeScreen: View {
                     Text(rider?.available == true ? "You're online" : "You're offline")
                         .font(.caption)
                         .foregroundColor(rider?.available == true ? .blue : .secondary)
+                    if let rating, let average = rating.average {
+                        Text("⭐ \(String(format: "%.1f", average)) (\(rating.count))")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 Spacer()
                 Toggle("", isOn: Binding(
@@ -147,6 +155,9 @@ struct RiderHomeScreen: View {
 
     private func refreshRiderProfile() async {
         rider = try? await RiderNetworkClient.shared.getMyRiderProfile().rider
+        if let riderId = rider?.id {
+            rating = try? await RiderNetworkClient.shared.getRiderRating(riderId: riderId)
+        }
     }
 
     private func refreshDeliveries() async {

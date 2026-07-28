@@ -46,6 +46,7 @@ import rw.itunda.rider.network.EatsOrderDto
 import rw.itunda.rider.network.NetworkClient
 import rw.itunda.rider.network.NotificationDto
 import rw.itunda.rider.network.RiderDto
+import rw.itunda.rider.network.RiderRatingResponse
 import rw.itunda.rider.network.SetRiderAvailabilityRequest
 
 private enum class HomeTab { AVAILABLE, MINE }
@@ -59,6 +60,9 @@ fun RiderHomeScreen(
     val scope = rememberCoroutineScope()
 
     var rider by remember { mutableStateOf<RiderDto?>(null) }
+    // Real rider rating (item 142) -- see ApiService.kt's own doc comment on
+    // getRiderRating.
+    var rating by remember { mutableStateOf<RiderRatingResponse?>(null) }
     var tab by remember { mutableStateOf(HomeTab.AVAILABLE) }
     var available by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
     var mine by remember { mutableStateOf<List<EatsOrderDto>?>(null) }
@@ -74,7 +78,10 @@ fun RiderHomeScreen(
     }
 
     suspend fun refreshRiderProfile() {
-        try { rider = NetworkClient.apiService.getMyRiderProfile().rider } catch (e: Exception) { /* keep last known state */ }
+        try {
+            rider = NetworkClient.apiService.getMyRiderProfile().rider
+            rider?.let { r -> rating = try { NetworkClient.apiService.getRiderRating(r.id) } catch (e: Exception) { null } }
+        } catch (e: Exception) { /* keep last known state */ }
     }
 
     suspend fun refreshDeliveries() {
@@ -130,6 +137,13 @@ fun RiderHomeScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = if (rider?.available == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                rating?.average?.let { avg ->
+                    Text(
+                        "⭐ %.1f (%d)".format(avg, rating?.count ?: 0),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Switch(

@@ -36,6 +36,11 @@ struct RiderDto: Decodable {
 }
 struct RiderResponse: Decodable { let success: Bool; let rider: RiderDto }
 
+// Real rider rating (item 142) -- see EatsController.getRiderRating's own doc
+// comment: a real average computed from post-delivery reviews, real, had zero client
+// on any platform including this dedicated rider app.
+struct RiderRatingResponse: Decodable { let success: Bool; let average: Double?; let count: Int }
+
 struct EatsOrderDto: Decodable, Identifiable {
     let id: String
     let buyerId: String
@@ -120,6 +125,8 @@ final class RiderNetworkClient {
     }
 
     func getMyRiderProfile() async throws -> RiderResponse { try await get("api/v1/eats/riders/me") }
+
+    func getRiderRating(riderId: String) async throws -> RiderRatingResponse { try await get("api/v1/eats/riders/\(riderId)/rating") }
 
     func setRiderAvailability(_ available: Bool) async throws -> RiderResponse {
         try await post("api/v1/eats/riders/availability", body: SetRiderAvailabilityRequest(available: available))
