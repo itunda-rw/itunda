@@ -223,6 +223,10 @@ struct EntireMenuScreen: View {
     // Real Kakao T-style ride-hailing screen (2026-07-28, item 110) -- last remaining
     // client platform for this feature (bank-mfe always had it, Android item 109).
     @State private var showRides = false
+    // Real Kakao Pay round-up auto-saving screen (2026-07-28, item 113) -- last
+    // remaining client platform for this feature (bank-mfe item 112, Android already
+    // had it).
+    @State private var showRoundUp = false
 
     var body: some View {
         ScrollView {
@@ -298,6 +302,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Credit score", subtitle: "Free check, alternative data", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showCreditScore = true }),
                         FlatRow(title: "Spending", subtitle: "Real, ledger-based category breakdown", symbol: "chart.pie.fill", tint: .accentBlue, action: { showSpending = true }),
                         FlatRow(title: "Rides", subtitle: "Request a ride or drive for real fares", symbol: "car.fill", tint: .accentBlue, action: { showRides = true }),
+                        FlatRow(title: "Round-up savings", subtitle: "Auto-save spare change from every transfer", symbol: "arrow.up.circle.fill", tint: .accentOrange, action: { showRoundUp = true }),
                         FlatRow(title: "Digital certificate", subtitle: "Sign agreements in Itunda", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showCertificate = true }),
                         FlatRow(title: "Mobile plan", subtitle: "MTN, Airtel, broadband", symbol: "globe", tint: .accentTeal),
                     ])
@@ -426,6 +431,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showRides) {
             RideScreenView(onBack: { showRides = false })
+        }
+        .sheet(isPresented: $showRoundUp) {
+            RoundUpSettingsView(onBack: { showRoundUp = false })
         }
     }
 }

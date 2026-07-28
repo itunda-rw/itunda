@@ -288,6 +288,18 @@ public struct SavingsGoal: Decodable {
 
 public struct SavingsGoalsResponse: Decodable { public let success: Bool; public let goals: [SavingsGoal] }
 
+// Real Kakao Pay 머니굴리기 round-up auto-saving -- mirrors RoundUpSettings.kt exactly.
+public let ROUND_UP_INCREMENTS: [Double] = [100, 500, 1000]
+public struct RoundUpSettingsDto: Decodable {
+    public let id: String
+    public let userId: String
+    public let enabled: Bool
+    public let roundToNearest: Double
+    public let targetGoalId: String?
+}
+public struct RoundUpSettingsResponse: Decodable { public let success: Bool; public let settings: RoundUpSettingsDto? }
+public struct SetRoundUpSettingsRequest: Encodable { public let enabled: Bool; public let roundToNearest: Double; public let targetGoalId: String? }
+
 public struct InterestJar: Decodable {
     public let userId: String
     public let walletId: String
@@ -366,6 +378,18 @@ extension NetworkClient {
     }
     public func getSavingsGoals() async throws -> SavingsGoalsResponse { try await get("api/v1/savings/goals") }
     public func getInterestJar() async throws -> InterestJarResponse { try await get("api/v1/savings/interest-jar") }
+
+    // Real Kakao Pay 머니굴리기 round-up auto-saving (rw.itunda.savings.RoundUpService,
+    // real since well before this session) -- first iOS client for this feature (item
+    // 113, found via a content-grep sweep: Android has a real client, bank-mfe ported
+    // it the same day as item 112, iOS never did). Matches Android's own current scope
+    // exactly -- goal destination only, not the newer (2026-07-27) stock-destination
+    // option, which stays unwired on every client including Android's.
+    public func getRoundUpSettings() async throws -> RoundUpSettingsResponse { try await get("api/v1/savings/round-up") }
+
+    public func setRoundUpSettings(enabled: Bool, roundToNearest: Double, targetGoalId: String?) async throws -> RoundUpSettingsResponse {
+        try await authenticatedPost("api/v1/savings/round-up", body: SetRoundUpSettingsRequest(enabled: enabled, roundToNearest: roundToNearest, targetGoalId: targetGoalId))
+    }
     public func getTransactionHistory() async throws -> TransactionHistoryResponse { try await get("api/v1/wallet/transactions") }
     // Real account settings screen (2026-07-12).
     public func getProfile() async throws -> ProfileResponse { try await get("api/v1/auth/profile") }
