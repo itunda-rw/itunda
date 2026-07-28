@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { CircleDollarSign, CreditCard, LogOut, QrCode, Settings, ShoppingCart, Star, Store, Users } from 'lucide-react';
+import { CircleDollarSign, CreditCard, LogOut, QrCode, Settings, ShoppingCart, Star, Store, Tag, Users } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
 import { getMyMerchant, type Merchant } from './lib/merchant';
 import RegisterScreen from './RegisterScreen';
 import BillingScreen from './screens/BillingScreen';
 import CollectScreen from './screens/CollectScreen';
+import CouponsScreen from './screens/CouponsScreen';
 import PayrollScreen from './screens/PayrollScreen';
 import PosScreen from './screens/PosScreen';
 import ReportsScreen from './screens/ReportsScreen';
@@ -12,7 +13,7 @@ import ReviewsScreen from './screens/ReviewsScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import { QueueError, QueueSkeleton } from './QueueState';
 
-type Tab = 'collect' | 'pos' | 'reports' | 'reviews' | 'billing' | 'payroll' | 'settings';
+type Tab = 'collect' | 'pos' | 'reports' | 'reviews' | 'billing' | 'coupons' | 'payroll' | 'settings';
 
 const TABS: { id: Tab; label: string; icon: typeof QrCode }[] = [
   { id: 'collect', label: 'Collect', icon: QrCode },
@@ -20,6 +21,7 @@ const TABS: { id: Tab; label: string; icon: typeof QrCode }[] = [
   { id: 'reports', label: 'Reports', icon: CircleDollarSign },
   { id: 'reviews', label: 'Reviews', icon: Star },
   { id: 'billing', label: 'Billing', icon: CreditCard },
+  { id: 'coupons', label: 'Coupons', icon: Tag },
   { id: 'payroll', label: 'Payroll', icon: Users },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
@@ -132,6 +134,7 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
         {tab === 'reports' && <ReportsScreen />}
         {tab === 'reviews' && <ReviewsScreen merchant={merchant} />}
         {tab === 'billing' && <BillingScreen />}
+        {tab === 'coupons' && <CouponsScreen />}
         {tab === 'payroll' && <PayrollScreen />}
         {tab === 'settings' && <SettingsScreen merchant={merchant} onUpdated={setMerchant} />}
       </main>

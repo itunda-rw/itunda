@@ -381,3 +381,46 @@ export const redeemGiftVoucher = (voucherId: string) =>
     method: 'POST',
     headers: { 'Idempotency-Key': randomUUID() },
   }).then((r) => r.voucher);
+
+// Real merchant coupons + 단골 (regular customer) loyalty gating (item 146) -- see
+// MerchantCoupon.kt's own doc comment: a coupon applies to a real QR/Pay-by-code
+// payment (MerchantService.collect), not the cart-based commerce checkout, so it isn't
+// money-moving itself here (no Idempotency-Key, same as MerchantBookingController's own
+// non-money-moving writes) -- actual redemption happens inside collect, which already
+// requires one. Merchant-owner-facing create/list/deactivate only; the customer-facing
+// browse+redeem-at-payment half is a real, separate follow-up.
+export type CouponDiscountType = 'PERCENT' | 'FIXED_AMOUNT';
+
+export interface MerchantCoupon {
+  id: string;
+  merchantId: string;
+  title: string;
+  description: string | null;
+  discountType: CouponDiscountType;
+  discountValue: number;
+  regularsOnly: boolean;
+  active: boolean;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export const createCoupon = (
+  title: string,
+  description: string | undefined,
+  discountType: CouponDiscountType,
+  discountValue: number,
+  regularsOnly: boolean,
+  expiresAt: string | undefined,
+) =>
+  apiFetch<{ success: boolean; coupon: MerchantCoupon }>('/api/v1/merchant/coupons', {
+    method: 'POST',
+    body: JSON.stringify({ title, description, discountType, discountValue, regularsOnly, expiresAt }),
+  }).then((r) => r.coupon);
+
+export const fetchMyCoupons = () =>
+  apiFetch<{ success: boolean; coupons: MerchantCoupon[] }>('/api/v1/merchant/coupons').then((r) => r.coupons);
+
+export const deactivateCoupon = (couponId: string) =>
+  apiFetch<{ success: boolean; coupon: MerchantCoupon }>(`/api/v1/merchant/coupons/${couponId}/deactivate`, {
+    method: 'POST',
+  }).then((r) => r.coupon);
