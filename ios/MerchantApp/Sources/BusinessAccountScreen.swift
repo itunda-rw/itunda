@@ -1,0 +1,182 @@
+import SwiftUI
+import CoreDesignSystem
+
+/// Real 토스뱅크 개인사업자 (business banking for sole proprietors) equivalent (item 151)
+/// -- closes a real gap named in the backend's own Merchant.kt doc comment: every
+/// merchant's real card/QR collection has always settled straight into their PERSONAL
+/// main wallet, with business income and personal spending genuinely inseparable.
+/// This tab lets a merchant open a real, dedicated business wallet and deliberately
+/// move money into/out of it, with its own real transaction history. Mirrors Android
+/// merchantapp's own BusinessAccountScreen.kt (BusinessAccountTab) exactly.
+struct BusinessAccountTab: View {
+    @State private var wallet: BusinessWalletDto?
+    @State private var loaded = false
+    @State private var transactions: [BusinessLedgerEntryDto] = []
+    @State private var opening = false
+    @State private var error: String?
+
+    var body: some View {
+        Group {
+            if !loaded {
+                VStack { Spacer(); ProgressView(); Spacer() }
+            } else if let wallet {
+                accountView(wallet)
+            } else {
+                openAccountView
+            }
+        }
+        .task { await load() }
+    }
+
+    private var openAccountView: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Business account").font(.title3).bold()
+            Text("Keep your business money separate from your personal wallet. Your real card/QR collections still settle to your personal wallet as before — move money into your business account whenever you're ready to set it aside.")
+                .font(.footnote).foregroundColor(.secondary)
+            if let error {
+                Text(error).font(.footnote).foregroundColor(.red)
+            }
+            Button(action: { Task { await open() } }) {
+                Text(opening ? "Opening…" : "Open business account")
+                    .bold().foregroundColor(.white)
+                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+                    .background(IDS.Colors.brand).cornerRadius(10)
+            }
+            .disabled(opening)
+            Spacer()
+        }
+        .padding(16)
+    }
+
+    private func accountView(_ wallet: BusinessWalletDto) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Business balance").font(.caption).foregroundColor(.secondary)
+                    Text("\(formattedRWF(wallet.balance)) RWF").font(.title).bold()
+                    Text(wallet.accountNumber).font(.caption).foregroundColor(.secondary)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(.secondarySystemBackground))
+                .cornerRadius(12)
+
+                MoveMoneyCard(onMoved: { Task { await load() } })
+
+                Text("Business transactions").font(.headline)
+                if transactions.isEmpty {
+                    Text("No business transactions yet.").font(.footnote).foregroundColor(.secondary)
+                } else {
+                    ForEach(transactions) { entry in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(entry.memo).font(.subheadline)
+                                Text(String(entry.createdAt.prefix(10))).font(.caption).foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Text("\(entry.direction == "CREDIT" ? "+" : "-")\(formattedRWF(entry.amount)) RWF").bold()
+                        }
+                        .padding(14)
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(12)
+                    }
+                }
+            }
+            .padding(16)
+        }
+    }
+
+    private func load() async {
+        do {
+            wallet = try await MerchantNetworkClient.shared.getBusinessAccount().wallet
+            transactions = (try? await MerchantNetworkClient.shared.getBusinessTransactions().transactions) ?? []
+            error = nil
+        } catch {
+            wallet = nil
+        }
+        loaded = true
+    }
+
+    private func open() async {
+        opening = true
+        error = nil
+        defer { opening = false }
+        do {
+            _ = try await MerchantNetworkClient.shared.openBusinessAccount()
+            await load()
+        } catch {
+            self.error = "Couldn't open a business account. Try again."
+        }
+    }
+}
+
+private struct MoveMoneyCard: View {
+    let onMoved: () -> Void
+
+    @State private var amountText = ""
+    @State private var moving = false
+    @State private var error: String?
+    @State private var needsDeviceVerification = false
+
+    var body: some View {
+        if needsDeviceVerification {
+            ZStack {
+                Color.black.opacity(0.3).ignoresSafeArea()
+                DeviceStepUpDialog(
+                    onVerified: { needsDeviceVerification = false },
+                    onCancel: { needsDeviceVerification = false }
+                )
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Move money").bold()
+                TextField("Amount (RWF)", text: $amountText)
+                    .keyboardType(.numberPad)
+                    .padding(12)
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(10)
+                if let error {
+                    Text(error).font(.footnote).foregroundColor(.red)
+                }
+                HStack(spacing: 8) {
+                    Button(action: { Task { await move(toBusiness: true) } }) {
+                        Text("To business").bold().foregroundColor(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 10)
+                            .background(IDS.Colors.brand).cornerRadius(10)
+                    }
+                    .disabled(moving)
+                    Button(action: { Task { await move(toBusiness: false) } }) {
+                        Text("To personal").bold()
+                            .frame(maxWidth: .infinity).padding(.vertical, 10)
+                            .background(Color(.secondarySystemBackground)).cornerRadius(10)
+                    }
+                    .disabled(moving)
+                }
+            }
+            .padding(16)
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(12)
+        }
+    }
+
+    private func move(toBusiness: Bool) async {
+        guard let amount = Double(amountText), amount > 0 else {
+            error = "Enter a real amount."
+            return
+        }
+        moving = true
+        error = nil
+        defer { moving = false }
+        do {
+            _ = toBusiness
+                ? try await MerchantNetworkClient.shared.moveToBusiness(amount: amount)
+                : try await MerchantNetworkClient.shared.moveToPersonal(amount: amount)
+            amountText = ""
+            onMoved()
+        } catch NetworkError.deviceNotVerified {
+            needsDeviceVerification = true
+        } catch {
+            self.error = "Couldn't move this money. Check your balance."
+        }
+    }
+}

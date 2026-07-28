@@ -92,6 +92,36 @@ struct EatsOrderDetailResponse: Decodable { let success: Bool; let order: EatsOr
 struct EatsOrdersResponse: Decodable { let success: Bool; let orders: [EatsOrderDto] }
 struct UpdateEatsOrderStatusRequest: Encodable { let status: String }
 
+// Real 토스뱅크 개인사업자 (business banking for sole proprietors) equivalent (item 151)
+// -- see MerchantBusinessAccountService.kt's own doc comment. Android's native
+// merchantapp already has this (BusinessAccountScreen.kt); this is the iOS port,
+// mirroring the same field shapes merchant-mfe's own lib/merchant.ts (item 150) uses.
+struct BusinessWalletDto: Decodable {
+    let id: String
+    let userId: String
+    let accountNumber: String
+    let accountName: String
+    let type: String
+    let balance: Double
+    let availableBalance: Double
+    let currency: String
+}
+struct BusinessWalletResponse: Decodable { let success: Bool; let wallet: BusinessWalletDto }
+
+struct BusinessLedgerEntryDto: Decodable, Identifiable {
+    let id: String
+    let transactionId: String
+    let accountId: String
+    let direction: String
+    let amount: Double
+    let currency: String
+    let balanceAfter: Double
+    let memo: String
+    let createdAt: String
+}
+struct BusinessTransactionsResponse: Decodable { let success: Bool; let transactions: [BusinessLedgerEntryDto] }
+struct MoveBusinessMoneyRequest: Encodable { let amount: Double }
+
 // Real push device-token registration (item 130) -- see the consumer app's own
 // NetworkClient.swift doc comment (items 119-121) and RiderApp's own matching fix,
 // same pass: PushNotificationService.sendToUser silently no-ops for every real user
@@ -164,6 +194,22 @@ final class MerchantNetworkClient {
     }
 
     func getReport() async throws -> ReportResponse { try await get("api/v1/merchant/reports") }
+
+    func openBusinessAccount() async throws -> BusinessWalletResponse {
+        try await post("api/v1/merchant/business-account", body: EmptyBody())
+    }
+
+    func getBusinessAccount() async throws -> BusinessWalletResponse { try await get("api/v1/merchant/business-account") }
+
+    func getBusinessTransactions() async throws -> BusinessTransactionsResponse { try await get("api/v1/merchant/business-account/transactions") }
+
+    func moveToBusiness(amount: Double) async throws -> BusinessWalletResponse {
+        try await postWithHeader("api/v1/merchant/business-account/move-to-business", body: MoveBusinessMoneyRequest(amount: amount), header: ("Idempotency-Key", UUID().uuidString))
+    }
+
+    func moveToPersonal(amount: Double) async throws -> BusinessWalletResponse {
+        try await postWithHeader("api/v1/merchant/business-account/move-to-personal", body: MoveBusinessMoneyRequest(amount: amount), header: ("Idempotency-Key", UUID().uuidString))
+    }
 
     func getRestaurantOrders() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/restaurant-orders") }
 
