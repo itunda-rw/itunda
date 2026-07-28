@@ -51,3 +51,20 @@ export const verifyDevice = (password: string) =>
 
 export const revokeDevice = (deviceId: string) =>
   apiFetch<{ success: boolean }>(`/api/v1/auth/devices/${encodeURIComponent(deviceId)}`, { method: 'DELETE' });
+
+// Real push device-token registration (item 119) -- see backend DeviceToken.kt's own
+// doc comment: a mature, real push pipeline (PushNotificationService.sendToUser, wired
+// into rideshare/keyword-alert/merchant-booking/fraud-alert/P2P-received/merchant-follow
+// pushes this session) silently no-ops for every real user because `sendToUser` reads
+// `deviceTokenRepository.findByUserId(userId)` and bails if empty -- a real repo-wide
+// sweep found zero client anywhere ever calls `POST /api/v1/notifications/device-tokens`
+// to put a row there in the first place. This app has no real FCM/APNs/Web Push SDK
+// integrated, so there's no real push token to send -- reuses the same real, stable,
+// per-install device id already established for trusted-device binding (see this file's
+// own header) as this demo's client-generated token, exactly the same honest
+// simplification `PushSender`'s own doc comment already applies on the sending side.
+export const registerDeviceToken = () =>
+  apiFetch<{ success: boolean }>('/api/v1/notifications/device-tokens', {
+    method: 'POST',
+    body: JSON.stringify({ platform: 'WEB', token: getOrCreateDeviceId() }),
+  });

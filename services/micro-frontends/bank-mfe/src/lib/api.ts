@@ -79,6 +79,10 @@ export async function login(phoneNumber: string, password: string): Promise<Auth
   localStorage.setItem(TOKEN_KEY, body.accessToken);
   localStorage.setItem(REFRESH_KEY, body.refreshToken);
   localStorage.setItem(USER_KEY, JSON.stringify(body.user));
+  // Real push device-token registration (item 119) -- see device.ts's own doc comment
+  // on registerDeviceToken. Best-effort and fire-and-forget: a registration failure
+  // must never block a real, otherwise-successful login.
+  import('./device').then(({ registerDeviceToken }) => registerDeviceToken()).catch(() => {});
   return body.user as AuthedUser;
 }
 
