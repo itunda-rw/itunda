@@ -82,6 +82,26 @@ export interface MarketplaceEscrowDispute {
   updatedAt: string;
 }
 
+// Real MTN MoMo/Airtel Money-style physical cash-in/cash-out agent network (item 126)
+// -- a till reconciliation this out of balance needs real human admin review before
+// the variance is written off, same "real human review, not auto-resolved" discipline
+// this file's own MarketplaceEscrowDispute queue already established. Found zero
+// client anywhere via the same endpoint-coverage sweep that found item 125.
+export interface AgentTillReconciliation {
+  id: string;
+  agentId: string;
+  businessDate: string;
+  expectedCash: number;
+  countedCash: number;
+  variance: number;
+  submittedByUserId: string;
+  status: 'MATCHED' | 'PENDING_REVIEW' | 'RESOLVED';
+  reviewedByUserId: string | null;
+  reviewNote: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
 export interface ReconciliationRow {
   railId: string;
   displayName: string;
@@ -211,6 +231,15 @@ export const fetchSupportQueue = (page = 0) =>
   apiFetch<{ success: boolean; queue: SupportTicket[]; page: number; totalElements: number; totalPages: number }>(
     `/api/v1/system/support/queue?page=${page}`,
   ).then(toPagedQueue);
+
+export const fetchPendingTillReconciliations = () =>
+  apiFetch<{ success: boolean; reconciliations: AgentTillReconciliation[] }>('/api/v1/system/agents/till-reconciliations/pending').then((r) => r.reconciliations);
+
+export const resolveTillReconciliation = (reconciliationId: string, note: string) =>
+  apiFetch(`/api/v1/system/agents/till-reconciliations/${reconciliationId}/resolve`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  });
 
 export const fetchMarketplaceEscrowDisputes = () =>
   apiFetch<{ success: boolean; disputes: MarketplaceEscrowDispute[] }>('/api/v1/system/marketplace-escrow/disputes').then((r) => r.disputes);

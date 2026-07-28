@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, CircleDollarSign, HeartPulse, LifeBuoy, LogOut, Puzzle, Scale, ShieldCheck, Siren } from 'lucide-react';
+import { AlertTriangle, Banknote, CircleDollarSign, HeartPulse, LifeBuoy, LogOut, Puzzle, Scale, ShieldCheck, Siren } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
 import FraudQueue from './queues/FraudQueue';
 import ComplianceQueue from './queues/ComplianceQueue';
@@ -9,8 +9,9 @@ import SupportQueue from './queues/SupportQueue';
 import InsuranceClaimsQueue from './queues/InsuranceClaimsQueue';
 import PartnersQueue from './queues/PartnersQueue';
 import EscrowDisputesQueue from './queues/EscrowDisputesQueue';
+import AgentReconciliationQueue from './queues/AgentReconciliationQueue';
 
-type Tab = 'fraud' | 'compliance' | 'incidents' | 'reconciliation' | 'support' | 'insurance' | 'partners' | 'escrow';
+type Tab = 'fraud' | 'compliance' | 'incidents' | 'reconciliation' | 'support' | 'insurance' | 'partners' | 'escrow' | 'agents';
 
 const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'fraud', label: 'Fraud', icon: AlertTriangle },
@@ -21,6 +22,7 @@ const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'insurance', label: 'Insurance claims', icon: HeartPulse },
   { id: 'partners', label: 'Partner mini-apps', icon: Puzzle },
   { id: 'escrow', label: 'Escrow disputes', icon: Scale },
+  { id: 'agents', label: 'Agent till variances', icon: Banknote },
 ];
 
 export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
@@ -95,6 +97,7 @@ export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
         {tab === 'insurance' && <InsuranceClaimsQueue />}
         {tab === 'partners' && <PartnersQueue />}
         {tab === 'escrow' && <EscrowDisputesQueue />}
+        {tab === 'agents' && <AgentReconciliationQueue />}
       </main>
     </div>
   );
