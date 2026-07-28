@@ -24,7 +24,7 @@ import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreResult, 
 import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type KycSubmission } from './lib/identity';
 import { addContact, fetchContacts, type Contact } from './lib/contacts';
 import { createSupportTicket, fetchSupportTickets, type SupportTicket, type SupportTicketCategory } from './lib/support';
-import { collectPayment, fetchMerchantCategories, fetchMyFollowedMerchants, fetchShopDeals, fetchShoppingCatalog, followMerchant, searchProducts, unfollowMerchant, type CollectPaymentResult, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
+import { cancelBillingSubscription, collectPayment, fetchMerchantBillingPlans, fetchMerchantCategories, fetchMyBillingSubscriptions, fetchMyFollowedMerchants, fetchShopDeals, fetchShoppingCatalog, followMerchant, searchProducts, subscribeToBillingPlan, unfollowMerchant, type CollectPaymentResult, type MerchantBillingPlan, type MerchantBillingSubscription, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
 import {
   buyStock, fetchPortfolio, fetchPortfolioHistory, fetchStockHistory, fetchStocks, fetchWatchlist,
   sellStock, unwatchStock, watchStock,
@@ -1429,11 +1429,21 @@ function SubscriptionsView() {
   const [subscriptions, setSubscriptions] = useState<DetectedSubscription[] | null>(null);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [billingSubs, setBillingSubs] = useState<MerchantBillingSubscription[] | null>(null);
+  const [billingError, setBillingError] = useState<string | null>(null);
+
+  const loadBilling = () => {
+    setBillingError(null);
+    fetchMyBillingSubscriptions()
+      .then(setBillingSubs)
+      .catch((err) => setBillingError(err instanceof ApiError ? err.message : 'Could not load your subscriptions.'));
+  };
 
   useEffect(() => {
     fetchSubscriptions()
       .then((r) => { setSubscriptions(r.subscriptions); setTotal(r.estimatedMonthlyTotal); })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your subscriptions.'));
+    loadBilling();
   }, []);
 
   if (subscriptions === null) {
@@ -1467,6 +1477,76 @@ function SubscriptionsView() {
           </div>
         ))
       )}
+
+      {/* Real Kakao Pay 정기결제/Toss 빌링키-style merchant subscriptions the customer
+          actually authorized (item 145) -- distinct from the detected-from-history
+          section above: these are real active billing-key authorizations that charge
+          automatically until cancelled, not a heuristic guess. */}
+      <div className="toss-card" style={{ padding: '24px' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>Merchant subscriptions</h3>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+          Plans you've subscribed to. These charge your wallet automatically until you cancel.
+        </p>
+        {billingError && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{billingError}</p>}
+        {billingSubs === null && !billingError ? (
+          <div className="toss-card skeleton" style={{ height: '80px' }} />
+        ) : billingSubs && billingSubs.length === 0 ? (
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No merchant subscriptions yet.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {billingSubs?.map((sub) => (
+              <MerchantBillingSubscriptionRow key={sub.id} subscription={sub} onChanged={loadBilling} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MerchantBillingSubscriptionRow({ subscription, onChanged }: { subscription: MerchantBillingSubscription; onChanged: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleCancel = async () => {
+    setError(null);
+    setBusy(true);
+    try {
+      await cancelBillingSubscription(subscription.id);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not cancel this subscription.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '12px', background: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+        <div>
+          <p style={{ fontSize: '13px', fontWeight: 700 }}>{subscription.chargeCount} charge{subscription.chargeCount === 1 ? '' : 's'} so far</p>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+            {subscription.status === 'ACTIVE'
+              ? `Next charge ${new Date(subscription.nextChargeAt).toLocaleDateString()}`
+              : `Cancelled ${subscription.cancelledAt ? new Date(subscription.cancelledAt).toLocaleDateString() : ''}`}
+          </p>
+          {subscription.lastFailureReason && subscription.status === 'ACTIVE' && (
+            <p style={{ fontSize: '11px', color: '#E53935' }}>Last charge failed: {subscription.lastFailureReason}</p>
+          )}
+        </div>
+        {subscription.status === 'ACTIVE' && (
+          <button
+            className="toss-btn toss-btn-secondary"
+            style={{ padding: '6px 12px', fontSize: '12px', whiteSpace: 'nowrap' }}
+            disabled={busy}
+            onClick={handleCancel}
+          >
+            {busy ? '…' : 'Cancel'}
+          </button>
+        )}
+      </div>
+      {error && <p style={{ fontSize: '12px', color: '#E53935', margin: 0 }} role="alert">{error}</p>}
     </div>
   );
 }
@@ -9324,6 +9404,8 @@ function ProductCatalogView({
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [following, setFollowing] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
+  const [billingPlans, setBillingPlans] = useState<MerchantBillingPlan[]>([]);
+  const [mySubscriptions, setMySubscriptions] = useState<MerchantBillingSubscription[]>([]);
 
   const load = () => {
     setError(null);
@@ -9339,6 +9421,14 @@ function ProductCatalogView({
     // discipline as the wishlist fetch above.
     fetchMyFollowedMerchants()
       .then((follows) => setFollowing(follows.some((f) => f.merchantId === merchant.merchantId)))
+      .catch(() => {});
+    // Real Kakao Pay 정기결제/Toss 빌링키-style recurring billing plans this merchant
+    // itself has published -- non-critical, same discipline as follow/wishlist above.
+    fetchMerchantBillingPlans(merchant.merchantId)
+      .then(setBillingPlans)
+      .catch(() => {});
+    fetchMyBillingSubscriptions()
+      .then((subs) => setMySubscriptions(subs.filter((s) => s.merchantId === merchant.merchantId)))
       .catch(() => {});
   };
 
@@ -9412,6 +9502,19 @@ function ProductCatalogView({
           {following ? 'Following' : 'Follow'}
         </button>
       </div>
+      {billingPlans.length > 0 && (
+        <div className="toss-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <h4 style={{ fontSize: '14px', fontWeight: 700 }}>Subscription plans</h4>
+          {billingPlans.map((plan) => (
+            <BillingPlanRow
+              key={plan.id}
+              plan={plan}
+              subscription={mySubscriptions.find((s) => s.planId === plan.id && s.status === 'ACTIVE')}
+              onChanged={load}
+            />
+          ))}
+        </div>
+      )}
       {catalog.products.length === 0 ? (
         <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No products yet.</p></div>
       ) : (
@@ -9462,6 +9565,70 @@ function ProductCatalogView({
           View cart ({totalCartItems} item{totalCartItems === 1 ? '' : 's'})
         </button>
       )}
+    </div>
+  );
+}
+
+// Real Kakao Pay 정기결제/Toss 빌링키-style subscribe/cancel -- subscribing charges the
+// first cycle immediately (real "인증 + 첫결제"), same as MerchantBillingService.subscribe's
+// own doc comment. One real active subscription per plan; cancelling stops future
+// charges but doesn't refund the current cycle already paid for.
+function BillingPlanRow({ plan, subscription, onChanged }: { plan: MerchantBillingPlan; subscription?: MerchantBillingSubscription; onChanged: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubscribe = async () => {
+    setError(null);
+    setBusy(true);
+    try {
+      await subscribeToBillingPlan(plan.id);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not subscribe to this plan.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!subscription) return;
+    setError(null);
+    setBusy(true);
+    try {
+      await cancelBillingSubscription(subscription.id);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not cancel this subscription.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '12px', background: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+        <div>
+          <p style={{ fontSize: '14px', fontWeight: 700 }}>{plan.name}</p>
+          {plan.description && <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>{plan.description}</p>}
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)', marginTop: '2px' }}>
+            {plan.amount.toLocaleString()} RWF every {plan.intervalDays} day{plan.intervalDays === 1 ? '' : 's'}
+          </p>
+        </div>
+        <button
+          className={subscription ? 'toss-btn toss-btn-secondary' : 'toss-btn toss-btn-primary'}
+          style={{ padding: '6px 12px', fontSize: '12px', whiteSpace: 'nowrap' }}
+          disabled={busy}
+          onClick={subscription ? handleCancel : handleSubscribe}
+        >
+          {busy ? '…' : subscription ? 'Cancel' : 'Subscribe'}
+        </button>
+      </div>
+      {subscription && (
+        <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+          Next charge {new Date(subscription.nextChargeAt).toLocaleDateString()}
+        </p>
+      )}
+      {error && <p style={{ fontSize: '12px', color: '#E53935', margin: 0 }} role="alert">{error}</p>}
     </div>
   );
 }

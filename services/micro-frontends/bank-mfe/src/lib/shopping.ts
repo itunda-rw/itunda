@@ -127,3 +127,53 @@ export const followMerchant = (merchantId: string) =>
 
 export const unfollowMerchant = (merchantId: string) =>
   apiFetch<{ success: boolean }>(`/api/v1/merchant/${merchantId}/follow`, { method: 'DELETE' });
+
+// Real Kakao Pay 정기결제/Toss Payments 빌링키-style recurring merchant billing (item 144
+// built the merchant-owner plan-management side on merchant-mfe) -- this is the
+// customer-facing half: browse a merchant's own active plans and subscribe. Subscribing
+// charges the first cycle immediately (real "인증 + 첫결제"), then itunda charges the
+// same wallet automatically every intervalDays with zero further approval, distinct
+// from SubscriptionsView's own "detected from payment history" read-only insight above.
+export interface MerchantBillingPlan {
+  id: string;
+  merchantId: string;
+  name: string;
+  description: string | null;
+  amount: number;
+  intervalDays: number;
+  active: boolean;
+  createdAt: string;
+}
+
+export type MerchantBillingSubscriptionStatus = 'ACTIVE' | 'CANCELLED';
+
+export interface MerchantBillingSubscription {
+  id: string;
+  planId: string;
+  merchantId: string;
+  customerId: string;
+  status: MerchantBillingSubscriptionStatus;
+  nextChargeAt: string;
+  lastChargedAt: string | null;
+  chargeCount: number;
+  lastFailureReason: string | null;
+  createdAt: string;
+  cancelledAt: string | null;
+}
+
+export const fetchMerchantBillingPlans = (merchantId: string) =>
+  apiFetch<{ success: boolean; plans: MerchantBillingPlan[] }>(`/api/v1/merchant/${merchantId}/billing-plans`).then((r) => r.plans);
+
+export const subscribeToBillingPlan = (planId: string) =>
+  apiFetch<{ success: boolean; subscription: MerchantBillingSubscription }>(`/api/v1/merchant/billing-plans/${planId}/subscribe`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  }).then((r) => r.subscription);
+
+export const fetchMyBillingSubscriptions = () =>
+  apiFetch<{ success: boolean; subscriptions: MerchantBillingSubscription[] }>('/api/v1/merchant/billing-subscriptions/my').then((r) => r.subscriptions);
+
+export const cancelBillingSubscription = (subscriptionId: string) =>
+  apiFetch<{ success: boolean; subscription: MerchantBillingSubscription }>(`/api/v1/merchant/billing-subscriptions/${subscriptionId}/cancel`, {
+    method: 'POST',
+  }).then((r) => r.subscription);
