@@ -18,6 +18,7 @@ import rw.itunda.core.domain.CommunityPostStatus
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.User
 import rw.itunda.core.geo.NominatimGeocodingClient
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.CommunityCommentRepository
 import rw.itunda.core.repository.CommunityLikeRepository
 import rw.itunda.core.repository.CommunityPostRepository
@@ -41,11 +42,13 @@ class CommunityServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
         val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, rateLimiter, nominatimGeocodingClient,
+            pushNotificationService,
         )
 
         When("posting with valid fields") {
@@ -131,11 +134,13 @@ class CommunityServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
         val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, rateLimiter, nominatimGeocodingClient,
+            pushNotificationService,
         )
         val post = CommunityPost(id = "post_1", authorId = "author_1", category = "question", title = "T", body = "B")
 
@@ -181,6 +186,10 @@ class CommunityServiceTest : BehaviorSpec({
                 notifSlot.captured.userId shouldBe "author_1"
                 notifSlot.captured.title shouldBe "Jane Doe"
             }
+
+            Then("the real post author also gets a real push notification, not just the in-app one") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("author_1", "Jane Doe", "Try Kigali Plumbing Co", any()) }
+            }
         }
 
         When("the real author comments on their own post") {
@@ -193,6 +202,7 @@ class CommunityServiceTest : BehaviorSpec({
 
             Then("no self-notification is ever sent") {
                 verify(exactly = 0) { notificationRepository.save(any()) }
+                verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any()) }
             }
         }
 
@@ -266,11 +276,13 @@ class CommunityServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
         val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, rateLimiter, nominatimGeocodingClient,
+            pushNotificationService,
         )
 
         When("no category filter is given") {
@@ -304,11 +316,13 @@ class CommunityServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
         val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, rateLimiter, nominatimGeocodingClient,
+            pushNotificationService,
         )
 
         // Real Kigali-area coordinates, same convention every geo test in this codebase uses.
@@ -345,11 +359,13 @@ class CommunityServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
         val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, rateLimiter, nominatimGeocodingClient,
+            pushNotificationService,
         )
 
         When("the caller has a real neighborhood set") {

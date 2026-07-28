@@ -15,6 +15,7 @@ import rw.itunda.core.domain.GroupConversationMember
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.NominatimGeocodingClient
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.CommunityCommentRepository
 import rw.itunda.core.repository.CommunityLikeRepository
 import rw.itunda.core.repository.CommunityPostRepository
@@ -67,6 +68,7 @@ class CommunityService(
     private val groupConversationMemberRepository: GroupConversationMemberRepository,
     private val rateLimiter: RateLimiter,
     private val nominatimGeocodingClient: NominatimGeocodingClient,
+    private val pushNotificationService: PushNotificationService,
 ) {
     companion object {
         val CATEGORIES = listOf(
@@ -322,15 +324,21 @@ class CommunityService(
         // Real notification via the existing in-app Notification system, matching
         // MessagingService's own "new message" notification -- never sent to yourself
         // commenting on your own post.
+        //
+        // Real push wired in (2026-07-28) -- a real reply to a real post is exactly the
+        // kind of social-app moment (Karrot/Kakao/every real neighborhood app) a poster
+        // expects to hear about immediately, not on their next in-app poll.
         if (post.authorId != authorId) {
             val commenterName = resolveNames(listOf(authorId))[authorId] ?: "Someone"
+            val body = trimmed.take(120)
             notificationRepository.save(
                 Notification(
                     id = "notif_${UUID.randomUUID()}", userId = post.authorId, type = "COMMUNITY_COMMENT",
-                    title = commenterName, body = trimmed.take(120),
+                    title = commenterName, body = body,
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"postId\":\"$postId\"}",
                 ),
             )
+            pushNotificationService.sendToUser(post.authorId, commenterName, body, mapOf("postId" to postId))
         }
         return comment
     }
