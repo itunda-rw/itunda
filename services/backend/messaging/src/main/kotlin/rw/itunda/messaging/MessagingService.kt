@@ -10,6 +10,7 @@ import rw.itunda.core.domain.Conversation
 import rw.itunda.core.domain.Message
 import rw.itunda.core.domain.MessageReaction
 import rw.itunda.core.domain.Notification
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.realtime.ReactionGroup
 import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.ConversationRepository
@@ -83,6 +84,7 @@ class MessagingService(
     private val userBlockRepository: UserBlockRepository,
     private val contactRepository: ContactRepository,
     private val conversationPreferenceRepository: ConversationPreferenceRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private fun requireNotBlocked(userId: String, otherUserId: String) {
         if (
@@ -221,14 +223,21 @@ class MessagingService(
         // A quiet room is explicitly an auto-mute decision made by this recipient.
         // Keep the message durable and live-delivered if they are already viewing it,
         // but don't create a notification that would surface it outside the room.
+        //
+        // Real mobile push wired in (2026-07-28), gated by the exact same real quiet-room
+        // check as the in-app notification above -- a 1:1 direct message is the single
+        // most foundational push case in any messaging app; a muted room correctly stays
+        // muted for push too, not just in-app.
         if (conversationPreferenceRepository.findByConversationIdAndUserId(conversationId, recipientId)?.quiet != true) {
+            val body = trimmed.take(120)
             notificationRepository.save(
                 Notification(
                     id = "notif_${UUID.randomUUID()}", userId = recipientId, type = "NEW_MESSAGE",
-                    title = senderName, body = trimmed.take(120),
+                    title = senderName, body = body,
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"conversationId\":\"$conversationId\"}",
                 ),
             )
+            pushNotificationService.sendToUser(recipientId, senderName, body, mapOf("conversationId" to conversationId))
         }
         // Real live push, on a best-effort basis -- the message is already durably
         // persisted above regardless of whether anyone is listening right now.

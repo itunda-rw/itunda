@@ -19,6 +19,7 @@ import rw.itunda.core.domain.Message
 import rw.itunda.core.domain.MessageReaction
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.User
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.realtime.ReactionGroup
 import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.ConversationRepository
@@ -48,7 +49,8 @@ class MessagingServiceTest : BehaviorSpec({
         val userBlockRepository = mockk<UserBlockRepository>(relaxed = true)
         val contactRepository = mockk<ContactRepository>(relaxed = true)
         val conversationPreferenceRepository = mockk<ConversationPreferenceRepository>(relaxed = true)
-        val service = MessagingService(conversationRepository, messageRepository, userRepository, notificationRepository, messageReactionRepository, rateLimiter, realtimeMessagePublisher, userBlockRepository, contactRepository, conversationPreferenceRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = MessagingService(conversationRepository, messageRepository, userRepository, notificationRepository, messageReactionRepository, rateLimiter, realtimeMessagePublisher, userBlockRepository, contactRepository, conversationPreferenceRepository, pushNotificationService)
 
         When("starting a conversation between user_a and user_b for the first time") {
             every { userRepository.findById("user_b") } returns Optional.of(user("user_b", "Beata"))
@@ -147,6 +149,10 @@ class MessagingServiceTest : BehaviorSpec({
             Then("it real-time-pushes the trimmed message to the OTHER participant, not the sender") {
                 verify { realtimeMessagePublisher.publishNewMessage("conversation_1", "user_b", message) }
             }
+
+            Then("the OTHER participant also gets a real mobile push notification, not just the in-app one") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_b", "Alice Test", "Hey there", any()) }
+            }
         }
 
         When("the recipient has made a room quiet") {
@@ -163,6 +169,7 @@ class MessagingServiceTest : BehaviorSpec({
 
             Then("it preserves delivery without creating a new-message alert") {
                 verify(exactly = 0) { notificationRepository.save(match { it.userId == "user_b" && it.type == "NEW_MESSAGE" }) }
+                verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any()) }
             }
         }
 
