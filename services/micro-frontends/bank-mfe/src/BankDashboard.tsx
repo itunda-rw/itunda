@@ -21,6 +21,7 @@ import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate
 import { fetchLinkedAccounts, fetchOverview, linkAccount, unlinkAccount, type LinkedAccount, type Overview } from './lib/overview';
 import { applyForLoan, fetchLoanOffers, fetchMyLoans, refinanceLoan, repayLoan, type LoanAccount, type LoanOffer } from './lib/loans';
 import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreResult, type CreditScoreSuggestion } from './lib/creditScore';
+import { fetchTrustScore, type TrustScoreResult } from './lib/trustScore';
 import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type KycSubmission } from './lib/identity';
 import { addContact, fetchContacts, type Contact } from './lib/contacts';
 import { createSupportTicket, fetchSupportTickets, type SupportTicket, type SupportTicketCategory } from './lib/support';
@@ -105,7 +106,7 @@ import {
   type RideDriver, type RideTrip,
 } from './lib/rideshare';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
@@ -1367,6 +1368,47 @@ function CreditScoreView() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Real Karrot-Score-style trust/reputation view (item 152) -- see lib/trustScore.ts's
+// own doc comment. Every Hood card already shows a batch-read trustScore badge for the
+// OTHER party (seller/poster/lister); this is the separate "see your own full factor
+// breakdown" screen, mirroring CreditScoreView's own shape exactly.
+function TrustScoreView() {
+  const [result, setResult] = useState<TrustScoreResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchTrustScore()
+      .then(setResult)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your trust score.'));
+  }, []);
+
+  if (!result) {
+    return error ? <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div className="toss-card" style={{ padding: '24px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Your trust score</p>
+        <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{result.score} / 1000</h2>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>How your neighbors see you on Marketplace, Jobs, and Property.</p>
+      </div>
+      <div className="toss-card" style={{ padding: '16px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>What makes up your score</h3>
+        {result.factors.map((f) => (
+          <div key={f.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
+            <div>
+              <p>{f.name}</p>
+              <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{f.description}</p>
+            </div>
+            <span>+{f.points}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -11467,6 +11509,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'OVERVIEW', label: 'Overview' },
     { id: 'LOANS', label: 'Loans' },
     { id: 'CREDIT_SCORE', label: 'Credit score' },
+    { id: 'TRUST_SCORE', label: 'Trust score' },
     { id: 'SPENDING', label: 'Spending' },
     { id: 'SUBSCRIPTIONS', label: 'Subscriptions' },
     { id: 'IDENTITY', label: 'Verify' },
@@ -11530,6 +11573,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'OVERVIEW' && <OverviewView />}
       {tab === 'LOANS' && <LoansView />}
       {tab === 'CREDIT_SCORE' && <CreditScoreView />}
+      {tab === 'TRUST_SCORE' && <TrustScoreView />}
       {tab === 'SPENDING' && <SpendingInsightView />}
       {tab === 'SUBSCRIPTIONS' && <SubscriptionsView />}
       {tab === 'IDENTITY' && <IdentityView />}
