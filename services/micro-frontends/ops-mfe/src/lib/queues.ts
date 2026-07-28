@@ -82,6 +82,34 @@ export interface MarketplaceEscrowDispute {
   updatedAt: string;
 }
 
+// Real property-ownership document verification for RealEstate listings (item 128) --
+// `PropertyOwnershipAdminController` had zero client anywhere, the last of the 4 gaps
+// found by the item-125 endpoint-coverage sweep. Same real human-review-queue shape as
+// KycSubmission above (a submitted document, MATCHED/pending, approve or reject with
+// an optional reason).
+export interface PropertyOwnershipSubmission {
+  id: string;
+  listingId: string;
+  userId: string;
+  documentUrl: string;
+  status: string;
+  submittedAt: string;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  decisionReason: string | null;
+}
+
+export const fetchPropertyOwnershipQueue = (page = 0) =>
+  apiFetch<{ success: boolean; queue: PropertyOwnershipSubmission[]; page: number; totalElements: number; totalPages: number }>(
+    `/api/v1/system/property-verification/queue?page=${page}`,
+  ).then(toPagedQueue);
+
+export const decidePropertyOwnership = (submissionId: string, approve: boolean, reason?: string) =>
+  apiFetch(`/api/v1/system/property-verification/${submissionId}/decide`, {
+    method: 'POST',
+    body: JSON.stringify({ approve, reason }),
+  });
+
 // Real Hood (Marketplace/Community/Jobs/PropertyListing/messaging) content-moderation
 // report queue (item 127) -- `HoodReportAdminController` had zero client anywhere
 // despite the customer-facing "report" creation endpoint being real and in use; found

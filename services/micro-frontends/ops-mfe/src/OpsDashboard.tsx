@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, Banknote, CircleDollarSign, Flag, HeartPulse, LifeBuoy, LogOut, Puzzle, Scale, ShieldCheck, Siren } from 'lucide-react';
+import { AlertTriangle, Banknote, CircleDollarSign, Flag, HeartPulse, Home, LifeBuoy, LogOut, Puzzle, Scale, ShieldCheck, Siren } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
 import FraudQueue from './queues/FraudQueue';
 import ComplianceQueue from './queues/ComplianceQueue';
@@ -11,8 +11,9 @@ import PartnersQueue from './queues/PartnersQueue';
 import EscrowDisputesQueue from './queues/EscrowDisputesQueue';
 import AgentReconciliationQueue from './queues/AgentReconciliationQueue';
 import HoodReportsQueue from './queues/HoodReportsQueue';
+import PropertyOwnershipQueue from './queues/PropertyOwnershipQueue';
 
-type Tab = 'fraud' | 'compliance' | 'incidents' | 'reconciliation' | 'support' | 'insurance' | 'partners' | 'escrow' | 'agents' | 'hood-reports';
+type Tab = 'fraud' | 'compliance' | 'incidents' | 'reconciliation' | 'support' | 'insurance' | 'partners' | 'escrow' | 'agents' | 'hood-reports' | 'property-verification';
 
 const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'fraud', label: 'Fraud', icon: AlertTriangle },
@@ -25,6 +26,7 @@ const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'escrow', label: 'Escrow disputes', icon: Scale },
   { id: 'agents', label: 'Agent till variances', icon: Banknote },
   { id: 'hood-reports', label: 'Hood content reports', icon: Flag },
+  { id: 'property-verification', label: 'Property ownership', icon: Home },
 ];
 
 export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
@@ -101,6 +103,7 @@ export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
         {tab === 'escrow' && <EscrowDisputesQueue />}
         {tab === 'agents' && <AgentReconciliationQueue />}
         {tab === 'hood-reports' && <HoodReportsQueue />}
+        {tab === 'property-verification' && <PropertyOwnershipQueue />}
       </main>
     </div>
   );
