@@ -417,6 +417,10 @@ data class MessageDto(
     val deletedAt: String? = null,
     val replyToMessageId: String? = null,
     val reactions: List<ReactionGroupDto> = emptyList(),
+    // Real KakaoTalk Emoticon Store (item 135) -- see EmoticonPackDto's own doc
+    // comment. Only ever set on a message actually created via the real
+    // /api/v1/emoticons/.../send endpoints.
+    val emoticonId: String? = null,
 )
 
 data class StartConversationRequest(val phoneNumber: String? = null, val otherUserId: String? = null)
@@ -604,6 +608,21 @@ data class GiftDto(
 data class SendGiftInConversationRequest(val amount: Double, val note: String? = null)
 data class GiftResponse(val success: Boolean, val gift: GiftDto)
 data class GiftsResponse(val success: Boolean, val gifts: List<GiftDto>)
+
+// Real KakaoTalk Emoticon Store (item 135) -- mirrors bank-mfe's lib/emoticons.ts
+// exactly (item 133).
+data class EmoticonPackDto(val id: String, val title: String, val artistName: String, val thumbnailUrl: String, val price: Double, val active: Boolean, val createdAt: String)
+data class EmoticonDto(val id: String, val packId: String, val imageUrl: String, val sortOrder: Int)
+data class OwnedEmoticonPackDto(val id: String, val userId: String, val packId: String, val source: String, val acquiredAt: String)
+data class EmoticonPacksResponse(val success: Boolean, val packs: List<EmoticonPackDto>)
+data class EmoticonsResponse(val success: Boolean, val emoticons: List<EmoticonDto>)
+data class OwnedEmoticonPacksResponse(val success: Boolean, val packs: List<OwnedEmoticonPackDto>)
+data class OwnedEmoticonPackResponse(val success: Boolean, val ownedPack: OwnedEmoticonPackDto)
+// Real bug caught before compiling: EmoticonController.giftPack returns the key
+// "giftedPack", not "ownedPack" -- a distinct response shape, not reusable.
+data class GiftedEmoticonPackResponse(val success: Boolean, val giftedPack: OwnedEmoticonPackDto)
+data class GiftEmoticonPackRequest(val recipientPhoneNumber: String)
+data class SendEmoticonRequest(val emoticonId: String)
 
 // Real 동네생활-style community board (2026-07-19) -- see rw.itunda.community.web.CommunityController.
 data class CommunityCategoryDto(val id: String, val label: String)
@@ -1662,6 +1681,27 @@ interface ApiService {
 
     @GET("api/v1/gifts/conversations/{id}")
     suspend fun getGiftsForConversation(@Path("id") conversationId: String): GiftsResponse
+
+    // Real KakaoTalk Emoticon Store (item 135) -- see backend Emoticon.kt's own doc
+    // comment. Mirrors bank-mfe's lib/emoticons.ts exactly (item 133, this session's
+    // first client for this feature).
+    @GET("api/v1/emoticons/packs")
+    suspend fun getEmoticonPacks(): EmoticonPacksResponse
+
+    @GET("api/v1/emoticons/packs/{packId}")
+    suspend fun getPackEmoticons(@Path("packId") packId: String): EmoticonsResponse
+
+    @GET("api/v1/emoticons/packs/owned")
+    suspend fun getOwnedEmoticonPacks(): OwnedEmoticonPacksResponse
+
+    @POST("api/v1/emoticons/packs/{packId}/purchase")
+    suspend fun purchaseEmoticonPack(@Path("packId") packId: String): OwnedEmoticonPackResponse
+
+    @POST("api/v1/emoticons/packs/{packId}/gift")
+    suspend fun giftEmoticonPack(@Path("packId") packId: String, @Body request: GiftEmoticonPackRequest): GiftedEmoticonPackResponse
+
+    @POST("api/v1/emoticons/conversations/{id}/send")
+    suspend fun sendEmoticon(@Path("id") conversationId: String, @Body request: SendEmoticonRequest): MessageResponse
 
     // Real 동네생활-style community board (2026-07-19) -- see rw.itunda.community.web.CommunityController.
     @GET("api/v1/community/categories")

@@ -1,11 +1,13 @@
 package rw.itunda.feature.talk.impl
 
 import androidx.activity.compose.BackHandler
+import coil.compose.AsyncImage
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +20,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -71,7 +76,12 @@ import rw.itunda.core.network.ConversationSummaryDto
 import rw.itunda.core.network.CreateChatReportRequest
 import rw.itunda.core.network.CreateGroupRequest
 import rw.itunda.core.network.CreateSplitBillRequest
+import rw.itunda.core.network.EmoticonDto
+import rw.itunda.core.network.EmoticonPackDto
 import rw.itunda.core.network.GiftDto
+import rw.itunda.core.network.GiftEmoticonPackRequest
+import rw.itunda.core.network.OwnedEmoticonPackDto
+import rw.itunda.core.network.SendEmoticonRequest
 import rw.itunda.core.network.GroupMemberDto
 import rw.itunda.core.network.GroupMessageDto
 import rw.itunda.core.network.GroupSummaryDto
@@ -1094,6 +1104,11 @@ private fun ChatThreadView(
     var giftAmount by remember { mutableStateOf("") }
     var giftNote by remember { mutableStateOf("") }
     var sendingGift by remember { mutableStateOf(false) }
+    // Real KakaoTalk Emoticon Store (item 135) -- see EmoticonPickerPanel's own doc
+    // comment.
+    var emoticonPickerOpen by remember { mutableStateOf(false) }
+    var emoticonStoreOpen by remember { mutableStateOf(false) }
+    var emoticonImageById by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var typingClearJob by remember { mutableStateOf<Job?>(null) }
     var socket by remember { mutableStateOf<WebSocket?>(null) }
     var lastTypingSentAt by remember { mutableStateOf(0L) }
@@ -1110,6 +1125,22 @@ private fun ChatThreadView(
     LaunchedEffect(conversation.conversationId) {
         try { quiet = NetworkClient.apiService.getConversationQuiet(conversation.conversationId).quiet } catch (_: Exception) { }
         try { pinnedMessage = NetworkClient.apiService.getPinnedConversationMessage(conversation.conversationId).message } catch (_: Exception) { }
+    }
+
+    // Real KakaoTalk Emoticon Store (item 135) -- no GET-emoticon-by-id endpoint
+    // exists, so rendering a received emoticon needs a client-built id->imageUrl map
+    // across the small, curated, server-seeded catalog. Mirrors bank-mfe's own
+    // fetchEmoticonImageMap (item 133), just not module-level memoized here yet.
+    LaunchedEffect(Unit) {
+        try {
+            val packs = NetworkClient.apiService.getEmoticonPacks().packs
+            val map = packs.flatMap { pack ->
+                try { NetworkClient.apiService.getPackEmoticons(pack.id).emoticons } catch (_: Exception) { emptyList() }
+            }.associate { it.id to it.imageUrl }
+            emoticonImageById = map
+        } catch (_: Exception) {
+            // Real, non-critical -- only backs the inline emoticon bubble.
+        }
     }
 
     // Real-fetches both Marketplace and Real Estate offer history for this conversation
@@ -1274,6 +1305,7 @@ private fun ChatThreadView(
                         currentUserId = currentUserId,
                         offer = offersByMessageId[m.id],
                         gift = giftsByMessageId[m.id],
+                        emoticonImageUrl = m.emoticonId?.let(emoticonImageById::get),
                         onReply = { replyingTo = it },
                         onDelete = { messageId -> coroutineScope.launch {
                             try { NetworkClient.apiService.deleteMessage(conversation.conversationId, messageId); refresh() }
@@ -1442,6 +1474,26 @@ private fun ChatThreadView(
             }
             Spacer(modifier = Modifier.height(8.dp))
         }
+        if (emoticonPickerOpen) {
+            EmoticonPickerPanel(
+                onSend = { emoticonId ->
+                    coroutineScope.launch {
+                        try {
+                            NetworkClient.apiService.sendEmoticon(conversation.conversationId, SendEmoticonRequest(emoticonId))
+                            emoticonPickerOpen = false
+                            refresh()
+                        } catch (_: Exception) {
+                            error = "Couldn't send this emoticon."
+                        }
+                    }
+                },
+                onOpenStore = { emoticonStoreOpen = true },
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+        if (emoticonStoreOpen) {
+            EmoticonStoreDialog(onDismiss = { emoticonStoreOpen = false })
+        }
         replyingTo?.let { reply ->
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                 Text("Replying to: ${reply.body.take(80)}", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f), maxLines = 1)
@@ -1458,6 +1510,17 @@ private fun ChatThreadView(
                 contentAlignment = Alignment.Center,
             ) {
                 Text("🎁", fontSize = 18.sp)
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(Ids.layout.minTouchTarget)
+                    .clip(CircleShape)
+                    .background(Ids.colors.surfaceSoft)
+                    .clickable { emoticonPickerOpen = !emoticonPickerOpen },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("😊", fontSize = 18.sp)
             }
             Spacer(modifier = Modifier.width(8.dp))
             OutlinedTextField(
@@ -1668,9 +1731,201 @@ private fun GiftBubble(gift: GiftDto, isMine: Boolean, currentUserId: String?, o
     }
 }
 
+// Real KakaoTalk Emoticon Store (item 135) -- a received emoticon renders as just the
+// sticker image, no chat-bubble background, matching real KakaoTalk and bank-mfe's own
+// EmoticonBubble (item 133).
+@Composable
+private fun EmoticonBubble(imageUrl: String?) {
+    if (imageUrl == null) {
+        Text("[emoticon]", color = Ids.colors.textSecondary, fontSize = 13.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+        return
+    }
+    AsyncImage(model = imageUrl, contentDescription = "emoticon", modifier = Modifier.size(96.dp))
+}
+
+// Real emoticon picker (item 135) -- shows the sender's own owned packs only (each
+// tappable emoticon sends immediately); a real "Get more" link opens the full store
+// to browse/purchase. Mirrors bank-mfe's own EmoticonPickerPanel (item 133).
+@Composable
+private fun EmoticonPickerPanel(onSend: (String) -> Unit, onOpenStore: () -> Unit) {
+    var ownedPacks by remember { mutableStateOf<List<OwnedEmoticonPackDto>?>(null) }
+    var packTitles by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var selectedPackId by remember { mutableStateOf<String?>(null) }
+    var packEmoticons by remember { mutableStateOf<List<EmoticonDto>?>(null) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val owned = NetworkClient.apiService.getOwnedEmoticonPacks().packs
+            val allPacks = NetworkClient.apiService.getEmoticonPacks().packs
+            ownedPacks = owned
+            packTitles = allPacks.associate { it.id to it.title }
+            if (owned.isNotEmpty()) selectedPackId = owned.first().packId
+        } catch (_: Exception) {
+            ownedPacks = emptyList()
+        }
+    }
+
+    LaunchedEffect(selectedPackId) {
+        val packId = selectedPackId ?: return@LaunchedEffect
+        packEmoticons = null
+        packEmoticons = try { NetworkClient.apiService.getPackEmoticons(packId).emoticons } catch (_: Exception) { emptyList() }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Ids.colors.surfaceSoft)
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        val owned = ownedPacks
+        if (owned == null) {
+            Text("Loading…", color = Ids.colors.textSecondary, fontSize = 13.sp)
+        } else if (owned.isEmpty()) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                Text("You don't own any emoticon packs yet.", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+                OfferActionButton("Browse Emoticon Store") { onOpenStore() }
+            }
+        } else {
+            Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                owned.forEach { op ->
+                    OfferActionButton(packTitles[op.packId] ?: op.packId) { selectedPackId = op.packId }
+                }
+                OfferActionButton("Get more") { onOpenStore() }
+            }
+            val emoticons = packEmoticons
+            if (emoticons == null) {
+                Text("Loading…", color = Ids.colors.textSecondary, fontSize = 12.sp)
+            } else {
+                LazyVerticalGrid(columns = GridCells.Fixed(4), modifier = Modifier.height(160.dp)) {
+                    gridItems(emoticons, key = { it.id }) { e ->
+                        Box(
+                            modifier = Modifier.padding(4.dp).clickable { onSend(e.id) },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            AsyncImage(model = e.imageUrl, contentDescription = "", modifier = Modifier.fillMaxWidth().aspectRatio(1f))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Real Emoticon Store (item 135) -- browse every real active pack, buy (once-off
+// purchase, same "buy it once, own it" model Shop/Insurance already use), or gift to
+// a friend by phone number. Mirrors bank-mfe's own EmoticonStoreModal (item 133).
+@Composable
+private fun EmoticonStoreDialog(onDismiss: () -> Unit) {
+    var packs by remember { mutableStateOf<List<EmoticonPackDto>?>(null) }
+    var ownedPackIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var busyPackId by remember { mutableStateOf<String?>(null) }
+    var giftingPackId by remember { mutableStateOf<String?>(null) }
+    var giftPhone by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var message by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                packs = NetworkClient.apiService.getEmoticonPacks().packs
+                ownedPackIds = NetworkClient.apiService.getOwnedEmoticonPacks().packs.map { it.packId }.toSet()
+            } catch (_: Exception) {
+                error = "Could not load the Emoticon Store."
+            }
+        }
+    }
+    LaunchedEffect(Unit) { load() }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("🛍 Emoticon Store") },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
+                message?.let { Text(it, color = Ids.colors.brand, fontSize = 13.sp) }
+                val currentPacks = packs
+                if (currentPacks == null) {
+                    Text("Loading…", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                } else {
+                    currentPacks.forEach { pack ->
+                        val owned = ownedPackIds.contains(pack.id)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Ids.colors.surfaceSoft)
+                                .padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                AsyncImage(model = pack.thumbnailUrl, contentDescription = "", modifier = Modifier.size(48.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(pack.title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Ids.colors.textPrimary)
+                                    Text("${pack.artistName} · %,.0f RWF".format(pack.price), fontSize = 12.sp, color = Ids.colors.textSecondary)
+                                }
+                                OfferActionButton(if (owned) "Owned" else if (busyPackId == pack.id) "…" else "Buy") {
+                                    if (owned || busyPackId != null) return@OfferActionButton
+                                    busyPackId = pack.id
+                                    error = null
+                                    coroutineScope.launch {
+                                        try {
+                                            NetworkClient.apiService.purchaseEmoticonPack(pack.id)
+                                            load()
+                                        } catch (_: Exception) {
+                                            error = "Could not purchase this pack."
+                                        } finally {
+                                            busyPackId = null
+                                        }
+                                    }
+                                }
+                                OfferActionButton("Gift") { giftingPackId = if (giftingPackId == pack.id) null else pack.id }
+                            }
+                            if (giftingPackId == pack.id) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    OutlinedTextField(
+                                        value = giftPhone,
+                                        onValueChange = { giftPhone = it },
+                                        placeholder = { Text("Recipient phone number") },
+                                        singleLine = true,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    OfferActionButton(if (busyPackId == pack.id) "…" else "Send gift") {
+                                        if (giftPhone.isBlank() || busyPackId != null) return@OfferActionButton
+                                        busyPackId = pack.id
+                                        error = null
+                                        message = null
+                                        coroutineScope.launch {
+                                            try {
+                                                NetworkClient.apiService.giftEmoticonPack(pack.id, GiftEmoticonPackRequest(giftPhone.trim()))
+                                                message = "Pack gifted!"
+                                                giftingPackId = null
+                                                giftPhone = ""
+                                            } catch (_: Exception) {
+                                                error = "Could not gift this pack."
+                                            } finally {
+                                                busyPackId = null
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+    )
+}
+
 @Composable
 private fun MessageBubble(
     message: MessageDto, isMine: Boolean, currentUserId: String?, offer: OfferBubbleData?, gift: GiftDto?,
+    emoticonImageUrl: String? = null,
     onToggleReaction: (String) -> Unit, onRespondToOffer: (String, String, Double?) -> Unit, onClaimGift: (String) -> Unit,
     onReply: (MessageDto) -> Unit = {},
     onDelete: (String) -> Unit = {},
@@ -1685,6 +1940,8 @@ private fun MessageBubble(
                 GiftBubble(gift, isMine, currentUserId, onClaimGift)
             } else if (offer != null) {
                 OfferBubble(offer, isMine, currentUserId, onRespondToOffer)
+            } else if (message.emoticonId != null) {
+                EmoticonBubble(emoticonImageUrl)
             } else {
                 Box(
                     modifier = Modifier
