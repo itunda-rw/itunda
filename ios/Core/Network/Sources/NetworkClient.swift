@@ -1536,6 +1536,58 @@ public struct MerchantProductDto: Decodable, Identifiable {
 public struct MerchantSummaryDto: Decodable { public let id: String; public let businessName: String }
 public struct MerchantProductsResponse: Decodable { public let success: Bool; public let merchant: MerchantSummaryDto; public let products: [MerchantProductDto] }
 
+// Real cross-merchant product search (item 138) -- see backend
+// MerchantProductRepository.search's own doc comment. Mirrors bank-mfe's
+// lib/shopping.ts ProductSearchResult and Android's ProductSearchResultDto exactly;
+// iOS never had this endpoint at all.
+public struct ProductSearchResultDto: Decodable, Identifiable {
+    public let id: String
+    public let merchantId: String
+    public let merchantName: String
+    public let name: String
+    public let price: Double
+    public let imageUrl: String?
+    public let originalPrice: Double?
+    public let discountPercent: Int?
+    public let description: String?
+}
+public struct ProductSearchResponse: Decodable { public let success: Bool; public let products: [ProductSearchResultDto] }
+
+// Real KakaoTalk-style 기프티콘 (mobile gift voucher, item 138) -- see backend
+// GiftVoucher.kt's own doc comment. Mirrors bank-mfe's lib/giftVouchers.ts (item 134)
+// and Android's ApiService.kt (item 137) exactly.
+public struct GiftVoucherDto: Decodable, Identifiable {
+    public let id: String
+    public let purchaserId: String
+    public let recipientId: String
+    public let conversationId: String
+    public let messageId: String
+    public let merchantId: String
+    public let merchantProductId: String?
+    public let productNameSnapshot: String?
+    public let amount: Double
+    public let status: String
+    public let holdTransactionId: String
+    public let redeemTransactionId: String?
+    public let refundTransactionId: String?
+    public let expiresAt: String
+    public let redeemedAt: String?
+    public let extended: Bool
+    public let createdAt: String
+}
+public struct PurchaseGiftVoucherRequest: Encodable {
+    public let recipientPhoneNumber: String
+    public let merchantId: String
+    public let merchantProductId: String?
+    public init(recipientPhoneNumber: String, merchantId: String, merchantProductId: String?) {
+        self.recipientPhoneNumber = recipientPhoneNumber
+        self.merchantId = merchantId
+        self.merchantProductId = merchantProductId
+    }
+}
+public struct GiftVoucherResponse: Decodable { public let success: Bool; public let voucher: GiftVoucherDto }
+public struct GiftVouchersResponse: Decodable { public let success: Bool; public let vouchers: [GiftVoucherDto] }
+
 // Real Naver Smart Store-style "알림받기" (follow a store for its own broadcast
 // notices) -- see backend MerchantFollowService.kt's own doc comment. Mirrors
 // bank-mfe's lib/shopping.ts FollowedMerchant exactly.
@@ -2368,6 +2420,26 @@ extension NetworkClient {
 
     public func getMerchantProducts(merchantId: String) async throws -> MerchantProductsResponse {
         try await get("api/v1/shopping/merchants/\(merchantId)/products")
+    }
+
+    // Real cross-merchant product search (item 138) -- see ProductSearchResultDto's
+    // own doc comment.
+    public func searchProducts(_ query: String) async throws -> ProductSearchResponse {
+        try await get("api/v1/shopping/products/search?q=\(query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query)")
+    }
+
+    // Real KakaoTalk-style 기프티콘 gift voucher (item 138) -- see GiftVoucherDto's own
+    // doc comment.
+    public func purchaseGiftVoucher(_ request: PurchaseGiftVoucherRequest) async throws -> GiftVoucherResponse {
+        try await authenticatedPost("api/v1/gift-vouchers", body: request, idempotencyKey: UUID().uuidString)
+    }
+
+    public func getGiftVouchersForConversation(conversationId: String) async throws -> GiftVouchersResponse {
+        try await get("api/v1/gift-vouchers/conversations/\(conversationId)")
+    }
+
+    public func extendGiftVoucherExpiry(voucherId: String) async throws -> GiftVoucherResponse {
+        try await authenticatedPost("api/v1/gift-vouchers/\(voucherId)/extend", body: EmptyBody())
     }
 
     // Real Naver Smart Store-style "알림받기" (follow a store) -- first iOS client for

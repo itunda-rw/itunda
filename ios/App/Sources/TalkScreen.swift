@@ -1026,6 +1026,10 @@ private struct ChatThreadScreen: View {
     @State private var emoticonPickerOpen = false
     @State private var emoticonStoreOpen = false
     @State private var emoticonImageById: [String: String] = [:]
+    // Real KakaoTalk-style 기프티콘 gift voucher (item 138) -- see
+    // GiftVoucherComposerPanel's own doc comment.
+    @State private var vouchersByMessageId: [String: GiftVoucherDto] = [:]
+    @State private var voucherComposerOpen = false
     @State private var showingBlockConfirmation = false
     @State private var blocking = false
     @State private var isBlocked = false
@@ -1116,6 +1120,7 @@ private struct ChatThreadScreen: View {
                                     message: message, isMine: message.senderId == currentUserId, currentUserId: currentUserId,
                                     offer: offersByMessageId[message.id],
                                     gift: giftsByMessageId[message.id],
+                                    voucher: vouchersByMessageId[message.id],
                                     emoticonImageUrl: message.emoticonId.flatMap { emoticonImageById[$0] },
                                     onToggleReaction: reactionHandler,
                                     onRespondToOffer: offerHandler,
@@ -1213,6 +1218,14 @@ private struct ChatThreadScreen: View {
                 .padding(.horizontal, IDS.Layout.screenHorizontal)
             }
 
+            if voucherComposerOpen {
+                GiftVoucherComposerPanel(
+                    onSent: { voucherComposerOpen = false; Task { await refresh() } },
+                    onCancel: { voucherComposerOpen = false }
+                )
+                .padding(.horizontal, IDS.Layout.screenHorizontal)
+            }
+
             HStack {
                 Button(action: { giftComposerOpen.toggle() }) {
                     Text("🎁")
@@ -1228,6 +1241,13 @@ private struct ChatThreadScreen: View {
                         .clipShape(Circle())
                 }
                 .accessibilityLabel("Send an emoticon")
+                Button(action: { voucherComposerOpen.toggle() }) {
+                    Text("🎟️")
+                        .frame(width: 44, height: 44)
+                        .background(IDS.Colors.chipBackground)
+                        .clipShape(Circle())
+                }
+                .accessibilityLabel("Send a gift voucher")
                 TextField("Message", text: Binding(
                     get: { draft },
                     set: { newValue in
@@ -1309,6 +1329,7 @@ private struct ChatThreadScreen: View {
                         // refresh so it renders as an offer bubble immediately.
                         await loadOffers()
                         await loadGifts()
+                        await loadVouchers()
                     }
                 case .presenceChange(let userId, let online) where userId == conversation.otherUserId:
                     Task { @MainActor in otherOnline = online }
@@ -1349,6 +1370,7 @@ private struct ChatThreadScreen: View {
         }
         await loadOffers()
         await loadGifts()
+        await loadVouchers()
     }
 
     // Real per-thread gift history -- fetched alongside a conversation's messages so
@@ -1356,6 +1378,13 @@ private struct ChatThreadScreen: View {
     private func loadGifts() async {
         let gifts = (try? await NetworkClient.shared.getGiftsForConversation(conversationId: conversation.conversationId).gifts) ?? []
         giftsByMessageId = Dictionary(uniqueKeysWithValues: gifts.map { ($0.messageId, $0) })
+    }
+
+    // Real per-thread gift-voucher history -- see GiftVoucherComposerPanel's own doc
+    // comment.
+    private func loadVouchers() async {
+        let vouchers = (try? await NetworkClient.shared.getGiftVouchersForConversation(conversationId: conversation.conversationId).vouchers) ?? []
+        vouchersByMessageId = Dictionary(uniqueKeysWithValues: vouchers.map { ($0.messageId, $0) })
     }
 
     private func sendGift() async {
@@ -1652,6 +1681,40 @@ private struct GiftBubble: View {
     }
 }
 
+// Real KakaoTalk-style 기프티콘 gift voucher bubble (item 138) -- see
+// GiftVoucherComposerPanel's own doc comment. Status-only, no claim action --
+// redemption is merchant-side per GiftVoucherService.redeemVoucher's own doc comment,
+// never a self-serve recipient redeem.
+private struct GiftVoucherBubble: View {
+    let voucher: GiftVoucherDto
+    let isMine: Bool
+
+    private var statusLabel: String {
+        switch voucher.status {
+        case "ACTIVE": return "Present this at the store to redeem"
+        case "REDEEMED": return "Redeemed"
+        case "EXPIRED": return "Expired"
+        default: return voucher.status
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("🎟️ \(voucher.productNameSnapshot ?? "\(Int(voucher.amount)) RWF voucher")")
+                .font(.headline).foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
+            Text(statusLabel).font(.caption).foregroundColor(isMine ? .white.opacity(0.85) : IDS.Colors.textSecondary)
+            if voucher.status == "ACTIVE" {
+                Text("Expires \(String(voucher.expiresAt.prefix(10)))")
+                    .font(.caption2).foregroundColor(isMine ? .white.opacity(0.7) : IDS.Colors.textSecondary)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(isMine ? IDS.Colors.brand : IDS.Colors.chipBackground)
+        .cornerRadius(16)
+    }
+}
+
 // Real KakaoTalk Emoticon Store (item 136) -- a received emoticon renders as just the
 // sticker image, no chat-bubble background, matching real KakaoTalk and bank-mfe/
 // Android's own EmoticonBubble (items 133/135).
@@ -1675,6 +1738,135 @@ private struct EmoticonBubble: View {
 // Real emoticon picker (item 136) -- shows the sender's own owned packs only (each
 // tappable emoticon sends immediately); a real "Get more" link opens the full store.
 // Mirrors bank-mfe/Android's own EmoticonPickerPanel (items 133/135).
+// Real gift-voucher composer (item 138) -- search for a real product to gift (same
+// real Kakao gifticon UX of searching for what to send, e.g. "스타벅스 아메리카노",
+// rather than browsing a merchant catalog first), pick one, confirm with the
+// recipient's phone number. Product-only v1 -- the flat-cash-amount-at-a-merchant
+// path is a real, deliberately deferred follow-up. Mirrors bank-mfe/Android's own
+// GiftVoucherComposerPanel (items 134/137).
+private struct GiftVoucherComposerPanel: View {
+    let onSent: () -> Void
+    let onCancel: () -> Void
+
+    @State private var phone = ""
+    @State private var query = ""
+    @State private var results: [ProductSearchResultDto]?
+    @State private var searching = false
+    @State private var selected: ProductSearchResultDto?
+    @State private var sending = false
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("🎟️ Send a gift voucher").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+            TextField("Recipient phone number", text: $phone)
+                .keyboardType(.phonePad)
+                .padding(10)
+                .background(IDS.Colors.card)
+                .cornerRadius(8)
+
+            if let selected {
+                HStack {
+                    Text("\(selected.name) · \(selected.merchantName) · \(Int(selected.price)) RWF")
+                        .font(.caption).foregroundColor(IDS.Colors.textPrimary)
+                    Spacer()
+                    Button("Change") { self.selected = nil }
+                        .font(.caption).foregroundColor(IDS.Colors.brand)
+                }
+                .padding(10)
+                .background(IDS.Colors.card)
+                .cornerRadius(8)
+            } else {
+                HStack(spacing: 8) {
+                    TextField("Search a product to gift", text: $query)
+                        .padding(10)
+                        .background(IDS.Colors.card)
+                        .cornerRadius(8)
+                    Button(action: { Task { await search() } }) {
+                        Text(searching ? "…" : "Search").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                            .padding(.horizontal, 10).padding(.vertical, 8)
+                            .background(IDS.Colors.card)
+                            .cornerRadius(8)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(searching || query.trimmingCharacters(in: .whitespaces).count < 2)
+                }
+                if let results {
+                    if results.isEmpty {
+                        Text("No products found.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    } else {
+                        ForEach(results) { p in
+                            Button(action: { selected = p }) {
+                                HStack {
+                                    Text("\(p.name) · \(p.merchantName)").font(.caption).foregroundColor(IDS.Colors.textPrimary)
+                                    Spacer()
+                                    Text("\(Int(p.price)) RWF").font(.caption).foregroundColor(IDS.Colors.textPrimary)
+                                }
+                                .padding(10)
+                                .background(IDS.Colors.card)
+                                .cornerRadius(8)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+
+            if let error {
+                Text(error).font(.caption).foregroundColor(.red)
+            }
+
+            HStack(spacing: 8) {
+                Button(action: { Task { await send() } }) {
+                    Text(sending ? "…" : "Send gift voucher").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(IDS.Colors.card)
+                        .cornerRadius(10)
+                }
+                .buttonStyle(.plain)
+                .disabled(selected == nil || phone.trimmingCharacters(in: .whitespaces).isEmpty || sending)
+                Button(action: onCancel) {
+                    Text("Cancel").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(IDS.Colors.card)
+                        .cornerRadius(10)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(12)
+        .background(IDS.Colors.chipBackground)
+        .cornerRadius(12)
+    }
+
+    private func search() async {
+        guard query.trimmingCharacters(in: .whitespaces).count >= 2 else { return }
+        searching = true
+        error = nil
+        defer { searching = false }
+        do {
+            results = try await NetworkClient.shared.searchProducts(query.trimmingCharacters(in: .whitespaces)).products
+        } catch {
+            self.error = "Could not search products."
+        }
+    }
+
+    private func send() async {
+        guard let selected, !phone.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        sending = true
+        error = nil
+        defer { sending = false }
+        do {
+            _ = try await NetworkClient.shared.purchaseGiftVoucher(
+                PurchaseGiftVoucherRequest(recipientPhoneNumber: phone.trimmingCharacters(in: .whitespaces), merchantId: selected.merchantId, merchantProductId: selected.id)
+            )
+            onSent()
+        } catch {
+            self.error = "Could not send this gift voucher."
+        }
+    }
+}
+
 private struct EmoticonPickerPanel: View {
     let onSend: (String) -> Void
     let onOpenStore: () -> Void
@@ -1912,6 +2104,7 @@ private struct MessageBubble: View {
     let currentUserId: String?
     let offer: OfferBubbleData?
     let gift: GiftDto?
+    var voucher: GiftVoucherDto? = nil
     var emoticonImageUrl: String? = nil
     let onToggleReaction: (String) -> Void
     let onRespondToOffer: (String, String, Double?) -> Void
@@ -1929,6 +2122,8 @@ private struct MessageBubble: View {
                 if isMine { Spacer() }
                 if let gift {
                     GiftBubble(gift: gift, isMine: isMine, currentUserId: currentUserId, onClaim: onClaimGift)
+                } else if let voucher {
+                    GiftVoucherBubble(voucher: voucher, isMine: isMine)
                 } else if let offer {
                     OfferBubble(offer: offer, isMine: isMine, currentUserId: currentUserId, onRespond: onRespondToOffer)
                 } else if message.emoticonId != nil {
