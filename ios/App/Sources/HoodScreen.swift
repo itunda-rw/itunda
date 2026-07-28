@@ -251,7 +251,7 @@ private struct MarketplaceContent: View {
     // below for the full account.
     // Real "My purchases" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
     // recommendation #6, see backend ListingRepository's own doc comment.
-    private enum HoodView { case browse, nearby, neighborhood, mine, purchases, wishlist }
+    private enum HoodView { case browse, nearby, neighborhood, mine, purchases, wishlist, alerts }
 
     @State private var view: HoodView = .browse
     @State private var listings: [ListingDto]?
@@ -290,6 +290,7 @@ private struct MarketplaceContent: View {
                     Text("My listings").tag(HoodView.mine)
                     Text("Purchases").tag(HoodView.purchases)
                     Text("♡ Wishlist").tag(HoodView.wishlist)
+                    Text("🔔 Alerts").tag(HoodView.alerts)
                 }
                 .pickerStyle(.segmented)
 
@@ -326,6 +327,8 @@ private struct MarketplaceContent: View {
                 }
                 if view == .wishlist {
                     ListingWishlistView(onRemoved: { Task { await loadFavoriteIds() } })
+                } else if view == .alerts {
+                    KeywordAlertsView()
                 } else if let error {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(error).foregroundColor(.red).font(.subheadline)
@@ -386,6 +389,11 @@ private struct MarketplaceContent: View {
             // ListingWishlistView below owns its own fetch (it needs title/price/
             // category straight from the favorites endpoint, not the ListingDto
             // shape) -- nothing to load into `listings` here.
+            return
+        }
+        if view == .alerts {
+            // KeywordAlertsView below owns its own fetch -- nothing to load into
+            // `listings` here.
             return
         }
         if view == .nearby {
@@ -1027,6 +1035,144 @@ private struct ListingWishlistView: View {
             onRemoved()
         } catch {
             self.error = "Couldn't remove this item. Check your connection and try again."
+        }
+    }
+}
+
+// Real 당근마켓 Keyword Alert (키워드 알림) -- first iOS client for this feature (item
+// 116, found via a content-grep sweep: bank-mfe had it since item 114, Android
+// ported it the same day as item 115, iOS never did). Mirrors bank-mfe's
+// KeywordAlertsView and Android's KeywordAlertsView shape field-for-field: an
+// add-keyword form, a list of existing alerts each with a Remove button, and a
+// quiet-hours card with start/end time text fields and a toggle.
+private struct KeywordAlertsView: View {
+    @State private var alerts: [KeywordAlertDto]?
+    @State private var keyword = ""
+    @State private var adding = false
+    @State private var removingId: String?
+    @State private var quietHours: KeywordAlertQuietHoursDto?
+    @State private var quietHoursLoaded = false
+    @State private var quietStart = "22:00"
+    @State private var quietEnd = "08:00"
+    @State private var savingQuietHours = false
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                TextField("Alert me for (e.g. iPhone 15)", text: $keyword)
+                    .textFieldStyle(.roundedBorder)
+                Button(action: { Task { await addAlert() } }) {
+                    Text(adding ? "…" : "Add").font(.caption).bold().foregroundColor(.white)
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .background(IDS.Colors.brand).cornerRadius(10)
+                }
+                .disabled(adding || keyword.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            if let error {
+                Text(error).font(.caption).foregroundColor(.red)
+            }
+            if alerts == nil {
+                HoodFeedSkeleton()
+            } else if alerts!.isEmpty {
+                Text("No keyword alerts yet -- add one to get notified when a matching listing is posted.")
+                    .foregroundColor(IDS.Colors.textSecondary)
+            } else {
+                ForEach(alerts!) { a in
+                    HStack {
+                        Text(a.keyword).font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                        Spacer()
+                        Button(action: { Task { await removeAlert(a.id) } }) {
+                            Text(removingId == a.id ? "Removing…" : "Remove")
+                                .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                .padding(.horizontal, 12).padding(.vertical, 8)
+                                .background(IDS.Colors.chipBackground).cornerRadius(10)
+                        }
+                        .disabled(removingId == a.id)
+                    }
+                    .padding(16)
+                    .background(IDS.Colors.card)
+                    .cornerRadius(IDS.Layout.cardCornerRadius)
+                }
+            }
+            if quietHoursLoaded {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Quiet hours").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                    Text("Don't send alert notifications during these hours.")
+                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    HStack(spacing: 8) {
+                        TextField("Start (HH:mm)", text: $quietStart).textFieldStyle(.roundedBorder)
+                        TextField("End (HH:mm)", text: $quietEnd).textFieldStyle(.roundedBorder)
+                    }
+                    Button(action: { Task { await saveQuietHours(enabled: quietHours?.enabled != true) } }) {
+                        Text(savingQuietHours ? "…" : (quietHours?.enabled == true ? "Turn off quiet hours" : "Turn on quiet hours"))
+                            .font(.caption).bold()
+                            .foregroundColor(quietHours?.enabled != true ? .white : IDS.Colors.textPrimary)
+                            .frame(maxWidth: .infinity).padding(.vertical, 10)
+                            .background(quietHours?.enabled != true ? IDS.Colors.brand : IDS.Colors.chipBackground)
+                            .cornerRadius(10)
+                    }
+                    .disabled(savingQuietHours)
+                }
+                .padding(16)
+                .background(IDS.Colors.card)
+                .cornerRadius(IDS.Layout.cardCornerRadius)
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        do {
+            let res = try await NetworkClient.shared.getKeywordAlerts()
+            alerts = res.alerts
+            error = nil
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+        do {
+            let qh = try await NetworkClient.shared.getKeywordAlertQuietHours().quietHours
+            quietHours = qh
+            if let qh { quietStart = qh.startTime; quietEnd = qh.endTime }
+        } catch {
+            // Non-critical -- the quiet-hours card just stays hidden.
+        }
+        quietHoursLoaded = true
+    }
+
+    private func addAlert() async {
+        let trimmed = keyword.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return }
+        adding = true
+        defer { adding = false }
+        do {
+            _ = try await NetworkClient.shared.addKeywordAlert(keyword: trimmed)
+            keyword = ""
+            await load()
+        } catch {
+            self.error = "Couldn't add this alert. Check your connection and try again."
+        }
+    }
+
+    private func removeAlert(_ alertId: String) async {
+        removingId = alertId
+        defer { removingId = nil }
+        do {
+            _ = try await NetworkClient.shared.removeKeywordAlert(id: alertId)
+            alerts = alerts?.filter { $0.id != alertId }
+        } catch {
+            self.error = "Couldn't remove this alert. Check your connection and try again."
+        }
+    }
+
+    private func saveQuietHours(enabled: Bool) async {
+        savingQuietHours = true
+        defer { savingQuietHours = false }
+        do {
+            quietHours = try await NetworkClient.shared.setKeywordAlertQuietHours(startTime: quietStart, endTime: quietEnd, enabled: enabled).quietHours
+            error = nil
+        } catch {
+            self.error = "Couldn't update quiet hours. Check your connection and try again."
         }
     }
 }

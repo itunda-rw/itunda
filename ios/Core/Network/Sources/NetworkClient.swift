@@ -300,6 +300,16 @@ public struct RoundUpSettingsDto: Decodable {
 public struct RoundUpSettingsResponse: Decodable { public let success: Bool; public let settings: RoundUpSettingsDto? }
 public struct SetRoundUpSettingsRequest: Encodable { public let enabled: Bool; public let roundToNearest: Double; public let targetGoalId: String? }
 
+// Real 당근마켓 Keyword Alert (키워드 알림) -- mirrors bank-mfe's lib/marketplace.ts and
+// Android's ApiService.kt exactly.
+public struct AddKeywordAlertRequest: Encodable { public let keyword: String }
+public struct KeywordAlertDto: Decodable, Identifiable { public let id: String; public let userId: String; public let keyword: String; public let createdAt: String }
+public struct KeywordAlertResponse: Decodable { public let success: Bool; public let alert: KeywordAlertDto }
+public struct KeywordAlertsResponse: Decodable { public let success: Bool; public let alerts: [KeywordAlertDto] }
+public struct SetKeywordAlertQuietHoursRequest: Encodable { public let startTime: String; public let endTime: String; public let enabled: Bool }
+public struct KeywordAlertQuietHoursDto: Decodable { public let id: String; public let userId: String; public let startTime: String; public let endTime: String; public let enabled: Bool }
+public struct KeywordAlertQuietHoursResponse: Decodable { public let success: Bool; public let quietHours: KeywordAlertQuietHoursDto? }
+
 public struct InterestJar: Decodable {
     public let userId: String
     public let walletId: String
@@ -390,6 +400,22 @@ extension NetworkClient {
     public func setRoundUpSettings(enabled: Bool, roundToNearest: Double, targetGoalId: String?) async throws -> RoundUpSettingsResponse {
         try await authenticatedPost("api/v1/savings/round-up", body: SetRoundUpSettingsRequest(enabled: enabled, roundToNearest: roundToNearest, targetGoalId: targetGoalId))
     }
+
+    // Real 당근마켓 Keyword Alert (키워드 알림) -- first iOS client for this feature
+    // (item 116, found via a content-grep sweep: bank-mfe had it since item 114,
+    // Android ported it the same day as item 115, iOS never did). Mirrors bank-mfe's
+    // lib/marketplace.ts and Android's ApiService.kt exactly.
+    public func addKeywordAlert(keyword: String) async throws -> KeywordAlertResponse {
+        try await authenticatedPost("api/v1/marketplace/keyword-alerts", body: AddKeywordAlertRequest(keyword: keyword))
+    }
+    public func getKeywordAlerts() async throws -> KeywordAlertsResponse { try await get("api/v1/marketplace/keyword-alerts") }
+    public func removeKeywordAlert(id: String) async throws -> SuccessResponse {
+        try await authenticatedDelete("api/v1/marketplace/keyword-alerts/\(id)")
+    }
+    public func setKeywordAlertQuietHours(startTime: String, endTime: String, enabled: Bool) async throws -> KeywordAlertQuietHoursResponse {
+        try await authenticatedPost("api/v1/marketplace/keyword-alerts/quiet-hours", body: SetKeywordAlertQuietHoursRequest(startTime: startTime, endTime: endTime, enabled: enabled))
+    }
+    public func getKeywordAlertQuietHours() async throws -> KeywordAlertQuietHoursResponse { try await get("api/v1/marketplace/keyword-alerts/quiet-hours") }
     public func getTransactionHistory() async throws -> TransactionHistoryResponse { try await get("api/v1/wallet/transactions") }
     // Real account settings screen (2026-07-12).
     public func getProfile() async throws -> ProfileResponse { try await get("api/v1/auth/profile") }
