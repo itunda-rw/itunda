@@ -120,7 +120,19 @@ interface AuthApi {
 
     @DELETE("api/v1/auth/devices/{deviceId}")
     suspend fun revokeDevice(@Path("deviceId") deviceId: String): RevokeDeviceResponse
+
+    // Real push device-token registration (item 120) -- see backend DeviceToken.kt's
+    // own doc comment: PushNotificationService.sendToUser silently no-ops for every
+    // real user because no client anywhere ever registered a token. This app has no
+    // real FCM SDK integrated, so reuses the same real, stable per-install device id
+    // DeviceStore already established for trusted-device binding as this demo's
+    // client-generated token, mirrors bank-mfe's registerDeviceToken exactly (item 119).
+    @POST("api/v1/notifications/device-tokens")
+    suspend fun registerDeviceToken(@Body request: RegisterDeviceTokenRequest): SuccessResponse
 }
+
+enum class DevicePlatform { ANDROID, IOS, WEB }
+data class RegisterDeviceTokenRequest(val platform: DevicePlatform, val token: String)
 
 data class ProfileResponse(val success: Boolean, val user: PublicUser)
 data class SetNeighborhoodRequest(val latitude: Double, val longitude: Double)

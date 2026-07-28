@@ -87,11 +87,24 @@ object SessionManager {
         val response = call()
         NetworkClient.currentTokenStore().saveSession(response.user.id, response.accessToken, response.refreshToken)
         _sessionState.value = SessionState.LoggedIn(response.user.id)
+        registerDeviceToken()
         AuthResult.Success
     } catch (e: retrofit2.HttpException) {
         AuthResult.Failure(httpErrorMessage(e))
     } catch (e: Exception) {
         AuthResult.Failure("Couldn't reach itunda. Check your connection and try again.")
+    }
+
+    // Real push device-token registration (item 120) -- see ApiService.kt's own doc
+    // comment. Best-effort and fire-and-forget: a registration failure must never
+    // block an otherwise-successful login/register.
+    private suspend fun registerDeviceToken() {
+        try {
+            val deviceStore = NetworkClient.currentDeviceStore()
+            NetworkClient.authApi.registerDeviceToken(RegisterDeviceTokenRequest(DevicePlatform.ANDROID, deviceStore.getOrCreateDeviceId()))
+        } catch (_: Exception) {
+            // Best-effort, see doc comment above.
+        }
     }
 
     private fun httpErrorMessage(e: retrofit2.HttpException): String = when (e.code()) {
