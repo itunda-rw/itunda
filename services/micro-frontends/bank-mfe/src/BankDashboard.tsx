@@ -24,7 +24,7 @@ import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreResult, 
 import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type KycSubmission } from './lib/identity';
 import { addContact, fetchContacts, type Contact } from './lib/contacts';
 import { createSupportTicket, fetchSupportTickets, type SupportTicket, type SupportTicketCategory } from './lib/support';
-import { cancelBillingSubscription, collectPayment, fetchMerchantBillingPlans, fetchMerchantCategories, fetchMyBillingSubscriptions, fetchMyFollowedMerchants, fetchNearbyAds, fetchShopDeals, fetchShoppingCatalog, followMerchant, searchProducts, subscribeToBillingPlan, unfollowMerchant, type CollectPaymentResult, type MerchantBillingPlan, type MerchantBillingSubscription, type NearbyMerchantAd, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
+import { cancelBillingSubscription, collectPayment, fetchMerchantBillingPlans, fetchMerchantCategories, fetchMyBillingSubscriptions, fetchMyFollowedMerchants, fetchNearbyAds, fetchShopDeals, fetchShoppingCatalog, followMerchant, previewPaymentIntent, searchProducts, subscribeToBillingPlan, unfollowMerchant, type CollectPaymentResult, type MerchantBillingPlan, type MerchantBillingSubscription, type MerchantCouponView, type NearbyMerchantAd, type PaymentIntentPreview, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
 import {
   buyStock, fetchPortfolio, fetchPortfolioHistory, fetchStockHistory, fetchStocks, fetchWatchlist,
   sellStock, unwatchStock, watchStock,
@@ -2318,6 +2318,10 @@ function FacePaySettingsCard({ enrolled, onChanged }: { enrolled: boolean | null
   );
 }
 
+function couponDiscountLabel(c: MerchantCouponView['coupon']) {
+  return c.discountType === 'PERCENT' ? `${c.discountValue}% off` : `${c.discountValue.toLocaleString()} RWF off`;
+}
+
 function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPaymentResult) => void; facePayEnrolled: boolean }) {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -2329,13 +2333,19 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
   // step. Same fix as TransferFlow/Savings: a real step-up prompt, not a dead end.
   const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
+  // Real coupon-apply-at-payment (item 149) -- see lib/shopping.ts's own doc comment
+  // on previewPaymentIntent. Only reachable on the non-Face-Pay path: FacePayService's
+  // own collect() has no couponId param at all (a real, separate, smaller gap), so
+  // Face Pay stays a direct one-step pay exactly as before.
+  const [preview, setPreview] = useState<PaymentIntentPreview | null>(null);
+  const [eligibleCoupons, setEligibleCoupons] = useState<MerchantCouponView[]>([]);
+  const [selectedCouponId, setSelectedCouponId] = useState<string | null>(null);
+
+  const payDirect = async (couponId?: string) => {
     setNeedsDeviceVerification(false);
     setSubmitting(true);
     try {
-      const result = facePayEnrolled ? await collectWithFacePay(code.trim()) : await collectPayment(code.trim());
+      const result = facePayEnrolled ? await collectWithFacePay(code.trim()) : await collectPayment(code.trim(), couponId);
       onPaid(result);
     } catch (err) {
       if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
@@ -2348,6 +2358,38 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (facePayEnrolled) {
+      await payDirect();
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const r = await previewPaymentIntent(code.trim());
+      const eligible = r.coupons.filter((c) => c.eligible && !c.alreadyRedeemed);
+      if (eligible.length === 0) {
+        await payDirect();
+      } else {
+        setPreview(r);
+        setEligibleCoupons(eligible);
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not look up this payment code.');
+      setSubmitting(false);
+    }
+  };
+
+  const handleConfirm = () => payDirect(selectedCouponId ?? undefined);
+
+  const handleCancel = () => {
+    setPreview(null);
+    setEligibleCoupons([]);
+    setSelectedCouponId(null);
+    setError(null);
+  };
+
   return (
     <div className="toss-card" style={{ marginBottom: '16px' }}>
       <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Pay by code</h3>
@@ -2358,6 +2400,31 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
       </p>
       {needsDeviceVerification ? (
         <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+      ) : preview ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <p style={{ fontSize: '14px', fontWeight: 700 }}>{preview.businessName}</p>
+          <p style={{ fontSize: '20px', fontWeight: 700 }}>{preview.amount.toLocaleString()} RWF</p>
+          <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Apply a coupon?</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+              <input type="radio" name="coupon" checked={selectedCouponId === null} onChange={() => setSelectedCouponId(null)} />
+              No coupon
+            </label>
+            {eligibleCoupons.map((c) => (
+              <label key={c.coupon.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+                <input type="radio" name="coupon" checked={selectedCouponId === c.coupon.id} onChange={() => setSelectedCouponId(c.coupon.id)} />
+                {c.coupon.title} — {couponDiscountLabel(c.coupon)}
+              </label>
+            ))}
+          </div>
+          {error && <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>}
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting} onClick={handleConfirm}>
+              {submitting ? 'Paying…' : 'Pay'}
+            </button>
+            <button className="toss-btn toss-btn-secondary" onClick={handleCancel} disabled={submitting}>Cancel</button>
+          </div>
+        </div>
       ) : (
         <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '10px' }}>
           <input
@@ -2373,7 +2440,7 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
           </button>
         </form>
       )}
-      {error && (
+      {error && !preview && (
         <p style={{ fontSize: '13px', color: '#E53935', marginTop: '10px' }} role="alert">{error}</p>
       )}
     </div>

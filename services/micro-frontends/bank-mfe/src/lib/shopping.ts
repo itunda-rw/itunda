@@ -102,11 +102,45 @@ export interface CollectPaymentResult {
 // scanning, not an invented shortcut; this app has no camera-based QR scanner (that's
 // the real mobile app's job, already real there), so this is the honest, real
 // alternative rather than faking a scan.
-export const collectPayment = (intentId: string) =>
+export const collectPayment = (intentId: string, couponId?: string) =>
   apiFetch<{ success: boolean } & CollectPaymentResult>(`/api/v1/merchant/collect/${intentId}`, {
     method: 'POST',
     headers: { 'Idempotency-Key': randomUUID() },
+    body: couponId ? JSON.stringify({ couponId }) : undefined,
   });
+
+// Real read-only preview (item 149) -- see backend MerchantService.previewIntent's own
+// doc comment. Lets a payer see which merchant/amount a code resolves to, and their own
+// real coupon eligibility, before committing to collectPayment -- the actual blocker
+// that made the coupon-apply half of MerchantCouponController (item 146) unbuildable
+// until this existed, since Pay-by-code previously had zero merchant context pre-charge.
+export interface MerchantCouponView {
+  coupon: {
+    id: string;
+    merchantId: string;
+    title: string;
+    description: string | null;
+    discountType: 'PERCENT' | 'FIXED_AMOUNT';
+    discountValue: number;
+    regularsOnly: boolean;
+    active: boolean;
+    expiresAt: string | null;
+    createdAt: string;
+  };
+  eligible: boolean;
+  alreadyRedeemed: boolean;
+}
+
+export interface PaymentIntentPreview {
+  merchantId: string;
+  businessName: string;
+  amount: number;
+  description: string;
+  coupons: MerchantCouponView[];
+}
+
+export const previewPaymentIntent = (intentId: string) =>
+  apiFetch<{ success: boolean } & PaymentIntentPreview>(`/api/v1/merchant/intent/${intentId}`);
 
 // Real Naver Smart Store-style "알림받기" (follow a store for its own broadcast
 // notices) -- see MerchantFollowService.kt's own doc comment. Distinct from the
