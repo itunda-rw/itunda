@@ -290,3 +290,31 @@ export const removeFavoriteRestaurant = (restaurantId: string) =>
 
 export const fetchMyFavoriteRestaurants = () =>
   apiFetch<{ success: boolean; favorites: FavoriteRestaurant[] }>('/api/v1/eats/favorites').then((r) => r.favorites);
+
+// Real Baemin Club (배민클럽)-style free-delivery membership (rw.itunda.eats.
+// EatsMembershipService, 2026-07-26) -- backend-only until now (item 102), first client
+// UI for this feature. Free delivery only applies at a restaurant that has itself
+// opted in (see MerchantController.setParticipatesInEatsMembership) -- never a blanket
+// waiver, mirroring Baemin's own real "참여 가게" scoping.
+export interface EatsMembership {
+  id: string;
+  userId: string;
+  activeUntil: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const EATS_MEMBERSHIP_TIERS: { days: number; priceRwf: number }[] = [
+  { days: 30, priceRwf: 1500 },
+  { days: 90, priceRwf: 4000 },
+];
+
+export const fetchMyMembership = () =>
+  apiFetch<{ success: boolean; membership: EatsMembership | null }>('/api/v1/eats/membership/me').then((r) => r.membership);
+
+export const subscribeMembership = (days: number) =>
+  apiFetch<{ success: boolean; membership: EatsMembership }>('/api/v1/eats/membership/subscribe', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ days }),
+  }).then((r) => r.membership);

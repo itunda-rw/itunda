@@ -62,11 +62,11 @@ import {
   submitPropertyListingReview, type FavoritePropertyListing, type PropertyListing, type PropertyListingType, type PropertyPriceOffer, type PropertyType,
 } from './lib/realestate';
 import {
-  addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, fetchAvailableDeliveries,
-  fetchEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyRiderProfile, fetchRestaurantCategories,
+  addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, EATS_MEMBERSHIP_TIERS, fetchAvailableDeliveries,
+  fetchEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyMembership, fetchMyRiderProfile, fetchRestaurantCategories,
   fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRiderDeliveries, placeEatsOrder, registerRider,
-  removeFavoriteRestaurant, searchDeliveryAddress, setRiderAvailability, submitEatsReview,
-  type AddressSuggestion, type EatsOrder, type EatsOrderStatus, type FavoriteRestaurant, type MenuItem, type RatingSummary, type Rider,
+  removeFavoriteRestaurant, searchDeliveryAddress, setRiderAvailability, subscribeMembership, submitEatsReview,
+  type AddressSuggestion, type EatsMembership, type EatsOrder, type EatsOrderStatus, type FavoriteRestaurant, type MenuItem, type RatingSummary, type Rider,
 } from './lib/eats';
 import {
   addProductFavorite, advanceOrderStatus, askProductInquiry, cancelOrder, fetchMerchantOrders, fetchMerchantProducts, fetchMyFavoriteProducts, fetchMyOrders, fetchOrderDetail,
@@ -8083,11 +8083,74 @@ function EatsView() {
       </div>
       {mode === 'ORDER' ? (
         <div>
+          <EatsMembershipCard />
           <RestaurantOrdersView />
           <OrderFoodView />
         </div>
       ) : (
         <DeliverView />
+      )}
+    </div>
+  );
+}
+
+// Real Baemin Club (배민클럽)-style free-delivery membership -- see lib/eats.ts's own
+// doc comment. First client UI for this backend feature (item 102, found backend-only
+// via a fresh matrix scan for still-open "no client UI yet" notes).
+function EatsMembershipCard() {
+  const [membership, setMembership] = useState<EatsMembership | null | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    fetchMyMembership().then(setMembership).catch(() => setMembership(null));
+  };
+  useEffect(load, []);
+
+  const isActive = membership != null && new Date(membership.activeUntil).getTime() > Date.now();
+
+  const handleSubscribe = async (days: number) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await subscribeMembership(days);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not subscribe to Eats Club.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (membership === undefined) return null;
+
+  return (
+    <div className="toss-card" style={{ padding: '16px', marginBottom: '16px' }}>
+      <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Eats Club</h3>
+      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+      {isActive ? (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+          Free delivery active until {new Date(membership!.activeUntil).toLocaleDateString()} at participating restaurants.
+        </p>
+      ) : (
+        <div>
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '10px' }}>
+            Free delivery at participating restaurants -- no minimum order.
+          </p>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {EATS_MEMBERSHIP_TIERS.map((tier) => (
+              <button
+                key={tier.days}
+                className="toss-btn toss-btn-primary"
+                disabled={busy}
+                onClick={() => handleSubscribe(tier.days)}
+                style={{ flex: 1, fontSize: '13px' }}
+              >
+                {busy ? '…' : `${tier.days} days -- ${tier.priceRwf.toLocaleString()} RWF`}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
