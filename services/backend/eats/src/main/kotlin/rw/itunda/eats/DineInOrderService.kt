@@ -17,6 +17,7 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.fraud.FraudRuleEngine
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.DineInOrderItemRepository
 import rw.itunda.core.repository.DineInOrderRepository
 import rw.itunda.core.repository.LedgerEntryRepository
@@ -72,6 +73,7 @@ class DineInOrderService(
     private val fraudRuleEngine: FraudRuleEngine,
     private val ledgerEntryRepository: LedgerEntryRepository,
     private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     companion object {
         // Same 1.5% Toss Payments fee-schedule reasoning OrderService.feeRate/
@@ -304,13 +306,16 @@ class DineInOrderService(
     }
 
     private fun notifyRestaurant(order: DineInOrder, restaurantOwnerUserId: String) {
+        val title = "New table order"
+        val body = "Table ${order.tableNumber} placed a new order."
         notificationRepository.save(
             Notification(
                 id = "notif_${UUID.randomUUID()}", userId = restaurantOwnerUserId, type = "DINE_IN_ORDER_PLACED",
-                title = "New table order", body = "Table ${order.tableNumber} placed a new order.", isRead = false, createdAt = Instant.now(),
+                title = title, body = body, isRead = false, createdAt = Instant.now(),
                 dataJson = "{\"orderId\":\"${order.id}\"}",
             ),
         )
+        pushNotificationService.sendToUser(restaurantOwnerUserId, title, body, mapOf("orderId" to order.id))
     }
 
     private fun notifyBuyer(order: DineInOrder, title: String, body: String) {
