@@ -14,6 +14,7 @@ import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.FamilyLinkRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
@@ -39,7 +40,8 @@ class FamilyLinkServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = FamilyLinkService(familyLinkRepository, userRepository, walletRepository, transactionRepository, notificationRepository, rateLimiter)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = FamilyLinkService(familyLinkRepository, userRepository, walletRepository, transactionRepository, notificationRepository, rateLimiter, pushNotificationService)
 
         val guardian = user("guardian_1", "+250788000001", "Jean", "Baptiste")
         val child = user("child_1", "+250788000002", "Alice", "M")
@@ -55,6 +57,10 @@ class FamilyLinkServiceTest : BehaviorSpec({
                 link.status shouldBe FamilyLinkStatus.PENDING
                 link.guardianUserId shouldBe "guardian_1"
                 link.childUserId shouldBe "child_1"
+            }
+
+            Then("the real child also gets a real push notification, not just the in-app one") {
+                io.mockk.verify(exactly = 1) { pushNotificationService.sendToUser("child_1", "Family link invitation", any(), any()) }
             }
         }
 
@@ -109,7 +115,8 @@ class FamilyLinkServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = FamilyLinkService(familyLinkRepository, userRepository, walletRepository, transactionRepository, notificationRepository, rateLimiter)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = FamilyLinkService(familyLinkRepository, userRepository, walletRepository, transactionRepository, notificationRepository, rateLimiter, pushNotificationService)
 
         val pending = FamilyLink(id = "familylink_1", guardianUserId = "guardian_1", childUserId = "child_1")
 
@@ -121,6 +128,10 @@ class FamilyLinkServiceTest : BehaviorSpec({
 
             Then("it becomes ACTIVE") {
                 result.status shouldBe FamilyLinkStatus.ACTIVE
+            }
+
+            Then("the real guardian also gets a real push notification, not just the in-app one") {
+                io.mockk.verify(exactly = 1) { pushNotificationService.sendToUser("guardian_1", "Family link accepted", any(), any()) }
             }
         }
 
@@ -157,7 +168,8 @@ class FamilyLinkServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = FamilyLinkService(familyLinkRepository, userRepository, walletRepository, transactionRepository, notificationRepository, rateLimiter)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = FamilyLinkService(familyLinkRepository, userRepository, walletRepository, transactionRepository, notificationRepository, rateLimiter, pushNotificationService)
 
         When("the guardian views the child's real overview") {
             every { familyLinkRepository.findByGuardianUserIdAndChildUserIdAndStatus("guardian_1", "child_1", FamilyLinkStatus.ACTIVE) } returns
@@ -255,7 +267,8 @@ class FamilyLinkServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = FamilyLinkService(familyLinkRepository, userRepository, walletRepository, transactionRepository, notificationRepository, rateLimiter)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = FamilyLinkService(familyLinkRepository, userRepository, walletRepository, transactionRepository, notificationRepository, rateLimiter, pushNotificationService)
 
         val link = FamilyLink(id = "familylink_1", guardianUserId = "guardian_1", childUserId = "child_1", status = FamilyLinkStatus.ACTIVE, dailySpendLimit = BigDecimal("5000"))
         every { familyLinkRepository.findByChildUserIdAndStatusAndDailySpendLimitIsNotNull("child_1", FamilyLinkStatus.ACTIVE) } returns link
@@ -297,7 +310,8 @@ class FamilyLinkServiceTest : BehaviorSpec({
         val transactionRepository = mockk<TransactionRepository>(relaxed = true)
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
-        val service = FamilyLinkService(familyLinkRepository, userRepository, walletRepository, transactionRepository, notificationRepository, rateLimiter)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = FamilyLinkService(familyLinkRepository, userRepository, walletRepository, transactionRepository, notificationRepository, rateLimiter, pushNotificationService)
 
         every { familyLinkRepository.findByChildUserIdAndStatusAndDailySpendLimitIsNotNull("user_5", FamilyLinkStatus.ACTIVE) } returns null
 

@@ -10,6 +10,7 @@ import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.FamilyLinkRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.TransactionRepository
@@ -50,6 +51,7 @@ class FamilyLinkService(
     private val transactionRepository: TransactionRepository,
     private val notificationRepository: NotificationRepository,
     private val rateLimiter: RateLimiter,
+    private val pushNotificationService: PushNotificationService,
 ) {
     @Transactional
     fun inviteChild(guardianUserId: String, childPhoneNumber: String): FamilyLink {
@@ -67,13 +69,21 @@ class FamilyLinkService(
         val guardian = userRepository.findById(guardianUserId).orElseThrow { FamilyLinkChildNotFoundException("Guardian account not found") }
         val link = familyLinkRepository.save(FamilyLink(id = "familylink_${UUID.randomUUID()}", guardianUserId = guardianUserId, childUserId = child.id))
 
-        notificationRepository.save(
-            Notification(
-                id = "notif_${UUID.randomUUID()}", userId = child.id, type = "FAMILY_LINK_INVITED",
-                title = "Family link invitation", body = "${guardian.firstName} ${guardian.lastName} wants to link your account as a family member.",
-                isRead = false, createdAt = Instant.now(), dataJson = "{\"linkId\":\"${link.id}\"}",
-            ),
-        )
+        run {
+            val title = "Family link invitation"
+            val body = "${guardian.firstName} ${guardian.lastName} wants to link your account as a family member."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = child.id, type = "FAMILY_LINK_INVITED",
+                    title = title, body = body,
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"linkId\":\"${link.id}\"}",
+                ),
+            )
+            // Real push wired in (2026-07-28) -- a real invitation the recipient is
+            // expected to act on (accept/decline) is exactly the kind of thing that
+            // shouldn't wait for the next in-app poll.
+            pushNotificationService.sendToUser(child.id, title, body, mapOf("linkId" to link.id))
+        }
         return link
     }
 
@@ -89,13 +99,16 @@ class FamilyLinkService(
 
         if (accept) {
             val child = userRepository.findById(childUserId).orElse(null)
+            val title = "Family link accepted"
+            val body = "${child?.firstName ?: "Your family member"} accepted your family link invitation."
             notificationRepository.save(
                 Notification(
                     id = "notif_${UUID.randomUUID()}", userId = link.guardianUserId, type = "FAMILY_LINK_ACCEPTED",
-                    title = "Family link accepted", body = "${child?.firstName ?: "Your family member"} accepted your family link invitation.",
+                    title = title, body = body,
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"linkId\":\"${link.id}\"}",
                 ),
             )
+            pushNotificationService.sendToUser(link.guardianUserId, title, body, mapOf("linkId" to link.id))
         }
         return saved
     }
