@@ -17,6 +17,7 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.OverdraftAccountRepository
 import rw.itunda.core.repository.WalletRepository
@@ -40,8 +41,9 @@ class OverdraftServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val creditScoreService = mockk<CreditScoreService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         every { notificationRepository.save(any()) } answers { firstArg() }
-        val service = OverdraftService(overdraftAccountRepository, walletRepository, ledgerService, creditScoreService, notificationRepository)
+        val service = OverdraftService(overdraftAccountRepository, walletRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
 
         every { overdraftAccountRepository.findByUserIdAndStatus("user_1", OverdraftAccountStatus.ACTIVE) } returns null
         every { walletRepository.findByUserIdAndType("user_1", WalletType.MAIN) } returns wallet("wallet_1", "user_1")
@@ -57,6 +59,10 @@ class OverdraftServiceTest : BehaviorSpec({
                 account.creditLimit shouldBe BigDecimal("100000")
                 account.drawnBalance shouldBe BigDecimal.ZERO
                 account.status shouldBe OverdraftAccountStatus.ACTIVE
+            }
+
+            Then("the account owner also gets a real mobile push notification, not just the in-app one") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", "Overdraft account opened", any(), any()) }
             }
         }
 
@@ -93,7 +99,8 @@ class OverdraftServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val creditScoreService = mockk<CreditScoreService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = OverdraftService(overdraftAccountRepository, walletRepository, ledgerService, creditScoreService, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = OverdraftService(overdraftAccountRepository, walletRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
 
         every { overdraftAccountRepository.findByUserIdAndStatus("user_1", OverdraftAccountStatus.ACTIVE) } returns
             OverdraftAccount(id = "overdraft_1", userId = "user_1", walletId = "wallet_1", creditLimit = BigDecimal("100000"), interestRate = 8.0)
@@ -116,7 +123,8 @@ class OverdraftServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val creditScoreService = mockk<CreditScoreService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = OverdraftService(overdraftAccountRepository, walletRepository, ledgerService, creditScoreService, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = OverdraftService(overdraftAccountRepository, walletRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
 
         val account = OverdraftAccount(id = "overdraft_1", userId = "user_1", walletId = "wallet_1", creditLimit = BigDecimal("100000"), interestRate = 8.0)
         every { overdraftAccountRepository.findByUserIdAndStatus("user_1", OverdraftAccountStatus.ACTIVE) } returns account
@@ -199,7 +207,8 @@ class OverdraftServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val creditScoreService = mockk<CreditScoreService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = OverdraftService(overdraftAccountRepository, walletRepository, ledgerService, creditScoreService, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = OverdraftService(overdraftAccountRepository, walletRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
 
         every { overdraftAccountRepository.findByUserIdAndStatus("user_2", OverdraftAccountStatus.ACTIVE) } returns null
 
@@ -221,7 +230,8 @@ class OverdraftServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val creditScoreService = mockk<CreditScoreService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = OverdraftService(overdraftAccountRepository, walletRepository, ledgerService, creditScoreService, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = OverdraftService(overdraftAccountRepository, walletRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
 
         val account = OverdraftAccount(id = "overdraft_1", userId = "user_1", walletId = "wallet_1", creditLimit = BigDecimal("100000"), interestRate = 8.0, drawnBalance = BigDecimal("36500"))
         every { overdraftAccountRepository.save(any()) } answers { firstArg() }
@@ -249,7 +259,8 @@ class OverdraftServiceTest : BehaviorSpec({
         val ledgerService = mockk<LedgerService>()
         val creditScoreService = mockk<CreditScoreService>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = OverdraftService(overdraftAccountRepository, walletRepository, ledgerService, creditScoreService, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = OverdraftService(overdraftAccountRepository, walletRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
 
         val neverAccrued = OverdraftAccount(id = "overdraft_a", userId = "user_a", walletId = "wallet_a", creditLimit = BigDecimal("100000"), interestRate = 8.0, drawnBalance = BigDecimal("10000"))
         val zeroBalance = OverdraftAccount(id = "overdraft_b", userId = "user_b", walletId = "wallet_b", creditLimit = BigDecimal("100000"), interestRate = 8.0, drawnBalance = BigDecimal.ZERO)

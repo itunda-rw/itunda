@@ -11,6 +11,7 @@ import rw.itunda.core.domain.OverdraftAccountStatus
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.OverdraftAccountRepository
 import rw.itunda.core.repository.WalletRepository
@@ -40,6 +41,7 @@ class OverdraftService(
     private val ledgerService: LedgerService,
     private val creditScoreService: CreditScoreService,
     private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     companion object {
         // Real underwriting reuses LoansService's own exact real gate (same score a
@@ -82,14 +84,16 @@ class OverdraftService(
         // doc comment for the full sourced rationale, same real notification here since
         // opening a credit line is exactly the kind of new-financial-product event that
         // discipline already covers.
+        val title = "Overdraft account opened"
+        val body = "A real ${requestedLimit} RWF overdraft line was just opened in your name. If this wasn't you, secure your account immediately."
         notificationRepository.save(
             Notification(
                 id = "notif_${UUID.randomUUID()}", userId = userId, type = "OVERDRAFT_OPENED",
-                title = "Overdraft account opened",
-                body = "A real ${requestedLimit} RWF overdraft line was just opened in your name. If this wasn't you, secure your account immediately.",
+                title = title, body = body,
                 isRead = false, createdAt = Instant.now(), dataJson = "{\"overdraftId\":\"${account.id}\"}",
             ),
         )
+        pushNotificationService.sendToUser(userId, title, body, mapOf("overdraftId" to account.id))
 
         return account
     }
