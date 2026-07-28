@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { randomUUID } from './uuid';
 
 // Field shapes match services/backend's real domain entities exactly (FraudFlag,
 // KycSubmission, Incident, SupportTicket) -- see docs/TOSS_PARITY_MATRIX.md's Ops
@@ -136,6 +137,46 @@ export const resolveHoodReport = (reportId: string) =>
 
 export const removeHoodReportTarget = (reportId: string) =>
   apiFetch(`/api/v1/system/hood-reports/${reportId}/remove-target`, { method: 'POST' });
+
+// Real MTN MoMo/Airtel Money-style physical cash-in/cash-out agent network -- Agent
+// management (item 129: register/list/suspend an agent, fund a real till float), the
+// rest of this module's admin surface item 126 deliberately left open. Cash-in/
+// cash-out/operator-assignment stay a separate, not-yet-started follow-up -- those are
+// real teller actions best suited to a dedicated agent-operator client, not this
+// admin-facing register/status/float view.
+export interface Agent {
+  id: string;
+  displayName: string;
+  cashAccountId: string;
+  status: 'ACTIVE' | 'SUSPENDED';
+  dailyCashInLimit: number;
+  dailyCashOutLimit: number;
+  latitude: number | null;
+  longitude: number | null;
+  createdAt: string;
+}
+
+export const fetchAgents = () =>
+  apiFetch<{ success: boolean; agents: Agent[] }>('/api/v1/system/agents').then((r) => r.agents);
+
+export const registerAgent = (displayName: string, dailyCashInLimit: number, dailyCashOutLimit: number) =>
+  apiFetch<{ success: boolean; agent: Agent }>('/api/v1/system/agents', {
+    method: 'POST',
+    body: JSON.stringify({ displayName, dailyCashInLimit, dailyCashOutLimit }),
+  }).then((r) => r.agent);
+
+export const setAgentStatus = (agentId: string, status: 'ACTIVE' | 'SUSPENDED') =>
+  apiFetch<{ success: boolean; agent: Agent }>(`/api/v1/system/agents/${agentId}/status`, {
+    method: 'POST',
+    body: JSON.stringify({ status }),
+  }).then((r) => r.agent);
+
+export const fundAgentTill = (agentId: string, amount: number, reference: string) =>
+  apiFetch(`/api/v1/system/agents/${agentId}/float`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ amount, reference }),
+  });
 
 // Real MTN MoMo/Airtel Money-style physical cash-in/cash-out agent network (item 126)
 // -- a till reconciliation this out of balance needs real human admin review before

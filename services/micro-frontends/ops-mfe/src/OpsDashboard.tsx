@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, Banknote, CircleDollarSign, Flag, HeartPulse, Home, LifeBuoy, LogOut, Puzzle, Scale, ShieldCheck, Siren } from 'lucide-react';
+import { AlertTriangle, Banknote, CircleDollarSign, Flag, HeartPulse, Home, LifeBuoy, LogOut, Puzzle, Scale, ShieldCheck, Siren, Users } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
 import FraudQueue from './queues/FraudQueue';
 import ComplianceQueue from './queues/ComplianceQueue';
@@ -12,8 +12,11 @@ import EscrowDisputesQueue from './queues/EscrowDisputesQueue';
 import AgentReconciliationQueue from './queues/AgentReconciliationQueue';
 import HoodReportsQueue from './queues/HoodReportsQueue';
 import PropertyOwnershipQueue from './queues/PropertyOwnershipQueue';
+import AgentsManagementView from './queues/AgentsManagementView';
 
-type Tab = 'fraud' | 'compliance' | 'incidents' | 'reconciliation' | 'support' | 'insurance' | 'partners' | 'escrow' | 'agents' | 'hood-reports' | 'property-verification';
+type Tab =
+  | 'fraud' | 'compliance' | 'incidents' | 'reconciliation' | 'support' | 'insurance' | 'partners'
+  | 'escrow' | 'agents' | 'hood-reports' | 'property-verification' | 'agents-management';
 
 const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'fraud', label: 'Fraud', icon: AlertTriangle },
@@ -24,6 +27,7 @@ const TABS: { id: Tab; label: string; icon: typeof AlertTriangle }[] = [
   { id: 'insurance', label: 'Insurance claims', icon: HeartPulse },
   { id: 'partners', label: 'Partner mini-apps', icon: Puzzle },
   { id: 'escrow', label: 'Escrow disputes', icon: Scale },
+  { id: 'agents-management', label: 'Agents', icon: Users },
   { id: 'agents', label: 'Agent till variances', icon: Banknote },
   { id: 'hood-reports', label: 'Hood content reports', icon: Flag },
   { id: 'property-verification', label: 'Property ownership', icon: Home },
@@ -104,6 +108,7 @@ export default function OpsDashboard({ onLogout }: { onLogout: () => void }) {
         {tab === 'agents' && <AgentReconciliationQueue />}
         {tab === 'hood-reports' && <HoodReportsQueue />}
         {tab === 'property-verification' && <PropertyOwnershipQueue />}
+        {tab === 'agents-management' && <AgentsManagementView />}
       </main>
     </div>
   );
