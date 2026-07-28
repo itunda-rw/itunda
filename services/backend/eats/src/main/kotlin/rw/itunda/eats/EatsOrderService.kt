@@ -793,16 +793,23 @@ class EatsOrderService(
             val nearest = rankNearbyRiders(restaurantLat, restaurantLng, candidatePool = candidatePool, busyRiderIds = busyRiderIds).take(NEAREST_RIDERS_TO_NOTIFY)
             if (nearest.isEmpty()) return
 
+            val nearestWithBody = nearest.map { (rider, distanceKm) ->
+                val roundedKm = BigDecimal(distanceKm).setScale(1, RoundingMode.HALF_UP)
+                Triple(rider.userId, "New delivery near you", "${restaurant.businessName} -- about $roundedKm km away")
+            }
             notificationRepository.saveAll(
-                nearest.map { (rider, distanceKm) ->
-                    val roundedKm = BigDecimal(distanceKm).setScale(1, RoundingMode.HALF_UP)
+                nearestWithBody.map { (riderUserId, title, body) ->
                     Notification(
-                        id = "notif_${UUID.randomUUID()}", userId = rider.userId, type = "NEW_DELIVERY_NEARBY",
-                        title = "New delivery near you", body = "${restaurant.businessName} -- about $roundedKm km away",
+                        id = "notif_${UUID.randomUUID()}", userId = riderUserId, type = "NEW_DELIVERY_NEARBY",
+                        title = title, body = body,
                         isRead = false, createdAt = Instant.now(), dataJson = "{\"orderId\":\"${order.id}\"}",
                     )
                 },
             )
+            // Real push (item 124) -- same fan-out-per-recipient shape
+            // MerchantFollowService.broadcastToFollowers already established. A delivery
+            // sitting unclaimed is real, time-sensitive lost business for the restaurant.
+            nearestWithBody.forEach { (riderUserId, title, body) -> pushNotificationService.sendToUser(riderUserId, title, body) }
         } catch (e: Exception) {
             logger.warn("Failed to notify nearest riders for order {} -- the order is still real and claimable via browse, this is best-effort only: {}", order.id, e.message)
         }
@@ -843,14 +850,19 @@ class EatsOrderService(
             order.offerExpiresAt = Instant.now().plus(OFFER_WINDOW)
             eatsOrderRepository.save(order)
 
+            val offerTitle = "New delivery -- you're closest"
+            val offerBody = "${restaurant.businessName} -- accept within ${OFFER_WINDOW.seconds} seconds or it goes to the next rider"
             notificationRepository.save(
                 Notification(
                     id = "notif_${UUID.randomUUID()}", userId = next.userId, type = "DELIVERY_OFFER",
-                    title = "New delivery -- you're closest",
-                    body = "${restaurant.businessName} -- accept within ${OFFER_WINDOW.seconds} seconds or it goes to the next rider",
+                    title = offerTitle, body = offerBody,
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"orderId\":\"${order.id}\"}",
                 ),
             )
+            // Real push (item 124) -- of every real Notification in this backend, this
+            // is arguably the single most time-sensitive: a real countdown window this
+            // short is meaningless if the rider only sees it on their next in-app poll.
+            pushNotificationService.sendToUser(next.userId, offerTitle, offerBody, mapOf("orderId" to order.id))
         } catch (e: Exception) {
             logger.warn("Failed to dispatch order {} to a real candidate rider -- falling back to open browse: {}", order.id, e.message)
         }
@@ -1085,5 +1097,8 @@ class EatsOrderService(
                 dataJson = "{\"orderId\":\"${order.id}\"}",
             ),
         )
+        // Real push (item 124) -- same buyer-facing status-update urgency as
+        // OrderService/DineInOrderService's own matching gaps, closed the same pass.
+        pushNotificationService.sendToUser(order.buyerId, title, body, mapOf("orderId" to order.id))
     }
 }

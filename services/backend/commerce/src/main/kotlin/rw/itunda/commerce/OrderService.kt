@@ -500,5 +500,10 @@ class OrderService(
                 dataJson = "{\"orderId\":\"${order.id}\"}",
             ),
         )
+        // Real push (item 124) -- the real "your order was packed/shipped/delivered"
+        // moment every real Coupang/Toss Shopping/Naver Shopping-style app pushes
+        // instantly, not just on the next in-app poll. This row's own NEW_COMMERCE_ORDER
+        // (seller side) already pushes; this closes the matching buyer-side gap.
+        pushNotificationService.sendToUser(order.buyerId, title, body, mapOf("orderId" to order.id))
     }
 }

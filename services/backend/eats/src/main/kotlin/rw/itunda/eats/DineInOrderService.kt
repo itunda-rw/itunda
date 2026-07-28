@@ -326,5 +326,8 @@ class DineInOrderService(
                 dataJson = "{\"orderId\":\"${order.id}\"}",
             ),
         )
+        // Real push (item 124) -- same buyer-facing status-update urgency as
+        // OrderService.notifyBuyer's own matching Commerce gap, closed the same pass.
+        pushNotificationService.sendToUser(order.buyerId, title, body, mapOf("orderId" to order.id))
     }
 }

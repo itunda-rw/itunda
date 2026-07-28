@@ -207,10 +207,16 @@ class DineInOrderServiceTest : BehaviorSpec({
 
             val cancelled = service.cancelOrder("owner_1", "dine_in_order_1")
 
-            Then("it real-refunds and real-notifies the buyer, but never re-alerts the restaurant that just cancelled its own order") {
+            Then("it real-refunds and real-notifies (in-app and push) the buyer, but never re-alerts the restaurant that just cancelled its own order") {
                 cancelled.status shouldBe DineInOrderStatus.CANCELLED
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_1" && it.type == "DINE_IN_ORDER_UPDATE" }) }
-                verify(exactly = 0) { pushNotificationService.sendToUser("buyer_1", any(), any(), any()) }
+                // Real push (item 124) -- the buyer genuinely should get this, same
+                // urgency as every other real order-status push; what this test's own
+                // name actually guards against is the RESTAURANT owner (who took the
+                // cancel action themselves) getting a redundant push about their own
+                // action, not the buyer being silent.
+                verify(exactly = 1) { pushNotificationService.sendToUser("buyer_1", any(), any(), any()) }
+                verify(exactly = 0) { pushNotificationService.sendToUser("owner_1", any(), any(), any()) }
             }
         }
     }

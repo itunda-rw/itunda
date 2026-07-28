@@ -279,13 +279,21 @@ class RideTripService(
         driver.totalAccepted += 1
         rideDriverRepository.save(driver)
 
-        notificationRepository.save(
-            Notification(
-                id = "notif_${UUID.randomUUID()}", userId = trip.passengerId, type = "RIDE_TRIP_UPDATE",
-                title = "Driver assigned", body = "A driver is on the way to ${trip.pickupAddress}.",
-                isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${trip.id}\"}",
-            ),
-        )
+        run {
+            val title = "Driver assigned"
+            val body = "A driver is on the way to ${trip.pickupAddress}."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = trip.passengerId, type = "RIDE_TRIP_UPDATE",
+                    title = title, body = body,
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${trip.id}\"}",
+                ),
+            )
+            // Real push (item 124) -- same "passenger waiting on a real-time status
+            // update" urgency as this row's own already-pushed RIDE_TRIP_OFFER (driver
+            // side); this closes the matching passenger-side gap.
+            pushNotificationService.sendToUser(trip.passengerId, title, body, mapOf("tripId" to trip.id))
+        }
         return saved
     }
 
@@ -344,13 +352,19 @@ class RideTripService(
         trip.payoutTransactionId = result.transactionId
         trip.updatedAt = Instant.now()
         val saved = rideTripRepository.save(trip)
-        notificationRepository.save(
-            Notification(
-                id = "notif_${UUID.randomUUID()}", userId = trip.passengerId, type = "RIDE_TRIP_UPDATE",
-                title = "Trip completed", body = "You arrived at ${trip.dropoffAddress}. Fare: ${trip.fare} RWF.",
-                isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${trip.id}\"}",
-            ),
-        )
+        run {
+            val title = "Trip completed"
+            val body = "You arrived at ${trip.dropoffAddress}. Fare: ${trip.fare} RWF."
+            notificationRepository.save(
+                Notification(
+                    id = "notif_${UUID.randomUUID()}", userId = trip.passengerId, type = "RIDE_TRIP_UPDATE",
+                    title = title, body = body,
+                    isRead = false, createdAt = Instant.now(), dataJson = "{\"tripId\":\"${trip.id}\"}",
+                ),
+            )
+            // Real push (item 124) -- see acceptTrip's own doc comment above.
+            pushNotificationService.sendToUser(trip.passengerId, title, body, mapOf("tripId" to trip.id))
+        }
         return saved
     }
 
