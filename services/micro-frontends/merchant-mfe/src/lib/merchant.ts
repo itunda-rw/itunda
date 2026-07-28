@@ -16,7 +16,18 @@ export interface Merchant {
   // EatsMembership.kt's own doc comment. Free delivery for Eats Club members only
   // applies at a restaurant that has itself opted in here.
   participatesInEatsMembership: boolean;
+  // Real business location (POST /api/v1/merchant/location) -- backend has had this
+  // since 2026-07-18 for Eats/delivery matching, but merchant-mfe never surfaced it
+  // until MerchantAdService's own radius-targeted ads required it (item 147).
+  latitude: number | null;
+  longitude: number | null;
 }
+
+export const setMerchantLocation = (latitude: number, longitude: number) =>
+  apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/location', {
+    method: 'POST',
+    body: JSON.stringify({ latitude, longitude }),
+  }).then((r) => r.merchant);
 
 // Real demo KYB structural pre-check (see DemoKybVerificationService.kt's own doc
 // comment) -- reuses the same /api/v1/identity/submit + human-review pipeline personal
@@ -424,3 +435,35 @@ export const deactivateCoupon = (couponId: string) =>
   apiFetch<{ success: boolean; coupon: MerchantCoupon }>(`/api/v1/merchant/coupons/${couponId}/deactivate`, {
     method: 'POST',
   }).then((r) => r.coupon);
+
+// Real 당근(Karrot) 반경 타기팅-style radius-targeted local ads (item 147) -- see
+// MerchantAd.kt's own doc comment for the sourced radius range and flat-fee tiers.
+// One real ad slot per merchant; paying again extends activeUntil rather than losing
+// remaining paid time. IS a real payment (fee_revenue), so Idempotency-Key-gated.
+export const AD_VALID_RADII_METERS = Array.from({ length: 13 }, (_, i) => 300 + i * 100); // 300..1500
+export const AD_DURATION_TIERS: { days: number; price: number }[] = [
+  { days: 3, price: 1500 },
+  { days: 7, price: 3000 },
+  { days: 14, price: 5500 },
+];
+
+export interface MerchantAd {
+  id: string;
+  merchantId: string;
+  title: string;
+  description: string | null;
+  radiusMeters: number;
+  activeUntil: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const createOrExtendAd = (title: string, description: string | undefined, radiusMeters: number, days: number) =>
+  apiFetch<{ success: boolean; ad: MerchantAd }>('/api/v1/merchant/ads', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ title, description, radiusMeters, days }),
+  }).then((r) => r.ad);
+
+export const fetchMyAd = () =>
+  apiFetch<{ success: boolean; ad: MerchantAd | null }>('/api/v1/merchant/ads/me').then((r) => r.ad);
