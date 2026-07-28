@@ -12,6 +12,10 @@ export interface Merchant {
   kybVerified: boolean;
   createdAt: string;
   category: string | null;
+  // Real Baemin Club-style participating-restaurant opt-in (2026-07-26) -- see
+  // EatsMembership.kt's own doc comment. Free delivery for Eats Club members only
+  // applies at a restaurant that has itself opted in here.
+  participatesInEatsMembership: boolean;
 }
 
 // Real demo KYB structural pre-check (see DemoKybVerificationService.kt's own doc
@@ -148,6 +152,15 @@ export const setCategory = (category: string) =>
   apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/category', {
     method: 'POST',
     body: JSON.stringify({ category }),
+  }).then((r) => r.merchant);
+
+// Real Baemin Club-style participating-restaurant opt-in (2026-07-26) -- first client
+// UI for this endpoint (item 103). See MerchantController.setParticipatesInEatsMembership's
+// own doc comment on the backend.
+export const setParticipatesInEatsMembership = (participates: boolean) =>
+  apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/eats-membership-participation', {
+    method: 'POST',
+    body: JSON.stringify({ participates }),
   }).then((r) => r.merchant);
 
 // Real demo card-processing flow -- see MerchantService.chargeCard's own doc comment

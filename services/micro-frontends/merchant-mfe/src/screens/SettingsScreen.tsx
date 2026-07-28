@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { ApiError } from '../lib/api';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, type TrustedDevice } from '../lib/device';
-import { getMyIdentitySubmissions, setCategory, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant } from '../lib/merchant';
+import { getMyIdentitySubmissions, setCategory, setParticipatesInEatsMembership, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant } from '../lib/merchant';
 
 export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merchant; onUpdated: (merchant: Merchant) => void }) {
   const [webhookUrl, setWebhookUrlInput] = useState(merchant.webhookUrl ?? '');
@@ -65,6 +65,7 @@ export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merc
       </div>
 
       <CategoryCard merchant={merchant} onUpdated={onUpdated} />
+      <EatsMembershipParticipationCard merchant={merchant} onUpdated={onUpdated} />
       <KybCard merchant={merchant} />
       <DevicesCard />
     </div>
@@ -194,6 +195,55 @@ function CategoryCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated: 
       )}
       {saved && !error && (
         <p style={{ fontSize: '13px', color: 'var(--toss-blue)', margin: '8px 0 0' }}>Saved.</p>
+      )}
+    </div>
+  );
+}
+
+// Real Baemin Club (배민클럽)-style participating-restaurant opt-in (2026-07-26) -- first
+// client UI for this endpoint (item 103). See EatsMembership.kt's own doc comment: free
+// delivery for a buyer's Eats Club membership only applies when the restaurant has
+// itself opted in here -- never a blanket waiver.
+function EatsMembershipParticipationCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated: (merchant: Merchant) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleToggle = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await setParticipatesInEatsMembership(!merchant.participatesInEatsMembership);
+      onUpdated(updated);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not save.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="toss-card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>Eats Club</h2>
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+            Offer free delivery to buyers with an active Eats Club membership.
+          </p>
+        </div>
+        <button
+          type="button"
+          className={merchant.participatesInEatsMembership ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          disabled={busy}
+          onClick={handleToggle}
+          style={{ fontSize: '13px', padding: '8px 14px', whiteSpace: 'nowrap' }}
+        >
+          {busy ? '…' : merchant.participatesInEatsMembership ? 'Participating' : 'Opt in'}
+        </button>
+      </div>
+      {error && (
+        <p style={{ fontSize: '13px', color: '#E53935', margin: '8px 0 0' }} role="alert">
+          {error}
+        </p>
       )}
     </div>
   );
