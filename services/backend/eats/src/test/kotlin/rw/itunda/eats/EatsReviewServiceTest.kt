@@ -16,6 +16,7 @@ import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.repository.EatsOrderRepository
 import rw.itunda.core.repository.EatsReviewRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.RatingSummaryProjection
 import java.math.BigDecimal
@@ -28,7 +29,8 @@ class EatsReviewServiceTest : BehaviorSpec({
         val eatsReviewRepository = mockk<EatsReviewRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService)
 
         val deliveredOrder = EatsOrder(
             id = "eats_order_1", buyerId = "buyer_1", restaurantId = "restaurant_1", riderId = "rider_1", deliveryAddress = "addr",
@@ -148,7 +150,8 @@ class EatsReviewServiceTest : BehaviorSpec({
         val eatsReviewRepository = mockk<EatsReviewRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService)
 
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_1", businessName = "Kigali Diner", status = MerchantStatus.ACTIVE)
         val review = EatsReview(
@@ -221,7 +224,8 @@ class EatsReviewServiceTest : BehaviorSpec({
         val eatsReviewRepository = mockk<EatsReviewRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = EatsReviewService(eatsOrderRepository, eatsReviewRepository, merchantRepository, notificationRepository, pushNotificationService)
 
         val deliveredPickupOrder = EatsOrder(
             id = "eats_order_pickup_1", buyerId = "buyer_1", restaurantId = "restaurant_1", riderId = null, deliveryAddress = "Pickup at Diner",

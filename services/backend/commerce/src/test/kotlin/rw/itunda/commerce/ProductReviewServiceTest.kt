@@ -14,6 +14,7 @@ import rw.itunda.core.domain.OrderItem
 import rw.itunda.core.domain.OrderStatus
 import rw.itunda.core.domain.ProductReview
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.OrderItemRepository
 import rw.itunda.core.repository.OrderRepository
@@ -30,7 +31,8 @@ class ProductReviewServiceTest : BehaviorSpec({
         val productReviewRepository = mockk<ProductReviewRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = ProductReviewService(orderRepository, orderItemRepository, productReviewRepository, merchantRepository, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = ProductReviewService(orderRepository, orderItemRepository, productReviewRepository, merchantRepository, notificationRepository, pushNotificationService)
 
         val deliveredOrder = Order(
             id = "order_1", buyerId = "buyer_1", merchantId = "merchant_1", deliveryAddress = "addr",
@@ -162,7 +164,8 @@ class ProductReviewServiceTest : BehaviorSpec({
         val productReviewRepository = mockk<ProductReviewRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = ProductReviewService(orderRepository, orderItemRepository, productReviewRepository, merchantRepository, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = ProductReviewService(orderRepository, orderItemRepository, productReviewRepository, merchantRepository, notificationRepository, pushNotificationService)
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_1", businessName = "Kigali Store", status = MerchantStatus.ACTIVE)
         val review = ProductReview(

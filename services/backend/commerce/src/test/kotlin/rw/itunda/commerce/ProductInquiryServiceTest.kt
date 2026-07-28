@@ -12,6 +12,7 @@ import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.domain.ProductInquiry
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.ProductInquiryRepository
 import java.math.BigDecimal
@@ -24,7 +25,8 @@ class ProductInquiryServiceTest : BehaviorSpec({
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = ProductInquiryService(productInquiryRepository, merchantProductRepository, merchantRepository, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = ProductInquiryService(productInquiryRepository, merchantProductRepository, merchantRepository, notificationRepository, pushNotificationService)
 
         val product = MerchantProduct(id = "product_1", merchantId = "merchant_1", name = "Widget", price = BigDecimal("2000"))
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_1", businessName = "Kigali Shop", status = MerchantStatus.ACTIVE)
@@ -79,7 +81,8 @@ class ProductInquiryServiceTest : BehaviorSpec({
         val merchantProductRepository = mockk<MerchantProductRepository>()
         val merchantRepository = mockk<MerchantRepository>()
         val notificationRepository = mockk<NotificationRepository>(relaxed = true)
-        val service = ProductInquiryService(productInquiryRepository, merchantProductRepository, merchantRepository, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = ProductInquiryService(productInquiryRepository, merchantProductRepository, merchantRepository, notificationRepository, pushNotificationService)
 
         val merchant = Merchant(id = "merchant_1", ownerUserId = "owner_1", walletId = "wallet_1", businessName = "Kigali Shop", status = MerchantStatus.ACTIVE)
         val inquiry = ProductInquiry(id = "product_inquiry_1", productId = "product_1", merchantId = "merchant_1", buyerId = "shopper_1", question = "Is this in blue?")

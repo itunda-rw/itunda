@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.EatsOrderStatus
 import rw.itunda.core.domain.EatsReview
 import rw.itunda.core.domain.Notification
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.EatsOrderRepository
 import rw.itunda.core.repository.EatsReviewRepository
 import rw.itunda.core.repository.MerchantRepository
@@ -50,6 +51,7 @@ class EatsReviewService(
     private val eatsReviewRepository: EatsReviewRepository,
     private val merchantRepository: MerchantRepository,
     private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     @Transactional
     fun submitReview(
@@ -138,13 +140,17 @@ class EatsReviewService(
         review.ownerReply = trimmedReply
         review.ownerRepliedAt = Instant.now()
         val saved = eatsReviewRepository.save(review)
+        val title = "${restaurant.businessName} replied to your review"
         notificationRepository.save(
             Notification(
                 id = "notif_${UUID.randomUUID()}", userId = review.buyerId, type = "EATS_REVIEW_REPLY",
-                title = "${restaurant.businessName} replied to your review", body = trimmedReply, isRead = false,
+                title = title, body = trimmedReply, isRead = false,
                 createdAt = Instant.now(), dataJson = "{\"reviewId\":\"${review.id}\"}",
             ),
         )
+        // Real push (item 123) -- same "seller replied" urgency as
+        // MerchantBookingReviewService's owner-reply notify.
+        pushNotificationService.sendToUser(review.buyerId, title, trimmedReply)
         return saved
     }
 }

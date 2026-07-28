@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.ProductInquiry
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.MerchantProductRepository
 import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -28,6 +29,7 @@ class ProductInquiryService(
     private val merchantProductRepository: MerchantProductRepository,
     private val merchantRepository: MerchantRepository,
     private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     @Transactional
     fun askQuestion(buyerId: String, productId: String, question: String): ProductInquiry {
@@ -92,13 +94,17 @@ class ProductInquiryService(
         inquiry.answer = trimmedAnswer
         inquiry.answeredAt = Instant.now()
         val saved = productInquiryRepository.save(inquiry)
+        val title = "${merchant.businessName} answered your question"
         notificationRepository.save(
             Notification(
                 id = "notif_${UUID.randomUUID()}", userId = inquiry.buyerId, type = "PRODUCT_INQUIRY_ANSWERED",
-                title = "${merchant.businessName} answered your question", body = trimmedAnswer, isRead = false,
+                title = title, body = trimmedAnswer, isRead = false,
                 createdAt = Instant.now(), dataJson = "{\"inquiryId\":\"${saved.id}\"}",
             ),
         )
+        // Real push (item 123) -- same "seller replied" urgency as
+        // MerchantBookingReviewService's owner-reply notify.
+        pushNotificationService.sendToUser(inquiry.buyerId, title, trimmedAnswer)
         return saved
     }
 }
