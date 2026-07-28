@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowUpRight, Bike, Car, Heart, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
-import { fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchWallets, type DetectedSubscription, type Transaction, type Wallet } from './lib/wallet';
+import { fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchWallets, type DetectedSubscription, type SpendingCategory, type Transaction, type Wallet } from './lib/wallet';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
 import { claimInterest, createGoal, depositToGoal, fetchGoals, fetchInterestJar, type InterestJar, type SavingsGoal } from './lib/savings';
 import {
@@ -99,7 +99,7 @@ import {
   type RideDriver, type RideTrip,
 } from './lib/rideshare';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
@@ -1361,6 +1361,56 @@ function CreditScoreView() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Real Kakao Pay 소비 리포트-style spending categorization (2026-07-13, wired 2026-07-28
+// as item 106) -- see lib/wallet.ts's own doc comment. Found backend-only via a fresh
+// matrix scan: real, ledger-based, and live since well before this session, but never
+// wired to any client anywhere.
+function SpendingInsightView() {
+  const [categories, setCategories] = useState<SpendingCategory[] | null>(null);
+  const [totalSpent, setTotalSpent] = useState<number>(0);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchSpendingInsight()
+      .then((r) => { setCategories(r.categories); setTotalSpent(r.totalSpent); })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your spending.'));
+  }, []);
+
+  if (!categories) {
+    return error ? <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+  }
+
+  const maxAmount = Math.max(...categories.map((c) => c.amount), 1);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div className="toss-card" style={{ padding: '24px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Total spent, all time</p>
+        <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{totalSpent.toLocaleString()} RWF</h2>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Real, ledger-based -- what every wallet debit actually paid for.</p>
+      </div>
+      <div className="toss-card" style={{ padding: '16px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>By category</h3>
+        {categories.length === 0 ? (
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No spending recorded yet.</p>
+        ) : (
+          categories.map((c) => (
+            <div key={c.name} style={{ padding: '8px 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
+                <span>{c.name}</span>
+                <span style={{ fontWeight: 700 }}>{c.amount.toLocaleString()} RWF</span>
+              </div>
+              <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--toss-grey-100)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${(c.amount / maxAmount) * 100}%`, backgroundColor: 'var(--toss-blue)', borderRadius: '3px' }} />
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }
@@ -10469,6 +10519,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'OVERVIEW', label: 'Overview' },
     { id: 'LOANS', label: 'Loans' },
     { id: 'CREDIT_SCORE', label: 'Credit score' },
+    { id: 'SPENDING', label: 'Spending' },
     { id: 'SUBSCRIPTIONS', label: 'Subscriptions' },
     { id: 'IDENTITY', label: 'Verify' },
     { id: 'SUPPORT', label: 'Support' },
@@ -10531,6 +10582,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'OVERVIEW' && <OverviewView />}
       {tab === 'LOANS' && <LoansView />}
       {tab === 'CREDIT_SCORE' && <CreditScoreView />}
+      {tab === 'SPENDING' && <SpendingInsightView />}
       {tab === 'SUBSCRIPTIONS' && <SubscriptionsView />}
       {tab === 'IDENTITY' && <IdentityView />}
       {tab === 'SUPPORT' && <SupportView />}

@@ -68,3 +68,16 @@ export interface DetectedSubscription {
 
 export const fetchSubscriptions = () =>
   apiFetch<{ success: boolean; subscriptions: DetectedSubscription[]; estimatedMonthlyTotal: number }>('/api/v1/wallet/subscriptions');
+
+// Real Kakao Pay 소비 리포트-style spending categorization (rw.itunda.wallet.
+// WalletService.getSpendingInsight, 2026-07-13) -- first client UI for this backend
+// feature (item 106, found backend-only via a fresh matrix scan). Built over the real
+// ledger (every WALLET debit's sibling leg reveals what it actually paid for), not the
+// transactions table -- see the backend's own doc comment for the full account.
+export interface SpendingCategory {
+  name: string;
+  amount: number;
+}
+
+export const fetchSpendingInsight = () =>
+  apiFetch<{ success: boolean; categories: SpendingCategory[]; totalSpent: number }>('/api/v1/wallet/spending');
