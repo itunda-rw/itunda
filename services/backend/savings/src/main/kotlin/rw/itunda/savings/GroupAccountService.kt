@@ -15,6 +15,7 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.GroupAccountContributionRepository
 import rw.itunda.core.repository.GroupAccountDuesReminderRepository
 import rw.itunda.core.repository.GroupAccountMemberRepository
@@ -64,6 +65,7 @@ class GroupAccountService(
     private val notificationRepository: NotificationRepository,
     private val ledgerService: LedgerService,
     private val rateLimiter: RateLimiter,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private fun generateAccountNumber(): String = (2024100000L + (Math.random() * 900000).toLong()).toString()
     private fun currentCycleMonth(): String = YearMonth.now().toString()
@@ -135,13 +137,16 @@ class GroupAccountService(
         val member = groupAccountMemberRepository.save(
             GroupAccountMember(id = "grpmem_${UUID.randomUUID()}", groupAccountId = groupAccountId, userId = invitee.id),
         )
+        val inviteTitle = "Added to \"${account.name}\""
+        val inviteBody = "You can now view and deposit to this group account."
         notificationRepository.save(
             Notification(
                 id = "notif_${UUID.randomUUID()}", userId = invitee.id, type = "GROUP_ACCOUNT_INVITE",
-                title = "Added to \"${account.name}\"", body = "You can now view and deposit to this group account.",
+                title = inviteTitle, body = inviteBody,
                 isRead = false, createdAt = Instant.now(), dataJson = "{\"groupAccountId\":\"${account.id}\"}",
             ),
         )
+        pushNotificationService.sendToUser(invitee.id, inviteTitle, inviteBody, mapOf("groupAccountId" to account.id))
         return GroupAccountMemberView(userId = invitee.id, firstName = invitee.firstName, lastName = invitee.lastName, isOwner = false, joinedAt = member.joinedAt)
     }
 
@@ -278,17 +283,19 @@ class GroupAccountService(
             if (contributed >= duesAmount) continue
             if (groupAccountDuesReminderRepository.existsByGroupAccountIdAndUserIdAndCycleMonth(account.id, m.userId, cycleMonth)) continue
 
+            val reminderTitle = "Dues reminder for \"${account.name}\""
+            val reminderBody = "You haven't paid this month's ${duesAmount.toPlainString()} RWF dues yet."
             notificationRepository.save(
                 Notification(
                     id = "notif_${UUID.randomUUID()}", userId = m.userId, type = "GROUP_ACCOUNT_DUES_REMINDER",
-                    title = "Dues reminder for \"${account.name}\"",
-                    body = "You haven't paid this month's ${duesAmount.toPlainString()} RWF dues yet.",
+                    title = reminderTitle, body = reminderBody,
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"groupAccountId\":\"${account.id}\"}",
                 ),
             )
             groupAccountDuesReminderRepository.save(
                 GroupAccountDuesReminder(id = "grpdue_${UUID.randomUUID()}", groupAccountId = account.id, userId = m.userId, cycleMonth = cycleMonth),
             )
+            pushNotificationService.sendToUser(m.userId, reminderTitle, reminderBody, mapOf("groupAccountId" to account.id))
             remindedCount++
         }
         return remindedCount

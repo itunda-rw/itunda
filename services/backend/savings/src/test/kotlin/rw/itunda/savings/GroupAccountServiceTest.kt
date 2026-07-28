@@ -16,6 +16,7 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.InsufficientFundsException
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.GroupAccountContributionRepository
 import rw.itunda.core.repository.GroupAccountDuesReminderRepository
 import rw.itunda.core.repository.GroupAccountMemberRepository
@@ -50,9 +51,10 @@ class GroupAccountServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>()
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = GroupAccountService(
             groupAccountRepository, groupAccountMemberRepository, groupAccountContributionRepository, groupAccountDuesReminderRepository,
-            walletRepository, userRepository, notificationRepository, ledgerService, rateLimiter,
+            walletRepository, userRepository, notificationRepository, ledgerService, rateLimiter, pushNotificationService,
         )
 
         When("an owner creates a new group account") {
@@ -87,9 +89,10 @@ class GroupAccountServiceTest : BehaviorSpec({
         val notificationRepository = mockk<NotificationRepository>()
         val ledgerService = mockk<LedgerService>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = GroupAccountService(
             groupAccountRepository, groupAccountMemberRepository, groupAccountContributionRepository, groupAccountDuesReminderRepository,
-            walletRepository, userRepository, notificationRepository, ledgerService, rateLimiter,
+            walletRepository, userRepository, notificationRepository, ledgerService, rateLimiter, pushNotificationService,
         )
 
         val account = GroupAccount(id = "grp_1", name = "Roommates", ownerId = "owner_1", walletId = "wallet_grp_1")
@@ -108,6 +111,10 @@ class GroupAccountServiceTest : BehaviorSpec({
                 member.userId shouldBe "member_2"
                 member.isOwner shouldBe false
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "member_2" && it.type == "GROUP_ACCOUNT_INVITE" }) }
+            }
+
+            Then("the invitee also gets a real mobile push notification, not just the in-app one") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("member_2", "Added to \"Roommates\"", any(), any()) }
             }
         }
 
@@ -338,6 +345,12 @@ class GroupAccountServiceTest : BehaviorSpec({
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "member_2" && it.type == "GROUP_ACCOUNT_DUES_REMINDER" }) }
                 verify(exactly = 0) { notificationRepository.save(match { it.userId == "owner_1" && it.type == "GROUP_ACCOUNT_DUES_REMINDER" }) }
                 verify(exactly = 0) { notificationRepository.save(match { it.userId == "member_3" && it.type == "GROUP_ACCOUNT_DUES_REMINDER" }) }
+            }
+
+            Then("only the real never-yet-reminded unpaid member gets a real mobile push notification") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("member_2", any(), any(), any()) }
+                verify(exactly = 0) { pushNotificationService.sendToUser("owner_1", any(), any(), any()) }
+                verify(exactly = 0) { pushNotificationService.sendToUser("member_3", any(), any(), any()) }
             }
         }
 
