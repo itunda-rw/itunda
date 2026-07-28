@@ -65,6 +65,19 @@ private func hoodRelativeTime(_ isoTimestamp: String) -> String {
     }
 }
 
+// Real 당근모임-style structured event date display (2026-07-25 backend/Android;
+// ported to iOS 2026-07-28) -- falls back to the raw ISO string on any parse failure,
+// never a fabricated date.
+private func formatMeetupDate(_ iso: String) -> String {
+    guard let date = ISO8601DateFormatter().date(from: iso) else { return iso }
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(identifier: "UTC")!
+    let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+    guard let year = components.year, let month = components.month, let day = components.day,
+          let hour = components.hour, let minute = components.minute else { return iso }
+    return String(format: "%04d-%02d-%02d %02d:%02d", year, month, day, hour, minute)
+}
+
 /// The selected distance is sent to the existing nearby endpoints; it is not a
 /// cosmetic filter. Small preset choices keep the control usable on a phone.
 private struct HoodRadiusControl: View {
@@ -1261,6 +1274,12 @@ private struct NewCommunityPostForm: View {
     @State private var shareLocation = false
     @State private var myLocation: CLLocationCoordinate2D?
     @StateObject private var locationFetcher = HoodLocationFetcher()
+    // Real 당근모임-style structured event date + capacity (2026-07-25 backend/Android;
+    // ported to iOS 2026-07-28) -- see backend CommunityService.createPost's own doc
+    // comment for why eventDate is required for this one category.
+    @State private var eventDateText = ""
+    @State private var eventTimeText = ""
+    @State private var capacityText = ""
 
     init(categories: [CommunityCategoryDto], onCreated: @escaping () -> Void, onCancel: @escaping () -> Void) {
         self.categories = categories
@@ -1288,6 +1307,15 @@ private struct NewCommunityPostForm: View {
             }
             TextField("Title", text: $title).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
             TextField("What's going on in the neighborhood?", text: $postBody).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
+            if category == "meetup" {
+                HStack(spacing: 8) {
+                    TextField("Date (YYYY-MM-DD)", text: $eventDateText).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
+                    TextField("Time (HH:mm)", text: $eventTimeText).padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
+                }
+                TextField("Max people (optional -- blank means unlimited)", text: $capacityText)
+                    .keyboardType(.numberPad)
+                    .padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
+            }
             Button(action: {
                 if shareLocation { shareLocation = false } else { locationFetcher.requestLocation() }
             }) {
@@ -1328,12 +1356,37 @@ private struct NewCommunityPostForm: View {
             error = "Fill in every field."
             return
         }
+        var eventDateIso: String?
+        var capacity: Int?
+        if category == "meetup" {
+            guard !eventDateText.isEmpty, !eventTimeText.isEmpty else {
+                error = "A meetup needs a real date and time."
+                return
+            }
+            let candidate = "\(eventDateText.trimmingCharacters(in: .whitespaces))T\(eventTimeText.trimmingCharacters(in: .whitespaces)):00Z"
+            guard ISO8601DateFormatter().date(from: candidate) != nil else {
+                error = "Enter a real date (YYYY-MM-DD) and time (HH:mm)."
+                return
+            }
+            eventDateIso = candidate
+            let trimmedCapacity = capacityText.trimmingCharacters(in: .whitespaces)
+            if !trimmedCapacity.isEmpty {
+                guard let parsedCapacity = Int(trimmedCapacity) else {
+                    error = "Max people must be a whole number."
+                    return
+                }
+                capacity = parsedCapacity
+            }
+        }
         submitting = true
         error = nil
         defer { submitting = false }
         do {
             let location = shareLocation ? myLocation : nil
-            _ = try await NetworkClient.shared.createCommunityPost(category: category, title: title, body: postBody, latitude: location?.latitude, longitude: location?.longitude)
+            _ = try await NetworkClient.shared.createCommunityPost(
+                category: category, title: title, body: postBody, latitude: location?.latitude, longitude: location?.longitude,
+                eventDate: eventDateIso, capacity: capacity
+            )
             onCreated()
         } catch let NetworkError.httpError(statusCode) {
             error = TalkScreen.errorMessage(statusCode)
@@ -1381,6 +1434,14 @@ private struct CommunityPostCard: View {
                 Button("Answer this question", action: onOpen)
                     .font(.caption).bold().foregroundColor(IDS.Colors.brand)
             } else if post.category == "meetup" {
+                // Real 당근모임-style structured date/capacity display (2026-07-25
+                // backend/Android; ported to iOS 2026-07-28) -- see backend
+                // CommunityPost.eventDate/capacity's own doc comment.
+                if let eventDate = post.eventDate {
+                    let capacityLabel = post.capacity.map { " · \(joinedCount)/\($0)" } ?? ""
+                    Text("🗓️ \(formatMeetupDate(eventDate))\(capacityLabel)")
+                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                }
                 // Real 참여하기 (join) tap (2026-07-24) -- a real join, not just a
                 // "view" navigation: it adds the tapper to a real GroupConversation
                 // (see backend CommunityService.joinMeetup's own doc comment), shown

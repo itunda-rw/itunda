@@ -1151,11 +1151,16 @@ public struct CommunityPostDto: Decodable, Identifiable {
     // comment. Only ever set for category == "meetup" posts that have had at least one
     // real join.
     public let groupConversationId: String?
-    public init(id: String, authorId: String, category: String, title: String, body: String, status: String, likeCount: Int, commentCount: Int, createdAt: String, latitude: Double?, longitude: Double?, groupConversationId: String? = nil) { self.id = id; self.authorId = authorId; self.category = category; self.title = title; self.body = body; self.status = status; self.likeCount = likeCount; self.commentCount = commentCount; self.createdAt = createdAt; self.latitude = latitude; self.longitude = longitude; self.groupConversationId = groupConversationId }
+    // Real 당근모임-style structured meetup fields (2026-07-25) -- see backend
+    // CommunityPost.kt's own doc comment. Both nil unless category == "meetup".
+    public let eventDate: String?
+    public let capacity: Int?
+    public init(id: String, authorId: String, category: String, title: String, body: String, status: String, likeCount: Int, commentCount: Int, createdAt: String, latitude: Double?, longitude: Double?, groupConversationId: String? = nil, eventDate: String? = nil, capacity: Int? = nil) { self.id = id; self.authorId = authorId; self.category = category; self.title = title; self.body = body; self.status = status; self.likeCount = likeCount; self.commentCount = commentCount; self.createdAt = createdAt; self.latitude = latitude; self.longitude = longitude; self.groupConversationId = groupConversationId; self.eventDate = eventDate; self.capacity = capacity }
 }
 public struct CreateCommunityPostRequest: Encodable {
     public let category: String; public let title: String; public let body: String
     public let latitude: Double?; public let longitude: Double?
+    public let eventDate: String?; public let capacity: Int?
 }
 public struct CommunityPostResponse: Decodable { public let success: Bool; public let post: CommunityPostDto }
 // joinedCounts added 2026-07-24 -- postId -> real member count of that meetup's group
@@ -1915,8 +1920,14 @@ extension NetworkClient {
     // Real 동네생활-style community board (2026-07-19) -- see rw.itunda.community.web.CommunityController.
     public func getCommunityCategories() async throws -> CommunityCategoriesResponse { try await get("api/v1/community/categories") }
 
-    public func createCommunityPost(category: String, title: String, body: String, latitude: Double? = nil, longitude: Double? = nil) async throws -> CommunityPostResponse {
-        try await authenticatedPost("api/v1/community/posts", body: CreateCommunityPostRequest(category: category, title: title, body: body, latitude: latitude, longitude: longitude))
+    public func createCommunityPost(
+        category: String, title: String, body: String, latitude: Double? = nil, longitude: Double? = nil,
+        eventDate: String? = nil, capacity: Int? = nil
+    ) async throws -> CommunityPostResponse {
+        try await authenticatedPost(
+            "api/v1/community/posts",
+            body: CreateCommunityPostRequest(category: category, title: title, body: body, latitude: latitude, longitude: longitude, eventDate: eventDate, capacity: capacity)
+        )
     }
 
     public func browseCommunityPosts(category: String? = nil) async throws -> CommunityPostsResponse {
