@@ -329,6 +329,40 @@ export const replyToBookingReview = (reviewId: string, reply: string) =>
     body: JSON.stringify({ reply }),
   }).then((r) => r.review);
 
+// Real Kakao Pay 정기결제/Toss Payments 빌링키-style recurring merchant billing
+// (item 144) -- see backend MerchantBillingPlan.kt's own doc comment. A merchant
+// defines a real recurring charge once; a customer authorizes it once and itunda
+// charges their wallet automatically every intervalDays. Found via the same fresh
+// discovery sweep as item 143 -- the backend is real, tested (11/11
+// MerchantBillingServiceTest, push-wired), but had zero client anywhere. Scoped to
+// the merchant-owner-facing plan-management half here; browsing/subscribing as a
+// customer belongs on bank-mfe, a real, separate follow-up.
+export interface MerchantBillingPlan {
+  id: string;
+  merchantId: string;
+  name: string;
+  description: string | null;
+  amount: number;
+  intervalDays: number;
+  active: boolean;
+  createdAt: string;
+}
+
+export const createBillingPlan = (name: string, description: string | undefined, amount: number, intervalDays: number) =>
+  apiFetch<{ success: boolean; plan: MerchantBillingPlan }>('/api/v1/merchant/billing-plans', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ name, description, amount, intervalDays }),
+  }).then((r) => r.plan);
+
+export const fetchMyBillingPlans = () =>
+  apiFetch<{ success: boolean; plans: MerchantBillingPlan[] }>('/api/v1/merchant/billing-plans').then((r) => r.plans);
+
+export const deactivateBillingPlan = (planId: string) =>
+  apiFetch<{ success: boolean; plan: MerchantBillingPlan }>(`/api/v1/merchant/billing-plans/${planId}/deactivate`, {
+    method: 'POST',
+  }).then((r) => r.plan);
+
 // Real KakaoTalk-style 기프티콘 (mobile gift voucher) merchant-side redemption
 // (item 139) -- see backend GiftVoucherService.redeemVoucher's own doc comment: the
 // customer presents the voucher in person, the merchant's own authenticated account
