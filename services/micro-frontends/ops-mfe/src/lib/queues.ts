@@ -64,6 +64,24 @@ export interface Incident {
   resolvedBy: string | null;
 }
 
+// Real 당근페이 안심결제-style optional Marketplace escrow (item 125) -- a buyer who
+// flags a real problem disputes it for real human admin review (see
+// MarketplaceEscrow.kt's own doc comment); this queue had zero client anywhere until
+// now, found via a fresh endpoint-coverage sweep across ops-mfe's queues vs the real
+// backend @RequestMapping paths under /api/v1/system.
+export interface MarketplaceEscrowDispute {
+  id: string;
+  listingId: string;
+  buyerId: string;
+  sellerId: string;
+  amount: number;
+  fee: number;
+  status: 'HELD' | 'RELEASED' | 'REFUNDED' | 'DISPUTED';
+  disputeReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ReconciliationRow {
   railId: string;
   displayName: string;
@@ -193,6 +211,15 @@ export const fetchSupportQueue = (page = 0) =>
   apiFetch<{ success: boolean; queue: SupportTicket[]; page: number; totalElements: number; totalPages: number }>(
     `/api/v1/system/support/queue?page=${page}`,
   ).then(toPagedQueue);
+
+export const fetchMarketplaceEscrowDisputes = () =>
+  apiFetch<{ success: boolean; disputes: MarketplaceEscrowDispute[] }>('/api/v1/system/marketplace-escrow/disputes').then((r) => r.disputes);
+
+export const resolveMarketplaceEscrowDispute = (escrowId: string, release: boolean) =>
+  apiFetch(`/api/v1/system/marketplace-escrow/${escrowId}/resolve`, {
+    method: 'POST',
+    body: JSON.stringify({ release }),
+  });
 
 export const resolveSupportTicket = (ticketId: string, resolution: 'REFUNDED' | 'REJECTED', notes?: string) =>
   apiFetch(`/api/v1/system/support/${ticketId}/resolve`, {
