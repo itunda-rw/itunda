@@ -923,6 +923,48 @@ data class MerchantBookingsResponse(val success: Boolean, val bookings: List<Mer
 data class MerchantSummaryDto(val id: String, val businessName: String)
 data class MerchantProductsResponse(val success: Boolean, val merchant: MerchantSummaryDto, val products: List<MerchantProductDto>)
 
+// Real cross-merchant product search (item 137) -- see backend
+// MerchantProductRepository.search's own doc comment. Mirrors bank-mfe's
+// lib/shopping.ts ProductSearchResult exactly; Android never had this endpoint at all.
+data class ProductSearchResultDto(
+    val id: String,
+    val merchantId: String,
+    val merchantName: String,
+    val name: String,
+    val price: Double,
+    val imageUrl: String? = null,
+    val originalPrice: Double? = null,
+    val discountPercent: Int? = null,
+    val description: String? = null,
+)
+data class ProductSearchResponse(val success: Boolean, val products: List<ProductSearchResultDto>)
+
+// Real KakaoTalk-style 기프티콘 (mobile gift voucher, item 137) -- see backend
+// GiftVoucher.kt's own doc comment. Mirrors bank-mfe's lib/giftVouchers.ts (item 134)
+// exactly.
+data class GiftVoucherDto(
+    val id: String,
+    val purchaserId: String,
+    val recipientId: String,
+    val conversationId: String,
+    val messageId: String,
+    val merchantId: String,
+    val merchantProductId: String?,
+    val productNameSnapshot: String?,
+    val amount: Double,
+    val status: String,
+    val holdTransactionId: String,
+    val redeemTransactionId: String?,
+    val refundTransactionId: String?,
+    val expiresAt: String,
+    val redeemedAt: String?,
+    val extended: Boolean,
+    val createdAt: String,
+)
+data class PurchaseGiftVoucherRequest(val recipientPhoneNumber: String, val merchantId: String, val merchantProductId: String? = null, val amount: Double? = null)
+data class GiftVoucherResponse(val success: Boolean, val voucher: GiftVoucherDto)
+data class GiftVouchersResponse(val success: Boolean, val vouchers: List<GiftVoucherDto>)
+
 // Real Naver Smart Store-style "알림받기" (follow a store for its own broadcast
 // notices) -- see backend MerchantFollowService.kt's own doc comment. Mirrors
 // bank-mfe's lib/shopping.ts FollowedMerchant exactly.
@@ -1984,6 +2026,22 @@ interface ApiService {
 
     @GET("api/v1/shopping/merchants/{id}/products")
     suspend fun getMerchantProducts(@Path("id") merchantId: String): MerchantProductsResponse
+
+    // Real cross-merchant product search (item 137) -- see ProductSearchResultDto's own
+    // doc comment.
+    @GET("api/v1/shopping/products/search")
+    suspend fun searchProducts(@Query("q") query: String): ProductSearchResponse
+
+    // Real KakaoTalk-style 기프티콘 gift voucher (item 137) -- see GiftVoucherDto's own
+    // doc comment.
+    @POST("api/v1/gift-vouchers")
+    suspend fun purchaseGiftVoucher(@Header("Idempotency-Key") idempotencyKey: String, @Body request: PurchaseGiftVoucherRequest): GiftVoucherResponse
+
+    @GET("api/v1/gift-vouchers/conversations/{id}")
+    suspend fun getGiftVouchersForConversation(@Path("id") conversationId: String): GiftVouchersResponse
+
+    @POST("api/v1/gift-vouchers/{id}/extend")
+    suspend fun extendGiftVoucherExpiry(@Path("id") voucherId: String): GiftVoucherResponse
 
     // Real Naver Smart Store-style "알림받기" (follow a store) -- first Android client
     // for this feature (item 117, found via a content-grep sweep: bank-mfe has it,

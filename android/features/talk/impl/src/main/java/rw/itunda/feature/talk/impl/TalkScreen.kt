@@ -80,7 +80,10 @@ import rw.itunda.core.network.EmoticonDto
 import rw.itunda.core.network.EmoticonPackDto
 import rw.itunda.core.network.GiftDto
 import rw.itunda.core.network.GiftEmoticonPackRequest
+import rw.itunda.core.network.GiftVoucherDto
 import rw.itunda.core.network.OwnedEmoticonPackDto
+import rw.itunda.core.network.ProductSearchResultDto
+import rw.itunda.core.network.PurchaseGiftVoucherRequest
 import rw.itunda.core.network.SendEmoticonRequest
 import rw.itunda.core.network.GroupMemberDto
 import rw.itunda.core.network.GroupMessageDto
@@ -1109,6 +1112,10 @@ private fun ChatThreadView(
     var emoticonPickerOpen by remember { mutableStateOf(false) }
     var emoticonStoreOpen by remember { mutableStateOf(false) }
     var emoticonImageById by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    // Real KakaoTalk-style 기프티콘 gift voucher (item 137) -- see
+    // GiftVoucherComposerPanel's own doc comment.
+    var vouchersByMessageId by remember { mutableStateOf<Map<String, GiftVoucherDto>>(emptyMap()) }
+    var voucherComposerOpen by remember { mutableStateOf(false) }
     var typingClearJob by remember { mutableStateOf<Job?>(null) }
     var socket by remember { mutableStateOf<WebSocket?>(null) }
     var lastTypingSentAt by remember { mutableStateOf(0L) }
@@ -1171,6 +1178,15 @@ private fun ChatThreadView(
         }
     }
 
+    suspend fun loadVouchers() {
+        try {
+            val res = NetworkClient.apiService.getGiftVouchersForConversation(conversation.conversationId)
+            if (res.success) vouchersByMessageId = res.vouchers.associateBy { it.messageId }
+        } catch (_: Exception) {
+            // Real, non-critical -- only backs the inline gift-voucher bubble.
+        }
+    }
+
     suspend fun refresh() {
         try {
             val res = NetworkClient.apiService.getMessages(conversation.conversationId)
@@ -1181,6 +1197,7 @@ private fun ChatThreadView(
         }
         loadOffers()
         loadGifts()
+        loadVouchers()
     }
 
     // Real poll, kept as an always-correct fallback delivery path alongside the real
@@ -1210,6 +1227,7 @@ private fun ChatThreadView(
                         // refresh so it renders as an offer bubble immediately.
                         loadOffers()
                         loadGifts()
+                        loadVouchers()
                     }
                 }
                 push is MessagingSocketPush.PresenceChange && push.userId == conversation.otherUserId -> {
@@ -1305,6 +1323,7 @@ private fun ChatThreadView(
                         currentUserId = currentUserId,
                         offer = offersByMessageId[m.id],
                         gift = giftsByMessageId[m.id],
+                        voucher = vouchersByMessageId[m.id],
                         emoticonImageUrl = m.emoticonId?.let(emoticonImageById::get),
                         onReply = { replyingTo = it },
                         onDelete = { messageId -> coroutineScope.launch {
@@ -1494,6 +1513,13 @@ private fun ChatThreadView(
         if (emoticonStoreOpen) {
             EmoticonStoreDialog(onDismiss = { emoticonStoreOpen = false })
         }
+        if (voucherComposerOpen) {
+            GiftVoucherComposerPanel(
+                onSent = { voucherComposerOpen = false; coroutineScope.launch { refresh() } },
+                onCancel = { voucherComposerOpen = false },
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
         replyingTo?.let { reply ->
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                 Text("Replying to: ${reply.body.take(80)}", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.weight(1f), maxLines = 1)
@@ -1521,6 +1547,17 @@ private fun ChatThreadView(
                 contentAlignment = Alignment.Center,
             ) {
                 Text("😊", fontSize = 18.sp)
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(Ids.layout.minTouchTarget)
+                    .clip(CircleShape)
+                    .background(Ids.colors.surfaceSoft)
+                    .clickable { voucherComposerOpen = !voucherComposerOpen },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("🎟️", fontSize = 18.sp)
             }
             Spacer(modifier = Modifier.width(8.dp))
             OutlinedTextField(
@@ -1731,6 +1768,43 @@ private fun GiftBubble(gift: GiftDto, isMine: Boolean, currentUserId: String?, o
     }
 }
 
+// Real KakaoTalk-style 기프티콘 gift voucher bubble (item 137) -- see
+// GiftVoucherComposerPanel's own doc comment. Redemption is merchant-side only
+// (GiftVoucherService.redeemVoucher's own doc comment), so this bubble is
+// status-only -- no claim action, unlike GiftBubble.
+@Composable
+private fun GiftVoucherBubble(voucher: GiftVoucherDto, isMine: Boolean) {
+    val statusLabel = when (voucher.status) {
+        "ACTIVE" -> "Present this at the store to redeem"
+        "REDEEMED" -> "Redeemed"
+        "EXPIRED" -> "Expired"
+        else -> voucher.status
+    }
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (isMine) Ids.colors.brand else Ids.colors.surfaceSoft)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                "🎟️ ${voucher.productNameSnapshot ?: "%,.0f RWF voucher".format(voucher.amount)}",
+                color = if (isMine) Color.White else Ids.colors.textPrimary,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp,
+            )
+            Text(statusLabel, color = if (isMine) Color.White.copy(alpha = 0.85f) else Ids.colors.textSecondary, fontSize = 12.sp)
+            if (voucher.status == "ACTIVE") {
+                Text(
+                    "Expires ${voucher.expiresAt.take(10)}",
+                    color = if (isMine) Color.White.copy(alpha = 0.7f) else Ids.colors.textTertiary,
+                    fontSize = 11.sp,
+                )
+            }
+        }
+    }
+}
+
 // Real KakaoTalk Emoticon Store (item 135) -- a received emoticon renders as just the
 // sticker image, no chat-bubble background, matching real KakaoTalk and bank-mfe's own
 // EmoticonBubble (item 133).
@@ -1743,9 +1817,128 @@ private fun EmoticonBubble(imageUrl: String?) {
     AsyncImage(model = imageUrl, contentDescription = "emoticon", modifier = Modifier.size(96.dp))
 }
 
-// Real emoticon picker (item 135) -- shows the sender's own owned packs only (each
-// tappable emoticon sends immediately); a real "Get more" link opens the full store
-// to browse/purchase. Mirrors bank-mfe's own EmoticonPickerPanel (item 133).
+// Real gift-voucher composer (item 137) -- search for a real product to gift (same
+// real Kakao gifticon UX of searching for what to send, e.g. "스타벅스 아메리카노",
+// rather than browsing a merchant catalog first), pick one, confirm with the
+// recipient's phone number. Product-only v1 -- the flat-cash-amount-at-a-merchant
+// path is a real, deliberately deferred follow-up. Mirrors bank-mfe's own
+// GiftVoucherComposerPanel (item 134).
+@Composable
+private fun GiftVoucherComposerPanel(onSent: () -> Unit, onCancel: () -> Unit) {
+    var phone by remember { mutableStateOf("") }
+    var query by remember { mutableStateOf("") }
+    var results by remember { mutableStateOf<List<ProductSearchResultDto>?>(null) }
+    var searching by remember { mutableStateOf(false) }
+    var selected by remember { mutableStateOf<ProductSearchResultDto?>(null) }
+    var sending by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Ids.colors.surfaceSoft)
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("🎟️ Send a gift voucher", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Ids.colors.textPrimary)
+        OutlinedTextField(
+            value = phone,
+            onValueChange = { phone = it },
+            placeholder = { Text("Recipient phone number") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        val currentSelected = selected
+        if (currentSelected != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Ids.colors.surface)
+                    .padding(10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    "${currentSelected.name} · ${currentSelected.merchantName} · %,.0f RWF".format(currentSelected.price),
+                    fontSize = 13.sp, color = Ids.colors.textPrimary,
+                )
+                TextButton(onClick = { selected = null }) { Text("Change", fontSize = 12.sp, color = Ids.colors.brand) }
+            }
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    placeholder = { Text("Search a product to gift") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                OfferActionButton(if (searching) "…" else "Search") {
+                    if (query.trim().length < 2 || searching) return@OfferActionButton
+                    searching = true
+                    error = null
+                    coroutineScope.launch {
+                        try {
+                            results = NetworkClient.apiService.searchProducts(query.trim()).products
+                        } catch (_: Exception) {
+                            error = "Could not search products."
+                        } finally {
+                            searching = false
+                        }
+                    }
+                }
+            }
+            results?.let { list ->
+                if (list.isEmpty()) {
+                    Text("No products found.", fontSize = 12.sp, color = Ids.colors.textSecondary)
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        list.forEach { p ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Ids.colors.surface)
+                                    .clickable { selected = p }
+                                    .padding(10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text("${p.name} · ${p.merchantName}", fontSize = 13.sp, color = Ids.colors.textPrimary)
+                                Text("%,.0f RWF".format(p.price), fontSize = 13.sp, color = Ids.colors.textPrimary)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OfferActionButton(if (sending) "…" else "Send gift voucher") {
+                val product = selected
+                if (product == null || phone.isBlank() || sending) return@OfferActionButton
+                sending = true
+                error = null
+                coroutineScope.launch {
+                    try {
+                        NetworkClient.apiService.purchaseGiftVoucher(
+                            UUID.randomUUID().toString(),
+                            PurchaseGiftVoucherRequest(phone.trim(), product.merchantId, product.id),
+                        )
+                        onSent()
+                    } catch (_: Exception) {
+                        error = "Could not send this gift voucher."
+                    } finally {
+                        sending = false
+                    }
+                }
+            }
+            OfferActionButton("Cancel") { onCancel() }
+        }
+    }
+}
+
 @Composable
 private fun EmoticonPickerPanel(onSend: (String) -> Unit, onOpenStore: () -> Unit) {
     var ownedPacks by remember { mutableStateOf<List<OwnedEmoticonPackDto>?>(null) }
@@ -1925,6 +2118,7 @@ private fun EmoticonStoreDialog(onDismiss: () -> Unit) {
 @Composable
 private fun MessageBubble(
     message: MessageDto, isMine: Boolean, currentUserId: String?, offer: OfferBubbleData?, gift: GiftDto?,
+    voucher: GiftVoucherDto? = null,
     emoticonImageUrl: String? = null,
     onToggleReaction: (String) -> Unit, onRespondToOffer: (String, String, Double?) -> Unit, onClaimGift: (String) -> Unit,
     onReply: (MessageDto) -> Unit = {},
@@ -1938,6 +2132,8 @@ private fun MessageBubble(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
             if (gift != null) {
                 GiftBubble(gift, isMine, currentUserId, onClaimGift)
+            } else if (voucher != null) {
+                GiftVoucherBubble(voucher, isMine)
             } else if (offer != null) {
                 OfferBubble(offer, isMine, currentUserId, onRespondToOffer)
             } else if (message.emoticonId != null) {
