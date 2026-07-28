@@ -55,6 +55,14 @@ struct LoginScreen: View {
         do {
             let res = try await RiderNetworkClient.shared.login(LoginRequest(phoneNumber: phoneNumber, password: password))
             RiderKeychainTokenStore.shared.saveSession(userId: res.user.id, accessToken: res.accessToken, refreshToken: res.refreshToken)
+            // Real push device-token registration (item 130) -- best-effort,
+            // fire-and-forget: a registration failure must never block an otherwise
+            // successful login. See NetworkClient.swift's own doc comment.
+            Task {
+                _ = try? await RiderNetworkClient.shared.registerDeviceToken(
+                    RegisterDeviceTokenRequest(platform: "IOS", token: RiderKeychainTokenStore.shared.getOrCreateDeviceId())
+                )
+            }
             onLoggedIn()
         } catch let NetworkError.httpError(statusCode) {
             error = statusCode == 401 ? "Incorrect phone number or password." : "Couldn't reach itunda. Try again."

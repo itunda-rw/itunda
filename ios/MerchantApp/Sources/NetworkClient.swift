@@ -92,6 +92,16 @@ struct EatsOrderDetailResponse: Decodable { let success: Bool; let order: EatsOr
 struct EatsOrdersResponse: Decodable { let success: Bool; let orders: [EatsOrderDto] }
 struct UpdateEatsOrderStatusRequest: Encodable { let status: String }
 
+// Real push device-token registration (item 130) -- see the consumer app's own
+// NetworkClient.swift doc comment (items 119-121) and RiderApp's own matching fix,
+// same pass: PushNotificationService.sendToUser silently no-ops for every real user
+// with no registered token, and this dedicated merchant app -- the one place a
+// merchant owner actually needs an instant new-order/booking push -- never registered
+// one at all. Reuses the same real per-install device id MerchantDeviceStore already
+// established for trusted-device binding.
+struct RegisterDeviceTokenRequest: Encodable { let platform: String; let token: String }
+struct SuccessResponse: Decodable { let success: Bool }
+
 enum NetworkError: Error {
     case invalidResponse
     case httpError(statusCode: Int)
@@ -136,6 +146,10 @@ final class MerchantNetworkClient {
 
     func verifyDevice(password: String) async throws -> VerifyDeviceResponse {
         try await post("api/v1/auth/devices/verify", body: VerifyDeviceRequest(password: password))
+    }
+
+    func registerDeviceToken(_ request: RegisterDeviceTokenRequest) async throws -> SuccessResponse {
+        try await post("api/v1/notifications/device-tokens", body: request)
     }
 
     func getProductCatalog() async throws -> MerchantProductsResponse { try await get("api/v1/merchant/products") }

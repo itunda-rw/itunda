@@ -60,6 +60,14 @@ struct LoginScreen: View {
                 deviceName: MerchantDeviceStore.shared.getDeviceName()
             ))
             MerchantKeychainTokenStore.shared.saveSession(userId: res.user.id, accessToken: res.accessToken, refreshToken: res.refreshToken)
+            // Real push device-token registration (item 130) -- best-effort,
+            // fire-and-forget: a registration failure must never block an otherwise
+            // successful login. See NetworkClient.swift's own doc comment.
+            Task {
+                _ = try? await MerchantNetworkClient.shared.registerDeviceToken(
+                    RegisterDeviceTokenRequest(platform: "IOS", token: MerchantDeviceStore.shared.getOrCreateDeviceId())
+                )
+            }
             onLoggedIn()
         } catch let NetworkError.httpError(statusCode) {
             error = statusCode == 401 ? "Incorrect phone number or password." : "Couldn't reach itunda. Try again."

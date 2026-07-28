@@ -78,6 +78,17 @@ struct NotificationDto: Decodable, Identifiable {
 }
 struct NotificationsResponse: Decodable { let success: Bool; let notifications: [NotificationDto]; let unreadCount: Int }
 
+// Real push device-token registration (item 130) -- see the consumer app's own
+// NetworkClient.swift doc comment (items 119-121): PushNotificationService.sendToUser
+// silently no-ops for every real user with no registered token, and this dedicated
+// rider app -- the one place a rider actually needs an instant DELIVERY_OFFER/
+// RIDE_TRIP_OFFER push, given its own real short accept-or-lose countdown window --
+// never registered one at all. Reuses the same real, stable, per-install device id
+// convention (see RiderKeychainTokenStore.getOrCreateDeviceId) as this demo's
+// client-generated token.
+struct RegisterDeviceTokenRequest: Encodable { let platform: String; let token: String }
+struct SuccessResponse: Decodable { let success: Bool }
+
 enum NetworkError: Error {
     case invalidResponse
     case httpError(statusCode: Int)
@@ -142,6 +153,10 @@ final class RiderNetworkClient {
 
     @discardableResult
     func markNotificationRead(_ id: String) async throws -> Data { try await sendRequest(method: "POST", path: "api/v1/notifications/\(id)/read", body: Optional<EmptyBody>.none) }
+
+    func registerDeviceToken(_ request: RegisterDeviceTokenRequest) async throws -> SuccessResponse {
+        try await post("api/v1/notifications/device-tokens", body: request)
+    }
 
     // MARK: - Helpers
 
