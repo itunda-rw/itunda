@@ -35,6 +35,7 @@ import {
   advanceDineInOrderStatus, cancelDineInOrder, fetchMyDineInOrders, fetchRestaurantDineInOrders, placeDineInOrder,
   type DineInOrder, type DineInOrderStatus,
 } from './lib/dineIn';
+import { submitHoodReport, type HoodReportTargetType } from './lib/hoodReport';
 import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type KycSubmission } from './lib/identity';
 import { addContact, fetchContacts, type Contact } from './lib/contacts';
 import { createSupportTicket, fetchSupportTickets, type SupportTicket, type SupportTicketCategory } from './lib/support';
@@ -5564,6 +5565,7 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
           )
         )}
       </div>
+      {!isMine && <HoodReportButton targetType="MARKETPLACE_LISTING" targetId={listing.id} />}
       {!isMine && listing.status === 'ACTIVE' && listing.latitude != null && listing.longitude != null && (
         <button className="toss-btn toss-btn-secondary" disabled={locating} onClick={handleShowDirections}>
           {locating ? 'Finding your real location…' : showRoute ? 'Hide directions' : '🚗 Directions to this seller'}
@@ -6123,6 +6125,7 @@ function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChanged, joi
           {joining ? 'Joining…' : `참여하기 · ${joinedCount ?? 0} joined`}
         </button>
       )}
+      {!isMine && <HoodReportButton targetType="COMMUNITY_POST" targetId={post.id} />}
       {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
     </div>
   );
@@ -6623,6 +6626,7 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
           )
         )}
       </div>
+      {!isMine && <HoodReportButton targetType="JOB_POST" targetId={post.id} />}
     </div>
   );
 }
@@ -7158,6 +7162,7 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
           )
         )}
       </div>
+      {!isMine && <HoodReportButton targetType="PROPERTY_LISTING" targetId={listing.id} />}
     </div>
   );
 }
@@ -9876,6 +9881,49 @@ function TrustBadge({ score }: { score: number }) {
     >
       Trust {score}
     </span>
+  );
+}
+
+// Real content-report submission (item 156) -- see lib/hoodReport.ts's own doc comment.
+// Shared across Marketplace/Community/Jobs/Property (the same 4-target scope Android's
+// own HoodReportAction/HoodShared.kt already established), same real preset reasons
+// Android's own dialog uses. Wraps its own click in stopPropagation since every caller
+// renders this inside a whole-card onClick/onOpen handler.
+function HoodReportButton({ targetType, targetId }: { targetType: HoodReportTargetType; targetId: string }) {
+  const [showChoices, setShowChoices] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const send = async (reason: string) => {
+    setShowChoices(false);
+    setSending(true);
+    try {
+      await submitHoodReport(targetType, targetId, reason);
+      setMessage('Thanks. Your report was sent for review.');
+    } catch (err) {
+      setMessage(err instanceof ApiError && err.code === 'HOOD_REPORT_ALREADY_OPEN' ? 'You already reported this post.' : 'Could not send the report.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start' }}>
+      {message ? (
+        <p style={{ fontSize: '11px', color: message.startsWith('Thanks') ? 'var(--toss-green)' : '#E53935' }}>{message}</p>
+      ) : showChoices ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <button className="toss-btn toss-btn-secondary" style={{ fontSize: '11px', padding: '4px 10px' }} onClick={() => send('Unsafe payment, contact request, or scam')}>Unsafe or scam</button>
+          <button className="toss-btn toss-btn-secondary" style={{ fontSize: '11px', padding: '4px 10px' }} onClick={() => send('Misleading, unavailable, or spam content')}>Misleading or spam</button>
+          <button className="toss-btn toss-btn-secondary" style={{ fontSize: '11px', padding: '4px 10px' }} onClick={() => send('Harassment, hateful, illegal, or prohibited content')}>Abusive or illegal</button>
+          <button style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }} onClick={() => setShowChoices(false)}>Cancel</button>
+        </div>
+      ) : (
+        <button style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }} disabled={sending} onClick={() => setShowChoices(true)}>
+          {sending ? 'Reporting…' : 'Report'}
+        </button>
+      )}
+    </div>
   );
 }
 
