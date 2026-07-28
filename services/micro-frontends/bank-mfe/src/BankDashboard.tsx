@@ -27,6 +27,10 @@ import {
   UPFRONT_DEPOSIT_ANNUAL_RATE, UPFRONT_DEPOSIT_MIN_PRINCIPAL, UPFRONT_DEPOSIT_MAX_PRINCIPAL,
   type UpfrontInterestDeposit,
 } from './lib/upfrontDeposit';
+import {
+  convertCurrency, fetchExchangeRate, fetchMyCurrencyConversions, fetchMyForeignCurrencyWallets, openForeignCurrencyWallet,
+  FOREIGN_CURRENCY_SUPPORTED, type CurrencyConversion, type ForeignCurrencyCode, type ForeignCurrencyWallet,
+} from './lib/foreignCurrency';
 import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type KycSubmission } from './lib/identity';
 import { addContact, fetchContacts, type Contact } from './lib/contacts';
 import { createSupportTicket, fetchSupportTickets, type SupportTicket, type SupportTicketCategory } from './lib/support';
@@ -111,7 +115,7 @@ import {
   type RideDriver, type RideTrip,
 } from './lib/rideshare';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
@@ -1415,6 +1419,175 @@ function TrustScoreView() {
         ))}
       </div>
     </div>
+  );
+}
+
+// Real 토스뱅크 외화통장 (foreign-currency account) equivalent (item 154) -- see
+// lib/foreignCurrency.ts's own doc comment.
+function ForeignCurrencyView() {
+  const [wallets, setWallets] = useState<ForeignCurrencyWallet[] | null>(null);
+  const [conversions, setConversions] = useState<CurrencyConversion[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchMyForeignCurrencyWallets()
+      .then(setWallets)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your foreign-currency accounts.'));
+    fetchMyCurrencyConversions().then(setConversions).catch(() => setConversions([]));
+  };
+  useEffect(load, []);
+
+  if (wallets === null) {
+    return error ? <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '160px' }} />;
+  }
+
+  const openCurrencies = new Set(wallets.map((w) => w.currency));
+  const availableToOpen = FOREIGN_CURRENCY_SUPPORTED.filter((c) => !openCurrencies.has(c));
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {wallets.length === 0 ? (
+        <div className="toss-card">
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+            Open a USD, EUR, or GBP account to hold foreign currency and convert between it and RWF at a real live rate.
+          </p>
+        </div>
+      ) : (
+        wallets.map((w) => (
+          <div key={w.id} className="toss-card" style={{ padding: '20px' }}>
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{w.currency} account</p>
+            <h2 style={{ fontSize: '24px', fontWeight: 700 }}>{w.balance.toLocaleString()} {w.currency}</h2>
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{w.accountNumber}</p>
+          </div>
+        ))
+      )}
+
+      {availableToOpen.length > 0 && <OpenForeignWalletCard currencies={availableToOpen} onOpened={load} />}
+      {wallets.length > 0 && <ConvertCurrencyCard wallets={wallets} onConverted={load} />}
+
+      {conversions.length > 0 && (
+        <div className="toss-card">
+          <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Recent conversions</h3>
+          {conversions.map((c) => (
+            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
+              <p>{c.fromCurrency} → {c.toCurrency}</p>
+              <p>{c.fromAmount.toLocaleString()} {c.fromCurrency} → {c.toAmount.toLocaleString()} {c.toCurrency}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OpenForeignWalletCard({ currencies, onOpened }: { currencies: readonly ForeignCurrencyCode[]; onOpened: () => void }) {
+  const [opening, setOpening] = useState<ForeignCurrencyCode | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleOpen = async (currency: ForeignCurrencyCode) => {
+    setError(null);
+    setOpening(currency);
+    try {
+      await openForeignCurrencyWallet(currency);
+      onOpened();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not open this account.');
+    } finally {
+      setOpening(null);
+    }
+  };
+
+  return (
+    <div className="toss-card">
+      <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Open an account</h3>
+      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+      <div style={{ display: 'flex', gap: '8px' }}>
+        {currencies.map((c) => (
+          <button
+            key={c}
+            className="toss-btn toss-btn-secondary"
+            style={{ flex: 1 }}
+            disabled={opening !== null}
+            onClick={() => handleOpen(c)}
+          >
+            {opening === c ? '…' : c}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ConvertCurrencyCard({ wallets, onConverted }: { wallets: ForeignCurrencyWallet[]; onConverted: () => void }) {
+  const [direction, setDirection] = useState<'TO_FOREIGN' | 'TO_RWF'>('TO_FOREIGN');
+  const [currency, setCurrency] = useState(wallets[0]?.currency ?? '');
+  const [amount, setAmount] = useState('');
+  const [rate, setRate] = useState<number | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<CurrencyConversion | null>(null);
+
+  const fromCurrency = direction === 'TO_FOREIGN' ? 'RWF' : currency;
+  const toCurrency = direction === 'TO_FOREIGN' ? currency : 'RWF';
+
+  useEffect(() => {
+    if (!currency) return;
+    fetchExchangeRate(fromCurrency, toCurrency).then((r) => setRate(r.rate)).catch(() => setRate(null));
+  }, [fromCurrency, toCurrency, currency]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setResult(null);
+    setSubmitting(true);
+    try {
+      const conversion = await convertCurrency(fromCurrency, toCurrency, Number(amount));
+      setResult(conversion);
+      setAmount('');
+      onConverted();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not convert this amount.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Convert</h3>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <select value={currency} onChange={(e) => setCurrency(e.target.value)} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)' }}>
+          {wallets.map((w) => <option key={w.currency} value={w.currency}>{w.currency}</option>)}
+        </select>
+        <select value={direction} onChange={(e) => setDirection(e.target.value as 'TO_FOREIGN' | 'TO_RWF')} style={{ flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)' }}>
+          <option value="TO_FOREIGN">RWF → {currency}</option>
+          <option value="TO_RWF">{currency} → RWF</option>
+        </select>
+      </div>
+      <input
+        type="number"
+        min="0"
+        step="0.01"
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+        placeholder={`Amount (${fromCurrency})`}
+        required
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+      />
+      {rate !== null && (
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Live rate: 1 {fromCurrency} ≈ {rate.toFixed(4)} {toCurrency} (before itunda's 1.5% margin)</p>
+      )}
+      {error && <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>}
+      {result && (
+        <p style={{ fontSize: '13px', color: 'var(--toss-blue)', fontWeight: 700, margin: 0 }}>
+          Converted {result.fromAmount.toLocaleString()} {result.fromCurrency} → {result.toAmount.toLocaleString()} {result.toCurrency}
+        </p>
+      )}
+      <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+        {submitting ? 'Converting…' : 'Convert'}
+      </button>
+    </form>
   );
 }
 
@@ -11632,6 +11805,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'LOANS', label: 'Loans' },
     { id: 'CREDIT_SCORE', label: 'Credit score' },
     { id: 'TRUST_SCORE', label: 'Trust score' },
+    { id: 'FOREIGN_CURRENCY', label: 'Foreign currency' },
     { id: 'SPENDING', label: 'Spending' },
     { id: 'SUBSCRIPTIONS', label: 'Subscriptions' },
     { id: 'IDENTITY', label: 'Verify' },
@@ -11696,6 +11870,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'LOANS' && <LoansView />}
       {tab === 'CREDIT_SCORE' && <CreditScoreView />}
       {tab === 'TRUST_SCORE' && <TrustScoreView />}
+      {tab === 'FOREIGN_CURRENCY' && <ForeignCurrencyView />}
       {tab === 'SPENDING' && <SpendingInsightView />}
       {tab === 'SUBSCRIPTIONS' && <SubscriptionsView />}
       {tab === 'IDENTITY' && <IdentityView />}
