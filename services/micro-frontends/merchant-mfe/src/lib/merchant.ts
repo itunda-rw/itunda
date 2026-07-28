@@ -296,6 +296,39 @@ export const getPayslips = (payrollRunId: string) =>
 // app would resolve into a POST /api/v1/merchant/collect/{intentId} call.
 export const paymentIntentQrPayload = (intentId: string) => `itunda://pay?intentId=${intentId}`;
 
+// Real post-appointment booking reviews + owner-side reply (item 143) -- see backend
+// MerchantBookingReview.kt's own doc comment: closes the "owner-side review replies"
+// half of Naver Smart Place's own real, sourced feature. Found via a fresh discovery
+// sweep checking native RiderApp/MerchantApp's OWN endpoint coverage -- turned out the
+// ENTIRE review lifecycle (submit/list/reply) had zero client on any platform,
+// including this one. Scoped to the merchant-owner-facing list+reply half only; the
+// customer-facing submit-a-review half needs a real booking flow to hang off of,
+// which only Android currently has (a real, separate, larger follow-up).
+export interface MerchantBookingReview {
+  id: string;
+  bookingId: string;
+  merchantId: string;
+  customerId: string;
+  serviceName: string;
+  rating: number;
+  comment: string | null;
+  ownerReply: string | null;
+  ownerRepliedAt: string | null;
+  createdAt: string;
+}
+export interface MerchantReviewRating { average: number | null; count: number }
+
+export const fetchMerchantReviews = (merchantId: string) =>
+  apiFetch<{ success: boolean; reviews: MerchantBookingReview[]; rating: MerchantReviewRating }>(
+    `/api/v1/merchant/${merchantId}/reviews?size=50`,
+  );
+
+export const replyToBookingReview = (reviewId: string, reply: string) =>
+  apiFetch<{ success: boolean; review: MerchantBookingReview }>(`/api/v1/merchant/reviews/${reviewId}/reply`, {
+    method: 'POST',
+    body: JSON.stringify({ reply }),
+  }).then((r) => r.review);
+
 // Real KakaoTalk-style 기프티콘 (mobile gift voucher) merchant-side redemption
 // (item 139) -- see backend GiftVoucherService.redeemVoucher's own doc comment: the
 // customer presents the voucher in person, the merchant's own authenticated account

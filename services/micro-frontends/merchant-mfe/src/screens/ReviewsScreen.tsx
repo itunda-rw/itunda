@@ -1,0 +1,129 @@
+import { useEffect, useState } from 'react';
+import { ApiError } from '../lib/api';
+import { fetchMerchantReviews, replyToBookingReview, type Merchant, type MerchantBookingReview } from '../lib/merchant';
+
+// Real post-appointment booking reviews + owner-side reply (item 143) -- see
+// lib/merchant.ts's own doc comment. A merchant can post one real reply per review,
+// editable (re-posting overwrites the same reply, no separate versioning), matching
+// ProductReview/EatsReview's own already-proven reply pattern on the customer side.
+export default function ReviewsScreen({ merchant }: { merchant: Merchant }) {
+  const [reviews, setReviews] = useState<MerchantBookingReview[] | null>(null);
+  const [rating, setRating] = useState<{ average: number | null; count: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchMerchantReviews(merchant.id)
+      .then((r) => {
+        setReviews(r.reviews);
+        setRating(r.rating);
+      })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your reviews.'));
+  };
+
+  useEffect(load, [merchant.id]);
+
+  return (
+    <div style={{ maxWidth: '560px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div className="toss-card">
+        <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '4px' }}>Reviews</h2>
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+          {rating?.average != null ? `${rating.average.toFixed(1)} ★ average (${rating.count} review${rating.count === 1 ? '' : 's'})` : 'No reviews yet.'}
+        </p>
+      </div>
+
+      {error && (
+        <div className="toss-card">
+          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        </div>
+      )}
+
+      {reviews === null && !error && (
+        <div className="toss-card skeleton" style={{ height: '120px' }} />
+      )}
+
+      {reviews !== null && reviews.length === 0 && (
+        <div className="toss-card">
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No reviews yet.</p>
+        </div>
+      )}
+
+      {reviews?.map((review) => (
+        <ReviewCard key={review.id} review={review} onReplied={load} />
+      ))}
+    </div>
+  );
+}
+
+function ReviewCard({ review, onReplied }: { review: MerchantBookingReview; onReplied: () => void }) {
+  const [replying, setReplying] = useState(false);
+  const [reply, setReply] = useState(review.ownerReply ?? '');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      await replyToBookingReview(review.id, reply);
+      setReplying(false);
+      onReplied();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not post your reply.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <p style={{ fontSize: '14px', fontWeight: 700 }}>{review.serviceName}</p>
+        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-blue)' }}>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
+      </div>
+      {review.comment && <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>{review.comment}</p>}
+      <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{new Date(review.createdAt).toLocaleDateString()}</p>
+
+      {review.ownerReply && !replying && (
+        <div style={{ padding: '10px', background: 'var(--toss-grey-100)', borderRadius: '8px' }}>
+          <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--toss-grey-700)', marginBottom: '2px' }}>Your reply</p>
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-900)' }}>{review.ownerReply}</p>
+        </div>
+      )}
+
+      {replying ? (
+        <form onSubmit={handleReply} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <textarea
+            value={reply}
+            onChange={(e) => setReply(e.target.value)}
+            placeholder="Write a reply to this review"
+            maxLength={1000}
+            required
+            rows={3}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
+          />
+          {error && (
+            <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>
+          )}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting || !reply.trim()}>
+              {submitting ? 'Posting…' : review.ownerReply ? 'Update reply' : 'Post reply'}
+            </button>
+            <button type="button" className="toss-btn toss-btn-secondary" onClick={() => setReplying(false)}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button
+          className="toss-btn toss-btn-secondary"
+          style={{ alignSelf: 'flex-start', padding: '8px 12px', fontSize: '13px' }}
+          onClick={() => setReplying(true)}
+        >
+          {review.ownerReply ? 'Edit reply' : 'Reply'}
+        </button>
+      )}
+    </div>
+  );
+}
