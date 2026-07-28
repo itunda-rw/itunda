@@ -653,6 +653,16 @@ data class SuccessResponse(val success: Boolean)
 data class JobPostsResponse(val success: Boolean, val posts: List<JobPostDto>, val trustScores: Map<String, Int> = emptyMap())
 data class JobCategoriesResponse(val success: Boolean, val categories: List<JobCategoryDto>)
 data class FavoriteJobPostDto(val jobPostId: String, val title: String, val payAmount: Double, val category: String, val favoritedAt: String)
+
+// Real 당근마켓-style Keyword Alert -- mirrors KeywordAlert.kt/KeywordAlertQuietHours.kt
+// exactly.
+data class AddKeywordAlertRequest(val keyword: String)
+data class KeywordAlertDto(val id: String, val userId: String, val keyword: String, val createdAt: String)
+data class KeywordAlertResponse(val success: Boolean, val alert: KeywordAlertDto)
+data class KeywordAlertsResponse(val success: Boolean, val alerts: List<KeywordAlertDto>)
+data class SetKeywordAlertQuietHoursRequest(val startTime: String, val endTime: String, val enabled: Boolean)
+data class KeywordAlertQuietHoursDto(val id: String, val userId: String, val startTime: String, val endTime: String, val enabled: Boolean)
+data class KeywordAlertQuietHoursResponse(val success: Boolean, val quietHours: KeywordAlertQuietHoursDto?)
 data class FavoriteJobPostsResponse(val success: Boolean, val favorites: List<FavoriteJobPostDto>)
 
 // Real 당근알바-style structured application (2026-07-25) -- see backend
@@ -1595,6 +1605,26 @@ interface ApiService {
 
     @GET("api/v1/marketplace/listings/favorites")
     suspend fun getMyFavoriteListings(): FavoriteListingsResponse
+
+    // Real 당근마켓-style Keyword Alert (rw.itunda.marketplace.KeywordAlertService, real
+    // since before this session) -- first Android client for this feature (item 115,
+    // found via a content-grep sweep confirming zero client anywhere; bank-mfe ported
+    // it the same day as item 114). Real, published Karrot 30-keyword-per-user cap
+    // enforced server-side.
+    @POST("api/v1/marketplace/keyword-alerts")
+    suspend fun addKeywordAlert(@Body request: AddKeywordAlertRequest): KeywordAlertResponse
+
+    @GET("api/v1/marketplace/keyword-alerts")
+    suspend fun getKeywordAlerts(): KeywordAlertsResponse
+
+    @DELETE("api/v1/marketplace/keyword-alerts/{id}")
+    suspend fun removeKeywordAlert(@Path("id") alertId: String): SuccessResponse
+
+    @POST("api/v1/marketplace/keyword-alerts/quiet-hours")
+    suspend fun setKeywordAlertQuietHours(@Body request: SetKeywordAlertQuietHoursRequest): KeywordAlertQuietHoursResponse
+
+    @GET("api/v1/marketplace/keyword-alerts/quiet-hours")
+    suspend fun getKeywordAlertQuietHours(): KeywordAlertQuietHoursResponse
 
     @POST("api/v1/hood/reports")
     suspend fun reportHoodContent(@Body request: CreateHoodReportRequest): HoodReportResponse
