@@ -892,6 +892,14 @@ data class MerchantBookingsResponse(val success: Boolean, val bookings: List<Mer
 data class MerchantSummaryDto(val id: String, val businessName: String)
 data class MerchantProductsResponse(val success: Boolean, val merchant: MerchantSummaryDto, val products: List<MerchantProductDto>)
 
+// Real Naver Smart Store-style "알림받기" (follow a store for its own broadcast
+// notices) -- see backend MerchantFollowService.kt's own doc comment. Mirrors
+// bank-mfe's lib/shopping.ts FollowedMerchant exactly.
+data class FollowedMerchantDto(val merchantId: String, val businessName: String, val category: String?, val followedAt: String)
+data class FollowedMerchantsResponse(val success: Boolean, val follows: List<FollowedMerchantDto>)
+data class MerchantFollowDto(val id: String, val userId: String, val merchantId: String, val createdAt: String)
+data class MerchantFollowResponse(val success: Boolean, val follow: MerchantFollowDto)
+
 // Real Shop product wishlist (2026-07-24) -- closes docs/DESIGN_REFERENCES.md Section 5
 // recommendation #3: the backend (ProductFavoriteService, shipped 2026-07-20) and
 // bank-mfe (ProductCatalogView.toggleFavorite) already had this; Android had zero
@@ -1924,6 +1932,18 @@ interface ApiService {
 
     @GET("api/v1/shopping/merchants/{id}/products")
     suspend fun getMerchantProducts(@Path("id") merchantId: String): MerchantProductsResponse
+
+    // Real Naver Smart Store-style "알림받기" (follow a store) -- first Android client
+    // for this feature (item 117, found via a content-grep sweep: bank-mfe has it,
+    // Android/iOS didn't). Mirrors bank-mfe's lib/shopping.ts exactly.
+    @POST("api/v1/merchant/{merchantId}/follow")
+    suspend fun followMerchant(@Path("merchantId") merchantId: String): MerchantFollowResponse
+
+    @DELETE("api/v1/merchant/{merchantId}/follow")
+    suspend fun unfollowMerchant(@Path("merchantId") merchantId: String): SuccessResponse
+
+    @GET("api/v1/merchant/follows")
+    suspend fun getMyFollowedMerchants(@Query("size") size: Int = 200): FollowedMerchantsResponse
 
     // Real local-business appointment booking (2026-07-25) -- see
     // rw.itunda.merchant.web.MerchantBookingController.

@@ -146,6 +146,14 @@ fun CommerceShopContent(
     var favoriteProductIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var favoritingProductId by remember { mutableStateOf<String?>(null) }
 
+    // Real Naver Smart Store-style "알림받기" (follow a store) -- first Android client
+    // for this feature (item 117, found via a content-grep sweep: bank-mfe has it,
+    // Android/iOS didn't). Lifted here same as favoriteProductIds above, so the
+    // Follow/Following state on a merchant's detail view stays correct across
+    // re-opens without a per-open refetch.
+    var followedMerchantIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var followBusyMerchantId by remember { mutableStateOf<String?>(null) }
+
     // Real "Deals" rail (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 5
     // recommendation #8. Every entry is a real merchant-set discount, never a
     // fabricated promo -- see backend MerchantProductRepository.findDeals's own doc
@@ -189,6 +197,39 @@ fun CommerceShopContent(
                 error = "Couldn't reach itunda. Check your connection and try again."
             } finally {
                 favoritingProductId = null
+            }
+        }
+    }
+
+    fun loadFollowedMerchantIds() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyFollowedMerchants()
+                if (res.success) followedMerchantIds = res.follows.map { it.merchantId }.toSet()
+            } catch (e: Exception) {
+                // Best-effort -- see loadFavoriteProductIds's own doc comment above.
+            }
+        }
+    }
+    LaunchedEffect(Unit) { loadFollowedMerchantIds() }
+
+    fun toggleFollow(merchantId: String) {
+        followBusyMerchantId = merchantId
+        coroutineScope.launch {
+            try {
+                if (merchantId in followedMerchantIds) {
+                    NetworkClient.apiService.unfollowMerchant(merchantId)
+                    followedMerchantIds = followedMerchantIds - merchantId
+                } else {
+                    NetworkClient.apiService.followMerchant(merchantId)
+                    followedMerchantIds = followedMerchantIds + merchantId
+                }
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                followBusyMerchantId = null
             }
         }
     }
@@ -299,6 +340,9 @@ fun CommerceShopContent(
             favoriteProductIds = favoriteProductIds,
             favoritingProductId = favoritingProductId,
             onToggleFavorite = ::toggleProductFavorite,
+            following = merchant.merchantId in followedMerchantIds,
+            followBusy = followBusyMerchantId == merchant.merchantId,
+            onToggleFollow = { toggleFollow(merchant.merchantId) },
         )
         return
     }
@@ -544,6 +588,9 @@ private fun MerchantDetailView(
     favoriteProductIds: Set<String> = emptySet(),
     favoritingProductId: String? = null,
     onToggleFavorite: (String) -> Unit = {},
+    following: Boolean = false,
+    followBusy: Boolean = false,
+    onToggleFollow: () -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     val totalItems = cart.values.sumOf { it.quantity }
@@ -553,7 +600,25 @@ private fun MerchantDetailView(
         if (qty <= 0) cart.remove(key) else cart[key] = CommerceCartLine(merchant.merchantId, merchant.businessName, product, qty)
     }
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
-        BackTopBar(merchant.businessName, onBack)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.weight(1f)) { BackTopBar(merchant.businessName, onBack) }
+            // Real Naver Smart Store-style "알림받기" follow toggle -- see this
+            // function's own doc comment above (item 117).
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (following) Ids.colors.surface else Ids.colors.brand)
+                    .clickable(enabled = !followBusy, onClick = onToggleFollow)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    if (following) "Following" else "Follow",
+                    color = if (following) Ids.colors.textPrimary else Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                )
+            }
+        }
         if (products == null) {
             SkeletonBlock(height = 72.dp)
         } else if (products.isEmpty()) {
