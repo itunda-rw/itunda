@@ -17,6 +17,7 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.ledger.LedgerLeg
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.AgentCashInRepository
 import rw.itunda.core.repository.AgentCashOutRepository
 import rw.itunda.core.repository.AgentRepository
@@ -45,7 +46,8 @@ class AgentCashOutServiceTest : BehaviorSpec({
         val userRepository = mockk<UserRepository>()
         val withdrawalAuthorizationService = mockk<AgentWithdrawalAuthorizationService>()
         val notificationRepository = mockk<NotificationRepository>()
-        val service = AgentService(agentRepository, operatorRepository, tillReconciliationRepository, cashInRepository, cashOutRepository, walletRepository, ledgerAccountRepository, ledgerService, transactionRepository, userRepository, withdrawalAuthorizationService, notificationRepository)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = AgentService(agentRepository, operatorRepository, tillReconciliationRepository, cashInRepository, cashOutRepository, walletRepository, ledgerAccountRepository, ledgerService, transactionRepository, userRepository, withdrawalAuthorizationService, notificationRepository, pushNotificationService)
         val agent = Agent("agent_1", "Kigali Central", "agent_cash_1", AgentStatus.ACTIVE, BigDecimal("100000"), BigDecimal("80000"))
         val wallet = Wallet("wallet_1", "user_1", "2024100001", "Jean Main", WalletType.MAIN, BigDecimal("50000"), BigDecimal("50000"))
         every { cashOutRepository.existsByReceiptNumber("KGL-W-001") } returns false
@@ -80,6 +82,10 @@ class AgentCashOutServiceTest : BehaviorSpec({
                 legs.captured[1].accountType shouldBe LedgerAccountType.AGENT_CASH
                 legs.captured[1].direction shouldBe LedgerDirection.CREDIT
                 legs.captured[1].amount shouldBeEqualIgnoringScale BigDecimal("25000")
+            }
+
+            Then("the customer also gets a real mobile push notification, not just the in-app one") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", "Cash withdrawn", any(), any()) }
             }
         }
     }

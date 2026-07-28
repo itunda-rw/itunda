@@ -11,6 +11,7 @@ import rw.itunda.core.agents.AgentWithdrawalAuthorizationService
 import rw.itunda.core.domain.AgentTillReconciliation
 import rw.itunda.core.domain.TillReconciliationStatus
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.AgentCashInRepository
 import rw.itunda.core.repository.AgentCashOutRepository
 import rw.itunda.core.repository.AgentOperatorRepository
@@ -30,7 +31,7 @@ class AgentReconciliationReportTest : BehaviorSpec({
         mockk<AgentRepository>(), mockk<AgentOperatorRepository>(), reconciliations,
         mockk<AgentCashInRepository>(), mockk<AgentCashOutRepository>(), mockk<WalletRepository>(),
         mockk<LedgerAccountRepository>(), mockk<LedgerService>(), mockk<TransactionRepository>(),
-        mockk<UserRepository>(), mockk<AgentWithdrawalAuthorizationService>(), mockk<NotificationRepository>(),
+        mockk<UserRepository>(), mockk<AgentWithdrawalAuthorizationService>(), mockk<NotificationRepository>(), mockk<PushNotificationService>(relaxed = true),
     )
     val from = LocalDate.of(2026, 7, 1)
     val to = LocalDate.of(2026, 7, 2)

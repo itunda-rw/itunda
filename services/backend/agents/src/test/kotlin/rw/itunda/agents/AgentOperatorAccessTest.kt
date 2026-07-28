@@ -10,6 +10,7 @@ import rw.itunda.core.domain.Agent
 import rw.itunda.core.domain.AgentOperator
 import rw.itunda.core.domain.AgentStatus
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.AgentCashInRepository
 import rw.itunda.core.repository.AgentCashOutRepository
 import rw.itunda.core.repository.AgentOperatorRepository
@@ -30,7 +31,7 @@ class AgentOperatorAccessTest : BehaviorSpec({
         agents, operators, mockk<AgentTillReconciliationRepository>(), mockk<AgentCashInRepository>(),
         mockk<AgentCashOutRepository>(), mockk<WalletRepository>(), mockk<LedgerAccountRepository>(),
         mockk<LedgerService>(), mockk<TransactionRepository>(), mockk<UserRepository>(),
-        mockk<AgentWithdrawalAuthorizationService>(), mockk<NotificationRepository>(),
+        mockk<AgentWithdrawalAuthorizationService>(), mockk<NotificationRepository>(), mockk<PushNotificationService>(relaxed = true),
     )
     val operator = AgentOperator("operator_1", "agent_1", "user_1")
 

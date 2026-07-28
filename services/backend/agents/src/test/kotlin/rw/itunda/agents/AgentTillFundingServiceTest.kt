@@ -15,6 +15,7 @@ import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.*
 import java.math.BigDecimal
 import java.util.Optional
@@ -27,7 +28,7 @@ class AgentTillFundingServiceTest : BehaviorSpec({
             agents, mockk<AgentOperatorRepository>(), mockk<AgentTillReconciliationRepository>(),
             mockk<AgentCashInRepository>(), mockk<AgentCashOutRepository>(), mockk<WalletRepository>(),
             mockk<LedgerAccountRepository>(), ledgerService, mockk<TransactionRepository>(), mockk<UserRepository>(),
-            mockk<AgentWithdrawalAuthorizationService>(), mockk<NotificationRepository>(),
+            mockk<AgentWithdrawalAuthorizationService>(), mockk<NotificationRepository>(), mockk<PushNotificationService>(relaxed = true),
         )
         val agent = Agent("agent_1", "Kigali Central", "agent_cash_1", AgentStatus.ACTIVE, BigDecimal("100000"))
         every { agents.findByIdForUpdate(agent.id) } returns Optional.of(agent)

@@ -20,6 +20,7 @@ import rw.itunda.core.domain.TransactionType
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.AgentCashInRepository
 import rw.itunda.core.repository.AgentCashOutRepository
 import rw.itunda.core.repository.AgentRepository
@@ -94,6 +95,7 @@ class AgentService(
     private val userRepository: UserRepository,
     private val withdrawalAuthorizationService: AgentWithdrawalAuthorizationService,
     private val notificationRepository: NotificationRepository,
+    private val pushNotificationService: PushNotificationService,
 ) {
     @Transactional
     fun register(displayName: String, dailyCashInLimit: BigDecimal, dailyCashOutLimit: BigDecimal): Agent {
@@ -320,12 +322,15 @@ class AgentService(
             description = "Cash-in at ${agent.displayName}", channel = "ITUNDA_AGENT", providerReference = receipt,
             completedAt = cashIn.createdAt,
         ))
+        val cashInTitle = "Cash added"
+        val cashInBody = "${amount.toPlainString()} ${wallet.currency} was added at ${agent.displayName}"
         notificationRepository.save(Notification(
             id = "notification_${UUID.randomUUID()}", userId = wallet.userId, type = "cash_in",
-            title = "Cash added", body = "${amount.toPlainString()} ${wallet.currency} was added at ${agent.displayName}",
+            title = cashInTitle, body = cashInBody,
             isRead = false, createdAt = cashIn.createdAt,
             dataJson = "{\"agentId\":\"${agent.id}\",\"receiptNumber\":\"$receipt\",\"transactionId\":\"${ledger.transactionId}\"}",
         ))
+        pushNotificationService.sendToUser(wallet.userId, cashInTitle, cashInBody, mapOf("transactionId" to ledger.transactionId))
         return mapOf(
             "cashIn" to cashIn, "transaction" to transaction, "newBalance" to wallet.balance,
             "operatorCommission" to (if (operatorWallet != null) commission else BigDecimal.ZERO),
@@ -400,12 +405,15 @@ class AgentService(
             description = "Cash-out at ${agent.displayName}", channel = "ITUNDA_AGENT", providerReference = receipt,
             completedAt = cashOut.createdAt,
         ))
+        val cashOutTitle = "Cash withdrawn"
+        val cashOutBody = "${amount.toPlainString()} ${wallet.currency} was withdrawn at ${agent.displayName}"
         notificationRepository.save(Notification(
             id = "notification_${UUID.randomUUID()}", userId = wallet.userId, type = "cash_out",
-            title = "Cash withdrawn", body = "${amount.toPlainString()} ${wallet.currency} was withdrawn at ${agent.displayName}",
+            title = cashOutTitle, body = cashOutBody,
             isRead = false, createdAt = cashOut.createdAt,
             dataJson = "{\"agentId\":\"${agent.id}\",\"receiptNumber\":\"$receipt\",\"transactionId\":\"${ledger.transactionId}\"}",
         ))
+        pushNotificationService.sendToUser(wallet.userId, cashOutTitle, cashOutBody, mapOf("transactionId" to ledger.transactionId))
         return mapOf(
             "cashOut" to cashOut, "transaction" to transaction, "newBalance" to wallet.balance,
             "operatorCommission" to (if (operatorWallet != null) commission else BigDecimal.ZERO),

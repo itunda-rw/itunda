@@ -16,6 +16,7 @@ import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.AgentCashInRepository
 import rw.itunda.core.repository.AgentCashOutRepository
 import rw.itunda.core.repository.AgentOperatorRepository
@@ -43,7 +44,8 @@ class AgentServiceTest : BehaviorSpec({
     val userRepository = mockk<UserRepository>()
     val withdrawalAuthorizationService = mockk<AgentWithdrawalAuthorizationService>()
     val notificationRepository = mockk<NotificationRepository>()
-    val service = AgentService(agentRepository, operatorRepository, tillReconciliationRepository, cashInRepository, cashOutRepository, walletRepository, ledgerAccountRepository, ledgerService, transactionRepository, userRepository, withdrawalAuthorizationService, notificationRepository)
+    val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+    val service = AgentService(agentRepository, operatorRepository, tillReconciliationRepository, cashInRepository, cashOutRepository, walletRepository, ledgerAccountRepository, ledgerService, transactionRepository, userRepository, withdrawalAuthorizationService, notificationRepository, pushNotificationService)
     val agent = Agent("agent_1", "Kigali Central", "agent_cash_1", AgentStatus.ACTIVE, BigDecimal("100000"))
     val wallet = Wallet("wallet_1", "user_1", "2024100001", "Jean Main", WalletType.MAIN, BigDecimal("1000"), BigDecimal("1000"))
 
@@ -83,6 +85,10 @@ class AgentServiceTest : BehaviorSpec({
                 verify(exactly = 1) { cashInRepository.save(any()) }
                 verify(exactly = 1) { transactionRepository.save(any()) }
             }
+
+            Then("the customer also gets a real mobile push notification, not just the in-app one") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_1", "Cash added", any(), any()) }
+            }
         }
     }
 
@@ -114,6 +120,7 @@ class AgentServiceTest : BehaviorSpec({
         }
     }
 
+
     // Real MTN MoMo-style agent commission (2026-07-27) -- see
     // AgentCommissionSchedule's own doc comment. A fresh, fully isolated set of mocks
     // (this file's own outer mocks accumulate call counts across every prior Given
@@ -131,7 +138,8 @@ class AgentServiceTest : BehaviorSpec({
         val userRepository2 = mockk<UserRepository>()
         val withdrawalAuthorizationService2 = mockk<AgentWithdrawalAuthorizationService>()
         val notificationRepository2 = mockk<NotificationRepository>()
-        val service2 = AgentService(agentRepository2, operatorRepository2, tillReconciliationRepository2, cashInRepository2, cashOutRepository2, walletRepository2, ledgerAccountRepository2, ledgerService2, transactionRepository2, userRepository2, withdrawalAuthorizationService2, notificationRepository2)
+        val pushNotificationService2 = mockk<PushNotificationService>(relaxed = true)
+        val service2 = AgentService(agentRepository2, operatorRepository2, tillReconciliationRepository2, cashInRepository2, cashOutRepository2, walletRepository2, ledgerAccountRepository2, ledgerService2, transactionRepository2, userRepository2, withdrawalAuthorizationService2, notificationRepository2, pushNotificationService2)
 
         val agent2 = Agent("agent_2", "Nyamirambo Branch", "agent_cash_2", AgentStatus.ACTIVE, BigDecimal("100000"))
         val customerWallet = Wallet("wallet_customer", "user_customer", "2024100002", "Customer", WalletType.MAIN, BigDecimal("1000"), BigDecimal("1000"))
@@ -179,7 +187,8 @@ class AgentServiceTest : BehaviorSpec({
         val userRepository3 = mockk<UserRepository>()
         val withdrawalAuthorizationService3 = mockk<AgentWithdrawalAuthorizationService>()
         val notificationRepository3 = mockk<NotificationRepository>()
-        val service3 = AgentService(agentRepository3, operatorRepository3, tillReconciliationRepository3, cashInRepository3, cashOutRepository3, walletRepository3, ledgerAccountRepository3, ledgerService3, transactionRepository3, userRepository3, withdrawalAuthorizationService3, notificationRepository3)
+        val pushNotificationService3 = mockk<PushNotificationService>(relaxed = true)
+        val service3 = AgentService(agentRepository3, operatorRepository3, tillReconciliationRepository3, cashInRepository3, cashOutRepository3, walletRepository3, ledgerAccountRepository3, ledgerService3, transactionRepository3, userRepository3, withdrawalAuthorizationService3, notificationRepository3, pushNotificationService3)
 
         val agent3 = Agent("agent_3", "Kimisagara Branch", "agent_cash_3", AgentStatus.ACTIVE, BigDecimal("100000"))
         val customerWallet3 = Wallet("wallet_customer3", "user_customer3", "2024100004", "Customer", WalletType.MAIN, BigDecimal("1000"), BigDecimal("1000"))
