@@ -467,3 +467,57 @@ export const createOrExtendAd = (title: string, description: string | undefined,
 
 export const fetchMyAd = () =>
   apiFetch<{ success: boolean; ad: MerchantAd | null }>('/api/v1/merchant/ads/me').then((r) => r.ad);
+
+// Real 토스뱅크 개인사업자 (business banking for sole proprietors) equivalent (item 150)
+// -- see MerchantBusinessAccountService.kt's own doc comment: every real card/QR
+// collection settles to the merchant's PERSONAL wallet, so this is a dedicated,
+// additive `WalletType.BUSINESS` wallet a merchant deliberately sweeps money into/out
+// of, never touching the already-tested collect()/chargeCard settlement path. Move
+// actions are real money movement (same person, both sides), so Idempotency-Key-gated
+// same as every other money-moving write. Android's native merchantapp already has
+// this; this closes the gap on merchant-mfe (web) and iOS MerchantApp.
+export interface BusinessWallet {
+  id: string;
+  userId: string;
+  accountNumber: string;
+  accountName: string;
+  type: 'MAIN' | 'BUSINESS';
+  balance: number;
+  availableBalance: number;
+  currency: string;
+}
+
+export interface BusinessLedgerEntry {
+  id: string;
+  transactionId: string;
+  accountId: string;
+  direction: 'DEBIT' | 'CREDIT';
+  amount: number;
+  currency: string;
+  balanceAfter: number;
+  memo: string;
+  createdAt: string;
+}
+
+export const openBusinessAccount = () =>
+  apiFetch<{ success: boolean; wallet: BusinessWallet }>('/api/v1/merchant/business-account', { method: 'POST' }).then((r) => r.wallet);
+
+export const getBusinessAccount = () =>
+  apiFetch<{ success: boolean; wallet: BusinessWallet }>('/api/v1/merchant/business-account').then((r) => r.wallet);
+
+export const fetchBusinessTransactions = () =>
+  apiFetch<{ success: boolean; transactions: BusinessLedgerEntry[] }>('/api/v1/merchant/business-account/transactions').then((r) => r.transactions);
+
+export const moveToBusinessAccount = (amount: number) =>
+  apiFetch<{ success: boolean; wallet: BusinessWallet }>('/api/v1/merchant/business-account/move-to-business', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ amount }),
+  }).then((r) => r.wallet);
+
+export const moveToPersonalAccount = (amount: number) =>
+  apiFetch<{ success: boolean; wallet: BusinessWallet }>('/api/v1/merchant/business-account/move-to-personal', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ amount }),
+  }).then((r) => r.wallet);
