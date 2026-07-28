@@ -49,6 +49,12 @@ class ProductInquiryServiceTest : BehaviorSpec({
             Then("it real-alerts the real merchant owner of the new question") {
                 verify(exactly = 1) { notificationRepository.save(match { it.userId == "owner_1" && it.type == "NEW_PRODUCT_INQUIRY" }) }
             }
+
+            // Real push (item 140) -- the in-app Notification alone isn't enough for a
+            // real merchant to learn about a question without polling.
+            Then("it real-pushes the real merchant owner of the new question") {
+                verify(exactly = 1) { pushNotificationService.sendToUser("owner_1", any(), any(), any()) }
+            }
         }
 
         When("asking about a product that doesn't exist") {

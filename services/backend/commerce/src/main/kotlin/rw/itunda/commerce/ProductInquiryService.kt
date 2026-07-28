@@ -54,13 +54,19 @@ class ProductInquiryService(
         try {
             val merchant = merchantRepository.findById(product.merchantId).orElse(null)
             if (merchant != null) {
+                val title = "New question about ${product.name}"
                 notificationRepository.save(
                     Notification(
                         id = "notif_${UUID.randomUUID()}", userId = merchant.ownerUserId, type = "NEW_PRODUCT_INQUIRY",
-                        title = "New question about ${product.name}", body = trimmedQuestion, isRead = false,
+                        title = title, body = trimmedQuestion, isRead = false,
                         createdAt = Instant.now(), dataJson = "{\"inquiryId\":\"${saved.id}\"}",
                     ),
                 )
+                // Real push (item 140) -- this doc comment above already claimed this
+                // was fixed alongside the new-order push gaps (items 122-124), but the
+                // actual push call was never added -- found via a repo-wide save-vs-push
+                // count sweep.
+                pushNotificationService.sendToUser(merchant.ownerUserId, title, trimmedQuestion)
             }
         } catch (e: Exception) {
             // Non-critical -- the real question was already saved successfully.
