@@ -22,6 +22,11 @@ import { fetchLinkedAccounts, fetchOverview, linkAccount, unlinkAccount, type Li
 import { applyForLoan, fetchLoanOffers, fetchMyLoans, refinanceLoan, repayLoan, type LoanAccount, type LoanOffer } from './lib/loans';
 import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreResult, type CreditScoreSuggestion } from './lib/creditScore';
 import { fetchTrustScore, type TrustScoreResult } from './lib/trustScore';
+import {
+  fetchMyUpfrontDeposits, openUpfrontDeposit, withdrawUpfrontDeposit,
+  UPFRONT_DEPOSIT_ANNUAL_RATE, UPFRONT_DEPOSIT_MIN_PRINCIPAL, UPFRONT_DEPOSIT_MAX_PRINCIPAL,
+  type UpfrontInterestDeposit,
+} from './lib/upfrontDeposit';
 import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type KycSubmission } from './lib/identity';
 import { addContact, fetchContacts, type Contact } from './lib/contacts';
 import { createSupportTicket, fetchSupportTickets, type SupportTicket, type SupportTicketCategory } from './lib/support';
@@ -11434,6 +11439,120 @@ function WeeklySavingsSection() {
   );
 }
 
+// Real Toss Bank 먼저 이자받는 정기예금 (interest-paid-upfront term deposit) equivalent
+// (item 153) -- see lib/upfrontDeposit.ts's own doc comment. The one product in this
+// module where opening pays real, immediately-spendable interest -- distinct from every
+// accrue-then-claim product above (InterestJar/RoundUp/goals/weekly savings).
+function UpfrontDepositSection() {
+  const [deposits, setDeposits] = useState<UpfrontInterestDeposit[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchMyUpfrontDeposits().then(setDeposits).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your 12-month deposits.'));
+  };
+  useEffect(load, []);
+
+  return (
+    <div>
+      <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '4px 4px 10px' }}>12-month deposit</h3>
+      <OpenUpfrontDepositForm onOpened={load} />
+      {error && (
+        <div className="toss-card" style={{ marginBottom: '16px' }}>
+          <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        </div>
+      )}
+      {deposits === null ? (
+        <div className="toss-card skeleton" style={{ height: '64px' }} />
+      ) : deposits.length === 0 ? (
+        <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No 12-month deposits yet — open one to get a full year's interest paid today, principal locked for 12 months.</p></div>
+      ) : (
+        deposits.map((d) => <UpfrontDepositCard key={d.id} deposit={d} onChanged={load} />)
+      )}
+    </div>
+  );
+}
+
+function OpenUpfrontDepositForm({ onOpened }: { onOpened: () => void }) {
+  const [principal, setPrincipal] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      await openUpfrontDeposit(Number(principal));
+      setPrincipal('');
+      onOpened();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not open this deposit.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="toss-card" style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+        {UPFRONT_DEPOSIT_ANNUAL_RATE}% interest for the full year, paid to your wallet today. Principal is locked for 12 months — no early withdrawal.
+      </p>
+      <input
+        type="number"
+        min={UPFRONT_DEPOSIT_MIN_PRINCIPAL}
+        max={UPFRONT_DEPOSIT_MAX_PRINCIPAL}
+        value={principal}
+        onChange={(e) => setPrincipal(e.target.value)}
+        placeholder={`Principal (${UPFRONT_DEPOSIT_MIN_PRINCIPAL.toLocaleString()} - ${UPFRONT_DEPOSIT_MAX_PRINCIPAL.toLocaleString()} RWF)`}
+        required
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+      />
+      {error && <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>}
+      <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+        {submitting ? 'Opening…' : 'Open deposit'}
+      </button>
+    </form>
+  );
+}
+
+function UpfrontDepositCard({ deposit, onChanged }: { deposit: UpfrontInterestDeposit; onChanged: () => void }) {
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const matured = deposit.status === 'MATURED';
+
+  const handleWithdraw = async () => {
+    setError(null);
+    setWithdrawing(true);
+    try {
+      await withdrawUpfrontDeposit(deposit.id);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not withdraw this deposit.');
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
+  return (
+    <div className="toss-card" style={{ marginBottom: '10px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <p style={{ fontSize: '14px', fontWeight: 700 }}>{deposit.principal.toLocaleString()} RWF</p>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{deposit.withdrawnAt ? 'WITHDRAWN' : deposit.status}</p>
+      </div>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+        +{deposit.interestPaid.toLocaleString()} RWF interest already paid · matures {new Date(deposit.maturesAt).toLocaleDateString()}
+      </p>
+      {error && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '6px' }} role="alert">{error}</p>}
+      {matured && !deposit.withdrawnAt && (
+        <button className="toss-btn toss-btn-secondary" style={{ marginTop: '10px' }} disabled={withdrawing} onClick={handleWithdraw}>
+          {withdrawing ? 'Withdrawing…' : 'Withdraw principal'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function SavingsView() {
   const [goals, setGoals] = useState<SavingsGoal[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -11466,6 +11585,9 @@ function SavingsView() {
       </div>
       <div style={{ marginTop: '24px' }}>
         <WeeklySavingsSection />
+      </div>
+      <div style={{ marginTop: '24px' }}>
+        <UpfrontDepositSection />
       </div>
     </div>
   );
