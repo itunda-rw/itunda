@@ -12,6 +12,7 @@ import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.NominatimGeocodingClient
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.EmailVerificationTokenRepository
 import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -45,6 +46,7 @@ class AuthService(
     private val notificationRepository: NotificationRepository,
     private val nominatimGeocodingClient: NominatimGeocodingClient,
     private val deviceService: DeviceService,
+    private val pushNotificationService: PushNotificationService,
 ) {
     private val passwordEncoder = BCryptPasswordEncoder()
 
@@ -303,13 +305,22 @@ class AuthService(
                 expiresAt = Instant.now().plusSeconds(1800), createdAt = Instant.now(),
             ),
         )
+        val title = "Verify your email"
+        val body = "Your email verification code is $token. It expires in 30 minutes."
         notificationRepository.save(
             Notification(
                 id = "notif_${UUID.randomUUID()}", userId = userId, type = "PROFILE_EMAIL_VERIFICATION",
-                title = "Verify your email", body = "Your email verification code is $token. It expires in 30 minutes.",
+                title = title, body = body,
                 isRead = false, createdAt = Instant.now(), dataJson = null,
             ),
         )
+        // Real push (item 122, 2026-07-29) -- of every real Notification call site in
+        // this backend, an OTP code delivery is the single most time-sensitive: a user
+        // is actively waiting on this screen for it, unlike most other notification
+        // types that are fine to pick up on the next in-app poll. See
+        // PushNotificationService's own doc comment for the fuller "why these sites"
+        // account.
+        pushNotificationService.sendToUser(userId, title, body)
     }
 
     @Transactional
@@ -353,13 +364,17 @@ class AuthService(
                 expiresAt = Instant.now().plusSeconds(1800), createdAt = Instant.now(),
             ),
         )
+        val title = "Verify your phone number"
+        val body = "Your phone verification code is $code. It expires in 30 minutes."
         notificationRepository.save(
             Notification(
                 id = "notif_${UUID.randomUUID()}", userId = userId, type = "PHONE_VERIFICATION",
-                title = "Verify your phone number", body = "Your phone verification code is $code. It expires in 30 minutes.",
+                title = title, body = body,
                 isRead = false, createdAt = Instant.now(), dataJson = null,
             ),
         )
+        // Real push (item 122) -- see requestEmailVerification's own doc comment above.
+        pushNotificationService.sendToUser(userId, title, body)
     }
 
     /** Real resend, for the code sent automatically at registration expiring or getting lost. */

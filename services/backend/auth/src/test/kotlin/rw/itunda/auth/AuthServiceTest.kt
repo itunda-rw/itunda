@@ -16,6 +16,7 @@ import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.geo.NominatimGeocodingClient
+import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.EmailVerificationTokenRepository
 import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -62,9 +63,13 @@ class AuthServiceTest : BehaviorSpec({
         // device binding itself, just registration/login/profile behavior; DeviceServiceTest
         // covers the real device-recording/verification logic directly.
         val deviceService = mockk<DeviceService>(relaxed = true)
+        // Real push (item 122) -- relaxed since these tests aren't about the push
+        // pipeline itself, just registration/login/profile behavior.
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val service = AuthService(
             userRepository, walletRepository, interestJarRepository, jwtService, tokenBlocklistService, rateLimiter,
             emailVerificationTokenRepository, phoneVerificationTokenRepository, notificationRepository, nominatimGeocodingClient, deviceService,
+            pushNotificationService,
         )
 
         When("registering a brand-new phone number") {
