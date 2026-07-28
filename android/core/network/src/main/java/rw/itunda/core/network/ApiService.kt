@@ -18,6 +18,7 @@ import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Part
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -2156,6 +2157,45 @@ interface ApiService {
 
     @POST("api/v1/wallet/mini/deposit")
     suspend fun depositMiniWallet(@Body request: DepositMiniWalletRequest): DepositMiniWalletResponse
+
+    // Real Kakao Bank 모임통장 (group/shared account) equivalent -- first Android client
+    // for this feature (item 104, found via a fresh matrix scan: zero client on either
+    // mobile platform despite being real and live since well before this session).
+    // Mirrors bank-mfe's lib/groupAccounts.ts exactly.
+    @POST("api/v1/group-accounts")
+    suspend fun createGroupAccount(@Body request: CreateGroupAccountRequest): CreateGroupAccountResponse
+
+    @GET("api/v1/group-accounts")
+    suspend fun getMyGroupAccounts(): GroupAccountsResponse
+
+    @GET("api/v1/group-accounts/{id}")
+    suspend fun getGroupAccount(@Path("id") id: String): GroupAccountDetailResponse
+
+    @POST("api/v1/group-accounts/{id}/members")
+    suspend fun inviteGroupAccountMember(@Path("id") id: String, @Body request: InviteMemberRequest): InviteMemberResponse
+
+    @POST("api/v1/group-accounts/{id}/deposit")
+    suspend fun depositToGroupAccount(
+        @Path("id") id: String,
+        @Body request: GroupAccountAmountRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): GroupAccountDetailResponse
+
+    @POST("api/v1/group-accounts/{id}/withdraw")
+    suspend fun withdrawFromGroupAccount(
+        @Path("id") id: String,
+        @Body request: GroupAccountAmountRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): GroupAccountDetailResponse
+
+    @PUT("api/v1/group-accounts/{id}/dues")
+    suspend fun setGroupAccountDuesAmount(@Path("id") id: String, @Body request: SetDuesAmountRequest): CreateGroupAccountResponse
+
+    @GET("api/v1/group-accounts/{id}/dues")
+    suspend fun getGroupAccountDues(@Path("id") id: String): GroupAccountDuesResponse
+
+    @POST("api/v1/group-accounts/{id}/dues/remind")
+    suspend fun requestUnpaidGroupAccountDues(@Path("id") id: String): RemindUnpaidDuesResponse
 }
 
 data class UpfrontDepositDto(
@@ -2168,6 +2208,23 @@ data class UpfrontDepositResponse(val success: Boolean, val deposit: UpfrontDepo
 data class UpfrontDepositsResponse(val success: Boolean, val deposits: List<UpfrontDepositDto>)
 
 data class TransactionHistoryResponse(val success: Boolean, val transactions: List<TransactionDto>)
+
+// Real Kakao Bank 모임통장 (group/shared account) equivalent -- mirrors
+// GroupAccount.kt/GroupAccountService.kt exactly.
+data class GroupAccountDto(val id: String, val name: String, val ownerId: String, val walletId: String, val monthlyDuesAmount: java.math.BigDecimal?, val createdAt: String)
+data class GroupAccountMemberDto(val userId: String, val firstName: String, val lastName: String, val isOwner: Boolean, val joinedAt: String)
+data class CreateGroupAccountRequest(val name: String)
+data class CreateGroupAccountResponse(val success: Boolean, val groupAccount: GroupAccountDto)
+data class GroupAccountsResponse(val success: Boolean, val groupAccounts: List<GroupAccountDto>)
+data class GroupAccountDetailResponse(val success: Boolean, val groupAccount: GroupAccountDto, val balance: java.math.BigDecimal, val members: List<GroupAccountMemberDto>, val message: String? = null)
+data class InviteMemberRequest(val phoneNumber: String)
+data class InviteMemberResponse(val success: Boolean, val member: GroupAccountMemberDto)
+data class GroupAccountAmountRequest(val amount: java.math.BigDecimal)
+data class SetDuesAmountRequest(val amount: java.math.BigDecimal?)
+data class GroupAccountDuesMemberDto(val userId: String, val firstName: String, val lastName: String, val contributedAmount: java.math.BigDecimal, val paid: Boolean)
+data class GroupAccountDuesDto(val duesAmount: java.math.BigDecimal?, val cycleMonth: String, val members: List<GroupAccountDuesMemberDto>)
+data class GroupAccountDuesResponse(val success: Boolean, val dues: GroupAccountDuesDto)
+data class RemindUnpaidDuesResponse(val success: Boolean, val remindedCount: Int)
 
 // Real KakaoBank mini-style capped starter wallet -- see MiniWalletService.kt's own
 // doc comment (real balance/daily/monthly caps plus a real 7-18 age-eligibility gate).

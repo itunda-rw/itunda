@@ -1,0 +1,473 @@
+package rw.itunda.app.ui
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
+import retrofit2.HttpException
+import rw.itunda.core.network.GroupAccountAmountRequest
+import rw.itunda.core.network.GroupAccountDetailResponse
+import rw.itunda.core.network.GroupAccountDto
+import rw.itunda.core.network.GroupAccountDuesDto
+import rw.itunda.core.network.InviteMemberRequest
+import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.SetDuesAmountRequest
+import rw.itunda.core.network.isDeviceNotVerifiedError
+import rw.itunda.core.network.superAppErrorMessage
+import rw.itunda.core.designsystem.theme.Ids
+import rw.itunda.core.designsystem.components.BackTopBar
+import java.io.IOException
+import java.math.BigDecimal
+import java.util.UUID
+
+// Real Kakao Bank 모임통장 (group/shared account) equivalent -- first Android client for
+// this feature (item 104, found via a fresh matrix scan for still-open "zero client on
+// mobile" gaps: bank-mfe has had this since well before this session, Android/iOS never
+// did). Same no-ViewModel, direct-NetworkClient-call convention as
+// WeeklySavingsScreen.kt/MiniWalletScreen.kt. Mirrors bank-mfe's
+// GroupAccountsSection/GroupAccountDetailView/CreateGroupAccountForm exactly.
+private enum class GroupAccountMode { LIST, DETAIL }
+
+@Composable
+fun GroupAccountScreen(onBack: () -> Unit) {
+    BackHandler(onBack = onBack)
+    var mode by remember { mutableStateOf(GroupAccountMode.LIST) }
+    var selectedId by remember { mutableStateOf<String?>(null) }
+    var refreshKey by remember { mutableStateOf(0) }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        val backAction: () -> Unit = if (mode == GroupAccountMode.DETAIL) {
+            { mode = GroupAccountMode.LIST; selectedId = null; refreshKey++ }
+        } else onBack
+        BackTopBar(title = "Group accounts", onBack = backAction)
+
+        if (mode == GroupAccountMode.DETAIL && selectedId != null) {
+            GroupAccountDetailContent(id = selectedId!!)
+        } else {
+            GroupAccountListContent(
+                refreshKey = refreshKey,
+                onOpen = { selectedId = it; mode = GroupAccountMode.DETAIL },
+            )
+        }
+    }
+}
+
+@Composable
+private fun GroupAccountListContent(refreshKey: Int, onOpen: (String) -> Unit) {
+    var accounts by remember { mutableStateOf<List<GroupAccountDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var showCreate by remember { mutableStateOf(false) }
+    var name by remember { mutableStateOf("") }
+    var creating by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyGroupAccounts()
+                if (res.success) accounts = res.groupAccounts
+                error = null
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+    LaunchedEffect(refreshKey) { load() }
+
+    fun create() {
+        if (name.isBlank()) return
+        creating = true
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.createGroupAccount(rw.itunda.core.network.CreateGroupAccountRequest(name.trim()))
+                name = ""
+                showCreate = false
+                load()
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                creating = false
+            }
+        }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        item {
+            if (!showCreate) {
+                GroupAccountActionButton(title = "+ New group account", enabled = true) { showCreate = true }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = name, onValueChange = { name = it }, label = { Text("Group name (e.g. Roommates)") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(
+                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                .clickable { showCreate = false; name = "" }.padding(vertical = 14.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { Text("Cancel", color = TossText, fontWeight = FontWeight.Bold) }
+                        Box(
+                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                                .clickable(enabled = !creating) { create() }.padding(vertical = 14.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { Text(if (creating) "Creating…" else "Create", color = Color.White, fontWeight = FontWeight.Bold) }
+                    }
+                }
+            }
+        }
+        error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
+        when {
+            accounts == null -> item {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(80.dp)) {}
+            }
+            accounts!!.isEmpty() -> item {
+                Text("No group accounts yet. Start one to split a shared expense with roommates or friends.", color = TossSecondary, fontSize = 13.sp)
+            }
+            else -> items(accounts!!) { account ->
+                Card(
+                    shape = RoundedCornerShape(Ids.layout.cardCornerRadius),
+                    colors = CardDefaults.cardColors(containerColor = TossCard),
+                    modifier = Modifier.fillMaxWidth().clickable { onOpen(account.id) },
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(account.name, color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        account.monthlyDuesAmount?.let {
+                            Text("${formatMoneyGroup(it)} RWF / month dues", color = TossSecondary, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GroupAccountDetailContent(id: String) {
+    var detail by remember { mutableStateOf<GroupAccountDetailResponse?>(null) }
+    var dues by remember { mutableStateOf<GroupAccountDuesDto?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var amount by remember { mutableStateOf("") }
+    var phoneNumber by remember { mutableStateOf("") }
+    var duesAmountInput by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var duesBusy by remember { mutableStateOf(false) }
+    var remindedCount by remember { mutableStateOf<Int?>(null) }
+    var needsDeviceVerification by remember { mutableStateOf(false) }
+    val myUserId = NetworkClient.currentTokenStore().getUserId()
+    val coroutineScope = rememberCoroutineScope()
+
+    fun loadDues() {
+        coroutineScope.launch {
+            try {
+                dues = NetworkClient.apiService.getGroupAccountDues(id).dues
+            } catch (_: Exception) {
+                // Non-critical -- dues card just stays in its loading state.
+            }
+        }
+    }
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                detail = NetworkClient.apiService.getGroupAccount(id)
+                error = null
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+        loadDues()
+    }
+    LaunchedEffect(id) { load() }
+
+    val isOwner = detail?.groupAccount?.ownerId == myUserId
+
+    fun deposit() {
+        val parsedAmount = amount.toBigDecimalOrNull()
+        if (parsedAmount == null || parsedAmount <= BigDecimal.ZERO) return
+        busy = true
+        needsDeviceVerification = false
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.depositToGroupAccount(id, GroupAccountAmountRequest(parsedAmount), UUID.randomUUID().toString())
+                amount = ""
+                error = null
+                load()
+            } catch (e: HttpException) {
+                if (isDeviceNotVerifiedError(e)) needsDeviceVerification = true else error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    fun withdraw() {
+        val parsedAmount = amount.toBigDecimalOrNull()
+        if (parsedAmount == null || parsedAmount <= BigDecimal.ZERO) return
+        busy = true
+        needsDeviceVerification = false
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.withdrawFromGroupAccount(id, GroupAccountAmountRequest(parsedAmount), UUID.randomUUID().toString())
+                amount = ""
+                error = null
+                load()
+            } catch (e: HttpException) {
+                if (isDeviceNotVerifiedError(e)) needsDeviceVerification = true else error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    fun invite() {
+        if (phoneNumber.isBlank()) return
+        busy = true
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.inviteGroupAccountMember(id, InviteMemberRequest(phoneNumber.trim()))
+                phoneNumber = ""
+                error = null
+                load()
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    fun setDues(newAmount: BigDecimal?) {
+        duesBusy = true
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.setGroupAccountDuesAmount(id, SetDuesAmountRequest(newAmount))
+                duesAmountInput = ""
+                loadDues()
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                duesBusy = false
+            }
+        }
+    }
+
+    fun remindUnpaid() {
+        duesBusy = true
+        remindedCount = null
+        coroutineScope.launch {
+            try {
+                remindedCount = NetworkClient.apiService.requestUnpaidGroupAccountDues(id).remindedCount
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                duesBusy = false
+            }
+        }
+    }
+
+    val current = detail
+    if (current == null) {
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp) }
+        }
+        return
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = Ids.layout.screenHorizontal, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item {
+            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(current.groupAccount.name, color = TossSecondary, fontSize = 13.sp)
+                    Text("${formatMoneyGroup(current.balance)} RWF", color = TossText, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                    Text("${current.members.size} member${if (current.members.size == 1) "" else "s"}", color = TossSecondary, fontSize = 12.sp)
+                }
+            }
+        }
+        item {
+            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Members", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    current.members.forEach { m ->
+                        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("${m.firstName} ${m.lastName}${if (m.userId == myUserId) " (you)" else ""}", fontSize = 13.sp)
+                            if (m.isOwner) Text("Organizer", color = TossBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Monthly dues", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    val currentDues = dues
+                    when {
+                        currentDues == null -> Card(shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth().height(40.dp)) {}
+                        currentDues.duesAmount == null && isOwner -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = duesAmountInput, onValueChange = { duesAmountInput = it }, label = { Text("Monthly dues (RWF)") },
+                                modifier = Modifier.weight(1f),
+                            )
+                            Box(
+                                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                                    .clickable(enabled = !duesBusy) { duesAmountInput.toBigDecimalOrNull()?.let { setDues(it) } }
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                            ) { Text(if (duesBusy) "…" else "Set", color = Color.White, fontWeight = FontWeight.Bold) }
+                        }
+                        currentDues.duesAmount == null -> Text("The organizer hasn't set a monthly dues amount.", color = TossSecondary, fontSize = 13.sp)
+                        else -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("${formatMoneyGroup(currentDues.duesAmount)} RWF / month · ${currentDues.cycleMonth}", fontSize = 13.sp)
+                            currentDues.members.forEach { m ->
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("${m.firstName} ${m.lastName}${if (m.userId == myUserId) " (you)" else ""}", fontSize = 13.sp)
+                                    Text(
+                                        if (m.paid) "✓ Paid" else "${formatMoneyGroup(m.contributedAmount)} / ${formatMoneyGroup(currentDues.duesAmount)}",
+                                        color = if (m.paid) Ids.colors.success else TossSecondary,
+                                        fontWeight = if (m.paid) FontWeight.Bold else FontWeight.Normal, fontSize = 13.sp,
+                                    )
+                                }
+                            }
+                            if (isOwner) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Box(
+                                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                            .clickable(enabled = !duesBusy) { remindUnpaid() }.padding(vertical = 12.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) { Text(if (duesBusy) "…" else "Remind unpaid members", fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+                                    Box(
+                                        modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                            .clickable(enabled = !duesBusy) { setDues(null) }.padding(horizontal = 16.dp, vertical = 12.dp),
+                                    ) { Text("Clear", fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+                                }
+                            }
+                            remindedCount?.let {
+                                Text(
+                                    if (it == 0) "Everyone has already paid or been reminded this month." else "Reminded $it member${if (it == 1) "" else "s"}.",
+                                    color = TossSecondary, fontSize = 12.sp,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            if (needsDeviceVerification) {
+                DeviceStepUpHost(
+                    visible = true,
+                    onDismiss = { needsDeviceVerification = false },
+                    onVerified = { needsDeviceVerification = false; if (amount.isNotBlank()) deposit() },
+                )
+            } else {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(if (isOwner) "Deposit or withdraw" else "Deposit", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Amount (RWF)") }, modifier = Modifier.fillMaxWidth())
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            GroupAccountActionButton(title = if (busy) "…" else "Deposit", enabled = !busy && amount.isNotBlank(), modifier = Modifier.weight(1f)) { deposit() }
+                            if (isOwner) {
+                                Box(
+                                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(TossCardSoft)
+                                        .clickable(enabled = !busy && amount.isNotBlank()) { withdraw() }.padding(vertical = 14.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) { Text(if (busy) "…" else "Withdraw", color = TossText, fontWeight = FontWeight.Bold) }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (isOwner) {
+            item {
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Invite a member", color = TossText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(value = phoneNumber, onValueChange = { phoneNumber = it }, label = { Text("Phone number") }, modifier = Modifier.weight(1f))
+                            Box(
+                                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(TossBlue)
+                                    .clickable(enabled = !busy && phoneNumber.isNotBlank()) { invite() }
+                                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                            ) { Text(if (busy) "…" else "Invite", color = Color.White, fontWeight = FontWeight.Bold) }
+                        }
+                    }
+                }
+            }
+        }
+        error?.let { msg -> item { Text(msg, color = Ids.colors.danger, fontSize = 13.sp) } }
+        item { Spacer(modifier = Modifier.height(8.dp)) }
+    }
+}
+
+@Composable
+private fun GroupAccountActionButton(title: String, enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+            .background(TossBlue).clickable(enabled = enabled, onClick = onClick)
+            .padding(vertical = 14.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+    }
+}
+
+private fun formatMoneyGroup(value: BigDecimal): String {
+    val rounded = value.stripTrailingZeros()
+    return if (rounded.scale() <= 0) rounded.toBigInteger().toString() else "%,.2f".format(rounded)
+}
