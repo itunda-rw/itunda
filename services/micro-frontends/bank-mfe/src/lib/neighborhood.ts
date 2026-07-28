@@ -9,10 +9,19 @@ import { apiFetch } from './api';
 // a self-declared free-text field.
 
 export const fetchProfile = () =>
-  apiFetch<{ success: boolean; user: { neighborhood: string | null } }>('/api/v1/auth/profile').then((r) => r.user);
+  apiFetch<{ success: boolean; user: { neighborhood: string | null; birthDate: string | null } }>('/api/v1/auth/profile').then((r) => r.user);
 
 export const setNeighborhood = (latitude: number, longitude: number) =>
   apiFetch<{ success: boolean; user: { neighborhood: string | null } }>('/api/v1/auth/profile/neighborhood', {
     method: 'POST',
     body: JSON.stringify({ latitude, longitude }),
+  }).then((r) => r.user);
+
+// Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
+// rw.itunda.auth.AuthService.setBirthDate's own doc comment. birthDate is an
+// ISO-8601 date string ("YYYY-MM-DD").
+export const setBirthDate = (birthDate: string) =>
+  apiFetch<{ success: boolean; user: { birthDate: string | null } }>('/api/v1/auth/profile/birth-date', {
+    method: 'POST',
+    body: JSON.stringify({ birthDate }),
   }).then((r) => r.user);

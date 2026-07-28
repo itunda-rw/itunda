@@ -8,7 +8,7 @@ export interface Wallet {
   userId: string;
   accountNumber: string;
   accountName: string;
-  type: 'MAIN' | 'SAVINGS' | 'INVESTMENT' | 'LOAN';
+  type: 'MAIN' | 'SAVINGS' | 'INVESTMENT' | 'LOAN' | 'MINI';
   balance: number;
   availableBalance: number;
   currency: string;

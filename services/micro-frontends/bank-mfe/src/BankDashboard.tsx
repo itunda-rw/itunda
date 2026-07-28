@@ -42,7 +42,8 @@ import {
   fetchMyListings, fetchMyPurchases, fetchOffersForConversation, makeOffer, markListingSold, removeListing, removeListingFavorite,
   respondToOffer, submitListingReview, type FavoriteListing, type Listing, type PriceOffer, type TrustScores,
 } from './lib/marketplace';
-import { fetchProfile, setNeighborhood } from './lib/neighborhood';
+import { fetchProfile, setBirthDate, setNeighborhood } from './lib/neighborhood';
+import { depositToMiniWallet, openMiniWallet } from './lib/miniWallet';
 import { claimGift, fetchGiftsForConversation, sendGiftInConversation, type Gift, type GiftStatus } from './lib/gift';
 import {
   addCommunityComment, createCommunityPost, fetchCommunityCategories, fetchCommunityComments, fetchCommunityPost,
@@ -532,6 +533,131 @@ function HomeView() {
       <TransactionHistory transactions={transactions} unusuallyLargeIds={unusuallyLargeIds} />
       <ScheduledTransfersCard />
       <AutoTransfersCard />
+      <MiniWalletCard />
+    </div>
+  );
+}
+
+// Real KakaoBank mini-style capped starter wallet -- see lib/miniWallet.ts's own doc
+// comment. First client UI for this backend feature on any platform (item 99, found
+// with zero client anywhere despite the backend being real and live since 2026-07-28).
+function MiniWalletCard() {
+  const [miniWallet, setMiniWallet] = useState<Wallet | null | undefined>(undefined);
+  const [needsBirthDate, setNeedsBirthDate] = useState(false);
+  const [birthDate, setBirthDateInput] = useState('');
+  const [amount, setAmount] = useState('');
+  const [showDeposit, setShowDeposit] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    fetchWallets().then((wallets) => setMiniWallet(wallets.find((w) => w.type === 'MINI') ?? null)).catch(() => setMiniWallet(null));
+  };
+
+  useEffect(load, []);
+
+  const handleOpen = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const wallet = await openMiniWallet();
+      setMiniWallet(wallet);
+      setNeedsBirthDate(false);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'MINI_WALLET_BIRTH_DATE_REQUIRED') {
+        setNeedsBirthDate(true);
+      } else if (err instanceof ApiError && err.code === 'MINI_WALLET_AGE_INELIGIBLE') {
+        setError('Mini accounts are only available for ages 7-18.');
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Could not open a Mini account.');
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSetBirthDateAndOpen = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!birthDate) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await setBirthDate(birthDate);
+      await handleOpen();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not save your birth date.');
+      setBusy(false);
+    }
+  };
+
+  const handleDeposit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsedAmount = Number(amount);
+    if (!(parsedAmount > 0)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await depositToMiniWallet(parsedAmount);
+      setAmount('');
+      setShowDeposit(false);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not add money to your Mini account.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (miniWallet === undefined) return null;
+
+  return (
+    <div className="toss-card" style={{ padding: '16px', marginTop: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Mini account</h3>
+        {miniWallet && (
+          <button className="toss-btn toss-btn-secondary" onClick={() => setShowDeposit((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+            {showDeposit ? 'Cancel' : '+ Add money'}
+          </button>
+        )}
+      </div>
+
+      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+
+      {!miniWallet && !needsBirthDate && (
+        <div>
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '10px' }}>
+            A capped starter account for ages 7-18 -- a 500,000 RWF balance cap, 300,000 RWF daily and 2,000,000 RWF monthly deposit limits.
+          </p>
+          <button className="toss-btn toss-btn-primary" onClick={handleOpen} disabled={busy}>{busy ? 'Opening…' : 'Open a Mini account'}</button>
+        </div>
+      )}
+
+      {!miniWallet && needsBirthDate && (
+        <form onSubmit={handleSetBirthDateAndOpen} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Enter your birth date to check eligibility.</p>
+          <input
+            type="date" value={birthDate} onChange={(e) => setBirthDateInput(e.target.value)} required
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? 'Checking…' : 'Continue'}</button>
+        </form>
+      )}
+
+      {miniWallet && (
+        <div>
+          <p style={{ fontSize: '20px', fontWeight: 700 }}>{miniWallet.balance.toLocaleString()} RWF</p>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: showDeposit ? '10px' : 0 }}>{miniWallet.accountNumber}</p>
+          {showDeposit && (
+            <form onSubmit={handleDeposit} style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="number" placeholder="Amount (RWF)" value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
+                style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+              />
+              <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? 'Adding…' : 'Add'}</button>
+            </form>
+          )}
+        </div>
+      )}
     </div>
   );
 }
