@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { ApiError } from '../lib/api';
+import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, type TrustedDevice } from '../lib/device';
 import { getMyIdentitySubmissions, setCategory, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant } from '../lib/merchant';
 
 export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merchant; onUpdated: (merchant: Merchant) => void }) {
@@ -65,6 +66,78 @@ export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merc
 
       <CategoryCard merchant={merchant} onUpdated={onUpdated} />
       <KybCard merchant={merchant} />
+      <DevicesCard />
+    </div>
+  );
+}
+
+// Real device management (2026-07-28 port) -- the same self-service "your devices"
+// control bank-mfe's own Devices tab and Android/iOS Settings already offer, backed
+// by the same real GET/DELETE /api/v1/auth/devices endpoints. See lib/device.ts's own
+// doc comment.
+function DevicesCard() {
+  const [devices, setDevices] = useState<TrustedDevice[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+  const myDeviceId = getOrCreateDeviceId();
+
+  const load = () => {
+    setError(null);
+    fetchMyDevices().then(setDevices).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your devices.'));
+  };
+  useEffect(load, []);
+
+  const handleRevoke = async (deviceId: string) => {
+    setRevokingId(deviceId);
+    setError(null);
+    try {
+      await revokeDevice(deviceId);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not remove this device.');
+    } finally {
+      setRevokingId(null);
+    }
+  };
+
+  return (
+    <div className="toss-card">
+      <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>Devices</h2>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+        Devices that have signed in to this account. A device must be verified before it can move money.
+      </p>
+      {error && (
+        <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '12px' }} role="alert">{error}</p>
+      )}
+      {devices === null ? (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+      ) : devices.length === 0 ? (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No devices recorded yet.</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {devices.map((d) => (
+            <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+              <div>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
+                  {d.deviceName ?? 'Unknown device'} {d.deviceId === myDeviceId && <span style={{ color: 'var(--toss-blue)' }}>(this device)</span>}
+                </p>
+                <p style={{ fontSize: '12px', color: d.trusted ? 'var(--toss-green)' : '#E53935' }}>
+                  {d.trusted ? '✓ Verified — can move money' : '⚠ Not verified — sign-in only'}
+                </p>
+                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>Last seen {new Date(d.lastSeenAt).toLocaleString()}</p>
+              </div>
+              <button
+                className="toss-btn toss-btn-danger"
+                disabled={revokingId === d.deviceId}
+                onClick={() => handleRevoke(d.deviceId)}
+                style={{ padding: '8px 12px', fontSize: '12px' }}
+              >
+                {revokingId === d.deviceId ? 'Removing…' : 'Remove'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

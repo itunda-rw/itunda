@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { ChevronDown, ChevronUp, CreditCard, Minus, Plus, RefreshCw, Store, Trash2 } from 'lucide-react';
 import { ApiError } from '../lib/api';
+import { DeviceStepUpPrompt } from '../components/DeviceStepUpPrompt';
 import {
   addOptionGroup,
   addProduct,
@@ -305,6 +306,9 @@ function CardCheckout({ amount, description, onDone }: { amount: number; descrip
   const [result, setResult] = useState<CardChargeResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Real device step-up (2026-07-28 port) -- a real 403 DEVICE_NOT_VERIFIED (this
+  // device hasn't been step-up-verified yet) gets its own case, not a generic error.
+  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -314,7 +318,11 @@ function CardCheckout({ amount, description, onDone }: { amount: number; descrip
       const charge = await chargeCard(amount, description, cardNumber.replace(/\s/g, ''), Number(expiryMonth), Number(expiryYear), cvc);
       setResult(charge);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not charge this card.');
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        setNeedsDeviceVerification(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Could not charge this card.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -361,9 +369,13 @@ function CardCheckout({ amount, description, onDone }: { amount: number; descrip
           {error}
         </p>
       )}
-      <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
-        {submitting ? 'Charging…' : `Charge ${amount.toLocaleString()} RWF`}
-      </button>
+      {needsDeviceVerification ? (
+        <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+      ) : (
+        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+          {submitting ? 'Charging…' : `Charge ${amount.toLocaleString()} RWF`}
+        </button>
+      )}
     </form>
   );
 }

@@ -59,10 +59,14 @@ async function parseErrorBody(response: Response): Promise<{ code: string; messa
 }
 
 export async function login(phoneNumber: string, password: string): Promise<AuthedUser> {
+  // Real device binding (2026-07-28 port) -- see lib/device.ts's own doc comment.
+  // Dynamic import avoids a circular import (device.ts itself calls apiFetch from
+  // this file), same pattern bank-mfe's own login() already established.
+  const { getOrCreateDeviceId, getDeviceName } = await import('./device');
   const response = await fetch(`${BASE_URL}/api/v1/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phoneNumber, password }),
+    body: JSON.stringify({ phoneNumber, password, deviceId: getOrCreateDeviceId(), deviceName: getDeviceName() }),
   });
 
   if (!response.ok) {

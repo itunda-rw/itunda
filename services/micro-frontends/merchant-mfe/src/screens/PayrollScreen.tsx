@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CircleCheck, Trash2, Users } from 'lucide-react';
 import { ApiError } from '../lib/api';
+import { DeviceStepUpPrompt } from '../components/DeviceStepUpPrompt';
 import {
   addPayrollEmployee,
   getPayrollRoster,
@@ -125,6 +126,9 @@ function RosterTable({
 }) {
   const [runError, setRunError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  // Real device step-up (2026-07-28 port) -- a real 403 DEVICE_NOT_VERIFIED (this
+  // device hasn't been step-up-verified yet) gets its own case, not a generic error.
+  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
 
   const handleRunPayroll = async () => {
     setRunError(null);
@@ -133,7 +137,11 @@ function RosterTable({
       const result = await runPayroll();
       onRunPayroll(result);
     } catch (err) {
-      setRunError(err instanceof ApiError ? err.message : 'Could not run payroll.');
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        setNeedsDeviceVerification(true);
+      } else {
+        setRunError(err instanceof ApiError ? err.message : 'Could not run payroll.');
+      }
     } finally {
       setRunning(false);
     }
@@ -177,6 +185,11 @@ function RosterTable({
         <p style={{ fontSize: '13px', color: '#E53935', margin: '0 20px 16px' }} role="alert">
           {runError}
         </p>
+      )}
+      {needsDeviceVerification && (
+        <div style={{ margin: '0 20px 16px' }}>
+          <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+        </div>
       )}
       {roster.length === 0 ? (
         <p style={{ padding: '0 20px 20px', fontSize: '13px', color: 'var(--toss-grey-500)' }}>

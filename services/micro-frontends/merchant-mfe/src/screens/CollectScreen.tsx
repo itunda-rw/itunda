@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import { CreditCard, RefreshCw } from 'lucide-react';
 import { ApiError } from '../lib/api';
 import { chargeCard, generateQr, paymentIntentQrPayload, type CardChargeResult, type PaymentIntent } from '../lib/merchant';
+import { DeviceStepUpPrompt } from '../components/DeviceStepUpPrompt';
 
 type Mode = 'QR' | 'CARD';
 
@@ -143,6 +144,9 @@ function CardCollect() {
   const [result, setResult] = useState<CardChargeResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Real device step-up (2026-07-28 port) -- a real 403 DEVICE_NOT_VERIFIED (this
+  // device hasn't been step-up-verified yet) gets its own case, not a generic error.
+  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,7 +159,11 @@ function CardCollect() {
       );
       setResult(charge);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not charge this card.');
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        setNeedsDeviceVerification(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Could not charge this card.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -263,9 +271,13 @@ function CardCollect() {
             {error}
           </p>
         )}
-        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
-          {submitting ? 'Charging…' : 'Charge card'}
-        </button>
+        {needsDeviceVerification ? (
+          <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+        ) : (
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+            {submitting ? 'Charging…' : 'Charge card'}
+          </button>
+        )}
       </form>
     </div>
   );
