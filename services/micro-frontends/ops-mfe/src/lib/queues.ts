@@ -178,6 +178,33 @@ export const fundAgentTill = (agentId: string, amount: number, reference: string
     body: JSON.stringify({ amount, reference }),
   });
 
+// Real operator management (item 132) -- closes item 129's own honestly-named gap:
+// assign/activate an operator by userId was real, but there was never a way to list
+// who's currently assigned to a given agent till first. New GET .../operators backend
+// endpoint added the same pass.
+export interface AgentOperator {
+  id: string;
+  agentId: string;
+  userId: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export const fetchAgentOperators = (agentId: string) =>
+  apiFetch<{ success: boolean; operators: AgentOperator[] }>(`/api/v1/system/agents/${agentId}/operators`).then((r) => r.operators);
+
+export const assignAgentOperator = (agentId: string, userId: string) =>
+  apiFetch<{ success: boolean; operator: AgentOperator }>(`/api/v1/system/agents/${agentId}/operators`, {
+    method: 'POST',
+    body: JSON.stringify({ userId }),
+  }).then((r) => r.operator);
+
+export const setAgentOperatorStatus = (agentId: string, userId: string, isActive: boolean) =>
+  apiFetch<{ success: boolean; operator: AgentOperator }>(`/api/v1/system/agents/${agentId}/operators/${userId}/status`, {
+    method: 'POST',
+    body: JSON.stringify({ isActive }),
+  }).then((r) => r.operator);
+
 // Real MTN MoMo/Airtel Money-style physical cash-in/cash-out agent network (item 126)
 // -- a till reconciliation this out of balance needs real human admin review before
 // the variance is written off, same "real human review, not auto-resolved" discipline

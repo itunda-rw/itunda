@@ -1,7 +1,17 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useQueue } from '../hooks/useQueue';
 import { ApiError } from '../lib/api';
-import { fetchAgents, fundAgentTill, registerAgent, setAgentStatus, type Agent } from '../lib/queues';
+import {
+  assignAgentOperator,
+  fetchAgentOperators,
+  fetchAgents,
+  fundAgentTill,
+  registerAgent,
+  setAgentOperatorStatus,
+  setAgentStatus,
+  type Agent,
+  type AgentOperator,
+} from '../lib/queues';
 import { QueueEmpty, QueueError, QueueHeader, QueueSkeleton } from '../QueueState';
 
 // Real MTN MoMo/Airtel Money-style physical cash-in/cash-out agent network -- Agent
@@ -83,6 +93,7 @@ function AgentRow({ agent, onChanged }: { agent: Agent; onChanged: () => void })
   const [amount, setAmount] = useState('');
   const [reference, setReference] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [showingOperators, setShowingOperators] = useState(false);
 
   const toggleStatus = async () => {
     setBusy('status');
@@ -114,6 +125,7 @@ function AgentRow({ agent, onChanged }: { agent: Agent; onChanged: () => void })
   };
 
   return (
+    <>
     <tr style={{ borderTop: '1px solid var(--toss-grey-100)' }}>
       <td style={{ padding: '12px 16px' }}>
         <p style={{ fontWeight: 600, color: 'var(--toss-grey-900)' }}>{agent.displayName}</p>
@@ -164,6 +176,14 @@ function AgentRow({ agent, onChanged }: { agent: Agent; onChanged: () => void })
             >
               {busy === 'status' ? '…' : agent.status === 'ACTIVE' ? 'Suspend' : 'Reactivate'}
             </button>
+            <button
+              className="toss-btn toss-btn-secondary"
+              style={{ padding: '6px 10px', fontSize: '12px' }}
+              disabled={busy !== null}
+              onClick={() => setShowingOperators((v) => !v)}
+            >
+              {showingOperators ? 'Hide operators' : 'Operators'}
+            </button>
           </div>
         )}
         {error && (
@@ -171,6 +191,97 @@ function AgentRow({ agent, onChanged }: { agent: Agent; onChanged: () => void })
             {error}
           </p>
         )}
+      </td>
+    </tr>
+    {showingOperators && <OperatorsPanel agentId={agent.id} />}
+    </>
+  );
+}
+
+function OperatorsPanel({ agentId }: { agentId: string }) {
+  // useQueue's internal useEffect depends on this fetcher's identity -- an inline
+  // arrow function here would recreate on every render and cause an infinite refetch
+  // loop, so it's memoized on agentId alone (which only changes when a different
+  // agent's row is expanded).
+  const fetcher = useCallback(() => fetchAgentOperators(agentId), [agentId]);
+  const { items, error, reload } = useQueue(fetcher);
+  const [newUserId, setNewUserId] = useState('');
+  const [assigning, setAssigning] = useState(false);
+  const [assignError, setAssignError] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  const assign = async () => {
+    setAssigning(true);
+    setAssignError(null);
+    try {
+      await assignAgentOperator(agentId, newUserId.trim());
+      setNewUserId('');
+      reload();
+    } catch (err) {
+      setAssignError(err instanceof ApiError ? err.message : 'Could not assign this operator.');
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const toggle = async (operator: AgentOperator) => {
+    setTogglingId(operator.userId);
+    setAssignError(null);
+    try {
+      await setAgentOperatorStatus(agentId, operator.userId, !operator.isActive);
+      reload();
+    } catch (err) {
+      setAssignError(err instanceof ApiError ? err.message : 'Could not update this operator.');
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  return (
+    <tr>
+      <td colSpan={4} style={{ padding: '0 16px 16px', backgroundColor: 'var(--toss-grey-100)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '12px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input
+              type="text"
+              value={newUserId}
+              onChange={(e) => setNewUserId(e.target.value)}
+              placeholder="User id to assign as an operator"
+              style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+            />
+            <button className="toss-btn toss-btn-primary" style={{ padding: '8px 12px', fontSize: '12px' }} disabled={assigning || !newUserId.trim()} onClick={assign}>
+              {assigning ? '…' : 'Assign'}
+            </button>
+          </div>
+          {error && <p style={{ fontSize: '12px', color: '#E53935', margin: 0 }}>{error}</p>}
+          {assignError && <p style={{ fontSize: '12px', color: '#E53935', margin: 0 }}>{assignError}</p>}
+          {items === null ? (
+            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading operators…</p>
+          ) : items.length === 0 ? (
+            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No operators assigned to this agent yet.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {items.map((operator) => (
+                <div key={operator.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', backgroundColor: 'var(--toss-white)', borderRadius: '8px' }}>
+                  <span style={{ fontSize: '13px' }}>{operator.userId}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: operator.isActive ? 'var(--toss-green)' : '#E53935' }}>
+                      {operator.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                    <button
+                      className="toss-btn toss-btn-secondary"
+                      style={{ padding: '4px 8px', fontSize: '11px' }}
+                      disabled={togglingId === operator.userId}
+                      onClick={() => toggle(operator)}
+                    >
+                      {togglingId === operator.userId ? '…' : operator.isActive ? 'Deactivate' : 'Activate'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </td>
     </tr>
   );

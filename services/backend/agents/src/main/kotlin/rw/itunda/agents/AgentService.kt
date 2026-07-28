@@ -169,6 +169,14 @@ class AgentService(
 
     fun getMyOperator(userId: String): AgentOperator = activeOperator(userId)
 
+    // Real operator-management admin UI (item 132) -- see AgentOperatorRepository's
+    // own doc comment on findByAgentId.
+    @Transactional(readOnly = true)
+    fun getOperators(agentId: String): List<AgentOperator> {
+        get(agentId)
+        return agentOperatorRepository.findByAgentId(agentId)
+    }
+
     @Transactional
     fun setOperatorStatus(agentId: String, userId: String, isActive: Boolean): AgentOperator {
         val operator = agentOperatorRepository.findByUserId(userId)

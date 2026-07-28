@@ -49,6 +49,10 @@ class AgentAdminController(
     fun setStatus(@PathVariable agentId: String, @RequestBody request: SetAgentStatusRequest) =
         ResponseEntity.ok(mapOf("success" to true, "agent" to agentService.setStatus(agentId, request.status)))
 
+    @GetMapping("/{agentId}/operators")
+    fun operators(@PathVariable agentId: String) =
+        ResponseEntity.ok(mapOf("success" to true, "operators" to agentService.getOperators(agentId)))
+
     @PostMapping("/{agentId}/operators")
     fun assignOperator(@PathVariable agentId: String, @RequestBody request: AssignAgentOperatorRequest) =
         ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "operator" to agentService.assignOperator(agentId, request.userId)))

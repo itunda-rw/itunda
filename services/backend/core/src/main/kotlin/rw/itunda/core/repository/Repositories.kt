@@ -193,6 +193,11 @@ interface AgentCashOutRepository : JpaRepository<AgentCashOut, String> {
 
 interface AgentOperatorRepository : JpaRepository<AgentOperator, String> {
     fun findByUserId(userId: String): AgentOperator?
+
+    // Real operator-management admin UI (item 132) -- ops-mfe's Agents tab (item 129)
+    // could assign/activate an operator by userId, but never had a way to actually
+    // list who's currently assigned to a given agent till first.
+    fun findByAgentId(agentId: String): List<AgentOperator>
 }
 
 interface AgentTillReconciliationRepository : JpaRepository<AgentTillReconciliation, String> {
