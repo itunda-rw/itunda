@@ -36,6 +36,10 @@ import {
   type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup, type TalkContact,
 } from './lib/messaging';
+import {
+  fetchEmoticonImageMap, fetchEmoticonPacks, fetchOwnedEmoticonPacks, fetchPackEmoticons, giftEmoticonPack, purchaseEmoticonPack, sendEmoticon,
+  type Emoticon, type EmoticonPack, type OwnedEmoticonPack,
+} from './lib/emoticons';
 import { createSplitBill, fetchSplitBillsForGroup, paySplitBillShare, type SplitBillWithParticipants } from './lib/splitBill';
 import {
   addKeywordAlert, addListingFavorite, contactSeller, createListing, fetchKeywordAlertQuietHours, fetchKeywordAlerts, fetchListings,
@@ -3010,6 +3014,219 @@ function GiftBubble({
   );
 }
 
+// Real KakaoTalk Emoticon Store (item 133) -- a real sticker message renders as just
+// the image, no chat-bubble background, matching real KakaoTalk's own emoticon
+// rendering (a bubble would look wrong behind a sticker that already has its own
+// transparent art). See lib/emoticons.ts's own doc comment.
+function EmoticonBubble({ imageUrl }: { imageUrl: string | undefined }) {
+  if (!imageUrl) {
+    return <div style={{ fontSize: '13px', color: 'var(--toss-grey-500)', fontStyle: 'italic' }}>[emoticon]</div>;
+  }
+  return <img src={imageUrl} alt="emoticon" style={{ width: '96px', height: '96px', objectFit: 'contain' }} />;
+}
+
+// Real emoticon picker -- shown owned packs only (each tappable emoticon sends
+// immediately); a real "Get more" link opens the full store to browse/purchase.
+function EmoticonPickerPanel({
+  onSend, onOpenStore,
+}: {
+  onSend: (emoticonId: string) => void;
+  onOpenStore: () => void;
+}) {
+  const [ownedPacks, setOwnedPacks] = useState<OwnedEmoticonPack[] | null>(null);
+  const [selectedPackId, setSelectedPackId] = useState<string | null>(null);
+  const [packEmoticons, setPackEmoticons] = useState<Emoticon[] | null>(null);
+  const [packTitles, setPackTitles] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    Promise.all([fetchOwnedEmoticonPacks(), fetchEmoticonPacks()])
+      .then(([owned, allPacks]) => {
+        setOwnedPacks(owned);
+        setPackTitles(Object.fromEntries(allPacks.map((p) => [p.id, p.title])));
+        if (owned.length > 0) setSelectedPackId(owned[0].packId);
+      })
+      .catch(() => setOwnedPacks([]));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedPackId) return;
+    setPackEmoticons(null);
+    fetchPackEmoticons(selectedPackId).then(setPackEmoticons).catch(() => setPackEmoticons([]));
+  }, [selectedPackId]);
+
+  return (
+    <div style={{ padding: '10px', borderRadius: '12px', border: '1px solid var(--toss-grey-200)', marginBottom: '10px' }}>
+      {ownedPacks === null ? (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+      ) : ownedPacks.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '16px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '8px' }}>You don't own any emoticon packs yet.</p>
+          <button type="button" className="toss-btn toss-btn-primary" onClick={onOpenStore} style={{ padding: '8px 14px', fontSize: '13px' }}>
+            Browse Emoticon Store
+          </button>
+        </div>
+      ) : (
+        <>
+          <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '8px' }}>
+            {ownedPacks.map((op) => (
+              <button
+                key={op.packId}
+                type="button"
+                onClick={() => setSelectedPackId(op.packId)}
+                className={selectedPackId === op.packId ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+                style={{ padding: '6px 10px', fontSize: '12px', whiteSpace: 'nowrap' }}
+              >
+                {packTitles[op.packId] ?? op.packId}
+              </button>
+            ))}
+            <button type="button" onClick={onOpenStore} className="toss-btn toss-btn-secondary" style={{ padding: '6px 10px', fontSize: '12px', whiteSpace: 'nowrap' }}>
+              Get more
+            </button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+            {packEmoticons === null ? (
+              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+            ) : (
+              packEmoticons.map((e) => (
+                <button
+                  key={e.id}
+                  type="button"
+                  onClick={() => onSend(e.id)}
+                  style={{ border: 'none', background: 'none', padding: '4px', cursor: 'pointer' }}
+                >
+                  <img src={e.imageUrl} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'contain' }} />
+                </button>
+              ))
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// Real Emoticon Store -- browse every real active pack, buy one (once-off purchase,
+// same "buy it once, own it" model Shop/Insurance already use), or gift one to a
+// friend by phone number.
+function EmoticonStoreModal({ onClose }: { onClose: () => void }) {
+  const [packs, setPacks] = useState<EmoticonPack[] | null>(null);
+  const [ownedPackIds, setOwnedPackIds] = useState<Set<string>>(new Set());
+  const [busyPackId, setBusyPackId] = useState<string | null>(null);
+  const [giftingPackId, setGiftingPackId] = useState<string | null>(null);
+  const [giftPhone, setGiftPhone] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const load = () => {
+    Promise.all([fetchEmoticonPacks(), fetchOwnedEmoticonPacks()])
+      .then(([allPacks, owned]) => {
+        setPacks(allPacks);
+        setOwnedPackIds(new Set(owned.map((o) => o.packId)));
+      })
+      .catch(() => setError('Could not load the Emoticon Store.'));
+  };
+
+  useEffect(load, []);
+
+  const buy = async (packId: string) => {
+    setBusyPackId(packId);
+    setError(null);
+    try {
+      await purchaseEmoticonPack(packId);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not purchase this pack.');
+    } finally {
+      setBusyPackId(null);
+    }
+  };
+
+  const gift = async (packId: string) => {
+    setBusyPackId(packId);
+    setError(null);
+    setMessage(null);
+    try {
+      await giftEmoticonPack(packId, giftPhone.trim());
+      setMessage('Pack gifted!');
+      setGiftingPackId(null);
+      setGiftPhone('');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not gift this pack.');
+    } finally {
+      setBusyPackId(null);
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+      <div className="toss-card" style={{ width: '90%', maxWidth: '420px', maxHeight: '80vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <p style={{ fontSize: '16px', fontWeight: 700 }}>🛍 Emoticon Store</p>
+          <button type="button" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '16px' }}>×</button>
+        </div>
+        {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+        {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
+        {packs === null ? (
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+        ) : (
+          packs.map((pack) => {
+            const owned = ownedPackIds.has(pack.id);
+            return (
+              <div key={pack.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)' }}>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <img src={pack.thumbnailUrl} alt="" style={{ width: '48px', height: '48px', objectFit: 'contain' }} />
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: '14px', fontWeight: 600 }}>{pack.title}</p>
+                    <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{pack.artistName} · {pack.price.toLocaleString()} RWF</p>
+                  </div>
+                  <button
+                    type="button"
+                    className={owned ? 'toss-btn toss-btn-secondary' : 'toss-btn toss-btn-primary'}
+                    disabled={owned || busyPackId === pack.id}
+                    onClick={() => buy(pack.id)}
+                    style={{ padding: '8px 12px', fontSize: '12px' }}
+                  >
+                    {owned ? 'Owned' : busyPackId === pack.id ? '…' : 'Buy'}
+                  </button>
+                  <button
+                    type="button"
+                    className="toss-btn toss-btn-secondary"
+                    disabled={busyPackId === pack.id}
+                    onClick={() => setGiftingPackId(giftingPackId === pack.id ? null : pack.id)}
+                    style={{ padding: '8px 12px', fontSize: '12px' }}
+                  >
+                    Gift
+                  </button>
+                </div>
+                {giftingPackId === pack.id && (
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <input
+                      type="tel"
+                      value={giftPhone}
+                      onChange={(e) => setGiftPhone(e.target.value)}
+                      placeholder="Recipient phone number"
+                      style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+                    />
+                    <button
+                      type="button"
+                      className="toss-btn toss-btn-primary"
+                      disabled={busyPackId === pack.id || !giftPhone.trim()}
+                      onClick={() => gift(pack.id)}
+                      style={{ padding: '8px 12px', fontSize: '12px' }}
+                    >
+                      {busyPackId === pack.id ? '…' : 'Send gift'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ConversationThread({ conversation, onBack }: { conversation: ConversationSummary; onBack: () => void }) {
   const [messages, setMessages] = useState<Message[] | null>(null);
   const [offersByMessageId, setOffersByMessageId] = useState<Record<string, OfferBubbleData>>({});
@@ -3026,6 +3243,10 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   const [giftAmount, setGiftAmount] = useState('');
   const [giftNote, setGiftNote] = useState('');
   const [sendingGift, setSendingGift] = useState(false);
+  // Real KakaoTalk Emoticon Store (item 133) -- see lib/emoticons.ts's own doc comment.
+  const [emoticonPickerOpen, setEmoticonPickerOpen] = useState(false);
+  const [emoticonStoreOpen, setEmoticonStoreOpen] = useState(false);
+  const [emoticonImageById, setEmoticonImageById] = useState<Record<string, string>>({});
   const [blocking, setBlocking] = useState(false);
   const [quiet, setQuiet] = useState(false);
   const [updatingQuiet, setUpdatingQuiet] = useState(false);
@@ -3050,6 +3271,10 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   useEffect(() => {
     fetchConversationQuiet(conversation.conversationId).then(setQuiet).catch(() => {});
   }, [conversation.conversationId]);
+
+  useEffect(() => {
+    fetchEmoticonImageMap().then(setEmoticonImageById).catch(() => {});
+  }, []);
 
   const loadPin = () => fetchPinnedConversationMessage(conversation.conversationId).then(setPinnedMessage).catch(() => {});
 
@@ -3206,6 +3431,17 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       } else {
         setError(err instanceof ApiError ? err.message : 'Could not open this gift.');
       }
+    }
+  };
+
+  const handleSendEmoticon = async (emoticonId: string) => {
+    setError(null);
+    try {
+      await sendEmoticon(conversation.conversationId, emoticonId);
+      setEmoticonPickerOpen(false);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send this emoticon.');
     }
   };
 
@@ -3374,6 +3610,8 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
                 <GiftBubble gift={gift} isMine={isMine} currentUserId={currentUser?.id} onClaim={handleClaimGift} />
               ) : offer ? (
                 <OfferBubble offer={offer} isMine={isMine} currentUserId={currentUser?.id} onRespond={handleRespondToOffer} />
+              ) : m.emoticonId ? (
+                <EmoticonBubble imageUrl={emoticonImageById[m.emoticonId]} />
               ) : (
                 <div
                   style={{
@@ -3475,6 +3713,11 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         </form>
       )}
 
+      {emoticonPickerOpen && (
+        <EmoticonPickerPanel onSend={handleSendEmoticon} onOpenStore={() => setEmoticonStoreOpen(true)} />
+      )}
+      {emoticonStoreOpen && <EmoticonStoreModal onClose={() => setEmoticonStoreOpen(false)} />}
+
       {replyingTo && <div style={{ fontSize: '12px', color: 'var(--toss-grey-600)', padding: '8px', borderLeft: '3px solid var(--toss-blue)', marginBottom: '6px' }}>Replying to: {replyingTo.body.slice(0, 80)} <button type="button" onClick={() => setReplyingTo(null)}>×</button></div>}
       <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px' }}>
         <button
@@ -3484,6 +3727,14 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
           style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '18px' }}
         >
           🎁
+        </button>
+        <button
+          type="button"
+          aria-label="Send an emoticon"
+          onClick={() => setEmoticonPickerOpen((v) => !v)}
+          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '18px' }}
+        >
+          😊
         </button>
         <input
           type="text"

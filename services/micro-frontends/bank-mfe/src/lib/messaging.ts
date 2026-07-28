@@ -41,6 +41,10 @@ export interface Message {
   // never a client-asserted label.
   forwardedFromMessageId?: string | null;
   forwardedFromType?: 'DIRECT' | 'GROUP' | null;
+  // Real KakaoTalk Emoticon Store (item 133) -- set only on a message actually sent
+  // via EmoticonController's /send endpoints, never a client-asserted label. See
+  // lib/emoticons.ts's own doc comment.
+  emoticonId?: string | null;
 }
 
 export const fetchConversations = () =>
