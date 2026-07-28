@@ -217,6 +217,9 @@ struct EntireMenuScreen: View {
     // last remaining client platform for this feature (bank-mfe always had it, Android
     // ported the same day as item 104).
     @State private var showGroupAccounts = false
+    // Real Kakao Pay spending categorization screen (2026-07-28, item 108) -- last
+    // remaining client platform for this feature (bank-mfe item 106, Android item 107).
+    @State private var showSpending = false
 
     var body: some View {
         ScrollView {
@@ -290,6 +293,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Transfer", subtitle: "Auto-transfer, split a bill", symbol: "paperplane.fill", tint: .accentBlue, action: onOpenTransferHub),
                         FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
                         FlatRow(title: "Credit score", subtitle: "Free check, alternative data", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showCreditScore = true }),
+                        FlatRow(title: "Spending", subtitle: "Real, ledger-based category breakdown", symbol: "chart.pie.fill", tint: .accentBlue, action: { showSpending = true }),
                         FlatRow(title: "Digital certificate", subtitle: "Sign agreements in Itunda", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showCertificate = true }),
                         FlatRow(title: "Mobile plan", subtitle: "MTN, Airtel, broadband", symbol: "globe", tint: .accentTeal),
                     ])
@@ -412,6 +416,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showGroupAccounts) {
             GroupAccountScreenView(onBack: { showGroupAccounts = false })
+        }
+        .sheet(isPresented: $showSpending) {
+            SpendingScreenView(onBack: { showSpending = false })
         }
     }
 }

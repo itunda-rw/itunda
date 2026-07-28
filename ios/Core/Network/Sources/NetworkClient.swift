@@ -227,6 +227,9 @@ public struct Wallet: Decodable {
 
 public struct WalletsResponse: Decodable { public let success: Bool; public let wallets: [Wallet] }
 
+public struct SpendingCategoryDto: Decodable { public let name: String; public let amount: Double }
+public struct SpendingInsightResponse: Decodable { public let success: Bool; public let categories: [SpendingCategoryDto]; public let totalSpent: Double }
+
 public struct SavingsGoal: Decodable {
     public let id: String
     public let userId: String
@@ -262,6 +265,12 @@ public struct InterestJarResponse: Decodable { public let success: Bool; public 
 /// the "iOS has no real feature data-fetching wired in" gap this comment used to name.
 extension NetworkClient {
     public func getWallets() async throws -> WalletsResponse { try await get("api/v1/wallet") }
+
+    // Real Kakao Pay 소비 리포트-style spending categorization (rw.itunda.wallet.
+    // WalletService.getSpendingInsight, real since 2026-07-13) -- first iOS client for
+    // this feature (item 108, found backend-only via a fresh matrix scan; bank-mfe/
+    // Android ported the same day as items 106/107).
+    public func getSpendingInsight() async throws -> SpendingInsightResponse { try await get("api/v1/wallet/spending") }
     public func getSavingsGoals() async throws -> SavingsGoalsResponse { try await get("api/v1/savings/goals") }
     public func getInterestJar() async throws -> InterestJarResponse { try await get("api/v1/savings/interest-jar") }
     public func getTransactionHistory() async throws -> TransactionHistoryResponse { try await get("api/v1/wallet/transactions") }
