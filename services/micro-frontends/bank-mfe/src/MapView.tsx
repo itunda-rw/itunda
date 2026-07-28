@@ -10,6 +10,7 @@ import {
   getDirectionsAlternatives,
   getItineraryDirections,
   searchNearbyPlaces,
+  fetchNearbyAgents,
   NEARBY_CATEGORIES,
   fetchMyMapBookmarks,
   addMapBookmark,
@@ -179,7 +180,7 @@ const BOOKMARK_COLOR_PALETTE = ['#F5A623', '#3182F6', '#8B5CF6', '#E53935', '#22
 const CATEGORY_ICONS: Record<string, string> = {
   RESTAURANT: '🍽️', CAFE: '☕', HOSPITAL: '🏥', PHARMACY: '💊',
   BANK: '🏦', ATM: '🏧', HOTEL: '🏨', SUPERMARKET: '🛒',
-  GAS_STATION: '⛽', SCHOOL: '🏫',
+  GAS_STATION: '⛽', SCHOOL: '🏫', ITUNDA_AGENT: '💰',
 };
 
 // Real fixed (non-theme-reactive) text colors for this component's own deliberately-
@@ -738,7 +739,12 @@ export default function MapView() {
     setCategoryLoading(true);
     setError(null);
     try {
-      const places = await searchNearbyPlaces(categoryId, center[0], center[1]);
+      // Real itunda cash-agent discovery (item 157) -- distinct from OSM-backed
+      // categories above, same real "own dedicated endpoint" special-case Android's
+      // own MapsScreen.kt already established for this one category.
+      const places = categoryId === 'ITUNDA_AGENT'
+        ? await fetchNearbyAgents(center[0], center[1])
+        : await searchNearbyPlaces(categoryId, center[0], center[1]);
       categoryMarkersRef.current.forEach((m) => m.remove());
       categoryMarkersRef.current = places.map((place) =>
         new maplibregl.Marker({ color: '#8B5CF6' })

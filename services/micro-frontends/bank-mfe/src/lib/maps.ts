@@ -132,12 +132,25 @@ export const NEARBY_CATEGORIES: MapPlaceCategory[] = [
   { id: 'SUPERMARKET', label: 'Supermarkets' },
   { id: 'GAS_STATION', label: 'Gas stations' },
   { id: 'SCHOOL', label: 'Schools' },
+  { id: 'ITUNDA_AGENT', label: 'Cash agents' },
 ];
 
 export const searchNearbyPlaces = (category: string, lat: number, lng: number, radiusKm = 2.0) =>
   apiFetch<{ success: boolean; places: NearbyPlace[] }>(
     `/api/v1/maps/nearby?category=${encodeURIComponent(category)}&lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`,
   ).then((r) => r.places);
+
+// Real customer-facing itunda cash-agent discovery (item 157, found via a fresh full
+// @RequestMapping sweep) -- AgentDiscoveryController's own real, itunda-native location
+// data (distinct from the OSM-backed category search above). Android already treats this
+// as its own "ITUNDA_AGENT" category on the exact same Maps category-chip row (see
+// MapsScreen.kt's own searchNearbyAgents call site) -- bank-mfe never had it. Mapped into
+// the same NearbyPlace shape so this map's existing marker/popup rendering needs zero
+// special-casing beyond choosing which fetch to call.
+export const fetchNearbyAgents = (lat: number, lng: number, radiusKm = 5.0) =>
+  apiFetch<{ success: boolean; agents: { id: string; displayName: string; latitude: number; longitude: number; distanceKm: number }[] }>(
+    `/api/v1/agents/nearby?latitude=${lat}&longitude=${lng}&radiusKm=${radiusKm}`,
+  ).then((r): NearbyPlace[] => r.agents.map((a) => ({ displayName: a.displayName, latitude: a.latitude, longitude: a.longitude, distanceKm: a.distanceKm })));
 
 // Real bookmarked/favorite places (2026-07-19) -- item 7 on the Maps "100%" roadmap, the
 // same star/save feature Naver/Kakao Maps offer. See MapsService's own doc comment.
