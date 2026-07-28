@@ -73,6 +73,47 @@ public struct OpenMiniWalletResponse: Decodable { public let success: Bool; publ
 public struct DepositMiniWalletRequest: Encodable { public let amount: Double }
 public struct DepositMiniWalletResponse: Decodable { public let success: Bool; public let id: String; public let amount: Double; public let completedAt: String }
 
+// Real Kakao Bank 모임통장 (group/shared account) equivalent -- mirrors
+// GroupAccount.kt/GroupAccountService.kt exactly.
+public struct GroupAccountDto: Decodable {
+    public let id: String
+    public let name: String
+    public let ownerId: String
+    public let walletId: String
+    public let monthlyDuesAmount: Double?
+    public let createdAt: String
+}
+public struct GroupAccountMemberDto: Decodable {
+    public let userId: String
+    public let firstName: String
+    public let lastName: String
+    public let isOwner: Bool
+    public let joinedAt: String
+}
+public struct CreateGroupAccountRequest: Encodable { public let name: String }
+public struct CreateGroupAccountResponse: Decodable { public let success: Bool; public let groupAccount: GroupAccountDto }
+public struct GroupAccountsResponse: Decodable { public let success: Bool; public let groupAccounts: [GroupAccountDto] }
+public struct GroupAccountDetailResponse: Decodable {
+    public let success: Bool
+    public let groupAccount: GroupAccountDto
+    public let balance: Double
+    public let members: [GroupAccountMemberDto]
+}
+public struct InviteMemberRequest: Encodable { public let phoneNumber: String }
+public struct InviteMemberResponse: Decodable { public let success: Bool; public let member: GroupAccountMemberDto }
+public struct GroupAccountAmountRequest: Encodable { public let amount: Double }
+public struct SetDuesAmountRequest: Encodable { public let amount: Double? }
+public struct GroupAccountDuesMemberDto: Decodable {
+    public let userId: String
+    public let firstName: String
+    public let lastName: String
+    public let contributedAmount: Double
+    public let paid: Bool
+}
+public struct GroupAccountDuesDto: Decodable { public let duesAmount: Double?; public let cycleMonth: String; public let members: [GroupAccountDuesMemberDto] }
+public struct GroupAccountDuesResponse: Decodable { public let success: Bool; public let dues: GroupAccountDuesDto }
+public struct RemindUnpaidDuesResponse: Decodable { public let success: Bool; public let remindedCount: Int }
+
 public struct AuthResponse: Decodable {
     public let message: String
     public let user: PublicUser
@@ -253,6 +294,62 @@ extension NetworkClient {
 
     public func depositMiniWallet(amount: Double) async throws -> DepositMiniWalletResponse {
         try await postMiniWallet("api/v1/wallet/mini/deposit", body: DepositMiniWalletRequest(amount: amount))
+    }
+
+    // Real Kakao Bank 모임통장 (group/shared account) equivalent -- first iOS client for
+    // this feature (item 105, found via a fresh matrix scan: zero client on either
+    // mobile platform despite being real on bank-mfe well before this session; Android
+    // ported the same day, item 104). Mirrors lib/groupAccounts.ts exactly.
+    public func createGroupAccount(name: String) async throws -> CreateGroupAccountResponse {
+        try await authenticatedPost("api/v1/group-accounts", body: CreateGroupAccountRequest(name: name))
+    }
+
+    public func getMyGroupAccounts() async throws -> GroupAccountsResponse { try await get("api/v1/group-accounts") }
+
+    public func getGroupAccount(id: String) async throws -> GroupAccountDetailResponse {
+        try await get("api/v1/group-accounts/\(id)")
+    }
+
+    public func inviteGroupAccountMember(id: String, phoneNumber: String) async throws -> InviteMemberResponse {
+        try await authenticatedPost("api/v1/group-accounts/\(id)/members", body: InviteMemberRequest(phoneNumber: phoneNumber))
+    }
+
+    public func depositToGroupAccount(id: String, amount: Double) async throws -> GroupAccountDetailResponse {
+        try await authenticatedPost(
+            "api/v1/group-accounts/\(id)/deposit", body: GroupAccountAmountRequest(amount: amount), idempotencyKey: UUID().uuidString
+        )
+    }
+
+    public func withdrawFromGroupAccount(id: String, amount: Double) async throws -> GroupAccountDetailResponse {
+        try await authenticatedPost(
+            "api/v1/group-accounts/\(id)/withdraw", body: GroupAccountAmountRequest(amount: amount), idempotencyKey: UUID().uuidString
+        )
+    }
+
+    public func setGroupAccountDuesAmount(id: String, amount: Double?) async throws -> CreateGroupAccountResponse {
+        try await authenticatedPut("api/v1/group-accounts/\(id)/dues", body: SetDuesAmountRequest(amount: amount))
+    }
+
+    public func getGroupAccountDues(id: String) async throws -> GroupAccountDuesResponse {
+        try await get("api/v1/group-accounts/\(id)/dues")
+    }
+
+    public func requestUnpaidGroupAccountDues(id: String) async throws -> RemindUnpaidDuesResponse {
+        try await authenticatedPost("api/v1/group-accounts/\(id)/dues/remind", body: EmptyBody())
+    }
+
+    private func authenticatedPut<Body: Encodable, Response: Decodable>(_ path: String, body: Body) async throws -> Response {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = KeychainTokenStore.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.httpBody = try encoder.encode(body)
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(httpResponse.statusCode) else { throw NetworkError.httpError(statusCode: httpResponse.statusCode) }
+        return try decoder.decode(Response.self, from: data)
     }
 
     private func postMiniWallet<Body: Encodable, Response: Decodable>(_ path: String, body: Body) async throws -> Response {
