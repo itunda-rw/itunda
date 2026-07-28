@@ -40,6 +40,7 @@ import {
   fetchEmoticonImageMap, fetchEmoticonPacks, fetchOwnedEmoticonPacks, fetchPackEmoticons, giftEmoticonPack, purchaseEmoticonPack, sendEmoticon,
   type Emoticon, type EmoticonPack, type OwnedEmoticonPack,
 } from './lib/emoticons';
+import { fetchGiftVouchersForConversation, purchaseGiftVoucher, type GiftVoucher, type GiftVoucherStatus } from './lib/giftVouchers';
 import { createSplitBill, fetchSplitBillsForGroup, paySplitBillShare, type SplitBillWithParticipants } from './lib/splitBill';
 import {
   addKeywordAlert, addListingFavorite, contactSeller, createListing, fetchKeywordAlertQuietHours, fetchKeywordAlerts, fetchListings,
@@ -3014,6 +3015,35 @@ function GiftBubble({
   );
 }
 
+// Real KakaoTalk-style 기프티콘 gift voucher bubble (item 134) -- see
+// lib/giftVouchers.ts's own doc comment. Redemption is merchant-side only
+// (GiftVoucherService.redeemVoucher's own doc comment: a customer presents the
+// voucher in person for the merchant to validate, never a self-serve recipient
+// redeem), so this bubble is status-only -- no claim action, unlike GiftBubble.
+function GiftVoucherBubble({ voucher, isMine }: { voucher: GiftVoucher; isMine: boolean }) {
+  const statusLabel: Record<GiftVoucherStatus, string> = {
+    ACTIVE: 'Present this at the store to redeem',
+    REDEEMED: 'Redeemed',
+    EXPIRED: 'Expired',
+  };
+  return (
+    <div
+      style={{
+        maxWidth: '75%', padding: '14px 16px', borderRadius: '16px', fontSize: '14px',
+        backgroundColor: isMine ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+        color: isMine ? 'var(--toss-white)' : 'var(--toss-grey-900)',
+        display: 'flex', flexDirection: 'column', gap: '6px',
+      }}
+    >
+      <p style={{ fontWeight: 700, fontSize: '15px' }}>🎟️ {voucher.productNameSnapshot ?? `${voucher.amount.toLocaleString()} RWF voucher`}</p>
+      <p style={{ fontSize: '12px', opacity: 0.8 }}>{statusLabel[voucher.status]}</p>
+      {voucher.status === 'ACTIVE' && (
+        <p style={{ fontSize: '11px', opacity: 0.7 }}>Expires {new Date(voucher.expiresAt).toLocaleDateString()}</p>
+      )}
+    </div>
+  );
+}
+
 // Real KakaoTalk Emoticon Store (item 133) -- a real sticker message renders as just
 // the image, no chat-bubble background, matching real KakaoTalk's own emoticon
 // rendering (a bubble would look wrong behind a sticker that already has its own
@@ -3227,10 +3257,128 @@ function EmoticonStoreModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+// Real gift-voucher composer -- search for a real product to gift (same real Kakao
+// gifticon UX of searching for what to send, e.g. "스타벅스 아메리카노", rather than
+// browsing a merchant catalog first), pick one, confirm with the recipient's phone
+// number. Product-only v1 (see lib/giftVouchers.ts's own doc comment) -- the flat-
+// cash-amount-at-a-merchant path is a real, deliberately deferred follow-up.
+function GiftVoucherComposerPanel({
+  onSent, onCancel,
+}: {
+  onSent: () => void;
+  onCancel: () => void;
+}) {
+  const [phone, setPhone] = useState('');
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<ProductSearchResult[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [selected, setSelected] = useState<ProductSearchResult | null>(null);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const search = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (query.trim().length < 2) return;
+    setSearching(true);
+    setError(null);
+    try {
+      setResults(await searchProducts(query.trim()));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not search products.');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const send = async () => {
+    if (!selected || !phone.trim()) return;
+    setSending(true);
+    setError(null);
+    try {
+      await purchaseGiftVoucher(phone.trim(), selected.merchantId, selected.id);
+      onSent();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send this gift voucher.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', borderRadius: '12px', border: '1px solid var(--toss-grey-200)', marginBottom: '10px' }}>
+      <p style={{ fontSize: '13px', fontWeight: 700 }}>🎟️ Send a gift voucher</p>
+      <input
+        type="tel"
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+        placeholder="Recipient phone number"
+        style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      />
+      {selected ? (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: 'var(--toss-grey-100)', borderRadius: '8px' }}>
+          <span style={{ fontSize: '13px' }}>{selected.name} · {selected.merchantName} · {selected.price.toLocaleString()} RWF</span>
+          <button type="button" onClick={() => setSelected(null)} style={{ border: 'none', background: 'none', fontSize: '12px', color: 'var(--toss-blue)' }}>Change</button>
+        </div>
+      ) : (
+        <>
+          <form onSubmit={search} style={{ display: 'flex', gap: '8px' }}>
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search a product to gift"
+              style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            />
+            <button type="submit" className="toss-btn toss-btn-secondary" disabled={searching || query.trim().length < 2} style={{ padding: '10px 14px', fontSize: '13px' }}>
+              {searching ? '…' : 'Search'}
+            </button>
+          </form>
+          {results !== null && (
+            results.length === 0 ? (
+              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No products found.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '160px', overflowY: 'auto' }}>
+                {results.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setSelected(p)}
+                    style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', background: 'none', fontSize: '13px', textAlign: 'left' }}
+                  >
+                    <span>{p.name} · {p.merchantName}</span>
+                    <span>{p.price.toLocaleString()} RWF</span>
+                  </button>
+                ))}
+              </div>
+            )
+          )}
+        </>
+      )}
+      {error && <p style={{ fontSize: '12px', color: '#E53935', margin: 0 }} role="alert">{error}</p>}
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button
+          type="button"
+          className="toss-btn toss-btn-primary"
+          disabled={!selected || !phone.trim() || sending}
+          onClick={send}
+          style={{ flex: 1, padding: '10px' }}
+        >
+          {sending ? '…' : 'Send gift voucher'}
+        </button>
+        <button type="button" className="toss-btn toss-btn-secondary" style={{ padding: '10px 16px' }} onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ConversationThread({ conversation, onBack }: { conversation: ConversationSummary; onBack: () => void }) {
   const [messages, setMessages] = useState<Message[] | null>(null);
   const [offersByMessageId, setOffersByMessageId] = useState<Record<string, OfferBubbleData>>({});
   const [giftsByMessageId, setGiftsByMessageId] = useState<Record<string, Gift>>({});
+  const [vouchersByMessageId, setVouchersByMessageId] = useState<Record<string, GiftVoucher>>({});
+  const [voucherComposerOpen, setVoucherComposerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
@@ -3301,12 +3449,19 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
       .catch(() => {});
   };
 
+  const loadVouchers = () => {
+    fetchGiftVouchersForConversation(conversation.conversationId)
+      .then((vouchers) => setVouchersByMessageId(Object.fromEntries(vouchers.map((v) => [v.messageId, v]))))
+      .catch(() => {});
+  };
+
   const load = () => {
     fetchMessages(conversation.conversationId)
       .then(setMessages)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this conversation.'));
     loadOffers();
     loadGifts();
+    loadVouchers();
   };
 
   const handleBlock = async () => {
@@ -3598,6 +3753,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
           const isMine = m.senderId === currentUser?.id;
           const offer = offersByMessageId[m.id];
           const gift = giftsByMessageId[m.id];
+          const voucher = vouchersByMessageId[m.id];
           return (
             <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
               {/* Real message forwarding (2026-07-25) -- a genuine provenance label,
@@ -3608,6 +3764,8 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
               )}
               {gift ? (
                 <GiftBubble gift={gift} isMine={isMine} currentUserId={currentUser?.id} onClaim={handleClaimGift} />
+              ) : voucher ? (
+                <GiftVoucherBubble voucher={voucher} isMine={isMine} />
               ) : offer ? (
                 <OfferBubble offer={offer} isMine={isMine} currentUserId={currentUser?.id} onRespond={handleRespondToOffer} />
               ) : m.emoticonId ? (
@@ -3717,6 +3875,12 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
         <EmoticonPickerPanel onSend={handleSendEmoticon} onOpenStore={() => setEmoticonStoreOpen(true)} />
       )}
       {emoticonStoreOpen && <EmoticonStoreModal onClose={() => setEmoticonStoreOpen(false)} />}
+      {voucherComposerOpen && (
+        <GiftVoucherComposerPanel
+          onSent={() => { setVoucherComposerOpen(false); load(); }}
+          onCancel={() => setVoucherComposerOpen(false)}
+        />
+      )}
 
       {replyingTo && <div style={{ fontSize: '12px', color: 'var(--toss-grey-600)', padding: '8px', borderLeft: '3px solid var(--toss-blue)', marginBottom: '6px' }}>Replying to: {replyingTo.body.slice(0, 80)} <button type="button" onClick={() => setReplyingTo(null)}>×</button></div>}
       <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px' }}>
@@ -3727,6 +3891,14 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
           style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '18px' }}
         >
           🎁
+        </button>
+        <button
+          type="button"
+          aria-label="Send a gift voucher"
+          onClick={() => setVoucherComposerOpen((v) => !v)}
+          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '18px' }}
+        >
+          🎟️
         </button>
         <button
           type="button"
