@@ -115,7 +115,7 @@ private func writeStyleFile() -> URL {
 private let mapCategoryIcons: [String: String] = [
     "RESTAURANT": "🍽️", "CAFE": "☕", "HOSPITAL": "🏥", "PHARMACY": "💊",
     "BANK": "🏦", "ATM": "🏧", "HOTEL": "🏨", "SUPERMARKET": "🛒",
-    "GAS_STATION": "⛽", "SCHOOL": "🏫",
+    "GAS_STATION": "⛽", "SCHOOL": "🏫", "ITUNDA_AGENT": "💰",
 ]
 
 /// Real, minimal handle onto the live `MLNMapView` (2026-07-21) -- SwiftUI's
@@ -1004,7 +1004,15 @@ struct MapScreenView: View {
         error = nil
         defer { categoryLoading = false }
         do {
-            categoryResults = try await NetworkClient.shared.searchNearbyPlaces(category: categoryId, lat: center.latitude, lng: center.longitude).places
+            // Real itunda cash-agent discovery (item 158) -- distinct dedicated
+            // endpoint, same real special-case Android's own MapsScreen.kt and
+            // bank-mfe's MapView.tsx (item 157) already established for this category.
+            if categoryId == "ITUNDA_AGENT" {
+                let agents = try await NetworkClient.shared.searchNearbyAgents(lat: center.latitude, lng: center.longitude).agents
+                categoryResults = agents.map { NearbyPlaceDto(displayName: $0.displayName, latitude: $0.latitude, longitude: $0.longitude, distanceKm: $0.distanceKm) }
+            } else {
+                categoryResults = try await NetworkClient.shared.searchNearbyPlaces(category: categoryId, lat: center.latitude, lng: center.longitude).places
+            }
         } catch {
             self.error = "Could not search nearby places."
             activeCategory = nil

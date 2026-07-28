@@ -1469,8 +1469,22 @@ public struct DealsResponse: Decodable { public let success: Bool; public let pr
 // Real "nearby places" category search + bookmarked/favorite places (2026-07-19) -- see
 // rw.itunda.maps.MapsService's own doc comment on the backend. `mapNearbyCategories`
 // mirrors bank-mfe's own hardcoded `NEARBY_CATEGORIES` list exactly.
-public struct NearbyPlaceDto: Decodable { public let displayName: String; public let latitude: Double; public let longitude: Double; public let distanceKm: Double }
+public struct NearbyPlaceDto: Decodable {
+    public let displayName: String; public let latitude: Double; public let longitude: Double; public let distanceKm: Double
+    public init(displayName: String, latitude: Double, longitude: Double, distanceKm: Double) {
+        self.displayName = displayName; self.latitude = latitude; self.longitude = longitude; self.distanceKm = distanceKm
+    }
+}
 public struct MapNearbyResponse: Decodable { public let success: Bool; public let places: [NearbyPlaceDto] }
+
+// Real customer-facing itunda cash-agent discovery (item 158) -- see
+// AgentDiscoveryController.kt on the backend. Distinct from the OSM-backed category
+// search above; Android already treats this as its own "ITUNDA_AGENT" category chip on
+// the same Maps row (MapsScreen.kt's searchNearbyAgents), bank-mfe got it in item 157 --
+// this is the iOS port, mapped into the same NearbyPlaceDto shape so this screen's
+// existing marker/popup rendering needs zero special-casing beyond which fetch to call.
+public struct NearbyAgentDto: Decodable { public let id: String; public let displayName: String; public let latitude: Double; public let longitude: Double; public let distanceKm: Double }
+public struct NearbyAgentsResponse: Decodable { public let success: Bool; public let agents: [NearbyAgentDto] }
 // folderName/color added 2026-07-22 -- see MapBookmark.kt's own doc comment on the
 // backend (migration V73). Every bookmark belongs to exactly one named folder with its
 // own pin color; a bookmark saved before this existed defaults into "Saved places" /
@@ -1495,6 +1509,7 @@ public let mapNearbyCategories: [MapPlaceCategory] = [
     MapPlaceCategory(id: "SUPERMARKET", label: "Supermarkets"),
     MapPlaceCategory(id: "GAS_STATION", label: "Gas stations"),
     MapPlaceCategory(id: "SCHOOL", label: "Schools"),
+    MapPlaceCategory(id: "ITUNDA_AGENT", label: "Cash agents"),
 ]
 
 // imageUrl/originalPrice/discountPercent added 2026-07-21, closing
@@ -2367,6 +2382,14 @@ extension NetworkClient {
             URLQueryItem(name: "category", value: category),
             URLQueryItem(name: "lat", value: String(lat)),
             URLQueryItem(name: "lng", value: String(lng)),
+            URLQueryItem(name: "radiusKm", value: String(radiusKm)),
+        ])
+    }
+
+    public func searchNearbyAgents(lat: Double, lng: Double, radiusKm: Double = 5.0) async throws -> NearbyAgentsResponse {
+        try await get("api/v1/agents/nearby", query: [
+            URLQueryItem(name: "latitude", value: String(lat)),
+            URLQueryItem(name: "longitude", value: String(lng)),
             URLQueryItem(name: "radiusKm", value: String(radiusKm)),
         ])
     }
