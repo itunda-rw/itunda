@@ -137,7 +137,7 @@ struct OverviewScreenView: View {
     }
 }
 
-private enum LoansMode: String, CaseIterable { case offers = "Offers", myLoans = "My loans" }
+private enum LoansMode: String, CaseIterable { case offers = "Offers", myLoans = "My loans", overdraft = "Overdraft" }
 
 struct LoansScreenView: View {
     var onBack: () -> Void = {}
@@ -194,7 +194,7 @@ struct LoansScreenView: View {
                             if offers.isEmpty { Text("No offers from this lender right now.").font(.caption).foregroundColor(IDS.Colors.textSecondary) }
                             ForEach(offers) { offer in LoanOfferCard(offer: offer, busy: busyId == offer.id, onApply: { amount in Task { await apply(offer, amount) } }) }
                         } else { ProgressView() }
-                    } else {
+                    } else if mode == .myLoans {
                         if let myLoans {
                             if myLoans.isEmpty { Text("You have no loans yet.").font(.caption).foregroundColor(IDS.Colors.textSecondary) }
                             ForEach(myLoans) { loan in
@@ -220,6 +220,8 @@ struct LoansScreenView: View {
                                 .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
                             }
                         } else { ProgressView() }
+                    } else {
+                        OverdraftPanel()
                     }
                 }
                 .padding(IDS.Layout.screenHorizontal)
@@ -318,6 +320,105 @@ private struct LoanOfferCard: View {
             .disabled(busy)
         }
         .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+    }
+}
+
+// Real Toss Bank/KakaoBank 마이너스통장 (overdraft/revolving line-of-credit) -- see
+// backend OverdraftAccount.kt's own doc comment. Found 2026-07-29 via a full-backend-
+// endpoint sweep: zero client anywhere on any of the 3 platforms before this.
+private struct OverdraftPanel: View {
+    @State private var account: OverdraftAccountDto?
+    @State private var loaded = false
+    @State private var requestedLimit = "100000"
+    @State private var drawAmount = ""
+    @State private var repayAmount = ""
+    @State private var busy = false
+    @State private var error: String?
+    @State private var notice: String?
+
+    var body: some View {
+        Group {
+            if !loaded {
+                ProgressView()
+            } else if let account {
+                let availableCredit = account.creditLimit - account.drawnBalance
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Overdraft line").bold()
+                    Text("Drawn: \(Int(account.drawnBalance)) RWF of \(Int(account.creditLimit)) RWF").font(.subheadline)
+                    Text("Available to draw: \(Int(availableCredit)) RWF · \(account.interestRate, specifier: "%.1f")% annual, interest only on what's drawn")
+                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    if let notice { Text(notice).font(.caption).foregroundColor(IDS.Colors.brand) }
+                    if let error { Text(error).font(.caption).foregroundColor(.red) }
+                    TextField("Draw amount (RWF)", text: $drawAmount).keyboardType(.numberPad).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8)
+                    Button(action: { Task { await draw() } }) {
+                        Text(busy ? "Drawing…" : "Draw").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(10).background(IDS.Colors.brand).cornerRadius(8)
+                    }
+                    .disabled(busy)
+                    TextField("Repay amount (RWF)", text: $repayAmount).keyboardType(.numberPad).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8)
+                    Button(action: { Task { await repay() } }) {
+                        Text(busy ? "Repaying…" : "Repay").bold().frame(maxWidth: .infinity).padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
+                    }
+                    .disabled(busy || account.drawnBalance <= 0)
+                }
+                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Open an overdraft line").bold()
+                    Text("A pre-approved credit limit you can draw from anytime -- pay interest only on what you actually use, up to 500,000 RWF.")
+                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    if let error { Text(error).font(.caption).foregroundColor(.red) }
+                    TextField("Requested limit (RWF)", text: $requestedLimit).keyboardType(.numberPad).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8)
+                    Button(action: { Task { await open() } }) {
+                        Text(busy ? "Opening…" : "Open overdraft").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(10).background(IDS.Colors.brand).cornerRadius(8)
+                    }
+                    .disabled(busy)
+                }
+                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+            }
+        }
+        .task {
+            do { account = try await NetworkClient.shared.getMyOverdraft().account } catch { self.error = "Could not load your overdraft account." }
+            loaded = true
+        }
+    }
+
+    private func open() async {
+        guard let limit = Double(requestedLimit), limit > 0 else { error = "Enter a valid credit limit."; return }
+        busy = true; error = nil
+        defer { busy = false }
+        do {
+            account = try await NetworkClient.shared.openOverdraft(requestedLimit: limit).account
+        } catch {
+            self.error = "Could not open an overdraft account."
+        }
+    }
+
+    private func draw() async {
+        guard let amount = Double(drawAmount), amount > 0 else { error = "Enter a valid amount to draw."; return }
+        busy = true; error = nil; notice = nil
+        defer { busy = false }
+        do {
+            let res = try await NetworkClient.shared.drawOverdraft(amount: amount)
+            if var current = account { current = OverdraftAccountDto(id: current.id, userId: current.userId, walletId: current.walletId, creditLimit: current.creditLimit, drawnBalance: res.drawnBalance, interestRate: current.interestRate, status: current.status); account = current }
+            drawAmount = ""
+            notice = "Drew \(Int(res.amount)) RWF — \(Int(res.availableCredit)) RWF still available."
+        } catch {
+            self.error = "Could not draw from your overdraft."
+        }
+    }
+
+    private func repay() async {
+        guard let amount = Double(repayAmount), amount > 0 else { error = "Enter a valid repayment amount."; return }
+        busy = true; error = nil; notice = nil
+        defer { busy = false }
+        do {
+            let res = try await NetworkClient.shared.repayOverdraft(amount: amount)
+            if var current = account { current = OverdraftAccountDto(id: current.id, userId: current.userId, walletId: current.walletId, creditLimit: current.creditLimit, drawnBalance: res.drawnBalance, interestRate: current.interestRate, status: current.status); account = current }
+            repayAmount = ""
+            notice = "Repaid \(Int(res.amount)) RWF — \(Int(res.availableCredit)) RWF now available."
+        } catch {
+            self.error = "Could not repay your overdraft."
+        }
     }
 }
 

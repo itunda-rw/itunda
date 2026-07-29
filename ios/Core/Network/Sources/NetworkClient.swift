@@ -3087,6 +3087,52 @@ public struct RefinanceResult: Decodable {
     public let creditScore: Int
 }
 
+// Real Toss Bank/KakaoBank 마이너스통장 (overdraft/revolving line-of-credit) -- see
+// backend OverdraftAccount.kt's own doc comment. Found 2026-07-29 via a full-backend-
+// endpoint sweep: real, live-verified backend (open/draw/repay, real daily interest
+// accrual, real security-alert push) with zero client anywhere on any of the 3
+// platforms.
+public struct OverdraftAccountDto: Decodable {
+    public let id: String
+    public let userId: String
+    public let walletId: String
+    public let creditLimit: Double
+    public let drawnBalance: Double
+    public let interestRate: Double
+    public let status: String
+
+    // Explicit memberwise init -- Swift doesn't synthesize a public one across module
+    // boundaries, needed so App-side code can construct an updated copy after a
+    // draw/repay response.
+    public init(id: String, userId: String, walletId: String, creditLimit: Double, drawnBalance: Double, interestRate: Double, status: String) {
+        self.id = id
+        self.userId = userId
+        self.walletId = walletId
+        self.creditLimit = creditLimit
+        self.drawnBalance = drawnBalance
+        self.interestRate = interestRate
+        self.status = status
+    }
+}
+public struct OverdraftAccountResponse: Decodable { public let success: Bool; public let account: OverdraftAccountDto? }
+public struct OpenOverdraftRequest: Encodable { public let requestedLimit: Double }
+public struct OverdraftAmountRequest: Encodable { public let amount: Double }
+public struct OverdraftDrawResponse: Decodable {
+    public let success: Bool
+    public let transactionId: String
+    public let amount: Double
+    public let drawnBalance: Double
+    public let availableCredit: Double
+}
+public struct OverdraftRepayResponse: Decodable {
+    public let success: Bool
+    public let transactionId: String
+    public let amount: Double
+    public let drawnBalance: Double
+    public let availableCredit: Double
+    public let newBalance: Double
+}
+
 public struct CreditScoreFactorDto: Decodable, Identifiable { public let name: String; public let points: Int; public let description: String; public var id: String { name } }
 public struct CreditScoreResponse: Decodable { public let success: Bool; public let score: Int; public let factors: [CreditScoreFactorDto]; public let computedAt: String }
 
@@ -3184,6 +3230,20 @@ extension NetworkClient {
 
     public func refinanceLoan(loanId: String) async throws -> RefinanceResult {
         try await authenticatedPost("api/v1/loans/refinance", body: RefinanceLoanRequest(loanId: loanId), idempotencyKey: UUID().uuidString)
+    }
+
+    public func getMyOverdraft() async throws -> OverdraftAccountResponse { try await get("api/v1/loans/overdraft") }
+
+    public func openOverdraft(requestedLimit: Double) async throws -> OverdraftAccountResponse {
+        try await authenticatedPost("api/v1/loans/overdraft/open", body: OpenOverdraftRequest(requestedLimit: requestedLimit), idempotencyKey: UUID().uuidString)
+    }
+
+    public func drawOverdraft(amount: Double) async throws -> OverdraftDrawResponse {
+        try await authenticatedPost("api/v1/loans/overdraft/draw", body: OverdraftAmountRequest(amount: amount), idempotencyKey: UUID().uuidString)
+    }
+
+    public func repayOverdraft(amount: Double) async throws -> OverdraftRepayResponse {
+        try await authenticatedPost("api/v1/loans/overdraft/repay", body: OverdraftAmountRequest(amount: amount), idempotencyKey: UUID().uuidString)
     }
 
     public func getCreditScore() async throws -> CreditScoreResponse { try await get("api/v1/credit-score") }
