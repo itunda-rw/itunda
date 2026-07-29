@@ -1064,8 +1064,14 @@ private struct ChatThreadScreen: View {
                     }
                 }
                 Spacer()
-                Button(isBlocked ? "Blocked" : (blocking ? "Blocking…" : "Block")) { showingBlockConfirmation = true }
-                    .disabled(isBlocked || blocking)
+                Button(blocking ? "…" : (isBlocked ? "Unblock" : "Block")) {
+                    if isBlocked {
+                        Task { await unblockParticipant() }
+                    } else {
+                        showingBlockConfirmation = true
+                    }
+                }
+                    .disabled(blocking)
                     .foregroundColor(.red)
                 Button(updatingQuiet ? "…" : (quiet ? "Resume alerts" : "Quiet room")) { Task { await setQuietRoom() } }
                     .disabled(updatingQuiet)
@@ -1508,6 +1514,23 @@ private struct ChatThreadScreen: View {
             error = "\(conversation.otherUserName) is blocked."
         } catch {
             self.error = "Couldn't block this person. Check your connection and try again."
+        }
+    }
+
+    // Real unblock (item 197) -- found via a defined-but-uncalled-method sweep on
+    // NetworkClient.swift: unblockConversationParticipant existed with zero call sites,
+    // matching bank-mfe's own gap before item 193 closed it there. blockParticipant's
+    // own confirmation copy already promises "You can unblock them later from this
+    // conversation" (see the Block confirmation alert below).
+    private func unblockParticipant() async {
+        blocking = true
+        defer { blocking = false }
+        do {
+            _ = try await NetworkClient.shared.unblockConversationParticipant(conversationId: conversation.conversationId)
+            isBlocked = false
+            error = "You unblocked \(conversation.otherUserName)."
+        } catch {
+            self.error = "Couldn't unblock this person. Check your connection and try again."
         }
     }
 

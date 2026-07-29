@@ -1265,8 +1265,23 @@ private fun ChatThreadView(
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
         BackTopBar(conversation.otherUserName, onBack)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = { blockConfirmationOpen = true }, enabled = !blocking && !isBlocked) {
-                Text(if (isBlocked) "Blocked" else if (blocking) "Blocking…" else "Block", color = Ids.colors.danger)
+            TextButton(
+                onClick = {
+                    if (isBlocked) {
+                        blocking = true
+                        coroutineScope.launch {
+                            try { NetworkClient.apiService.unblockConversationParticipant(conversation.conversationId); isBlocked = false; error = "You unblocked ${conversation.otherUserName}." }
+                            catch (e: HttpException) { error = superAppErrorMessage(e) }
+                            catch (_: IOException) { error = "Couldn't reach itunda. Check your connection and try again." }
+                            finally { blocking = false }
+                        }
+                    } else {
+                        blockConfirmationOpen = true
+                    }
+                },
+                enabled = !blocking,
+            ) {
+                Text(if (blocking) "…" else if (isBlocked) "Unblock" else "Block", color = Ids.colors.danger)
             }
             TextButton(onClick = {
                 updatingQuiet = true
