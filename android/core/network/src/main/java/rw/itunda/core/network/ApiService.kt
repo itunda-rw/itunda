@@ -1179,6 +1179,9 @@ data class EatsOrderItemDto(
 data class EatsOrderDetailResponse(val success: Boolean, val order: EatsOrderDto, val items: List<EatsOrderItemDto>)
 data class EatsOrdersResponse(val success: Boolean, val orders: List<EatsOrderDto>)
 
+data class RiderLocationDto(val latitude: Double, val longitude: Double, val updatedAt: String)
+data class EatsRiderLocationResponse(val success: Boolean, val available: Boolean, val location: RiderLocationDto?)
+
 // Real 배민오더-style table/QR in-store ordering (2026-07-25) -- see
 // rw.itunda.eats.web.DineInOrderController. No delivery address/rider fields at all;
 // totalAmount == itemsSubtotal since there's no delivery fee to add.
@@ -2254,6 +2257,14 @@ interface ApiService {
 
     @POST("api/v1/eats/orders/{id}/rider-status")
     suspend fun updateRiderOrderStatus(@Path("id") orderId: String, @Body request: UpdateEatsOrderStatusRequest): EatsOrderDetailResponse
+
+    // Real live rider-location tracking (2026-07-19 backend, first mobile client 2026-07-29,
+    // item 182) -- "the defining 'watch your order arrive' moment," see EatsOrderService.
+    // getRiderLocation's own doc comment. bank-mfe has had this since 2026-07-20
+    // (LiveRiderMap.tsx); Android/iOS main apps never did. `available: false` (not an
+    // error) is the real, honest response whenever there's genuinely nothing to show yet.
+    @GET("api/v1/eats/orders/{orderId}/rider-location")
+    suspend fun getEatsRiderLocation(@Path("orderId") orderId: String): EatsRiderLocationResponse
 
     @POST("api/v1/eats/riders/register")
     suspend fun registerRider(): RiderResponse

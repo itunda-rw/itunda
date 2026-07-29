@@ -65,6 +65,7 @@ import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.ListingActionButton
+import rw.itunda.core.designsystem.components.LiveRiderMiniMap
 import rw.itunda.core.designsystem.components.QtyButton
 import rw.itunda.core.designsystem.components.RouteMiniMap
 import rw.itunda.core.designsystem.components.SearchAndCategoryChips
@@ -1180,11 +1181,15 @@ private fun EatsOrderRow(
     action: (@Composable () -> Unit)? = null,
 ) {
     var showRoute by remember { mutableStateOf(false) }
+    var showLiveTracking by remember { mutableStateOf(false) }
     val restaurantLat = restaurant?.latitude
     val restaurantLng = restaurant?.longitude
     val deliveryLat = order.deliveryLatitude
     val deliveryLng = order.deliveryLongitude
     val canShowRoute = restaurantLat != null && restaurantLng != null && deliveryLat != null && deliveryLng != null
+    // Real live rider-location tracking (item 182) -- only while a rider is actually
+    // en route, same gating as bank-mfe's own canShowLiveTracking.
+    val canShowLiveTracking = canShowRoute && (order.status == "RIDER_ASSIGNED" || order.status == "PICKED_UP")
     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
@@ -1206,12 +1211,21 @@ private fun EatsOrderRow(
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                 )
             }
+            if (canShowLiveTracking) {
+                ListingActionButton(if (showLiveTracking) "Hide live tracking" else "🛵 Track your rider live", false) {
+                    showLiveTracking = !showLiveTracking
+                    showRoute = false
+                }
+            }
+            if (showLiveTracking && restaurant != null && restaurantLat != null && restaurantLng != null && deliveryLat != null && deliveryLng != null) {
+                LiveRiderMiniMap(order.id, restaurantLat, restaurantLng, deliveryLat, deliveryLng, restaurant.businessName, "Delivery address")
+            }
             // Real "view delivery route" (2026-07-19, item 8 on the Maps "100%" roadmap)
             // -- reuses itunda's own self-hosted OSRM directions.
-            if (canShowRoute) {
+            if (canShowRoute && !showLiveTracking) {
                 ListingActionButton(if (showRoute) "Hide route" else "🚗 View real delivery route", false) { showRoute = !showRoute }
             }
-            if (showRoute && restaurant != null && restaurantLat != null && restaurantLng != null && deliveryLat != null && deliveryLng != null) {
+            if (showRoute && !showLiveTracking && restaurant != null && restaurantLat != null && restaurantLng != null && deliveryLat != null && deliveryLng != null) {
                 RouteMiniMap(restaurantLat, restaurantLng, deliveryLat, deliveryLng, restaurant.businessName, "Delivery address")
             }
             action?.invoke()
