@@ -1325,6 +1325,16 @@ private fun ChatThreadView(
                         gift = giftsByMessageId[m.id],
                         voucher = vouchersByMessageId[m.id],
                         emoticonImageUrl = m.emoticonId?.let(emoticonImageById::get),
+                        onExtendVoucher = { voucherId ->
+                            coroutineScope.launch {
+                                try {
+                                    NetworkClient.apiService.extendGiftVoucherExpiry(voucherId)
+                                    loadVouchers()
+                                } catch (_: Exception) {
+                                    error = "Couldn't extend this voucher. Try again."
+                                }
+                            }
+                        },
                         onReply = { replyingTo = it },
                         onDelete = { messageId -> coroutineScope.launch {
                             try { NetworkClient.apiService.deleteMessage(conversation.conversationId, messageId); refresh() }
@@ -1770,16 +1780,26 @@ private fun GiftBubble(gift: GiftDto, isMine: Boolean, currentUserId: String?, o
 
 // Real KakaoTalk-style 기프티콘 gift voucher bubble (item 137) -- see
 // GiftVoucherComposerPanel's own doc comment. Redemption is merchant-side only
-// (GiftVoucherService.redeemVoucher's own doc comment), so this bubble is
-// status-only -- no claim action, unlike GiftBubble.
+// (GiftVoucherService.redeemVoucher's own doc comment), so this bubble is mostly
+// status-only. Real one-time "extend expiry" action added item 194 (found via a
+// defined-but-uncalled-method sweep: extendGiftVoucherExpiry existed on all 3
+// platforms' network layers, wired on bank-mfe since 2026-07-27, never called here) --
+// only offered once (voucher.extended), and only within a real 30-day window of the
+// current expiry, matching bank-mfe's own GIFT_VOUCHER_EXTENSION_WINDOW_MS exactly.
 @Composable
-private fun GiftVoucherBubble(voucher: GiftVoucherDto, isMine: Boolean) {
+private fun GiftVoucherBubble(voucher: GiftVoucherDto, isMine: Boolean, onExtend: () -> Unit = {}) {
     val statusLabel = when (voucher.status) {
         "ACTIVE" -> "Present this at the store to redeem"
         "REDEEMED" -> "Redeemed"
         "EXPIRED" -> "Expired"
         else -> voucher.status
     }
+    val withinExtensionWindow = try {
+        java.time.Instant.parse(voucher.expiresAt).toEpochMilli() - System.currentTimeMillis() <= 30L * 24 * 60 * 60 * 1000
+    } catch (_: Exception) {
+        false
+    }
+    val canExtend = voucher.status == "ACTIVE" && !voucher.extended && withinExtensionWindow
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
@@ -1799,6 +1819,15 @@ private fun GiftVoucherBubble(voucher: GiftVoucherDto, isMine: Boolean) {
                     "Expires ${voucher.expiresAt.take(10)}",
                     color = if (isMine) Color.White.copy(alpha = 0.7f) else Ids.colors.textTertiary,
                     fontSize = 11.sp,
+                )
+            }
+            if (canExtend) {
+                Text(
+                    "Extend expiry",
+                    color = if (isMine) Color.White else Ids.colors.brand,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    modifier = Modifier.clickable(onClick = onExtend),
                 )
             }
         }
@@ -2121,6 +2150,7 @@ private fun MessageBubble(
     voucher: GiftVoucherDto? = null,
     emoticonImageUrl: String? = null,
     onToggleReaction: (String) -> Unit, onRespondToOffer: (String, String, Double?) -> Unit, onClaimGift: (String) -> Unit,
+    onExtendVoucher: (String) -> Unit = {},
     onReply: (MessageDto) -> Unit = {},
     onDelete: (String) -> Unit = {},
     onPin: (MessageDto) -> Unit = {},
@@ -2133,7 +2163,7 @@ private fun MessageBubble(
             if (gift != null) {
                 GiftBubble(gift, isMine, currentUserId, onClaimGift)
             } else if (voucher != null) {
-                GiftVoucherBubble(voucher, isMine)
+                GiftVoucherBubble(voucher, isMine, onExtend = { onExtendVoucher(voucher.id) })
             } else if (offer != null) {
                 OfferBubble(offer, isMine, currentUserId, onRespondToOffer)
             } else if (message.emoticonId != null) {
