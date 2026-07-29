@@ -91,7 +91,31 @@ private struct CommerceShopContent: View {
     // comment.
     @State private var deals: [DealProductDto]?
 
+    // Real cross-merchant product search (item 191) -- closes
+    // docs/DESIGN_REFERENCES.md Section 5 recommendation #1: bank-mfe has had "search
+    // across every merchant" since 2026-07-20 (lib/shopping.ts's own doc comment), and
+    // Android got its own port the same session (item 190), but iOS's Shop tab never
+    // called this real, pre-existing endpoint at all. Opening a result constructs a
+    // minimal ShoppingMerchantDto from the search row (merchantId/businessName only),
+    // matching bank-mfe/Android's own openSearchResult shortcut rather than a second
+    // real merchant fetch.
+    @State private var productSearchInput = ""
+    @State private var productSearchResults: [ProductSearchResultDto]?
+    @State private var productSearching = false
+
     private var totalItems: Int { cart.values.reduce(0) { $0 + $1.quantity } }
+
+    private func searchProducts() async {
+        let q = productSearchInput.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return }
+        productSearching = true
+        do {
+            productSearchResults = try await NetworkClient.shared.searchProducts(q).products
+        } catch {
+            productSearchResults = []
+        }
+        productSearching = false
+    }
 
     var body: some View {
         Group {
@@ -242,12 +266,57 @@ private struct CommerceShopContent: View {
                     } else if view == .wishlist {
                         ProductWishlistView(onRemoved: { Task { await loadFavoriteProductIds() } })
                     } else {
+                        HStack(spacing: 8) {
+                            TextField("Search products across every merchant", text: $productSearchInput)
+                                .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
+                            Button(action: { Task { await searchProducts() } }) {
+                                Text(productSearching ? "…" : "Search").bold().foregroundColor(.white)
+                                    .padding(.horizontal, 16).padding(.vertical, 14)
+                                    .background(productSearching || productSearchInput.trimmingCharacters(in: .whitespaces).isEmpty ? IDS.Colors.textTertiary : IDS.Colors.brand)
+                                    .cornerRadius(10)
+                            }
+                            .disabled(productSearching || productSearchInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                            if productSearchResults != nil {
+                                Button(action: { productSearchResults = nil; productSearchInput = "" }) {
+                                    Text("Clear").bold().foregroundColor(IDS.Colors.textPrimary)
+                                        .padding(.horizontal, 16).padding(.vertical, 14)
+                                        .background(IDS.Colors.textTertiary).cornerRadius(10)
+                                }
+                            }
+                        }
+
+                        if let productSearchResults {
+                            if productSearchResults.isEmpty {
+                                Text("No products matched \"\(productSearchInput)\".").foregroundColor(IDS.Colors.textSecondary)
+                            } else {
+                                ForEach(productSearchResults) { r in
+                                    Button(action: {
+                                        Task {
+                                            await openMerchant(ShoppingMerchantDto(merchantId: r.merchantId, businessName: r.merchantName, category: nil, cashbackRate: "1%"))
+                                        }
+                                    }) {
+                                        HStack(spacing: 12) {
+                                            ProductImageThumb(imageUrl: r.imageUrl, side: 48)
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(r.name).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                                Text(r.merchantName).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                            }
+                                            Spacer()
+                                            Text("\(Int(r.price)) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                        }
+                                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                                    }
+                                }
+                            }
+                        } else {
                         // Real "Deals" rail (2026-07-25) -- only shown on the
                         // unfiltered landing state, same "merchandising above the raw
                         // list, hidden once the user starts filtering" discipline a
-                        // real Coupang/Naver home surface follows. Tapping a deal
-                        // jumps straight to that real merchant via the existing
-                        // search-by-name flow.
+                        // real Coupang/Naver home surface follows. Tapping a deal jumps
+                        // straight to that real merchant via the same minimal-
+                        // ShoppingMerchantDto shortcut the product search results above
+                        // now use (previously fell back to a merchant-name text search
+                        // -- this closes that same gap for the same reason).
                         if selectedCategory == nil, searchInput.trimmingCharacters(in: .whitespaces).isEmpty, let deals, !deals.isEmpty {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("🔥 Deals").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
@@ -266,7 +335,9 @@ private struct CommerceShopContent: View {
                                             .padding(10)
                                             .background(IDS.Colors.card)
                                             .cornerRadius(IDS.Layout.cardCornerRadius)
-                                            .onTapGesture { searchInput = d.merchantName; scheduleFilterReload() }
+                                            .onTapGesture {
+                                                Task { await openMerchant(ShoppingMerchantDto(merchantId: d.merchantId, businessName: d.merchantName, category: nil, cashbackRate: "1%")) }
+                                            }
                                         }
                                     }
                                 }
@@ -319,6 +390,7 @@ private struct CommerceShopContent: View {
                             }
                             .buttonStyle(.plain)
                         }
+                    }
                     }
                     }
                 }
