@@ -39,7 +39,7 @@ import rw.itunda.merchant.network.MerchantDto
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.network.UpdateEatsOrderStatusRequest
 
-private enum class MerchantTab { ORDERS, DINE_IN, BOOKINGS, CATALOG, REGISTER, BUSINESS_ACCOUNT, REPORTS }
+private enum class MerchantTab { ORDERS, DINE_IN, BOOKINGS, CATALOG, REGISTER, BUSINESS_ACCOUNT, REPORTS, REVIEWS }
 
 @Composable
 fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
@@ -69,6 +69,7 @@ fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
                 MerchantTab.REGISTER to "Register",
                 MerchantTab.BUSINESS_ACCOUNT to "Business",
                 MerchantTab.REPORTS to "Reports",
+                MerchantTab.REVIEWS to "Reviews",
             ).forEach { (t, label) ->
                 val selected = t == tab
                 Text(
@@ -88,6 +89,7 @@ fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
             MerchantTab.REGISTER -> PosTab()
             MerchantTab.BUSINESS_ACCOUNT -> BusinessAccountTab()
             MerchantTab.REPORTS -> ReportsTab()
+            MerchantTab.REVIEWS -> ReviewsTab(restaurantId = merchant.id)
         }
     }
 }
@@ -179,6 +181,110 @@ private fun nextRestaurantAction(status: String): Pair<String, String>? = when (
     "ACCEPTED" -> "PREPARING" to "Start preparing"
     "PREPARING" -> "READY_FOR_PICKUP" to "Mark ready for pickup"
     else -> null
+}
+
+// Real written-review list + owner-reply management (item 184/185) -- see
+// EatsReviewService.replyToRestaurantReview's own doc comment. bank-mfe already has
+// this (item 184); this is the first Android client for the owner-reply side. Its own
+// dedicated tab, unlike OrdersTab (which only ever shows ACTIVE orders -- reviews only
+// exist once an order is DELIVERED, so there's no natural shared list to fold this into).
+@Composable
+private fun ReviewsTab(restaurantId: String) {
+    var reviews by remember { mutableStateOf<List<rw.itunda.merchant.network.EatsReviewDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    suspend fun refresh() {
+        try {
+            reviews = NetworkClient.apiService.getRestaurantReviews(restaurantId).reviews
+            error = null
+        } catch (e: Exception) {
+            error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+    LaunchedEffect(Unit) { refresh() }
+
+    error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp)) }
+    val list = reviews
+    if (list == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        return
+    }
+    if (list.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("No reviews yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        return
+    }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items(list, key = { it.id }) { review ->
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("★".repeat(review.restaurantRating) + "☆".repeat(5 - review.restaurantRating), color = androidx.compose.ui.graphics.Color(0xFFF5A623))
+                    review.restaurantComment?.takeIf { it.isNotBlank() }?.let {
+                        androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(top = 4.dp))
+                        Text(it, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    ReviewReplyRow(review = review, onReplied = { scope.launch { refresh() } })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewReplyRow(review: rw.itunda.merchant.network.EatsReviewDto, onReplied: () -> Unit) {
+    var replying by remember { mutableStateOf(false) }
+    var reply by remember { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(top = 8.dp))
+    when {
+        !review.ownerReply.isNullOrBlank() -> {
+            Text(
+                "Your reply: ${review.ownerReply}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        replying -> {
+            androidx.compose.material3.OutlinedTextField(
+                value = reply,
+                onValueChange = { reply = it },
+                label = { Text("Write a reply") },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            Button(
+                onClick = {
+                    submitting = true
+                    error = null
+                    scope.launch {
+                        try {
+                            NetworkClient.apiService.replyToRestaurantReview(review.id, rw.itunda.merchant.network.ReplyToEatsReviewRequest(reply.trim()))
+                            replying = false
+                            onReplied()
+                        } catch (e: Exception) {
+                            error = "Could not submit your reply."
+                        } finally {
+                            submitting = false
+                        }
+                    }
+                },
+                enabled = !submitting && reply.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(if (submitting) "Submitting…" else "Reply") }
+        }
+        else -> {
+            Button(onClick = { replying = true }) { Text("Reply") }
+        }
+    }
 }
 
 @Composable

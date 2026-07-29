@@ -1142,9 +1142,15 @@ data class EatsReviewDto(
     val restaurantComment: String?,
     val riderRating: Int,
     val riderComment: String?,
+    // Real owner-side reply (item 184/185) -- see EatsReviewService.replyToRestaurantReview's
+    // own doc comment. bank-mfe already has this (item 184); this is the first Android client.
+    val ownerReply: String? = null,
+    val ownerRepliedAt: String? = null,
     val createdAt: String,
 )
 data class EatsReviewResponse(val success: Boolean, val review: EatsReviewDto)
+data class EatsReviewsResponse(val success: Boolean, val reviews: List<EatsReviewDto>)
+data class ReplyToEatsReviewRequest(val reply: String)
 data class EatsRatingResponse(val success: Boolean, val average: Double?, val count: Long)
 
 data class EatsOrderDto(
@@ -2240,6 +2246,15 @@ interface ApiService {
 
     @GET("api/v1/eats/restaurants/{id}/rating")
     suspend fun getRestaurantRating(@Path("id") restaurantId: String): EatsRatingResponse
+
+    // Real written-review list + owner-reply (item 184/185) -- see
+    // EatsReviewService.replyToRestaurantReview's own doc comment. bank-mfe already has
+    // this (item 184); this is the first Android client.
+    @GET("api/v1/eats/restaurants/{id}/reviews")
+    suspend fun getRestaurantReviews(@Path("id") restaurantId: String): EatsReviewsResponse
+
+    @POST("api/v1/eats/reviews/{reviewId}/reply")
+    suspend fun replyToRestaurantReview(@Path("reviewId") reviewId: String, @Body request: ReplyToEatsReviewRequest): EatsReviewResponse
 
     // Real cancellation + refund (2026-07-18) -- buyer or restaurant, PLACED orders
     // only. See rw.itunda.eats.EatsOrderService.cancelOrder's own doc comment.

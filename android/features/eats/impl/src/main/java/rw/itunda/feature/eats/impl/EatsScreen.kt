@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.RateReview
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.RestaurantMenu
 import androidx.compose.material.icons.outlined.ShoppingCart
@@ -79,6 +80,7 @@ import rw.itunda.core.network.DineInOrderItemRequest
 import rw.itunda.core.network.EatsOrderDto
 import rw.itunda.core.network.EatsOrderItemRequest
 import rw.itunda.core.network.EatsRatingResponse
+import rw.itunda.core.network.EatsReviewDto
 import rw.itunda.core.network.FavoriteRestaurantDto
 import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.NetworkClient
@@ -638,9 +640,16 @@ private fun FavoriteRestaurantsView(onOpen: (FavoriteRestaurantDto) -> Unit, onC
     }
 }
 
+// Real written-review list + owner-reply display (item 184/185) -- bank-mfe already has
+// this (item 184); this is the first Android client. Mirrors ProductRatingBadge's own
+// expand-on-click pattern exactly (ShopScreen.kt, this app's Commerce equivalent).
 @Composable
 private fun RestaurantRatingBadge(restaurantId: String) {
     var rating by remember { mutableStateOf<EatsRatingResponse?>(null) }
+    var open by remember { mutableStateOf(false) }
+    var reviews by remember { mutableStateOf<List<EatsReviewDto>?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
     LaunchedEffect(restaurantId) {
         try {
             rating = NetworkClient.apiService.getRestaurantRating(restaurantId)
@@ -650,10 +659,54 @@ private fun RestaurantRatingBadge(restaurantId: String) {
     }
     val r = rating
     if (r != null && r.count > 0) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(14.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("%.1f (%d)".format(r.average ?: 0.0, r.count), color = Ids.colors.textSecondary, fontSize = 13.sp)
+        Column {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable {
+                    val next = !open
+                    open = next
+                    if (next && reviews == null) {
+                        coroutineScope.launch {
+                            try {
+                                reviews = NetworkClient.apiService.getRestaurantReviews(restaurantId).reviews
+                            } catch (e: Exception) {
+                                reviews = emptyList()
+                            }
+                        }
+                    }
+                },
+            ) {
+                Icon(Icons.Outlined.Star, contentDescription = null, tint = StarGold, modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("%.1f (%d)".format(r.average ?: 0.0, r.count), color = Ids.colors.textSecondary, fontSize = 13.sp)
+            }
+            if (open) {
+                val list = reviews
+                if (list == null) {
+                    Text("Loading reviews…", color = Ids.colors.textSecondary, fontSize = 12.sp)
+                } else if (list.isEmpty()) {
+                    EmptyState("No written reviews yet.", icon = Icons.Outlined.RateReview)
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(top = 4.dp)) {
+                        list.forEach { rv ->
+                            val stars = "★".repeat(rv.restaurantRating) + "☆".repeat(5 - rv.restaurantRating)
+                            Text(
+                                if (rv.restaurantComment.isNullOrBlank()) stars else "$stars — ${rv.restaurantComment}",
+                                color = Ids.colors.textSecondary,
+                                fontSize = 12.sp,
+                            )
+                            if (!rv.ownerReply.isNullOrBlank()) {
+                                Text(
+                                    "↳ Restaurant: ${rv.ownerReply}",
+                                    color = Ids.colors.textTertiary,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(start = 12.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
