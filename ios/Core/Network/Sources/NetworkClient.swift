@@ -2921,6 +2921,33 @@ public struct LinkedAccountDto: Decodable, Identifiable {
 public struct LinkAccountResponse: Decodable { public let success: Bool; public let linkedAccount: LinkedAccountDto }
 public struct LinkedAccountsResponse: Decodable { public let success: Bool; public let linkedAccounts: [LinkedAccountDto] }
 
+// Real Naver Pay Money 자동충전 (auto-charge) equivalent (item 168/177) -- see
+// AutoTopUpService's own doc comment. bank-mfe (item 168) and Android (item 176)
+// already have this; this is the iOS port. getSetting real-404s
+// (AUTO_TOPUP_SETTING_NOT_FOUND) if this wallet has no setting configured yet.
+public struct ConfigureAutoTopUpRequest: Encodable {
+    public let linkedAccountId: String
+    public let thresholdAmount: Double
+    public let topUpAmount: Double
+    public let dailyTriggerCap: Int
+    public let enabled: Bool
+}
+public struct AutoTopUpSettingDto: Decodable {
+    public let id: String
+    public let userId: String
+    public let walletId: String
+    public let linkedAccountId: String
+    public let enabled: Bool
+    public let thresholdAmount: Double
+    public let topUpAmount: Double
+    public let dailyTriggerCap: Int
+    public let triggersToday: Int
+    public let lastTriggerDate: String?
+    public let lastTriggeredAt: String?
+}
+public struct GetAutoTopUpSettingResponse: Decodable { public let success: Bool; public let setting: AutoTopUpSettingDto }
+public struct TriggerAutoTopUpResponse: Decodable { public let success: Bool; public let triggered: Bool; public let reason: String? }
+
 public struct LoanOfferDto: Decodable, Identifiable { public let id: String; public let lenderId: String; public let lenderName: String; public let name: String; public let maxAmount: Double; public let interestRate: Double; public let term: String; public let requirements: String }
 public struct LenderDto: Decodable, Identifiable { public let id: String; public let name: String; public let kind: String }
 public struct LoanOffersResponse: Decodable { public let success: Bool; public let offers: [LoanOfferDto] }
@@ -2993,6 +3020,21 @@ extension NetworkClient {
 
     public func unlinkAccount(accountId: String) async throws -> LinkAccountResponse {
         try await authenticatedPost("api/v1/accounts/link/\(accountId)/unlink", body: EmptyRequest())
+    }
+
+    public func getAutoTopUpSetting(walletId: String) async throws -> GetAutoTopUpSettingResponse {
+        try await get("api/v1/wallet/\(walletId)/auto-topup")
+    }
+
+    public func configureAutoTopUp(walletId: String, linkedAccountId: String, thresholdAmount: Double, topUpAmount: Double, dailyTriggerCap: Int = 3, enabled: Bool = true) async throws -> GetAutoTopUpSettingResponse {
+        try await authenticatedPut(
+            "api/v1/wallet/\(walletId)/auto-topup",
+            body: ConfigureAutoTopUpRequest(linkedAccountId: linkedAccountId, thresholdAmount: thresholdAmount, topUpAmount: topUpAmount, dailyTriggerCap: dailyTriggerCap, enabled: enabled)
+        )
+    }
+
+    public func triggerAutoTopUp(walletId: String) async throws -> TriggerAutoTopUpResponse {
+        try await authenticatedPost("api/v1/wallet/\(walletId)/auto-topup/trigger", body: EmptyRequest())
     }
 
     public func getLoanOffers(lenderId: String? = nil) async throws -> LoanOffersResponse {
