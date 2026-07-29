@@ -448,17 +448,45 @@ private struct RestaurantPhotoThumb: View {
     }
 }
 
+// Real written-review list + owner-reply display (item 184/185/186) -- bank-mfe (item
+// 184) and Android (item 185) already have this; this is the first iOS client. Mirrors
+// ProductRatingBadge's own expand-on-tap pattern exactly (ShopScreen.swift, this app's
+// Commerce equivalent).
 private struct RestaurantRatingBadge: View {
     let restaurantId: String
     @State private var rating: EatsRatingResponse?
+    @State private var open = false
+    @State private var reviews: [EatsReviewDto]?
 
     var body: some View {
         Group {
             if let rating, rating.count > 0 {
-                HStack(spacing: 4) {
-                    Image(systemName: "star.fill").font(.caption).foregroundColor(.yellow)
-                    Text(String(format: "%.1f (%d)", rating.average ?? 0.0, rating.count))
-                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Button(action: toggle) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "star.fill").font(.caption).foregroundColor(.yellow)
+                            Text(String(format: "%.1f (%d)", rating.average ?? 0.0, rating.count))
+                                .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                    }
+                    if open {
+                        if let reviews {
+                            if reviews.isEmpty {
+                                Text("No written reviews yet.").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                            } else {
+                                ForEach(reviews, id: \.id) { r in
+                                    let stars = String(repeating: "★", count: r.restaurantRating) + String(repeating: "☆", count: 5 - r.restaurantRating)
+                                    Text(r.restaurantComment.map { "\(stars) — \($0)" } ?? stars)
+                                        .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                    if let reply = r.ownerReply, !reply.isEmpty {
+                                        Text("↳ Restaurant: \(reply)").font(.caption2).foregroundColor(IDS.Colors.textTertiary).padding(.leading, 12)
+                                    }
+                                }
+                            }
+                        } else {
+                            Text("Loading reviews…").font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                    }
                 }
             }
         }
@@ -468,6 +496,18 @@ private struct RestaurantRatingBadge: View {
             } catch {
                 // Real, non-critical -- a rating fetch failure shouldn't block browsing
                 // the menu.
+            }
+        }
+    }
+
+    private func toggle() {
+        open.toggle()
+        guard open, reviews == nil else { return }
+        Task {
+            do {
+                reviews = try await NetworkClient.shared.getRestaurantReviews(restaurantId).reviews
+            } catch {
+                reviews = []
             }
         }
     }

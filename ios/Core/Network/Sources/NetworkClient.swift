@@ -1961,10 +1961,17 @@ public struct EatsReviewDto: Decodable {
     public let restaurantComment: String?
     public let riderRating: Int
     public let riderComment: String?
+    // Real owner-side reply (item 184/185/186) -- see
+    // EatsReviewService.replyToRestaurantReview's own doc comment. bank-mfe (item 184)
+    // and Android (item 185) already have this; this is the first iOS client.
+    public let ownerReply: String?
+    public let ownerRepliedAt: String?
     public let createdAt: String
 }
 public struct EatsReviewResponse: Decodable { public let success: Bool; public let review: EatsReviewDto }
+public struct EatsReviewsResponse: Decodable { public let success: Bool; public let reviews: [EatsReviewDto] }
 public struct EatsRatingResponse: Decodable { public let success: Bool; public let average: Double?; public let count: Int }
+public struct ReplyToEatsReviewRequest: Encodable { public let reply: String }
 
 public struct EatsOrderDto: Decodable, Identifiable {
     public let id: String
@@ -2810,6 +2817,15 @@ extension NetworkClient {
 
     public func getRestaurantRating(_ restaurantId: String) async throws -> EatsRatingResponse {
         try await get("api/v1/eats/restaurants/\(restaurantId)/rating")
+    }
+
+    // Real written-review list + owner-reply (item 184/185/186).
+    public func getRestaurantReviews(_ restaurantId: String) async throws -> EatsReviewsResponse {
+        try await get("api/v1/eats/restaurants/\(restaurantId)/reviews")
+    }
+
+    public func replyToRestaurantReview(_ reviewId: String, reply: String) async throws -> EatsReviewResponse {
+        try await authenticatedPost("api/v1/eats/reviews/\(reviewId)/reply", body: ReplyToEatsReviewRequest(reply: reply))
     }
 
     public func searchDeliveryAddress(_ query: String) async throws -> AddressSearchResponse {

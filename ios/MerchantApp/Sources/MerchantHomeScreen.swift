@@ -1,7 +1,7 @@
 import SwiftUI
 import CoreDesignSystem
 
-private enum MerchantTab { case orders, catalog, register, reports, business, dineIn }
+private enum MerchantTab { case orders, catalog, register, reports, business, dineIn, reviews }
 
 struct MerchantHomeScreen: View {
     let merchant: MerchantDto
@@ -30,6 +30,7 @@ struct MerchantHomeScreen: View {
                 Text("Reports").tag(MerchantTab.reports)
                 Text("Business").tag(MerchantTab.business)
                 Text("Dine-in").tag(MerchantTab.dineIn)
+                Text("Reviews").tag(MerchantTab.reviews)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, 16)
@@ -42,6 +43,7 @@ struct MerchantHomeScreen: View {
             case .reports: ReportsTab()
             case .business: BusinessAccountTab()
             case .dineIn: DineInTab(restaurantId: merchant.id)
+            case .reviews: ReviewsTab(restaurantId: merchant.id)
             }
         }
     }
@@ -154,6 +156,115 @@ private struct OrderCard: View {
         .padding(16)
         .background(Color(.secondarySystemBackground))
         .cornerRadius(12)
+    }
+}
+
+/// Real written-review list + owner-reply management (item 184/185/186) -- see
+/// EatsReviewService.replyToRestaurantReview's own doc comment. bank-mfe (item 184) and
+/// Android (item 185) already have this; this is the first iOS client for the
+/// owner-reply side. Its own dedicated tab, unlike OrdersTab (which only ever shows
+/// ACTIVE orders -- reviews only exist once an order is DELIVERED).
+private struct ReviewsTab: View {
+    let restaurantId: String
+
+    @State private var reviews: [EatsReviewDto]?
+    @State private var error: String?
+
+    var body: some View {
+        Group {
+            if let error {
+                Text(error).foregroundColor(.red).padding(16)
+            }
+            if let reviews {
+                if reviews.isEmpty {
+                    Spacer()
+                    Text("No reviews yet.").foregroundColor(.secondary)
+                    Spacer()
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 10) {
+                            ForEach(reviews) { review in
+                                ReviewReplyCard(review: review, onReplied: { Task { await refresh() } })
+                            }
+                        }
+                        .padding(16)
+                    }
+                }
+            } else {
+                Spacer()
+                ProgressView()
+                Spacer()
+            }
+        }
+        .task { await refresh() }
+    }
+
+    private func refresh() async {
+        do {
+            reviews = try await MerchantNetworkClient.shared.getRestaurantReviews(restaurantId).reviews
+            error = nil
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+}
+
+private struct ReviewReplyCard: View {
+    let review: EatsReviewDto
+    let onReplied: () -> Void
+
+    @State private var replying = false
+    @State private var reply = ""
+    @State private var submitting = false
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(String(repeating: "★", count: review.restaurantRating) + String(repeating: "☆", count: 5 - review.restaurantRating))
+                .foregroundColor(.yellow)
+            if let comment = review.restaurantComment, !comment.isEmpty {
+                Text(comment).font(.subheadline)
+            }
+            if let ownerReply = review.ownerReply, !ownerReply.isEmpty {
+                Text("Your reply: \(ownerReply)").font(.footnote).foregroundColor(.secondary)
+            } else if replying {
+                HStack {
+                    TextField("Write a reply…", text: $reply)
+                        .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                    Button(action: { Task { await submit() } }) {
+                        Text(submitting ? "…" : "Reply").bold().foregroundColor(.white)
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .background(IDS.Colors.brand).cornerRadius(8)
+                    }
+                    .disabled(submitting || reply.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            } else {
+                Button(action: { replying = true }) {
+                    Text("Reply").bold().foregroundColor(IDS.Colors.brand)
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                }
+            }
+            if let error {
+                Text(error).foregroundColor(.red).font(.caption)
+            }
+        }
+        .padding(16)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
+    }
+
+    private func submit() async {
+        submitting = true
+        error = nil
+        do {
+            _ = try await MerchantNetworkClient.shared.replyToRestaurantReview(review.id, reply: reply.trimmingCharacters(in: .whitespaces))
+            replying = false
+            onReplied()
+        } catch {
+            self.error = "Could not submit your reply."
+        }
+        submitting = false
     }
 }
 

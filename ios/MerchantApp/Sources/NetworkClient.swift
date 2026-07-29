@@ -92,6 +92,28 @@ struct EatsOrderDetailResponse: Decodable { let success: Bool; let order: EatsOr
 struct EatsOrdersResponse: Decodable { let success: Bool; let orders: [EatsOrderDto] }
 struct UpdateEatsOrderStatusRequest: Encodable { let status: String }
 
+// Real written-review list + owner-reply (item 184/185/186) -- see
+// EatsReviewService.replyToRestaurantReview's own doc comment. bank-mfe (item 184) and
+// Android (item 185) already have this; this is the first iOS client for the
+// owner-reply side.
+struct EatsReviewDto: Decodable, Identifiable {
+    let id: String
+    let orderId: String
+    let buyerId: String
+    let restaurantId: String
+    let riderId: String?
+    let restaurantRating: Int
+    let restaurantComment: String?
+    let riderRating: Int?
+    let riderComment: String?
+    let ownerReply: String?
+    let ownerRepliedAt: String?
+    let createdAt: String
+}
+struct EatsReviewResponse: Decodable { let success: Bool; let review: EatsReviewDto }
+struct EatsReviewsResponse: Decodable { let success: Bool; let reviews: [EatsReviewDto] }
+struct ReplyToEatsReviewRequest: Encodable { let reply: String }
+
 // Real 토스뱅크 개인사업자 (business banking for sole proprietors) equivalent (item 151)
 // -- see MerchantBusinessAccountService.kt's own doc comment. Android's native
 // merchantapp already has this (BusinessAccountScreen.kt); this is the iOS port,
@@ -247,6 +269,14 @@ final class MerchantNetworkClient {
 
     func advanceRestaurantOrderStatus(_ orderId: String, status: String) async throws -> EatsOrderDetailResponse {
         try await post("api/v1/eats/orders/\(orderId)/status", body: UpdateEatsOrderStatusRequest(status: status))
+    }
+
+    func getRestaurantReviews(_ restaurantId: String) async throws -> EatsReviewsResponse {
+        try await get("api/v1/eats/restaurants/\(restaurantId)/reviews")
+    }
+
+    func replyToRestaurantReview(_ reviewId: String, reply: String) async throws -> EatsReviewResponse {
+        try await post("api/v1/eats/reviews/\(reviewId)/reply", body: ReplyToEatsReviewRequest(reply: reply))
     }
 
     // MARK: - Helpers
