@@ -360,7 +360,8 @@ private struct MarketplaceContent: View {
                             favorited: favoriteIds.contains(listing.id),
                             favoriteBusy: favoritingId == listing.id,
                             onToggleFavorite: { Task { await toggleFavorite(listing.id) } },
-                            sellerTrustScore: trustScores[listing.sellerId]
+                            sellerTrustScore: trustScores[listing.sellerId],
+                            currentUserId: currentUserId
                         )
                     }
                 }
@@ -693,6 +694,46 @@ private struct HoodReviewForm: View {
     }
 }
 
+// Real read-back for a submitted Hood transaction review (item 192/198/199) -- see
+// bank-mfe's HoodReviewResultView (item 192) / Android's (item 198) for the full
+// account. Only ever rendered for a real party to the transaction (the fetch itself
+// real-403s otherwise via HOOD_REVIEW_NOT_PARTY), so both "your review" and "their
+// review of you" -- including uncomfortablePoints -- are honestly shown here, matching
+// Karrot's own asymmetric visibility: private between the two real parties, not public
+// to anyone else. Shared by Marketplace/Jobs/Property, same as HoodReviewForm above.
+private struct HoodReviewResultView: View {
+    let reviews: [HoodReviewDto]
+    let myUserId: String?
+
+    var body: some View {
+        let mine = reviews.first { $0.reviewerId == myUserId }
+        let theirs = reviews.first { $0.reviewerId != myUserId }
+        if mine != nil || theirs != nil {
+            VStack(alignment: .leading, spacing: 8) {
+                if let mine { block(title: "Your review", review: mine) }
+                if let theirs { block(title: "Their review of you", review: theirs) }
+            }
+        }
+    }
+
+    private func block(title: String, review: HoodReviewDto) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+            if !review.goodPoints.isEmpty {
+                Text("👍 \(review.goodPoints.map { id in hoodGoodPointLabels.first { $0.0 == id }?.1 ?? id }.joined(separator: ", "))")
+                    .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            }
+            if !review.uncomfortablePoints.isEmpty {
+                Text("⚠️ \(review.uncomfortablePoints.map { id in hoodUncomfortablePointLabels.first { $0.0 == id }?.1 ?? id }.joined(separator: ", "))")
+                    .font(.caption).foregroundColor(.red)
+            }
+        }
+        .padding(.horizontal, 12).padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(IDS.Colors.chipBackground).cornerRadius(10)
+    }
+}
+
 private struct ListingCard: View {
     let listing: ListingDto
     let isMine: Bool
@@ -707,6 +748,7 @@ private struct ListingCard: View {
     var favoriteBusy: Bool = false
     var onToggleFavorite: () -> Void = {}
     var sellerTrustScore: Int?
+    var currentUserId: String?
 
     @State private var busy = false
     @State private var error: String?
@@ -728,6 +770,9 @@ private struct ListingCard: View {
     @State private var selectedUncomfortablePoints: Set<String> = []
     @State private var submittingReview = false
     @State private var reviewSubmitted = false
+    // Real read-back for the review above (item 192/198/199) -- see bank-mfe's
+    // HoodReviewResultView (item 192) for the full account.
+    @State private var hoodReviews: [HoodReviewDto]?
 
     // Real "directions to this seller" (2026-07-19, item 8 on the Maps "100%" roadmap) --
     // reuses itunda's own self-hosted OSRM directions, same RouteMiniMap component Eats
@@ -825,11 +870,13 @@ private struct ListingCard: View {
                     actionButton("Confirm", filled: true) { await markSold(buyerPhoneNumber: buyerPhone.trimmingCharacters(in: .whitespaces)) }
                 }
             }
+            if isMine, listing.status == "SOLD", listing.buyerId != nil, reviewSubmitted, let hoodReviews {
+                HoodReviewResultView(reviews: hoodReviews, myUserId: currentUserId)
+            }
             // Real post-transaction review, preset checklist with asymmetric public/
             // private visibility (2026-07-24) -- see backend HoodReviewService's own
             // doc comment. Only offered once a real buyer was recorded at mark-sold
-            // time; no pre-check for "already reviewed" (a real, honest v1 -- a second
-            // attempt just surfaces the backend's own REVIEW_ALREADY_SUBMITTED error).
+            // time.
             if isMine, listing.status == "SOLD", listing.buyerId != nil, !reviewSubmitted {
                 if showReviewSheet {
                     HoodReviewForm(
@@ -890,6 +937,19 @@ private struct ListingCard: View {
         .onChange(of: locationFetcher.errorMessage) { newValue in
             if let newValue { error = newValue }
         }
+        .task { await loadHoodReviews() }
+    }
+
+    // Real read-back for the review above (item 192/198/199).
+    private func loadHoodReviews() async {
+        guard isMine, listing.status == "SOLD", listing.buyerId != nil else { return }
+        do {
+            let reviews = try await NetworkClient.shared.getListingReviews(listing.id).reviews
+            hoodReviews = reviews
+            if reviews.contains(where: { $0.reviewerId == currentUserId }) { reviewSubmitted = true }
+        } catch {
+            // Real, non-critical -- the review form itself still works without this.
+        }
     }
 
     private func actionButton(_ label: String, filled: Bool, action: @escaping () async -> Void) -> some View {
@@ -924,11 +984,12 @@ private struct ListingCard: View {
         submittingReview = true
         defer { submittingReview = false }
         do {
-            _ = try await NetworkClient.shared.submitListingReview(
+            let res = try await NetworkClient.shared.submitListingReview(
                 listing.id, goodPoints: Array(selectedGoodPoints), uncomfortablePoints: Array(selectedUncomfortablePoints),
             )
             reviewSubmitted = true
             showReviewSheet = false
+            hoodReviews = (hoodReviews ?? []) + [res.review]
         } catch let NetworkError.httpError(statusCode) {
             error = TalkScreen.errorMessage(statusCode)
         } catch {
@@ -1894,7 +1955,8 @@ private struct JobsContent: View {
                             favorited: favoriteIds.contains(post.id),
                             favoriteBusy: favoritingId == post.id,
                             onToggleFavorite: { Task { await toggleFavorite(post.id) } },
-                            posterTrustScore: trustScores[post.posterId]
+                            posterTrustScore: trustScores[post.posterId],
+                            currentUserId: currentUserId
                         )
                     }
                 }
@@ -2195,6 +2257,7 @@ private struct JobPostCard: View {
     var favoriteBusy: Bool = false
     var onToggleFavorite: () -> Void = {}
     var posterTrustScore: Int?
+    var currentUserId: String?
 
     @State private var busy = false
     @State private var error: String?
@@ -2215,6 +2278,8 @@ private struct JobPostCard: View {
     @State private var selectedUncomfortablePoints: Set<String> = []
     @State private var submittingReview = false
     @State private var reviewSubmitted = false
+    // Real read-back for the review above (item 192/198/199).
+    @State private var hoodReviews: [HoodReviewDto]?
 
     private var payLabel: String {
         let base = "\(Int(post.payAmount)) RWF"
@@ -2266,11 +2331,13 @@ private struct JobPostCard: View {
                     actionButton("Confirm", filled: true) { await markFilled(workerPhoneNumber: workerPhone.trimmingCharacters(in: .whitespaces)) }
                 }
             }
+            if isMine, post.status == "FILLED", post.workerId != nil, reviewSubmitted, let hoodReviews {
+                HoodReviewResultView(reviews: hoodReviews, myUserId: currentUserId)
+            }
             // Real post-transaction review, preset checklist with asymmetric public/
             // private visibility (2026-07-24) -- see backend HoodReviewService's own
             // doc comment. Only offered once a real worker was recorded at mark-filled
-            // time; no pre-check for "already reviewed" (a real, honest v1 -- a second
-            // attempt just surfaces the backend's own REVIEW_ALREADY_SUBMITTED error).
+            // time.
             if isMine, post.status == "FILLED", post.workerId != nil, !reviewSubmitted {
                 if showReviewSheet {
                     HoodReviewForm(
@@ -2328,6 +2395,19 @@ private struct JobPostCard: View {
         .onChange(of: locationFetcher.errorMessage) { message in
             if let message { error = message }
         }
+        .task { await loadHoodReviews() }
+    }
+
+    // Real read-back for the review above (item 192/198/199).
+    private func loadHoodReviews() async {
+        guard isMine, post.status == "FILLED", post.workerId != nil else { return }
+        do {
+            let reviews = try await NetworkClient.shared.getJobPostReviews(post.id).reviews
+            hoodReviews = reviews
+            if reviews.contains(where: { $0.reviewerId == currentUserId }) { reviewSubmitted = true }
+        } catch {
+            // Real, non-critical -- the review form itself still works without this.
+        }
     }
 
     private func actionButton(_ label: String, filled: Bool, action: @escaping () async -> Void) -> some View {
@@ -2360,11 +2440,12 @@ private struct JobPostCard: View {
         submittingReview = true
         defer { submittingReview = false }
         do {
-            _ = try await NetworkClient.shared.submitJobPostReview(
+            let res = try await NetworkClient.shared.submitJobPostReview(
                 post.id, goodPoints: Array(selectedGoodPoints), uncomfortablePoints: Array(selectedUncomfortablePoints),
             )
             reviewSubmitted = true
             showReviewSheet = false
+            hoodReviews = (hoodReviews ?? []) + [res.review]
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
@@ -2560,7 +2641,8 @@ private struct PropertyContent: View {
             onToggleFavorite: { Task { await toggleFavorite(listing.id) } },
             onContact: { Task { await contact(listing.id) } },
             onMakeOffer: { id, amount in Task { await makeOffer(id, amount) } },
-            listerTrustScore: trustScores[listing.listerId]
+            listerTrustScore: trustScores[listing.listerId],
+            currentUserId: currentUserId
         )
     }
 
@@ -2789,6 +2871,7 @@ private struct PropertyListingRow: View {
     let onContact: () -> Void
     let onMakeOffer: (String, Double) -> Void
     var listerTrustScore: Int?
+    var currentUserId: String?
 
     var body: some View {
         PropertyListingCard(
@@ -2801,7 +2884,8 @@ private struct PropertyListingRow: View {
             favorited: favorited,
             favoriteBusy: favoriteBusy,
             onToggleFavorite: onToggleFavorite,
-            listerTrustScore: listerTrustScore
+            listerTrustScore: listerTrustScore,
+            currentUserId: currentUserId
         )
     }
 }
@@ -2817,6 +2901,7 @@ private struct PropertyListingCard: View {
     var favoriteBusy: Bool = false
     var onToggleFavorite: () -> Void = {}
     var listerTrustScore: Int?
+    var currentUserId: String?
 
     @State private var busy = false
     @State private var error: String?
@@ -2843,6 +2928,8 @@ private struct PropertyListingCard: View {
     @State private var selectedUncomfortablePoints: Set<String> = []
     @State private var submittingReview = false
     @State private var reviewSubmitted = false
+    // Real read-back for the review above (item 192/198/199).
+    @State private var hoodReviews: [HoodReviewDto]?
 
     private var priceLabel: String {
         let base = "\(Int(listing.price)) RWF"
@@ -2924,6 +3011,9 @@ private struct PropertyListingCard: View {
             // mark-taken time; no pre-check for "already reviewed" (a real, honest v1
             // -- a second attempt just surfaces the backend's own
             // REVIEW_ALREADY_SUBMITTED error).
+            if isMine, listing.status == "TAKEN", listing.counterpartyId != nil, reviewSubmitted, let hoodReviews {
+                HoodReviewResultView(reviews: hoodReviews, myUserId: currentUserId)
+            }
             if isMine, listing.status == "TAKEN", listing.counterpartyId != nil, !reviewSubmitted {
                 if showReviewSheet {
                     HoodReviewForm(
@@ -2982,6 +3072,16 @@ private struct PropertyListingCard: View {
         .onChange(of: locationFetcher.errorMessage) { message in
             if let message { error = message }
         }
+        .task { await loadHoodReviews() }
+    }
+
+    private func loadHoodReviews() async {
+        guard isMine, listing.status == "TAKEN", listing.counterpartyId != nil else { return }
+        do {
+            let reviews = try await NetworkClient.shared.getPropertyListingReviews(listing.id).reviews
+            hoodReviews = reviews
+            if reviews.contains(where: { $0.reviewerId == currentUserId }) { reviewSubmitted = true }
+        } catch { /* non-critical */ }
     }
 
     private func actionButton(_ label: String, filled: Bool, action: @escaping () async -> Void) -> some View {
@@ -3016,11 +3116,12 @@ private struct PropertyListingCard: View {
         submittingReview = true
         defer { submittingReview = false }
         do {
-            _ = try await NetworkClient.shared.submitPropertyListingReview(
+            let res = try await NetworkClient.shared.submitPropertyListingReview(
                 listing.id, goodPoints: Array(selectedGoodPoints), uncomfortablePoints: Array(selectedUncomfortablePoints),
             )
             reviewSubmitted = true
             showReviewSheet = false
+            hoodReviews = (hoodReviews ?? []) + [res.review]
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
