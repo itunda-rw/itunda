@@ -1258,10 +1258,16 @@ public struct GroupMessageDto: Decodable, Identifiable {
     public let deletedAt: String?
     public let replyToMessageId: String?
     public let reactions: [ReactionGroupDto]
+    // Real KakaoTalk Emoticon Store, group-send side (item 133/204) -- see
+    // sendGroupEmoticon's own doc comment. Set only on a message actually sent via
+    // EmoticonController's /groups/{id}/send endpoint. Found 2026-07-29 via the
+    // defined-but-uncalled-method sweep: the backend/DTO field existed on bank-mfe's
+    // equivalent type, but this DTO never carried it and no client ever sent one.
+    public let emoticonId: String?
 
     // Explicit memberwise init -- see MessageDto's own identical note on why this is
     // needed once a custom init(from:) is present.
-    public init(id: String, groupConversationId: String, senderId: String, body: String, sentAt: String, reactions: [ReactionGroupDto]) {
+    public init(id: String, groupConversationId: String, senderId: String, body: String, sentAt: String, reactions: [ReactionGroupDto], emoticonId: String? = nil) {
         self.id = id
         self.groupConversationId = groupConversationId
         self.senderId = senderId
@@ -1270,6 +1276,7 @@ public struct GroupMessageDto: Decodable, Identifiable {
         self.deletedAt = nil
         self.replyToMessageId = nil
         self.reactions = reactions
+        self.emoticonId = emoticonId
     }
 
     // Same real-time-push-omits-reactions handling as MessageDto's own custom decode.
@@ -1283,9 +1290,10 @@ public struct GroupMessageDto: Decodable, Identifiable {
         deletedAt = try container.decodeIfPresent(String.self, forKey: .deletedAt)
         replyToMessageId = try container.decodeIfPresent(String.self, forKey: .replyToMessageId)
         reactions = try container.decodeIfPresent([ReactionGroupDto].self, forKey: .reactions) ?? []
+        emoticonId = try container.decodeIfPresent(String.self, forKey: .emoticonId)
     }
 
-    private enum CodingKeys: String, CodingKey { case id, groupConversationId, senderId, body, sentAt, deletedAt, replyToMessageId, reactions }
+    private enum CodingKeys: String, CodingKey { case id, groupConversationId, senderId, body, sentAt, deletedAt, replyToMessageId, reactions, emoticonId }
 }
 public struct GroupResponse: Decodable { public let success: Bool; public let group: GroupSummaryDto }
 public struct GroupsResponse: Decodable { public let success: Bool; public let groups: [GroupSummaryDto] }
@@ -2378,6 +2386,10 @@ extension NetworkClient {
 
     public func sendEmoticon(conversationId: String, emoticonId: String) async throws -> MessageResponse {
         try await authenticatedPost("api/v1/emoticons/conversations/\(conversationId)/send", body: SendEmoticonRequest(emoticonId: emoticonId))
+    }
+
+    public func sendGroupEmoticon(groupId: String, emoticonId: String) async throws -> GroupMessageResponse {
+        try await authenticatedPost("api/v1/emoticons/groups/\(groupId)/send", body: SendEmoticonRequest(emoticonId: emoticonId))
     }
 
     // Real 동네생활-style community board (2026-07-19) -- see rw.itunda.community.web.CommunityController.

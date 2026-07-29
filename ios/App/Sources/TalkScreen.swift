@@ -467,6 +467,14 @@ private struct GroupThreadScreen: View {
     // with zero UI anywhere) -- opens as a sibling sheet over this same thread.
     @State private var showSplitBills = false
     @State private var showManageMembers = false
+    // Real KakaoTalk Emoticon Store, group-send side (item 133/204) -- see
+    // NetworkClient.sendGroupEmoticon's own doc comment. 1:1 chat has had this since
+    // the Emoticon Store shipped; group chat never got a client for the identical,
+    // already-real backend endpoint. Found 2026-07-29 via the defined-but-uncalled-
+    // method sweep.
+    @State private var emoticonPickerOpen = false
+    @State private var emoticonStoreOpen = false
+    @State private var emoticonImageById: [String: String] = [:]
     private let currentUserId = KeychainTokenStore.shared.getUserId()
 
     private func name(for senderId: String) -> String {
@@ -507,6 +515,7 @@ private struct GroupThreadScreen: View {
                                     onToggleReaction: { emoji in Task { await toggleReaction(message.id, emoji) } },
                                     onReply: { replyingTo = $0 },
                                     onDelete: { messageId in Task { await deleteGroupMessage(messageId) } },
+                                    emoticonImageUrl: message.emoticonId.flatMap { emoticonImageById[$0] },
                                 )
                                 .id(message.id)
                             }
@@ -546,7 +555,28 @@ private struct GroupThreadScreen: View {
                 .padding(.horizontal, IDS.Layout.screenHorizontal)
                 .padding(.bottom, 4)
             }
+            if emoticonPickerOpen {
+                EmoticonPickerPanel(
+                    onSend: { emoticonId in
+                        Task {
+                            if let res = try? await NetworkClient.shared.sendGroupEmoticon(groupId: group.groupId, emoticonId: emoticonId) {
+                                messages = (messages ?? []) + [res.message]
+                            }
+                            emoticonPickerOpen = false
+                        }
+                    },
+                    onOpenStore: { emoticonStoreOpen = true }
+                )
+                .padding(.horizontal, IDS.Layout.screenHorizontal)
+            }
             HStack {
+                Button(action: { emoticonPickerOpen.toggle() }) {
+                    Text("😊")
+                        .frame(width: 44, height: 44)
+                        .background(IDS.Colors.chipBackground)
+                        .clipShape(Circle())
+                }
+                .accessibilityLabel("Send an emoticon")
                 TextField("Message", text: Binding(
                     get: { draft },
                     set: { newValue in
@@ -586,6 +616,18 @@ private struct GroupThreadScreen: View {
                 // thread; bubbles just fall back to a truncated sender id.
             }
         }
+        // Real KakaoTalk Emoticon Store -- see ConversationThread's own identical
+        // image-map loader doc comment.
+        .task {
+            guard let packs = try? await NetworkClient.shared.getEmoticonPacks().packs else { return }
+            var map: [String: String] = [:]
+            for pack in packs {
+                if let emoticons = try? await NetworkClient.shared.getPackEmoticons(packId: pack.id).emoticons {
+                    for e in emoticons { map[e.id] = e.imageUrl }
+                }
+            }
+            emoticonImageById = map
+        }
         // Real poll, kept as an always-correct fallback delivery path alongside the
         // real WebSocket push below -- matches 1:1 messaging's own scope exactly.
         .task {
@@ -617,7 +659,7 @@ private struct GroupThreadScreen: View {
                     }
                 case .reactionChange(_, let groupId, let messageId, let reactions) where groupId == group.groupId:
                     Task { @MainActor in
-                        messages = messages?.map { $0.id == messageId ? GroupMessageDto(id: $0.id, groupConversationId: $0.groupConversationId, senderId: $0.senderId, body: $0.body, sentAt: $0.sentAt, reactions: reactions) : $0 }
+                        messages = messages?.map { $0.id == messageId ? GroupMessageDto(id: $0.id, groupConversationId: $0.groupConversationId, senderId: $0.senderId, body: $0.body, sentAt: $0.sentAt, reactions: reactions, emoticonId: $0.emoticonId) : $0 }
                     }
                 default:
                     break
@@ -638,6 +680,9 @@ private struct GroupThreadScreen: View {
                 onLeft: { showManageMembers = false; onBack() }
             )
         }
+        .sheet(isPresented: $emoticonStoreOpen) {
+            EmoticonStoreView(onClose: { emoticonStoreOpen = false })
+        }
     }
 
     private func refresh() async {
@@ -653,7 +698,7 @@ private struct GroupThreadScreen: View {
     private func toggleReaction(_ groupMessageId: String, _ emoji: String) async {
         do {
             let res = try await NetworkClient.shared.toggleGroupReaction(groupMessageId: groupMessageId, emoji: emoji)
-            messages = messages?.map { $0.id == groupMessageId ? GroupMessageDto(id: $0.id, groupConversationId: $0.groupConversationId, senderId: $0.senderId, body: $0.body, sentAt: $0.sentAt, reactions: res.reactions) : $0 }
+            messages = messages?.map { $0.id == groupMessageId ? GroupMessageDto(id: $0.id, groupConversationId: $0.groupConversationId, senderId: $0.senderId, body: $0.body, sentAt: $0.sentAt, reactions: res.reactions, emoticonId: $0.emoticonId) : $0 }
         } catch {
             // Best-effort -- a failed reaction toggle just leaves the badge as it was.
         }
@@ -734,11 +779,20 @@ private struct GroupMessageBubble: View {
     let onToggleReaction: (String) -> Void
     let onReply: (GroupMessageDto) -> Void
     let onDelete: (String) -> Void
+    var emoticonImageUrl: String?
 
     var body: some View {
         VStack(alignment: isMine ? .trailing : .leading, spacing: 2) {
             HStack {
                 if isMine { Spacer() }
+                if message.emoticonId != nil {
+                    VStack(alignment: .leading, spacing: 2) {
+                        if !isMine {
+                            Text(senderName).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                        EmoticonBubble(imageUrl: emoticonImageUrl)
+                    }
+                } else {
                 VStack(alignment: .leading, spacing: 2) {
                     if !isMine {
                         Text(senderName).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
@@ -751,6 +805,7 @@ private struct GroupMessageBubble: View {
                 .padding(.vertical, 10)
                 .background(isMine ? IDS.Colors.brand : IDS.Colors.chipBackground)
                 .cornerRadius(16)
+                }
                 if !isMine { Spacer() }
             }
             MessageReactionsRow(reactions: message.reactions, currentUserId: currentUserId, isMine: isMine, onToggle: onToggleReaction)
