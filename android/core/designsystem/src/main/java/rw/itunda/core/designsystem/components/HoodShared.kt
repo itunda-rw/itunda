@@ -63,6 +63,7 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.CreateHoodReportRequest
+import rw.itunda.core.network.HoodReviewDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.SetNeighborhoodRequest
 import rw.itunda.core.network.superAppErrorMessage
@@ -228,6 +229,50 @@ fun HoodReviewForm(
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             ListingActionButton("Cancel", submitting, onClick = onCancel)
             ListingActionButton(if (submitting) "Submitting…" else "Submit review", submitting, filled = true, onClick = onSubmit)
+        }
+    }
+}
+
+// Real read-back for a submitted Hood transaction review (item 192/198) -- see
+// bank-mfe's HoodReviewResultView (item 192) for the full account. Only ever rendered
+// for a real party to the transaction (the fetch itself real-403s otherwise via
+// HOOD_REVIEW_NOT_PARTY), so both "your review" and "their review of you" -- including
+// uncomfortablePoints -- are honestly shown here, matching Karrot's own asymmetric
+// visibility: private between the two real parties, not public to anyone else. Shared
+// by Marketplace/Jobs/Property, same as HoodReviewForm above.
+@Composable
+fun HoodReviewResultView(reviews: List<HoodReviewDto>, myUserId: String?) {
+    val mine = reviews.firstOrNull { it.reviewerId == myUserId }
+    val theirs = reviews.firstOrNull { it.reviewerId != myUserId }
+    if (mine == null && theirs == null) return
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        mine?.let { HoodReviewResultBlock("Your review", it) }
+        theirs?.let { HoodReviewResultBlock("Their review of you", it) }
+    }
+}
+
+@Composable
+private fun HoodReviewResultBlock(title: String, review: HoodReviewDto) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(Ids.colors.surfaceSoft)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        if (review.goodPoints.isNotEmpty()) {
+            Text(
+                "👍 ${review.goodPoints.joinToString(", ") { HoodGoodPointLabels[it] ?: it }}",
+                color = Ids.colors.textSecondary, fontSize = 12.sp,
+            )
+        }
+        if (review.uncomfortablePoints.isNotEmpty()) {
+            Text(
+                "⚠️ ${review.uncomfortablePoints.joinToString(", ") { HoodUncomfortablePointLabels[it] ?: it }}",
+                color = Ids.colors.danger, fontSize = 12.sp,
+            )
         }
     }
 }

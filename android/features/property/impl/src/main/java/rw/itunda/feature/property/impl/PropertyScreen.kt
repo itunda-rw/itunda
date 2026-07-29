@@ -48,6 +48,7 @@ import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.HoodReviewForm
+import rw.itunda.core.designsystem.components.HoodReviewResultView
 import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
 import rw.itunda.core.designsystem.components.RouteMiniMap
@@ -303,6 +304,7 @@ fun PropertyContent(
                     propertyTypeLabel = propertyTypes.firstOrNull { it.id == listing.propertyType }?.label ?: listing.propertyType,
                     isMine = view == PropertyView.MINE || listing.listerId == currentUserId,
                     listerTrustScore = trustScores[listing.listerId],
+                    currentUserId = currentUserId,
                     onChanged = ::load,
                     onContact = {
                         coroutineScope.launch {
@@ -459,6 +461,7 @@ private fun PropertyListingCard(
     listing: PropertyListingDto, propertyTypeLabel: String, isMine: Boolean, onChanged: () -> Unit, onContact: () -> Unit,
     onMakeOffer: (String, Double) -> Unit, favorited: Boolean = false, onToggleFavorite: () -> Unit = {},
     listerTrustScore: Int? = null,
+    currentUserId: String? = null,
 ) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -492,6 +495,20 @@ private fun PropertyListingCard(
     var selectedUncomfortablePoints by remember { mutableStateOf<Set<String>>(emptySet()) }
     var submittingReview by remember { mutableStateOf(false) }
     var reviewSubmitted by remember { mutableStateOf(false) }
+    // Real read-back for the review above (item 192/198) -- see bank-mfe's
+    // HoodReviewResultView (item 192) for the full account.
+    var hoodReviews by remember { mutableStateOf<List<rw.itunda.core.network.HoodReviewDto>?>(null) }
+    LaunchedEffect(listing.id, listing.status, listing.counterpartyId, isMine) {
+        if (isMine && listing.status == "TAKEN" && listing.counterpartyId != null) {
+            try {
+                val reviews = NetworkClient.apiService.getPropertyListingReviews(listing.id).reviews
+                hoodReviews = reviews
+                if (reviews.any { it.reviewerId == currentUserId }) reviewSubmitted = true
+            } catch (e: Exception) {
+                // Real, non-critical -- the review form itself still works without this.
+            }
+        }
+    }
 
     // Real ownership verification (2026-07-25) -- see backend PropertyOwnershipService's
     // own doc comment. Document-upload + human-review, same real upload pipeline
@@ -622,12 +639,13 @@ private fun PropertyListingCard(
                     }
                 }
             }
+            if (isMine && listing.status == "TAKEN" && listing.counterpartyId != null && reviewSubmitted) {
+                hoodReviews?.let { HoodReviewResultView(it, currentUserId) }
+            }
             // Real post-transaction review, preset checklist with asymmetric public/
             // private visibility (2026-07-24) -- see backend HoodReviewService's own
             // doc comment. Only offered once a real counterparty was recorded at
-            // mark-taken time; no pre-check for "already reviewed" (a real, honest v1
-            // -- a second attempt just surfaces the backend's own
-            // REVIEW_ALREADY_SUBMITTED error).
+            // mark-taken time.
             if (isMine && listing.status == "TAKEN" && listing.counterpartyId != null && !reviewSubmitted) {
                 if (showReviewSheet) {
                     HoodReviewForm(
@@ -641,12 +659,13 @@ private fun PropertyListingCard(
                             submittingReview = true
                             coroutineScope.launch {
                                 try {
-                                    NetworkClient.apiService.submitPropertyListingReview(
+                                    val res = NetworkClient.apiService.submitPropertyListingReview(
                                         listing.id,
                                         SubmitHoodReviewRequest(selectedGoodPoints.toList(), selectedUncomfortablePoints.toList()),
                                     )
                                     reviewSubmitted = true
                                     showReviewSheet = false
+                                    hoodReviews = (hoodReviews ?: emptyList()) + res.review
                                 } catch (e: HttpException) {
                                     error = superAppErrorMessage(e)
                                 } finally {

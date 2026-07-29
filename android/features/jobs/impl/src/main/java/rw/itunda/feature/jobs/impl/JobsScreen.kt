@@ -45,6 +45,7 @@ import retrofit2.HttpException
 import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.HoodReviewForm
+import rw.itunda.core.designsystem.components.HoodReviewResultView
 import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
 import rw.itunda.core.designsystem.components.RouteMiniMap
@@ -285,6 +286,7 @@ fun JobsContent(
                     categoryLabel = categories.firstOrNull { it.id == post.category }?.label ?: post.category,
                     isMine = view == JobsView.MINE || post.posterId == currentUserId,
                     posterTrustScore = trustScores[post.posterId],
+                    currentUserId = currentUserId,
                     onChanged = ::load,
                     onContact = {
                         coroutineScope.launch {
@@ -508,6 +510,7 @@ private fun JobPostCard(
     post: JobPostDto, categoryLabel: String, isMine: Boolean, onChanged: () -> Unit, onContact: () -> Unit,
     favorited: Boolean = false, favoriteBusy: Boolean = false, onToggleFavorite: () -> Unit = {},
     posterTrustScore: Int? = null,
+    currentUserId: String? = null,
 ) {
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -536,6 +539,20 @@ private fun JobPostCard(
     var selectedUncomfortablePoints by remember { mutableStateOf<Set<String>>(emptySet()) }
     var submittingReview by remember { mutableStateOf(false) }
     var reviewSubmitted by remember { mutableStateOf(false) }
+    // Real read-back for the review above (item 192/198) -- see bank-mfe's
+    // HoodReviewResultView (item 192) for the full account.
+    var hoodReviews by remember { mutableStateOf<List<rw.itunda.core.network.HoodReviewDto>?>(null) }
+    LaunchedEffect(post.id, post.status, post.workerId, isMine) {
+        if (isMine && post.status == "FILLED" && post.workerId != null) {
+            try {
+                val reviews = NetworkClient.apiService.getJobPostReviews(post.id).reviews
+                hoodReviews = reviews
+                if (reviews.any { it.reviewerId == currentUserId }) reviewSubmitted = true
+            } catch (e: Exception) {
+                // Real, non-critical -- the review form itself still works without this.
+            }
+        }
+    }
 
     // Real 당근알바-style structured application (2026-07-25) -- see backend
     // JobApplicationService's own doc comment. Applying is additive alongside "Message
@@ -618,11 +635,13 @@ private fun JobPostCard(
                     }
                 }
             }
+            if (isMine && post.status == "FILLED" && post.workerId != null && reviewSubmitted) {
+                hoodReviews?.let { HoodReviewResultView(it, currentUserId) }
+            }
             // Real post-transaction review, preset checklist with asymmetric public/
             // private visibility (2026-07-24) -- see backend HoodReviewService's own
             // doc comment. Only offered once a real worker was recorded at mark-filled
-            // time; no pre-check for "already reviewed" (a real, honest v1 -- a second
-            // attempt just surfaces the backend's own REVIEW_ALREADY_SUBMITTED error).
+            // time.
             if (isMine && post.status == "FILLED" && post.workerId != null && !reviewSubmitted) {
                 if (showReviewSheet) {
                     HoodReviewForm(
@@ -636,12 +655,13 @@ private fun JobPostCard(
                             submittingReview = true
                             coroutineScope.launch {
                                 try {
-                                    NetworkClient.apiService.submitJobPostReview(
+                                    val res = NetworkClient.apiService.submitJobPostReview(
                                         post.id,
                                         SubmitHoodReviewRequest(selectedGoodPoints.toList(), selectedUncomfortablePoints.toList()),
                                     )
                                     reviewSubmitted = true
                                     showReviewSheet = false
+                                    hoodReviews = (hoodReviews ?: emptyList()) + res.review
                                 } catch (e: HttpException) {
                                     error = superAppErrorMessage(e)
                                 } finally {

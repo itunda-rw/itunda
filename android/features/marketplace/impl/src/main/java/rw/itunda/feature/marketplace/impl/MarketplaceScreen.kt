@@ -63,6 +63,7 @@ import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.HoodReportAction
 import rw.itunda.core.designsystem.components.HoodReviewForm
+import rw.itunda.core.designsystem.components.HoodReviewResultView
 import rw.itunda.core.designsystem.components.ListingActionButton
 import rw.itunda.core.designsystem.components.NeighborhoodSetupPrompt
 import rw.itunda.core.designsystem.components.RouteMiniMap
@@ -831,6 +832,21 @@ private fun ListingCard(
     var selectedUncomfortablePoints by remember { mutableStateOf<Set<String>>(emptySet()) }
     var submittingReview by remember { mutableStateOf(false) }
     var reviewSubmitted by remember { mutableStateOf(false) }
+    // Real read-back for the review above (item 192/198) -- see bank-mfe's
+    // HoodReviewResultView (item 192) for the full account. Seeds reviewSubmitted from
+    // a real fetch instead of leaving it purely local/optimistic.
+    var hoodReviews by remember { mutableStateOf<List<rw.itunda.core.network.HoodReviewDto>?>(null) }
+    LaunchedEffect(listing.id, listing.status, listing.buyerId, isMine) {
+        if (isMine && listing.status == "SOLD" && listing.buyerId != null) {
+            try {
+                val reviews = NetworkClient.apiService.getListingReviews(listing.id).reviews
+                hoodReviews = reviews
+                if (reviews.any { it.reviewerId == currentUserId }) reviewSubmitted = true
+            } catch (e: Exception) {
+                // Real, non-critical -- the review form itself still works without this.
+            }
+        }
+    }
 
     // Real "directions to this seller" (2026-07-19, item 8 on the Maps "100%" roadmap) --
     // reuses itunda's own self-hosted OSRM directions.
@@ -1042,11 +1058,13 @@ private fun ListingCard(
                     ListingActionButton("Cancel", boosting) { showBoostPicker = false }
                 }
             }
+            if (isMine && listing.status == "SOLD" && listing.buyerId != null && reviewSubmitted) {
+                hoodReviews?.let { HoodReviewResultView(it, currentUserId) }
+            }
             // Real post-transaction review, preset checklist with asymmetric public/
             // private visibility (2026-07-24) -- see backend HoodReviewService's own
             // doc comment. Only offered once a real buyer was recorded at mark-sold
-            // time; no pre-check for "already reviewed" (a real, honest v1 -- a second
-            // attempt just surfaces the backend's own REVIEW_ALREADY_SUBMITTED error).
+            // time.
             if (isMine && listing.status == "SOLD" && listing.buyerId != null && !reviewSubmitted) {
                 if (showReviewSheet) {
                     HoodReviewForm(
@@ -1060,12 +1078,13 @@ private fun ListingCard(
                             submittingReview = true
                             coroutineScope.launch {
                                 try {
-                                    NetworkClient.apiService.submitListingReview(
+                                    val res = NetworkClient.apiService.submitListingReview(
                                         listing.id,
                                         SubmitHoodReviewRequest(selectedGoodPoints.toList(), selectedUncomfortablePoints.toList()),
                                     )
                                     reviewSubmitted = true
                                     showReviewSheet = false
+                                    hoodReviews = (hoodReviews ?: emptyList()) + res.review
                                 } catch (e: HttpException) {
                                     error = superAppErrorMessage(e)
                                 } finally {
