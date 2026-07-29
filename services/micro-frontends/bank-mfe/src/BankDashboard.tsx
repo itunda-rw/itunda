@@ -67,7 +67,7 @@ import {
   markListingSold, removeKeywordAlert, removeListing, removeListingFavorite, respondToOffer, setKeywordAlertQuietHours,
   submitListingReview, type FavoriteListing, type HoodReview, type KeywordAlert, type KeywordAlertQuietHours, type Listing, type PriceOffer, type TrustScores,
 } from './lib/marketplace';
-import { fetchProfile, setBirthDate, setNeighborhood } from './lib/neighborhood';
+import { fetchProfile, setBirthDate, setNeighborhood, updateProfilePhoto } from './lib/neighborhood';
 import { confirmEmailVerification, confirmPhoneVerification, requestEmailVerification, requestPhoneVerification } from './lib/verification';
 import { depositToMiniWallet, openMiniWallet } from './lib/miniWallet';
 import { claimGift, fetchGiftsForConversation, sendGiftInConversation, type Gift, type GiftStatus } from './lib/gift';
@@ -2519,6 +2519,7 @@ function MyView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <ProfilePhotoCard />
       <VerificationCard />
       {(shopOrders.length > 0 || eatsOrders.length > 0) && (
         <div className="toss-card" style={{ padding: '16px' }}>
@@ -2585,6 +2586,60 @@ function MyView() {
 // depreciation estimate, not a real Carmart-style data partnership).
 // Real email/phone verification (item 169) -- see lib/verification.ts's own doc
 // comment. bank-mfe (the actual banking app) had zero client for either.
+// Real profile photo (URL, not a binary upload) -- also the real, buildable half of
+// Rewards' task_profile. Found 2026-07-29 via a full-backend-endpoint sweep: a real,
+// working `PUT /api/v1/auth/profile/photo` endpoint with zero client anywhere, and
+// `PublicUser.profilePhotoUrl` wasn't even carried by any client's own User type.
+function ProfilePhotoCard() {
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
+  const [urlInput, setUrlInput] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchProfile()
+      .then((u) => { setProfilePhotoUrl(u.profilePhotoUrl); setUrlInput(u.profilePhotoUrl ?? ''); })
+      .catch(() => {
+        // Real, non-critical -- the rest of "My" still works without this.
+      });
+  }, []);
+
+  const handleSave = async () => {
+    const trimmed = urlInput.trim();
+    if (!trimmed) { setError('Enter a photo URL.'); return; }
+    setSaving(true);
+    setError(null);
+    try {
+      const user = await updateProfilePhoto(trimmed);
+      setProfilePhotoUrl(user.profilePhotoUrl);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update your profile photo.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="toss-card" style={{ padding: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+      {profilePhotoUrl ? (
+        <img src={profilePhotoUrl} alt="" style={{ width: '56px', height: '56px', borderRadius: '28px', objectFit: 'cover', flexShrink: 0 }} />
+      ) : (
+        <div style={{ width: '56px', height: '56px', borderRadius: '28px', backgroundColor: 'var(--toss-grey-100)', flexShrink: 0 }} />
+      )}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+        <input
+          type="url" value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="Profile photo URL"
+          style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '12px' }}
+        />
+        <button className="toss-btn toss-btn-secondary" style={{ fontSize: '12px', padding: '6px 10px', alignSelf: 'flex-start' }} disabled={saving} onClick={handleSave}>
+          {saving ? 'Saving…' : 'Save photo'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function VerificationCard() {
   const [status, setStatus] = useState<{ email: string | null; emailVerified: boolean; phoneVerified: boolean } | null>(null);
 

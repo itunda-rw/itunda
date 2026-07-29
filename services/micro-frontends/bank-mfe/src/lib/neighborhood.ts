@@ -9,9 +9,20 @@ import { apiFetch } from './api';
 // a self-declared free-text field.
 
 export const fetchProfile = () =>
-  apiFetch<{ success: boolean; user: { neighborhood: string | null; birthDate: string | null; email: string | null; emailVerified: boolean; phoneVerified: boolean } }>(
-    '/api/v1/auth/profile',
-  ).then((r) => r.user);
+  apiFetch<{
+    success: boolean;
+    user: { neighborhood: string | null; birthDate: string | null; email: string | null; emailVerified: boolean; phoneVerified: boolean; profilePhotoUrl: string | null };
+  }>('/api/v1/auth/profile').then((r) => r.user);
+
+// Real profile photo (URL, not a binary upload -- see backend UpdateProfilePhotoRequest's
+// own doc comment) -- also the real, buildable half of Rewards' task_profile. Found
+// 2026-07-29 via a full-backend-endpoint sweep: real, working endpoint with zero client
+// anywhere, and PublicUser.profilePhotoUrl wasn't even carried by any client's own User type.
+export const updateProfilePhoto = (profilePhotoUrl: string) =>
+  apiFetch<{ success: boolean; user: { profilePhotoUrl: string | null } }>('/api/v1/auth/profile/photo', {
+    method: 'PUT',
+    body: JSON.stringify({ profilePhotoUrl }),
+  }).then((r) => r.user);
 
 export const setNeighborhood = (latitude: number, longitude: number) =>
   apiFetch<{ success: boolean; user: { neighborhood: string | null } }>('/api/v1/auth/profile/neighborhood', {
