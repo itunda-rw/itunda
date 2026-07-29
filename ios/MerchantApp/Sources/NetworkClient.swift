@@ -122,6 +122,32 @@ struct BusinessLedgerEntryDto: Decodable, Identifiable {
 struct BusinessTransactionsResponse: Decodable { let success: Bool; let transactions: [BusinessLedgerEntryDto] }
 struct MoveBusinessMoneyRequest: Encodable { let amount: Double }
 
+// Real 배민오더-style table/QR in-store ordering, restaurant side (item 164) -- see
+// DineInOrderController.kt on the backend. Android's native merchantapp already has
+// this (DineInScreen.kt); this is the iOS port. Trimmed to the fields this app's UI
+// actually reads, same discipline Android's own DineInOrderDto here already applies.
+struct DineInOrderDto: Decodable, Identifiable {
+    let id: String
+    let buyerId: String
+    let restaurantId: String
+    let tableNumber: String
+    let totalAmount: Double
+    let status: String
+    let notes: String?
+    let createdAt: String
+}
+struct DineInOrderDetailResponse: Decodable { let success: Bool; let order: DineInOrderDto }
+struct DineInOrdersResponse: Decodable { let success: Bool; let orders: [DineInOrderDto] }
+struct UpdateDineInOrderStatusRequest: Encodable { let status: String }
+
+/// Real 배민오더-style per-table QR -- printed/displayed at a physical table, resolved
+/// by a customer's own app into the dine-in ordering screen for this exact restaurant +
+/// table. Same encoding convention as paymentIntentQrPayload.
+func dineInTableQrPayload(restaurantId: String, tableNumber: String) -> String {
+    let encoded = tableNumber.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? tableNumber
+    return "itunda://eats/dine-in?restaurantId=\(restaurantId)&table=\(encoded)"
+}
+
 // Real push device-token registration (item 130) -- see the consumer app's own
 // NetworkClient.swift doc comment (items 119-121) and RiderApp's own matching fix,
 // same pass: PushNotificationService.sendToUser silently no-ops for every real user
@@ -202,6 +228,12 @@ final class MerchantNetworkClient {
     func getBusinessAccount() async throws -> BusinessWalletResponse { try await get("api/v1/merchant/business-account") }
 
     func getBusinessTransactions() async throws -> BusinessTransactionsResponse { try await get("api/v1/merchant/business-account/transactions") }
+
+    func getDineInOrders() async throws -> DineInOrdersResponse { try await get("api/v1/eats/dine-in/orders/restaurant-orders") }
+
+    func advanceDineInOrderStatus(_ orderId: String, status: String) async throws -> DineInOrderDetailResponse {
+        try await post("api/v1/eats/dine-in/orders/\(orderId)/status", body: UpdateDineInOrderStatusRequest(status: status))
+    }
 
     func moveToBusiness(amount: Double) async throws -> BusinessWalletResponse {
         try await postWithHeader("api/v1/merchant/business-account/move-to-business", body: MoveBusinessMoneyRequest(amount: amount), header: ("Idempotency-Key", UUID().uuidString))
