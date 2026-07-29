@@ -64,6 +64,7 @@ import {
   submitListingReview, type FavoriteListing, type KeywordAlert, type KeywordAlertQuietHours, type Listing, type PriceOffer, type TrustScores,
 } from './lib/marketplace';
 import { fetchProfile, setBirthDate, setNeighborhood } from './lib/neighborhood';
+import { confirmEmailVerification, confirmPhoneVerification, requestEmailVerification, requestPhoneVerification } from './lib/verification';
 import { depositToMiniWallet, openMiniWallet } from './lib/miniWallet';
 import { claimGift, fetchGiftsForConversation, sendGiftInConversation, type Gift, type GiftStatus } from './lib/gift';
 import {
@@ -2355,6 +2356,7 @@ function MyView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <VerificationCard />
       {(shopOrders.length > 0 || eatsOrders.length > 0) && (
         <div className="toss-card" style={{ padding: '16px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>My orders</h3>
@@ -2418,6 +2420,89 @@ function MyView() {
 // Real Toss 내 차 시세 (my car's market value) -- see lib/vehicles.ts's own doc comment
 // for the full sourced account and honest scope boundary (a documented general
 // depreciation estimate, not a real Carmart-style data partnership).
+// Real email/phone verification (item 169) -- see lib/verification.ts's own doc
+// comment. bank-mfe (the actual banking app) had zero client for either.
+function VerificationCard() {
+  const [status, setStatus] = useState<{ email: string | null; emailVerified: boolean; phoneVerified: boolean } | null>(null);
+
+  const load = () => {
+    fetchProfile().then((u) => setStatus({ email: u.email, emailVerified: u.emailVerified, phoneVerified: u.phoneVerified })).catch(() => {});
+  };
+  useEffect(load, []);
+
+  if (!status || (status.emailVerified && status.phoneVerified)) return null;
+
+  return (
+    <div className="toss-card" style={{ padding: '16px' }}>
+      <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>Verify your account</h3>
+      {!status.phoneVerified && <VerificationRow kind="phone" onVerified={load} />}
+      {!status.emailVerified && <VerificationRow kind="email" hasEmail={status.email !== null} onVerified={load} />}
+    </div>
+  );
+}
+
+function VerificationRow({ kind, hasEmail = true, onVerified }: { kind: 'email' | 'phone'; hasEmail?: boolean; onVerified: () => void }) {
+  const [sent, setSent] = useState(false);
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSend = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await (kind === 'email' ? requestEmailVerification() : requestPhoneVerification());
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : `Could not send a ${kind} verification code.`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleConfirm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await (kind === 'email' ? confirmEmailVerification(code.trim()) : confirmPhoneVerification(code.trim()));
+      onVerified();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Invalid or expired code.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (kind === 'email' && !hasEmail) {
+    return <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', padding: '6px 0' }}>No email address on file to verify.</p>;
+  }
+
+  return (
+    <div style={{ padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+      {!sent ? (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '13px' }}>{kind === 'email' ? 'Email' : 'Phone number'} not verified</span>
+          <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={handleSend} style={{ fontSize: '12px', padding: '6px 10px' }}>
+            {busy ? '…' : 'Send code'}
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={handleConfirm} style={{ display: 'flex', gap: '8px' }}>
+          <input
+            type="text" placeholder="Enter code" value={code} onChange={(e) => setCode(e.target.value)} required
+            style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy} style={{ fontSize: '12px', padding: '8px 12px' }}>
+            {busy ? '…' : 'Confirm'}
+          </button>
+        </form>
+      )}
+      {error && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '4px' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
 function MyVehiclesCard() {
   const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
   const [valuations, setValuations] = useState<Record<string, VehicleValuation>>({});

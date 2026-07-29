@@ -9,7 +9,9 @@ import { apiFetch } from './api';
 // a self-declared free-text field.
 
 export const fetchProfile = () =>
-  apiFetch<{ success: boolean; user: { neighborhood: string | null; birthDate: string | null } }>('/api/v1/auth/profile').then((r) => r.user);
+  apiFetch<{ success: boolean; user: { neighborhood: string | null; birthDate: string | null; email: string | null; emailVerified: boolean; phoneVerified: boolean } }>(
+    '/api/v1/auth/profile',
+  ).then((r) => r.user);
 
 export const setNeighborhood = (latitude: number, longitude: number) =>
   apiFetch<{ success: boolean; user: { neighborhood: string | null } }>('/api/v1/auth/profile/neighborhood', {
