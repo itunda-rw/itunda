@@ -73,9 +73,10 @@ import {
   type CommunityCategory, type CommunityComment, type CommunityPost, type JoinedCounts,
 } from './lib/community';
 import {
-  addJobPostFavorite, contactPoster, createJobPost, fetchJobCategories, fetchJobPostReviews, fetchJobPosts, fetchJobPostsMyNeighborhood,
-  fetchMyFavoriteJobPosts, fetchMyJobPosts, fetchMyWorkedJobPosts, markJobPostFilled, removeJobPost, removeJobPostFavorite, submitJobPostReview,
-  type FavoriteJobPost, type JobCategory, type JobPayType, type JobPost,
+  addJobPostFavorite, applyToJob, contactPoster, createJobPost, fetchApplicationsForJobPost, fetchJobCategories, fetchJobPost, fetchJobPostReviews,
+  fetchJobPosts, fetchJobPostsMyNeighborhood, fetchMyFavoriteJobPosts, fetchMyJobApplications, fetchMyJobPosts, fetchMyWorkedJobPosts,
+  markJobPostFilled, removeJobPost, removeJobPostFavorite, respondToJobApplication, submitJobPostReview,
+  type FavoriteJobPost, type JobApplication, type JobCategory, type JobPayType, type JobPost,
 } from './lib/jobs';
 import {
   addPropertyListingFavorite, contactLister, createPropertyListing, fetchMyAcquiredPropertyListings, fetchMyFavoritePropertyListings, fetchMyPropertyListings,
@@ -7035,6 +7036,52 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
       });
   }, [post.id, post.status, post.workerId, isMine]);
 
+  // Real 당근알바-style structured application (2026-07-25 on Android/iOS, ported here
+  // 2026-07-29) -- the applicant's real self-introduction, not a bare DM. See backend
+  // JobApplicationService's own doc comment. "Message poster" above still exists as a
+  // separate, unstructured hand-off.
+  const [applying, setApplying] = useState(false);
+  const [applicationMessage, setApplicationMessage] = useState('');
+  const [applicationSubmitted, setApplicationSubmitted] = useState(false);
+  const [submittingApplication, setSubmittingApplication] = useState(false);
+  const [showApplicants, setShowApplicants] = useState(false);
+  const [applications, setApplications] = useState<JobApplication[] | null>(null);
+  const [respondingToId, setRespondingToId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!showApplicants || applications !== null) return;
+    fetchApplicationsForJobPost(post.id)
+      .then(setApplications)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load applicants.'));
+  }, [showApplicants]);
+
+  const handleSubmitApplication = async () => {
+    setSubmittingApplication(true);
+    setError(null);
+    try {
+      await applyToJob(post.id, applicationMessage.trim());
+      setApplying(false);
+      setApplicationSubmitted(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not submit this application.');
+    } finally {
+      setSubmittingApplication(false);
+    }
+  };
+
+  const handleRespond = async (applicationId: string, accept: boolean) => {
+    setRespondingToId(applicationId);
+    setError(null);
+    try {
+      await respondToJobApplication(applicationId, accept);
+      setApplications((prev) => prev?.filter((a) => a.id !== applicationId) ?? null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not respond to this application.');
+    } finally {
+      setRespondingToId(null);
+    }
+  };
+
   const handleMarkFilled = async (workerPhoneNumber?: string) => {
     setBusy(true);
     setError(null);
@@ -7164,13 +7211,120 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
           </>
         ) : (
           post.status === 'OPEN' && (
-            <button className="toss-btn toss-btn-primary" disabled={busy} onClick={onContact}>
-              Message poster
-            </button>
+            <>
+              <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={onContact}>
+                Message poster
+              </button>
+              {!applicationSubmitted && !applying && (
+                <button className="toss-btn toss-btn-primary" disabled={busy} onClick={() => setApplying(true)}>
+                  Apply
+                </button>
+              )}
+            </>
           )
         )}
       </div>
+      {!isMine && applying && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <textarea
+            value={applicationMessage}
+            onChange={(e) => setApplicationMessage(e.target.value)}
+            placeholder="Why should the poster pick you? (required)"
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', minHeight: '72px' }}
+          />
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={submittingApplication} onClick={() => setApplying(false)}>
+              Cancel
+            </button>
+            <button
+              className="toss-btn toss-btn-primary" style={{ flex: 1 }}
+              disabled={submittingApplication || applicationMessage.trim().length === 0}
+              onClick={handleSubmitApplication}
+            >
+              {submittingApplication ? 'Submitting…' : 'Submit application'}
+            </button>
+          </div>
+        </div>
+      )}
+      {!isMine && applicationSubmitted && (
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Application sent — you'll hear back once the poster reviews it</p>
+      )}
+      {isMine && post.status === 'OPEN' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={() => setShowApplicants((v) => !v)}>
+            {showApplicants ? 'Hide applicants' : 'View applicants'}
+          </button>
+          {showApplicants && (
+            applications === null ? <div className="toss-card skeleton" style={{ height: '60px' }} /> :
+            applications.filter((a) => a.status === 'PENDING').length === 0 ? (
+              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No applications yet</p>
+            ) : (
+              applications.filter((a) => a.status === 'PENDING').map((app) => (
+                <div key={app.id} style={{ backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <p style={{ fontSize: '13px' }}>{app.message}</p>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={respondingToId === app.id} onClick={() => handleRespond(app.id, false)}>
+                      Decline
+                    </button>
+                    <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={respondingToId === app.id} onClick={() => handleRespond(app.id, true)}>
+                      Accept &amp; message
+                    </button>
+                  </div>
+                </div>
+              ))
+            )
+          )}
+        </div>
+      )}
       {!isMine && <HoodReportButton targetType="JOB_POST" targetId={post.id} />}
+    </div>
+  );
+}
+
+// Real "My applications" status view (2026-07-25 on Android as item 196, ported here
+// 2026-07-29) -- an applicant could submit a real structured application and message
+// the poster, but never see whether it was pending/accepted/declined. JobApplication
+// carries no job-post title snapshot, so this fans out one real fetchJobPost per
+// application to resolve the title, same N+1 shape Android's own port uses.
+function MyJobApplicationsView() {
+  const [applications, setApplications] = useState<Array<{ application: JobApplication; title: string | null }> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchMyJobApplications()
+      .then(async (apps) => {
+        const withTitles = await Promise.all(
+          apps.map(async (application) => {
+            const title = await fetchJobPost(application.jobPostId).then((post) => post.title).catch(() => null);
+            return { application, title };
+          }),
+        );
+        setApplications(withTitles);
+      })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your applications.'));
+  }, []);
+
+  if (error) return <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>;
+  if (applications === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+  if (applications.length === 0) return <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>You haven't applied to any jobs yet.</p>;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {applications.map(({ application, title }) => (
+        <div key={application.id} className="toss-card">
+          <p style={{ fontSize: '14px', fontWeight: 700 }}>{title ?? 'Job post'}</p>
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{application.message}</p>
+          <span
+            style={{
+              display: 'inline-block', marginTop: '6px', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '8px',
+              color: application.status === 'ACCEPTED' ? 'var(--toss-blue)' : application.status === 'DECLINED' ? '#E53935' : 'var(--toss-grey-700)',
+              backgroundColor: application.status === 'ACCEPTED' ? 'rgba(49, 130, 246, 0.1)' : application.status === 'DECLINED' ? 'rgba(229, 57, 53, 0.1)' : 'var(--toss-grey-100)',
+            }}
+          >
+            {application.status}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -7236,7 +7390,7 @@ function JobPostWishlistView() {
 function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: string) => void }) {
   // Real "Jobs I did" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
   // recommendation #6, see backend JobPostRepository's own doc comment.
-  const [view, setView] = useState<'BROWSE' | 'MINE' | 'WORKED' | 'NEIGHBORHOOD' | 'WISHLIST'>('BROWSE');
+  const [view, setView] = useState<'BROWSE' | 'MINE' | 'WORKED' | 'NEIGHBORHOOD' | 'WISHLIST' | 'APPLICATIONS'>('BROWSE');
   const [categories, setCategories] = useState<JobCategory[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [posts, setPosts] = useState<JobPost[] | null>(null);
@@ -7279,7 +7433,7 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
         });
       return;
     }
-    if (view === 'WISHLIST') return;
+    if (view === 'WISHLIST' || view === 'APPLICATIONS') return;
     const fetcher = view === 'BROWSE' ? fetchJobPosts(activeCategory ?? undefined) : view === 'WORKED' ? fetchMyWorkedJobPosts() : fetchMyJobPosts();
     fetcher
       .then((result) => { setPosts(result.posts); setTrustScores(result.trustScores); })
@@ -7321,7 +7475,7 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'WORKED', 'WISHLIST'] as const).map((v) => (
+        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'WORKED', 'APPLICATIONS', 'WISHLIST'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -7331,13 +7485,15 @@ function JobsView({ onMessagePoster }: { onMessagePoster: (conversationId: strin
               backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Find work' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My posts' : v === 'WORKED' ? 'Jobs I did' : '♡ Wishlist'}
+            {v === 'BROWSE' ? 'Find work' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My posts' : v === 'WORKED' ? 'Jobs I did' : v === 'APPLICATIONS' ? 'My applications' : '♡ Wishlist'}
           </button>
         ))}
       </div>
 
       {view === 'WISHLIST' ? (
         <JobPostWishlistView />
+      ) : view === 'APPLICATIONS' ? (
+        <MyJobApplicationsView />
       ) : (
         <>
           {(view === 'BROWSE' || view === 'NEIGHBORHOOD') && categories.length > 0 && (

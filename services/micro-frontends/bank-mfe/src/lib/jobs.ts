@@ -33,6 +33,12 @@ export interface JobCategory {
   label: string;
 }
 
+// Real single-post-detail fetch -- needed to resolve a job post's title from a bare
+// applicationId in "My applications" below (JobApplicationDto carries no title
+// snapshot, same real N+1 shape Android/iOS's own "My applications" view uses).
+export const fetchJobPost = (jobPostId: string) =>
+  apiFetch<{ success: boolean; post: JobPost }>(`/api/v1/jobs/posts/${jobPostId}`).then((r) => r.post);
+
 export const fetchJobCategories = () =>
   apiFetch<{ success: boolean; categories: JobCategory[] }>('/api/v1/jobs/categories').then((r) => r.categories);
 
@@ -134,3 +140,36 @@ export const removeJobPostFavorite = (jobPostId: string) =>
 
 export const fetchMyFavoriteJobPosts = () =>
   apiFetch<{ success: boolean; favorites: FavoriteJobPost[] }>('/api/v1/jobs/posts/favorites').then((r) => r.favorites);
+
+// Real 당근알바-style structured application (2026-07-25) -- see backend
+// JobApplicationService's own doc comment. A real self-introduction the poster reviews
+// before deciding, not a bare DM -- "message poster" (contactPoster above) still exists
+// as a separate, unstructured hand-off, but this is the real apply mechanism. Found
+// wired on Android/iOS since 2026-07-25 with zero bank-mfe client anywhere until now.
+export interface JobApplication {
+  id: string;
+  jobPostId: string;
+  applicantId: string;
+  message: string;
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED';
+  submittedAt: string;
+  respondedAt?: string | null;
+}
+
+export const applyToJob = (jobPostId: string, message: string) =>
+  apiFetch<{ success: boolean; application: JobApplication; conversation?: { id: string } }>(`/api/v1/jobs/posts/${jobPostId}/apply`, {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  }).then((r) => r.application);
+
+export const fetchApplicationsForJobPost = (jobPostId: string) =>
+  apiFetch<{ success: boolean; applications: JobApplication[] }>(`/api/v1/jobs/posts/${jobPostId}/applications`).then((r) => r.applications);
+
+export const fetchMyJobApplications = () =>
+  apiFetch<{ success: boolean; applications: JobApplication[] }>('/api/v1/jobs/my-applications').then((r) => r.applications);
+
+export const respondToJobApplication = (applicationId: string, accept: boolean) =>
+  apiFetch<{ success: boolean; application: JobApplication; conversation?: { id: string } }>(`/api/v1/jobs/applications/${applicationId}/respond`, {
+    method: 'POST',
+    body: JSON.stringify({ accept }),
+  }).then((r) => r.application);
