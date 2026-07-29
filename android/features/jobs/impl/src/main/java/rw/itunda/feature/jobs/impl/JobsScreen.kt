@@ -75,7 +75,7 @@ import java.io.IOException
 
 // Real "Jobs I did" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
 // recommendation #6, see backend JobPostRepository's own doc comment.
-private enum class JobsView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, WORKED, SAVED }
+private enum class JobsView { BROWSE, NEARBY, NEIGHBORHOOD, MINE, WORKED, SAVED, APPLICATIONS }
 
 @Composable
 fun JobsContent(
@@ -126,6 +126,7 @@ fun JobsContent(
     fun load() {
         posts = null
         if (view == JobsView.SAVED) { posts = emptyList(); error = null; return }
+        if (view == JobsView.APPLICATIONS) { posts = emptyList(); error = null; return }
         if (view == JobsView.NEARBY) {
             requestNearbyLocation()
             return
@@ -189,7 +190,7 @@ fun JobsContent(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                listOf(JobsView.BROWSE to "Find work", JobsView.NEARBY to "Near me", JobsView.NEIGHBORHOOD to "Neighborhood", JobsView.MINE to "My posts", JobsView.WORKED to "Jobs I did", JobsView.SAVED to "Saved").forEach { (v, label) ->
+                listOf(JobsView.BROWSE to "Find work", JobsView.NEARBY to "Near me", JobsView.NEIGHBORHOOD to "Neighborhood", JobsView.MINE to "My posts", JobsView.WORKED to "Jobs I did", JobsView.APPLICATIONS to "My applications", JobsView.SAVED to "Saved").forEach { (v, label) ->
                     val selected = v == view
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { view = v }) {
                         Text(
@@ -254,7 +255,9 @@ fun JobsContent(
         if (view == JobsView.NEIGHBORHOOD && neighborhoodName != null) {
             item { Text("Your neighborhood: $neighborhoodName", color = Ids.colors.textSecondary, fontSize = 13.sp) }
         }
-        if (view == JobsView.SAVED) {
+        if (view == JobsView.APPLICATIONS) {
+            item { MyJobApplicationsView() }
+        } else if (view == JobsView.SAVED) {
             item { JobPostWishlistView(onRemoved = { coroutineScope.launch { favoriteIds = NetworkClient.apiService.getMyFavoriteJobPosts().favorites.map { it.jobPostId }.toSet() } }) }
         } else if (error != null) {
             item { ErrorCard(error!!, onRetry = ::load) }
@@ -270,6 +273,7 @@ fun JobsContent(
                         JobsView.MINE -> "You haven't posted any jobs yet."
                         JobsView.WORKED -> "No completed jobs recorded yet."
                         JobsView.SAVED -> ""
+                        JobsView.APPLICATIONS -> ""
                     },
                     color = Ids.colors.textSecondary, fontSize = 14.sp,
                 )
@@ -343,6 +347,57 @@ private fun JobPostWishlistView(onRemoved: () -> Unit) {
                                 finally { removingId = null }
                             }
                         })
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Real "my job applications" status view (item 196) -- found via the same
+// defined-but-uncalled-method sweep as items 192-195: GET /api/v1/jobs/my-applications
+// (JobApplicationService.getMyApplications) had zero client anywhere on any platform --
+// an applicant could submit a real structured application (see JobApplication.kt's own
+// doc comment) and message the poster, but never see whether it was still pending,
+// accepted, or declined. JobApplicationDto carries no job-post title snapshot (unlike
+// FavoriteJobPostDto above), so this fans out one real getJobPost fetch per
+// application -- an honest N+1 for this app's real per-user application volume, same
+// discipline items 187-189's per-product review fan-out already established, rather
+// than inventing a new aggregate backend endpoint for this pass.
+@Composable
+private fun MyJobApplicationsView() {
+    var applications by remember { mutableStateOf<List<Pair<JobApplicationDto, JobPostDto?>>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    fun load() = scope.launch {
+        try {
+            val apps = NetworkClient.apiService.getMyJobApplications().applications
+            applications = apps.map { app ->
+                app to try { NetworkClient.apiService.getJobPost(app.jobPostId).post } catch (e: Exception) { null }
+            }
+            error = null
+        } catch (e: Exception) {
+            error = "Couldn't load your applications. Check your connection and try again."
+        }
+    }
+    LaunchedEffect(Unit) { load() }
+    when {
+        error != null -> ErrorCard(error!!, onRetry = ::load)
+        applications == null -> SkeletonBlock()
+        applications!!.isEmpty() -> Text("You haven't applied to any jobs yet.", color = Ids.colors.textSecondary, fontSize = 14.sp)
+        else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            applications!!.forEach { (app, post) ->
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(post?.title ?: "Job post", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
+                            Text(
+                                when (app.status) { "ACCEPTED" -> "Accepted"; "DECLINED" -> "Declined"; else -> "Pending" },
+                                color = when (app.status) { "ACCEPTED" -> Ids.colors.brand; "DECLINED" -> Ids.colors.danger; else -> Ids.colors.textSecondary },
+                                fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                            )
+                        }
+                        Text(app.message, color = Ids.colors.textSecondary, fontSize = 13.sp)
                     }
                 }
             }

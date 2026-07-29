@@ -1958,6 +1958,10 @@ interface ApiService {
     @POST("api/v1/jobs/posts/{id}/contact-poster")
     suspend fun contactPoster(@Path("id") jobPostId: String): ContactPosterResponse
 
+    // Real single-post detail fetch -- see JobPostController.getPost's own contract.
+    @GET("api/v1/jobs/posts/{id}")
+    suspend fun getJobPost(@Path("id") jobPostId: String): JobPostResponse
+
     // Real 당근알바-style structured application (2026-07-25) -- see backend
     // JobApplicationService's own doc comment.
     @POST("api/v1/jobs/posts/{id}/apply")
