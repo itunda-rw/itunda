@@ -97,6 +97,9 @@ private struct OrderFoodContent: View {
     @State private var cart: [String: EatsCartLine] = [:]
     @State private var showCheckout = false
     @State private var confirmedOrder: EatsOrderDto?
+    // Real 배민오더-style table/QR in-store ordering (item 162) -- see
+    // EatsCheckoutView's own doc comment.
+    @State private var confirmedDineInOrder: DineInOrderDto?
     @State private var reorderingId: String?
     @State private var reorderError: String?
     // Real bookmarked/favorited restaurants (2026-07-19) -- a set of restaurant ids for
@@ -115,6 +118,14 @@ private struct OrderFoodContent: View {
                     self.showCheckout = false
                     self.view = .orders
                 })
+            } else if let confirmedDineInOrder {
+                DineInOrderConfirmationView(order: confirmedDineInOrder, onDone: {
+                    self.confirmedDineInOrder = nil
+                    self.selectedRestaurant = nil
+                    self.menu = nil
+                    self.cart = [:]
+                    self.showCheckout = false
+                })
             } else if let restaurant = selectedRestaurant {
                 if showCheckout {
                     EatsCheckoutView(
@@ -122,7 +133,8 @@ private struct OrderFoodContent: View {
                         cart: cart,
                         menu: menu ?? [],
                         onBack: { showCheckout = false },
-                        onOrderPlaced: { confirmedOrder = $0 }
+                        onOrderPlaced: { confirmedOrder = $0 },
+                        onDineInOrderPlaced: { confirmedDineInOrder = $0 }
                     )
                 } else {
                     RestaurantMenuView(
@@ -776,17 +788,28 @@ private struct AddressAutocompleteField: View {
     }
 }
 
+// Real 배민오더-style table/QR in-store ordering (item 162) -- see
+// DineInOrderController.kt's own doc comment on the backend. Same real checkout-mode
+// toggle Android's own EatsCheckoutMode already established: reuses the exact same
+// cart/menu-option selection as delivery, only the checkout step itself diverges (a
+// table number replaces the address, no delivery fee, settles straight to the
+// restaurant's wallet at placement).
+private enum EatsCheckoutMode { case delivery, dineIn }
+
 private struct EatsCheckoutView: View {
     let restaurant: ShoppingMerchantDto
     let cart: [String: EatsCartLine]
     let menu: [MerchantProductDto]
     let onBack: () -> Void
     let onOrderPlaced: (EatsOrderDto) -> Void
+    let onDineInOrderPlaced: (DineInOrderDto) -> Void
 
+    @State private var checkoutMode: EatsCheckoutMode = .delivery
     @State private var address = ""
     @State private var addressLatitude: Double?
     @State private var addressLongitude: Double?
     @State private var deliveryNotes = ""
+    @State private var tableNumber = ""
     @State private var submitting = false
     @State private var error: String?
     // Real device binding step-up (2026-07-21) -- Eats checkout was a real gap:
@@ -829,26 +852,46 @@ private struct EatsCheckoutView: View {
                         Spacer()
                         Text("\(Int(subtotal)) RWF").foregroundColor(IDS.Colors.textPrimary)
                     }
-                    Text("Plus a real delivery fee, added at checkout").font(.caption).foregroundColor(IDS.Colors.textSecondary)
-                    AddressAutocompleteField(
-                        address: address,
-                        onAddressChange: { address = $0; addressLatitude = nil; addressLongitude = nil },
-                        onSuggestionSelected: { suggestion in
-                            address = suggestion.displayName
-                            addressLatitude = suggestion.latitude
-                            addressLongitude = suggestion.longitude
-                        }
-                    )
-                    if addressLatitude != nil {
-                        Text("Pinned -- real distance-based delivery fee applies").font(.caption).foregroundColor(.green)
+                    Picker("", selection: $checkoutMode) {
+                        Text("Delivery").tag(EatsCheckoutMode.delivery)
+                        Text("Order at table").tag(EatsCheckoutMode.dineIn)
                     }
-                    TextField("Delivery notes (optional) -- e.g. Leave at the gate", text: Binding(
-                        get: { deliveryNotes },
-                        set: { deliveryNotes = String($0.prefix(500)) }
-                    ))
-                    .padding(12)
-                    .background(IDS.Colors.chipBackground)
-                    .cornerRadius(12)
+                    .pickerStyle(.segmented)
+
+                    if checkoutMode == .delivery {
+                        Text("Plus a real delivery fee, added at checkout").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        AddressAutocompleteField(
+                            address: address,
+                            onAddressChange: { address = $0; addressLatitude = nil; addressLongitude = nil },
+                            onSuggestionSelected: { suggestion in
+                                address = suggestion.displayName
+                                addressLatitude = suggestion.latitude
+                                addressLongitude = suggestion.longitude
+                            }
+                        )
+                        if addressLatitude != nil {
+                            Text("Pinned -- real distance-based delivery fee applies").font(.caption).foregroundColor(.green)
+                        }
+                        TextField("Delivery notes (optional) -- e.g. Leave at the gate", text: Binding(
+                            get: { deliveryNotes },
+                            set: { deliveryNotes = String($0.prefix(500)) }
+                        ))
+                        .padding(12)
+                        .background(IDS.Colors.chipBackground)
+                        .cornerRadius(12)
+                    } else {
+                        TextField("Table number (e.g. 12, Patio 3)", text: $tableNumber)
+                            .padding(12)
+                            .background(IDS.Colors.chipBackground)
+                            .cornerRadius(12)
+                        TextField("Notes (optional) -- e.g. No onions", text: Binding(
+                            get: { deliveryNotes },
+                            set: { deliveryNotes = String($0.prefix(500)) }
+                        ))
+                        .padding(12)
+                        .background(IDS.Colors.chipBackground)
+                        .cornerRadius(12)
+                    }
                     if let error {
                         Text(error).font(.caption).foregroundColor(.red)
                     }
@@ -863,10 +906,10 @@ private struct EatsCheckoutView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(submitting || address.isEmpty ? IDS.Colors.textTertiary : IDS.Colors.brand)
+                    .background(submitting || !canSubmit ? IDS.Colors.textTertiary : IDS.Colors.brand)
                     .cornerRadius(16)
             }
-            .disabled(submitting || address.isEmpty)
+            .disabled(submitting || !canSubmit)
             .padding(IDS.Layout.screenHorizontal)
             DeviceStepUpHost(
                 visible: needsDeviceVerification,
@@ -880,21 +923,35 @@ private struct EatsCheckoutView: View {
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
     }
 
+    private var canSubmit: Bool {
+        checkoutMode == .delivery ? !address.isEmpty : !tableNumber.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     private func placeOrder() async {
         submitting = true
         error = nil
         needsDeviceVerification = false
         defer { submitting = false }
         do {
-            let res = try await NetworkClient.shared.placeEatsOrder(PlaceEatsOrderRequest(
-                restaurantId: restaurant.merchantId,
-                items: lines.map { EatsOrderItemRequest(menuItemId: $0.item.id, quantity: $0.line.quantity, selectedChoiceIds: $0.line.choiceIds.isEmpty ? nil : $0.line.choiceIds) },
-                deliveryAddress: address.trimmingCharacters(in: .whitespaces),
-                deliveryLatitude: addressLatitude,
-                deliveryLongitude: addressLongitude,
-                deliveryNotes: deliveryNotes.trimmingCharacters(in: .whitespaces).isEmpty ? nil : deliveryNotes.trimmingCharacters(in: .whitespaces)
-            ))
-            onOrderPlaced(res.order)
+            if checkoutMode == .dineIn {
+                let res = try await NetworkClient.shared.placeDineInOrder(PlaceDineInOrderRequest(
+                    restaurantId: restaurant.merchantId,
+                    tableNumber: tableNumber.trimmingCharacters(in: .whitespaces),
+                    items: lines.map { DineInOrderItemRequest(menuItemId: $0.item.id, quantity: $0.line.quantity, selectedChoiceIds: $0.line.choiceIds.isEmpty ? nil : $0.line.choiceIds) },
+                    notes: deliveryNotes.trimmingCharacters(in: .whitespaces).isEmpty ? nil : deliveryNotes.trimmingCharacters(in: .whitespaces)
+                ))
+                onDineInOrderPlaced(res.order)
+            } else {
+                let res = try await NetworkClient.shared.placeEatsOrder(PlaceEatsOrderRequest(
+                    restaurantId: restaurant.merchantId,
+                    items: lines.map { EatsOrderItemRequest(menuItemId: $0.item.id, quantity: $0.line.quantity, selectedChoiceIds: $0.line.choiceIds.isEmpty ? nil : $0.line.choiceIds) },
+                    deliveryAddress: address.trimmingCharacters(in: .whitespaces),
+                    deliveryLatitude: addressLatitude,
+                    deliveryLongitude: addressLongitude,
+                    deliveryNotes: deliveryNotes.trimmingCharacters(in: .whitespaces).isEmpty ? nil : deliveryNotes.trimmingCharacters(in: .whitespaces)
+                ))
+                onOrderPlaced(res.order)
+            }
         } catch NetworkError.deviceNotVerified {
             needsDeviceVerification = true
         } catch let NetworkError.httpError(statusCode) {
@@ -902,6 +959,30 @@ private struct EatsCheckoutView: View {
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
+    }
+}
+
+private struct DineInOrderConfirmationView: View {
+    let order: DineInOrderDto
+    let onDone: () -> Void
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Spacer()
+            Image(systemName: "checkmark.seal.fill").font(.system(size: 44)).foregroundColor(.green)
+            Text("Order placed").font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
+            Text("\(Int(order.totalAmount)) RWF").font(IDS.Typography.largeAmount).foregroundColor(IDS.Colors.textPrimary)
+            Text("Table \(order.tableNumber)").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
+            Spacer()
+            Button(action: onDone) {
+                Text("Done").font(IDS.Typography.bodyBold).foregroundColor(.white)
+                    .frame(maxWidth: .infinity).padding(.vertical, 16)
+                    .background(IDS.Colors.brand).cornerRadius(16)
+            }
+            .padding(.horizontal, IDS.Layout.screenHorizontal)
+        }
+        .padding(.bottom, 24)
+        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
     }
 }
 

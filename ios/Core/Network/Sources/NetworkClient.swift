@@ -282,6 +282,52 @@ public struct OpenUpfrontDepositRequest: Encodable {
     public init(principal: Double) { self.principal = principal }
 }
 
+// Real 배민오더-style table/QR in-store ordering (item 162) -- see
+// DineInOrderController.kt/DineInOrderService.kt on the backend. Reuses the exact same
+// real Merchant/MerchantProduct catalog and menu-option-group resolution EatsOrderService
+// already established, but with no delivery address/rider at all. Android has this on
+// both the consumer app (EatsScreen.kt's own DINE_IN checkout mode) and merchantapp
+// (DineInScreen.kt); bank-mfe got the customer side in item 155. This is the iOS
+// consumer-side port -- the iOS MerchantApp restaurant-side queue remains a real,
+// separate, not-yet-started follow-up.
+public struct DineInOrderItemRequest: Encodable {
+    public let menuItemId: String; public let quantity: Int; public let selectedChoiceIds: [String]?
+    public init(menuItemId: String, quantity: Int, selectedChoiceIds: [String]?) {
+        self.menuItemId = menuItemId; self.quantity = quantity; self.selectedChoiceIds = selectedChoiceIds
+    }
+}
+public struct PlaceDineInOrderRequest: Encodable {
+    public let restaurantId: String; public let tableNumber: String; public let items: [DineInOrderItemRequest]; public let notes: String?
+    public init(restaurantId: String, tableNumber: String, items: [DineInOrderItemRequest], notes: String?) {
+        self.restaurantId = restaurantId; self.tableNumber = tableNumber; self.items = items; self.notes = notes
+    }
+}
+public struct UpdateDineInOrderStatusRequest: Encodable {
+    public let status: String
+    public init(status: String) { self.status = status }
+}
+public struct DineInOrderDto: Decodable, Identifiable {
+    public let id: String
+    public let buyerId: String
+    public let restaurantId: String
+    public let tableNumber: String
+    public let itemsSubtotal: Double
+    public let platformFee: Double
+    public let totalAmount: Double
+    public let transactionId: String
+    public let status: String
+    public let notes: String?
+    public let createdAt: String
+    public let updatedAt: String
+    public let refundTransactionId: String?
+}
+public struct DineInOrderItemDto: Decodable, Identifiable {
+    public let id: String; public let orderId: String; public let productId: String; public let productName: String
+    public let unitPrice: Double; public let quantity: Int; public let selectedOptionsJson: String?
+}
+public struct DineInOrderDetailResponse: Decodable { public let success: Bool; public let order: DineInOrderDto; public let items: [DineInOrderItemDto] }
+public struct DineInOrdersResponse: Decodable { public let success: Bool; public let orders: [DineInOrderDto] }
+
 public struct SpendingCategoryDto: Decodable { public let name: String; public let amount: Double }
 public struct SpendingInsightResponse: Decodable { public let success: Bool; public let categories: [SpendingCategoryDto]; public let totalSpent: Double }
 
@@ -2609,6 +2655,22 @@ extension NetworkClient {
     }
 
     public func getMyEatsOrders() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/my-orders") }
+
+    public func placeDineInOrder(_ request: PlaceDineInOrderRequest) async throws -> DineInOrderDetailResponse {
+        try await authenticatedPost("api/v1/eats/dine-in/orders", body: request, idempotencyKey: UUID().uuidString)
+    }
+
+    public func getMyDineInOrders() async throws -> DineInOrdersResponse { try await get("api/v1/eats/dine-in/orders/my-orders") }
+
+    public func getRestaurantDineInOrders() async throws -> DineInOrdersResponse { try await get("api/v1/eats/dine-in/orders/restaurant-orders") }
+
+    public func updateDineInOrderStatus(id: String, status: String) async throws -> DineInOrderDetailResponse {
+        try await authenticatedPost("api/v1/eats/dine-in/orders/\(id)/status", body: UpdateDineInOrderStatusRequest(status: status))
+    }
+
+    public func cancelDineInOrder(id: String) async throws -> DineInOrderDetailResponse {
+        try await authenticatedPost("api/v1/eats/dine-in/orders/\(id)/cancel", body: EmptyBody())
+    }
 
     /// Real order detail, including items -- backs the real "Reorder" button (2026-07-19):
     /// a buyer can re-populate a cart from a past order's real items rather than retyping
