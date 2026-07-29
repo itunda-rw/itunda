@@ -88,6 +88,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -1660,6 +1661,7 @@ private fun MyTab(
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
         item { BackTopBar("My", onBack) }
+        item { VerificationCard() }
         // Real order tracking -- Naver Pay/Shopping's own "My" tab leads with recent
         // orders across every product, not a settings list. Shows the real 3 most
         // recent orders per product; tapping switches to that product's own tab where
@@ -1725,6 +1727,116 @@ private fun MyTab(
         // here (2026-07-24) -- every one of those rows already lives in the All tab's
         // own "Financial services" section now that All is the primary bottom tab;
         // keeping a second copy here would just be stale duplication.
+    }
+}
+
+// Real email/phone verification (item 169/178) -- see AuthApi.requestEmailVerification/
+// requestPhoneVerification's own doc comment. bank-mfe (item 169) already has this
+// (mirrored field-for-field); this is the first Android client. A real code is
+// delivered via a real in-app Notification + push, no real SMS/email gateway exists.
+@Composable
+private fun VerificationCard() {
+    var email by rememberSaveable { mutableStateOf<String?>(null) }
+    var emailVerified by rememberSaveable { mutableStateOf(true) }
+    var phoneVerified by rememberSaveable { mutableStateOf(true) }
+    var loaded by rememberSaveable { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                val user = rw.itunda.core.network.NetworkClient.authApi.getProfile().user
+                email = user.email
+                emailVerified = user.emailVerified
+                phoneVerified = user.phoneVerified
+            } catch (_: Exception) {
+                // Best-effort, matching this card's own bank-mfe precedent.
+            } finally {
+                loaded = true
+            }
+        }
+    }
+    LaunchedEffect(Unit) { load() }
+
+    if (!loaded || (emailVerified && phoneVerified)) return
+
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Verify your account", color = TossText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            if (!phoneVerified) VerificationRow(kind = "phone", hasEmail = true, onVerified = ::load)
+            if (!emailVerified) VerificationRow(kind = "email", hasEmail = email != null, onVerified = ::load)
+        }
+    }
+}
+
+@Composable
+private fun VerificationRow(kind: String, hasEmail: Boolean, onVerified: () -> Unit) {
+    var sent by rememberSaveable { mutableStateOf(false) }
+    var code by rememberSaveable { mutableStateOf("") }
+    var busy by rememberSaveable { mutableStateOf(false) }
+    var error by rememberSaveable { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    if (kind == "email" && !hasEmail) {
+        Text("No email address on file to verify.", color = TossSecondary, fontSize = 12.sp)
+        return
+    }
+
+    Column(modifier = Modifier.padding(vertical = 6.dp)) {
+        if (!sent) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(if (kind == "email") "Email not verified" else "Phone number not verified", color = TossText, fontSize = 13.sp)
+                Box(
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (busy) Ids.colors.textTertiary else TossBlue)
+                        .clickable(enabled = !busy) {
+                            busy = true
+                            error = null
+                            coroutineScope.launch {
+                                try {
+                                    if (kind == "email") rw.itunda.core.network.NetworkClient.authApi.requestEmailVerification() else rw.itunda.core.network.NetworkClient.authApi.requestPhoneVerification()
+                                    sent = true
+                                } catch (e: retrofit2.HttpException) {
+                                    error = rw.itunda.core.network.superAppErrorMessage(e)
+                                } catch (e: java.io.IOException) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
+                                } finally {
+                                    busy = false
+                                }
+                            }
+                        }
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                ) { Text(if (busy) "…" else "Send code", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+            }
+        } else {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(value = code, onValueChange = { code = it }, label = { Text("Enter code") }, modifier = Modifier.weight(1f))
+                Box(
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(if (busy || code.isBlank()) Ids.colors.textTertiary else TossBlue)
+                        .clickable(enabled = !busy && code.isNotBlank()) {
+                            busy = true
+                            error = null
+                            coroutineScope.launch {
+                                try {
+                                    if (kind == "email") {
+                                        rw.itunda.core.network.NetworkClient.authApi.confirmEmailVerification(rw.itunda.core.network.ConfirmEmailVerificationRequest(code.trim()))
+                                    } else {
+                                        rw.itunda.core.network.NetworkClient.authApi.confirmPhoneVerification(rw.itunda.core.network.ConfirmPhoneVerificationRequest(code.trim()))
+                                    }
+                                    onVerified()
+                                } catch (e: retrofit2.HttpException) {
+                                    error = rw.itunda.core.network.superAppErrorMessage(e)
+                                } catch (e: java.io.IOException) {
+                                    error = "Couldn't reach itunda. Check your connection and try again."
+                                } finally {
+                                    busy = false
+                                }
+                            }
+                        }
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                ) { Text(if (busy) "…" else "Confirm", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+            }
+        }
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)) }
     }
 }
 

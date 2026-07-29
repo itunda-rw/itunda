@@ -63,6 +63,11 @@ data class PublicUser(
     // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
     // MiniWalletService.kt's own doc comment. Set via AuthApi.setBirthDate.
     val birthDate: String? = null,
+    // Real email/phone verification (item 169/178) -- see AuthService.requestEmailVerification/
+    // requestPhoneVerification's own doc comments. Backend has returned these on every
+    // profile response since 2026-07-13/26; this app just never modeled them until now.
+    val emailVerified: Boolean = false,
+    val phoneVerified: Boolean = false,
 )
 
 data class AuthResponse(
@@ -129,6 +134,22 @@ interface AuthApi {
     // client-generated token, mirrors bank-mfe's registerDeviceToken exactly (item 119).
     @POST("api/v1/notifications/device-tokens")
     suspend fun registerDeviceToken(@Body request: RegisterDeviceTokenRequest): SuccessResponse
+
+    // Real email/phone verification (item 169/178) -- see AuthService.requestEmailVerification/
+    // requestPhoneVerification's own doc comments: a real code is delivered via a real
+    // in-app Notification + push, no real SMS/email gateway exists. bank-mfe (item 169)
+    // already has this; this is the first Android client.
+    @POST("api/v1/auth/profile/verify-email")
+    suspend fun requestEmailVerification(): SuccessResponse
+
+    @POST("api/v1/auth/profile/verify-email/confirm")
+    suspend fun confirmEmailVerification(@Body request: ConfirmEmailVerificationRequest): ProfileResponse
+
+    @POST("api/v1/auth/profile/verify-phone")
+    suspend fun requestPhoneVerification(): SuccessResponse
+
+    @POST("api/v1/auth/profile/verify-phone/confirm")
+    suspend fun confirmPhoneVerification(@Body request: ConfirmPhoneVerificationRequest): ProfileResponse
 }
 
 enum class DevicePlatform { ANDROID, IOS, WEB }
@@ -137,6 +158,8 @@ data class RegisterDeviceTokenRequest(val platform: DevicePlatform, val token: S
 data class ProfileResponse(val success: Boolean, val user: PublicUser)
 data class SetNeighborhoodRequest(val latitude: Double, val longitude: Double)
 data class SetBirthDateRequest(val birthDate: String)
+data class ConfirmEmailVerificationRequest(val token: String)
+data class ConfirmPhoneVerificationRequest(val code: String)
 
 // Mirrors services/backend/core/.../domain/TrustedDevice.kt exactly.
 data class TrustedDeviceDto(
