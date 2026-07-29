@@ -47,7 +47,7 @@ import {
 } from './lib/stocks';
 import {
   addGroupMember, connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages, fetchPinnedConversationMessage, fetchPinnedGroupMessage,
-  blockConversationParticipant, deleteGroupMessage, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, forwardGroupMessage, forwardMessage, leaveGroup, pinConversationMessage, pinGroupMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationQuiet, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unpinConversationMessage, unpinGroupMessage,
+  blockConversationParticipant, deleteGroupMessage, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, forwardGroupMessage, forwardMessage, leaveGroup, pinConversationMessage, pinGroupMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationQuiet, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unblockConversationParticipant, unpinConversationMessage, unpinGroupMessage,
   type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup, type TalkContact,
 } from './lib/messaging';
@@ -4245,6 +4245,14 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   const [emoticonStoreOpen, setEmoticonStoreOpen] = useState(false);
   const [emoticonImageById, setEmoticonImageById] = useState<Record<string, string>>({});
   const [blocking, setBlocking] = useState(false);
+  // Real unblock (item 193) -- the "Block" button had no way back: blockConversationParticipant's
+  // own confirmation copy already promised "you can unblock them later from this
+  // conversation," but unblockConversationParticipant was defined and never called
+  // anywhere on any platform. No real "am I currently blocking them" query endpoint
+  // exists (MessagingService.blockConversationParticipant/unblockConversationParticipant
+  // are both idempotent fire-and-forget), so this is session-local state, same honest
+  // scope the pre-existing block-only button already had.
+  const [blocked, setBlocked] = useState(false);
   const [quiet, setQuiet] = useState(false);
   const [updatingQuiet, setUpdatingQuiet] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -4318,9 +4326,21 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     setBlocking(true);
     try {
       await blockConversationParticipant(conversation.conversationId);
+      setBlocked(true);
       setError(`You blocked ${conversation.otherUserName}. You can unblock them later from this conversation.`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not block this person.');
+    } finally { setBlocking(false); }
+  };
+
+  const handleUnblock = async () => {
+    setBlocking(true);
+    try {
+      await unblockConversationParticipant(conversation.conversationId);
+      setBlocked(false);
+      setError(`You unblocked ${conversation.otherUserName}.`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not unblock this person.');
     } finally { setBlocking(false); }
   };
 
@@ -4569,8 +4589,14 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
             </p>
           )}
         </div>
-        <button type="button" className="toss-btn toss-btn-secondary" onClick={handleBlock} disabled={blocking} style={{ marginLeft: 'auto', padding: '8px 10px', fontSize: '12px' }}>
-          {blocking ? 'Blocking…' : 'Block'}
+        <button
+          type="button"
+          className="toss-btn toss-btn-secondary"
+          onClick={blocked ? handleUnblock : handleBlock}
+          disabled={blocking}
+          style={{ marginLeft: 'auto', padding: '8px 10px', fontSize: '12px' }}
+        >
+          {blocking ? (blocked ? 'Unblocking…' : 'Blocking…') : blocked ? 'Unblock' : 'Block'}
         </button>
         <button type="button" className="toss-btn toss-btn-secondary" onClick={handleQuiet} disabled={updatingQuiet} style={{ padding: '8px 10px', fontSize: '12px' }}>
           {updatingQuiet ? '…' : quiet ? 'Resume alerts' : 'Quiet room'}
