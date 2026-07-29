@@ -86,9 +86,9 @@ import {
 import {
   addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, EATS_MEMBERSHIP_TIERS, fetchAvailableDeliveries,
   fetchEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyMembership, fetchMyRiderProfile, fetchRestaurantCategories,
-  fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRiderDeliveries, placeEatsOrder, registerRider,
-  removeFavoriteRestaurant, searchDeliveryAddress, setRiderAvailability, subscribeMembership, submitEatsReview,
-  type AddressSuggestion, type EatsMembership, type EatsOrder, type EatsOrderStatus, type FavoriteRestaurant, type MenuItem, type RatingSummary, type Rider,
+  fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRestaurantReviews, fetchRiderDeliveries, placeEatsOrder, registerRider,
+  removeFavoriteRestaurant, replyToRestaurantReview, searchDeliveryAddress, setRiderAvailability, subscribeMembership, submitEatsReview,
+  type AddressSuggestion, type EatsMembership, type EatsOrder, type EatsOrderStatus, type EatsReview, type FavoriteRestaurant, type MenuItem, type RatingSummary, type Rider,
 } from './lib/eats';
 import {
   addProductFavorite, advanceOrderStatus, askProductInquiry, cancelOrder, decideOrderReturn, fetchMerchantOrders, fetchMerchantProducts, fetchMerchantReturnQueue,
@@ -7960,8 +7960,15 @@ function StarRatingInput({ value, onChange }: { value: number; onChange: (rating
   );
 }
 
+// Real written-review list + owner-reply display (item 184, 2026-07-29) -- the backend
+// (getRestaurantReviews, real since restaurant reviews shipped) and a real dead
+// fetchRestaurantReviews export both existed with zero UI anywhere calling it; see
+// docs/DESIGN_REFERENCES.md section 2 recommendation 5. Mirrors ProductRatingBadge's
+// own expand-on-click pattern exactly.
 function RestaurantRatingBadge({ restaurantId }: { restaurantId: string }) {
   const [rating, setRating] = useState<RatingSummary | null>(null);
+  const [open, setOpen] = useState(false);
+  const [reviews, setReviews] = useState<EatsReview[] | null>(null);
 
   useEffect(() => {
     fetchRestaurantRating(restaurantId).then(setRating).catch(() => {
@@ -7969,12 +7976,130 @@ function RestaurantRatingBadge({ restaurantId }: { restaurantId: string }) {
     });
   }, [restaurantId]);
 
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (next && reviews === null) {
+      fetchRestaurantReviews(restaurantId).then(setReviews).catch(() => setReviews([]));
+    }
+  };
+
   if (!rating || rating.count === 0) return null;
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', color: 'var(--toss-grey-700)' }}>
-      <Star size={14} color="#F5A623" fill="#F5A623" />
-      {rating.average?.toFixed(1)} ({rating.count})
-    </span>
+    <div>
+      <button
+        type="button"
+        onClick={toggle}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', color: 'var(--toss-grey-700)', padding: 0 }}
+      >
+        <Star size={14} color="#F5A623" fill="#F5A623" />
+        {rating.average?.toFixed(1)} ({rating.count})
+      </button>
+      {open && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+          {reviews === null ? (
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Loading reviews…</p>
+          ) : reviews.length === 0 ? (
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No written reviews yet.</p>
+          ) : (
+            reviews.map((r) => (
+              <div key={r.id} style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>
+                <span style={{ color: '#F5A623' }}>{'★'.repeat(r.restaurantRating)}{'☆'.repeat(5 - r.restaurantRating)}</span>
+                {r.restaurantComment && <span> — {r.restaurantComment}</span>}
+                {r.ownerReply && (
+                  <div style={{ marginTop: '2px', marginLeft: '12px', color: 'var(--toss-grey-500)' }}>
+                    ↳ Restaurant: {r.ownerReply}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Real owner-reply management (item 184) -- a restaurant owner's own reviews, with an
+// inline reply form for anything not yet replied to. Lives on RestaurantOrdersView
+// (the owner's own dashboard) since that's the only place this app already resolves
+// "my own restaurant id" for an Eats seller.
+function RestaurantReviewsManageView({ restaurantId }: { restaurantId: string }) {
+  const [reviews, setReviews] = useState<EatsReview[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    fetchRestaurantReviews(restaurantId).then(setReviews).catch((err) => {
+      setError(err instanceof ApiError ? err.message : 'Could not load your reviews.');
+    });
+  };
+  useEffect(load, [restaurantId]);
+
+  if (error) return <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>;
+  if (reviews === null) return <div className="toss-card skeleton" style={{ height: '80px' }} />;
+  if (reviews.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom: '20px' }}>
+      <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Reviews for your restaurant</h4>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {reviews.map((r) => <RestaurantReviewReplyCard key={r.id} review={r} onReplied={load} />)}
+      </div>
+    </div>
+  );
+}
+
+function RestaurantReviewReplyCard({ review, onReplied }: { review: EatsReview; onReplied: () => void }) {
+  const [replying, setReplying] = useState(false);
+  const [reply, setReply] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      await replyToRestaurantReview(review.id, reply.trim());
+      setReplying(false);
+      onReplied();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not submit your reply.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="toss-card" style={{ padding: '14px' }}>
+      <span style={{ color: '#F5A623', fontSize: '13px' }}>{'★'.repeat(review.restaurantRating)}{'☆'.repeat(5 - review.restaurantRating)}</span>
+      {review.restaurantComment && <p style={{ fontSize: '13px', marginTop: '4px' }}>{review.restaurantComment}</p>}
+      {review.ownerReply ? (
+        <div style={{ marginTop: '8px', paddingLeft: '10px', borderLeft: '2px solid var(--toss-grey-200)', fontSize: '12px', color: 'var(--toss-grey-700)' }}>
+          Your reply: {review.ownerReply}
+        </div>
+      ) : replying ? (
+        <form onSubmit={handleSubmit} style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
+          <input
+            type="text" placeholder="Write a reply…" value={reply} onChange={(e) => setReply(e.target.value)} required
+            style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting} style={{ fontSize: '12px', padding: '8px 12px' }}>
+            {submitting ? '…' : 'Reply'}
+          </button>
+        </form>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setReplying(true)}
+          className="toss-btn toss-btn-secondary"
+          style={{ marginTop: '8px', fontSize: '12px', padding: '6px 10px' }}
+        >
+          Reply
+        </button>
+      )}
+      {error && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '4px' }} role="alert">{error}</p>}
+    </div>
   );
 }
 
@@ -9157,6 +9282,7 @@ function RestaurantOrdersView() {
           );
         })}
       </div>
+      <RestaurantReviewsManageView restaurantId={orders[0].restaurantId} />
     </div>
   );
 }

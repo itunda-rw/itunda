@@ -259,6 +259,15 @@ export const fetchRestaurantRating = (restaurantId: string) =>
 export const fetchRestaurantReviews = (restaurantId: string) =>
   apiFetch<{ success: boolean; reviews: EatsReview[] }>(`/api/v1/eats/restaurants/${restaurantId}/reviews`).then((r) => r.reviews);
 
+// Real owner-side reply (2026-07-26 backend, first client 2026-07-29, item 184) -- see
+// EatsReviewService.replyToRestaurantReview's own doc comment. Restaurant-owner only,
+// enforced server-side; one editable reply per review.
+export const replyToRestaurantReview = (reviewId: string, reply: string) =>
+  apiFetch<{ success: boolean; review: EatsReview }>(`/api/v1/eats/reviews/${reviewId}/reply`, {
+    method: 'POST',
+    body: JSON.stringify({ reply }),
+  }).then((r) => r.review);
+
 // Real address-search autocomplete (2026-07-18) -- itunda's own self-hosted Nominatim
 // geocoder, not a third-party Maps API. See EatsController.searchDeliveryAddress's own
 // doc comment.
