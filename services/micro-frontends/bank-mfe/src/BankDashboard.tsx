@@ -90,9 +90,10 @@ import {
   type AddressSuggestion, type EatsMembership, type EatsOrder, type EatsOrderStatus, type FavoriteRestaurant, type MenuItem, type RatingSummary, type Rider,
 } from './lib/eats';
 import {
-  addProductFavorite, advanceOrderStatus, askProductInquiry, cancelOrder, fetchMerchantOrders, fetchMerchantProducts, fetchMyFavoriteProducts, fetchMyOrders, fetchOrderDetail,
-  fetchProductInquiries, fetchProductRating, fetchProductReviews, placeOrder, removeProductFavorite, submitProductReview,
-  type CommerceOrder, type CommerceOrderItem, type CommerceOrderStatus, type CommerceProduct, type FavoriteProduct, type ProductInquiry, type ProductReview,
+  addProductFavorite, advanceOrderStatus, askProductInquiry, cancelOrder, decideOrderReturn, fetchMerchantOrders, fetchMerchantProducts, fetchMerchantReturnQueue,
+  fetchMyFavoriteProducts, fetchMyOrders, fetchMyReturnRequests, fetchOrderDetail,
+  fetchProductInquiries, fetchProductRating, fetchProductReviews, ORDER_RETURN_REASON_CODES, placeOrder, removeProductFavorite, requestOrderReturn, submitProductReview,
+  type CommerceOrder, type CommerceOrderItem, type CommerceOrderStatus, type CommerceProduct, type FavoriteProduct, type OrderReturnRequestDto, type OrderReturnType, type ProductInquiry, type ProductReview,
 } from './lib/commerce';
 import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
@@ -9929,6 +9930,181 @@ function OrderItemReviews({ order }: { order: CommerceOrder }) {
   );
 }
 
+// Real Coupang-style post-delivery Return & Exchange request (item 166) -- see
+// lib/commerce.ts's own doc comment. A real 7-day window from delivery, enforced
+// server-side; this button stays offered regardless (a stale/expired attempt just
+// real-errors with an honest message, same discipline as every other time-gated action
+// in this app).
+function ReturnExchangeAction({ orderId }: { orderId: string }) {
+  const [open, setOpen] = useState(false);
+  const [type, setType] = useState<OrderReturnType>('RETURN');
+  const [reasonCode, setReasonCode] = useState<string>(ORDER_RETURN_REASON_CODES[0]);
+  const [reasonNote, setReasonNote] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<OrderReturnRequestDto | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      const req = await requestOrderReturn(orderId, type, reasonCode, reasonNote.trim() || undefined);
+      setResult(req);
+      setOpen(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not submit this request.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (result) {
+    return <p style={{ fontSize: '12px', color: 'var(--toss-blue)', fontWeight: 600, marginTop: '6px' }}>{result.type === 'RETURN' ? 'Return' : 'Exchange'} requested — awaiting seller review.</p>;
+  }
+
+  if (!open) {
+    return (
+      <button className="toss-btn toss-btn-secondary" style={{ marginTop: '6px', padding: '6px 12px', fontSize: '12px' }} onClick={() => setOpen(true)}>
+        Return or exchange
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', padding: '10px', background: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <select value={type} onChange={(e) => setType(e.target.value as OrderReturnType)} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}>
+          <option value="RETURN">Return</option>
+          <option value="EXCHANGE">Exchange</option>
+        </select>
+        <select value={reasonCode} onChange={(e) => setReasonCode(e.target.value)} style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}>
+          {ORDER_RETURN_REASON_CODES.map((r) => <option key={r} value={r}>{r.replace(/_/g, ' ').toLowerCase()}</option>)}
+        </select>
+      </div>
+      <input
+        type="text"
+        value={reasonNote}
+        onChange={(e) => setReasonNote(e.target.value)}
+        placeholder="Details (optional)"
+        style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+      />
+      {error && <p style={{ fontSize: '12px', color: '#E53935', margin: 0 }} role="alert">{error}</p>}
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting} style={{ flex: 1, padding: '8px', fontSize: '13px' }}>
+          {submitting ? 'Submitting…' : 'Submit request'}
+        </button>
+        <button type="button" className="toss-btn toss-btn-secondary" onClick={() => setOpen(false)} style={{ padding: '8px 12px', fontSize: '13px' }}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
+function MyReturnRequestsView() {
+  const [requests, setRequests] = useState<OrderReturnRequestDto[] | null>(null);
+
+  useEffect(() => {
+    fetchMyReturnRequests().then(setRequests).catch(() => setRequests([]));
+  }, []);
+
+  if (!requests || requests.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom: '16px' }}>
+      <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>My return &amp; exchange requests</h4>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {requests.map((r) => (
+          <div key={r.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <p style={{ fontSize: '13px', fontWeight: 700 }}>{r.type === 'RETURN' ? 'Return' : 'Exchange'}</p>
+              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{r.reasonCode.replace(/_/g, ' ').toLowerCase()}</p>
+            </div>
+            <span style={{
+              fontSize: '12px', fontWeight: 700,
+              color: r.status === 'APPROVED' ? 'var(--toss-green)' : r.status === 'REJECTED' ? '#E53935' : 'var(--toss-blue)',
+            }}>
+              {r.status === 'REQUESTED' ? 'Pending' : r.status === 'APPROVED' ? 'Approved' : 'Rejected'}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MerchantReturnQueueView() {
+  const [requests, setRequests] = useState<OrderReturnRequestDto[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = () => {
+    fetchMerchantReturnQueue()
+      .then(setRequests)
+      .catch((err) => {
+        if (err instanceof ApiError && err.code === 'MERCHANT_NOT_FOUND') {
+          setRequests([]);
+        } else {
+          setError(err instanceof ApiError ? err.message : 'Could not load return requests.');
+        }
+      });
+  };
+
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 8000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleDecide = async (id: string, approve: boolean) => {
+    setBusyId(id);
+    setError(null);
+    try {
+      await decideOrderReturn(id, approve);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not decide this request.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="toss-card" style={{ marginBottom: '16px' }}>
+        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+      </div>
+    );
+  }
+  if (requests === null) return <div className="toss-card skeleton" style={{ height: '80px', marginBottom: '16px' }} />;
+  const open = requests.filter((r) => r.status === 'REQUESTED');
+  if (open.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom: '20px' }}>
+      <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Return &amp; exchange requests</h4>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {open.map((r) => (
+          <div key={r.id} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <p style={{ fontSize: '14px', fontWeight: 700 }}>{r.type === 'RETURN' ? 'Return' : 'Exchange'} requested</p>
+              <span style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{r.reasonCode.replace(/_/g, ' ').toLowerCase()}</span>
+            </div>
+            {r.reasonNote && <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>{r.reasonNote}</p>}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busyId === r.id} onClick={() => handleDecide(r.id, true)}>
+                {busyId === r.id ? '…' : 'Approve'}
+              </button>
+              <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={busyId === r.id} onClick={() => handleDecide(r.id, false)}>
+                Reject
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Real cross-merchant cart (2026-07-20) -- closes the "real Coupang splits a
 // multi-seller cart into per-seller orders, not attempted here" simplification this
 // row's own text named. Keyed by merchantId so a buyer can browse merchant A, add
@@ -10675,7 +10851,9 @@ function MyCommerceOrdersView() {
   if (orders.length === 0) return <div className="toss-card"><p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No orders yet.</p></div>;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div>
+      <MyReturnRequestsView />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       {orders.map((o) => (
         <CommerceOrderCard
           key={o.id}
@@ -10686,11 +10864,15 @@ function MyCommerceOrdersView() {
                 {cancellingId === o.id ? 'Cancelling…' : 'Cancel order'}
               </button>
             ) : o.status === 'DELIVERED' ? (
-              <OrderItemReviews order={o} />
+              <div>
+                <OrderItemReviews order={o} />
+                <ReturnExchangeAction orderId={o.id} />
+              </div>
             ) : undefined
           }
         />
       ))}
+      </div>
     </div>
   );
 }
@@ -11003,6 +11185,7 @@ function ShopView() {
   return (
     <div>
       <MerchantOrdersView />
+      <MerchantReturnQueueView />
 
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
         {(['BROWSE', 'ORDERS', 'WISHLIST'] as const).map((v) => (

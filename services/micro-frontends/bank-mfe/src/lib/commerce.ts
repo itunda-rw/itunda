@@ -83,6 +83,51 @@ export const cancelOrder = (orderId: string) =>
     method: 'POST',
   }).then((r) => r.order);
 
+// Real Coupang-style post-delivery Return & Exchange requests (반품/교환 신청) (item 166,
+// found via the domain-entity discovery sweep) -- see OrderReturnService's own doc
+// comment. Genuinely distinct from cancelOrder above (PLACED orders only, before real
+// fulfillment work starts): this is the separate real event only possible once an order
+// is DELIVERED. A real 7-day window from delivery; an approved RETURN triggers a real
+// refund (reverses the original transaction's own ledger legs), an approved EXCHANGE
+// moves no money (a recorded "the seller will ship a replacement" agreement, fulfilled
+// manually). Fully real (including real push notifications both ways) but had zero
+// client anywhere on any platform.
+export type OrderReturnType = 'RETURN' | 'EXCHANGE';
+export type OrderReturnStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED';
+export const ORDER_RETURN_REASON_CODES = ['DEFECTIVE', 'WRONG_ITEM', 'NOT_AS_DESCRIBED', 'NO_LONGER_NEEDED', 'SIZE_FIT', 'OTHER'] as const;
+
+export interface OrderReturnRequestDto {
+  id: string;
+  orderId: string;
+  buyerId: string;
+  merchantId: string;
+  type: OrderReturnType;
+  reasonCode: string;
+  reasonNote: string | null;
+  status: OrderReturnStatus;
+  refundTransactionId: string | null;
+  requestedAt: string;
+  decidedAt: string | null;
+}
+
+export const requestOrderReturn = (orderId: string, type: OrderReturnType, reasonCode: string, reasonNote?: string) =>
+  apiFetch<{ success: boolean; returnRequest: OrderReturnRequestDto }>(`/api/v1/orders/${orderId}/return`, {
+    method: 'POST',
+    body: JSON.stringify({ type, reasonCode, reasonNote }),
+  }).then((r) => r.returnRequest);
+
+export const fetchMyReturnRequests = () =>
+  apiFetch<{ success: boolean; returnRequests: OrderReturnRequestDto[] }>('/api/v1/orders/returns/my-requests?size=50').then((r) => r.returnRequests);
+
+export const fetchMerchantReturnQueue = () =>
+  apiFetch<{ success: boolean; returnRequests: OrderReturnRequestDto[] }>('/api/v1/orders/returns/merchant-queue?size=50').then((r) => r.returnRequests);
+
+export const decideOrderReturn = (returnRequestId: string, approve: boolean) =>
+  apiFetch<{ success: boolean; returnRequest: OrderReturnRequestDto }>(`/api/v1/orders/returns/${returnRequestId}/decide`, {
+    method: 'POST',
+    body: JSON.stringify({ approve }),
+  }).then((r) => r.returnRequest);
+
 // Real post-delivery product reviews (2026-07-20), mirroring Eats' own restaurant/rider
 // review pattern -- see ProductReviewService's own doc comment for the full backend
 // account. One real review per real delivered order line item.
