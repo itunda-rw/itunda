@@ -12,6 +12,7 @@ struct SpendingScreenView: View {
     var onBack: () -> Void = {}
     @State private var insight: SpendingInsightResponse?
     @State private var error: String?
+    @State private var budgets: [BudgetViewDto]?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -65,6 +66,8 @@ struct SpendingScreenView: View {
                             }
                             .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
                         }
+
+                        BudgetsSection(categories: insight.categories, budgets: budgets, onBudgetsChanged: { budgets = $0 })
                     } else {
                         ProgressView().frame(maxWidth: .infinity).padding(40)
                     }
@@ -78,6 +81,123 @@ struct SpendingScreenView: View {
                 insight = try await NetworkClient.shared.getSpendingInsight()
             } catch {
                 self.error = "Could not load your spending."
+            }
+            do {
+                budgets = try await NetworkClient.shared.getBudgets().budgets
+            } catch {
+                budgets = []
+            }
+        }
+    }
+}
+
+// Real Toss budgets/limits equivalent (item 173) -- mirrors bank-mfe's own
+// BudgetsSection/SetBudgetForm (item 165) and Android's BudgetsSection/SetBudgetForm
+// (item 172): per-category or overall (category == nil) monthly limit, progress bar
+// color-coded by real UNDER/NEAR/OVER status.
+private struct BudgetsSection: View {
+    let categories: [SpendingCategoryDto]
+    let budgets: [BudgetViewDto]?
+    let onBudgetsChanged: ([BudgetViewDto]) -> Void
+
+    @State private var showForm = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Budgets").bold().foregroundColor(IDS.Colors.textPrimary)
+                Spacer()
+                Button(showForm ? "Cancel" : "+ Set budget") { showForm.toggle() }
+                    .font(.caption).foregroundColor(IDS.Colors.brand)
+            }
+
+            if showForm {
+                SetBudgetForm(categories: categories, onSet: { category, limit in
+                    showForm = false
+                    Task {
+                        do {
+                            _ = try await NetworkClient.shared.setBudget(category: category, monthlyLimit: limit)
+                            onBudgetsChanged(try await NetworkClient.shared.getBudgets().budgets)
+                        } catch {
+                            // leave existing budgets list as-is on failure
+                        }
+                    }
+                })
+            }
+
+            if let budgets, !budgets.isEmpty {
+                ForEach(budgets) { budget in BudgetCard(budget: budget) }
+            }
+        }
+        .padding(16).background(Color(.secondarySystemBackground)).cornerRadius(12)
+    }
+}
+
+private struct BudgetCard: View {
+    let budget: BudgetViewDto
+
+    private var barColor: Color {
+        switch budget.status {
+        case "OVER": return .red
+        case "NEAR": return Color(red: 0.96, green: 0.65, blue: 0.14)
+        default: return IDS.Colors.brand
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(budget.category ?? "Overall spending").font(.subheadline)
+                Spacer()
+                Text("\(formatMoneySpending(budget.spent)) / \(formatMoneySpending(budget.monthlyLimit)) RWF")
+                    .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color(.tertiarySystemBackground)).frame(height: 6)
+                    Capsule().fill(barColor)
+                        .frame(width: geo.size.width * CGFloat(min(max(Double(budget.percentUsed) / 100, 0), 1)), height: 6)
+                }
+            }
+            .frame(height: 6)
+            if budget.status == "OVER" {
+                Text("Over budget").font(.caption2).foregroundColor(barColor)
+            } else if budget.status == "NEAR" {
+                Text("Nearing your limit").font(.caption2).foregroundColor(barColor)
+            }
+        }
+    }
+}
+
+private struct SetBudgetForm: View {
+    let categories: [SpendingCategoryDto]
+    let onSet: (String?, Double) -> Void
+
+    @State private var selectedCategory: String?
+    @State private var limitText = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Menu(selectedCategory ?? "Overall spending") {
+                Button("Overall spending") { selectedCategory = nil }
+                ForEach(categories, id: \.name) { category in
+                    Button(category.name) { selectedCategory = category.name }
+                }
+            }
+            .font(.subheadline).foregroundColor(IDS.Colors.textPrimary)
+
+            TextField("Monthly limit (RWF)", text: $limitText)
+                .keyboardType(.decimalPad)
+                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+
+            Button(action: {
+                if let limit = Double(limitText.trimmingCharacters(in: .whitespaces)), limit > 0 {
+                    onSet(selectedCategory, limit)
+                }
+            }) {
+                Text("Save budget").bold().foregroundColor(.white)
+                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+                    .background(IDS.Colors.brand).cornerRadius(10)
             }
         }
     }

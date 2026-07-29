@@ -331,6 +331,23 @@ public struct DineInOrdersResponse: Decodable { public let success: Bool; public
 public struct SpendingCategoryDto: Decodable { public let name: String; public let amount: Double }
 public struct SpendingInsightResponse: Decodable { public let success: Bool; public let categories: [SpendingCategoryDto]; public let totalSpent: Double }
 
+// Real Toss budgets/limits equivalent (item 165/173) -- WalletService.setBudget/
+// getBudgets, exposed on the pre-existing WalletController. bank-mfe (item 165) and
+// Android (item 172) already have this; this is the iOS port.
+public struct SetBudgetRequest: Encodable { public let category: String?; public let monthlyLimit: Double }
+public struct BudgetViewDto: Decodable, Identifiable {
+    public var id: String { category ?? "__overall__" }
+    public let category: String?
+    public let monthlyLimit: Double
+    public let spent: Double
+    public let remaining: Double
+    public let percentUsed: Int
+    public let status: String
+}
+public struct GetBudgetsResponse: Decodable { public let success: Bool; public let budgets: [BudgetViewDto] }
+public struct BudgetSummaryDto: Decodable { public let category: String?; public let monthlyLimit: Double }
+public struct SetBudgetResponse: Decodable { public let success: Bool; public let budget: BudgetSummaryDto }
+
 // Real Kakao T-style ride-hailing -- mirrors RideDriver.kt/RideTrip.kt exactly.
 public struct RideDriverDto: Decodable {
     public let id: String
@@ -464,6 +481,12 @@ extension NetworkClient {
     // this feature (item 108, found backend-only via a fresh matrix scan; bank-mfe/
     // Android ported the same day as items 106/107).
     public func getSpendingInsight() async throws -> SpendingInsightResponse { try await get("api/v1/wallet/spending") }
+
+    public func getBudgets() async throws -> GetBudgetsResponse { try await get("api/v1/wallet/budgets") }
+
+    public func setBudget(category: String?, monthlyLimit: Double) async throws -> SetBudgetResponse {
+        try await authenticatedPost("api/v1/wallet/budgets", body: SetBudgetRequest(category: category, monthlyLimit: monthlyLimit))
+    }
 
     // Real Kakao T-style ride-hailing (rw.itunda.rideshare, real since 2026-07-26) --
     // first iOS client for this feature (item 110, found via a fresh matrix scan;
