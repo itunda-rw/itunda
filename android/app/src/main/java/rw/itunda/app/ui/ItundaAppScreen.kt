@@ -1661,6 +1661,7 @@ private fun MyTab(
         verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap),
     ) {
         item { BackTopBar("My", onBack) }
+        item { ProfilePhotoCard() }
         item { VerificationCard() }
         // Real order tracking -- Naver Pay/Shopping's own "My" tab leads with recent
         // orders across every product, not a settings list. Shows the real 3 most
@@ -1734,6 +1735,74 @@ private fun MyTab(
 // requestPhoneVerification's own doc comment. bank-mfe (item 169) already has this
 // (mirrored field-for-field); this is the first Android client. A real code is
 // delivered via a real in-app Notification + push, no real SMS/email gateway exists.
+@Composable
+// Real profile photo (URL, not a binary upload) -- also the real, buildable half of
+// Rewards' task_profile. Found 2026-07-29 via a full-backend-endpoint sweep: a real,
+// working `PUT /api/v1/auth/profile/photo` endpoint with zero client anywhere, and
+// `PublicUser.profilePhotoUrl` wasn't even carried by this DTO until now.
+@Composable
+private fun ProfilePhotoCard() {
+    var profilePhotoUrl by rememberSaveable { mutableStateOf<String?>(null) }
+    var urlInput by rememberSaveable { mutableStateOf("") }
+    var saving by rememberSaveable { mutableStateOf(false) }
+    var error by rememberSaveable { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        try {
+            val user = rw.itunda.core.network.NetworkClient.authApi.getProfile().user
+            profilePhotoUrl = user.profilePhotoUrl
+            urlInput = user.profilePhotoUrl ?: ""
+        } catch (_: Exception) {
+            // Real, non-critical -- the rest of "My" still works without this.
+        }
+    }
+
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            val photoUrl = profilePhotoUrl
+            if (photoUrl != null) {
+                coil.compose.AsyncImage(
+                    model = photoUrl, contentDescription = "Profile photo",
+                    modifier = Modifier.size(56.dp).clip(androidx.compose.foundation.shape.CircleShape),
+                )
+            } else {
+                Box(modifier = Modifier.size(56.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Ids.colors.surfaceSoft))
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+                OutlinedTextField(
+                    value = urlInput, onValueChange = { urlInput = it },
+                    placeholder = { Text("Profile photo URL") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                IdsButton(
+                    text = if (saving) "Saving…" else "Save photo",
+                    enabled = !saving,
+                    onClick = {
+                        val trimmed = urlInput.trim()
+                        if (trimmed.isEmpty()) { error = "Enter a photo URL."; return@IdsButton }
+                        saving = true
+                        error = null
+                        coroutineScope.launch {
+                            try {
+                                profilePhotoUrl = rw.itunda.core.network.NetworkClient.authApi.updateProfilePhoto(
+                                    rw.itunda.core.network.UpdateProfilePhotoRequest(trimmed),
+                                ).user.profilePhotoUrl
+                            } catch (_: Exception) {
+                                error = "Could not update your profile photo."
+                            } finally {
+                                saving = false
+                            }
+                        }
+                    },
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun VerificationCard() {
     var email by rememberSaveable { mutableStateOf<String?>(null) }

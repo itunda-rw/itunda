@@ -68,7 +68,14 @@ data class PublicUser(
     // profile response since 2026-07-13/26; this app just never modeled them until now.
     val emailVerified: Boolean = false,
     val phoneVerified: Boolean = false,
+    // Real profile photo (URL, not a binary upload) -- also the real, buildable half
+    // of Rewards' task_profile. Found 2026-07-29 via a full-backend-endpoint sweep:
+    // real, working endpoint with zero client anywhere, and this field wasn't even
+    // carried by this DTO until now.
+    val profilePhotoUrl: String? = null,
 )
+
+data class UpdateProfilePhotoRequest(val profilePhotoUrl: String)
 
 data class AuthResponse(
     val message: String,
@@ -105,6 +112,11 @@ interface AuthApi {
     // mirrors exactly.
     @POST("api/v1/auth/profile/neighborhood")
     suspend fun setNeighborhood(@Body request: SetNeighborhoodRequest): ProfileResponse
+
+    // Real profile photo (URL, not a binary upload) -- see PublicUser.profilePhotoUrl's
+    // own doc comment.
+    @PUT("api/v1/auth/profile/photo")
+    suspend fun updateProfilePhoto(@Body request: UpdateProfilePhotoRequest): ProfileResponse
 
     // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
     // AuthService.setBirthDate's own doc comment. birthDate is an ISO-8601 date
