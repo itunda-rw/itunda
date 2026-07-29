@@ -1428,6 +1428,16 @@ interface ApiService {
     @GET("api/v1/wallet/spending")
     suspend fun getSpendingInsight(): SpendingInsightResponse
 
+    // Real Toss budgets/limits equivalent (item 165/172) -- WalletService.setBudget/
+    // getBudgets, exposed on the pre-existing WalletController (no dedicated
+    // controller). Per-category or overall (category == null) monthly limit, with
+    // a real 80%/100%-threshold in-app Notification + push (maybeNotifyBudgetThreshold).
+    @GET("api/v1/wallet/budgets")
+    suspend fun getBudgets(): GetBudgetsResponse
+
+    @POST("api/v1/wallet/budgets")
+    suspend fun setBudget(@Body request: SetBudgetRequest): SetBudgetResponse
+
     // Real 토스뱅크 외화통장 (foreign-currency account) equivalent (2026-07-25) -- see
     // rw.itunda.wallet.web.ForeignCurrencyController.
     @POST("api/v1/wallet/foreign-currency/wallets")
@@ -2473,6 +2483,19 @@ data class RequestRideTripRequest(
 
 data class SpendingCategoryDto(val name: String, val amount: java.math.BigDecimal)
 data class SpendingInsightResponse(val success: Boolean, val categories: List<SpendingCategoryDto>, val totalSpent: java.math.BigDecimal)
+
+data class SetBudgetRequest(val category: String? = null, val monthlyLimit: java.math.BigDecimal)
+data class BudgetViewDto(
+    val category: String?,
+    val monthlyLimit: java.math.BigDecimal,
+    val spent: java.math.BigDecimal,
+    val remaining: java.math.BigDecimal,
+    val percentUsed: Int,
+    val status: String,
+)
+data class GetBudgetsResponse(val success: Boolean, val budgets: List<BudgetViewDto>)
+data class BudgetSummaryDto(val category: String?, val monthlyLimit: java.math.BigDecimal)
+data class SetBudgetResponse(val success: Boolean, val budget: BudgetSummaryDto)
 
 // Real Kakao Bank 모임통장 (group/shared account) equivalent -- mirrors
 // GroupAccount.kt/GroupAccountService.kt exactly.

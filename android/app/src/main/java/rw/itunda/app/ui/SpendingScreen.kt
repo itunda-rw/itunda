@@ -15,19 +15,31 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import rw.itunda.core.network.BudgetViewDto
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.SetBudgetRequest
+import rw.itunda.core.network.SpendingCategoryDto
 import rw.itunda.core.network.SpendingInsightResponse
 import java.math.BigDecimal
 
@@ -100,7 +112,127 @@ fun SpendingScreen(onBack: () -> Unit) {
                         }
                     }
                 }
+                item { BudgetsSection(categories = current.categories) }
             }
+        }
+    }
+}
+
+// Real Toss budgets/limits equivalent (item 172) -- WalletService.setBudget/
+// getBudgets via ApiService.getBudgets/setBudget. Mirrors bank-mfe's own
+// BudgetsSection/SetBudgetForm (item 165): per-category or overall (category == null)
+// monthly limit, color-coded by UNDER/NEAR(>=80%)/OVER(>=100%) status.
+@Composable
+private fun BudgetsSection(categories: List<SpendingCategoryDto>) {
+    var budgets by remember { mutableStateOf<List<BudgetViewDto>?>(null) }
+    var showForm by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        try {
+            budgets = NetworkClient.apiService.getBudgets().budgets
+        } catch (_: Exception) {
+            budgets = emptyList()
+        }
+    }
+
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Budgets", style = MaterialTheme.typography.titleMedium)
+            TextButton(onClick = { showForm = !showForm }) { Text(if (showForm) "Cancel" else "+ Set budget") }
+        }
+        if (showForm) {
+            SetBudgetForm(
+                categories = categories,
+                onSet = { category, limit ->
+                    showForm = false
+                    coroutineScope.launch {
+                        budgets = try {
+                            NetworkClient.apiService.setBudget(SetBudgetRequest(category, limit))
+                            NetworkClient.apiService.getBudgets().budgets
+                        } catch (_: Exception) {
+                            budgets
+                        }
+                    }
+                },
+            )
+        }
+        val current = budgets
+        if (current != null && current.isNotEmpty()) {
+            current.forEach { budget -> BudgetCard(budget) }
+        }
+    }
+}
+
+@Composable
+private fun BudgetCard(budget: BudgetViewDto) {
+    val barColor = when (budget.status) {
+        "OVER" -> androidx.compose.ui.graphics.Color(0xFFE53935)
+        "NEAR" -> androidx.compose.ui.graphics.Color(0xFFF5A623)
+        else -> MaterialTheme.colorScheme.primary
+    }
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(budget.category ?: "Overall spending", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    "${formatMoneySpending(budget.spent)} / ${formatMoneySpending(budget.monthlyLimit)} RWF",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(6.dp))
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+            ) {
+                androidx.compose.foundation.layout.Box(
+                    modifier = Modifier.fillMaxWidth((budget.percentUsed / 100f).coerceIn(0f, 1f)).fillMaxHeight()
+                        .clip(RoundedCornerShape(3.dp)).background(barColor),
+                )
+            }
+            if (budget.status == "OVER") {
+                Text("Over budget", style = MaterialTheme.typography.bodySmall, color = barColor)
+            } else if (budget.status == "NEAR") {
+                Text("Nearing your limit", style = MaterialTheme.typography.bodySmall, color = barColor)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SetBudgetForm(categories: List<SpendingCategoryDto>, onSet: (String?, BigDecimal) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var limitText by remember { mutableStateOf("") }
+
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth()) {
+                TextButton(onClick = { expanded = true }) { Text(selectedCategory ?: "Overall spending") }
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    DropdownMenuItem(text = { Text("Overall spending") }, onClick = { selectedCategory = null; expanded = false })
+                    categories.forEach { category ->
+                        DropdownMenuItem(
+                            text = { Text(category.name) },
+                            onClick = { selectedCategory = category.name; expanded = false },
+                        )
+                    }
+                }
+            }
+            OutlinedTextField(
+                value = limitText,
+                onValueChange = { limitText = it },
+                label = { Text("Monthly limit (RWF)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Button(
+                onClick = {
+                    val limit = limitText.toBigDecimalOrNull()
+                    if (limit != null && limit > BigDecimal.ZERO) onSet(selectedCategory, limit)
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Save budget") }
         }
     }
 }
