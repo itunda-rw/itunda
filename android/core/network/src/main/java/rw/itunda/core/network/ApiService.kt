@@ -1458,6 +1458,18 @@ interface ApiService {
     @POST("api/v1/wallet/budgets")
     suspend fun setBudget(@Body request: SetBudgetRequest): SetBudgetResponse
 
+    // Real Naver Pay Money 자동충전 (auto-charge) equivalent (item 168/176) -- see
+    // AutoTopUpService's own doc comment. getSetting real-404s (AUTO_TOPUP_SETTING_NOT_
+    // FOUND) if this wallet has no setting configured yet -- normal, not caught here.
+    @GET("api/v1/wallet/{walletId}/auto-topup")
+    suspend fun getAutoTopUpSetting(@Path("walletId") walletId: String): GetAutoTopUpSettingResponse
+
+    @PUT("api/v1/wallet/{walletId}/auto-topup")
+    suspend fun configureAutoTopUp(@Path("walletId") walletId: String, @Body request: ConfigureAutoTopUpRequest): GetAutoTopUpSettingResponse
+
+    @POST("api/v1/wallet/{walletId}/auto-topup/trigger")
+    suspend fun triggerAutoTopUp(@Path("walletId") walletId: String): TriggerAutoTopUpResponse
+
     // Real 토스뱅크 외화통장 (foreign-currency account) equivalent (2026-07-25) -- see
     // rw.itunda.wallet.web.ForeignCurrencyController.
     @POST("api/v1/wallet/foreign-currency/wallets")
@@ -2529,6 +2541,29 @@ data class BudgetViewDto(
 data class GetBudgetsResponse(val success: Boolean, val budgets: List<BudgetViewDto>)
 data class BudgetSummaryDto(val category: String?, val monthlyLimit: java.math.BigDecimal)
 data class SetBudgetResponse(val success: Boolean, val budget: BudgetSummaryDto)
+
+data class ConfigureAutoTopUpRequest(
+    val linkedAccountId: String,
+    val thresholdAmount: java.math.BigDecimal,
+    val topUpAmount: java.math.BigDecimal,
+    val dailyTriggerCap: Int = 3,
+    val enabled: Boolean = true,
+)
+data class AutoTopUpSettingDto(
+    val id: String,
+    val userId: String,
+    val walletId: String,
+    val linkedAccountId: String,
+    val enabled: Boolean,
+    val thresholdAmount: java.math.BigDecimal,
+    val topUpAmount: java.math.BigDecimal,
+    val dailyTriggerCap: Int,
+    val triggersToday: Int,
+    val lastTriggerDate: String? = null,
+    val lastTriggeredAt: String? = null,
+)
+data class GetAutoTopUpSettingResponse(val success: Boolean, val setting: AutoTopUpSettingDto)
+data class TriggerAutoTopUpResponse(val success: Boolean, val triggered: Boolean, val reason: String?)
 
 // Real Kakao Bank 모임통장 (group/shared account) equivalent -- mirrors
 // GroupAccount.kt/GroupAccountService.kt exactly.
