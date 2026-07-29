@@ -3,6 +3,7 @@ package rw.itunda.app.ui
 import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,9 +14,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,9 +33,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import rw.itunda.core.network.ApplyLoanRequest
+import rw.itunda.core.network.LenderDto
 import rw.itunda.core.network.LoanAccountDto
 import rw.itunda.core.network.LoanOfferDto
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.RefinanceLoanRequest
+import rw.itunda.core.network.RefinanceResult
 import rw.itunda.core.network.RepayLoanRequest
 import java.math.BigDecimal
 import java.util.UUID
@@ -49,21 +56,38 @@ fun LoansScreen(onBack: () -> Unit) {
     var mode by remember { mutableStateOf(LoansMode.OFFERS) }
     var offers by remember { mutableStateOf<List<LoanOfferDto>?>(null) }
     var myLoans by remember { mutableStateOf<List<LoanAccountDto>?>(null) }
+    var lenders by remember { mutableStateOf<List<LenderDto>?>(null) }
+    var lenderId by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var busyId by remember { mutableStateOf<String?>(null) }
     var repayAmounts by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var refinanceResult by remember { mutableStateOf<RefinanceResult?>(null) }
     val scope = rememberCoroutineScope()
 
     suspend fun refresh() {
         try {
             offers = NetworkClient.apiService.getLoanOffers().offers
             myLoans = NetworkClient.apiService.getMyLoans().loans
+            lenders = NetworkClient.apiService.getLenders().lenders
             error = null
         } catch (_: Exception) {
             error = "Could not load loans."
         }
     }
     LaunchedEffect(Unit) { refresh() }
+
+    // Real "browse by lender" filter (item 200) -- see bank-mfe/iOS ports' own comment.
+    fun selectLender(id: String?) {
+        lenderId = id
+        error = null
+        scope.launch {
+            try {
+                offers = NetworkClient.apiService.getLoanOffers(id).offers
+            } catch (_: Exception) {
+                error = "Could not load offers."
+            }
+        }
+    }
 
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(20.dp)) {
@@ -76,9 +100,30 @@ fun LoansScreen(onBack: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
+            refinanceResult?.let { result ->
+                item {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp)) {
+                            Text("Refinanced into ${result.newLoanName}", style = MaterialTheme.typography.titleSmall)
+                            Text("${result.oldInterestRate}% → ${result.newInterestRate}%", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
             if (mode == LoansMode.OFFERS) {
+                lenders?.let { currentLenders ->
+                    item {
+                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            LenderChip("All lenders", selected = lenderId == null) { selectLender(null) }
+                            currentLenders.forEach { lender ->
+                                LenderChip(lender.name, selected = lenderId == lender.id) { selectLender(lender.id) }
+                            }
+                        }
+                    }
+                }
                 val currentOffers = offers
                 if (currentOffers == null) item { SkeletonBlock() }
+                else if (currentOffers.isEmpty()) item { Text("No offers from this lender right now.") }
                 else items(currentOffers, key = { it.id }) { offer ->
                     OfferCard(offer, busyId == offer.id) { amount ->
                         busyId = offer.id
@@ -120,6 +165,21 @@ fun LoansScreen(onBack: () -> Unit) {
                                 } finally { busyId = null }
                             }
                         },
+                        onRefinance = {
+                            busyId = loan.id
+                            error = null
+                            scope.launch {
+                                try {
+                                    refinanceResult = NetworkClient.apiService.refinanceLoan(
+                                        UUID.randomUUID().toString(),
+                                        RefinanceLoanRequest(loan.id),
+                                    )
+                                    refresh()
+                                } catch (_: Exception) {
+                                    error = "No better rate is available for this loan right now."
+                                } finally { busyId = null }
+                            }
+                        },
                     )
                 }
             }
@@ -158,6 +218,7 @@ private fun MyLoanCard(
     repayText: String,
     onRepayTextChanged: (String) -> Unit,
     onRepay: () -> Unit,
+    onRefinance: () -> Unit,
 ) = Card(Modifier.fillMaxWidth()) {
     Column(Modifier.padding(16.dp)) {
         Text("RWF ${loan.principal} loan", style = MaterialTheme.typography.titleMedium)
@@ -168,6 +229,17 @@ private fun MyLoanCard(
             OutlinedTextField(repayText, onRepayTextChanged, label = { Text("Repay amount (RWF)") }, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
             Button(enabled = !busy, onClick = onRepay, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Repaying…" else "Repay") }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(enabled = !busy, onClick = onRefinance, modifier = Modifier.fillMaxWidth()) {
+                Text(if (busy) "Checking…" else "Refinance to a lower rate")
+            }
         }
+    }
+}
+
+@Composable
+private fun LenderChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, shape = RoundedCornerShape(14.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
     }
 }

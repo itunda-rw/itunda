@@ -1311,6 +1311,22 @@ data class RepayLoanRequest(val loanId: String, val amount: java.math.BigDecimal
 data class RepayLoanTransactionDto(val id: String, val amount: java.math.BigDecimal, val type: String, val status: String, val description: String, val completedAt: String)
 data class RepayLoanResponse(val success: Boolean, val message: String, val transaction: RepayLoanTransactionDto, val remaining: java.math.BigDecimal, val newBalance: java.math.BigDecimal)
 
+// Real 대환대출 (loan refinancing) -- see LoansService.refinanceLoan's own doc comment.
+// bank-mfe wired 2026-07-26; found unwired on Android/iOS via the same sweep that
+// found the lender filter (item 200).
+data class RefinanceLoanRequest(val loanId: String)
+data class RefinanceResult(
+    val success: Boolean,
+    val message: String,
+    val oldLoanId: String,
+    val oldInterestRate: Double,
+    val newLoanId: String,
+    val newInterestRate: Double,
+    val newLoanName: String,
+    val amount: java.math.BigDecimal,
+    val creditScore: Int,
+)
+
 // Real customer support tickets, tied to a specific transaction (rw.itunda.support) --
 // found 2026-07-22 fully built on the backend with zero client UI anywhere; the
 // "Support" section in this app was five static rows (FAQ/Live chat/...) with no
@@ -2383,6 +2399,9 @@ interface ApiService {
 
     @POST("api/v1/loans/repay")
     suspend fun repayLoan(@Header("Idempotency-Key") idempotencyKey: String, @Body request: RepayLoanRequest): RepayLoanResponse
+
+    @POST("api/v1/loans/refinance")
+    suspend fun refinanceLoan(@Header("Idempotency-Key") idempotencyKey: String, @Body request: RefinanceLoanRequest): RefinanceResult
 
     @POST("api/v1/support/tickets")
     suspend fun createSupportTicket(@Body request: CreateSupportTicketRequest): CreateSupportTicketResponse
