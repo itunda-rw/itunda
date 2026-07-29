@@ -141,21 +141,33 @@ private struct PayRequestCard: View {
     @State private var code = ""
     @State private var paying = false
     @State private var error: String?
+    // Real biometric device step-up (item 171's own named follow-up, closed 2026-07-29,
+    // item 181) -- DeviceStepUpHost/DeviceStepUpView (DeviceStepUpView.swift) live in
+    // this same App target, so used directly here rather than the honest-text-message
+    // fallback this screen shipped with originally.
+    @State private var needsDeviceVerification = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Pay a request").bold()
-            TextField("Request code", text: $code)
-                .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
-            if let error { Text(error).font(.caption).foregroundColor(.red) }
-            Button(action: { Task { await pay() } }) {
-                Text(paying ? "Paying…" : "Pay").bold().foregroundColor(.white)
-                    .frame(maxWidth: .infinity).padding(.vertical, 14)
-                    .background(IDS.Colors.brand).cornerRadius(10)
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Pay a request").bold()
+                TextField("Request code", text: $code)
+                    .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
+                if let error { Text(error).font(.caption).foregroundColor(.red) }
+                Button(action: { Task { await pay() } }) {
+                    Text(paying ? "Paying…" : "Pay").bold().foregroundColor(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(IDS.Colors.brand).cornerRadius(10)
+                }
+                .disabled(paying || code.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-            .disabled(paying || code.trimmingCharacters(in: .whitespaces).isEmpty)
+            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+            DeviceStepUpHost(
+                visible: needsDeviceVerification,
+                onDismiss: { needsDeviceVerification = false },
+                onVerified: { needsDeviceVerification = false; await pay() }
+            )
         }
-        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
     }
 
     private func pay() async {
@@ -167,7 +179,7 @@ private struct PayRequestCard: View {
             code = ""
             onPaid()
         } catch NetworkError.deviceNotVerified {
-            error = "This device needs to be verified first -- send a real transfer once to verify it, then try this payment again."
+            needsDeviceVerification = true
         } catch {
             self.error = "Could not pay this request."
         }

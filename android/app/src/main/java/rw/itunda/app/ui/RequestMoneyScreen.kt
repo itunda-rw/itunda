@@ -49,13 +49,12 @@ import java.io.IOException
 // comment). Real (rate-limited, tested, live-verified against a running backend) but
 // had zero mobile UI anywhere until now -- bank-mfe got its own client the same
 // session. Same no-ViewModel, NetworkClient-direct shape as ForeignCurrencyScreen.kt/
-// UpfrontDepositScreen.kt. Honestly scoped: `payRequest` carries a real Idempotency-Key
-// and can real-403 DEVICE_NOT_VERIFIED like every other money-moving endpoint, but the
-// full biometric device step-up dialog is tightly coupled to MainViewModel's own
-// MoneyActionResult state machine (see ItundaAppScreen.kt's sendTransfer call site) --
-// wiring that into this standalone screen is a real, separate follow-up; for now a
-// DEVICE_NOT_VERIFIED 403 here surfaces the real backend message honestly rather than
-// pretending the payment worked or hiding why it didn't.
+// UpfrontDepositScreen.kt. `payRequest` carries a real Idempotency-Key and can real-403
+// DEVICE_NOT_VERIFIED like every other money-moving endpoint -- originally surfaced as
+// an honest text message (wiring a full step-up dialog into a screen outside
+// MainViewModel's own MoneyActionResult state machine was named as a real, separate
+// follow-up); closed 2026-07-29 (item 180) using DeviceStepUpHost.kt directly, since it
+// already lives in this same :app module and needs no cross-module injection.
 @Composable
 fun RequestMoneyScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
@@ -185,7 +184,34 @@ private fun PayRequestCard(onPaid: () -> Unit) {
     var code by remember { mutableStateOf("") }
     var paying by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Real biometric device step-up (item 170's own named follow-up, closed 2026-07-29)
+    // -- DeviceStepUpHost.kt lives in this same :app module (unlike the Feature-module
+    // screens that need it injected), so it's used directly here rather than the
+    // honest-text-message fallback this screen shipped with originally.
+    var needsDeviceVerification by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+
+    suspend fun pay() {
+        paying = true
+        error = null
+        try {
+            val res = NetworkClient.apiService.payP2pRequest(code.trim(), java.util.UUID.randomUUID().toString())
+            if (res.success) {
+                code = ""
+                onPaid()
+            }
+        } catch (e: HttpException) {
+            if (isDeviceNotVerifiedError(e)) {
+                needsDeviceVerification = true
+            } else {
+                error = superAppErrorMessage(e)
+            }
+        } catch (e: IOException) {
+            error = "Couldn't reach itunda. Check your connection and try again."
+        } finally {
+            paying = false
+        }
+    }
 
     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = TossCard), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -195,34 +221,17 @@ private fun PayRequestCard(onPaid: () -> Unit) {
             Box(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
                     .background(if (paying) Ids.colors.textTertiary else TossBlue)
-                    .clickable(enabled = !paying && code.isNotBlank()) {
-                        paying = true
-                        error = null
-                        coroutineScope.launch {
-                            try {
-                                val res = NetworkClient.apiService.payP2pRequest(code.trim(), java.util.UUID.randomUUID().toString())
-                                if (res.success) {
-                                    code = ""
-                                    onPaid()
-                                }
-                            } catch (e: HttpException) {
-                                error = if (isDeviceNotVerifiedError(e)) {
-                                    "This device needs to be verified first -- send a real transfer once to verify it, then try this payment again."
-                                } else {
-                                    superAppErrorMessage(e)
-                                }
-                            } catch (e: IOException) {
-                                error = "Couldn't reach itunda. Check your connection and try again."
-                            } finally {
-                                paying = false
-                            }
-                        }
-                    }
+                    .clickable(enabled = !paying && code.isNotBlank()) { coroutineScope.launch { pay() } }
                     .padding(vertical = 14.dp),
                 contentAlignment = Alignment.Center,
             ) { Text(if (paying) "Paying…" else "Pay", color = Color.White, fontWeight = FontWeight.Bold) }
         }
     }
+    DeviceStepUpHost(
+        visible = needsDeviceVerification,
+        onDismiss = { needsDeviceVerification = false },
+        onVerified = { needsDeviceVerification = false; pay() },
+    )
 }
 
 private fun formatMoneyRequest(value: Double): String {
