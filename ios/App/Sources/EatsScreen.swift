@@ -22,6 +22,14 @@ private let eatsStatusLabel: [String: String] = [
 
 private let riderStatusChain = ["RIDER_ASSIGNED", "PICKED_UP", "DELIVERED"]
 
+private let dineInStatusLabel: [String: String] = [
+    "PLACED": "Placed",
+    "ACCEPTED": "Accepted by restaurant",
+    "PREPARING": "Preparing",
+    "SERVED": "Served",
+    "CANCELLED": "Cancelled — refunded",
+]
+
 private func nextRiderStatus(_ current: String) -> String? {
     guard let idx = riderStatusChain.firstIndex(of: current), idx + 1 < riderStatusChain.count else { return nil }
     return riderStatusChain[idx + 1]
@@ -215,6 +223,7 @@ private struct OrderFoodContent: View {
                 .pickerStyle(.segmented)
 
                 if view == .orders {
+                    MyDineInOrdersView()
                     MyEatsOrdersView(onReorder: { order in Task { await handleReorder(order) } }, reorderingId: reorderingId, restaurants: allRestaurants)
                     if let reorderError {
                         Text(reorderError).foregroundColor(.red).font(.caption)
@@ -1147,6 +1156,87 @@ private struct MyEatsOrdersView: View {
             await load()
         } catch let NetworkError.httpError(statusCode) {
             error = TalkScreen.errorMessage(statusCode)
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+}
+
+// Real 배민오더-style table/QR in-store ordering (item 163) -- see
+// DineInOrderConfirmationView's own doc comment. Closes the "My dine-in orders" gap
+// named as a real follow-up in item 162: a customer who places a table order could
+// see the confirmation but never look it up again. Deliberately simpler than
+// MyEatsOrdersView -- no reorder/review (a real, honest, still-open v1 scope, matching
+// bank-mfe's own item 155 scoping), just cancel while still PLACED.
+private struct MyDineInOrdersView: View {
+    @State private var orders: [DineInOrderDto]?
+    @State private var error: String?
+    @State private var cancellingId: String?
+
+    var body: some View {
+        Group {
+            if let error {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(error).foregroundColor(.red).font(.subheadline)
+                    Button("Retry") { Task { await load() } }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(20)
+                .background(IDS.Colors.card)
+                .cornerRadius(IDS.Layout.cardCornerRadius)
+            } else if orders == nil {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 80)
+            } else if orders!.isEmpty {
+                EmptyView()
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Table orders").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                    VStack(spacing: 10) {
+                        ForEach(orders!) { order in
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    Text(dineInStatusLabel[order.status] ?? order.status).font(.subheadline).bold().foregroundColor(IDS.Colors.brand)
+                                    Spacer()
+                                    Text("\(Int(order.totalAmount)) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                }
+                                Text("Table \(order.tableNumber)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                if order.status == "PLACED" {
+                                    Button(action: { Task { await cancel(order.id) } }) {
+                                        Text(cancellingId == order.id ? "Cancelling…" : "Cancel order")
+                                            .font(.subheadline).bold().foregroundColor(.white)
+                                            .frame(maxWidth: .infinity).padding(.vertical, 10)
+                                            .background(Color.red).cornerRadius(12)
+                                    }
+                                    .disabled(cancellingId == order.id)
+                                }
+                            }
+                            .padding(16)
+                            .background(IDS.Colors.card)
+                            .cornerRadius(IDS.Layout.cardCornerRadius)
+                        }
+                    }
+                }
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        do {
+            orders = try await NetworkClient.shared.getMyDineInOrders().orders
+            error = nil
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func cancel(_ orderId: String) async {
+        cancellingId = orderId
+        error = nil
+        defer { cancellingId = nil }
+        do {
+            _ = try await NetworkClient.shared.cancelDineInOrder(id: orderId)
+            await load()
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
