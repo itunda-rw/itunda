@@ -1997,6 +1997,9 @@ public struct EatsOrderItemDto: Decodable, Identifiable {
 public struct EatsOrderDetailResponse: Decodable { public let success: Bool; public let order: EatsOrderDto; public let items: [EatsOrderItemDto] }
 public struct EatsOrdersResponse: Decodable { public let success: Bool; public let orders: [EatsOrderDto] }
 
+public struct RiderLocationDto: Decodable { public let latitude: Double; public let longitude: Double; public let updatedAt: String }
+public struct EatsRiderLocationResponse: Decodable { public let success: Bool; public let available: Bool; public let location: RiderLocationDto? }
+
 public struct RiderDto: Decodable, Identifiable { public let id: String; public let userId: String; public let walletId: String; public let status: String; public let available: Bool; public let createdAt: String }
 public struct RiderResponse: Decodable { public let success: Bool; public let rider: RiderDto }
 
@@ -2832,6 +2835,14 @@ extension NetworkClient {
     }
     public func getRiderDeliveries() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/rider-deliveries") }
     public func getAvailableDeliveries() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/available") }
+
+    /// Real live rider-location tracking (2026-07-19 backend, first mobile client
+    /// 2026-07-29, item 183) -- "the defining 'watch your order arrive' moment," see
+    /// EatsOrderService.getRiderLocation's own doc comment. bank-mfe has had this since
+    /// 2026-07-20 (LiveRiderMap.tsx); Android (item 182) and iOS main apps never did.
+    public func getEatsRiderLocation(_ orderId: String) async throws -> EatsRiderLocationResponse {
+        try await get("api/v1/eats/orders/\(orderId)/rider-location")
+    }
 
     public func claimDelivery(_ orderId: String) async throws -> EatsOrderDetailResponse {
         try await authenticatedPost("api/v1/eats/orders/\(orderId)/claim", body: EmptyBody())

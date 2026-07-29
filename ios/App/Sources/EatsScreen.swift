@@ -1024,10 +1024,17 @@ private struct EatsOrderRow<Action: View>: View {
     @ViewBuilder let action: () -> Action
 
     @State private var showRoute = false
+    @State private var showLiveTracking = false
 
     private var canShowRoute: Bool {
         restaurant?.latitude != nil && restaurant?.longitude != nil &&
             order.deliveryLatitude != nil && order.deliveryLongitude != nil
+    }
+
+    // Real live rider-location tracking (item 183) -- only while a rider is actually en
+    // route, same gating as bank-mfe's own canShowLiveTracking / Android's item 182.
+    private var canShowLiveTracking: Bool {
+        canShowRoute && (order.status == "RIDER_ASSIGNED" || order.status == "PICKED_UP")
     }
 
     var body: some View {
@@ -1049,9 +1056,21 @@ private struct EatsOrderRow<Action: View>: View {
                     .background(IDS.Colors.chipBackground)
                     .cornerRadius(8)
             }
+            if canShowLiveTracking {
+                Button(action: { showLiveTracking.toggle(); showRoute = false }) {
+                    Text(showLiveTracking ? "Hide live tracking" : "🛵 Track your rider live")
+                        .font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                        .padding(.horizontal, 16).padding(.vertical, 10)
+                        .background(IDS.Colors.chipBackground).cornerRadius(12)
+                }
+            }
+            if showLiveTracking, let restaurant, let fromLat = restaurant.latitude, let fromLng = restaurant.longitude,
+               let toLat = order.deliveryLatitude, let toLng = order.deliveryLongitude {
+                LiveRiderMiniMap(orderId: order.id, fromLat: fromLat, fromLng: fromLng, toLat: toLat, toLng: toLng, fromLabel: restaurant.businessName, toLabel: "Delivery address")
+            }
             // Real "view delivery route" (2026-07-19, item 8 on the Maps "100%" roadmap)
             // -- reuses itunda's own self-hosted OSRM directions via RouteMiniMap.
-            if canShowRoute {
+            if canShowRoute, !showLiveTracking {
                 Button(action: { showRoute.toggle() }) {
                     Text(showRoute ? "Hide route" : "🚗 View real delivery route")
                         .font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
@@ -1059,7 +1078,7 @@ private struct EatsOrderRow<Action: View>: View {
                         .background(IDS.Colors.chipBackground).cornerRadius(12)
                 }
             }
-            if showRoute, let restaurant, let fromLat = restaurant.latitude, let fromLng = restaurant.longitude,
+            if showRoute, !showLiveTracking, let restaurant, let fromLat = restaurant.latitude, let fromLng = restaurant.longitude,
                let toLat = order.deliveryLatitude, let toLng = order.deliveryLongitude {
                 RouteMiniMap(fromLat: fromLat, fromLng: fromLng, toLat: toLat, toLng: toLng, fromLabel: restaurant.businessName, toLabel: "Delivery address")
             }
