@@ -1521,6 +1521,25 @@ public struct JobPostResponse: Decodable { public let success: Bool; public let 
 public struct JobPostsResponse: Decodable { public let success: Bool; public let posts: [JobPostDto]; public let trustScores: [String: Int]? }
 public struct JobCategoriesResponse: Decodable { public let success: Bool; public let categories: [JobCategoryDto] }
 public struct ContactPosterResponse: Decodable { public let success: Bool; public let conversation: ConversationDto }
+
+// Real 당근알바-style structured application (2026-07-25 on Android, ported here
+// 2026-07-29) -- see backend JobApplicationService's own doc comment. A real
+// self-introduction the poster reviews before deciding, not a bare DM -- "message
+// poster" (contactPoster above) still exists as a separate, unstructured hand-off.
+public struct ApplyToJobRequest: Encodable { public let message: String }
+public struct JobApplicationDto: Decodable, Identifiable {
+    public let id: String
+    public let jobPostId: String
+    public let applicantId: String
+    public let message: String
+    public let status: String
+    public let submittedAt: String
+    public let respondedAt: String?
+}
+public struct JobApplicationResponse: Decodable { public let success: Bool; public let application: JobApplicationDto; public let conversation: ConversationDto? }
+public struct JobApplicationsResponse: Decodable { public let success: Bool; public let applications: [JobApplicationDto] }
+public struct RespondToApplicationRequest: Encodable { public let accept: Bool }
+
 public struct CreateHoodReportRequest: Encodable { public let targetType: String; public let targetId: String; public let reason: String }
 public struct HoodReportResponse: Decodable { public let success: Bool }
 
@@ -2472,6 +2491,26 @@ extension NetworkClient {
 
     public func contactPoster(_ jobPostId: String) async throws -> ContactPosterResponse {
         try await authenticatedPost("api/v1/jobs/posts/\(jobPostId)/contact-poster", body: EmptyBody())
+    }
+
+    // Real single-post-detail fetch -- needed to resolve a job post's title from a bare
+    // applicationId in "My applications" below, same as Android's own item-196 addition.
+    public func getJobPost(_ jobPostId: String) async throws -> JobPostResponse { try await get("api/v1/jobs/posts/\(jobPostId)") }
+
+    // Real 당근알바-style structured application (2026-07-25 on Android, ported here
+    // 2026-07-29) -- see ApplyToJobRequest's own doc comment.
+    public func applyToJob(_ jobPostId: String, message: String) async throws -> JobApplicationResponse {
+        try await authenticatedPost("api/v1/jobs/posts/\(jobPostId)/apply", body: ApplyToJobRequest(message: message))
+    }
+
+    public func getApplicationsForJobPost(_ jobPostId: String) async throws -> JobApplicationsResponse {
+        try await get("api/v1/jobs/posts/\(jobPostId)/applications")
+    }
+
+    public func getMyJobApplications() async throws -> JobApplicationsResponse { try await get("api/v1/jobs/my-applications") }
+
+    public func respondToJobApplication(_ applicationId: String, accept: Bool) async throws -> JobApplicationResponse {
+        try await authenticatedPost("api/v1/jobs/applications/\(applicationId)/respond", body: RespondToApplicationRequest(accept: accept))
     }
 
     public func reportHoodContent(targetType: String, targetId: String, reason: String) async throws -> HoodReportResponse {

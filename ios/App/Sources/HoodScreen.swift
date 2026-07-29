@@ -1840,7 +1840,7 @@ private struct JobsContent: View {
 
     // Real "Jobs I did" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
     // recommendation #6, see backend JobPostRepository's own doc comment.
-    private enum JobsView { case browse, nearby, neighborhood, mine, worked, wishlist }
+    private enum JobsView { case browse, nearby, neighborhood, mine, worked, applications, wishlist }
 
     @State private var view: JobsView = .browse
     @State private var categories: [JobCategoryDto] = []
@@ -1868,6 +1868,7 @@ private struct JobsContent: View {
                         Text("Neighborhood").tag(JobsView.neighborhood)
                         Text("My posts").tag(JobsView.mine)
                         Text("Jobs I did").tag(JobsView.worked)
+                        Text("My applications").tag(JobsView.applications)
                         Text("Saved").tag(JobsView.wishlist)
                 }
                 .pickerStyle(.segmented)
@@ -1926,7 +1927,9 @@ private struct JobsContent: View {
                 if view == .neighborhood, let neighborhoodName {
                     Text("Your neighborhood: \(neighborhoodName)").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                 }
-                if view == .wishlist {
+                if view == .applications {
+                    MyJobApplicationsView()
+                } else if view == .wishlist {
                     JobPostWishlistView(onRemoved: { Task { await loadFavoriteIds() } })
                 } else if let error {
                     VStack(alignment: .leading, spacing: 10) {
@@ -1985,7 +1988,7 @@ private struct JobsContent: View {
 
     private func load() async {
         posts = nil
-        if view == .wishlist {
+        if view == .wishlist || view == .applications {
             posts = []
             error = nil
             return
@@ -2142,6 +2145,62 @@ private struct JobPostWishlistView: View {
     }
 }
 
+// Real "My applications" status view (2026-07-25 on Android as item 196, ported here
+// 2026-07-29) -- an applicant could submit a real structured application and message
+// the poster, but never see whether it was pending/accepted/declined. JobApplicationDto
+// carries no job-post title snapshot, so this fans out one real getJobPost per
+// application to resolve the title, same N+1 shape Android's own port uses.
+private struct MyJobApplicationsView: View {
+    @State private var applications: [(application: JobApplicationDto, title: String?)]?
+    @State private var error: String?
+
+    var body: some View {
+        Group {
+            if let error {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(error).foregroundColor(.red).font(.subheadline)
+                    Button("Retry") { Task { await load() } }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(20).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+            } else if applications == nil {
+                HoodFeedSkeleton()
+            } else if applications!.isEmpty {
+                Text("You haven't applied to any jobs yet.").foregroundColor(IDS.Colors.textSecondary)
+            } else {
+                ForEach(applications!, id: \.application.id) { entry in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(entry.title ?? "Job post").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                        Text(entry.application.message).font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
+                        Text(entry.application.status)
+                            .font(.caption2).bold()
+                            .foregroundColor(entry.application.status == "ACCEPTED" ? IDS.Colors.brand : entry.application.status == "DECLINED" ? .red : IDS.Colors.textSecondary)
+                            .padding(.horizontal, 8).padding(.vertical, 2)
+                            .background(IDS.Colors.chipBackground).cornerRadius(8)
+                    }
+                    .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                }
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        do {
+            let apps = try await NetworkClient.shared.getMyJobApplications().applications
+            var withTitles: [(application: JobApplicationDto, title: String?)] = []
+            for app in apps {
+                let title = try? await NetworkClient.shared.getJobPost(app.jobPostId).post.title
+                withTitles.append((application: app, title: title))
+            }
+            applications = withTitles
+            error = nil
+        } catch {
+            self.error = "Couldn't load your applications. Check your connection and try again."
+        }
+    }
+}
+
 private struct NewJobPostForm: View {
     let categories: [JobCategoryDto]
     let onCreated: () -> Void
@@ -2281,6 +2340,17 @@ private struct JobPostCard: View {
     // Real read-back for the review above (item 192/198/199).
     @State private var hoodReviews: [HoodReviewDto]?
 
+    // Real 당근알바-style structured application (2026-07-25 on Android, ported here
+    // 2026-07-29) -- see ApplyToJobRequest's own doc comment. "Message poster" above
+    // still exists as a separate, unstructured hand-off.
+    @State private var applying = false
+    @State private var applicationMessage = ""
+    @State private var applicationSubmitted = false
+    @State private var submittingApplication = false
+    @State private var showApplicants = false
+    @State private var applications: [JobApplicationDto]?
+    @State private var respondingToId: String?
+
     private var payLabel: String {
         let base = "\(Int(post.payAmount)) RWF"
         return post.payType == "HOURLY" ? "\(base)/hr" : base
@@ -2360,8 +2430,58 @@ private struct JobPostCard: View {
                         actionButton("Remove", filled: false) { await remove() }
                     }
                 } else if post.status == "OPEN" {
-                    actionButton("Message poster", filled: true) { onContact() }
+                    actionButton("Message poster", filled: false) { onContact() }
+                    if !applicationSubmitted && !applying {
+                        actionButton("Apply", filled: true) { applying = true }
+                    }
                     actionButton("Report", filled: false) { showingReportOptions = true }
+                }
+            }
+            if !isMine, applying {
+                TextField("Why should the poster pick you? (required)", text: $applicationMessage, axis: .vertical)
+                    .lineLimit(3...6)
+                    .padding(10)
+                    .background(IDS.Colors.chipBackground)
+                    .cornerRadius(10)
+                HStack(spacing: 10) {
+                    actionButton("Cancel", filled: false) { applying = false }
+                    actionButton("Submit application", filled: true) { await submitApplication() }
+                        .disabled(submittingApplication || applicationMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            if !isMine, applicationSubmitted {
+                Text("Application sent — you'll hear back once the poster reviews it").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            }
+            // Poster's real "review applicants, then decide" step -- lazily fetched
+            // only when opened.
+            if isMine, post.status == "OPEN" {
+                actionButton(showApplicants ? "Hide applicants" : "View applicants", filled: false) {
+                    showApplicants.toggle()
+                    if showApplicants, applications == nil { await loadApplications() }
+                }
+                if showApplicants {
+                    if let applications {
+                        let pending = applications.filter { $0.status == "PENDING" }
+                        if pending.isEmpty {
+                            Text("No applications yet").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                        ForEach(pending) { app in
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(app.message).font(.subheadline)
+                                HStack(spacing: 10) {
+                                    actionButton("Decline", filled: false) { await respond(app, accept: false) }
+                                        .disabled(respondingToId == app.id)
+                                    actionButton("Accept & message", filled: true) { await respond(app, accept: true) }
+                                        .disabled(respondingToId == app.id)
+                                }
+                            }
+                            .padding(12)
+                            .background(IDS.Colors.chipBackground)
+                            .cornerRadius(IDS.Layout.cardCornerRadius)
+                        }
+                    } else {
+                        ProgressView()
+                    }
                 }
             }
             if !isMine, post.status == "OPEN", let toLat = post.latitude, let toLng = post.longitude {
@@ -2457,6 +2577,39 @@ private struct JobPostCard: View {
         do {
             _ = try await NetworkClient.shared.removeJobPost(post.id)
             onChanged()
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    // Real 당근알바-style structured application (2026-07-25 on Android, ported here
+    // 2026-07-29) -- see ApplyToJobRequest's own doc comment.
+    private func submitApplication() async {
+        submittingApplication = true
+        defer { submittingApplication = false }
+        do {
+            _ = try await NetworkClient.shared.applyToJob(post.id, message: applicationMessage.trimmingCharacters(in: .whitespacesAndNewlines))
+            applying = false
+            applicationSubmitted = true
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func loadApplications() async {
+        do {
+            applications = try await NetworkClient.shared.getApplicationsForJobPost(post.id).applications
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func respond(_ application: JobApplicationDto, accept: Bool) async {
+        respondingToId = application.id
+        defer { respondingToId = nil }
+        do {
+            _ = try await NetworkClient.shared.respondToJobApplication(application.id, accept: accept)
+            applications = applications?.filter { $0.id != application.id }
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
