@@ -3020,6 +3020,22 @@ public struct ApplyLoanResponse: Decodable { public let success: Bool; public le
 public struct RepayLoanRequest: Encodable { public let loanId: String; public let amount: Double }
 public struct RepayLoanResponse: Decodable { public let success: Bool; public let message: String; public let remaining: Double; public let newBalance: Double }
 
+// Real 대환대출 (loan refinancing) -- see LoansService.refinanceLoan's own doc comment.
+// bank-mfe wired 2026-07-26; found unwired on Android/iOS via the same sweep that
+// found the lender filter (item 200).
+public struct RefinanceLoanRequest: Encodable { public let loanId: String }
+public struct RefinanceResult: Decodable {
+    public let success: Bool
+    public let message: String
+    public let oldLoanId: String
+    public let oldInterestRate: Double
+    public let newLoanId: String
+    public let newInterestRate: Double
+    public let newLoanName: String
+    public let amount: Double
+    public let creditScore: Int
+}
+
 public struct CreditScoreFactorDto: Decodable, Identifiable { public let name: String; public let points: Int; public let description: String; public var id: String { name } }
 public struct CreditScoreResponse: Decodable { public let success: Bool; public let score: Int; public let factors: [CreditScoreFactorDto]; public let computedAt: String }
 
@@ -3113,6 +3129,10 @@ extension NetworkClient {
 
     public func repayLoan(loanId: String, amount: Double) async throws -> RepayLoanResponse {
         try await authenticatedPost("api/v1/loans/repay", body: RepayLoanRequest(loanId: loanId, amount: amount), idempotencyKey: UUID().uuidString)
+    }
+
+    public func refinanceLoan(loanId: String) async throws -> RefinanceResult {
+        try await authenticatedPost("api/v1/loans/refinance", body: RefinanceLoanRequest(loanId: loanId), idempotencyKey: UUID().uuidString)
     }
 
     public func getCreditScore() async throws -> CreditScoreResponse { try await get("api/v1/credit-score") }

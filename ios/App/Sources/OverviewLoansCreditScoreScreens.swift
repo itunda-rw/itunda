@@ -149,6 +149,7 @@ struct LoansScreenView: View {
     @State private var error: String?
     @State private var busyId: String?
     @State private var repayAmounts: [String: String] = [:]
+    @State private var refinanceResult: RefinanceResult?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -171,6 +172,13 @@ struct LoansScreenView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     if let error { Text(error).font(.caption).foregroundColor(.red) }
+                    if let refinanceResult {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Refinanced into \(refinanceResult.newLoanName)").font(.subheadline).bold()
+                            Text("\(refinanceResult.oldInterestRate, specifier: "%.1f")% → \(refinanceResult.newInterestRate, specifier: "%.1f")%").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        }
+                        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                    }
                     if mode == .offers {
                         if let lenders {
                             ScrollView(.horizontal, showsIndicators: false) {
@@ -201,6 +209,10 @@ struct LoansScreenView: View {
                                         )).keyboardType(.numberPad).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8)
                                         Button(action: { Task { await repay(loan) } }) {
                                             Text(busyId == loan.id ? "Repaying…" : "Repay").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(10).background(IDS.Colors.brand).cornerRadius(8)
+                                        }
+                                        .disabled(busyId != nil)
+                                        Button(action: { Task { await refinance(loan) } }) {
+                                            Text(busyId == loan.id ? "Checking…" : "Refinance to a lower rate").bold().frame(maxWidth: .infinity).padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
                                         }
                                         .disabled(busyId != nil)
                                     }
@@ -267,6 +279,18 @@ struct LoansScreenView: View {
             repayAmounts[loan.id] = nil
             await refresh()
         } catch { self.error = "That repayment could not be completed." }
+    }
+
+    // Real 대환대출 (loan refinancing, 2026-07-29 iOS port) -- see NetworkClient's own
+    // RefinanceLoanRequest comment; bank-mfe-only since 2026-07-26, ported to Android
+    // the same session as this iOS port.
+    private func refinance(_ loan: LoanAccountDto) async {
+        busyId = loan.id; error = nil
+        defer { busyId = nil }
+        do {
+            refinanceResult = try await NetworkClient.shared.refinanceLoan(loanId: loan.id)
+            await refresh()
+        } catch { self.error = "No better rate is available for this loan right now." }
     }
 }
 
