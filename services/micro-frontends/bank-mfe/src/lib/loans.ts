@@ -78,3 +78,59 @@ export const refinanceLoan = (loanId: string) =>
     headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ loanId }),
   });
+
+// Real Toss Bank/KakaoBank 마이너스통장 (overdraft/revolving line-of-credit, 2026-07-27)
+// -- a real pre-approved credit LIMIT, not a lump-sum disbursement: draw any amount up
+// to the limit whenever needed, real interest accrues only on the actual drawn
+// balance. Genuinely, structurally distinct from the term loans above -- a repayment
+// here never closes the account, it just frees up available credit to draw again.
+// Found 2026-07-29 via the full-backend-endpoint sweep: the entire feature (open/get/
+// draw/repay, interest accrual, security-alert push) was real and fully built with
+// zero client anywhere on any of the 3 platforms.
+export interface OverdraftAccount {
+  id: string;
+  userId: string;
+  walletId: string;
+  creditLimit: number;
+  drawnBalance: number;
+  interestRate: number;
+  status: 'ACTIVE' | 'CLOSED';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const fetchMyOverdraft = () =>
+  apiFetch<{ success: boolean; account: OverdraftAccount | null }>('/api/v1/loans/overdraft').then((r) => r.account);
+
+export const openOverdraft = (requestedLimit: number) =>
+  apiFetch<{ success: boolean; account: OverdraftAccount }>('/api/v1/loans/overdraft/open', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ requestedLimit }),
+  }).then((r) => r.account);
+
+export interface OverdraftDrawResult {
+  success: boolean;
+  transactionId: string;
+  amount: number;
+  drawnBalance: number;
+  availableCredit: number;
+}
+
+export const drawOverdraft = (amount: number) =>
+  apiFetch<OverdraftDrawResult>('/api/v1/loans/overdraft/draw', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ amount }),
+  });
+
+export interface OverdraftRepayResult extends OverdraftDrawResult {
+  newBalance: number;
+}
+
+export const repayOverdraft = (amount: number) =>
+  apiFetch<OverdraftRepayResult>('/api/v1/loans/overdraft/repay', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ amount }),
+  });

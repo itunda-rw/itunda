@@ -19,7 +19,10 @@ import { collectWithFacePay, enrollFacePay, fetchFacePayStatus, revokeFacePay } 
 import { fetchMyP2pRequests, generateP2pRequest, payP2pRequest, sendDirect, type P2pPaymentRequestDto, type P2pPaymentRequestStatus } from './lib/p2p';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
 import { fetchLinkedAccounts, fetchOverview, linkAccount, unlinkAccount, type LinkedAccount, type Overview } from './lib/overview';
-import { applyForLoan, fetchLenders, fetchLoanOffers, fetchMyLoans, refinanceLoan, repayLoan, type Lender, type LoanAccount, type LoanOffer } from './lib/loans';
+import {
+  applyForLoan, drawOverdraft, fetchLenders, fetchLoanOffers, fetchMyLoans, fetchMyOverdraft, openOverdraft, refinanceLoan, repayLoan,
+  repayOverdraft, type Lender, type LoanAccount, type LoanOffer, type OverdraftAccount,
+} from './lib/loans';
 import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreResult, type CreditScoreSuggestion } from './lib/creditScore';
 import { fetchTrustScore, type TrustScoreResult } from './lib/trustScore';
 import {
@@ -1451,7 +1454,7 @@ function OverviewView() {
 // (rw.itunda.loans, BNR-licensed partner banks alongside itunda's own book, see
 // LoanOffer.kt's own doc comment) with zero client UI anywhere.
 function LoansView() {
-  const [mode, setMode] = useState<'OFFERS' | 'MY_LOANS'>('OFFERS');
+  const [mode, setMode] = useState<'OFFERS' | 'MY_LOANS' | 'OVERDRAFT'>('OFFERS');
   const [offers, setOffers] = useState<LoanOffer[] | null>(null);
   const [myLoans, setMyLoans] = useState<LoanAccount[] | null>(null);
   const [lenders, setLenders] = useState<Lender[] | null>(null);
@@ -1534,9 +1537,11 @@ function LoansView() {
       <div style={{ display: 'flex', gap: '8px' }}>
         <button className="toss-btn toss-btn-secondary" onClick={() => setMode('OFFERS')}>Offers</button>
         <button className="toss-btn toss-btn-secondary" onClick={() => setMode('MY_LOANS')}>My loans ({myLoans?.length ?? 0})</button>
+        <button className="toss-btn toss-btn-secondary" onClick={() => setMode('OVERDRAFT')}>Overdraft</button>
       </div>
-      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
-      {refinanceResult && (
+      {mode === 'OVERDRAFT' && <OverdraftView />}
+      {mode !== 'OVERDRAFT' && error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {mode !== 'OVERDRAFT' && refinanceResult && (
         <div className="toss-card" style={{ padding: '16px', border: '1px solid var(--toss-blue)' }}>
           <p style={{ fontSize: '13px', fontWeight: 700 }}>Refinanced into {refinanceResult.newLoanName}</p>
           <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{refinanceResult.oldRate}% → {refinanceResult.newRate}%</p>
@@ -1621,6 +1626,123 @@ function LoanOfferCard({ offer, busy, onApply }: { offer: LoanOffer; busy: boole
       >
         {busy ? 'Applying…' : 'Apply'}
       </button>
+    </div>
+  );
+}
+
+// Real Toss Bank/KakaoBank 마이너스통장 (overdraft/revolving line-of-credit) -- see
+// lib/loans.ts's OverdraftAccount doc comment for the full sourced account. Found
+// 2026-07-29 via a full-backend-endpoint sweep: real, live-verified backend (open/
+// draw/repay, real daily interest accrual, real security-alert push) with zero client
+// anywhere on any of the 3 platforms.
+function OverdraftView() {
+  const [account, setAccount] = useState<OverdraftAccount | null | undefined>(undefined);
+  const [requestedLimit, setRequestedLimit] = useState('100000');
+  const [drawAmount, setDrawAmount] = useState('');
+  const [repayAmount, setRepayAmount] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchMyOverdraft()
+      .then(setAccount)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your overdraft account.'));
+  };
+
+  useEffect(load, []);
+
+  const handleOpen = async () => {
+    const limit = Number(requestedLimit);
+    if (!limit || limit <= 0) { setError('Enter a valid credit limit.'); return; }
+    setBusy(true);
+    setError(null);
+    try {
+      const opened = await openOverdraft(limit);
+      setAccount(opened);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not open an overdraft account.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDraw = async () => {
+    const amount = Number(drawAmount);
+    if (!amount || amount <= 0) { setError('Enter a valid amount to draw.'); return; }
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await drawOverdraft(amount);
+      setAccount((prev) => (prev ? { ...prev, drawnBalance: res.drawnBalance } : prev));
+      setDrawAmount('');
+      setNotice(`Drew ${res.amount.toLocaleString()} RWF -- ${res.availableCredit.toLocaleString()} RWF still available.`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not draw from your overdraft.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRepay = async () => {
+    const amount = Number(repayAmount);
+    if (!amount || amount <= 0) { setError('Enter a valid repayment amount.'); return; }
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await repayOverdraft(amount);
+      setAccount((prev) => (prev ? { ...prev, drawnBalance: res.drawnBalance } : prev));
+      setRepayAmount('');
+      setNotice(`Repaid ${res.amount.toLocaleString()} RWF -- ${res.availableCredit.toLocaleString()} RWF now available.`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not repay your overdraft.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (account === undefined) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+
+  if (account === null) {
+    return (
+      <div className="toss-card" style={{ padding: '16px' }}>
+        <h4 style={{ fontSize: '14px', fontWeight: 700 }}>Open an overdraft line</h4>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+          A pre-approved credit limit you can draw from anytime -- pay interest only on what you actually use, up to 500,000 RWF.
+        </p>
+        {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+        <input
+          type="number" value={requestedLimit} onChange={(e) => setRequestedLimit(e.target.value)} placeholder="Requested limit (RWF)"
+          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', marginTop: '8px', width: '100%', boxSizing: 'border-box' }}
+        />
+        <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busy} onClick={handleOpen}>
+          {busy ? 'Opening…' : 'Open overdraft'}
+        </button>
+      </div>
+    );
+  }
+
+  const availableCredit = account.creditLimit - account.drawnBalance;
+  return (
+    <div className="toss-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <h4 style={{ fontSize: '14px', fontWeight: 700 }}>Overdraft line</h4>
+      <p style={{ fontSize: '13px' }}>Drawn: {account.drawnBalance.toLocaleString()} RWF of {account.creditLimit.toLocaleString()} RWF</p>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Available to draw: {availableCredit.toLocaleString()} RWF · {account.interestRate}% annual, interest only on what's drawn</p>
+      {notice && <p style={{ fontSize: '12px', color: 'var(--toss-blue)' }}>{notice}</p>}
+      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      <input
+        type="number" value={drawAmount} onChange={(e) => setDrawAmount(e.target.value)} placeholder="Draw amount (RWF)"
+        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+      />
+      <button className="toss-btn toss-btn-primary" disabled={busy} onClick={handleDraw}>{busy ? 'Drawing…' : 'Draw'}</button>
+      <input
+        type="number" value={repayAmount} onChange={(e) => setRepayAmount(e.target.value)} placeholder="Repay amount (RWF)"
+        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+      />
+      <button className="toss-btn toss-btn-secondary" disabled={busy || account.drawnBalance <= 0} onClick={handleRepay}>{busy ? 'Repaying…' : 'Repay'}</button>
     </div>
   );
 }
