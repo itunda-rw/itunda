@@ -169,6 +169,12 @@ export interface GroupMessage {
   // GroupMessagingService.getUnreadCounts's own doc comment. How many OTHER real
   // members haven't read up through this message yet.
   unreadCount: number;
+  // Real KakaoTalk Emoticon Store, group-send side (item 133) -- see
+  // lib/emoticons.ts's sendGroupEmoticon doc comment. Set only on a message actually
+  // sent via EmoticonController's /groups/{id}/send endpoint. Found 2026-07-29 via the
+  // defined-but-uncalled-method sweep: the backend/DTO field existed, but this type
+  // never carried it and no group-chat client ever sent one.
+  emoticonId?: string | null;
 }
 
 // memberPhoneNumbers is the real human-friendly entry point (same reasoning as

@@ -53,6 +53,7 @@ import {
 } from './lib/messaging';
 import {
   fetchEmoticonImageMap, fetchEmoticonPacks, fetchOwnedEmoticonPacks, fetchPackEmoticons, giftEmoticonPack, purchaseEmoticonPack, sendEmoticon,
+  sendGroupEmoticon,
   type Emoticon, type EmoticonPack, type OwnedEmoticonPack,
 } from './lib/emoticons';
 import { extendGiftVoucherExpiry, fetchGiftVouchersForConversation, purchaseGiftVoucher, type GiftVoucher, type GiftVoucherStatus } from './lib/giftVouchers';
@@ -5028,6 +5029,29 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
     navigator.clipboard?.writeText(body).catch(() => {});
   };
 
+  // Real KakaoTalk Emoticon Store, group-send side (item 133) -- see
+  // lib/emoticons.ts's sendGroupEmoticon doc comment. 1:1 chat has had this since the
+  // Emoticon Store shipped; group chat never got a client for the identical, already-
+  // real backend endpoint. Found 2026-07-29 via the defined-but-uncalled-method sweep.
+  const [emoticonPickerOpen, setEmoticonPickerOpen] = useState(false);
+  const [emoticonStoreOpen, setEmoticonStoreOpen] = useState(false);
+  const [emoticonImageById, setEmoticonImageById] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    fetchEmoticonImageMap().then(setEmoticonImageById).catch(() => {});
+  }, []);
+
+  const handleSendGroupEmoticon = async (emoticonId: string) => {
+    setError(null);
+    try {
+      await sendGroupEmoticon(group.groupId, emoticonId);
+      setEmoticonPickerOpen(false);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send this emoticon.');
+    }
+  };
+
   if (showSplitBills) {
     return (
       <GroupSplitBillsView
@@ -5101,18 +5125,22 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
               {m.forwardedFromMessageId && (
                 <span style={{ fontSize: '10px', color: 'var(--toss-grey-400)', fontStyle: 'italic', marginBottom: '2px' }}>Forwarded</span>
               )}
-              <div
-                style={{
-                  maxWidth: '75%',
-                  padding: '10px 14px',
-                  borderRadius: '16px',
-                  fontSize: '14px',
-                  backgroundColor: isMine ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
-                  color: isMine ? 'var(--toss-white)' : 'var(--toss-grey-900)',
-                }}
-              >
-                {m.body}
-              </div>
+              {m.emoticonId ? (
+                <EmoticonBubble imageUrl={emoticonImageById[m.emoticonId]} />
+              ) : (
+                <div
+                  style={{
+                    maxWidth: '75%',
+                    padding: '10px 14px',
+                    borderRadius: '16px',
+                    fontSize: '14px',
+                    backgroundColor: isMine ? 'var(--toss-blue)' : 'var(--toss-grey-100)',
+                    color: isMine ? 'var(--toss-white)' : 'var(--toss-grey-900)',
+                  }}
+                >
+                  {m.body}
+                </div>
+              )}
               <MessageReactions
                 reactions={m.reactions}
                 currentUserId={currentUser?.id}
@@ -5148,8 +5176,21 @@ function GroupThread({ group, onBack }: { group: GroupSummary; onBack: () => voi
         <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>
       )}
 
+      {emoticonPickerOpen && (
+        <EmoticonPickerPanel onSend={handleSendGroupEmoticon} onOpenStore={() => setEmoticonStoreOpen(true)} />
+      )}
+      {emoticonStoreOpen && <EmoticonStoreModal onClose={() => setEmoticonStoreOpen(false)} />}
+
       {replyingTo && <div style={{ fontSize: '12px', color: 'var(--toss-grey-600)', padding: '8px', borderLeft: '3px solid var(--toss-blue)', marginBottom: '6px' }}>Replying to: {replyingTo.body.slice(0, 80)} <button type="button" onClick={() => setReplyingTo(null)}>×</button></div>}
       <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px' }}>
+        <button
+          type="button"
+          aria-label="Send an emoticon"
+          onClick={() => setEmoticonPickerOpen((v) => !v)}
+          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '18px' }}
+        >
+          😊
+        </button>
         <input
           type="text"
           value={draft}
