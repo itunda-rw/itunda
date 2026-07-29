@@ -37,6 +37,9 @@ import rw.itunda.core.network.LenderDto
 import rw.itunda.core.network.LoanAccountDto
 import rw.itunda.core.network.LoanOfferDto
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.OpenOverdraftRequest
+import rw.itunda.core.network.OverdraftAccountDto
+import rw.itunda.core.network.OverdraftAmountRequest
 import rw.itunda.core.network.RefinanceLoanRequest
 import rw.itunda.core.network.RefinanceResult
 import rw.itunda.core.network.RepayLoanRequest
@@ -48,7 +51,7 @@ import java.util.UUID
 // book, see LoanOffer.kt's own doc comment) while every "Loan"/"Get a loan" row in
 // this app was 100% hardcoded static text ("11% ~ 24%") with zero API call behind it.
 // This screen replaces that decoration with the real offers/apply/repay flow.
-private enum class LoansMode { OFFERS, MY_LOANS }
+private enum class LoansMode { OFFERS, MY_LOANS, OVERDRAFT }
 
 @Composable
 fun LoansScreen(onBack: () -> Unit) {
@@ -96,6 +99,7 @@ fun LoansScreen(onBack: () -> Unit) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { mode = LoansMode.OFFERS }) { Text("Offers") }
             Button(onClick = { mode = LoansMode.MY_LOANS }) { Text("My loans (${myLoans?.size ?: 0})") }
+            Button(onClick = { mode = LoansMode.OVERDRAFT }) { Text("Overdraft") }
         }
         Spacer(Modifier.height(8.dp))
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -141,6 +145,8 @@ fun LoansScreen(onBack: () -> Unit) {
                         }
                     }
                 }
+            } else if (mode == LoansMode.OVERDRAFT) {
+                item { OverdraftPanel() }
             } else {
                 val currentLoans = myLoans
                 if (currentLoans == null) item { SkeletonBlock() }
@@ -241,5 +247,127 @@ private fun MyLoanCard(
 private fun LenderChip(label: String, selected: Boolean, onClick: () -> Unit) {
     OutlinedButton(onClick = onClick, shape = RoundedCornerShape(14.dp)) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+    }
+}
+
+// Real Toss Bank/KakaoBank 마이너스통장 (overdraft/revolving line-of-credit) -- see
+// backend OverdraftAccount.kt's own doc comment. Found 2026-07-29 via a full-backend-
+// endpoint sweep: zero client anywhere on any of the 3 platforms before this.
+@Composable
+private fun OverdraftPanel() {
+    var account by remember { mutableStateOf<OverdraftAccountDto?>(null) }
+    var loaded by remember { mutableStateOf(false) }
+    var requestedLimit by remember { mutableStateOf("100000") }
+    var drawAmount by remember { mutableStateOf("") }
+    var repayAmount by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var notice by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        try {
+            account = NetworkClient.apiService.getMyOverdraft().account
+        } catch (_: Exception) {
+            error = "Could not load your overdraft account."
+        } finally {
+            loaded = true
+        }
+    }
+
+    if (!loaded) { SkeletonBlock(); return }
+
+    val current = account
+    if (current == null) {
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp)) {
+                Text("Open an overdraft line", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "A pre-approved credit limit you can draw from anytime -- pay interest only on what you actually use, up to 500,000 RWF.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(requestedLimit, { requestedLimit = it }, label = { Text("Requested limit (RWF)") }, modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        val limit = requestedLimit.toBigDecimalOrNull()
+                        if (limit == null || limit <= BigDecimal.ZERO) { error = "Enter a valid credit limit."; return@Button }
+                        busy = true
+                        error = null
+                        scope.launch {
+                            try {
+                                account = NetworkClient.apiService.openOverdraft(UUID.randomUUID().toString(), OpenOverdraftRequest(limit)).account
+                            } catch (_: Exception) {
+                                error = "Could not open an overdraft account."
+                            } finally { busy = false }
+                        }
+                    },
+                ) { Text(if (busy) "Opening…" else "Open overdraft") }
+            }
+        }
+        return
+    }
+
+    val availableCredit = current.creditLimit.subtract(current.drawnBalance)
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Text("Overdraft line", style = MaterialTheme.typography.titleMedium)
+            Text("Drawn: RWF ${current.drawnBalance} of RWF ${current.creditLimit}", style = MaterialTheme.typography.bodyMedium)
+            Text("Available to draw: RWF $availableCredit · ${current.interestRate}% annual, interest only on what's drawn", style = MaterialTheme.typography.bodySmall)
+            notice?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall) }
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(drawAmount, { drawAmount = it }, label = { Text("Draw amount (RWF)") }, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
+            Button(
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    val amount = drawAmount.toBigDecimalOrNull()
+                    if (amount == null || amount <= BigDecimal.ZERO) { error = "Enter a valid amount to draw."; return@Button }
+                    busy = true
+                    error = null
+                    notice = null
+                    scope.launch {
+                        try {
+                            val res = NetworkClient.apiService.drawOverdraft(UUID.randomUUID().toString(), OverdraftAmountRequest(amount))
+                            account = current.copy(drawnBalance = res.drawnBalance)
+                            drawAmount = ""
+                            notice = "Drew RWF ${res.amount} -- RWF ${res.availableCredit} still available."
+                        } catch (_: Exception) {
+                            error = "Could not draw from your overdraft."
+                        } finally { busy = false }
+                    }
+                },
+            ) { Text(if (busy) "Drawing…" else "Draw") }
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(repayAmount, { repayAmount = it }, label = { Text("Repay amount (RWF)") }, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                enabled = !busy && current.drawnBalance > BigDecimal.ZERO,
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    val amount = repayAmount.toBigDecimalOrNull()
+                    if (amount == null || amount <= BigDecimal.ZERO) { error = "Enter a valid repayment amount."; return@OutlinedButton }
+                    busy = true
+                    error = null
+                    notice = null
+                    scope.launch {
+                        try {
+                            val res = NetworkClient.apiService.repayOverdraft(UUID.randomUUID().toString(), OverdraftAmountRequest(amount))
+                            account = current.copy(drawnBalance = res.drawnBalance)
+                            repayAmount = ""
+                            notice = "Repaid RWF ${res.amount} -- RWF ${res.availableCredit} now available."
+                        } catch (_: Exception) {
+                            error = "Could not repay your overdraft."
+                        } finally { busy = false }
+                    }
+                },
+            ) { Text(if (busy) "Repaying…" else "Repay") }
+        }
     }
 }

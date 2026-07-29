@@ -1333,6 +1333,39 @@ data class RefinanceResult(
     val creditScore: Int,
 )
 
+// Real Toss Bank/KakaoBank 마이너스통장 (overdraft/revolving line-of-credit) -- see
+// backend OverdraftAccount.kt's own doc comment. Found 2026-07-29 via a full-backend-
+// endpoint sweep: real, live-verified backend (open/draw/repay, real daily interest
+// accrual, real security-alert push) with zero client anywhere on any of the 3
+// platforms.
+data class OverdraftAccountDto(
+    val id: String,
+    val userId: String,
+    val walletId: String,
+    val creditLimit: java.math.BigDecimal,
+    val drawnBalance: java.math.BigDecimal,
+    val interestRate: Double,
+    val status: String,
+)
+data class OverdraftAccountResponse(val success: Boolean, val account: OverdraftAccountDto?)
+data class OpenOverdraftRequest(val requestedLimit: java.math.BigDecimal)
+data class OverdraftAmountRequest(val amount: java.math.BigDecimal)
+data class OverdraftDrawResponse(
+    val success: Boolean,
+    val transactionId: String,
+    val amount: java.math.BigDecimal,
+    val drawnBalance: java.math.BigDecimal,
+    val availableCredit: java.math.BigDecimal,
+)
+data class OverdraftRepayResponse(
+    val success: Boolean,
+    val transactionId: String,
+    val amount: java.math.BigDecimal,
+    val drawnBalance: java.math.BigDecimal,
+    val availableCredit: java.math.BigDecimal,
+    val newBalance: java.math.BigDecimal,
+)
+
 // Real customer support tickets, tied to a specific transaction (rw.itunda.support) --
 // found 2026-07-22 fully built on the backend with zero client UI anywhere; the
 // "Support" section in this app was five static rows (FAQ/Live chat/...) with no
@@ -2411,6 +2444,18 @@ interface ApiService {
 
     @POST("api/v1/loans/refinance")
     suspend fun refinanceLoan(@Header("Idempotency-Key") idempotencyKey: String, @Body request: RefinanceLoanRequest): RefinanceResult
+
+    @GET("api/v1/loans/overdraft")
+    suspend fun getMyOverdraft(): OverdraftAccountResponse
+
+    @POST("api/v1/loans/overdraft/open")
+    suspend fun openOverdraft(@Header("Idempotency-Key") idempotencyKey: String, @Body request: OpenOverdraftRequest): OverdraftAccountResponse
+
+    @POST("api/v1/loans/overdraft/draw")
+    suspend fun drawOverdraft(@Header("Idempotency-Key") idempotencyKey: String, @Body request: OverdraftAmountRequest): OverdraftDrawResponse
+
+    @POST("api/v1/loans/overdraft/repay")
+    suspend fun repayOverdraft(@Header("Idempotency-Key") idempotencyKey: String, @Body request: OverdraftAmountRequest): OverdraftRepayResponse
 
     @POST("api/v1/support/tickets")
     suspend fun createSupportTicket(@Body request: CreateSupportTicketRequest): CreateSupportTicketResponse
