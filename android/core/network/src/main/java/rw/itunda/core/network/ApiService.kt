@@ -508,6 +508,12 @@ data class GroupMessageDto(
     val deletedAt: String? = null,
     val replyToMessageId: String? = null,
     val reactions: List<ReactionGroupDto> = emptyList(),
+    // Real KakaoTalk Emoticon Store, group-send side (item 133/204) -- see
+    // sendGroupEmoticon's own doc comment. Set only on a message actually sent via
+    // EmoticonController's /groups/{id}/send endpoint. Found 2026-07-29 via the
+    // defined-but-uncalled-method sweep: the backend/DTO field existed on bank-mfe's
+    // equivalent type, but this DTO never carried it and no client ever sent one.
+    val emoticonId: String? = null,
 )
 data class GroupResponse(val success: Boolean, val group: GroupSummaryDto)
 data class GroupsResponse(val success: Boolean, val groups: List<GroupSummaryDto>)
@@ -1869,6 +1875,9 @@ interface ApiService {
 
     @POST("api/v1/emoticons/conversations/{id}/send")
     suspend fun sendEmoticon(@Path("id") conversationId: String, @Body request: SendEmoticonRequest): MessageResponse
+
+    @POST("api/v1/emoticons/groups/{id}/send")
+    suspend fun sendGroupEmoticon(@Path("id") groupId: String, @Body request: SendEmoticonRequest): GroupMessageResponse
 
     // Real 동네생활-style community board (2026-07-19) -- see rw.itunda.community.web.CommunityController.
     @GET("api/v1/community/categories")

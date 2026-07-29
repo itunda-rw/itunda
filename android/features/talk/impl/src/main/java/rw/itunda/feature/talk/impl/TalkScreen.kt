@@ -520,6 +520,13 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
     // Real leave-group/add-member (found 2026-07-22: POST/DELETE .../members already
     // existed on the backend with zero UI anywhere -- same toggle pattern as above.
     var showManageMembers by remember { mutableStateOf(false) }
+    // Real KakaoTalk Emoticon Store, group-send side (item 133/204) -- see
+    // sendGroupEmoticon's own doc comment. 1:1 chat has had this since the Emoticon
+    // Store shipped; group chat never got a client for the identical, already-real
+    // backend endpoint. Found 2026-07-29 via the defined-but-uncalled-method sweep.
+    var emoticonPickerOpen by remember { mutableStateOf(false) }
+    var emoticonStoreOpen by remember { mutableStateOf(false) }
+    var emoticonImageById by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     val coroutineScope = rememberCoroutineScope()
     val listState: LazyListState = rememberLazyListState()
     val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
@@ -531,6 +538,18 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
         } catch (_: Exception) {
             // Keep showing the last-known messages rather than blanking the thread on
             // a transient poll failure.
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        try {
+            val packs = NetworkClient.apiService.getEmoticonPacks().packs
+            val map = packs.flatMap { pack ->
+                try { NetworkClient.apiService.getPackEmoticons(pack.id).emoticons } catch (_: Exception) { emptyList() }
+            }.associate { it.id to it.imageUrl }
+            emoticonImageById = map
+        } catch (_: Exception) {
+            // Real, non-critical -- only backs the inline emoticon bubble.
         }
     }
 
@@ -645,6 +664,7 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                         isMine = m.senderId == currentUserId,
                         senderName = senderName,
                         currentUserId = currentUserId,
+                        emoticonImageUrl = m.emoticonId?.let(emoticonImageById::get),
                         onToggleReaction = { emoji ->
                             coroutineScope.launch {
                                 try {
@@ -680,7 +700,38 @@ private fun GroupThreadView(group: GroupSummaryDto, onBack: () -> Unit) {
                 TextButton(onClick = { replyingTo = null }) { Text("×") }
             }
         }
+        if (emoticonPickerOpen) {
+            EmoticonPickerPanel(
+                onSend = { emoticonId ->
+                    coroutineScope.launch {
+                        try {
+                            val res = NetworkClient.apiService.sendGroupEmoticon(group.groupId, SendEmoticonRequest(emoticonId))
+                            if (res.success) messages = (messages ?: emptyList()) + res.message
+                            emoticonPickerOpen = false
+                        } catch (_: Exception) {
+                            error = "Couldn't send this emoticon."
+                        }
+                    }
+                },
+                onOpenStore = { emoticonStoreOpen = true },
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+        if (emoticonStoreOpen) {
+            EmoticonStoreDialog(onDismiss = { emoticonStoreOpen = false })
+        }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(Ids.layout.minTouchTarget)
+                    .clip(CircleShape)
+                    .background(Ids.colors.surfaceSoft)
+                    .clickable { emoticonPickerOpen = !emoticonPickerOpen },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("😊", fontSize = 18.sp)
+            }
+            Spacer(modifier = Modifier.width(8.dp))
             OutlinedTextField(
                 value = draft,
                 onValueChange = { newValue ->
@@ -986,10 +1037,16 @@ private fun GroupManageMembersView(
 
 @Composable
 private fun GroupMessageBubble(
-    message: GroupMessageDto, isMine: Boolean, senderName: String, currentUserId: String?, onToggleReaction: (String) -> Unit, onDelete: (String) -> Unit = {}, onReply: (GroupMessageDto) -> Unit = {},
+    message: GroupMessageDto, isMine: Boolean, senderName: String, currentUserId: String?, onToggleReaction: (String) -> Unit, onDelete: (String) -> Unit = {}, onReply: (GroupMessageDto) -> Unit = {}, emoticonImageUrl: String? = null,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start) {
+            if (message.emoticonId != null) {
+                if (!isMine) {
+                    Text(senderName, color = Ids.colors.textSecondary, fontSize = 10.sp, modifier = Modifier.padding(bottom = 2.dp))
+                }
+                EmoticonBubble(emoticonImageUrl)
+            } else {
             Column(
                 modifier = Modifier
                     .clip(RoundedCornerShape(16.dp))
@@ -1000,6 +1057,7 @@ private fun GroupMessageBubble(
                     Text(senderName, color = Ids.colors.textSecondary, fontSize = 10.sp, modifier = Modifier.padding(bottom = 2.dp))
                 }
                 Text(message.body, color = if (isMine) Color.White else Ids.colors.textPrimary, fontSize = 14.sp)
+            }
             }
         }
         MessageReactionsRow(message.reactions, currentUserId, isMine, onToggleReaction)
