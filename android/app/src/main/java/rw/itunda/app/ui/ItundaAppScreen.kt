@@ -65,6 +65,7 @@ import androidx.compose.material.icons.outlined.PieChart
 import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Redeem
+import androidx.compose.material.icons.outlined.RequestQuote
 import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.icons.automirrored.outlined.Send
@@ -255,6 +256,9 @@ fun ItundaAppScreen(
         // Real 토스뱅크 외화통장 (foreign-currency account) screen (2026-07-25) -- same
         // "backend existed with zero mobile UI" gap-close pattern as the two above.
         var showForeignCurrency by rememberSaveable { mutableStateOf(false) }
+        // Real person-to-person payment request (item 170) -- same "backend real,
+        // live-verified, zero mobile UI" gap-close pattern as the two above.
+        var showRequestMoney by rememberSaveable { mutableStateOf(false) }
         // Real 전체 (All services) menu (2026-07-22) -- separated from My per the
         // user's direct request; see MenuScreen's own doc comment.
         var showMyTab by rememberSaveable { mutableStateOf(false) }
@@ -728,6 +732,12 @@ fun ItundaAppScreen(
             ForeignCurrencyScreen(onBack = { showForeignCurrency = false })
             return@IdsTheme
         }
+        // Real person-to-person payment request screen (item 170) -- same pattern.
+        if (showRequestMoney) {
+            BackHandler { showRequestMoney = false }
+            RequestMoneyScreen(onBack = { showRequestMoney = false })
+            return@IdsTheme
+        }
         // Real My-activity overlay (2026-07-24) -- the exact inverse of the old
         // showMenu overlay: My's own real content (orders/favorites/listings) is now
         // reached one tap in from the All tab's profile icon, instead of All being
@@ -828,6 +838,7 @@ fun ItundaAppScreen(
                             onOpenSpending = { showSpending = true },
                             onOpenRides = { showRides = true },
                             onOpenForeignCurrency = { showForeignCurrency = true },
+                            onOpenRequestMoney = { showRequestMoney = true },
                             onOpenTransferHub = { showTransferHub = true },
                             onClaimInterest = { savingsFlowStep = SavingsFlowStep.ClaimInterest },
                             onSwitchToTalk = { selectedTab = TossTab.Talk },
@@ -1350,6 +1361,7 @@ private fun MenuScreen(
     onOpenSpending: () -> Unit = {},
     onOpenRides: () -> Unit = {},
     onOpenForeignCurrency: () -> Unit = {},
+    onOpenRequestMoney: () -> Unit = {},
     onOpenTransferHub: () -> Unit = {},
     onClaimInterest: () -> Unit = {},
     onSwitchToTalk: () -> Unit = {},
@@ -1472,6 +1484,7 @@ private fun MenuScreen(
                 // (which stays a quick recipient-picker, unchanged) being the only
                 // entry point.
                 FlatRow("Transfer", subtitle = "Auto-transfer, split a bill", icon = Icons.AutoMirrored.Outlined.Send, iconColor = AccentBlue, onClick = onOpenTransferHub),
+                FlatRow("Request money", subtitle = "Generate a real payment request code", icon = Icons.Outlined.RequestQuote, iconColor = AccentBlue, onClick = onOpenRequestMoney),
                 FlatRow("Get a loan", subtitle = "Personal, salary-backed, SME working capital", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans),
                 FlatRow("Credit score", subtitle = "Free check, alternative data", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenCreditScore),
                 FlatRow("Spending", subtitle = "Real, ledger-based category breakdown", icon = Icons.Outlined.PieChart, iconColor = AccentBlue, onClick = onOpenSpending),

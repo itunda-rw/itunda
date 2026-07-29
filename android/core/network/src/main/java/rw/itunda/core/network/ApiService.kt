@@ -287,6 +287,27 @@ data class ConfirmTransferResponse(val success: Boolean, val message: String, va
 data class SendDirectP2pRequest(val recipient: String, val amount: java.math.BigDecimal, val description: String = "")
 data class SendDirectP2pResponse(val success: Boolean, val message: String, val transaction: TransactionDto, val newBalance: Double)
 
+// Real fixed-amount person-to-person payment request (item 170) -- the P2P counterpart
+// to a merchant's own PaymentIntent (see backend P2pPaymentRequest.kt's own doc
+// comment). A real 15-minute-expiring code the requester shares; anyone who has the
+// code can pay it directly, real wallet-to-wallet, no fee. Real (rate-limited, tested,
+// live-verified against a running backend) but had zero client anywhere until now.
+data class GenerateP2pRequest(val amount: java.math.BigDecimal, val description: String)
+data class P2pPaymentRequestDto(
+    val id: String,
+    val requesterUserId: String,
+    val amount: java.math.BigDecimal,
+    val description: String,
+    val status: String,
+    val expiresAt: String,
+    val completedTransactionId: String? = null,
+    val paidByUserId: String? = null,
+    val createdAt: String,
+)
+data class GenerateP2pRequestResponse(val success: Boolean, val request: P2pPaymentRequestDto)
+data class GetP2pRequestsResponse(val success: Boolean, val requests: List<P2pPaymentRequestDto>)
+data class PayP2pRequestResponse(val success: Boolean, val message: String, val transaction: TransactionDto, val newBalance: Double)
+
 // Real Toss Bank 자동이체 (auto-transfer) equivalent -- mirrors AutoTransferController's
 // real DTOs exactly. See AutoTransfer.kt's own doc comment on the backend for why
 // execution reuses sendDirect's exact ledger movement rather than a separate rail.
@@ -1444,6 +1465,15 @@ interface ApiService {
     // MainViewModel.sendTransfer.
     @POST("api/v1/p2p/send")
     suspend fun sendDirect(@Header("Idempotency-Key") idempotencyKey: String, @Body request: SendDirectP2pRequest): SendDirectP2pResponse
+
+    @POST("api/v1/p2p/request")
+    suspend fun generateP2pRequest(@Body request: GenerateP2pRequest): GenerateP2pRequestResponse
+
+    @GET("api/v1/p2p/requests")
+    suspend fun getMyP2pRequests(): GetP2pRequestsResponse
+
+    @POST("api/v1/p2p/pay/{requestId}")
+    suspend fun payP2pRequest(@Path("requestId") requestId: String, @Header("Idempotency-Key") idempotencyKey: String): PayP2pRequestResponse
 
     @POST("api/v1/p2p/auto-transfers")
     suspend fun createAutoTransfer(@Body request: CreateAutoTransferRequest): AutoTransferResponse
