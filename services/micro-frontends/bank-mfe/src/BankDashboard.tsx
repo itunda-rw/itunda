@@ -58,10 +58,10 @@ import {
 import { extendGiftVoucherExpiry, fetchGiftVouchersForConversation, purchaseGiftVoucher, type GiftVoucher, type GiftVoucherStatus } from './lib/giftVouchers';
 import { createSplitBill, fetchSplitBillsForGroup, paySplitBillShare, type SplitBillWithParticipants } from './lib/splitBill';
 import {
-  addKeywordAlert, addListingFavorite, contactSeller, createListing, fetchKeywordAlertQuietHours, fetchKeywordAlerts, fetchListings,
+  addKeywordAlert, addListingFavorite, contactSeller, createListing, fetchKeywordAlertQuietHours, fetchKeywordAlerts, fetchListingReviews, fetchListings,
   fetchListingsMyNeighborhood, fetchMyFavoriteListings, fetchMyListings, fetchMyPurchases, fetchOffersForConversation, makeOffer,
   markListingSold, removeKeywordAlert, removeListing, removeListingFavorite, respondToOffer, setKeywordAlertQuietHours,
-  submitListingReview, type FavoriteListing, type KeywordAlert, type KeywordAlertQuietHours, type Listing, type PriceOffer, type TrustScores,
+  submitListingReview, type FavoriteListing, type HoodReview, type KeywordAlert, type KeywordAlertQuietHours, type Listing, type PriceOffer, type TrustScores,
 } from './lib/marketplace';
 import { fetchProfile, setBirthDate, setNeighborhood } from './lib/neighborhood';
 import { confirmEmailVerification, confirmPhoneVerification, requestEmailVerification, requestPhoneVerification } from './lib/verification';
@@ -73,13 +73,13 @@ import {
   type CommunityCategory, type CommunityComment, type CommunityPost, type JoinedCounts,
 } from './lib/community';
 import {
-  addJobPostFavorite, contactPoster, createJobPost, fetchJobCategories, fetchJobPosts, fetchJobPostsMyNeighborhood,
+  addJobPostFavorite, contactPoster, createJobPost, fetchJobCategories, fetchJobPostReviews, fetchJobPosts, fetchJobPostsMyNeighborhood,
   fetchMyFavoriteJobPosts, fetchMyJobPosts, fetchMyWorkedJobPosts, markJobPostFilled, removeJobPost, removeJobPostFavorite, submitJobPostReview,
   type FavoriteJobPost, type JobCategory, type JobPayType, type JobPost,
 } from './lib/jobs';
 import {
   addPropertyListingFavorite, contactLister, createPropertyListing, fetchMyAcquiredPropertyListings, fetchMyFavoritePropertyListings, fetchMyPropertyListings,
-  fetchPropertyListings, fetchPropertyListingsMyNeighborhood, fetchPropertyOffersForConversation, fetchPropertyTypes,
+  fetchPropertyListingReviews, fetchPropertyListings, fetchPropertyListingsMyNeighborhood, fetchPropertyOffersForConversation, fetchPropertyTypes,
   makePropertyOffer, markPropertyListingTaken, removePropertyListing, removePropertyListingFavorite, respondToPropertyOffer,
   submitPropertyListingReview, type FavoritePropertyListing, type PropertyListing, type PropertyListingType, type PropertyPriceOffer, type PropertyType,
 } from './lib/realestate';
@@ -5796,6 +5796,22 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
   const [selectedUncomfortablePoints, setSelectedUncomfortablePoints] = useState<Set<string>>(new Set());
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  // Real read-back (item 192) -- see lib/marketplace.ts's fetchListingReviews doc
+  // comment: without this, reviewSubmitted above was purely local/optimistic and reset
+  // on every refresh, silently re-offering the form for an already-reviewed sale.
+  const [hoodReviews, setHoodReviews] = useState<HoodReview[] | null>(null);
+  const myUserId = getStoredUser()?.id;
+  useEffect(() => {
+    if (!(isMine && listing.status === 'SOLD' && listing.buyerId)) return;
+    fetchListingReviews(listing.id)
+      .then((reviews) => {
+        setHoodReviews(reviews);
+        if (reviews.some((r) => r.reviewerId === myUserId)) setReviewSubmitted(true);
+      })
+      .catch(() => {
+        // Real, non-critical -- the review form itself still works without this.
+      });
+  }, [listing.id, listing.status, listing.buyerId, isMine]);
 
   const handleShowDirections = () => {
     if (showRoute) {
@@ -5846,9 +5862,10 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
     setSubmittingReview(true);
     setError(null);
     try {
-      await submitListingReview(listing.id, Array.from(selectedGoodPoints), Array.from(selectedUncomfortablePoints));
+      const review = await submitListingReview(listing.id, Array.from(selectedGoodPoints), Array.from(selectedUncomfortablePoints));
       setReviewSubmitted(true);
       setShowReviewSheet(false);
+      setHoodReviews((prev) => [...(prev ?? []), review]);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not submit this review.');
     } finally {
@@ -5961,10 +5978,10 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
         </div>
       )}
       {/* Real post-transaction review, preset checklist with asymmetric public/private
-          visibility (2026-07-24) -- see backend HoodReviewService's own doc comment.
-          Only offered once a real buyer was recorded at mark-sold time; no pre-check
-          for "already reviewed" (a real, honest v1 -- a second attempt just surfaces
-          the backend's own REVIEW_ALREADY_SUBMITTED error). */}
+          visibility (2026-07-24) -- see backend HoodReviewService's own doc comment. */}
+      {isMine && listing.status === 'SOLD' && listing.buyerId && reviewSubmitted && hoodReviews && (
+        <HoodReviewResultView reviews={hoodReviews} myUserId={myUserId} />
+      )}
       {isMine && listing.status === 'SOLD' && listing.buyerId && !reviewSubmitted && (
         showReviewSheet ? (
           <HoodReviewForm
@@ -6938,6 +6955,20 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
   const [selectedUncomfortablePoints, setSelectedUncomfortablePoints] = useState<Set<string>>(new Set());
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  // Real read-back (item 192) -- see lib/marketplace.ts's fetchListingReviews doc comment.
+  const [hoodReviews, setHoodReviews] = useState<HoodReview[] | null>(null);
+  const myUserId = getStoredUser()?.id;
+  useEffect(() => {
+    if (!(isMine && post.status === 'FILLED' && post.workerId)) return;
+    fetchJobPostReviews(post.id)
+      .then((reviews) => {
+        setHoodReviews(reviews);
+        if (reviews.some((r) => r.reviewerId === myUserId)) setReviewSubmitted(true);
+      })
+      .catch(() => {
+        // Real, non-critical -- the review form itself still works without this.
+      });
+  }, [post.id, post.status, post.workerId, isMine]);
 
   const handleMarkFilled = async (workerPhoneNumber?: string) => {
     setBusy(true);
@@ -6957,9 +6988,10 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
     setSubmittingReview(true);
     setError(null);
     try {
-      await submitJobPostReview(post.id, Array.from(selectedGoodPoints), Array.from(selectedUncomfortablePoints));
+      const review = await submitJobPostReview(post.id, Array.from(selectedGoodPoints), Array.from(selectedUncomfortablePoints));
       setReviewSubmitted(true);
       setShowReviewSheet(false);
+      setHoodReviews((prev) => [...(prev ?? []), review]);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not submit this review.');
     } finally {
@@ -7018,6 +7050,9 @@ function JobPostCard({ post, categoryLabel, isMine, onChanged, onContact, favori
       {/* Real post-transaction review, preset checklist with asymmetric public/private
           visibility (2026-07-24) -- see backend HoodReviewService's own doc comment.
           Only offered once a real worker was recorded at mark-filled time. */}
+      {isMine && post.status === 'FILLED' && post.workerId && reviewSubmitted && hoodReviews && (
+        <HoodReviewResultView reviews={hoodReviews} myUserId={myUserId} />
+      )}
       {isMine && post.status === 'FILLED' && post.workerId && !reviewSubmitted && (
         showReviewSheet ? (
           <HoodReviewForm
@@ -7430,6 +7465,20 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
   const [selectedUncomfortablePoints, setSelectedUncomfortablePoints] = useState<Set<string>>(new Set());
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  // Real read-back (item 192) -- see lib/marketplace.ts's fetchListingReviews doc comment.
+  const [hoodReviews, setHoodReviews] = useState<HoodReview[] | null>(null);
+  const myUserId = getStoredUser()?.id;
+  useEffect(() => {
+    if (!(isMine && listing.status === 'TAKEN' && listing.counterpartyId)) return;
+    fetchPropertyListingReviews(listing.id)
+      .then((reviews) => {
+        setHoodReviews(reviews);
+        if (reviews.some((r) => r.reviewerId === myUserId)) setReviewSubmitted(true);
+      })
+      .catch(() => {
+        // Real, non-critical -- the review form itself still works without this.
+      });
+  }, [listing.id, listing.status, listing.counterpartyId, isMine]);
 
   const priceLabel = `${listing.price.toLocaleString()} RWF${listing.listingType === 'RENT' ? '/mo' : ''}`;
   const detailsLabel = [
@@ -7472,9 +7521,10 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
     setSubmittingReview(true);
     setError(null);
     try {
-      await submitPropertyListingReview(listing.id, Array.from(selectedGoodPoints), Array.from(selectedUncomfortablePoints));
+      const review = await submitPropertyListingReview(listing.id, Array.from(selectedGoodPoints), Array.from(selectedUncomfortablePoints));
       setReviewSubmitted(true);
       setShowReviewSheet(false);
+      setHoodReviews((prev) => [...(prev ?? []), review]);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not submit this review.');
     } finally {
@@ -7549,6 +7599,9 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
       {/* Real post-transaction review, preset checklist with asymmetric public/private
           visibility (2026-07-24) -- see backend HoodReviewService's own doc comment.
           Only offered once a real counterparty was recorded at mark-taken time. */}
+      {isMine && listing.status === 'TAKEN' && listing.counterpartyId && reviewSubmitted && hoodReviews && (
+        <HoodReviewResultView reviews={hoodReviews} myUserId={myUserId} />
+      )}
       {isMine && listing.status === 'TAKEN' && listing.counterpartyId && !reviewSubmitted && (
         showReviewSheet ? (
           <HoodReviewForm
@@ -10682,6 +10735,8 @@ const HOOD_UNCOMFORTABLE_POINT_LABELS: [string, string][] = [
   ['LATE', 'Was late'], ['NOT_AS_DESCRIBED', 'Not as described'], ['UNRESPONSIVE', 'Hard to reach'],
   ['RUDE', 'Rude'], ['PRICE_ISSUE', 'Price disagreement'],
 ];
+const hoodGoodPointLabel = (id: string) => HOOD_GOOD_POINT_LABELS.find(([pid]) => pid === id)?.[1] ?? id;
+const hoodUncomfortablePointLabel = (id: string) => HOOD_UNCOMFORTABLE_POINT_LABELS.find(([pid]) => pid === id)?.[1] ?? id;
 
 // Real post-transaction review with Karrot's own asymmetric public/private visibility
 // (2026-07-24) -- closes docs/DESIGN_REFERENCES.md Section 4 recommendation #2. A
@@ -10743,6 +10798,35 @@ function HoodReviewForm({
           {submitting ? 'Submitting…' : 'Submit review'}
         </button>
       </div>
+    </div>
+  );
+}
+
+// Real read-back for a submitted Hood transaction review (item 192) -- see
+// lib/marketplace.ts's fetchListingReviews doc comment. Only ever rendered for a real
+// party to the transaction (the fetch itself real-403s otherwise), so both "your
+// review" and "their review of you" -- including its uncomfortablePoints -- are
+// honestly shown here, matching Karrot's own asymmetric visibility: private between the
+// two real parties, not public to anyone else.
+function HoodReviewResultView({ reviews, myUserId }: { reviews: HoodReview[]; myUserId: string | undefined }) {
+  const mine = reviews.find((r) => r.reviewerId === myUserId);
+  const theirs = reviews.find((r) => r.reviewerId !== myUserId);
+  if (!mine && !theirs) return null;
+  const block = (title: string, review: HoodReview) => (
+    <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'var(--toss-grey-100)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+      <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{title}</p>
+      {review.goodPoints.length > 0 && (
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>👍 {review.goodPoints.map(hoodGoodPointLabel).join(', ')}</p>
+      )}
+      {review.uncomfortablePoints.length > 0 && (
+        <p style={{ fontSize: '12px', color: '#E53935' }}>⚠️ {review.uncomfortablePoints.map(hoodUncomfortablePointLabel).join(', ')}</p>
+      )}
+    </div>
+  );
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {mine && block('Your review', mine)}
+      {theirs && block('Their review of you', theirs)}
     </div>
   );
 }

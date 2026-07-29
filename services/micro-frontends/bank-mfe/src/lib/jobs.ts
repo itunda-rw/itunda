@@ -96,6 +96,11 @@ export const submitJobPostReview = (jobPostId: string, goodPoints: string[], unc
     body: JSON.stringify({ goodPoints, uncomfortablePoints }),
   }).then((r) => r.review);
 
+// Real read-back for the review submitted above (item 192) -- see lib/marketplace.ts's
+// fetchListingReviews for the full account; identical shape.
+export const fetchJobPostReviews = (jobPostId: string) =>
+  apiFetch<{ success: boolean; reviews: HoodReview[] }>(`/api/v1/jobs/posts/${jobPostId}/review`).then((r) => r.reviews);
+
 export const removeJobPost = (jobPostId: string) =>
   apiFetch<{ success: boolean; post: JobPost }>(`/api/v1/jobs/posts/${jobPostId}`, {
     method: 'DELETE',

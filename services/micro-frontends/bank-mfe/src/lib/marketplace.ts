@@ -104,6 +104,17 @@ export const submitListingReview = (listingId: string, goodPoints: string[], unc
     body: JSON.stringify({ goodPoints, uncomfortablePoints }),
   }).then((r) => r.review);
 
+// Real read-back for the review submitted above (item 192) -- HoodReviewService's own
+// "asymmetric public/private visibility" is party-only even for reading: this real-403s
+// (HOOD_REVIEW_NOT_PARTY) for anyone who wasn't a real party to the transaction, so it's
+// safe to call for any transaction this account can see at all. Existed as a real,
+// callable endpoint since 2026-07-24 with zero client anywhere -- submitting a review
+// never showed it back, and a page refresh reset the local reviewSubmitted flag,
+// silently re-offering the form (the second POST attempt just surfaced the backend's
+// own REVIEW_ALREADY_SUBMITTED error rather than the actual submitted content).
+export const fetchListingReviews = (listingId: string) =>
+  apiFetch<{ success: boolean; reviews: HoodReview[] }>(`/api/v1/marketplace/listings/${listingId}/review`).then((r) => r.reviews);
+
 export const removeListing = (listingId: string) =>
   apiFetch<{ success: boolean; listing: Listing }>(`/api/v1/marketplace/listings/${listingId}`, {
     method: 'DELETE',

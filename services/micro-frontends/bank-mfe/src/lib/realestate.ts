@@ -104,6 +104,11 @@ export const submitPropertyListingReview = (propertyListingId: string, goodPoint
     body: JSON.stringify({ goodPoints, uncomfortablePoints }),
   }).then((r) => r.review);
 
+// Real read-back for the review submitted above (item 192) -- see lib/marketplace.ts's
+// fetchListingReviews for the full account; identical shape.
+export const fetchPropertyListingReviews = (propertyListingId: string) =>
+  apiFetch<{ success: boolean; reviews: HoodReview[] }>(`/api/v1/realestate/listings/${propertyListingId}/review`).then((r) => r.reviews);
+
 export const removePropertyListing = (propertyListingId: string) =>
   apiFetch<{ success: boolean; listing: PropertyListing }>(`/api/v1/realestate/listings/${propertyListingId}`, {
     method: 'DELETE',
