@@ -227,6 +227,10 @@ struct EntireMenuScreen: View {
     // remaining client platform for this feature (bank-mfe item 112, Android already
     // had it).
     @State private var showRoundUp = false
+    // Real 토스뱅크 외화통장 (foreign-currency account) screen (item 160) -- last
+    // remaining client platform for this feature (bank-mfe item 154, Android already
+    // had it).
+    @State private var showForeignCurrency = false
 
     var body: some View {
         ScrollView {
@@ -303,6 +307,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Spending", subtitle: "Real, ledger-based category breakdown", symbol: "chart.pie.fill", tint: .accentBlue, action: { showSpending = true }),
                         FlatRow(title: "Rides", subtitle: "Request a ride or drive for real fares", symbol: "car.fill", tint: .accentBlue, action: { showRides = true }),
                         FlatRow(title: "Round-up savings", subtitle: "Auto-save spare change from every transfer", symbol: "arrow.up.circle.fill", tint: .accentOrange, action: { showRoundUp = true }),
+                        FlatRow(title: "Foreign currency", subtitle: "Hold and convert USD, EUR, GBP", symbol: "arrow.left.arrow.right.circle.fill", tint: .accentBlue, action: { showForeignCurrency = true }),
                         FlatRow(title: "Digital certificate", subtitle: "Sign agreements in Itunda", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showCertificate = true }),
                         FlatRow(title: "Mobile plan", subtitle: "MTN, Airtel, broadband", symbol: "globe", tint: .accentTeal),
                     ])
@@ -434,6 +439,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showRoundUp) {
             RoundUpSettingsView(onBack: { showRoundUp = false })
+        }
+        .sheet(isPresented: $showForeignCurrency) {
+            ForeignCurrencyScreenView(onBack: { showForeignCurrency = false })
         }
     }
 }

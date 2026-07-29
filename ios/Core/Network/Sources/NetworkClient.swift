@@ -227,6 +227,37 @@ public struct Wallet: Decodable {
 
 public struct WalletsResponse: Decodable { public let success: Bool; public let wallets: [Wallet] }
 
+// Real 토스뱅크 외화통장 (foreign-currency account) equivalent (item 160) -- see the
+// backend's ForeignCurrencyWalletService.kt doc comment: scoped to USD/EUR/GBP, real
+// live mid-market rate + a real 1.5% itunda margin, real double-entry conversion
+// entirely between a user's own RWF and foreign-currency wallets. Reuses `Wallet`
+// above for the foreign-currency wallet itself (same real domain shape, `type` ==
+// "FOREIGN_CURRENCY"). Android's main app already has this (`ForeignCurrencyScreen.kt`);
+// this is the iOS port -- bank-mfe got it in item 154.
+public struct ForeignWalletsResponse: Decodable { public let success: Bool; public let wallets: [Wallet] }
+public struct ExchangeRateResponse: Decodable { public let success: Bool; public let from: String; public let to: String; public let rate: Double }
+public struct OpenForeignWalletRequest: Encodable {
+    public let currency: String
+    public init(currency: String) { self.currency = currency }
+}
+public struct ConvertCurrencyRequest: Encodable {
+    public let fromCurrency: String; public let toCurrency: String; public let amount: Double
+    public init(fromCurrency: String, toCurrency: String, amount: Double) {
+        self.fromCurrency = fromCurrency; self.toCurrency = toCurrency; self.amount = amount
+    }
+}
+public struct CurrencyConversionDto: Decodable, Identifiable {
+    public let id: String
+    public let fromCurrency: String
+    public let toCurrency: String
+    public let fromAmount: Double
+    public let toAmount: Double
+    public let rate: Double
+    public let marginAmount: Double
+}
+public struct ConvertCurrencyResponse: Decodable { public let success: Bool; public let conversion: CurrencyConversionDto }
+public struct CurrencyConversionsResponse: Decodable { public let success: Bool; public let conversions: [CurrencyConversionDto] }
+
 public struct SpendingCategoryDto: Decodable { public let name: String; public let amount: Double }
 public struct SpendingInsightResponse: Decodable { public let success: Bool; public let categories: [SpendingCategoryDto]; public let totalSpent: Double }
 
@@ -328,6 +359,25 @@ public struct InterestJarResponse: Decodable { public let success: Bool; public 
 /// the "iOS has no real feature data-fetching wired in" gap this comment used to name.
 extension NetworkClient {
     public func getWallets() async throws -> WalletsResponse { try await get("api/v1/wallet") }
+
+    public func openForeignWallet(_ request: OpenForeignWalletRequest) async throws -> ForeignWalletsResponse {
+        try await authenticatedPost("api/v1/wallet/foreign-currency/wallets", body: request)
+    }
+
+    public func getForeignWallets() async throws -> ForeignWalletsResponse { try await get("api/v1/wallet/foreign-currency/wallets") }
+
+    public func getExchangeRate(from: String, to: String) async throws -> ExchangeRateResponse {
+        try await get("api/v1/wallet/foreign-currency/rate", query: [
+            URLQueryItem(name: "from", value: from),
+            URLQueryItem(name: "to", value: to),
+        ])
+    }
+
+    public func convertCurrency(_ request: ConvertCurrencyRequest) async throws -> ConvertCurrencyResponse {
+        try await authenticatedPost("api/v1/wallet/foreign-currency/convert", body: request)
+    }
+
+    public func getMyConversions() async throws -> CurrencyConversionsResponse { try await get("api/v1/wallet/foreign-currency/conversions") }
 
     // Real Kakao Pay 소비 리포트-style spending categorization (rw.itunda.wallet.
     // WalletService.getSpendingInsight, real since 2026-07-13) -- first iOS client for
