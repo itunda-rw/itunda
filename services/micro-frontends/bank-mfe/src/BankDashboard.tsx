@@ -16,7 +16,7 @@ import {
   type WeeklySavingsPlan, type WeeklySavingsPlanDetail,
 } from './lib/weeklySavings';
 import { collectWithFacePay, enrollFacePay, fetchFacePayStatus, revokeFacePay } from './lib/facepay';
-import { sendDirect } from './lib/p2p';
+import { fetchMyP2pRequests, generateP2pRequest, payP2pRequest, sendDirect, type P2pPaymentRequestDto, type P2pPaymentRequestStatus } from './lib/p2p';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
 import { fetchLinkedAccounts, fetchOverview, linkAccount, unlinkAccount, type LinkedAccount, type Overview } from './lib/overview';
 import { applyForLoan, fetchLoanOffers, fetchMyLoans, refinanceLoan, repayLoan, type LoanAccount, type LoanOffer } from './lib/loans';
@@ -555,6 +555,7 @@ function HomeView() {
       <TransactionHistory transactions={transactions} unusuallyLargeIds={unusuallyLargeIds} />
       <ScheduledTransfersCard />
       <AutoTransfersCard />
+      <RequestMoneyCard />
       <MiniWalletCard />
     </div>
   );
@@ -962,6 +963,135 @@ function AutoTransfersCard() {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+const P2P_REQUEST_STATUS_LABEL: Record<P2pPaymentRequestStatus, string> = {
+  PENDING: 'Pending', COMPLETED: 'Paid', EXPIRED: 'Expired',
+};
+
+// Real fixed-amount person-to-person payment request (item 167) -- see lib/p2p.ts's
+// own doc comment. A real 15-minute-expiring code the requester shares (typed/pasted,
+// same real manual-code-entry convention MerchantController.collect's own bank-mfe
+// client already established -- this app has no camera QR scanner anywhere); anyone
+// who has the code can pay it directly, real wallet-to-wallet, no fee.
+function RequestMoneyCard() {
+  const [requests, setRequests] = useState<P2pPaymentRequestDto[] | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [created, setCreated] = useState<P2pPaymentRequestDto | null>(null);
+  const [payCode, setPayCode] = useState('');
+  const [paying, setPaying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [needsDeviceVerification, setNeedsDeviceVerification] = useState(false);
+
+  const load = () => {
+    fetchMyP2pRequests().then(setRequests).catch(() => {});
+  };
+  useEffect(load, []);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsedAmount = Number(amount);
+    if (!(parsedAmount > 0)) return;
+    setCreating(true);
+    setError(null);
+    try {
+      const req = await generateP2pRequest(parsedAmount, description.trim());
+      setCreated(req);
+      setAmount('');
+      setDescription('');
+      setShowCreate(false);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not create this request.');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handlePay = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPaying(true);
+    setError(null);
+    setNeedsDeviceVerification(false);
+    try {
+      await payP2pRequest(payCode.trim());
+      setPayCode('');
+      load();
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'DEVICE_NOT_VERIFIED') {
+        setNeedsDeviceVerification(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Could not pay this request.');
+      }
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  return (
+    <div className="toss-card" style={{ padding: '16px', marginTop: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Request money</h3>
+        <button className="toss-btn toss-btn-secondary" onClick={() => setShowCreate((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+          {showCreate ? 'Cancel' : '+ New request'}
+        </button>
+      </div>
+
+      {showCreate && (
+        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+          <input
+            type="number" placeholder="Amount (RWF)" value={amount} onChange={(e) => setAmount(e.target.value)} min="1" required
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <input
+            type="text" placeholder="What's it for? (optional)" value={description} onChange={(e) => setDescription(e.target.value)}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={creating}>{creating ? 'Creating…' : 'Create request'}</button>
+        </form>
+      )}
+
+      {created && (
+        <div style={{ padding: '12px', background: 'var(--toss-grey-100)', borderRadius: '10px', marginBottom: '12px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Share this code -- expires in 15 minutes</p>
+          <p style={{ fontSize: '16px', fontWeight: 700, fontFamily: 'monospace', wordBreak: 'break-all' }}>{created.id}</p>
+        </div>
+      )}
+
+      {needsDeviceVerification ? (
+        <DeviceStepUpPrompt onVerified={() => setNeedsDeviceVerification(false)} onCancel={() => setNeedsDeviceVerification(false)} />
+      ) : (
+        <form onSubmit={handlePay} style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+          <input
+            type="text" placeholder="Pay a request code" value={payCode} onChange={(e) => setPayCode(e.target.value)} required
+            style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={paying} style={{ padding: '10px 16px', fontSize: '13px' }}>
+            {paying ? 'Paying…' : 'Pay'}
+          </button>
+        </form>
+      )}
+
+      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+
+      {requests !== null && requests.length > 0 && (
+        <div>
+          <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-grey-500)', marginBottom: '4px' }}>My requests</p>
+          {requests.slice(0, 5).map((r) => (
+            <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+              <div>
+                <p style={{ fontSize: '13px', fontWeight: 700 }}>{r.amount.toLocaleString()} RWF{r.description ? ` · ${r.description}` : ''}</p>
+                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{P2P_REQUEST_STATUS_LABEL[r.status]}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

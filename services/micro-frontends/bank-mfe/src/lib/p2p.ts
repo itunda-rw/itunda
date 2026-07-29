@@ -14,3 +14,39 @@ export const sendDirect = (recipient: string, amount: number, description: strin
     headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ recipient, amount, description }),
   });
+
+// Real fixed-amount person-to-person payment request (item 167, found via the
+// entity-cross-reference discovery sweep) -- the person-to-person counterpart to a
+// merchant's own PaymentIntent (see backend P2pPaymentRequest.kt's own doc comment).
+// A requester generates a real, 15-minute-expiring request; anyone who has the code
+// can pay it directly, real wallet-to-wallet, no fee. Real (rate-limited, tested,
+// live-verified against a real backend in a past session) but had zero client
+// anywhere until now.
+export type P2pPaymentRequestStatus = 'PENDING' | 'COMPLETED' | 'EXPIRED';
+
+export interface P2pPaymentRequestDto {
+  id: string;
+  requesterUserId: string;
+  amount: number;
+  description: string;
+  status: P2pPaymentRequestStatus;
+  expiresAt: string;
+  completedTransactionId: string | null;
+  paidByUserId: string | null;
+  createdAt: string;
+}
+
+export const generateP2pRequest = (amount: number, description: string) =>
+  apiFetch<{ success: boolean; request: P2pPaymentRequestDto }>('/api/v1/p2p/request', {
+    method: 'POST',
+    body: JSON.stringify({ amount, description }),
+  }).then((r) => r.request);
+
+export const fetchMyP2pRequests = () =>
+  apiFetch<{ success: boolean; requests: P2pPaymentRequestDto[] }>('/api/v1/p2p/requests').then((r) => r.requests);
+
+export const payP2pRequest = (requestId: string) =>
+  apiFetch<{ success: boolean; message: string; transaction: Transaction; newBalance: number }>(`/api/v1/p2p/pay/${requestId}`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  });
