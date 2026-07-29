@@ -504,6 +504,7 @@ struct MyTabView: View {
                     Spacer()
                     Color.clear.frame(width: 20)
                 }
+                VerificationCard()
                 // Real order tracking -- Naver Pay/Shopping's own "My" tab leads with
                 // recent orders across every product, not a settings list. Tapping
                 // switches to that product's own tab where the full order-history view
@@ -577,6 +578,126 @@ struct MyTabView: View {
         .contentShape(Rectangle())
         .onTapGesture(perform: action)
         .padding(.vertical, 6)
+    }
+}
+
+// Real email/phone verification (item 169/179) -- see NetworkClient.swift's own doc
+// comment. bank-mfe (item 169) and Android (item 178) already have this; this is the
+// iOS port. A real code is delivered via a real in-app Notification + push, no real
+// SMS/email gateway exists.
+private struct VerificationCard: View {
+    @State private var email: String?
+    @State private var emailVerified = true
+    @State private var phoneVerified = true
+    @State private var loaded = false
+
+    private func load() async {
+        do {
+            let user = try await NetworkClient.shared.getProfile().user
+            email = user.email
+            emailVerified = user.emailVerified ?? true
+            phoneVerified = user.phoneVerified ?? true
+        } catch {
+            // Best-effort, matching this card's own bank-mfe/Android precedent.
+        }
+        loaded = true
+    }
+
+    var body: some View {
+        Group {
+            if loaded && !(emailVerified && phoneVerified) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Verify your account").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    if !phoneVerified { VerificationRow(kind: "phone", hasEmail: true, onVerified: { Task { await load() } }) }
+                    if !emailVerified { VerificationRow(kind: "email", hasEmail: email != nil, onVerified: { Task { await load() } }) }
+                }
+                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+            }
+        }
+        .task { await load() }
+    }
+}
+
+private struct VerificationRow: View {
+    let kind: String
+    let hasEmail: Bool
+    let onVerified: () -> Void
+
+    @State private var sent = false
+    @State private var code = ""
+    @State private var busy = false
+    @State private var error: String?
+
+    var body: some View {
+        if kind == "email" && !hasEmail {
+            Text("No email address on file to verify.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+        } else {
+            VStack(alignment: .leading, spacing: 4) {
+                if !sent {
+                    HStack {
+                        Text(kind == "email" ? "Email not verified" : "Phone number not verified").font(.caption).foregroundColor(IDS.Colors.textPrimary)
+                        Spacer()
+                        Button(action: { Task { await send() } }) {
+                            Text(busy ? "…" : "Send code").font(.caption).bold().foregroundColor(.white)
+                                .padding(.horizontal, 10).padding(.vertical, 6)
+                                .background(busy ? IDS.Colors.textTertiary : IDS.Colors.brand).cornerRadius(8)
+                        }
+                        .disabled(busy)
+                    }
+                } else {
+                    HStack(spacing: 8) {
+                        TextField("Enter code", text: $code)
+                            .padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
+                        Button(action: { Task { await confirm() } }) {
+                            Text(busy ? "…" : "Confirm").font(.caption).bold().foregroundColor(.white)
+                                .padding(.horizontal, 12).padding(.vertical, 10)
+                                .background((busy || code.trimmingCharacters(in: .whitespaces).isEmpty) ? IDS.Colors.textTertiary : IDS.Colors.brand).cornerRadius(8)
+                        }
+                        .disabled(busy || code.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                }
+                if let error {
+                    Text(error).font(.caption).foregroundColor(.red)
+                }
+            }
+            .padding(.vertical, 6)
+        }
+    }
+
+    private func send() async {
+        busy = true
+        error = nil
+        defer { busy = false }
+        do {
+            if kind == "email" {
+                _ = try await NetworkClient.shared.requestEmailVerification()
+            } else {
+                _ = try await NetworkClient.shared.requestPhoneVerification()
+            }
+            sent = true
+        } catch let NetworkError.httpError(statusCode) {
+            error = TalkScreen.errorMessage(statusCode)
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func confirm() async {
+        busy = true
+        error = nil
+        defer { busy = false }
+        do {
+            if kind == "email" {
+                _ = try await NetworkClient.shared.confirmEmailVerification(token: code.trimmingCharacters(in: .whitespaces))
+            } else {
+                _ = try await NetworkClient.shared.confirmPhoneVerification(code: code.trimmingCharacters(in: .whitespaces))
+            }
+            onVerified()
+        } catch let NetworkError.httpError(statusCode) {
+            error = TalkScreen.errorMessage(statusCode)
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
     }
 }
 

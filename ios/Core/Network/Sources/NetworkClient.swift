@@ -56,7 +56,15 @@ public struct PublicUser: Decodable {
     // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see
     // MiniWalletService.kt's own doc comment. Set via NetworkClient.setBirthDate.
     public let birthDate: String?
+    // Real email/phone verification (item 169/179) -- see AuthService.requestEmailVerification/
+    // requestPhoneVerification's own doc comments. Backend has returned these on every
+    // profile response since 2026-07-13/26; this client just never modeled them until now.
+    public let emailVerified: Bool?
+    public let phoneVerified: Bool?
 }
+
+public struct ConfirmEmailVerificationRequest: Encodable { public let token: String }
+public struct ConfirmPhoneVerificationRequest: Encodable { public let code: String }
 
 public struct SetNeighborhoodRequest: Encodable {
     public let latitude: Double
@@ -585,6 +593,26 @@ extension NetworkClient {
     // string ("YYYY-MM-DD").
     public func setBirthDate(_ birthDate: String) async throws -> ProfileResponse {
         try await authenticatedPost("api/v1/auth/profile/birth-date", body: SetBirthDateRequest(birthDate: birthDate))
+    }
+
+    // Real email/phone verification (item 169/179) -- see AuthService.requestEmailVerification/
+    // requestPhoneVerification's own doc comments: a real code is delivered via a real
+    // in-app Notification + push, no real SMS/email gateway exists. bank-mfe (item 169)
+    // and Android (item 178) already have this; this is the iOS port.
+    public func requestEmailVerification() async throws -> SuccessResponse {
+        try await authenticatedPost("api/v1/auth/profile/verify-email", body: EmptyBody())
+    }
+
+    public func confirmEmailVerification(token: String) async throws -> ProfileResponse {
+        try await authenticatedPost("api/v1/auth/profile/verify-email/confirm", body: ConfirmEmailVerificationRequest(token: token))
+    }
+
+    public func requestPhoneVerification() async throws -> SuccessResponse {
+        try await authenticatedPost("api/v1/auth/profile/verify-phone", body: EmptyBody())
+    }
+
+    public func confirmPhoneVerification(code: String) async throws -> ProfileResponse {
+        try await authenticatedPost("api/v1/auth/profile/verify-phone/confirm", body: ConfirmPhoneVerificationRequest(code: code))
     }
 
     // Real KakaoBank mini-style capped starter wallet (rw.itunda.wallet.
