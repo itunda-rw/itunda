@@ -1529,6 +1529,14 @@ private fun ProductRatingBadge(productId: String) {
                                 color = Ids.colors.textSecondary,
                                 fontSize = 12.sp,
                             )
+                            if (!rv.ownerReply.isNullOrBlank()) {
+                                Text(
+                                    "↳ Seller: ${rv.ownerReply}",
+                                    color = Ids.colors.textTertiary,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(start = 12.dp),
+                                )
+                            }
                         }
                     }
                 }

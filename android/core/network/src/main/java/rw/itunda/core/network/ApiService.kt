@@ -1092,6 +1092,11 @@ data class ProductReviewDto(
     val merchantId: String,
     val rating: Int,
     val comment: String?,
+    // Real owner-side reply (item 187/188) -- see ProductReviewService.replyToProductReview's
+    // own doc comment. merchant-mfe already has this (item 187); customer-side display only
+    // here (the reply-writing side lives on merchantapp, the merchant-owner app).
+    val ownerReply: String? = null,
+    val ownerRepliedAt: String? = null,
     val createdAt: String,
 )
 data class ProductReviewResponse(val success: Boolean, val review: ProductReviewDto)

@@ -183,34 +183,56 @@ private fun nextRestaurantAction(status: String): Pair<String, String>? = when (
     else -> null
 }
 
-// Real written-review list + owner-reply management (item 184/185) -- see
+// Real written-review list + owner-reply management (item 184/185/188) -- see
 // EatsReviewService.replyToRestaurantReview's own doc comment. bank-mfe already has
 // this (item 184); this is the first Android client for the owner-reply side. Its own
 // dedicated tab, unlike OrdersTab (which only ever shows ACTIVE orders -- reviews only
 // exist once an order is DELIVERED, so there's no natural shared list to fold this into).
+// Also folds in Commerce product reviews (item 188, mirroring merchant-mfe's item 187):
+// no aggregate "all my products' reviews" backend endpoint exists, so this fans out one
+// real per-product review fetch across the merchant's own catalog (getProductCatalog).
 @Composable
 private fun ReviewsTab(restaurantId: String) {
-    var reviews by remember { mutableStateOf<List<rw.itunda.merchant.network.EatsReviewDto>?>(null) }
+    var restaurantReviews by remember { mutableStateOf<List<rw.itunda.merchant.network.EatsReviewDto>?>(null) }
+    var productReviews by remember { mutableStateOf<List<Pair<String, rw.itunda.merchant.network.ProductReviewDto>>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    suspend fun refresh() {
+    suspend fun refreshRestaurant() {
         try {
-            reviews = NetworkClient.apiService.getRestaurantReviews(restaurantId).reviews
-            error = null
+            restaurantReviews = NetworkClient.apiService.getRestaurantReviews(restaurantId).reviews
         } catch (e: Exception) {
             error = "Couldn't reach itunda. Check your connection and try again."
         }
     }
-    LaunchedEffect(Unit) { refresh() }
+    suspend fun refreshProducts() {
+        try {
+            val products = NetworkClient.apiService.getProductCatalog().products
+            productReviews = products.flatMap { p ->
+                try {
+                    NetworkClient.apiService.getProductReviews(p.id).reviews.map { p.name to it }
+                } catch (e: Exception) {
+                    emptyList()
+                }
+            }.sortedByDescending { it.second.createdAt }
+        } catch (e: Exception) {
+            error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+    LaunchedEffect(Unit) {
+        error = null
+        refreshRestaurant()
+        refreshProducts()
+    }
 
     error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp)) }
-    val list = reviews
-    if (list == null) {
+    val restaurantList = restaurantReviews
+    val productList = productReviews
+    if (restaurantList == null || productList == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         return
     }
-    if (list.isEmpty()) {
+    if (restaurantList.isEmpty() && productList.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("No reviews yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -221,7 +243,10 @@ private fun ReviewsTab(restaurantId: String) {
         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        items(list, key = { it.id }) { review ->
+        if (restaurantList.isNotEmpty()) {
+            item { Text("Restaurant reviews", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
+        }
+        items(restaurantList, key = { "r_${it.id}" }) { review ->
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("★".repeat(review.restaurantRating) + "☆".repeat(5 - review.restaurantRating), color = androidx.compose.ui.graphics.Color(0xFFF5A623))
@@ -229,7 +254,23 @@ private fun ReviewsTab(restaurantId: String) {
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(top = 4.dp))
                         Text(it, style = MaterialTheme.typography.bodyMedium)
                     }
-                    ReviewReplyRow(review = review, onReplied = { scope.launch { refresh() } })
+                    ReviewReplyRow(review = review, onReplied = { scope.launch { refreshRestaurant() } })
+                }
+            }
+        }
+        if (productList.isNotEmpty()) {
+            item { Text("Product reviews", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold) }
+        }
+        items(productList, key = { "p_${it.second.id}" }) { (productName, review) ->
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(productName, fontWeight = FontWeight.Bold)
+                    Text("★".repeat(review.rating) + "☆".repeat(5 - review.rating), color = androidx.compose.ui.graphics.Color(0xFFF5A623))
+                    review.comment?.takeIf { it.isNotBlank() }?.let {
+                        androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(top = 4.dp))
+                        Text(it, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    ProductReviewReplyRow(review = review, onReplied = { scope.launch { refreshProducts() } })
                 }
             }
         }
@@ -268,6 +309,57 @@ private fun ReviewReplyRow(review: rw.itunda.merchant.network.EatsReviewDto, onR
                     scope.launch {
                         try {
                             NetworkClient.apiService.replyToRestaurantReview(review.id, rw.itunda.merchant.network.ReplyToEatsReviewRequest(reply.trim()))
+                            replying = false
+                            onReplied()
+                        } catch (e: Exception) {
+                            error = "Could not submit your reply."
+                        } finally {
+                            submitting = false
+                        }
+                    }
+                },
+                enabled = !submitting && reply.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text(if (submitting) "Submitting…" else "Reply") }
+        }
+        else -> {
+            Button(onClick = { replying = true }) { Text("Reply") }
+        }
+    }
+}
+
+@Composable
+private fun ProductReviewReplyRow(review: rw.itunda.merchant.network.ProductReviewDto, onReplied: () -> Unit) {
+    var replying by remember { mutableStateOf(false) }
+    var reply by remember { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(top = 8.dp))
+    when {
+        !review.ownerReply.isNullOrBlank() -> {
+            Text(
+                "Your reply: ${review.ownerReply}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        replying -> {
+            androidx.compose.material3.OutlinedTextField(
+                value = reply,
+                onValueChange = { reply = it },
+                label = { Text("Write a reply") },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            Button(
+                onClick = {
+                    submitting = true
+                    error = null
+                    scope.launch {
+                        try {
+                            NetworkClient.apiService.replyToProductReview(review.id, rw.itunda.merchant.network.ReplyToProductReviewRequest(reply.trim()))
                             replying = false
                             onReplied()
                         } catch (e: Exception) {

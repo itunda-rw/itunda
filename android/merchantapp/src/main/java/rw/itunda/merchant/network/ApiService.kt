@@ -77,6 +77,26 @@ data class MerchantProductResponse(val success: Boolean, val product: MerchantPr
 data class MerchantProductsResponse(val success: Boolean, val products: List<MerchantProductDto>)
 data class AddProductRequest(val name: String, val price: Double, val durationMinutes: Int? = null)
 
+// Real Commerce product reviews + owner-side reply (item 187/188) -- see
+// ProductReviewService.replyToProductReview's own doc comment. merchant-mfe already has
+// this (item 187); this is the first Android client.
+data class ProductReviewDto(
+    val id: String,
+    val orderItemId: String,
+    val orderId: String,
+    val buyerId: String,
+    val productId: String,
+    val merchantId: String,
+    val rating: Int,
+    val comment: String?,
+    val ownerReply: String? = null,
+    val ownerRepliedAt: String? = null,
+    val createdAt: String,
+)
+data class ProductReviewResponse(val success: Boolean, val review: ProductReviewDto)
+data class ProductReviewsResponse(val success: Boolean, val reviews: List<ProductReviewDto>)
+data class ReplyToProductReviewRequest(val reply: String)
+
 // Real bulk/wholesale pricing (2026-07-25) -- see ProductPriceTier.kt's own doc comment
 // on the backend (closes the gap named in Baemin's own real 배민상회 B2B supplies
 // marketplace research).
@@ -213,6 +233,15 @@ interface ApiService {
 
     @GET("api/v1/merchant/products")
     suspend fun getProductCatalog(): MerchantProductsResponse
+
+    // Real Commerce product reviews + owner-side reply (item 187/188). Lives under
+    // /api/v1/orders (OrderController), not /api/v1/merchant -- see OrderController.kt's
+    // real contract.
+    @GET("api/v1/orders/products/{id}/reviews")
+    suspend fun getProductReviews(@Path("id") productId: String): ProductReviewsResponse
+
+    @POST("api/v1/orders/reviews/{reviewId}/reply")
+    suspend fun replyToProductReview(@Path("reviewId") reviewId: String, @Body request: ReplyToProductReviewRequest): ProductReviewResponse
 
     @POST("api/v1/merchant/products")
     suspend fun addProduct(@Body request: AddProductRequest): MerchantProductResponse
