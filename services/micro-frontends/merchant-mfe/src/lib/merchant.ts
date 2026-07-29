@@ -340,6 +340,37 @@ export const replyToBookingReview = (reviewId: string, reply: string) =>
     body: JSON.stringify({ reply }),
   }).then((r) => r.review);
 
+// Real Commerce product reviews + owner-side reply (item 187) -- ProductReviewService.
+// replyToProductReview has been real since 2026-07-26 (the exact same pattern this
+// file's own MerchantBookingReview/EatsReview siblings already establish), but had
+// zero client anywhere: no backend endpoint aggregates "all reviews across my own
+// products" in one call, so this fetches the merchant's own catalog (getProductCatalog,
+// already real) and fans out one real GET /products/{id}/reviews per product --
+// honest for this app's real catalog scale, matching Naver Smart Store's own per-item
+// review management rather than inventing a new aggregate endpoint for this pass.
+export interface ProductReview {
+  id: string;
+  orderItemId: string;
+  orderId: string;
+  buyerId: string;
+  productId: string;
+  merchantId: string;
+  rating: number;
+  comment: string | null;
+  ownerReply: string | null;
+  ownerRepliedAt: string | null;
+  createdAt: string;
+}
+
+export const fetchProductReviews = (productId: string) =>
+  apiFetch<{ success: boolean; reviews: ProductReview[] }>(`/api/v1/orders/products/${productId}/reviews?size=50`).then((r) => r.reviews);
+
+export const replyToProductReview = (reviewId: string, reply: string) =>
+  apiFetch<{ success: boolean; review: ProductReview }>(`/api/v1/orders/reviews/${reviewId}/reply`, {
+    method: 'POST',
+    body: JSON.stringify({ reply }),
+  }).then((r) => r.review);
+
 // Real Kakao Pay 정기결제/Toss Payments 빌링키-style recurring merchant billing
 // (item 144) -- see backend MerchantBillingPlan.kt's own doc comment. A merchant
 // defines a real recurring charge once; a customer authorizes it once and itunda
