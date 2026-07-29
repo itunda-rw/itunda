@@ -1116,6 +1116,7 @@ private struct ChatThreadScreen: View {
                                 let offerHandler: (String, String, Double?) -> Void = { offerId, action, counterAmount in Task { await respondToOffer(offerId, action, counterAmount) } }
                                 let giftHandler: (String) -> Void = { giftId in Task { await claimGift(giftId) } }
                                 let reportHandler: (String, String) -> Void = { messageId, reason in Task { await reportMessage(messageId, reason) } }
+                                let extendVoucherHandler: (String) -> Void = { voucherId in Task { await extendVoucher(voucherId) } }
                                 MessageBubble(
                                     message: message, isMine: message.senderId == currentUserId, currentUserId: currentUserId,
                                     offer: offersByMessageId[message.id],
@@ -1125,6 +1126,7 @@ private struct ChatThreadScreen: View {
                                     onToggleReaction: reactionHandler,
                                     onRespondToOffer: offerHandler,
                                     onClaimGift: giftHandler,
+                                    onExtendVoucher: extendVoucherHandler,
                                     onReply: { replyingTo = $0 },
                                     onDelete: { messageId in Task { await deleteMessage(messageId) } },
                                     onPin: { pinned in Task { await pinMessage(pinned) } },
@@ -1423,6 +1425,19 @@ private struct ChatThreadScreen: View {
         }
     }
 
+    // Real one-time gift-voucher expiry extension (item 195) -- found via a
+    // defined-but-uncalled-method sweep: extendGiftVoucherExpiry existed on all 3
+    // platforms' network layers, wired on bank-mfe since 2026-07-27 and Android the
+    // same session (item 194), never called here.
+    private func extendVoucher(_ voucherId: String) async {
+        do {
+            _ = try await NetworkClient.shared.extendGiftVoucherExpiry(voucherId: voucherId)
+            await loadVouchers()
+        } catch {
+            self.error = "Couldn't extend this voucher. Try again."
+        }
+    }
+
     // Real-fetches both Marketplace and Real Estate offer history for this conversation
     // -- a given real conversation only ever carries one type in practice, but fetching
     // both is cheap and correct rather than guessing which one applies (mirrors
@@ -1682,12 +1697,16 @@ private struct GiftBubble: View {
 }
 
 // Real KakaoTalk-style 기프티콘 gift voucher bubble (item 138) -- see
-// GiftVoucherComposerPanel's own doc comment. Status-only, no claim action --
-// redemption is merchant-side per GiftVoucherService.redeemVoucher's own doc comment,
-// never a self-serve recipient redeem.
+// GiftVoucherComposerPanel's own doc comment. Redemption is merchant-side per
+// GiftVoucherService.redeemVoucher's own doc comment, never a self-serve recipient
+// redeem. Real one-time "extend expiry" action added item 195 (found via a
+// defined-but-uncalled-method sweep); only offered once (!voucher.extended), and only
+// within a real 30-day window of the current expiry, matching bank-mfe's own
+// GIFT_VOUCHER_EXTENSION_WINDOW_MS / Android's item 194 exactly.
 private struct GiftVoucherBubble: View {
     let voucher: GiftVoucherDto
     let isMine: Bool
+    var onExtend: () -> Void = {}
 
     private var statusLabel: String {
         switch voucher.status {
@@ -1698,6 +1717,14 @@ private struct GiftVoucherBubble: View {
         }
     }
 
+    private var canExtend: Bool {
+        guard voucher.status == "ACTIVE", !voucher.extended else { return false }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        guard let expiry = formatter.date(from: voucher.expiresAt) ?? ISO8601DateFormatter().date(from: voucher.expiresAt) else { return false }
+        return expiry.timeIntervalSinceNow <= 30 * 24 * 60 * 60
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("🎟️ \(voucher.productNameSnapshot ?? "\(Int(voucher.amount)) RWF voucher")")
@@ -1706,6 +1733,11 @@ private struct GiftVoucherBubble: View {
             if voucher.status == "ACTIVE" {
                 Text("Expires \(String(voucher.expiresAt.prefix(10)))")
                     .font(.caption2).foregroundColor(isMine ? .white.opacity(0.7) : IDS.Colors.textSecondary)
+            }
+            if canExtend {
+                Button(action: onExtend) {
+                    Text("Extend expiry").font(.caption).bold().foregroundColor(isMine ? .white : IDS.Colors.brand)
+                }
             }
         }
         .padding(.horizontal, 16)
@@ -2109,6 +2141,7 @@ private struct MessageBubble: View {
     let onToggleReaction: (String) -> Void
     let onRespondToOffer: (String, String, Double?) -> Void
     let onClaimGift: (String) -> Void
+    var onExtendVoucher: (String) -> Void = { _ in }
     let onReply: (MessageDto) -> Void
     let onDelete: (String) -> Void
     let onPin: (MessageDto) -> Void
@@ -2123,7 +2156,7 @@ private struct MessageBubble: View {
                 if let gift {
                     GiftBubble(gift: gift, isMine: isMine, currentUserId: currentUserId, onClaim: onClaimGift)
                 } else if let voucher {
-                    GiftVoucherBubble(voucher: voucher, isMine: isMine)
+                    GiftVoucherBubble(voucher: voucher, isMine: isMine, onExtend: { onExtendVoucher(voucher.id) })
                 } else if let offer {
                     OfferBubble(offer: offer, isMine: isMine, currentUserId: currentUserId, onRespond: onRespondToOffer)
                 } else if message.emoticonId != nil {
