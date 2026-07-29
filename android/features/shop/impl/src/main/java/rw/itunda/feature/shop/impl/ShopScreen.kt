@@ -79,6 +79,7 @@ import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.BookingSlotDto
 import rw.itunda.core.network.CreateBookingRequest
 import rw.itunda.core.network.DealProductDto
+import rw.itunda.core.network.ProductSearchResultDto
 import rw.itunda.core.network.FavoriteProductDto
 import rw.itunda.core.network.MerchantBookingDto
 import rw.itunda.core.network.MerchantProductDto
@@ -168,6 +169,32 @@ fun CommerceShopContent(
             if (res.success) deals = res.products
         } catch (e: Exception) {
             // Real, non-critical -- the Deals rail just won't render if this fails.
+        }
+    }
+
+    // Real cross-merchant product search (item 190) -- closes docs/DESIGN_REFERENCES.md
+    // Section 5 recommendation #1: bank-mfe has had "search across every merchant" since
+    // 2026-07-20 (lib/shopping.ts's own doc comment), but Android's Shop tab never called
+    // this real, pre-existing endpoint at all -- its own search box only ever filtered
+    // merchants by name/category, never products. Opening a result constructs a minimal
+    // ShoppingMerchantDto from the search row (merchantId/businessName only, matching
+    // bank-mfe's own openSearchResult shortcut) rather than a second real merchant fetch.
+    var productSearchInput by remember { mutableStateOf("") }
+    var productSearchResults by remember { mutableStateOf<List<ProductSearchResultDto>?>(null) }
+    var productSearching by remember { mutableStateOf(false) }
+
+    fun searchProducts() {
+        val q = productSearchInput.trim()
+        if (q.isEmpty()) return
+        productSearching = true
+        coroutineScope.launch {
+            try {
+                productSearchResults = NetworkClient.apiService.searchProducts(q).products
+            } catch (e: Exception) {
+                productSearchResults = emptyList()
+            } finally {
+                productSearching = false
+            }
         }
     }
 
@@ -390,12 +417,67 @@ fun CommerceShopContent(
         } else if (view == CommerceView.WISHLIST) {
             item { ProductWishlistView(onRemoved = ::loadFavoriteProductIds) }
         } else {
+            item {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = productSearchInput,
+                        onValueChange = { productSearchInput = it },
+                        placeholder = { Text("Search products across every merchant") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Box(
+                        modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                            .background(if (productSearching || productSearchInput.isBlank()) Ids.colors.textTertiary else Ids.colors.brand)
+                            .clickable(enabled = !productSearching && productSearchInput.isNotBlank()) { searchProducts() }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { Text(if (productSearching) "…" else "Search", color = Color.White, fontWeight = FontWeight.Bold) }
+                    if (productSearchResults != null) {
+                        Box(
+                            modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Ids.colors.textTertiary)
+                                .clickable { productSearchResults = null; productSearchInput = "" }
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { Text("Clear", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) }
+                    }
+                }
+            }
+            val searchResults = productSearchResults
+            if (searchResults != null) {
+                if (searchResults.isEmpty()) {
+                    item { EmptyState("No products matched \"$productSearchInput\".", icon = Icons.Outlined.ShoppingCart) }
+                } else {
+                    items(searchResults, key = { it.id }) { r ->
+                        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp)
+                                    .clickable { openMerchant(ShoppingMerchantDto(merchantId = r.merchantId, businessName = r.merchantName, category = null, cashbackRate = "1%")) },
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    ProductImageThumb(r.imageUrl, size = 48.dp, corner = 10.dp)
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(r.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                        Text(r.merchantName, color = Ids.colors.textSecondary, fontSize = 13.sp)
+                                    }
+                                }
+                                Text("%,.0f RWF".format(r.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            }
+                        }
+                    }
+                }
+                return@LazyColumn
+            }
             // Real "Deals" rail (2026-07-25) -- only shown on the unfiltered landing
             // state, same "merchandising above the raw list, hidden once the user
             // starts filtering" discipline a real Coupang/Naver home surface follows.
-            // Tapping a deal jumps straight to that real merchant via the existing
-            // search-by-name flow, rather than fabricating a shortcut merchant object
-            // this screen doesn't otherwise have all the real fields for.
+            // Tapping a deal jumps straight to that real merchant via the same minimal-
+            // ShoppingMerchantDto shortcut the product search results above now use
+            // (previously fell back to a merchant-name text search -- this closes that
+            // same gap for the same reason).
             if (selectedCategory == null && searchInput.isBlank() && !deals.isNullOrEmpty()) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -404,7 +486,8 @@ fun CommerceShopContent(
                             deals!!.forEach { d ->
                                 Column(
                                     modifier = Modifier.width(120.dp).clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface)
-                                        .clickable { searchInput = d.merchantName }.padding(10.dp),
+                                        .clickable { openMerchant(ShoppingMerchantDto(merchantId = d.merchantId, businessName = d.merchantName, category = null, cashbackRate = "1%")) }
+                                        .padding(10.dp),
                                 ) {
                                     ProductImageThumb(d.imageUrl, size = 96.dp, corner = 10.dp)
                                     Spacer(modifier = Modifier.height(6.dp))
