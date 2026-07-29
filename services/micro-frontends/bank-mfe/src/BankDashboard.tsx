@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowUpRight, Bike, Car, Heart, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
-import { fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchWallets, type DetectedSubscription, type SpendingCategory, type Transaction, type Wallet } from './lib/wallet';
+import { fetchBudgets, fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchWallets, setBudget, type BudgetView, type DetectedSubscription, type SpendingCategory, type Transaction, type Wallet } from './lib/wallet';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
 import { claimInterest, createGoal, depositToGoal, fetchGoals, fetchInterestJar, fetchRoundUpSettings, ROUND_UP_INCREMENTS, setRoundUpSettings, type InterestJar, type RoundUpSettings, type SavingsGoal } from './lib/savings';
 import {
@@ -1642,7 +1642,107 @@ function SpendingInsightView() {
           ))
         )}
       </div>
+      <BudgetsSection categories={categories} />
     </div>
+  );
+}
+
+// Real Toss-style monthly budgets/limits (item 165) -- see lib/wallet.ts's own doc
+// comment. `WalletService.setBudget/getBudgets` (including real 80%/100%-threshold
+// notifications, wired since 2026-07-28) had zero client anywhere until now.
+function BudgetsSection({ categories }: { categories: SpendingCategory[] }) {
+  const [budgets, setBudgets] = useState<BudgetView[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+
+  const load = () => {
+    setError(null);
+    fetchBudgets().then(setBudgets).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your budgets.'));
+  };
+  useEffect(load, []);
+
+  return (
+    <div className="toss-card" style={{ padding: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700 }}>Budgets</h3>
+        <button className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => setShowForm((v) => !v)}>
+          {showForm ? 'Cancel' : '+ Set budget'}
+        </button>
+      </div>
+      {showForm && <SetBudgetForm categories={categories} onSet={() => { setShowForm(false); load(); }} />}
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {budgets === null ? (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+      ) : budgets.length === 0 ? (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No budgets set yet -- set a monthly limit to get alerted before you overspend.</p>
+      ) : (
+        budgets.map((b) => {
+          const barColor = b.status === 'OVER' ? '#E53935' : b.status === 'NEAR' ? '#F5A623' : 'var(--toss-blue)';
+          return (
+            <div key={b.category ?? 'overall'} style={{ padding: '8px 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
+                <span>{b.category ?? 'Overall'}</span>
+                <span style={{ fontWeight: 700, color: barColor }}>{b.spent.toLocaleString()} / {b.monthlyLimit.toLocaleString()} RWF</span>
+              </div>
+              <div style={{ height: '6px', borderRadius: '3px', backgroundColor: 'var(--toss-grey-100)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${Math.min(100, b.percentUsed)}%`, backgroundColor: barColor, borderRadius: '3px' }} />
+              </div>
+              {b.status === 'OVER' && <p style={{ fontSize: '11px', color: '#E53935', marginTop: '2px' }}>Over budget</p>}
+              {b.status === 'NEAR' && <p style={{ fontSize: '11px', color: '#F5A623', marginTop: '2px' }}>Nearing your limit</p>}
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
+function SetBudgetForm({ categories, onSet }: { categories: SpendingCategory[]; onSet: () => void }) {
+  const [category, setCategory] = useState('');
+  const [monthlyLimit, setMonthlyLimit] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const limit = Number(monthlyLimit);
+    if (!limit || limit <= 0) {
+      setError('Enter a real monthly limit.');
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      await setBudget(category || undefined, limit);
+      setMonthlyLimit('');
+      onSet();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not set this budget.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px', padding: '12px', background: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+      <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}>
+        <option value="">Overall spending</option>
+        {categories.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
+      </select>
+      <input
+        type="number"
+        min="1"
+        value={monthlyLimit}
+        onChange={(e) => setMonthlyLimit(e.target.value)}
+        placeholder="Monthly limit (RWF)"
+        required
+        style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+      />
+      {error && <p style={{ fontSize: '12px', color: '#E53935', margin: 0 }} role="alert">{error}</p>}
+      <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting} style={{ fontSize: '13px', padding: '8px' }}>
+        {submitting ? 'Saving…' : 'Save budget'}
+      </button>
+    </form>
   );
 }
 

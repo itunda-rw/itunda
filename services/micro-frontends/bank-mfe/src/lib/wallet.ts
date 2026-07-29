@@ -81,3 +81,30 @@ export interface SpendingCategory {
 
 export const fetchSpendingInsight = () =>
   apiFetch<{ success: boolean; categories: SpendingCategory[]; totalSpent: number }>('/api/v1/wallet/spending');
+
+// Real Toss-style monthly budgets/limits (item 165, found via a fresh discovery pass:
+// WalletService.setBudget/getBudgets and the POST/GET /api/v1/wallet/budgets endpoints
+// were already real -- including real 80%/100%-threshold in-app + push notifications,
+// wired since 2026-07-28 -- but had zero client anywhere on any platform). `category`
+// null means an overall (all-spending) budget; otherwise it must match one of
+// fetchSpendingInsight's own real category names, so a budget's "spent" figure is
+// grounded in the exact same categorization, not a separate parallel one.
+export type BudgetStatus = 'UNDER' | 'NEAR' | 'OVER';
+
+export interface BudgetView {
+  category: string | null;
+  monthlyLimit: number;
+  spent: number;
+  remaining: number;
+  percentUsed: number;
+  status: BudgetStatus;
+}
+
+export const fetchBudgets = () =>
+  apiFetch<{ success: boolean; budgets: BudgetView[] }>('/api/v1/wallet/budgets').then((r) => r.budgets);
+
+export const setBudget = (category: string | undefined, monthlyLimit: number) =>
+  apiFetch<{ success: boolean; budget: { category: string | null; monthlyLimit: number } }>('/api/v1/wallet/budgets', {
+    method: 'POST',
+    body: JSON.stringify({ category, monthlyLimit }),
+  }).then((r) => r.budget);
