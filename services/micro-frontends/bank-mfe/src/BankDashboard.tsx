@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowUpRight, Bike, Car, Heart, LogOut, MessageCircle, Plus, Receipt, ScanFace, Send, ShieldCheck, ShoppingBag, SmilePlus, Star, TrendingDown, TrendingUp, Users, Utensils, Wallet as WalletIcon } from 'lucide-react';
 import { getStoredUser, logout, ApiError } from './lib/api';
-import { fetchBudgets, fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchWallets, setBudget, type BudgetView, type DetectedSubscription, type SpendingCategory, type Transaction, type Wallet } from './lib/wallet';
+import { configureAutoTopUp, fetchAutoTopUpSetting, fetchBudgets, fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchWallets, setBudget, triggerAutoTopUp, type AutoTopUpSetting, type BudgetView, type DetectedSubscription, type SpendingCategory, type Transaction, type Wallet } from './lib/wallet';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
 import { claimInterest, createGoal, depositToGoal, fetchGoals, fetchInterestJar, fetchRoundUpSettings, ROUND_UP_INCREMENTS, setRoundUpSettings, type InterestJar, type RoundUpSettings, type SavingsGoal } from './lib/savings';
 import {
@@ -555,6 +555,7 @@ function HomeView() {
       <TransactionHistory transactions={transactions} unusuallyLargeIds={unusuallyLargeIds} />
       <ScheduledTransfersCard />
       <AutoTransfersCard />
+      {wallet && <AutoTopUpCard walletId={wallet.id} />}
       <RequestMoneyCard />
       <MiniWalletCard />
     </div>
@@ -1090,6 +1091,133 @@ function RequestMoneyCard() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Real Naver Pay Money 자동충전 (auto-charge) equivalent (item 168) -- see
+// lib/wallet.ts's own doc comment.
+function AutoTopUpCard({ walletId }: { walletId: string }) {
+  const [setting, setSetting] = useState<AutoTopUpSetting | null | undefined>(undefined);
+  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [linkedAccountId, setLinkedAccountId] = useState('');
+  const [thresholdAmount, setThresholdAmount] = useState('');
+  const [topUpAmount, setTopUpAmount] = useState('');
+  const [dailyTriggerCap, setDailyTriggerCap] = useState('3');
+  const [busy, setBusy] = useState(false);
+  const [triggering, setTriggering] = useState(false);
+  const [triggerResult, setTriggerResult] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    fetchAutoTopUpSetting(walletId)
+      .then(setSetting)
+      .catch(() => setSetting(null));
+    fetchLinkedAccounts().then((accounts) => setLinkedAccounts(accounts.filter((a) => a.status === 'LINKED'))).catch(() => {});
+  };
+  useEffect(load, [walletId]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const threshold = Number(thresholdAmount);
+    const topUp = Number(topUpAmount);
+    if (!linkedAccountId || !(threshold >= 0) || !(topUp > 0)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await configureAutoTopUp(walletId, linkedAccountId, threshold, topUp, Number(dailyTriggerCap) || 3, true);
+      setShowForm(false);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not save this setting.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleToggle = async () => {
+    if (!setting) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await configureAutoTopUp(walletId, setting.linkedAccountId, setting.thresholdAmount, setting.topUpAmount, setting.dailyTriggerCap, !setting.enabled);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update this setting.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleTrigger = async () => {
+    setTriggering(true);
+    setTriggerResult(null);
+    try {
+      const r = await triggerAutoTopUp(walletId);
+      setTriggerResult(r.reason);
+      load();
+    } catch (err) {
+      setTriggerResult(err instanceof ApiError ? err.message : 'Could not check auto top-up.');
+    } finally {
+      setTriggering(false);
+    }
+  };
+
+  if (setting === undefined) return null;
+
+  return (
+    <div className="toss-card" style={{ padding: '16px', marginTop: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Auto top-up</h3>
+        {linkedAccounts.length > 0 && (
+          <button className="toss-btn toss-btn-secondary" onClick={() => setShowForm((v) => !v)} style={{ fontSize: '12px', padding: '6px 10px' }}>
+            {showForm ? 'Cancel' : setting ? 'Edit' : '+ Set up'}
+          </button>
+        )}
+      </div>
+
+      {linkedAccounts.length === 0 && !setting && (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Link an external bank/mobile money account first to enable auto top-up.</p>
+      )}
+
+      {showForm && (
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+          <select value={linkedAccountId} onChange={(e) => setLinkedAccountId(e.target.value)} required style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}>
+            <option value="">Select linked account</option>
+            {linkedAccounts.map((a) => <option key={a.id} value={a.id}>{a.provider} · {a.externalAccountNumberMasked}</option>)}
+          </select>
+          <input type="number" placeholder="Top up when balance falls below (RWF)" value={thresholdAmount} onChange={(e) => setThresholdAmount(e.target.value)} min="0" required
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }} />
+          <input type="number" placeholder="Top-up amount (RWF)" value={topUpAmount} onChange={(e) => setTopUpAmount(e.target.value)} min="1" required
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }} />
+          <input type="number" placeholder="Max times per day" value={dailyTriggerCap} onChange={(e) => setDailyTriggerCap(e.target.value)} min="1"
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }} />
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+        </form>
+      )}
+
+      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+
+      {setting && !showForm && (
+        <div>
+          <p style={{ fontSize: '13px' }}>
+            {setting.enabled ? 'On' : 'Off'} — top up {setting.topUpAmount.toLocaleString()} RWF when balance falls below {setting.thresholdAmount.toLocaleString()} RWF
+          </p>
+          <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginBottom: '8px' }}>
+            Up to {setting.dailyTriggerCap}x/day · {setting.triggersToday} triggered today
+          </p>
+          {triggerResult && <p style={{ fontSize: '12px', color: 'var(--toss-blue)', marginBottom: '8px' }}>{triggerResult}</p>}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={handleToggle} style={{ fontSize: '12px', padding: '6px 10px' }}>
+              {setting.enabled ? 'Turn off' : 'Turn on'}
+            </button>
+            <button className="toss-btn toss-btn-secondary" disabled={triggering} onClick={handleTrigger} style={{ fontSize: '12px', padding: '6px 10px' }}>
+              {triggering ? 'Checking…' : 'Check now'}
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -108,3 +108,40 @@ export const setBudget = (category: string | undefined, monthlyLimit: number) =>
     method: 'POST',
     body: JSON.stringify({ category, monthlyLimit }),
   }).then((r) => r.budget);
+
+// Real Naver Pay Money 자동충전 (auto-charge) equivalent (item 168, found via the
+// entity-cross-reference discovery sweep -- AutoTopUpController's own
+// /api/v1/wallet/{walletId}/auto-topup base path has a path variable in the middle,
+// which broke this session's earlier @RequestMapping-prefix sweep's string matching).
+// See AutoTopUpService.kt's own doc comment: once this wallet's real balance falls
+// below a self-set threshold, a configured amount auto-pulls from a pre-linked
+// external account (reusing fetchLinkedAccounts/lib/overview.ts's own real linking),
+// capped at a real daily trigger count. Fully real (real background scheduler since
+// 2026-07-27, real provider-decline handling) but had zero client anywhere.
+export interface AutoTopUpSetting {
+  id: string;
+  userId: string;
+  walletId: string;
+  linkedAccountId: string;
+  enabled: boolean;
+  thresholdAmount: number;
+  topUpAmount: number;
+  dailyTriggerCap: number;
+  triggersToday: number;
+  lastTriggerDate: string | null;
+  lastTriggeredAt: string | null;
+}
+
+export const fetchAutoTopUpSetting = (walletId: string) =>
+  apiFetch<{ success: boolean; setting: AutoTopUpSetting }>(`/api/v1/wallet/${walletId}/auto-topup`).then((r) => r.setting);
+
+export const configureAutoTopUp = (
+  walletId: string, linkedAccountId: string, thresholdAmount: number, topUpAmount: number, dailyTriggerCap: number, enabled: boolean,
+) =>
+  apiFetch<{ success: boolean; setting: AutoTopUpSetting }>(`/api/v1/wallet/${walletId}/auto-topup`, {
+    method: 'PUT',
+    body: JSON.stringify({ linkedAccountId, thresholdAmount, topUpAmount, dailyTriggerCap, enabled }),
+  }).then((r) => r.setting);
+
+export const triggerAutoTopUp = (walletId: string) =>
+  apiFetch<{ success: boolean; triggered: boolean; reason: string }>(`/api/v1/wallet/${walletId}/auto-topup/trigger`, { method: 'POST' });
