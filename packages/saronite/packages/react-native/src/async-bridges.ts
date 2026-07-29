@@ -9,6 +9,8 @@ export { getInsurancePlans } from './native-modules/natives/getInsurancePlans';
 export { getMyPolicies } from './native-modules/natives/getMyPolicies';
 export { enrollInsurance } from './native-modules/natives/enrollInsurance';
 export { getReferralInfo } from './native-modules/natives/getReferralInfo';
+export { reportSteps } from './native-modules/natives/reportSteps';
+export { getTodaySteps } from './native-modules/natives/getTodaySteps';
 export { updateProfilePhoto } from './native-modules/natives/updateProfilePhoto';
 export { requestEmailVerification } from './native-modules/natives/requestEmailVerification';
 export { confirmEmailVerification } from './native-modules/natives/confirmEmailVerification';

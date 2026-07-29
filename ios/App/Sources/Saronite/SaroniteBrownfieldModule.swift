@@ -143,6 +143,27 @@ final class SaroniteBrownfieldModule: NSObject {
         }
     }
 
+    // Real Toss 만보기 (walking rewards) -- see Android's own SaroniteBridge.kt
+    // reportSteps/getTodaySteps for the same doc comment on why `steps` is honestly a
+    // manually-entered count, not a real CMPedometer reading (no sensor integration
+    // exists on either native host app yet).
+    @objc func reportSteps(_ steps: NSNumber, resolver resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/rewards/steps", method: "POST", body: ["steps": steps.intValue], resolve: resolve, reject: reject) { root in
+            [
+                "steps": (root["steps"] as? NSNumber)?.intValue ?? 0,
+                "newlyEarnedTiers": (root["newlyEarnedTiers"] as? [NSNumber])?.map { $0.intValue } ?? [],
+                "newlyEarnedAmount": (root["newlyEarnedAmount"] as? NSNumber)?.doubleValue ?? 0,
+                "totalEarnedToday": (root["totalEarnedToday"] as? NSNumber)?.doubleValue ?? 0,
+            ]
+        }
+    }
+
+    @objc func getTodaySteps(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+        authorizedCall(path: "api/v1/rewards/steps/today", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
+            ["steps": (root["steps"] as? NSNumber)?.intValue ?? 0]
+        }
+    }
+
     @objc func getInsurancePlans(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
         authorizedCall(path: "api/v1/insurance/plans", method: "GET", body: nil, resolve: resolve, reject: reject) { root in
             let plans = ((root["plans"] as? [[String: Any]]) ?? []).map { p -> [String: Any] in

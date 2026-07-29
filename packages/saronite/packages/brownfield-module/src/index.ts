@@ -21,4 +21,6 @@ export type {
   EnrollInsuranceResult,
   ReferralInfo,
   ProfileResult,
+  StepReportResult,
+  TodayStepsResult,
 } from './spec/SaroniteBrownfieldModule';

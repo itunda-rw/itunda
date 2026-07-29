@@ -17,10 +17,22 @@ import {
   confirmEmailVerification,
   getRewardTasks,
   getReferralInfo,
+  getTodaySteps,
+  reportSteps,
   requestEmailVerification,
   updateProfilePhoto,
 } from '@itunda/saronite-react-native';
 import type { ReferralInfo, RewardTask } from '@itunda/saronite-react-native';
+
+// Real Toss 만보기 (walking rewards) tier structure -- mirrors
+// StepRewardTier.stepsRequired/rewardAmount exactly (services/backend/rewards's
+// StepRewardService.kt). Purely for display (progress bar, "next tier" copy); the
+// backend is the actual source of truth and authoritative validator/payer.
+const STEP_TIERS = [
+  { steps: 1000, rewardAmount: 50 },
+  { steps: 5000, rewardAmount: 150 },
+  { steps: 10000, rewardAmount: 300 },
+];
 
 /**
  * A real rewards/points mini-app — one of the most common categories in
@@ -103,6 +115,8 @@ export default function RewardTasksPage() {
       <Text style={styles.title}>Rewards</Text>
       <Text style={styles.total}>{total.toLocaleString()} RWF earned</Text>
 
+      <StepsPanel />
+
       {tasks === null && !error && <ActivityIndicator style={styles.spacer} />}
 
       {error && <Text style={[styles.body, styles.error]}>Couldn't load rewards: {error}</Text>}
@@ -145,6 +159,81 @@ export default function RewardTasksPage() {
         <Text style={styles.closeButtonText}>Close</Text>
       </TouchableOpacity>
     </SafeAreaView>
+  );
+}
+
+/**
+ * Real Toss 만보기 (walking rewards) -- see StepRewardService's own doc comment on the
+ * backend. `steps` is honestly a manually-entered count, not a real device pedometer/
+ * HealthKit reading: no sensor integration exists on either native host app (a real,
+ * separate, not-yet-started follow-up), and the backend's own doc comment already
+ * names client-reported step data as the honest boundary here (a sanity ceiling, not
+ * real anti-spoofing) -- so a manual entry is a real, honest way to use this feature
+ * today, not a fabrication of sensor data that was never actually read.
+ */
+function StepsPanel() {
+  const [steps, setSteps] = useState<number | null>(null);
+  const [input, setInput] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    getTodaySteps()
+      .then((r) => setSteps(r.steps))
+      .catch(() => {
+        // Non-fatal: the panel just stays in its loading state.
+      });
+  }, []);
+
+  useEffect(load, [load]);
+
+  const handleSubmit = async () => {
+    const value = Number(input);
+    if (!Number.isFinite(value) || value < 0) {
+      setError('Enter a real step count.');
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await reportSteps(Math.round(value));
+      setSteps(result.steps);
+      setInput('');
+      if (result.newlyEarnedTiers.length > 0) {
+        Alert.alert('Walking reward earned', `+${result.newlyEarnedAmount.toLocaleString()} RWF for reaching ${result.newlyEarnedTiers.join(', ')} steps today`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not report your steps.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const nextTier = STEP_TIERS.find((t) => (steps ?? 0) < t.steps);
+
+  return (
+    <View style={[styles.row, styles.stepsPanel]}>
+      <Text style={styles.taskTitle}>Today's steps</Text>
+      <Text style={styles.stepsCount}>{(steps ?? 0).toLocaleString()}</Text>
+      <Text style={styles.subtitle}>
+        {nextTier
+          ? `${(nextTier.steps - (steps ?? 0)).toLocaleString()} steps to +${nextTier.rewardAmount} RWF`
+          : 'All tiers earned for today'}
+      </Text>
+      <View style={styles.inlineRow}>
+        <TextInput
+          style={styles.input}
+          value={input}
+          onChangeText={setInput}
+          placeholder="Log today's step count"
+          keyboardType="number-pad"
+        />
+        <TouchableOpacity style={styles.panelButton} disabled={submitting} onPress={handleSubmit}>
+          <Text style={styles.panelButtonText}>{submitting ? 'Logging…' : 'Log steps'}</Text>
+        </TouchableOpacity>
+      </View>
+      {error && <Text style={[styles.body, styles.error]}>{error}</Text>}
+    </View>
   );
 }
 
@@ -281,6 +370,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rowLeft: { flex: 1 },
+  stepsPanel: { marginBottom: 16 },
+  stepsCount: { fontSize: 26, fontWeight: '900', color: '#191F28', marginTop: 4 },
   taskTitle: { fontSize: 15, fontWeight: '700', color: '#191F28' },
   subtitle: { fontSize: 12, color: '#8B95A1', marginTop: 2 },
   // Real fix (2026-07-13): #31CE66 was a one-off green that didn't match itunda's

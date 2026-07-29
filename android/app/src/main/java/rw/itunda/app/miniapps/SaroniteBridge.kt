@@ -173,6 +173,24 @@ class SaroniteBrownfieldModule(
         authorizedCall(get("api/v1/rewards/referral"), promise, ::parseReferralInfo)
     }
 
+    // Real Toss 만보기 (walking rewards) -- see StepRewardService's own doc comment on
+    // the backend. `steps` is honestly the mini-app's own manually-entered count, not a
+    // real device pedometer/HealthKit reading -- no sensor integration exists on either
+    // native host app, and the backend's own doc comment already names this as the
+    // honest client-reported boundary (a sanity ceiling, not real anti-spoofing).
+    @ReactMethod
+    fun reportSteps(steps: Double, promise: Promise) {
+        if (!requireScope(null, promise)) return
+        val body = JsonObject().apply { addProperty("steps", steps.toInt()) }
+        authorizedCall(post("api/v1/rewards/steps", body), promise, ::parseStepReportResult)
+    }
+
+    @ReactMethod
+    fun getTodaySteps(promise: Promise) {
+        if (!requireScope(null, promise)) return
+        authorizedCall(get("api/v1/rewards/steps/today"), promise, ::parseTodayStepsResult)
+    }
+
     @ReactMethod
     fun updateProfilePhoto(profilePhotoUrl: String, promise: Promise) {
         // A write -- "profile:read" (the only profile-adjacent scope that exists) does
@@ -466,6 +484,28 @@ class SaroniteBrownfieldModule(
             ?: result.putNull("referralCode")
         result.putInt("referredCount", root.get("referredCount")?.asInt ?: 0)
         result.putInt("completedReferralCount", root.get("completedReferralCount")?.asInt ?: 0)
+        return result
+    }
+
+    // Real backend shape: services/backend/rewards's RewardsController.reportSteps
+    // (POST /api/v1/rewards/steps) -- newlyEarnedTiers is a real List<Int> of the step
+    // thresholds (StepRewardTier.stepsRequired) crossed by THIS report.
+    private fun parseStepReportResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val result = Arguments.createMap()
+        result.putInt("steps", root.get("steps")?.asInt ?: 0)
+        val tiers = Arguments.createArray()
+        root.getAsJsonArray("newlyEarnedTiers")?.forEach { tiers.pushInt(it.asInt) }
+        result.putArray("newlyEarnedTiers", tiers)
+        result.putDouble("newlyEarnedAmount", root.get("newlyEarnedAmount")?.asDouble ?: 0.0)
+        result.putDouble("totalEarnedToday", root.get("totalEarnedToday")?.asDouble ?: 0.0)
+        return result
+    }
+
+    private fun parseTodayStepsResult(json: String): WritableMap {
+        val root = JsonParser.parseString(json).asJsonObject
+        val result = Arguments.createMap()
+        result.putInt("steps", root.get("steps")?.asInt ?: 0)
         return result
     }
 

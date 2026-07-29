@@ -137,6 +137,25 @@ export interface ReferralInfo {
   completedReferralCount: number;
 }
 
+/** Real Toss 만보기 (walking rewards) -- mirrors the response of `POST /rewards/steps`
+ * (services/backend/rewards's RewardsController.reportSteps /
+ * StepRewardService.reportSteps). `steps` is honestly client-reported (see
+ * StepRewardService's own doc comment on the backend for the sourced boundary: a real
+ * sanity ceiling, not a real anti-spoofing measure). `newlyEarnedTiers` are the real
+ * step thresholds (1000/5000/10000) newly crossed by THIS report, matching
+ * StepRewardTier.stepsRequired exactly. */
+export interface StepReportResult {
+  steps: number;
+  newlyEarnedTiers: number[];
+  newlyEarnedAmount: number;
+  totalEarnedToday: number;
+}
+
+/** Mirrors the response of `GET /rewards/steps/today`. */
+export interface TodayStepsResult {
+  steps: number;
+}
+
 /** Mirrors the response of `PUT /auth/profile/photo` and
  * `POST /auth/profile/verify-email/confirm` (services/backend/auth's
  * AuthController). Only the fields task_profile eligibility actually needs
@@ -173,6 +192,8 @@ export interface SaroniteBrownfieldModuleSpec {
   getMyPolicies(): Promise<MyPoliciesResult>;
   enrollInsurance(planId: string): Promise<EnrollInsuranceResult>;
   getReferralInfo(): Promise<ReferralInfo>;
+  reportSteps(steps: number): Promise<StepReportResult>;
+  getTodaySteps(): Promise<TodayStepsResult>;
   updateProfilePhoto(profilePhotoUrl: string): Promise<ProfileResult>;
   requestEmailVerification(): Promise<void>;
   confirmEmailVerification(token: string): Promise<ProfileResult>;

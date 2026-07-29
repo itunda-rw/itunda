@@ -13,6 +13,8 @@ export {
   updateProfilePhoto,
   requestEmailVerification,
   confirmEmailVerification,
+  reportSteps,
+  getTodaySteps,
 } from './async-bridges';
 export { getSchemeUri } from './constant-bridges';
 export { useVisibility } from './useVisibility';
@@ -32,4 +34,6 @@ export type {
   EnrollInsuranceResult,
   ReferralInfo,
   ProfileResult,
+  StepReportResult,
+  TodayStepsResult,
 } from '@itunda/saronite-brownfield-module';
