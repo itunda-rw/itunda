@@ -1035,6 +1035,26 @@ data class OrderItemDto(val id: String, val orderId: String, val productId: Stri
 data class OrderDetailResponse(val success: Boolean, val order: OrderDto, val items: List<OrderItemDto>)
 data class OrdersResponse(val success: Boolean, val orders: List<OrderDto>)
 
+// Real Coupang-style post-delivery Return & Exchange requests (item 166/174) -- see
+// OrderReturnService's own doc comment.
+val ORDER_RETURN_REASON_CODES = listOf("DEFECTIVE", "WRONG_ITEM", "NOT_AS_DESCRIBED", "NO_LONGER_NEEDED", "SIZE_FIT", "OTHER")
+data class RequestOrderReturnRequest(val type: String, val reasonCode: String, val reasonNote: String? = null)
+data class OrderReturnRequestDto(
+    val id: String,
+    val orderId: String,
+    val buyerId: String,
+    val merchantId: String,
+    val type: String,
+    val reasonCode: String,
+    val reasonNote: String?,
+    val status: String,
+    val refundTransactionId: String? = null,
+    val requestedAt: String,
+    val decidedAt: String? = null,
+)
+data class OrderReturnRequestResponse(val success: Boolean, val returnRequest: OrderReturnRequestDto)
+data class OrderReturnRequestsResponse(val success: Boolean, val returnRequests: List<OrderReturnRequestDto>)
+
 // Real post-delivery product reviews (2026-07-20) -- see ProductReviewService's own doc
 // comment, mirroring Eats' SubmitEatsReviewRequest/EatsReviewDto pattern above but keyed
 // to one order line item rather than the whole order (a Commerce order can carry
@@ -2123,6 +2143,19 @@ interface ApiService {
     // See rw.itunda.commerce.OrderService.cancelOrder's own doc comment.
     @POST("api/v1/orders/{id}/cancel")
     suspend fun cancelOrder(@Path("id") orderId: String): OrderDetailResponse
+
+    // Real Coupang-style post-delivery Return & Exchange requests (item 166/174) -- see
+    // OrderReturnService's own doc comment. A real 7-day window from delivery; an
+    // approved RETURN triggers a real refund via reversed ledger legs, an approved
+    // EXCHANGE moves no money. Merchant-side approve/reject queue has no Android client
+    // anywhere yet (Shop has no merchant order-management screen at all on this
+    // platform, native merchantapp or main app) -- a real, separate, not-yet-started
+    // gap; this is the buyer-side client only.
+    @POST("api/v1/orders/{orderId}/return")
+    suspend fun requestOrderReturn(@Path("orderId") orderId: String, @Body request: RequestOrderReturnRequest): OrderReturnRequestResponse
+
+    @GET("api/v1/orders/returns/my-requests")
+    suspend fun getMyReturnRequests(): OrderReturnRequestsResponse
 
     // Real post-delivery product reviews (2026-07-20) -- see OrderController.submitProductReview.
     @POST("api/v1/orders/items/{id}/review")
