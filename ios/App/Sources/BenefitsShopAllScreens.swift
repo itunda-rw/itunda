@@ -235,6 +235,9 @@ struct EntireMenuScreen: View {
     // (item 161) -- last remaining client platform for this feature (bank-mfe item 153,
     // Android already had it).
     @State private var showUpfrontDeposit = false
+    // Real person-to-person payment request (item 171) -- last remaining client
+    // platform for this feature (bank-mfe/item 167, Android/item 170).
+    @State private var showRequestMoney = false
 
     var body: some View {
         ScrollView {
@@ -306,6 +309,7 @@ struct EntireMenuScreen: View {
                         // button (which stays a quick recipient-picker, unchanged) being the
                         // only entry point. See TransferHubScreen.swift's own doc comment.
                         FlatRow(title: "Transfer", subtitle: "Auto-transfer, split a bill", symbol: "paperplane.fill", tint: .accentBlue, action: onOpenTransferHub),
+                        FlatRow(title: "Request money", subtitle: "Generate a real payment request code", symbol: "text.badge.plus", tint: .accentBlue, action: { showRequestMoney = true }),
                         FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
                         FlatRow(title: "Credit score", subtitle: "Free check, alternative data", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showCreditScore = true }),
                         FlatRow(title: "Spending", subtitle: "Real, ledger-based category breakdown", symbol: "chart.pie.fill", tint: .accentBlue, action: { showSpending = true }),
@@ -450,6 +454,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showUpfrontDeposit) {
             UpfrontDepositScreenView(onBack: { showUpfrontDeposit = false })
+        }
+        .sheet(isPresented: $showRequestMoney) {
+            RequestMoneyScreenView(onBack: { showRequestMoney = false })
         }
     }
 }

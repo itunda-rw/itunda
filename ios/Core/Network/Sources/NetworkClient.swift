@@ -789,6 +789,29 @@ public struct ConfirmTransferResponse: Decodable {
 // is the real one -- no quote step needed, since there's no external rail decision to
 // quote.
 public struct SendDirectP2pRequest: Encodable { public let recipient: String; public let amount: Double; public let description: String }
+
+// Real fixed-amount person-to-person payment request (item 171) -- the P2P
+// counterpart to a merchant's own PaymentIntent (see backend P2pPaymentRequest.kt's
+// own doc comment). A real 15-minute-expiring code the requester shares; anyone who
+// has the code can pay it directly, real wallet-to-wallet, no fee. Real (rate-limited,
+// tested, live-verified against a running backend) but had zero client anywhere until
+// bank-mfe/item 167 and Android/item 170 the same session -- this is the iOS port.
+public struct GenerateP2pRequest: Encodable { public let amount: Double; public let description: String }
+public struct P2pPaymentRequestDto: Decodable, Identifiable {
+    public let id: String
+    public let requesterUserId: String
+    public let amount: Double
+    public let description: String
+    public let status: String
+    public let expiresAt: String
+    public let completedTransactionId: String?
+    public let paidByUserId: String?
+    public let createdAt: String
+}
+public struct GenerateP2pRequestResponse: Decodable { public let success: Bool; public let request: P2pPaymentRequestDto }
+public struct GetP2pRequestsResponse: Decodable { public let success: Bool; public let requests: [P2pPaymentRequestDto] }
+public struct PayP2pRequestResponse: Decodable { public let success: Bool; public let message: String; public let transaction: TransactionDto; public let newBalance: Double }
+
 public struct SendDirectP2pResponse: Decodable {
     public let success: Bool
     public let message: String
@@ -947,6 +970,16 @@ extension NetworkClient {
             body: SendDirectP2pRequest(recipient: recipient, amount: amount, description: ""),
             idempotencyKey: UUID().uuidString
         )
+    }
+
+    public func generateP2pRequest(amount: Double, description: String) async throws -> GenerateP2pRequestResponse {
+        try await authenticatedPost("api/v1/p2p/request", body: GenerateP2pRequest(amount: amount, description: description))
+    }
+
+    public func getMyP2pRequests() async throws -> GetP2pRequestsResponse { try await get("api/v1/p2p/requests") }
+
+    public func payP2pRequest(requestId: String) async throws -> PayP2pRequestResponse {
+        try await authenticatedPost("api/v1/p2p/pay/\(requestId)", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     // Real Toss Bank 자동이체 (auto-transfer) equivalent (2026-07-24 port) -- see
