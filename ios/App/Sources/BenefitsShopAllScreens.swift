@@ -231,6 +231,10 @@ struct EntireMenuScreen: View {
     // remaining client platform for this feature (bank-mfe item 154, Android already
     // had it).
     @State private var showForeignCurrency = false
+    // Real Toss Bank 먼저 이자받는 정기예금 (interest-paid-upfront term deposit) screen
+    // (item 161) -- last remaining client platform for this feature (bank-mfe item 153,
+    // Android already had it).
+    @State private var showUpfrontDeposit = false
 
     var body: some View {
         ScrollView {
@@ -308,6 +312,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Rides", subtitle: "Request a ride or drive for real fares", symbol: "car.fill", tint: .accentBlue, action: { showRides = true }),
                         FlatRow(title: "Round-up savings", subtitle: "Auto-save spare change from every transfer", symbol: "arrow.up.circle.fill", tint: .accentOrange, action: { showRoundUp = true }),
                         FlatRow(title: "Foreign currency", subtitle: "Hold and convert USD, EUR, GBP", symbol: "arrow.left.arrow.right.circle.fill", tint: .accentBlue, action: { showForeignCurrency = true }),
+                        FlatRow(title: "12-month deposit", subtitle: "Interest paid upfront, principal locked 12 months", symbol: "lock.fill", tint: .accentTeal, action: { showUpfrontDeposit = true }),
                         FlatRow(title: "Digital certificate", subtitle: "Sign agreements in Itunda", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showCertificate = true }),
                         FlatRow(title: "Mobile plan", subtitle: "MTN, Airtel, broadband", symbol: "globe", tint: .accentTeal),
                     ])
@@ -442,6 +447,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showForeignCurrency) {
             ForeignCurrencyScreenView(onBack: { showForeignCurrency = false })
+        }
+        .sheet(isPresented: $showUpfrontDeposit) {
+            UpfrontDepositScreenView(onBack: { showUpfrontDeposit = false })
         }
     }
 }

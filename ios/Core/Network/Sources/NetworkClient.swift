@@ -258,6 +258,30 @@ public struct CurrencyConversionDto: Decodable, Identifiable {
 public struct ConvertCurrencyResponse: Decodable { public let success: Bool; public let conversion: CurrencyConversionDto }
 public struct CurrencyConversionsResponse: Decodable { public let success: Bool; public let conversions: [CurrencyConversionDto] }
 
+// Real Toss Bank 먼저 이자받는 정기예금 (interest-paid-upfront term deposit) equivalent
+// (item 161) -- see UpfrontInterestDepositService.kt's own doc comment: the full year's
+// 2.80% interest is paid immediately on opening, principal locks in its own dedicated
+// wallet for a genuine 12-month term with deliberately no early withdrawal. Android's
+// main app already has this (`UpfrontDepositScreen.kt`); bank-mfe got it in item 153.
+// This is the iOS port.
+public struct UpfrontDepositDto: Decodable, Identifiable {
+    public let id: String
+    public let principal: Double
+    public let interestRate: Double
+    public let interestPaid: Double
+    public let status: String
+    public let openedAt: String
+    public let maturesAt: String
+    public let maturedAt: String?
+    public let withdrawnAt: String?
+}
+public struct UpfrontDepositsResponse: Decodable { public let success: Bool; public let deposits: [UpfrontDepositDto] }
+public struct OpenUpfrontDepositResponse: Decodable { public let success: Bool; public let deposit: UpfrontDepositDto; public let message: String }
+public struct OpenUpfrontDepositRequest: Encodable {
+    public let principal: Double
+    public init(principal: Double) { self.principal = principal }
+}
+
 public struct SpendingCategoryDto: Decodable { public let name: String; public let amount: Double }
 public struct SpendingInsightResponse: Decodable { public let success: Bool; public let categories: [SpendingCategoryDto]; public let totalSpent: Double }
 
@@ -378,6 +402,16 @@ extension NetworkClient {
     }
 
     public func getMyConversions() async throws -> CurrencyConversionsResponse { try await get("api/v1/wallet/foreign-currency/conversions") }
+
+    public func getUpfrontDeposits() async throws -> UpfrontDepositsResponse { try await get("api/v1/upfront-deposits") }
+
+    public func openUpfrontDeposit(_ request: OpenUpfrontDepositRequest) async throws -> OpenUpfrontDepositResponse {
+        try await authenticatedPost("api/v1/upfront-deposits", body: request)
+    }
+
+    public func withdrawUpfrontDeposit(id: String) async throws -> OpenUpfrontDepositResponse {
+        try await authenticatedPost("api/v1/upfront-deposits/\(id)/withdraw", body: EmptyBody())
+    }
 
     // Real Kakao Pay 소비 리포트-style spending categorization (rw.itunda.wallet.
     // WalletService.getSpendingInsight, real since 2026-07-13) -- first iOS client for
