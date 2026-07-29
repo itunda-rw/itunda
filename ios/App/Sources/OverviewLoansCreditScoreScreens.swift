@@ -144,6 +144,8 @@ struct LoansScreenView: View {
     @State private var mode: LoansMode = .offers
     @State private var offers: [LoanOfferDto]?
     @State private var myLoans: [LoanAccountDto]?
+    @State private var lenders: [LenderDto]?
+    @State private var lenderId: String?
     @State private var error: String?
     @State private var busyId: String?
     @State private var repayAmounts: [String: String] = [:]
@@ -170,7 +172,18 @@ struct LoansScreenView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     if let error { Text(error).font(.caption).foregroundColor(.red) }
                     if mode == .offers {
+                        if let lenders {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 6) {
+                                    lenderChip(title: "All lenders", selected: lenderId == nil) { Task { await selectLender(nil) } }
+                                    ForEach(lenders) { lender in
+                                        lenderChip(title: lender.name, selected: lenderId == lender.id) { Task { await selectLender(lender.id) } }
+                                    }
+                                }
+                            }
+                        }
                         if let offers {
+                            if offers.isEmpty { Text("No offers from this lender right now.").font(.caption).foregroundColor(IDS.Colors.textSecondary) }
                             ForEach(offers) { offer in LoanOfferCard(offer: offer, busy: busyId == offer.id, onApply: { amount in Task { await apply(offer, amount) } }) }
                         } else { ProgressView() }
                     } else {
@@ -208,8 +221,31 @@ struct LoansScreenView: View {
         do {
             offers = try await NetworkClient.shared.getLoanOffers().offers
             myLoans = try await NetworkClient.shared.getMyLoans().loans
+            lenders = try await NetworkClient.shared.getLenders().lenders
             error = nil
         } catch { self.error = "Could not load loans." }
+    }
+
+    // Real "browse by lender" filter (2026-07-29 iOS port) -- see the bank-mfe port's own
+    // comment: `getLenders`/`lenderId`-filtered `getLoanOffers` were both real backend
+    // endpoints with zero client anywhere before this.
+    private func selectLender(_ id: String?) async {
+        lenderId = id
+        error = nil
+        do {
+            offers = try await NetworkClient.shared.getLoanOffers(lenderId: id).offers
+        } catch { self.error = "Could not load offers." }
+    }
+
+    private func lenderChip(title: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title).font(.caption).bold()
+                .foregroundColor(selected ? IDS.Colors.brand : IDS.Colors.textPrimary)
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(IDS.Colors.chipBackground)
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(selected ? IDS.Colors.brand : .clear, lineWidth: 1))
+                .cornerRadius(14)
+        }
     }
 
     private func apply(_ offer: LoanOfferDto, _ amount: Double) async {

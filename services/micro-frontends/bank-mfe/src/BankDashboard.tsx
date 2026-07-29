@@ -19,7 +19,7 @@ import { collectWithFacePay, enrollFacePay, fetchFacePayStatus, revokeFacePay } 
 import { fetchMyP2pRequests, generateP2pRequest, payP2pRequest, sendDirect, type P2pPaymentRequestDto, type P2pPaymentRequestStatus } from './lib/p2p';
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
 import { fetchLinkedAccounts, fetchOverview, linkAccount, unlinkAccount, type LinkedAccount, type Overview } from './lib/overview';
-import { applyForLoan, fetchLoanOffers, fetchMyLoans, refinanceLoan, repayLoan, type LoanAccount, type LoanOffer } from './lib/loans';
+import { applyForLoan, fetchLenders, fetchLoanOffers, fetchMyLoans, refinanceLoan, repayLoan, type Lender, type LoanAccount, type LoanOffer } from './lib/loans';
 import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreResult, type CreditScoreSuggestion } from './lib/creditScore';
 import { fetchTrustScore, type TrustScoreResult } from './lib/trustScore';
 import {
@@ -1452,18 +1452,32 @@ function LoansView() {
   const [mode, setMode] = useState<'OFFERS' | 'MY_LOANS'>('OFFERS');
   const [offers, setOffers] = useState<LoanOffer[] | null>(null);
   const [myLoans, setMyLoans] = useState<LoanAccount[] | null>(null);
+  const [lenders, setLenders] = useState<Lender[] | null>(null);
+  const [lenderId, setLenderId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [repayAmounts, setRepayAmounts] = useState<Record<string, string>>({});
 
   const refresh = () => {
     setError(null);
-    Promise.all([fetchLoanOffers(), fetchMyLoans()])
-      .then(([o, l]) => { setOffers(o); setMyLoans(l); })
+    Promise.all([fetchLoanOffers(), fetchMyLoans(), fetchLenders()])
+      .then(([o, l, ln]) => { setOffers(o); setMyLoans(l); setLenders(ln); })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load loans.'));
   };
 
   useEffect(refresh, []);
+
+  // Real "browse by lender" filter (2026-07-29) -- `getLenders`/`lenderId`-filtered
+  // `getOffers` were both real backend endpoints with zero client anywhere: every offer
+  // already showed its lenderName, but there was no way to browse the BNR-licensed
+  // partner banks (Bank of Kigali/Equity/Urwego) alongside itunda's own book as a group.
+  const selectLender = (id: string | null) => {
+    setLenderId(id);
+    setError(null);
+    fetchLoanOffers(id ?? undefined)
+      .then(setOffers)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load offers.'));
+  };
 
   const handleApply = async (offer: LoanOffer, amount: number) => {
     setBusyId(offer.id);
@@ -1527,9 +1541,34 @@ function LoansView() {
         </div>
       )}
       {mode === 'OFFERS' && (
-        offers === null ? <div className="toss-card skeleton" style={{ height: '160px' }} /> : offers.map((offer) => (
-          <LoanOfferCard key={offer.id} offer={offer} busy={busyId === offer.id} onApply={(amount) => handleApply(offer, amount)} />
-        ))
+        <>
+          {lenders && (
+            <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
+              <button
+                className="toss-btn toss-btn-secondary"
+                style={{ fontSize: '12px', padding: '6px 12px', whiteSpace: 'nowrap', ...(lenderId === null ? { border: '1px solid var(--toss-blue)', color: 'var(--toss-blue)' } : {}) }}
+                onClick={() => selectLender(null)}
+              >
+                All lenders
+              </button>
+              {lenders.map((lender) => (
+                <button
+                  key={lender.id}
+                  className="toss-btn toss-btn-secondary"
+                  style={{ fontSize: '12px', padding: '6px 12px', whiteSpace: 'nowrap', ...(lenderId === lender.id ? { border: '1px solid var(--toss-blue)', color: 'var(--toss-blue)' } : {}) }}
+                  onClick={() => selectLender(lender.id)}
+                >
+                  {lender.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {offers === null ? <div className="toss-card skeleton" style={{ height: '160px' }} /> :
+           offers.length === 0 ? <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No offers from this lender right now.</p> :
+           offers.map((offer) => (
+            <LoanOfferCard key={offer.id} offer={offer} busy={busyId === offer.id} onApply={(amount) => handleApply(offer, amount)} />
+          ))}
+        </>
       )}
       {mode === 'MY_LOANS' && (
         myLoans === null ? <div className="toss-card skeleton" style={{ height: '160px' }} /> :
