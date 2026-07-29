@@ -1905,6 +1905,12 @@ public struct ProductReviewDto: Decodable {
     public let merchantId: String
     public let rating: Int
     public let comment: String?
+    // Real owner-side reply (item 187/188/189) -- see
+    // ProductReviewService.replyToProductReview's own doc comment. merchant-mfe (item
+    // 187) and Android (item 188) already have this; customer-side display only here
+    // (the reply-writing side lives on MerchantApp, the merchant-owner app).
+    public let ownerReply: String?
+    public let ownerRepliedAt: String?
     public let createdAt: String
 }
 public struct ProductReviewResponse: Decodable { public let success: Bool; public let review: ProductReviewDto }

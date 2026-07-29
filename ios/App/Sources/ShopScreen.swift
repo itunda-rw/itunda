@@ -1110,6 +1110,9 @@ private struct ProductRatingBadge: View {
                                     let stars = String(repeating: "★", count: r.rating) + String(repeating: "☆", count: 5 - r.rating)
                                     Text(r.comment.map { "\(stars) — \($0)" } ?? stars)
                                         .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                    if let reply = r.ownerReply, !reply.isEmpty {
+                                        Text("↳ Seller: \(reply)").font(.caption2).foregroundColor(IDS.Colors.textTertiary).padding(.leading, 12)
+                                    }
                                 }
                             }
                         } else {

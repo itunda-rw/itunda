@@ -159,15 +159,19 @@ private struct OrderCard: View {
     }
 }
 
-/// Real written-review list + owner-reply management (item 184/185/186) -- see
+/// Real written-review list + owner-reply management (item 184/185/186/188/189) -- see
 /// EatsReviewService.replyToRestaurantReview's own doc comment. bank-mfe (item 184) and
 /// Android (item 185) already have this; this is the first iOS client for the
 /// owner-reply side. Its own dedicated tab, unlike OrdersTab (which only ever shows
-/// ACTIVE orders -- reviews only exist once an order is DELIVERED).
+/// ACTIVE orders -- reviews only exist once an order is DELIVERED). Also folds in
+/// Commerce product reviews (item 189, mirroring merchant-mfe's item 187 / Android's
+/// item 188): no aggregate "all my products' reviews" backend endpoint exists, so this
+/// fans out one real per-product review fetch across the merchant's own catalog.
 private struct ReviewsTab: View {
     let restaurantId: String
 
-    @State private var reviews: [EatsReviewDto]?
+    @State private var restaurantReviews: [EatsReviewDto]?
+    @State private var productReviews: [(productName: String, review: ProductReviewDto)]?
     @State private var error: String?
 
     var body: some View {
@@ -175,16 +179,25 @@ private struct ReviewsTab: View {
             if let error {
                 Text(error).foregroundColor(.red).padding(16)
             }
-            if let reviews {
-                if reviews.isEmpty {
+            if let restaurantReviews, let productReviews {
+                if restaurantReviews.isEmpty && productReviews.isEmpty {
                     Spacer()
                     Text("No reviews yet.").foregroundColor(.secondary)
                     Spacer()
                 } else {
                     ScrollView {
-                        LazyVStack(spacing: 10) {
-                            ForEach(reviews) { review in
-                                ReviewReplyCard(review: review, onReplied: { Task { await refresh() } })
+                        LazyVStack(alignment: .leading, spacing: 10) {
+                            if !restaurantReviews.isEmpty {
+                                Text("Restaurant reviews").font(.headline)
+                                ForEach(restaurantReviews) { review in
+                                    ReviewReplyCard(review: review, onReplied: { Task { await refreshRestaurant() } })
+                                }
+                            }
+                            if !productReviews.isEmpty {
+                                Text("Product reviews").font(.headline)
+                                ForEach(productReviews, id: \.review.id) { entry in
+                                    ProductReviewReplyCard(productName: entry.productName, review: entry.review, onReplied: { Task { await refreshProducts() } })
+                                }
                             }
                         }
                         .padding(16)
@@ -196,13 +209,30 @@ private struct ReviewsTab: View {
                 Spacer()
             }
         }
-        .task { await refresh() }
+        .task {
+            await refreshRestaurant()
+            await refreshProducts()
+        }
     }
 
-    private func refresh() async {
+    private func refreshRestaurant() async {
         do {
-            reviews = try await MerchantNetworkClient.shared.getRestaurantReviews(restaurantId).reviews
-            error = nil
+            restaurantReviews = try await MerchantNetworkClient.shared.getRestaurantReviews(restaurantId).reviews
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func refreshProducts() async {
+        do {
+            let products = try await MerchantNetworkClient.shared.getProductCatalog().products
+            var combined: [(productName: String, review: ProductReviewDto)] = []
+            for product in products {
+                if let reviews = try? await MerchantNetworkClient.shared.getProductReviews(product.id).reviews {
+                    combined.append(contentsOf: reviews.map { (product.name, $0) })
+                }
+            }
+            productReviews = combined.sorted { $0.review.createdAt > $1.review.createdAt }
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
@@ -259,6 +289,67 @@ private struct ReviewReplyCard: View {
         error = nil
         do {
             _ = try await MerchantNetworkClient.shared.replyToRestaurantReview(review.id, reply: reply.trimmingCharacters(in: .whitespaces))
+            replying = false
+            onReplied()
+        } catch {
+            self.error = "Could not submit your reply."
+        }
+        submitting = false
+    }
+}
+
+private struct ProductReviewReplyCard: View {
+    let productName: String
+    let review: ProductReviewDto
+    let onReplied: () -> Void
+
+    @State private var replying = false
+    @State private var reply = ""
+    @State private var submitting = false
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(productName).bold()
+            Text(String(repeating: "★", count: review.rating) + String(repeating: "☆", count: 5 - review.rating))
+                .foregroundColor(.yellow)
+            if let comment = review.comment, !comment.isEmpty {
+                Text(comment).font(.subheadline)
+            }
+            if let ownerReply = review.ownerReply, !ownerReply.isEmpty {
+                Text("Your reply: \(ownerReply)").font(.footnote).foregroundColor(.secondary)
+            } else if replying {
+                HStack {
+                    TextField("Write a reply…", text: $reply)
+                        .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                    Button(action: { Task { await submit() } }) {
+                        Text(submitting ? "…" : "Reply").bold().foregroundColor(.white)
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .background(IDS.Colors.brand).cornerRadius(8)
+                    }
+                    .disabled(submitting || reply.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            } else {
+                Button(action: { replying = true }) {
+                    Text("Reply").bold().foregroundColor(IDS.Colors.brand)
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                }
+            }
+            if let error {
+                Text(error).foregroundColor(.red).font(.caption)
+            }
+        }
+        .padding(16)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
+    }
+
+    private func submit() async {
+        submitting = true
+        error = nil
+        do {
+            _ = try await MerchantNetworkClient.shared.replyToProductReview(review.id, reply: reply.trimmingCharacters(in: .whitespaces))
             replying = false
             onReplied()
         } catch {

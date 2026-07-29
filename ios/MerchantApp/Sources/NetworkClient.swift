@@ -39,6 +39,26 @@ struct MerchantProductResponse: Decodable { let success: Bool; let product: Merc
 struct MerchantProductsResponse: Decodable { let success: Bool; let products: [MerchantProductDto] }
 struct AddProductRequest: Encodable { let name: String; let price: Double }
 
+// Real Commerce product reviews + owner-side reply (item 187/188/189) -- see
+// ProductReviewService.replyToProductReview's own doc comment. merchant-mfe (item 187)
+// and Android (item 188) already have this; this is the first iOS client.
+struct ProductReviewDto: Decodable, Identifiable {
+    let id: String
+    let orderItemId: String
+    let orderId: String
+    let buyerId: String
+    let productId: String
+    let merchantId: String
+    let rating: Int
+    let comment: String?
+    let ownerReply: String?
+    let ownerRepliedAt: String?
+    let createdAt: String
+}
+struct ProductReviewResponse: Decodable { let success: Bool; let review: ProductReviewDto }
+struct ProductReviewsResponse: Decodable { let success: Bool; let reviews: [ProductReviewDto] }
+struct ReplyToProductReviewRequest: Encodable { let reply: String }
+
 struct GenerateQrRequest: Encodable { let amount: Double; let description: String }
 struct PaymentIntentDto: Decodable { let id: String; let merchantId: String; let amount: Double; let description: String; let status: String; let expiresAt: String; let createdAt: String }
 struct PaymentIntentResponse: Decodable { let success: Bool; let paymentIntent: PaymentIntentDto }
@@ -231,6 +251,14 @@ final class MerchantNetworkClient {
     }
 
     func getProductCatalog() async throws -> MerchantProductsResponse { try await get("api/v1/merchant/products") }
+
+    func getProductReviews(_ productId: String) async throws -> ProductReviewsResponse {
+        try await get("api/v1/orders/products/\(productId)/reviews")
+    }
+
+    func replyToProductReview(_ reviewId: String, reply: String) async throws -> ProductReviewResponse {
+        try await post("api/v1/orders/reviews/\(reviewId)/reply", body: ReplyToProductReviewRequest(reply: reply))
+    }
 
     func addProduct(name: String, price: Double) async throws -> MerchantProductResponse {
         try await post("api/v1/merchant/products", body: AddProductRequest(name: name, price: price))
