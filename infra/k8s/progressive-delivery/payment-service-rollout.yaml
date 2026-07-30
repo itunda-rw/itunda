@@ -101,7 +101,9 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
       - name: payment-service
-        image: ghcr.io/itunda/payment-service:latest
+        # Keep a re-apply reproducible: pin the current audited private-registry
+        # artifact by content digest, not a mutable tag.
+        image: 192.168.252.4:32000/itunda/payment-service@sha256:7154411347f8cd472584326ed9556d9ef3289f0cf159d743b71ca5cf1d5722ee
         ports:
         - containerPort: 8081
         env:
@@ -132,6 +134,8 @@ spec:
             configMapKeyRef:
               name: itunda-kafka-config
               key: bootstrap-servers
+        - name: ITUNDA_PAYMENT_KAFKA_TRANSFERCONFIRMATION_ENABLED
+          value: "false"
         resources:
           requests:
             memory: "384Mi"

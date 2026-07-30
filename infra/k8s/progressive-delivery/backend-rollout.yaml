@@ -119,7 +119,9 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
       - name: backend
-        image: ghcr.io/itunda/backend:latest
+        # Keep a re-apply reproducible: pin the current audited private-registry
+        # artifact by content digest, not a mutable tag.
+        image: 192.168.252.4:32000/itunda/backend@sha256:a2dff51d4537cc165f69fe148d84070fdcfa1451f8b8ba4f9ef07d67ff956b23
         ports:
         - containerPort: 4001
         env:
@@ -155,11 +157,18 @@ spec:
             configMapKeyRef:
               name: itunda-redis-config
               key: port
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-kafka-config
+              key: bootstrap-servers
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
               name: itunda-jwt-secret
               key: secret
+        - name: ITUNDA_CORS_ALLOWED_ORIGINS
+          value: "https://itunda.duckdns.org,http://localhost:5000,http://localhost:5001,http://localhost:5002,http://localhost:5003,http://localhost:5004,http://localhost:5005"
         - name: UPLOAD_DIR
           value: "/uploads"
         # Real self-hosted OSRM/Nominatim (2026-07-27) -- these containers run directly

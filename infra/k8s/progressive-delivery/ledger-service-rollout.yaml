@@ -101,7 +101,9 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
       - name: ledger-service
-        image: ghcr.io/itunda/ledger-service:latest
+        # Keep a re-apply reproducible: pin the current audited private-registry
+        # artifact by content digest, not a mutable tag.
+        image: 192.168.252.4:32000/itunda/ledger-service@sha256:7de6d4e1d8105df4d9845bbd15c54873ce22299e39bc9a02ba180ba18789340a
         ports:
         - containerPort: 8082
         env:

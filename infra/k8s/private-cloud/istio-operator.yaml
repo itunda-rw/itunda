@@ -7,6 +7,13 @@ spec:
   profile: minimal
   meshConfig:
     accessLogFile: /dev/stdout
+    # Do not log query strings. The WebSocket handshake currently carries a JWT
+    # while browser clients cannot attach an Authorization header; logging the
+    # request target verbatim would therefore copy a credential into every
+    # relevant Envoy access log. %PATH% deliberately excludes the query string.
+    # Keep the remaining fields close to Istio's default format so operational
+    # investigations retain status, latency, routing and request-ID context.
+    accessLogFormat: '[%START_TIME%] "%REQ(:METHOD)% %PATH% %PROTOCOL%" %RESPONSE_CODE% %RESPONSE_FLAGS% %RESPONSE_CODE_DETAILS% %CONNECTION_TERMINATION_DETAILS% "%UPSTREAM_TRANSPORT_FAILURE_REASON%" %BYTES_RECEIVED% %BYTES_SENT% %DURATION% %RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)% "%REQ(X-FORWARDED-FOR)%" "%REQ(USER-AGENT)%" "%REQ(X-REQUEST-ID)%" "%REQ(:AUTHORITY)%" "%UPSTREAM_HOST%" %UPSTREAM_CLUSTER_RAW% %UPSTREAM_LOCAL_ADDRESS% %DOWNSTREAM_LOCAL_ADDRESS% %DOWNSTREAM_REMOTE_ADDRESS% %REQUESTED_SERVER_NAME% %ROUTE_NAME%'
   components:
     pilot:
       enabled: true

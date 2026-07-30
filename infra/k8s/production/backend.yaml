@@ -103,11 +103,18 @@ spec:
             configMapKeyRef:
               name: itunda-redis-config
               key: port
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: itunda-kafka-config
+              key: bootstrap-servers
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
               name: itunda-jwt-secret
               key: secret
+        - name: ITUNDA_CORS_ALLOWED_ORIGINS
+          value: "https://itunda.duckdns.org,http://localhost:5000,http://localhost:5001,http://localhost:5002,http://localhost:5003,http://localhost:5004,http://localhost:5005"
         resources:
           requests:
             memory: "512Mi"

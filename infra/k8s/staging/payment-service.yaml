@@ -50,6 +50,8 @@ spec:
             configMapKeyRef:
               name: itunda-kafka-config
               key: bootstrap-servers
+        - name: ITUNDA_PAYMENT_KAFKA_TRANSFERCONFIRMATION_ENABLED
+          value: "false"
         resources:
           requests:
             memory: "256Mi"
