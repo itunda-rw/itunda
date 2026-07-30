@@ -114,6 +114,10 @@ struct EatsOrderDto: Decodable, Identifiable {
     let status: String
     let createdAt: String
     let deliveryNotes: String?
+    // Real Baemin-style 포장주문 (Pickup) order type (item 208) -- a PICKUP order has
+    // riderId: nil for its whole lifecycle and reaches DELIVERED via
+    // completePickupOrder below, not a rider hand-off.
+    let fulfillmentType: String?
 }
 struct EatsOrderDetailResponse: Decodable { let success: Bool; let order: EatsOrderDto }
 struct EatsOrdersResponse: Decodable { let success: Bool; let orders: [EatsOrderDto] }
@@ -314,6 +318,12 @@ final class MerchantNetworkClient {
 
     func advanceRestaurantOrderStatus(_ orderId: String, status: String) async throws -> EatsOrderDetailResponse {
         try await post("api/v1/eats/orders/\(orderId)/status", body: UpdateEatsOrderStatusRequest(status: status))
+    }
+
+    // Real Baemin-style 포장주문 (Pickup) terminal edge (item 208) -- see
+    // EatsOrderDto.fulfillmentType's own doc comment.
+    func completePickupOrder(_ orderId: String) async throws -> EatsOrderDetailResponse {
+        try await post("api/v1/eats/orders/\(orderId)/complete-pickup", body: EmptyBody())
     }
 
     func getRestaurantReviews(_ restaurantId: String) async throws -> EatsReviewsResponse {

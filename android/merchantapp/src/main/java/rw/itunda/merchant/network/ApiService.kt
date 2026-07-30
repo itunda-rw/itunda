@@ -161,6 +161,10 @@ data class EatsOrderDto(
     val status: String,
     val createdAt: String,
     val deliveryNotes: String? = null,
+    // Real Baemin-style 포장주문 (Pickup) order type (item 208) -- a PICKUP order has
+    // riderId: null for its whole lifecycle and reaches DELIVERED via completePickup
+    // below, not a rider hand-off. See EatsOrderService.kt's own doc comment.
+    val fulfillmentType: String? = null,
 )
 data class EatsOrderDetailResponse(val success: Boolean, val order: EatsOrderDto)
 data class EatsOrdersResponse(val success: Boolean, val orders: List<EatsOrderDto>)
@@ -278,6 +282,11 @@ interface ApiService {
 
     @POST("api/v1/eats/orders/{id}/status")
     suspend fun advanceRestaurantOrderStatus(@Path("id") orderId: String, @Body request: UpdateEatsOrderStatusRequest): EatsOrderDetailResponse
+
+    // Real Baemin-style 포장주문 (Pickup) terminal edge (item 208) -- see
+    // EatsOrderDto.fulfillmentType's own doc comment.
+    @POST("api/v1/eats/orders/{id}/complete-pickup")
+    suspend fun completePickupOrder(@Path("id") orderId: String): EatsOrderDetailResponse
 
     // Real written-review list + owner-reply (item 184/185).
     @GET("api/v1/eats/restaurants/{id}/reviews")

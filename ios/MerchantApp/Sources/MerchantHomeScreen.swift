@@ -133,7 +133,29 @@ private struct OrderCard: View {
             if let error {
                 Text(error).foregroundColor(.red).font(.caption)
             }
-            if let (nextStatus, label) = nextAction(for: order.status) {
+            // Real Baemin-style 포장주문 (Pickup) terminal edge (item 208) -- a PICKUP
+            // order at READY_FOR_PICKUP has no `nextAction` (there's no rider to hand
+            // off to), so it previously just sat here forever with no action anywhere
+            // to close it out.
+            if order.fulfillmentType == "PICKUP" && order.status == "READY_FOR_PICKUP" {
+                Button(action: {
+                    busy = true
+                    Task {
+                        do {
+                            _ = try await MerchantNetworkClient.shared.completePickupOrder(order.id)
+                            onAdvanced()
+                        } catch {
+                            self.error = "Couldn't update this order. Try again."
+                        }
+                        busy = false
+                    }
+                }) {
+                    Text("Mark picked up").bold().foregroundColor(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 10)
+                        .background(IDS.Colors.brand).cornerRadius(10)
+                }
+                .disabled(busy)
+            } else if let (nextStatus, label) = nextAction(for: order.status) {
                 Button(action: {
                     busy = true
                     Task {

@@ -154,13 +154,18 @@ private fun OrdersTab() {
                     order.deliveryNotes?.takeIf { it.isNotBlank() }?.let {
                         Text("Note: $it", style = MaterialTheme.typography.bodySmall)
                     }
-                    nextRestaurantAction(order.status)?.let { (nextStatus, label) ->
+                    // Real Baemin-style 포장주문 (Pickup) terminal edge (item 208) -- a
+                    // PICKUP order at READY_FOR_PICKUP has no `nextRestaurantAction`
+                    // (there's no rider to hand off to), so it previously just sat
+                    // here forever with no action anywhere to close it out.
+                    val readyForPickupHandoff = order.fulfillmentType == "PICKUP" && order.status == "READY_FOR_PICKUP"
+                    if (readyForPickupHandoff) {
                         androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(top = 8.dp))
                         Button(
                             onClick = {
                                 scope.launch {
                                     try {
-                                        NetworkClient.apiService.advanceRestaurantOrderStatus(order.id, UpdateEatsOrderStatusRequest(nextStatus))
+                                        NetworkClient.apiService.completePickupOrder(order.id)
                                         refresh()
                                     } catch (e: Exception) {
                                         error = "Couldn't update this order. Try again."
@@ -168,7 +173,24 @@ private fun OrdersTab() {
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
-                        ) { Text(label) }
+                        ) { Text("Mark picked up") }
+                    } else {
+                        nextRestaurantAction(order.status)?.let { (nextStatus, label) ->
+                            androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(top = 8.dp))
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        try {
+                                            NetworkClient.apiService.advanceRestaurantOrderStatus(order.id, UpdateEatsOrderStatusRequest(nextStatus))
+                                            refresh()
+                                        } catch (e: Exception) {
+                                            error = "Couldn't update this order. Try again."
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) { Text(label) }
+                        }
                     }
                 }
             }
