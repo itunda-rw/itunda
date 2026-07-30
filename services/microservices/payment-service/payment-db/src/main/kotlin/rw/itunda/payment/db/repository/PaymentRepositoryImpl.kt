@@ -5,17 +5,18 @@ import com.itunda.payment.domain.Payment
 import com.itunda.payment.domain.PaymentStatus
 import org.springframework.stereotype.Repository
 import java.time.OffsetDateTime
+import java.util.concurrent.ConcurrentHashMap
 
 @Repository
 class PaymentRepositoryImpl : PaymentRepositoryPort {
     
     // In-memory simulation for MVP instead of setting up complete JPA Entities
-    private val store = mutableMapOf<String, Payment>()
+    private val store = ConcurrentHashMap<String, Payment>()
 
     override fun findByOrderId(orderId: String): Payment? {
         // Fallback simulated payment if it's the specific test order
         if (orderId == "order_simulated") {
-            return store.getOrPut(orderId) {
+            return store.computeIfAbsent(orderId) {
                 Payment(
                     mId = "tosspayments",
                     paymentKey = "pay_key_simulated",
