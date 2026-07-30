@@ -50,6 +50,71 @@ jobs:
       - name: Build host-app
         run: yarn build
 
+  api-gateway-test:
+    runs-on: ubuntu-latest
+    needs: [lint-and-typecheck]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Test API gateway resilience behavior
+        run: yarn workspace @itunda/api-gateway test
+
+  # The private-cloud image builder intentionally refuses to build while the
+  # single-node cluster is short on memory. Build every production container
+  # in CI too, so Dockerfile/package changes are verified before a later
+  # progressive rollout builds and publishes the private-registry images.
+  application-container-build:
+    runs-on: ubuntu-latest
+    needs: [lint-and-typecheck]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: api-gateway
+            dockerfile: services/api-gateway/Dockerfile
+            context: services/api-gateway
+          - name: backend
+            dockerfile: services/backend/Dockerfile
+            context: services/backend
+          - name: ledger-service
+            dockerfile: services/microservices/ledger-service/Dockerfile
+            context: services/microservices
+          - name: payment-service
+            dockerfile: services/microservices/payment-service/Dockerfile
+            context: services/microservices
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build ${{ matrix.name }} container
+        run: docker build --tag itunda/${{ matrix.name }}:ci --file ${{ matrix.dockerfile }} ${{ matrix.context }}
+
+  progressive-manifest-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify progressive rollout image pins
+        run: bash scripts/verify-progressive-images.sh
+
+      - name: Verify API gateway runtime security controls
+        run: bash scripts/verify-api-gateway-runtime-security.sh
+
+  backend-migration-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify Flyway migration versions
+        run: bash scripts/verify-flyway-migrations.sh
+
   # services/backend: the canonical Kotlin/Spring Boot backend (auth, wallet, ledger,
   # savings, stocks, loans, insurance, bills, notifications, discover, contacts, system)
   backend-build:

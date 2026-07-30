@@ -1,4 +1,8 @@
-**/build/
-.gradle/
-.git/
-*.md
+.git
+.gradle
+**/.gradle
+**/build
+**/.DS_Store
+
+# Keep the Gradle wrapper and all source/configuration files: the service
+# Dockerfiles build from this multi-module root.

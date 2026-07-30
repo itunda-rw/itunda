@@ -1,26 +1,112 @@
 const express = require('express');
+const { randomUUID } = require('node:crypto');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 const promClient = require('prom-client');
 
 const app = express();
-app.set('trust proxy', true);
-app.use(cors());
+app.disable('x-powered-by');
+const DEFAULT_CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+    'http://localhost:5000',
+    'http://localhost:5001',
+    'http://localhost:5002',
+    'http://localhost:5003',
+    'http://localhost:5004',
+    'http://localhost:5005',
+];
+
+function parseAllowedOrigins(value) {
+    const origins = (value || DEFAULT_CORS_ALLOWED_ORIGINS.join(','))
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean);
+    return new Set(origins);
+}
+
+const corsAllowedOrigins = parseAllowedOrigins(process.env.CORS_ALLOWED_ORIGINS);
+function isAllowedCorsOrigin(origin) {
+    // Native apps, same-origin requests, health probes, and curl do not send an
+    // Origin header. Browser requests must be explicitly configured.
+    return !origin || corsAllowedOrigins.has(origin);
+}
+
+function setHeader(target, name, value) {
+    const set = typeof target.setHeader === 'function'
+        ? (name, value) => target.setHeader(name, value)
+        : (name, value) => {
+            target.headers = target.headers || {};
+            target.headers[name.toLowerCase()] = value;
+        };
+    set(name, value);
+}
+
+function setSecurityHeaders(target) {
+    setHeader(target, 'X-Content-Type-Options', 'nosniff');
+    setHeader(target, 'Referrer-Policy', 'no-referrer');
+    setHeader(target, 'X-Frame-Options', 'DENY');
+    setHeader(target, 'Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+}
+
+function setResponseCachePolicy(req, target) {
+    // Financial, account, and admin API responses must never be stored by a browser
+    // or an intermediary. Static map routes deliberately retain their upstream cache
+    // policy because they do not carry account data.
+    if (req.path.startsWith('/api/v1/')) {
+        setHeader(target, 'Cache-Control', 'no-store, private');
+    }
+}
+
+// Only the Istio sidecar (loopback) and Kubernetes pod network may supply a
+// forwarding chain. `true` trusts every hop and lets a direct caller choose its
+// own X-Forwarded-For value, which defeats IP-based rate limits.
+const TRUST_PROXY_CIDRS = process.env.TRUST_PROXY_CIDRS || 'loopback, 10.244.0.0/16';
+app.set('trust proxy', TRUST_PROXY_CIDRS);
+app.use(cors({
+    origin: (origin, callback) => callback(null, isAllowedCorsOrigin(origin)),
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key'],
+    exposedHeaders: ['X-Request-ID'],
+    maxAge: 600,
+}));
+app.use((req, res, next) => {
+    // These API-safe headers apply at the edge, including health and error responses.
+    // HSTS is intentionally configured at the HTTPS terminator, never on this
+    // clear-text in-cluster listener.
+    setSecurityHeaders(res);
+    setResponseCachePolicy(req, res);
+    next();
+});
+
+function requestIdFor(req) {
+    if (!req.itundaRequestId) req.itundaRequestId = randomUUID();
+    return req.itundaRequestId;
+}
+
+app.use((req, res, next) => {
+    res.setHeader('X-Request-ID', requestIdFor(req));
+    next();
+});
+
+function isOperationalEndpoint(req) {
+    return req.path === '/health' || req.path === '/metrics';
+}
 
 // Real rate limiting (2026-07-25) -- this gateway is now reachable from the
 // public internet (bore.pub tunnel -> Istio ingress -> here), so it needs a
 // first line of defense before it's treated as a shareable demo URL. Istio's
-// ingressgateway sets X-Forwarded-For, so `trust proxy` lets express-rate-limit
-// key on the real client IP for traffic that arrives with that header; traffic
-// that doesn't (e.g. the raw bore.pub TCP tunnel, which has no concept of the
-// original client IP) all collapses onto one key -- an honest limitation, not
-// a precise per-visitor limit, but it still caps total abuse/flood volume.
+// Istio's ingressgateway sets X-Forwarded-For, and only the explicitly trusted
+// mesh hops above are allowed to extend that chain. Traffic without an original
+// client address (for example a raw TCP tunnel) still collapses to one key.
 app.use(rateLimit({
     windowMs: 60 * 1000,
     limit: 300,
     standardHeaders: true,
     legacyHeaders: false,
+    // Kubernetes probes and Prometheus scrapes must remain available when a
+    // public caller exhausts the shared limiter key.
+    skip: isOperationalEndpoint,
 }));
 const moneyMovementLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -41,9 +127,32 @@ const httpRequestDuration = new promClient.Histogram({
     labelNames: ['method', 'route', 'status_code'],
     registers: [metricsRegistry]
 });
+const upstreamFailures = new promClient.Counter({
+    name: 'itunda_gateway_upstream_failures_total',
+    help: 'Failed gateway attempts to reach an upstream service',
+    // Keep this intentionally small and predictable: raw error messages (and
+    // arbitrary DNS names) would turn a scrape-time metric into a cardinality
+    // incident during an outage.
+    labelNames: ['route', 'error_code'],
+    registers: [metricsRegistry]
+});
+
+function metricRoute(path) {
+    if (path === '/health' || path === '/metrics') return path;
+    if (path.startsWith('/api/v1/')) {
+        const resource = path.split('/')[3];
+        return resource ? `/api/v1/${resource}` : '/api/v1';
+    }
+    for (const prefix of ['/tiles', '/glyphs', '/osrm', '/geocode']) {
+        if (path === prefix || path.startsWith(`${prefix}/`)) return prefix;
+    }
+    return 'other';
+}
+
 app.use((req, res, next) => {
+    const route = metricRoute(req.path);
     const stop = httpRequestDuration.startTimer({ method: req.method });
-    res.on('finish', () => stop({ route: req.path, status_code: res.statusCode }));
+    res.on('finish', () => stop({ route, status_code: res.statusCode }));
     next();
 });
 app.get('/metrics', async (req, res) => {
@@ -68,21 +177,101 @@ app.get('/metrics', async (req, res) => {
 const PAYMENT_SERVICE_URL = process.env.PAYMENT_SERVICE_URL || 'http://localhost:8081';
 const LEDGER_SERVICE_URL = process.env.LEDGER_SERVICE_URL || 'http://localhost:8082';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:4001';
+function parsePositiveTimeout(value, fallback) {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isInteger(parsed) && parsed >= 1000 ? parsed : fallback;
+}
+const UPSTREAM_TIMEOUT_MS = parsePositiveTimeout(process.env.UPSTREAM_TIMEOUT_MS, 15000);
 
-app.use('/api/v1/payments', moneyMovementLimiter, createProxyMiddleware({
-    target: PAYMENT_SERVICE_URL,
-    changeOrigin: true
-}));
+function upstreamErrorCode(error) {
+    switch (error && error.code) {
+    case 'ECONNREFUSED':
+    case 'ECONNRESET':
+    case 'ETIMEDOUT':
+    case 'EAI_AGAIN':
+    case 'ENOTFOUND':
+        return error.code;
+    default:
+        return 'OTHER';
+    }
+}
 
-app.use('/api/v1/ledger', moneyMovementLimiter, createProxyMiddleware({
-    target: LEDGER_SERVICE_URL,
-    changeOrigin: true
-}));
+function upstreamFailureResponse(error) {
+    if (error && error.code === 'ETIMEDOUT') {
+        return { status: 504, error: 'UPSTREAM_TIMEOUT' };
+    }
+    return { status: 503, error: 'UPSTREAM_UNAVAILABLE', retryAfterSeconds: 5 };
+}
 
-app.use('/api/v1', createProxyMiddleware({
+function upstreamProxy(target, options = {}) {
+    const { onProxyReq: userOnProxyReq, onProxyRes: userOnProxyRes, ...proxyOptions } = options;
+    return createProxyMiddleware({
+        target,
+        changeOrigin: true,
+        // Keep the caller/gateway timeout bounded and consistent. Payment state is
+        // reconciled through idempotency and durable events rather than a client
+        // waiting indefinitely on a stalled upstream socket.
+        timeout: UPSTREAM_TIMEOUT_MS,
+        proxyTimeout: UPSTREAM_TIMEOUT_MS,
+        onError: (error, req, res) => {
+            upstreamFailures.inc({
+                route: metricRoute(req.path),
+                error_code: upstreamErrorCode(error),
+            });
+            if (!res.headersSent) {
+                const failure = upstreamFailureResponse(error);
+                if (failure.retryAfterSeconds) res.set('Retry-After', String(failure.retryAfterSeconds));
+                res.status(failure.status).json({ success: false, error: failure.error });
+            }
+        },
+        onProxyReq: (proxyReq, req, res) => {
+            proxyReq.setHeader('X-Request-ID', requestIdFor(req));
+            if (userOnProxyReq) userOnProxyReq(proxyReq, req, res);
+        },
+        onProxyRes: (proxyRes, req, res) => {
+            // Proxy response headers can replace Express's pre-set values, so enforce
+            // the invariant on the upstream response itself as well.
+            setSecurityHeaders(proxyRes);
+            setResponseCachePolicy(req, proxyRes);
+            if (userOnProxyRes) userOnProxyRes(proxyRes, req, res);
+        },
+        ...proxyOptions,
+    });
+}
+
+function isMessagingWebSocketUpgrade(url) {
+    return typeof url === 'string' && url.split('?', 1)[0] === '/ws/messaging';
+}
+
+// WebSocket upgrades bypass Express middleware, so the ordinary /api/v1 proxy
+// cannot carry the real-time messaging path. Keep a dedicated proxy and attach
+// it directly to the Node HTTP server below; this also preserves the path for
+// Spring's /ws/messaging handler instead of rewriting it as an API request.
+const messagingWebSocketProxy = createProxyMiddleware({
     target: BACKEND_URL,
-    changeOrigin: true
-}));
+    changeOrigin: true,
+    ws: true,
+    // The browser handshake currently contains a JWT query parameter. Do not let
+    // http-proxy-middleware format a failed upgrade URL into process logs; the
+    // bounded metric below retains the operational signal without a credential.
+    logLevel: 'silent',
+    onProxyReqWs: (proxyReq, req) => {
+        proxyReq.setHeader('X-Request-ID', requestIdFor(req));
+    },
+    onError: (error, req, socket) => {
+        upstreamFailures.inc({
+            route: '/ws/messaging',
+            error_code: upstreamErrorCode(error),
+        });
+        socket.destroy();
+    },
+});
+
+app.use('/api/v1/payments', moneyMovementLimiter, upstreamProxy(PAYMENT_SERVICE_URL));
+
+app.use('/api/v1/ledger', moneyMovementLimiter, upstreamProxy(LEDGER_SERVICE_URL));
+
+app.use('/api/v1', upstreamProxy(BACKEND_URL));
 
 // Real self-hosted Maps geo-stack proxy (2026-07-24) -- rides this same gateway's
 // existing public tunnel instead of needing a separate bore.pub tunnel per service.
@@ -94,17 +283,34 @@ const OSRM_CAR_URL = process.env.OSRM_CAR_URL || 'http://192.168.252.4:5000';
 const OSRM_FOOT_URL = process.env.OSRM_FOOT_URL || 'http://192.168.252.4:5001';
 const NOMINATIM_URL = process.env.NOMINATIM_URL || 'http://192.168.252.4:8088';
 
-app.use('/tiles', createProxyMiddleware({ target: TILES_URL, changeOrigin: true, pathRewrite: { '^/tiles': '' } }));
-app.use('/glyphs', createProxyMiddleware({ target: GLYPHS_URL, changeOrigin: true, pathRewrite: { '^/glyphs': '' } }));
-app.use('/osrm/foot', createProxyMiddleware({ target: OSRM_FOOT_URL, changeOrigin: true, pathRewrite: { '^/osrm/foot': '' } }));
-app.use('/osrm', createProxyMiddleware({ target: OSRM_CAR_URL, changeOrigin: true, pathRewrite: { '^/osrm': '' } }));
-app.use('/geocode', createProxyMiddleware({ target: NOMINATIM_URL, changeOrigin: true, pathRewrite: { '^/geocode': '' } }));
+app.use('/tiles', upstreamProxy(TILES_URL, { pathRewrite: { '^/tiles': '' } }));
+app.use('/glyphs', upstreamProxy(GLYPHS_URL, { pathRewrite: { '^/glyphs': '' } }));
+app.use('/osrm/foot', upstreamProxy(OSRM_FOOT_URL, { pathRewrite: { '^/osrm/foot': '' } }));
+app.use('/osrm', upstreamProxy(OSRM_CAR_URL, { pathRewrite: { '^/osrm': '' } }));
+app.use('/geocode', upstreamProxy(NOMINATIM_URL, { pathRewrite: { '^/geocode': '' } }));
 
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'UP', service: 'Itunda API Gateway (Node.js)' });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 Itunda API Gateway running on port ${PORT}`);
-});
+function startServer(port = PORT, host) {
+    const server = host ? app.listen(port, host) : app.listen(port);
+    server.on('upgrade', (req, socket, head) => {
+        if (isMessagingWebSocketUpgrade(req.url)) {
+            requestIdFor(req);
+            messagingWebSocketProxy.upgrade(req, socket, head);
+        } else {
+            socket.destroy();
+        }
+    });
+    return server;
+}
+
+if (require.main === module) {
+    startServer(PORT).on('listening', () => {
+        console.log(`🚀 Itunda API Gateway running on port ${PORT}`);
+    });
+}
+
+module.exports = { app, metricRoute, parseAllowedOrigins, isAllowedCorsOrigin, parsePositiveTimeout, upstreamErrorCode, upstreamFailureResponse, isOperationalEndpoint, isMessagingWebSocketUpgrade, requestIdFor, setSecurityHeaders, setResponseCachePolicy, startServer };

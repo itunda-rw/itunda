@@ -163,6 +163,7 @@ const RAW_RUNTIME_STATE =
           ["cors", "npm:2.8.6"],\
           ["es-toolkit", "npm:1.49.0"],\
           ["express", "npm:4.22.2"],\
+          ["express-rate-limit", "virtual:348dd1c97061fe5488fc654616a1cdd97aeff72e64d7ada5ad10a8f44838469e2516b7e3edd307dc9e50756a4b0d2081be70bf7360f05d26f5a6803e6395d2b7#npm:7.5.1"],\
           ["http-proxy-middleware", "virtual:348dd1c97061fe5488fc654616a1cdd97aeff72e64d7ada5ad10a8f44838469e2516b7e3edd307dc9e50756a4b0d2081be70bf7360f05d26f5a6803e6395d2b7#npm:2.0.10"],\
           ["prom-client", "npm:15.1.3"]\
         ],\
@@ -1765,6 +1766,28 @@ const RAW_RUNTIME_STATE =
           ["type-is", "npm:1.6.18"],\
           ["utils-merge", "npm:1.0.1"],\
           ["vary", "npm:1.1.2"]\
+        ],\
+        "linkType": "HARD"\
+      }]\
+    ]],\
+    ["express-rate-limit", [\
+      ["npm:7.5.1", {\
+        "packageLocation": "../.yarn/berry/cache/express-rate-limit-npm-7.5.1-d29d074dcb-10c0.zip/node_modules/express-rate-limit/",\
+        "packageDependencies": [\
+          ["express-rate-limit", "npm:7.5.1"]\
+        ],\
+        "linkType": "SOFT"\
+      }],\
+      ["virtual:348dd1c97061fe5488fc654616a1cdd97aeff72e64d7ada5ad10a8f44838469e2516b7e3edd307dc9e50756a4b0d2081be70bf7360f05d26f5a6803e6395d2b7#npm:7.5.1", {\
+        "packageLocation": "./.yarn/__virtual__/express-rate-limit-virtual-8fa332020a/2/.yarn/berry/cache/express-rate-limit-npm-7.5.1-d29d074dcb-10c0.zip/node_modules/express-rate-limit/",\
+        "packageDependencies": [\
+          ["@types/express", null],\
+          ["express", "npm:4.22.2"],\
+          ["express-rate-limit", "virtual:348dd1c97061fe5488fc654616a1cdd97aeff72e64d7ada5ad10a8f44838469e2516b7e3edd307dc9e50756a4b0d2081be70bf7360f05d26f5a6803e6395d2b7#npm:7.5.1"]\
+        ],\
+        "packagePeers": [\
+          "@types/express",\
+          "express"\
         ],\
         "linkType": "HARD"\
       }]\
