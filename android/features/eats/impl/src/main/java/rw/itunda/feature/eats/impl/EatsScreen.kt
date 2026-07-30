@@ -1008,7 +1008,7 @@ private fun AddressAutocompleteField(
     }
 }
 
-private enum class EatsCheckoutMode { DELIVERY, DINE_IN }
+private enum class EatsCheckoutMode { DELIVERY, PICKUP, DINE_IN }
 
 @Composable
 private fun EatsCheckoutView(
@@ -1041,7 +1041,11 @@ private fun EatsCheckoutView(
 
     val lines = cart.values.filter { it.quantity > 0 }.mapNotNull { line -> menu.find { it.id == line.productId }?.let { it to line } }
     val total = lines.sumOf { (p, line) -> eatsLineUnitPrice(p, line.choiceIds) * line.quantity }
-    val canSubmit = if (mode == EatsCheckoutMode.DELIVERY) address.isNotBlank() else tableNumber.isNotBlank()
+    val canSubmit = when (mode) {
+        EatsCheckoutMode.DELIVERY -> address.isNotBlank()
+        EatsCheckoutMode.PICKUP -> true
+        EatsCheckoutMode.DINE_IN -> tableNumber.isNotBlank()
+    }
 
     suspend fun submitDelivery() {
         val res = NetworkClient.apiService.placeEatsOrder(
@@ -1053,6 +1057,22 @@ private fun EatsCheckoutView(
                 deliveryLatitude = addressLatitude,
                 deliveryLongitude = addressLongitude,
                 deliveryNotes = deliveryNotes.trim().ifBlank { null },
+            ),
+        )
+        if (res.success) onOrderPlaced(res.order)
+    }
+
+    // Real Baemin-style 포장주문 (Pickup) order type (item 208) -- see
+    // PlaceEatsOrderRequest.fulfillmentType's own doc comment.
+    suspend fun submitPickup() {
+        val res = NetworkClient.apiService.placeEatsOrder(
+            idempotencyKey = idempotencyKey,
+            request = PlaceEatsOrderRequest(
+                restaurantId = restaurant.merchantId,
+                items = lines.map { (p, line) -> EatsOrderItemRequest(p.id, line.quantity, line.choiceIds.ifEmpty { null }) },
+                deliveryAddress = "",
+                deliveryNotes = deliveryNotes.trim().ifBlank { null },
+                fulfillmentType = "PICKUP",
             ),
         )
         if (res.success) onOrderPlaced(res.order)
@@ -1094,7 +1114,7 @@ private fun EatsCheckoutView(
                         .clip(RoundedCornerShape(10.dp))
                         .background(Ids.colors.surfaceSoft),
                 ) {
-                    listOf(EatsCheckoutMode.DELIVERY to "Delivery", EatsCheckoutMode.DINE_IN to "Order at table").forEach { (m, label) ->
+                    listOf(EatsCheckoutMode.DELIVERY to "Delivery", EatsCheckoutMode.PICKUP to "Pickup", EatsCheckoutMode.DINE_IN to "Order at table").forEach { (m, label) ->
                         val selected = m == mode
                         Box(
                             modifier = Modifier
@@ -1134,6 +1154,16 @@ private fun EatsCheckoutView(
                         modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                     )
                 }
+            } else if (mode == EatsCheckoutMode.PICKUP) {
+                item { Text("No delivery fee -- collect your order at the restaurant once it's ready", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp)) }
+                item {
+                    OutlinedTextField(
+                        value = deliveryNotes,
+                        onValueChange = { if (it.length <= 500) deliveryNotes = it },
+                        placeholder = { Text("Pickup notes (optional)") },
+                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                    )
+                }
             } else {
                 item { Text("No delivery fee -- served straight to your table", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp)) }
                 item {
@@ -1158,7 +1188,7 @@ private fun EatsCheckoutView(
                     needsDeviceVerification = false
                     coroutineScope.launch {
                         try {
-                            if (mode == EatsCheckoutMode.DELIVERY) submitDelivery() else submitDineIn()
+                            when (mode) { EatsCheckoutMode.DELIVERY -> submitDelivery(); EatsCheckoutMode.PICKUP -> submitPickup(); EatsCheckoutMode.DINE_IN -> submitDineIn() }
                         } catch (e: HttpException) {
                             if (isDeviceNotVerifiedError(e)) {
                                 needsDeviceVerification = true
@@ -1182,7 +1212,7 @@ private fun EatsCheckoutView(
                 needsDeviceVerification = false
                 submitting = true
                 try {
-                    if (mode == EatsCheckoutMode.DELIVERY) submitDelivery() else submitDineIn()
+                    when (mode) { EatsCheckoutMode.DELIVERY -> submitDelivery(); EatsCheckoutMode.PICKUP -> submitPickup(); EatsCheckoutMode.DINE_IN -> submitDineIn() }
                 } catch (e: HttpException) {
                     error = superAppErrorMessage(e)
                 } catch (e: IOException) {

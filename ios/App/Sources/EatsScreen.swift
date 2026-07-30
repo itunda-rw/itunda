@@ -843,7 +843,7 @@ private struct AddressAutocompleteField: View {
 // cart/menu-option selection as delivery, only the checkout step itself diverges (a
 // table number replaces the address, no delivery fee, settles straight to the
 // restaurant's wallet at placement).
-private enum EatsCheckoutMode { case delivery, dineIn }
+private enum EatsCheckoutMode { case delivery, pickup, dineIn }
 
 private struct EatsCheckoutView: View {
     let restaurant: ShoppingMerchantDto
@@ -903,6 +903,7 @@ private struct EatsCheckoutView: View {
                     }
                     Picker("", selection: $checkoutMode) {
                         Text("Delivery").tag(EatsCheckoutMode.delivery)
+                        Text("Pickup").tag(EatsCheckoutMode.pickup)
                         Text("Order at table").tag(EatsCheckoutMode.dineIn)
                     }
                     .pickerStyle(.segmented)
@@ -922,6 +923,18 @@ private struct EatsCheckoutView: View {
                             Text("Pinned -- real distance-based delivery fee applies").font(.caption).foregroundColor(.green)
                         }
                         TextField("Delivery notes (optional) -- e.g. Leave at the gate", text: Binding(
+                            get: { deliveryNotes },
+                            set: { deliveryNotes = String($0.prefix(500)) }
+                        ))
+                        .padding(12)
+                        .background(IDS.Colors.chipBackground)
+                        .cornerRadius(12)
+                    } else if checkoutMode == .pickup {
+                        // Real Baemin-style 포장주문 (Pickup) order type (item 208) --
+                        // backend-complete since 2026-07-26; bank-mfe/Android clients
+                        // 2026-07-31. See PlaceEatsOrderRequest's own doc comment.
+                        Text("No delivery fee -- collect your order at the restaurant once it's ready").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        TextField("Pickup notes (optional)", text: Binding(
                             get: { deliveryNotes },
                             set: { deliveryNotes = String($0.prefix(500)) }
                         ))
@@ -973,7 +986,11 @@ private struct EatsCheckoutView: View {
     }
 
     private var canSubmit: Bool {
-        checkoutMode == .delivery ? !address.isEmpty : !tableNumber.trimmingCharacters(in: .whitespaces).isEmpty
+        switch checkoutMode {
+        case .delivery: return !address.isEmpty
+        case .pickup: return true
+        case .dineIn: return !tableNumber.trimmingCharacters(in: .whitespaces).isEmpty
+        }
     }
 
     private func placeOrder() async {
@@ -994,10 +1011,11 @@ private struct EatsCheckoutView: View {
                 let res = try await NetworkClient.shared.placeEatsOrder(PlaceEatsOrderRequest(
                     restaurantId: restaurant.merchantId,
                     items: lines.map { EatsOrderItemRequest(menuItemId: $0.item.id, quantity: $0.line.quantity, selectedChoiceIds: $0.line.choiceIds.isEmpty ? nil : $0.line.choiceIds) },
-                    deliveryAddress: address.trimmingCharacters(in: .whitespaces),
-                    deliveryLatitude: addressLatitude,
-                    deliveryLongitude: addressLongitude,
-                    deliveryNotes: deliveryNotes.trimmingCharacters(in: .whitespaces).isEmpty ? nil : deliveryNotes.trimmingCharacters(in: .whitespaces)
+                    deliveryAddress: checkoutMode == .pickup ? "" : address.trimmingCharacters(in: .whitespaces),
+                    deliveryLatitude: checkoutMode == .pickup ? nil : addressLatitude,
+                    deliveryLongitude: checkoutMode == .pickup ? nil : addressLongitude,
+                    deliveryNotes: deliveryNotes.trimmingCharacters(in: .whitespaces).isEmpty ? nil : deliveryNotes.trimmingCharacters(in: .whitespaces),
+                    fulfillmentType: checkoutMode == .pickup ? "PICKUP" : "DELIVERY"
                 ))
                 onOrderPlaced(res.order)
             }

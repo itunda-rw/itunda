@@ -1976,7 +1976,10 @@ public struct PlaceEatsOrderRequest: Encodable {
     public let deliveryLatitude: Double?
     public let deliveryLongitude: Double?
     public let deliveryNotes: String?
-    public init(restaurantId: String, items: [EatsOrderItemRequest], deliveryAddress: String, deliveryLatitude: Double?, deliveryLongitude: Double?, deliveryNotes: String?) { self.restaurantId = restaurantId; self.items = items; self.deliveryAddress = deliveryAddress; self.deliveryLatitude = deliveryLatitude; self.deliveryLongitude = deliveryLongitude; self.deliveryNotes = deliveryNotes }
+    // Real Baemin-style 포장주문 (Pickup) order type (item 208) -- backend-complete
+    // since 2026-07-26, bank-mfe/Android clients 2026-07-31; this is the iOS client.
+    public let fulfillmentType: String
+    public init(restaurantId: String, items: [EatsOrderItemRequest], deliveryAddress: String, deliveryLatitude: Double?, deliveryLongitude: Double?, deliveryNotes: String?, fulfillmentType: String = "DELIVERY") { self.restaurantId = restaurantId; self.items = items; self.deliveryAddress = deliveryAddress; self.deliveryLatitude = deliveryLatitude; self.deliveryLongitude = deliveryLongitude; self.deliveryNotes = deliveryNotes; self.fulfillmentType = fulfillmentType }
 }
 public struct UpdateEatsOrderStatusRequest: Encodable { public let status: String }
 public struct SetRiderAvailabilityRequest: Encodable { public let available: Bool }

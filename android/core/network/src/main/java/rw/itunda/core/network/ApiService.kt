@@ -1140,6 +1140,9 @@ data class PlaceEatsOrderRequest(
     val deliveryLatitude: Double? = null,
     val deliveryLongitude: Double? = null,
     val deliveryNotes: String? = null,
+    // Real Baemin-style 포장주문 (Pickup) order type (item 208) -- backend-complete
+    // since 2026-07-26, bank-mfe client 2026-07-31; this is the first Android client.
+    val fulfillmentType: String = "DELIVERY",
 )
 data class UpdateEatsOrderStatusRequest(val status: String)
 data class SetRiderAvailabilityRequest(val available: Boolean)
