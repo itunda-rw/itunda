@@ -3,6 +3,8 @@ package rw.itunda.merchant
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
@@ -239,9 +241,27 @@ class MerchantBillingService(
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"subscriptionId\":\"${subscription.id}\"}",
                 ),
             )
-            pushNotificationService.sendToUser(subscription.customerId, title, body, mapOf("subscriptionId" to subscription.id))
+            sendChargedPushAfterCommit(subscription.customerId, title, body, subscription.id)
         } catch (e: Exception) {
             // Non-critical -- the real charge already completed and succeeded.
         }
+    }
+
+    /** A charge alert must never announce a payment whose enclosing transaction rolled back. */
+    private fun sendChargedPushAfterCommit(customerId: String, title: String, body: String, subscriptionId: String) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(customerId, title, body, mapOf("subscriptionId" to subscriptionId))
+            } catch (e: Exception) {
+                log.warn("Could not send subscription-charge push for subscription {}", subscriptionId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 }

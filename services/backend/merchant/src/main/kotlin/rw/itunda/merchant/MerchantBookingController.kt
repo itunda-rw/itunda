@@ -5,6 +5,7 @@ import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -127,9 +128,9 @@ class MerchantBookingController(
 
     // Real convenience endpoint (same "verify a scheduled effect without waiting real
     // wall-clock time" precedent as WeeklySavingsController's own POST /process-due) --
-    // processes every real due no-show network-wide, not scoped to the caller, same
-    // unguarded-but-idempotent shape that endpoint already established.
+    // processes every real due no-show network-wide, not scoped to the caller.
     @PostMapping("/bookings/process-no-shows")
+    @PreAuthorize("hasRole('ADMIN')")
     fun processNoShows(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
         val processed = merchantBookingService.processNoShows()
         return ResponseEntity.ok(mapOf("success" to true, "processedCount" to processed.size, "bookings" to processed))
