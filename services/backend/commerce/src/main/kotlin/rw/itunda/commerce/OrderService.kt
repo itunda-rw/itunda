@@ -3,10 +3,14 @@ package rw.itunda.commerce
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
+import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.Order
 import rw.itunda.core.domain.OrderItem
@@ -51,6 +55,7 @@ class RiderNotAvailableException(message: String) : RuntimeException(message)
 class RiderAlreadyOnDeliveryException(message: String) : RuntimeException(message)
 class DeliveryAlreadyClaimedException(message: String) : RuntimeException(message)
 class MinOrderAmountNotMetException(message: String) : RuntimeException(message)
+class InsufficientProductStockException(message: String) : RuntimeException(message)
 
 data class OrderItemRequest(val productId: String, val quantity: Int)
 data class OrderDetail(val order: Order, val items: List<OrderItem>)
@@ -96,6 +101,8 @@ class OrderService(
     private val riderRepository: RiderRepository,
     private val pushNotificationService: PushNotificationService,
 ) {
+    private val logger = LoggerFactory.getLogger(OrderService::class.java)
+
     // Same real Toss Payments fee-schedule reasoning MerchantService.feeRate's own
     // comment gives -- one flat rate in the middle of Toss's published 0.8%-1.8% range,
     // reused rather than inventing a second number for what is, underneath, the same
@@ -147,7 +154,7 @@ class OrderService(
             emptyMap()
         }
 
-        data class Resolved(val productId: String, val name: String, val unitPrice: BigDecimal, val quantity: Int)
+        data class Resolved(val product: MerchantProduct, val productId: String, val name: String, val unitPrice: BigDecimal, val quantity: Int)
         val resolved = items.map { req ->
             if (req.quantity <= 0) {
                 throw InvalidQuantityException("Quantity must be at least 1")
@@ -161,8 +168,22 @@ class OrderService(
                 throw OrderProductNotFoundException("Product not found")
             }
             val unitPrice = effectiveUnitPrice(product.price, req.quantity, tiersByProduct[product.id].orEmpty())
-            Resolved(product.id, product.name, unitPrice, req.quantity)
+            Resolved(product, product.id, product.name, unitPrice, req.quantity)
         }
+        // A null stockQuantity means the merchant deliberately sells an unlimited
+        // service/digital item. Finite inventory is decremented in this same database
+        // transaction as the payment and order; MerchantProduct's optimistic version
+        // prevents two concurrent checkouts from silently overselling the final unit.
+        resolved.groupBy { it.product.id }.forEach { (_, lines) ->
+            val product = lines.first().product
+            val requested = lines.sumOf { it.quantity }
+            product.stockQuantity?.let { available ->
+                if (available < requested) throw InsufficientProductStockException("${product.name} has only $available item(s) left")
+                product.stockQuantity = available - requested
+            }
+        }
+        val decrementedProducts = resolved.map { it.product }.distinctBy { it.id }.filter { it.stockQuantity != null }
+        if (decrementedProducts.isNotEmpty()) merchantProductRepository.saveAll(decrementedProducts)
         val totalAmount = resolved.fold(BigDecimal.ZERO) { acc, r -> acc + r.unitPrice.multiply(BigDecimal(r.quantity)) }
 
         // Real 가게별 최소주문금액 (per-merchant minimum order amount) enforcement --
@@ -246,12 +267,30 @@ class OrderService(
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"orderId\":\"${order.id}\"}",
                 ),
             )
-            pushNotificationService.sendToUser(merchant.ownerUserId, title, body, mapOf("orderId" to order.id))
+            sendNewOrderPushAfterCommit(merchant.ownerUserId, title, body, order.id)
         } catch (e: Exception) {
             // Non-critical -- the real order already completed and succeeded.
         }
 
         return OrderDetail(order, orderItems)
+    }
+
+    /** A merchant must not be asked to fulfil an order whose payment transaction rolled back. */
+    private fun sendNewOrderPushAfterCommit(ownerUserId: String, title: String, body: String, orderId: String) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(ownerUserId, title, body, mapOf("orderId" to orderId))
+            } catch (e: Exception) {
+                logger.warn("Could not send new-order push for commerce order {}", orderId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     fun getMyOrders(buyerId: String, pageable: Pageable): Page<Order> =
@@ -474,6 +513,20 @@ class OrderService(
             LedgerLeg(entry.accountId, entry.accountType, flipped, entry.amount, "Refund for order ${order.id}")
         }
         val refund = ledgerService.postLedgerTransaction(originalEntries.first().currency, reversedLegs)
+
+        // A PLACED order has not begun fulfillment, so a completed cancellation puts
+        // its finite catalog units back into saleable inventory. This belongs in the
+        // same transaction as the reversal and status change: a refund without a
+        // restock (or the reverse) would leave the merchant's live availability wrong.
+        val itemsByProduct = orderItemRepository.findByOrderId(order.id).groupBy { it.productId }
+        val restockedProducts = itemsByProduct.mapNotNull { (productId, items) ->
+            val product = merchantProductRepository.findById(productId).orElse(null) ?: return@mapNotNull null
+            product.stockQuantity?.let { available ->
+                product.stockQuantity = Math.addExact(available, items.sumOf { it.quantity })
+                product
+            }
+        }
+        if (restockedProducts.isNotEmpty()) merchantProductRepository.saveAll(restockedProducts)
 
         order.status = OrderStatus.CANCELLED
         order.refundTransactionId = refund.transactionId

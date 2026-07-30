@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.LedgerEntry
@@ -14,6 +15,7 @@ import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantProduct
 import rw.itunda.core.domain.MerchantStatus
 import rw.itunda.core.domain.Order
+import rw.itunda.core.domain.OrderItem
 import rw.itunda.core.domain.OrderStatus
 import rw.itunda.core.domain.Rider
 import rw.itunda.core.domain.Wallet
@@ -77,6 +79,27 @@ class OrderServiceTest : BehaviorSpec({
         val buyerWallet = wallet("wallet_buyer", "buyer_1")
         val product = MerchantProduct(id = "product_1", merchantId = "merchant_1", name = "Coffee beans", price = BigDecimal("2000"))
 
+        When("a buyer requests more than the finite catalog stock") {
+            val stockedProduct = MerchantProduct(
+                id = "product_stocked", merchantId = "merchant_1", name = "Limited beans",
+                price = BigDecimal("2000"), stockQuantity = 2,
+            )
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("product_stocked") } returns Optional.of(stockedProduct)
+
+            Then("it rejects before debiting a wallet or mutating the available stock") {
+                try {
+                    service.placeOrder("buyer_1", "merchant_1", listOf(OrderItemRequest("product_stocked", 3)), "KG 123 St")
+                    error("expected InsufficientProductStockException")
+                } catch (e: InsufficientProductStockException) {
+                    stockedProduct.stockQuantity shouldBe 2
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
         When("a real buyer places a real order for 3 units") {
             every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
             every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
@@ -111,6 +134,39 @@ class OrderServiceTest : BehaviorSpec({
 
             Then("the merchant owner also gets a real push notification, not just the in-app one") {
                 verify(exactly = 1) { pushNotificationService.sendToUser("seller_1", "New order received", any(), any()) }
+            }
+        }
+
+        When("a marketplace order is still inside its payment transaction") {
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("product_1") } returns Optional.of(product)
+            every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_after_commit", emptyList())
+            every { orderRepository.save(any()) } answers { firstArg() }
+
+            TransactionSynchronizationManager.initSynchronization()
+            try {
+                service.placeOrder("buyer_1", "merchant_1", listOf(OrderItemRequest("product_1", 3)), "KG 123 St")
+
+                Then("the durable merchant notification is saved, but no external push is sent") {
+                    verify(exactly = 1) { notificationRepository.save(match { it.userId == "seller_1" && it.type == "NEW_COMMERCE_ORDER" }) }
+                    verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any()) }
+                }
+
+                Then("the merchant receives exactly one push after commit") {
+                    TransactionSynchronizationManager.getSynchronizations().single().afterCommit()
+                    verify(exactly = 1) {
+                        pushNotificationService.sendToUser(
+                            "seller_1",
+                            "New order received",
+                            any(),
+                            match { it.containsKey("orderId") },
+                        )
+                    }
+                }
+            } finally {
+                TransactionSynchronizationManager.clearSynchronization()
             }
         }
 
@@ -331,6 +387,15 @@ class OrderServiceTest : BehaviorSpec({
             val legsSlot = slot<List<LedgerLeg>>()
             every { ledgerService.postLedgerTransaction("RWF", capture(legsSlot)) } returns LedgerPostResult("refund_txn_1", emptyList())
             every { orderRepository.save(any()) } answers { firstArg() }
+            val stockedProduct = MerchantProduct(
+                id = "product_limited", merchantId = "merchant_1", name = "Limited beans",
+                price = BigDecimal("2000"), stockQuantity = 1,
+            )
+            every { orderItemRepository.findByOrderId("order_1") } returns listOf(
+                OrderItem("line_1", "order_1", "product_limited", "Limited beans", BigDecimal("2000"), 2),
+            )
+            every { merchantProductRepository.findById("product_limited") } returns Optional.of(stockedProduct)
+            every { merchantProductRepository.saveAll(any<List<MerchantProduct>>()) } answers { firstArg() }
 
             val result = service.cancelOrder("buyer_1", "order_1")
 
@@ -342,6 +407,10 @@ class OrderServiceTest : BehaviorSpec({
                 legs.first { it.accountId == "wallet_buyer" }.direction shouldBe LedgerDirection.CREDIT
                 legs.first { it.accountId == "wallet_merchant" }.direction shouldBe LedgerDirection.DEBIT
                 legs.first { it.accountId == "fee_revenue" }.direction shouldBe LedgerDirection.DEBIT
+            }
+
+            Then("it restores every finite item quantity to the live catalog") {
+                stockedProduct.stockQuantity shouldBe 3
             }
 
             Then("it does NOT notify the buyer about their own action") {

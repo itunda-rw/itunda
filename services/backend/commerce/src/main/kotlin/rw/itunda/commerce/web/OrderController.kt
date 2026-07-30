@@ -34,6 +34,7 @@ import rw.itunda.commerce.InvalidOrderStatusTransitionException
 import rw.itunda.commerce.InvalidProductRatingException
 import rw.itunda.commerce.InvalidProductReviewReplyException
 import rw.itunda.commerce.InvalidQuantityException
+import rw.itunda.commerce.InsufficientProductStockException
 import rw.itunda.commerce.InvalidReturnReasonException
 import rw.itunda.commerce.MerchantNoWalletException
 import rw.itunda.commerce.MerchantNotFoundException
@@ -420,6 +421,10 @@ class OrderController(
     @ExceptionHandler(InvalidQuantityException::class)
     fun handleInvalidQuantity(ex: InvalidQuantityException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_QUANTITY", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InsufficientProductStockException::class)
+    fun handleInsufficientStock(ex: InsufficientProductStockException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("INSUFFICIENT_PRODUCT_STOCK", ex.message ?: "Product is out of stock"))
 
     @ExceptionHandler(OrderProductNotFoundException::class)
     fun handleProductNotFound(ex: OrderProductNotFoundException) =
