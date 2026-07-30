@@ -18,6 +18,7 @@ import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
 import java.time.Period
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.UUID
 
@@ -69,6 +70,7 @@ class MiniWalletService(
         val MONTHLY_DEPOSIT_LIMIT: BigDecimal = BigDecimal("2000000")
         const val MIN_AGE: Int = 7
         const val MAX_AGE: Int = 18
+        private val RWANDA_ZONE: ZoneId = ZoneId.of("Africa/Kigali")
     }
 
     // No collision-avoidance loop, same accepted-risk precedent
@@ -84,7 +86,10 @@ class MiniWalletService(
         val user = userRepository.findById(userId).orElseThrow { WalletNotFoundException("No wallet found for this account") }
         val birthDate = user.birthDate
             ?: throw MiniWalletBirthDateRequiredException("Set your birth date before opening a Mini wallet")
-        val age = Period.between(birthDate, LocalDate.now(ZoneOffset.UTC)).years
+        // Age eligibility is a civil-date rule. Use the product's local time zone so a
+        // customer is not temporarily treated as one year younger around a UTC date
+        // boundary (which is especially visible from Rwanda's UTC+2 time zone).
+        val age = Period.between(birthDate, LocalDate.now(RWANDA_ZONE)).years
         if (age < MIN_AGE || age > MAX_AGE) {
             throw MiniWalletAgeIneligibleException("Mini wallet is only available for ages $MIN_AGE-$MAX_AGE")
         }
