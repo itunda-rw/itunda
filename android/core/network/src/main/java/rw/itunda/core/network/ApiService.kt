@@ -1381,6 +1381,35 @@ data class OverdraftRepayResponse(
     val newBalance: java.math.BigDecimal,
 )
 
+// Real Toss Bank 체크카드 (check/debit card) client (item 207) -- see backend
+// DebitCard.kt's own doc comment. bank-mfe shipped first (2026-07-31); this is the
+// first Android client. "Paying with your card" is itunda's own honest, ledger-backed
+// simulation of a card-present purchase -- no real Visa/Mastercard rail exists.
+data class CardDto(
+    val id: String,
+    val last4: String,
+    val dailyLimit: java.math.BigDecimal,
+    val monthlyLimit: java.math.BigDecimal,
+    val frozen: Boolean,
+    val issuedAt: String,
+    val spentToday: java.math.BigDecimal,
+    val spentThisMonth: java.math.BigDecimal,
+    val remainingToday: java.math.BigDecimal,
+    val remainingThisMonth: java.math.BigDecimal,
+)
+data class CardResponse(val success: Boolean, val card: CardDto)
+data class CardTransactionDto(
+    val id: String,
+    val cardId: String,
+    val amount: java.math.BigDecimal,
+    val merchantName: String,
+    val createdAt: String,
+)
+data class CardTransactionsResponse(val success: Boolean, val transactions: List<CardTransactionDto>, val totalElements: Long, val totalPages: Int)
+data class SetCardLimitsRequest(val dailyLimit: java.math.BigDecimal, val monthlyLimit: java.math.BigDecimal)
+data class ChargeCardRequest(val amount: java.math.BigDecimal, val merchantName: String)
+data class ChargeCardResponse(val success: Boolean, val transaction: CardTransactionDto, val card: CardDto)
+
 // Real customer support tickets, tied to a specific transaction (rw.itunda.support) --
 // found 2026-07-22 fully built on the backend with zero client UI anywhere; the
 // "Support" section in this app was five static rows (FAQ/Live chat/...) with no
@@ -2471,6 +2500,27 @@ interface ApiService {
 
     @POST("api/v1/loans/overdraft/repay")
     suspend fun repayOverdraft(@Header("Idempotency-Key") idempotencyKey: String, @Body request: OverdraftAmountRequest): OverdraftRepayResponse
+
+    @POST("api/v1/card/issue")
+    suspend fun issueCard(): CardResponse
+
+    @GET("api/v1/card/my-card")
+    suspend fun getMyCard(): CardResponse
+
+    @GET("api/v1/card/transactions")
+    suspend fun getCardTransactions(@Query("page") page: Int = 0, @Query("size") size: Int = 20): CardTransactionsResponse
+
+    @PUT("api/v1/card/limits")
+    suspend fun setCardLimits(@Body request: SetCardLimitsRequest): CardResponse
+
+    @POST("api/v1/card/freeze")
+    suspend fun freezeCard(): CardResponse
+
+    @POST("api/v1/card/unfreeze")
+    suspend fun unfreezeCard(): CardResponse
+
+    @POST("api/v1/card/charge")
+    suspend fun chargeCard(@Header("Idempotency-Key") idempotencyKey: String, @Body request: ChargeCardRequest): ChargeCardResponse
 
     @POST("api/v1/support/tickets")
     suspend fun createSupportTicket(@Body request: CreateSupportTicketRequest): CreateSupportTicketResponse

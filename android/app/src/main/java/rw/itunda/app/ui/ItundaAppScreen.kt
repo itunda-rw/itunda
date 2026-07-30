@@ -254,6 +254,9 @@ fun ItundaAppScreen(
         var showUpfrontDeposit by rememberSaveable { mutableStateOf(false) }
         var showMiniWallet by rememberSaveable { mutableStateOf(false) }
         var showGroupAccounts by rememberSaveable { mutableStateOf(false) }
+        // Real Toss Bank 체크카드 (check/debit card) screen (2026-07-31, item 207) --
+        // bank-mfe shipped first; same pattern.
+        var showCard by rememberSaveable { mutableStateOf(false) }
         var showSpending by rememberSaveable { mutableStateOf(false) }
         var showRides by rememberSaveable { mutableStateOf(false) }
         // Real 토스뱅크 외화통장 (foreign-currency account) screen (2026-07-25) -- same
@@ -710,6 +713,13 @@ fun ItundaAppScreen(
             MiniWalletScreen(onBack = { showMiniWallet = false })
             return@IdsTheme
         }
+        // Real Toss Bank 체크카드 (check/debit card) screen (2026-07-31, item 207) --
+        // first Android client, same "backend real, zero mobile UI" gap-close pattern.
+        if (showCard) {
+            BackHandler { showCard = false }
+            CardScreen(onBack = { showCard = false })
+            return@IdsTheme
+        }
         // Real Kakao Bank 모임통장 (group/shared account) screen (2026-07-28, item 104)
         // -- first Android client for this feature. Same pattern.
         if (showGroupAccounts) {
@@ -845,6 +855,7 @@ fun ItundaAppScreen(
                             onOpenWeeklySavings = { showWeeklySavings = true },
                             onOpenUpfrontDeposit = { showUpfrontDeposit = true },
                             onOpenMiniWallet = { showMiniWallet = true },
+                            onOpenCard = { showCard = true },
                             onOpenGroupAccounts = { showGroupAccounts = true },
                             onOpenSpending = { showSpending = true },
                             onOpenRides = { showRides = true },
@@ -1369,6 +1380,7 @@ private fun MenuScreen(
     onOpenWeeklySavings: () -> Unit = {},
     onOpenUpfrontDeposit: () -> Unit = {},
     onOpenMiniWallet: () -> Unit = {},
+    onOpenCard: () -> Unit = {},
     onOpenGroupAccounts: () -> Unit = {},
     onOpenSpending: () -> Unit = {},
     onOpenRides: () -> Unit = {},
@@ -1506,6 +1518,7 @@ private fun MenuScreen(
                 FlatRow("26-week savings", subtitle = "Escalating weekly deposit plan", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),
                 FlatRow("12-month deposit", subtitle = "Interest paid upfront, principal locked", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenUpfrontDeposit),
                 FlatRow("Mini account", subtitle = "Capped starter wallet, ages 7-18", icon = Icons.Outlined.Savings, iconColor = AccentTeal, onClick = onOpenMiniWallet),
+                FlatRow("Card", subtitle = "App-controlled spend limits, one-tap freeze", icon = Icons.Outlined.CreditCard, iconColor = AccentBlue, onClick = onOpenCard),
                 FlatRow("Group account", subtitle = "Shared account with dues and split expenses", icon = Icons.Outlined.Group, iconColor = AccentPurple, onClick = onOpenGroupAccounts),
                 FlatRow("Rides", subtitle = "Request a ride or drive for real fares", icon = Icons.Outlined.DirectionsCar, iconColor = AccentBlue, onClick = onOpenRides),
                 FlatRow("Foreign currency", subtitle = "Hold and convert USD, EUR, GBP", icon = Icons.Outlined.CurrencyExchange, iconColor = AccentBlue, onClick = onOpenForeignCurrency),
