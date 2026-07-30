@@ -511,18 +511,53 @@ scale_private_cloud_rollouts() {
 }
 
 promote_rollouts() {
-  local promote_flag="${1:---full}"
+  local target="${1:-}"
+  local promote_flag="${2:---full}"
   local rollout
+  local rollouts=()
+
+  case "$target" in
+    all)
+      rollouts=(api-gateway backend ledger-service payment-service)
+      ;;
+    api-gateway|backend|ledger-service|payment-service)
+      rollouts=("$target")
+      ;;
+    *)
+      echo "Choose exactly one rollout to promote: api-gateway, backend, ledger-service, payment-service, or explicit all." >&2
+      exit 1
+      ;;
+  esac
 
   require_cluster
   ensure_rollouts_cli_on_primary
 
-  for rollout in api-gateway backend ledger-service payment-service; do
+  for rollout in "${rollouts[@]}"; do
     run_vm "$PRIMARY_NODE" "
       set -euo pipefail
       sudo env KUBECONFIG='$(cluster_kubeconfig_path)' kubectl-argo-rollouts promote '${rollout}' -n itunda ${promote_flag}
     "
   done
+}
+
+abort_rollout() {
+  local rollout="${1:-}"
+
+  case "$rollout" in
+    api-gateway|backend|ledger-service|payment-service)
+      ;;
+    *)
+      echo "Choose exactly one rollout to abort: api-gateway, backend, ledger-service, or payment-service." >&2
+      exit 1
+      ;;
+  esac
+
+  require_cluster
+  ensure_rollouts_cli_on_primary
+  run_vm "$PRIMARY_NODE" "
+    set -euo pipefail
+    sudo env KUBECONFIG='$(cluster_kubeconfig_path)' kubectl-argo-rollouts abort '${rollout}' -n itunda
+  "
 }
 
 deploy_progressive() {
@@ -573,7 +608,7 @@ deploy_progressive() {
   override_rollout_images_if_set
   scale_private_cloud_rollouts
   if [[ "${PRIVATE_CLOUD_AUTO_PROMOTE_ROLLOUTS}" == "1" ]]; then
-    promote_rollouts --full
+    promote_rollouts all --full
   fi
   if cluster_kubectl "get namespace monitoring >/dev/null 2>&1"; then
     cluster_kubectl "apply -f ${DEPLOY_REPO_PATH}/infra/k8s/monitoring"
@@ -651,6 +686,25 @@ show_status() {
   fi
 }
 
+release_inventory() {
+  require_cluster
+
+  if ! cluster_kubectl "get crd rollouts.argoproj.io >/dev/null 2>&1"; then
+    echo "Argo Rollouts CRD is not installed." >&2
+    exit 1
+  fi
+
+  echo "Manual canary preflight (read-only)"
+  echo "Review the phase, pause state, desired/current availability, and requested image before promotion."
+  cluster_kubectl "-n itunda get rollout -o custom-columns='NAME:.metadata.name,PHASE:.status.phase,PAUSED:.status.pauseConditions[*].reason,DESIRED:.status.replicas,CURRENT:.status.currentReplicas,AVAILABLE:.status.availableReplicas,IMAGE:.spec.template.spec.containers[0].image'"
+  echo
+  echo "Running workload content IDs (runtime-resolved digests)"
+  cluster_kubectl "-n itunda get pods -l app -o custom-columns='POD:.metadata.name,APP:.metadata.labels.app,READY:.status.containerStatuses[0].ready,IMAGE_ID:.status.containerStatuses[0].imageID'"
+  echo
+  echo "Promotion remains manual on this low-memory cloud: bash scripts/private-cloud-platform.sh promote-rollouts <service> --full"
+  echo "Abort a single rollout: bash scripts/private-cloud-platform.sh abort-rollout <service>"
+}
+
 print_help() {
   cat <<'EOF'
 Usage: scripts/private-cloud-platform.sh <command>
@@ -664,7 +718,9 @@ Commands:
   deploy-progressive   Apply progressive-delivery app manifests
   deploy-kafka         Apply the live MirrorMaker 2 baseline against the audited Kafka brokers
   stabilize-control-plane Reduce control-plane pressure for low-memory kubeadm rehearsal
-  promote-rollouts     Promote the private-cloud app rollouts, defaulting to --full
+  promote-rollouts <service|all> [--full]  Promote one reviewed rollout; 'all' is explicit
+  abort-rollout <service> Abort one canary rollout and return traffic to its stable revision
+  release-inventory    Read-only canary preflight: rollout phase, availability, and image digest
   status               Show platform components and rollout objects
 EOF
 }
@@ -698,7 +754,13 @@ case "$MODE" in
     stabilize_control_plane
     ;;
   promote-rollouts)
-    promote_rollouts "${2:---full}"
+    promote_rollouts "${2:-}" "${3:---full}"
+    ;;
+  abort-rollout)
+    abort_rollout "${2:-}"
+    ;;
+  release-inventory)
+    release_inventory
     ;;
   status)
     show_status

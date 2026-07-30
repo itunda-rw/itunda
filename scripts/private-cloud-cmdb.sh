@@ -58,7 +58,12 @@ case "$MODE" in
           desiredNodeCount: ($desired[0].platform.nodes | length),
           desiredWorkloadClusterCount: ($desired[0].platform.clusters | map(select(.role == "workload")) | length),
           liveKafkaClusterCount: $live[0].summary.kafka.clusterCount,
-          liveMysqlWriterCount: $live[0].summary.mysql.writerCount
+          liveMysqlWriterCount: $live[0].summary.mysql.writerCount,
+          liveMysqlBackupAgeSeconds: $live[0].summary.recovery.mysqlBackup.ageSeconds,
+          liveWebhookDeliveriesPending: $live[0].summary.operations.webhookDeliveries.pending,
+          liveWebhookDeliveriesExhausted: $live[0].summary.operations.webhookDeliveries.exhausted,
+          liveFraudFlagsUnreviewed: $live[0].summary.operations.fraudReview.unreviewed,
+          liveFraudOldestUnreviewedAgeSeconds: $live[0].summary.operations.fraudReview.oldestUnreviewedAgeSeconds
         }
       }'
     rm -f "$desired_file" "$live_file"

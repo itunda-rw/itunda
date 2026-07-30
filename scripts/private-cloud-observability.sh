@@ -53,6 +53,10 @@ install_vm_metrics_on_node() {
   local tmpdir
 
   require_file "$NODE_METRICS_SCRIPT_PATH"
+  if ! bash -n "$NODE_METRICS_SCRIPT_PATH"; then
+    echo "Node metrics script has invalid Bash syntax: $NODE_METRICS_SCRIPT_PATH" >&2
+    exit 1
+  fi
   tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/itunda-observability.XXXXXX")"
   cp "$NODE_METRICS_SCRIPT_PATH" "$tmpdir/itunda-private-cloud-node-metrics.sh"
   render_systemd_service > "$tmpdir/${SYSTEMD_SERVICE_NAME}"

@@ -6,6 +6,30 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/private-cloud-lib.sh"
 
 MODE="${1:-help}"
 
+app_workload_kind() {
+  local name="$1"
+
+  if cluster_kubectl "-n itunda get rollout ${name} --ignore-not-found -o name" 2>/dev/null | grep -q .; then
+    printf '%s\n' "rollout"
+  else
+    printf '%s\n' "deployment"
+  fi
+}
+
+app_workload_ref() {
+  local name="$1"
+
+  printf '%s/%s\n' "$(app_workload_kind "$name")" "$name"
+}
+
+cluster_argo_rollouts() {
+  local args="$*"
+
+  # kubectl plugins require the plugin name before --kubeconfig, unlike ordinary
+  # kubectl commands wrapped by cluster_kubectl().
+  run_vm "$PRIMARY_NODE" "sudo kubectl argo rollouts ${args} --kubeconfig /etc/kubernetes/admin.conf"
+}
+
 verify_runtime_topology() {
   if [[ "${ITUNDA_PRIVATE_CLOUD_ALLOW_UNSAFE_TOPOLOGY:-0}" == "1" ]]; then
     echo "Skipping topology verification because ITUNDA_PRIVATE_CLOUD_ALLOW_UNSAFE_TOPOLOGY=1"
@@ -16,21 +40,21 @@ verify_runtime_topology() {
 }
 
 patch_image_pull_policy() {
-  local deployment="$1"
+  local workload="$1"
   local container="$2"
 
-  cluster_kubectl "-n itunda patch deployment ${deployment} --type merge -p '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${container}\",\"imagePullPolicy\":\"IfNotPresent\"}]}}}}'"
+  cluster_kubectl "-n itunda patch ${workload} --type merge -p '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"${container}\",\"imagePullPolicy\":\"IfNotPresent\"}]}}}}'"
 }
 
 override_images_if_set() {
-  [[ -n "${ITUNDA_BACKEND_IMAGE:-}" ]] && cluster_kubectl "-n itunda set image deployment/backend backend=${ITUNDA_BACKEND_IMAGE}"
-  [[ -n "${ITUNDA_API_GATEWAY_IMAGE:-}" ]] && cluster_kubectl "-n itunda set image deployment/api-gateway api-gateway=${ITUNDA_API_GATEWAY_IMAGE}"
-  [[ -n "${ITUNDA_LEDGER_IMAGE:-}" ]] && cluster_kubectl "-n itunda set image deployment/ledger-service ledger-service=${ITUNDA_LEDGER_IMAGE}"
-  [[ -n "${ITUNDA_PAYMENT_IMAGE:-}" ]] && cluster_kubectl "-n itunda set image deployment/payment-service payment-service=${ITUNDA_PAYMENT_IMAGE}"
+  [[ -n "${ITUNDA_BACKEND_IMAGE:-}" ]] && cluster_kubectl "-n itunda set image $(app_workload_ref backend) backend=${ITUNDA_BACKEND_IMAGE}"
+  [[ -n "${ITUNDA_API_GATEWAY_IMAGE:-}" ]] && cluster_kubectl "-n itunda set image $(app_workload_ref api-gateway) api-gateway=${ITUNDA_API_GATEWAY_IMAGE}"
+  [[ -n "${ITUNDA_LEDGER_IMAGE:-}" ]] && cluster_kubectl "-n itunda set image $(app_workload_ref ledger-service) ledger-service=${ITUNDA_LEDGER_IMAGE}"
+  [[ -n "${ITUNDA_PAYMENT_IMAGE:-}" ]] && cluster_kubectl "-n itunda set image $(app_workload_ref payment-service) payment-service=${ITUNDA_PAYMENT_IMAGE}"
 }
 
 apply_image_pull_secret_if_set() {
-  local deployment="$1"
+  local workload="$1"
   local patch
 
   if [[ -n "${ITUNDA_PRIVATE_CLOUD_PULL_SECRET_NAME:-}" ]]; then
@@ -39,21 +63,34 @@ apply_image_pull_secret_if_set() {
     patch='{"spec":{"template":{"spec":{"imagePullSecrets":null}}}}'
   fi
 
-  cluster_kubectl "-n itunda patch deployment ${deployment} --type merge -p $(shell_quote "$patch")"
+  cluster_kubectl "-n itunda patch ${workload} --type merge -p $(shell_quote "$patch")"
 }
 
 wait_for_rollouts() {
-  local deployment
+  local workload
+  local app
   local namespace
 
-  for deployment in backend api-gateway ledger-service payment-service; do
+  for app in backend api-gateway ledger-service payment-service; do
     namespace="itunda"
-    if ! cluster_kubectl "-n ${namespace} rollout status deployment/${deployment} --timeout=180s"; then
+    workload="$(app_workload_ref "$app")"
+    if [[ "$workload" == rollout/* ]]; then
+      cluster_argo_rollouts "status ${app} -n ${namespace} --timeout=180s" || {
+        echo
+        echo "Rollout failed for ${namespace}/${app}. Current pods:"
+        cluster_kubectl "-n ${namespace} get pods -o wide"
+        echo
+        cluster_kubectl "-n ${namespace} describe ${workload}"
+        return 1
+      }
+      continue
+    fi
+    if ! cluster_kubectl "-n ${namespace} rollout status ${workload} --timeout=180s"; then
       echo
-      echo "Rollout failed for ${namespace}/${deployment}. Current pods:"
+      echo "Rollout failed for ${namespace}/${app}. Current pods:"
       cluster_kubectl "-n ${namespace} get pods -o wide"
       echo
-      cluster_kubectl "-n ${namespace} describe deployment/${deployment}"
+      cluster_kubectl "-n ${namespace} describe ${workload}"
       return 1
     fi
   done
@@ -88,7 +125,7 @@ show_status() {
   cluster_kubectl "get nodes -o wide"
   echo
   echo "Workloads"
-  cluster_kubectl "-n itunda get deploy,po,svc"
+  cluster_kubectl "-n itunda get rollout,deploy,po,svc"
   echo
   echo "Monitoring"
   cluster_kubectl "-n monitoring get deploy,po,svc"
@@ -108,6 +145,10 @@ deploy_private_cloud() {
   fi
 
   require_kubeadm_cluster
+  if cluster_kubectl "-n itunda get rollout api-gateway --ignore-not-found -o name" 2>/dev/null | grep -q .; then
+    echo "Refusing legacy deployment manifest apply: this cluster uses Argo Rollouts. Run scripts/private-cloud-platform.sh deploy-progressive instead." >&2
+    exit 1
+  fi
   bash "$ROOT_DIR/scripts/private-cloud-kafka-topics.sh" ensure
   if writer_node="$(private_cloud_db_writer_node 2>/dev/null)"; then
     if [[ -n "$(mysql_container_on_node "$writer_node" || true)" ]]; then
@@ -130,15 +171,15 @@ deploy_private_cloud() {
   cluster_kubectl "apply -f ${DEPLOY_REPO_PATH}/infra/k8s/monitoring"
   cluster_kubectl "apply -f ${DEPLOY_REPO_PATH}/infra/k8s/private-cloud/nodeports.yaml"
 
-  patch_image_pull_policy backend backend
-  patch_image_pull_policy api-gateway api-gateway
-  patch_image_pull_policy ledger-service ledger-service
-  patch_image_pull_policy payment-service payment-service
+  patch_image_pull_policy "$(app_workload_ref backend)" backend
+  patch_image_pull_policy "$(app_workload_ref api-gateway)" api-gateway
+  patch_image_pull_policy "$(app_workload_ref ledger-service)" ledger-service
+  patch_image_pull_policy "$(app_workload_ref payment-service)" payment-service
   override_images_if_set
-  apply_image_pull_secret_if_set backend
-  apply_image_pull_secret_if_set api-gateway
-  apply_image_pull_secret_if_set ledger-service
-  apply_image_pull_secret_if_set payment-service
+  apply_image_pull_secret_if_set "$(app_workload_ref backend)"
+  apply_image_pull_secret_if_set "$(app_workload_ref api-gateway)"
+  apply_image_pull_secret_if_set "$(app_workload_ref ledger-service)"
+  apply_image_pull_secret_if_set "$(app_workload_ref payment-service)"
 
   wait_for_rollouts
 

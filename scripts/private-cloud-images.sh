@@ -16,6 +16,22 @@ service_keys() {
   printf '%s\n' api-gateway backend ledger-service payment-service
 }
 
+ensure_remote_build_headroom() {
+  local minimum_mb="${ITUNDA_PRIVATE_CLOUD_MIN_BUILD_AVAILABLE_MB:-1536}"
+  local available_mb
+
+  if [[ ! "$minimum_mb" =~ ^[0-9]+$ ]] || (( minimum_mb < 256 )); then
+    echo "ITUNDA_PRIVATE_CLOUD_MIN_BUILD_AVAILABLE_MB must be an integer of at least 256." >&2
+    exit 1
+  fi
+
+  available_mb="$(run_vm "$PRIMARY_NODE" "awk '/MemAvailable:/{print int(\$2 / 1024)}' /proc/meminfo" | tr -d '\r')"
+  if [[ ! "$available_mb" =~ ^[0-9]+$ ]] || (( available_mb < minimum_mb )); then
+    echo "Refusing private-cloud image build: ${PRIMARY_NODE} has ${available_mb:-unknown} MiB available memory; at least ${minimum_mb} MiB is required. Use normal CI or free capacity before building." >&2
+    exit 1
+  fi
+}
+
 selected_services() {
   local service
 
@@ -88,6 +104,7 @@ build_service_image_remote() {
   local image_tag="${3:-$IMAGE_TAG_DEFAULT}"
   local image
 
+  ensure_remote_build_headroom
   image="$(image_ref "$service" "$registry_host" "$image_tag")"
   run_vm "$PRIMARY_NODE" "
     set -euo pipefail
@@ -155,6 +172,9 @@ run_remote_for_all_services() {
   local service
 
   require_cmd multipass
+  if [[ "$action" == "build" ]]; then
+    ensure_remote_build_headroom
+  fi
   stage_repo_on_primary
 
   while IFS= read -r service; do
@@ -208,6 +228,7 @@ build_push_private_cloud() {
   local service
 
   require_cmd multipass
+  ensure_remote_build_headroom
   stage_repo_on_primary
 
   while IFS= read -r service; do
