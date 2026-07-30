@@ -11,6 +11,7 @@ import io.mockk.slot
 import io.mockk.verify
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.EatsFulfillmentType
@@ -150,6 +151,39 @@ class EatsOrderServiceTest : BehaviorSpec({
 
             Then("the restaurant owner also gets a real push notification, not just the in-app one") {
                 verify(exactly = 1) { pushNotificationService.sendToUser("owner_1", "New order received", any(), any()) }
+            }
+        }
+
+        When("a restaurant order is still inside its payment transaction") {
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_after_commit", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+
+            TransactionSynchronizationManager.initSynchronization()
+            try {
+                service.placeOrder("buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 2)), "KG 9 Ave")
+
+                Then("the order notification is durable, but the restaurant push is withheld") {
+                    verify(exactly = 1) { notificationRepository.save(match { it.userId == "owner_1" && it.type == "NEW_EATS_ORDER" }) }
+                    verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any()) }
+                }
+
+                Then("the restaurant receives the push only after commit") {
+                    TransactionSynchronizationManager.getSynchronizations().single().afterCommit()
+                    verify(exactly = 1) {
+                        pushNotificationService.sendToUser(
+                            "owner_1",
+                            "New order received",
+                            any(),
+                            match { it.containsKey("orderId") },
+                        )
+                    }
+                }
+            } finally {
+                TransactionSynchronizationManager.clearSynchronization()
             }
         }
 

@@ -21,6 +21,7 @@ import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.Optional
+import org.springframework.transaction.support.TransactionSynchronizationManager
 
 /**
  * First test coverage for loans. repayLoan's ownership check is documented in
@@ -409,6 +410,36 @@ class LoansServiceTest : BehaviorSpec({
 
             Then("it returns the real, named lender catalog") {
                 lenders.map { it.name } shouldBe listOf("Itunda", "Bank of Kigali", "Equity Bank Rwanda", "Urwego Bank")
+            }
+        }
+    }
+
+    Given("a loan disbursement inside a transaction") {
+        val walletRepository = mockk<WalletRepository>()
+        val loanAccountRepository = mockk<LoanAccountRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val creditScoreService = mockk<CreditScoreService>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = LoansService(walletRepository, loanAccountRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
+        every { loanAccountRepository.findByUserId("user_after_commit") } returns emptyList()
+        every { creditScoreService.computeScore("user_after_commit") } returns CreditScoreResult(700, emptyList(), Instant.now())
+        every { walletRepository.findByUserIdAndType("user_after_commit", WalletType.MAIN) } returns wallet("wallet_after_commit", "user_after_commit")
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_after_commit", emptyList())
+        every { loanAccountRepository.save(any()) } answers { firstArg() }
+        every { notificationRepository.save(any()) } answers { firstArg() }
+
+        Then("the durable alert is saved, but its push waits for commit") {
+            TransactionSynchronizationManager.initSynchronization()
+            try {
+                service.applyForLoan("user_after_commit", "loan_1", BigDecimal("10000"))
+                verify(exactly = 1) { notificationRepository.save(any()) }
+                verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any()) }
+
+                TransactionSynchronizationManager.getSynchronizations().single().afterCommit()
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_after_commit", any(), any(), any()) }
+            } finally {
+                TransactionSynchronizationManager.clearSynchronization()
             }
         }
     }

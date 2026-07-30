@@ -2,8 +2,11 @@ package rw.itunda.eats
 
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.DineInOrder
 import rw.itunda.core.domain.DineInOrderItem
 import rw.itunda.core.domain.DineInOrderStatus
@@ -75,6 +78,8 @@ class DineInOrderService(
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
 ) {
+    private val logger = LoggerFactory.getLogger(DineInOrderService::class.java)
+
     companion object {
         // Same 1.5% Toss Payments fee-schedule reasoning OrderService.feeRate/
         // EatsOrderService.platformFeeRate already give -- reused rather than inventing a
@@ -315,7 +320,7 @@ class DineInOrderService(
                 dataJson = "{\"orderId\":\"${order.id}\"}",
             ),
         )
-        pushNotificationService.sendToUser(restaurantOwnerUserId, title, body, mapOf("orderId" to order.id))
+        sendPushAfterCommit(restaurantOwnerUserId, title, body, order.id)
     }
 
     private fun notifyBuyer(order: DineInOrder, title: String, body: String) {
@@ -328,6 +333,24 @@ class DineInOrderService(
         )
         // Real push (item 124) -- same buyer-facing status-update urgency as
         // OrderService.notifyBuyer's own matching Commerce gap, closed the same pass.
-        pushNotificationService.sendToUser(order.buyerId, title, body, mapOf("orderId" to order.id))
+        sendPushAfterCommit(order.buyerId, title, body, order.id)
+    }
+
+    /** Dine-in alerts must describe only a committed order or committed refund state. */
+    private fun sendPushAfterCommit(userId: String, title: String, body: String, orderId: String) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body, mapOf("orderId" to orderId))
+            } catch (e: Exception) {
+                logger.warn("Could not send dine-in order push for order {}", orderId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 }

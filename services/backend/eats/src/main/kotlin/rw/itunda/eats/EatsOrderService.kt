@@ -6,6 +6,8 @@ import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.EatsFulfillmentType
 import rw.itunda.core.domain.EatsOrder
@@ -513,12 +515,30 @@ class EatsOrderService(
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"orderId\":\"${order.id}\"}",
                 ),
             )
-            pushNotificationService.sendToUser(restaurant.ownerUserId, title, body, mapOf("orderId" to order.id))
+            sendNewOrderPushAfterCommit(restaurant.ownerUserId, title, body, order.id)
         } catch (e: Exception) {
             // Non-critical -- the real order already completed and succeeded.
         }
 
         return EatsOrderDetail(order, orderItems)
+    }
+
+    /** Restaurant operations must not receive an order alert until its payment and order rows commit. */
+    private fun sendNewOrderPushAfterCommit(ownerUserId: String, title: String, body: String, orderId: String) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(ownerUserId, title, body, mapOf("orderId" to orderId))
+            } catch (e: Exception) {
+                logger.warn("Could not send new-order push for eats order {}", orderId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     fun getMyOrders(buyerId: String, pageable: Pageable): Page<EatsOrder> =

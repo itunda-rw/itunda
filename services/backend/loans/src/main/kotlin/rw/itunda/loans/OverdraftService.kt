@@ -2,6 +2,8 @@ package rw.itunda.loans
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.creditscore.CreditScoreService
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
@@ -93,9 +95,21 @@ class OverdraftService(
                 isRead = false, createdAt = Instant.now(), dataJson = "{\"overdraftId\":\"${account.id}\"}",
             ),
         )
-        pushNotificationService.sendToUser(userId, title, body, mapOf("overdraftId" to account.id))
+        sendOverdraftOpenedPushAfterCommit(userId, title, body, account.id)
 
         return account
+    }
+
+    /** Do not send a credit-product security alert until its account creation commits. */
+    private fun sendOverdraftOpenedPushAfterCommit(userId: String, title: String, body: String, overdraftId: String) {
+        val send = { pushNotificationService.sendToUser(userId, title, body, mapOf("overdraftId" to overdraftId)) }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     @Transactional

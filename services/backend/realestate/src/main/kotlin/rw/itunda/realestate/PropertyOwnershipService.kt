@@ -36,6 +36,9 @@ class PropertyOwnershipService(
         if (trimmedUrl.isEmpty() || trimmedUrl.length > 255) {
             throw InvalidPropertyListingException("A document URL is required and must be 255 characters or fewer")
         }
+        if (!trimmedUrl.startsWith("/api/v1/uploads/")) {
+            throw InvalidPropertyListingException("Document URL must reference a real uploaded file")
+        }
         val existing = propertyOwnershipSubmissionRepository.findByListingIdOrderBySubmittedAtDesc(listingId)
         if (existing.any { it.status == "PENDING" }) {
             throw PropertyOwnershipSubmissionAlreadyPendingException("An ownership verification is already pending review for this listing")

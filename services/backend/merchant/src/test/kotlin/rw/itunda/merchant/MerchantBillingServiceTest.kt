@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.Merchant
 import rw.itunda.core.domain.MerchantBillingPlan
@@ -202,6 +203,38 @@ class MerchantBillingServiceTest : BehaviorSpec({
             Then("it returns true and advances the schedule without throwing") {
                 succeeded shouldBe true
                 subscription.chargeCount shouldBe 4
+            }
+        }
+
+        When("a recurring charge is recorded inside an uncommitted transaction") {
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+            every { walletRepository.findByUserIdAndType("customer_1", WalletType.MAIN) } returns customerWallet
+            every { walletRepository.findById("wallet_merchant") } returns Optional.of(merchantWallet)
+            every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("txn_after_commit", emptyList())
+
+            TransactionSynchronizationManager.initSynchronization()
+            try {
+                val succeeded = service.chargeOne(subscription, plan)
+
+                Then("the charge is recorded, but its external push is still withheld") {
+                    succeeded shouldBe true
+                    verify(exactly = 1) { notificationRepository.save(any()) }
+                    verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any()) }
+                }
+
+                Then("the customer push is emitted only by the commit callback") {
+                    TransactionSynchronizationManager.getSynchronizations().single().afterCommit()
+                    verify(exactly = 1) {
+                        pushNotificationService.sendToUser(
+                            "customer_1",
+                            "Subscription charged",
+                            any(),
+                            mapOf("subscriptionId" to "billing_sub_1"),
+                        )
+                    }
+                }
+            } finally {
+                TransactionSynchronizationManager.clearSynchronization()
             }
         }
 

@@ -37,6 +37,13 @@ data class ReactionGroup(val emoji: String, val userIds: List<String>)
  * attempted here since itunda currently runs single-instance).
  */
 interface RealtimeMessagePublisher {
+    /**
+     * Terminates sockets authenticated with one specific access-token ID. This lets a
+     * logout revoke its own live sessions without disconnecting the user's other
+     * devices, which may hold independently issued access tokens.
+     */
+    fun closeSessionsForToken(userId: String, tokenId: String)
+
     fun publishNewMessage(conversationId: String, recipientUserId: String, message: Message)
 
     /** Same real push, fanned out to every other real member of a group conversation

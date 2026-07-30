@@ -14,6 +14,7 @@ import rw.itunda.core.ledger.WalletFrozenException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.insurance.InsuranceService
+import rw.itunda.insurance.InvalidClaimException
 import rw.itunda.insurance.NoWalletException
 import rw.itunda.insurance.PlanNotFoundException
 import rw.itunda.insurance.PolicyNotActiveException
@@ -107,6 +108,9 @@ class InsuranceController(
 
     @ExceptionHandler(PolicyNotActiveException::class)
     fun handlePolicyNotActive(ex: PolicyNotActiveException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("POLICY_NOT_ACTIVE", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(InvalidClaimException::class)
+    fun handleInvalidClaim(ex: InvalidClaimException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_CLAIM", ex.message ?: "Bad request"))
 
     @ExceptionHandler(IdempotencyConflictException::class)
     fun handleConflict(ex: IdempotencyConflictException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENCY_KEY_CONFLICT", ex.message ?: "Conflict"))

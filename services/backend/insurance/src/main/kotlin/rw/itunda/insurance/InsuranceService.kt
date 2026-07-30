@@ -26,6 +26,7 @@ class PolicyNotFoundException(message: String) : RuntimeException(message)
 class PolicyNotActiveException(message: String) : RuntimeException(message)
 class ClaimNotFoundException(message: String) : RuntimeException(message)
 class ClaimNotPendingException(message: String) : RuntimeException(message)
+class InvalidClaimException(message: String) : RuntimeException(message)
 
 @Service
 class InsuranceService(
@@ -82,7 +83,11 @@ class InsuranceService(
     }
 
     fun submitClaim(userId: String, policyId: String, description: String, amount: BigDecimal): InsuranceClaim {
-        require(amount > BigDecimal.ZERO) { "Claim amount must be greater than zero" }
+        if (amount <= BigDecimal.ZERO) throw InvalidClaimException("Claim amount must be greater than zero")
+        val trimmedDescription = description.trim()
+        if (trimmedDescription.isEmpty() || trimmedDescription.length > 255) {
+            throw InvalidClaimException("Claim description is required and must be 255 characters or fewer")
+        }
         // Real anti-spam limit -- found missing in a 2026-07-19 security sweep. Filing
         // is deliberately not Idempotency-Key protected (not money-moving), but that left
         // it with zero protection of any kind against a flood of bogus claims.
@@ -93,7 +98,7 @@ class InsuranceService(
         if (policy.status != "active") {
             throw PolicyNotActiveException("Cannot file a claim against a ${policy.status} policy")
         }
-        val claim = InsuranceClaim(id = "claim_${UUID.randomUUID()}", policyId = policyId, userId = userId, description = description, amount = amount)
+        val claim = InsuranceClaim(id = "claim_${UUID.randomUUID()}", policyId = policyId, userId = userId, description = trimmedDescription, amount = amount)
         return insuranceClaimRepository.save(claim)
     }
 

@@ -1,11 +1,13 @@
 package rw.itunda.rideshare
 
+import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.RideDriver
 import rw.itunda.core.domain.RideTrip
@@ -92,6 +94,27 @@ class RideTripServiceTest : BehaviorSpec({
 
             Then("the offered driver also gets a real push notification, not just the in-app one -- critical given the 15-second window") {
                 verify(exactly = 1) { pushNotificationService.sendToUser("driver_user_1", "New ride request", any(), any()) }
+            }
+        }
+
+        When("a ride request is still inside its payment transaction") {
+            TransactionSynchronizationManager.initSynchronization()
+            try {
+                service.requestTrip(
+                    "passenger_1", "Kigali Heights", -1.9536, 30.0605, "Kigali Convention Centre", -1.9506, 30.0925,
+                )
+
+                Then("the driver offer is stored, but its external push is withheld") {
+                    verify(exactly = 1) { notificationRepository.save(match { it.type == "RIDE_TRIP_OFFER" && it.userId == "driver_user_1" }) }
+                    verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any()) }
+                }
+
+                Then("the offered driver receives one push only after commit") {
+                    TransactionSynchronizationManager.getSynchronizations().single().afterCommit()
+                    verify(exactly = 1) { pushNotificationService.sendToUser("driver_user_1", "New ride request", any(), any()) }
+                }
+            } finally {
+                TransactionSynchronizationManager.clearSynchronization()
             }
         }
     }
@@ -260,4 +283,6 @@ class RideTripServiceTest : BehaviorSpec({
             }
         }
     }
-})
+}) {
+    override fun isolationMode() = IsolationMode.InstancePerLeaf
+}

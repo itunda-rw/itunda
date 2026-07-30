@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.Contact
@@ -123,11 +124,33 @@ interface UserRepository : JpaRepository<User, String> {
 }
 
 interface EmailVerificationTokenRepository : JpaRepository<EmailVerificationToken, String> {
-    fun findByToken(token: String): EmailVerificationToken?
+    /** A verification challenge may be consumed by at most one confirmation transaction. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    fun findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc(userId: String): EmailVerificationToken?
+
+    @Modifying
+    @Query("UPDATE EmailVerificationToken e SET e.usedAt = CURRENT_TIMESTAMP WHERE e.userId = :userId AND e.usedAt IS NULL")
+    fun invalidateUnusedByUserId(@Param("userId") userId: String): Int
+
+    /** Removes challenges that can no longer be presented successfully. */
+    @Modifying
+    @Query("DELETE FROM EmailVerificationToken e WHERE e.expiresAt < :expiredBefore")
+    fun deleteExpiredBefore(@Param("expiredBefore") expiredBefore: Instant): Int
 }
 
 interface PhoneVerificationTokenRepository : JpaRepository<PhoneVerificationToken, String> {
-    fun findByToken(token: String): PhoneVerificationToken?
+    /** A verification challenge may be consumed by at most one confirmation transaction. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    fun findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc(userId: String): PhoneVerificationToken?
+
+    @Modifying
+    @Query("UPDATE PhoneVerificationToken p SET p.usedAt = CURRENT_TIMESTAMP WHERE p.userId = :userId AND p.usedAt IS NULL")
+    fun invalidateUnusedByUserId(@Param("userId") userId: String): Int
+
+    /** Removes challenges that can no longer be presented successfully. */
+    @Modifying
+    @Query("DELETE FROM PhoneVerificationToken p WHERE p.expiresAt < :expiredBefore")
+    fun deleteExpiredBefore(@Param("expiredBefore") expiredBefore: Instant): Int
 }
 
 interface WalletRepository : JpaRepository<Wallet, String> {
@@ -213,6 +236,20 @@ interface AgentTillReconciliationRepository : JpaRepository<AgentTillReconciliat
 interface TransactionRepository : JpaRepository<Transaction, String> {
     fun findBySenderIdOrRecipientIdOrderByCreatedAtDesc(senderId: String, recipientId: String): List<Transaction>
     fun existsBySenderIdAndTypeAndStatus(senderId: String, type: TransactionType, status: TransactionStatus): Boolean
+
+    /** Operations dashboard: settled volume belongs to the day a transaction completed. */
+    @Query("select coalesce(sum(t.amount), 0) from Transaction t where t.status = :status and t.completedAt >= :from and t.completedAt < :to")
+    fun sumAmountByStatusAndCompletedAtBetween(
+        @Param("status") status: TransactionStatus,
+        @Param("from") from: Instant,
+        @Param("to") to: Instant,
+    ): java.math.BigDecimal
+
+    fun countByStatusAndCompletedAtGreaterThanEqualAndCompletedAtLessThan(
+        status: TransactionStatus,
+        from: Instant,
+        to: Instant,
+    ): Long
 
     // Merchant reports (2026-07-16): a merchant collection's Transaction row has
     // recipientId = the merchant owner's userId (see MerchantService.collect), so this

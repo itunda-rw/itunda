@@ -24,6 +24,7 @@ import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.Optional
+import org.springframework.transaction.support.TransactionSynchronizationManager
 
 /** First test coverage for the real Toss Bank/KakaoBank 마이너스통장 (overdraft/revolving
  * line-of-credit) -- see OverdraftAccount.kt's own doc comment for the full sourced
@@ -272,6 +273,35 @@ class OverdraftServiceTest : BehaviorSpec({
 
             Then("it real-includes only the never-yet-accrued nonzero-balance account -- honestly excluding a real zero balance and a too-recent accrual") {
                 due shouldBe listOf(neverAccrued)
+            }
+        }
+    }
+
+    Given("an overdraft opening inside a transaction") {
+        val overdraftAccountRepository = mockk<OverdraftAccountRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val creditScoreService = mockk<CreditScoreService>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = OverdraftService(overdraftAccountRepository, walletRepository, ledgerService, creditScoreService, notificationRepository, pushNotificationService)
+        every { overdraftAccountRepository.findByUserIdAndStatus("user_after_commit", OverdraftAccountStatus.ACTIVE) } returns null
+        every { creditScoreService.computeScore("user_after_commit") } returns CreditScoreResult(700, emptyList(), Instant.now())
+        every { walletRepository.findByUserIdAndType("user_after_commit", WalletType.MAIN) } returns wallet("wallet_after_commit", "user_after_commit")
+        every { overdraftAccountRepository.save(any()) } answers { firstArg() }
+        every { notificationRepository.save(any()) } answers { firstArg() }
+
+        Then("the durable alert is saved, but its push waits for commit") {
+            TransactionSynchronizationManager.initSynchronization()
+            try {
+                service.openOverdraft("user_after_commit", BigDecimal("100000"))
+                verify(exactly = 1) { notificationRepository.save(any()) }
+                verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any()) }
+
+                TransactionSynchronizationManager.getSynchronizations().single().afterCommit()
+                verify(exactly = 1) { pushNotificationService.sendToUser("user_after_commit", any(), any(), any()) }
+            } finally {
+                TransactionSynchronizationManager.clearSynchronization()
             }
         }
     }
