@@ -24,8 +24,9 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.rideshare.InvalidRideDriverLocationException
 import rw.itunda.rideshare.InvalidRideLocationException
-import rw.itunda.rideshare.InvalidScheduledRideTimeException
+import rw.itunda.rideshare.InvalidRideRatingException
 import rw.itunda.rideshare.InvalidRideTripStatusTransitionException
+import rw.itunda.rideshare.InvalidScheduledRideTimeException
 import rw.itunda.rideshare.RideDriverAlreadyOnTripException
 import rw.itunda.rideshare.RideDriverAlreadyRegisteredException
 import rw.itunda.rideshare.RideDriverNoWalletException
@@ -35,11 +36,17 @@ import rw.itunda.rideshare.RideDriverService
 import rw.itunda.rideshare.RideNoActiveOfferException
 import rw.itunda.rideshare.RideSelfTripException
 import rw.itunda.rideshare.RideTripAlreadyClaimedException
+import rw.itunda.rideshare.RideTripAlreadyReviewedException
 import rw.itunda.rideshare.RideTripNotFoundException
+import rw.itunda.rideshare.RideTripNotYetCompletedException
+import rw.itunda.rideshare.RideTripReviewService
 import rw.itunda.rideshare.RideTripService
 
 data class SetDriverAvailabilityRequest(val available: Boolean)
 data class UpdateDriverLocationRequest(val latitude: Double, val longitude: Double)
+// Real Kakao T-style post-trip driver rating (item 213) -- see RideTripReview.kt's own
+// doc comment.
+data class SubmitRideReviewRequest(val rating: Int, val comment: String? = null)
 data class RequestTripRequest(
     val pickupAddress: String,
     val pickupLatitude: Double,
@@ -60,6 +67,7 @@ data class RequestTripRequest(
 class RideController(
     private val rideDriverService: RideDriverService,
     private val rideTripService: RideTripService,
+    private val rideTripReviewService: RideTripReviewService,
     private val idempotencyService: IdempotencyService,
 ) {
     @PostMapping("/drivers/register")
@@ -144,6 +152,33 @@ class RideController(
     fun cancelTrip(@PathVariable tripId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "trip" to rideTripService.cancelTrip(currentUser.userId, tripId)))
 
+    // Real Kakao T-style post-trip driver rating (item 213) -- see RideTripReviewService's
+    // own doc comment.
+    @PostMapping("/trips/{tripId}/review")
+    fun submitReview(
+        @PathVariable tripId: String,
+        @RequestBody request: SubmitRideReviewRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val review = rideTripReviewService.submitReview(currentUser.userId, tripId, request.rating, request.comment)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "review" to review))
+    }
+
+    @GetMapping("/drivers/{driverId}/reviews")
+    fun getDriverReviews(
+        @PathVariable driverId: String,
+        @PageableDefault(size = 20) pageable: Pageable,
+    ): ResponseEntity<Map<String, Any?>> {
+        val page = rideTripReviewService.getDriverReviews(driverId, pageable)
+        return ResponseEntity.ok(mapOf("success" to true, "reviews" to page.content) + pageMeta(page))
+    }
+
+    @GetMapping("/drivers/{driverId}/rating")
+    fun getDriverRating(@PathVariable driverId: String): ResponseEntity<Map<String, Any?>> {
+        val rating = rideTripReviewService.getDriverRating(driverId)
+        return ResponseEntity.ok(mapOf("success" to true, "average" to rating.average, "count" to rating.count))
+    }
+
     @ExceptionHandler(RideDriverAlreadyRegisteredException::class)
     fun handleAlreadyRegistered(ex: RideDriverAlreadyRegisteredException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("RIDE_DRIVER_ALREADY_REGISTERED", ex.message ?: "Conflict"))
@@ -171,6 +206,18 @@ class RideController(
     @ExceptionHandler(InvalidScheduledRideTimeException::class)
     fun handleInvalidScheduledRideTime(ex: InvalidScheduledRideTimeException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_SCHEDULED_TIME", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidRideRatingException::class)
+    fun handleInvalidRating(ex: InvalidRideRatingException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_RATING", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(RideTripNotYetCompletedException::class)
+    fun handleTripNotYetCompleted(ex: RideTripNotYetCompletedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("RIDE_TRIP_NOT_YET_COMPLETED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(RideTripAlreadyReviewedException::class)
+    fun handleTripAlreadyReviewed(ex: RideTripAlreadyReviewedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("RIDE_TRIP_ALREADY_REVIEWED", ex.message ?: "Conflict"))
 
     @ExceptionHandler(RideTripNotFoundException::class)
     fun handleTripNotFound(ex: RideTripNotFoundException) =

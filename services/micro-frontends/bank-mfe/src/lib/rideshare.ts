@@ -97,3 +97,30 @@ export const completeRideTrip = (tripId: string) =>
 
 export const cancelRideTrip = (tripId: string) =>
   apiFetch<{ success: boolean; trip: RideTrip }>(`/api/v1/rides/trips/${tripId}/cancel`, { method: 'POST' }).then((r) => r.trip);
+
+// Real Kakao T-style post-trip driver rating (item 213) -- see the backend's
+// RideTripReview.kt doc comment for the full sourced account.
+export interface RideTripReview {
+  id: string;
+  tripId: string;
+  passengerId: string;
+  driverId: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+}
+
+export interface RideDriverRating {
+  average: number | null;
+  count: number;
+}
+
+export const submitRideReview = (tripId: string, rating: number, comment?: string) =>
+  apiFetch<{ success: boolean; review: RideTripReview }>(`/api/v1/rides/trips/${tripId}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ rating, comment }),
+  }).then((r) => r.review);
+
+export const fetchDriverRating = (driverId: string) =>
+  apiFetch<{ success: boolean; average: number | null; count: number }>(`/api/v1/rides/drivers/${driverId}/rating`)
+    .then((r) => ({ average: r.average, count: r.count }));

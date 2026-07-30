@@ -123,9 +123,10 @@ import {
   type AutoTransfer, type AutoTransferFrequency,
 } from './lib/autoTransfers';
 import {
-  acceptRideTrip, cancelRideTrip, completeRideTrip, declineRideTrip, fetchAvailableTrips, fetchMyDriverProfile, fetchMyDriverTrips,
-  fetchMyTrips, registerAsDriver, requestRideTrip, setDriverAvailability, startRideTrip, updateDriverLocation,
-  type RideDriver, type RideTrip,
+  acceptRideTrip, cancelRideTrip, completeRideTrip, declineRideTrip, fetchAvailableTrips, fetchDriverRating, fetchMyDriverProfile,
+  fetchMyDriverTrips, fetchMyTrips, registerAsDriver, requestRideTrip, setDriverAvailability, startRideTrip, submitRideReview,
+  updateDriverLocation,
+  type RideDriver, type RideDriverRating, type RideTrip,
 } from './lib/rideshare';
 
 type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY';
@@ -9909,6 +9910,60 @@ function RideTripCard({ trip, action }: { trip: RideTrip; action?: React.ReactNo
   );
 }
 
+// Real Kakao T-style post-trip driver rating (item 213) -- one real review per real
+// trip, rating the driver who completed it. See lib/rideshare.ts's own doc comment.
+function RideReviewPrompt({ tripId, onSubmitted }: { tripId: string; onSubmitted: () => void }) {
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async () => {
+    if (rating === 0) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await submitRideReview(tripId, rating, comment || undefined);
+      onSubmitted();
+    } catch (err) {
+      // Real 409 (RIDE_TRIP_ALREADY_REVIEWED) means this trip was already rated in an
+      // earlier session -- hide the prompt rather than surfacing a confusing error.
+      if (err instanceof ApiError && err.code === 'RIDE_TRIP_ALREADY_REVIEWED') onSubmitted();
+      else setError(err instanceof ApiError ? err.message : 'Could not submit your rating.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--toss-grey-100)' }}>
+      <p style={{ fontSize: '12px', fontWeight: 700, marginBottom: '6px' }}>Rate your driver</p>
+      <div style={{ display: 'flex', gap: '4px', marginBottom: '6px' }}>
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n} type="button" onClick={() => setRating(n)}
+            style={{ fontSize: '20px', color: n <= rating ? '#FFC107' : 'var(--toss-grey-300)' }}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+      {rating > 0 && (
+        <>
+          <input
+            type="text" value={comment} placeholder="Leave a comment (optional)" onChange={(e) => setComment(e.target.value)}
+            style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '12px', marginBottom: '6px' }}
+          />
+          <button className="toss-btn toss-btn-primary" disabled={submitting} onClick={handleSubmit} style={{ width: '100%', padding: '8px', fontSize: '13px' }}>
+            {submitting ? 'Submitting…' : 'Submit rating'}
+          </button>
+        </>
+      )}
+      {error && <p style={{ fontSize: '11px', color: '#E53935', marginTop: '4px' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
 function RidesView() {
   const [subTab, setSubTab] = useState<'RIDE' | 'DRIVE'>('RIDE');
 
@@ -9923,6 +9978,10 @@ function RidesView() {
   // ASAP dispatch; 'later' holds a datetime-local value the passenger picks.
   const [rideTiming, setRideTiming] = useState<'now' | 'later'>('now');
   const [scheduledAt, setScheduledAt] = useState('');
+  // Real Kakao T-style post-trip driver rating (item 213) -- tracks which completed
+  // trips have already been rated this session, so a submitted/already-reviewed
+  // prompt doesn't linger. See RideReviewPrompt's own doc comment.
+  const [reviewedTripIds, setReviewedTripIds] = useState<Set<string>>(new Set());
 
   const loadMyTrips = () => {
     fetchMyTrips().then(setMyTrips).catch((err) => setRideError(err instanceof ApiError ? err.message : 'Could not load your trips.'));
@@ -9979,10 +10038,16 @@ function RidesView() {
   const [myDriverTrips, setMyDriverTrips] = useState<RideTrip[] | null>(null);
   const [driverError, setDriverError] = useState<string | null>(null);
   const [busyDriverTripId, setBusyDriverTripId] = useState<string | null>(null);
+  // Real Kakao T-style post-trip driver rating (item 213) -- the real driver's own
+  // aggregate rating, computed at read time from every real submitted review.
+  const [driverRating, setDriverRating] = useState<RideDriverRating | null>(null);
 
   const loadDriver = () => {
     fetchMyDriverProfile()
-      .then(setDriver)
+      .then((d) => {
+        setDriver(d);
+        fetchDriverRating(d.id).then(setDriverRating).catch(() => {});
+      })
       .catch((err) => {
         if (err instanceof ApiError && err.code === 'RIDE_DRIVER_NOT_REGISTERED') setDriver(null);
         else setDriverError(err instanceof ApiError ? err.message : 'Could not load your driver profile.');
@@ -10126,7 +10191,14 @@ function RidesView() {
             <div>
               <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Past rides</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {pastTrips.map((t) => <RideTripCard key={t.id} trip={t} />)}
+                {pastTrips.map((t) => (
+                  <RideTripCard
+                    key={t.id} trip={t}
+                    action={t.status === 'COMPLETED' && t.driverId && !reviewedTripIds.has(t.id) && (
+                      <RideReviewPrompt tripId={t.id} onSubmitted={() => setReviewedTripIds((prev) => new Set(prev).add(t.id))} />
+                    )}
+                  />
+                ))}
               </div>
             </div>
           )}
@@ -10155,6 +10227,11 @@ function RidesView() {
                 <div>
                   <p style={{ fontSize: '15px', fontWeight: 700 }}>{driver.available ? "You're online" : "You're offline"}</p>
                   <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{driver.available ? 'Visible for new trip requests' : 'Go online to see trip requests'}</p>
+                  {driverRating && driverRating.count > 0 && (
+                    <p style={{ fontSize: '12px', color: '#FFC107', fontWeight: 700, marginTop: '4px' }}>
+                      ★ {driverRating.average?.toFixed(1)} <span style={{ color: 'var(--toss-grey-500)', fontWeight: 400 }}>({driverRating.count} rating{driverRating.count === 1 ? '' : 's'})</span>
+                    </p>
+                  )}
                 </div>
                 <button className={driver.available ? 'toss-btn toss-btn-danger' : 'toss-btn toss-btn-primary'} onClick={handleToggleAvailable}>
                   {driver.available ? 'Go offline' : 'Go online'}
