@@ -191,6 +191,10 @@ class ShoppingController(
                 "originalPrice" to product.originalPrice,
                 "discountPercent" to product.discountPercent,
                 "description" to product.description,
+                // Public availability is informational only; checkout re-checks and
+                // decrements it atomically. Exposing it here prevents shoppers from
+                // building a cart around an item the merchant has already sold out.
+                "stockQuantity" to product.stockQuantity,
                 // durationMinutes -- real fix, 2026-07-25: this hand-built response map
                 // never included it since the 2026-07-25 booking feature was added, which
                 // meant the real "Book" action on this exact browse endpoint's data could
@@ -241,6 +245,7 @@ class ShoppingController(
                 // description added 2026-07-21, backing the new product-detail screen.
                 "imageUrl" to p.imageUrl, "originalPrice" to p.originalPrice, "discountPercent" to p.discountPercent,
                 "description" to p.description,
+                "stockQuantity" to p.stockQuantity,
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "products" to products) + pageMeta(page))
@@ -262,6 +267,7 @@ class ShoppingController(
                 "name" to p.name, "price" to p.price,
                 "imageUrl" to p.imageUrl, "originalPrice" to p.originalPrice, "discountPercent" to p.discountPercent,
                 "description" to p.description,
+                "stockQuantity" to p.stockQuantity,
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "products" to products) + pageMeta(page))
