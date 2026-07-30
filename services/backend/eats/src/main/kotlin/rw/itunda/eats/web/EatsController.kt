@@ -34,6 +34,9 @@ import rw.itunda.eats.EatsFavoriteService
 import rw.itunda.eats.EatsMembershipNoWalletException
 import rw.itunda.eats.EatsMembershipService
 import rw.itunda.eats.InvalidMembershipDurationException
+import rw.itunda.eats.InvalidPlatformMembershipDurationException
+import rw.itunda.eats.PlatformMembershipNoWalletException
+import rw.itunda.eats.PlatformMembershipService
 import rw.itunda.eats.EatsOrderAlreadyReviewedException
 import rw.itunda.eats.EatsOrderItemRequest
 import rw.itunda.eats.EatsOrderNotFoundException
@@ -86,6 +89,7 @@ data class PlaceEatsOrderRequest(
     val scheduledFor: Instant? = null,
 )
 data class SubscribeMembershipRequest(val days: Int)
+data class SubscribePlatformMembershipRequest(val days: Int)
 data class UpdateEatsOrderStatusRequest(val status: EatsOrderStatus)
 data class SetRiderAvailabilityRequest(val available: Boolean)
 data class UpdateRiderLocationRequest(val latitude: Double, val longitude: Double)
@@ -114,8 +118,29 @@ class EatsController(
     private val eatsReviewService: EatsReviewService,
     private val eatsFavoriteService: EatsFavoriteService,
     private val eatsMembershipService: EatsMembershipService,
+    private val platformMembershipService: PlatformMembershipService,
     private val idempotencyService: IdempotencyService,
 ) {
+    // Real Coupang 와우 (Wow)-style unconditional delivery-fee waiver -- see
+    // PlatformMembership.kt's own doc comment for the full sourced account and its
+    // honest distinction from Eats Club (above).
+    @PostMapping("/platform-membership/subscribe")
+    fun subscribePlatformMembership(
+        @RequestBody request: SubscribePlatformMembershipRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/eats/platform-membership/subscribe", idempotencyKey, request) {
+            val membership = platformMembershipService.subscribe(currentUser.userId, request.days)
+            200 to mapOf("success" to true, "membership" to membership)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    @GetMapping("/platform-membership/me")
+    fun getMyPlatformMembership(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "membership" to platformMembershipService.getMyMembership(currentUser.userId)))
+
     // Real Baemin Club (배민클럽)-style free-delivery membership -- see
     // EatsMembership.kt's own doc comment. Real Idempotency-Key requirement, same
     // convention as every other money-moving creation endpoint in this backend.
@@ -409,6 +434,14 @@ class EatsController(
 
     @ExceptionHandler(InvalidMembershipDurationException::class)
     fun handleInvalidMembershipDuration(ex: InvalidMembershipDurationException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MEMBERSHIP_DURATION", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(PlatformMembershipNoWalletException::class)
+    fun handlePlatformMembershipNoWallet(ex: PlatformMembershipNoWalletException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(InvalidPlatformMembershipDurationException::class)
+    fun handleInvalidPlatformMembershipDuration(ex: InvalidPlatformMembershipDurationException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MEMBERSHIP_DURATION", ex.message ?: "Bad request"))
 
     @ExceptionHandler(EmptyEatsOrderException::class)

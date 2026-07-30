@@ -115,6 +115,7 @@ class EatsOrderService(
     private val rateLimiter: RateLimiter,
     private val notificationRepository: NotificationRepository,
     private val eatsMembershipService: EatsMembershipService,
+    private val platformMembershipService: PlatformMembershipService,
     private val pushNotificationService: PushNotificationService,
 ) {
     private val logger = LoggerFactory.getLogger(EatsOrderService::class.java)
@@ -432,11 +433,17 @@ class EatsOrderService(
             }
             val (computedDeliveryFee, roundedKm) = computeDeliveryFee(distanceKm)
             distanceKmRounded = roundedKm
-            // Real Baemin Club (배민클럽)-style free delivery (2026-07-26) -- see
-            // EatsMembership.kt's own doc comment. Only waived at a restaurant that has
-            // itself opted in (`participatesInEatsMembership`), never a blanket
-            // waiver, mirroring Baemin's own real "참여 가게" scoping.
-            deliveryFee = if (restaurant.participatesInEatsMembership && eatsMembershipService.hasActiveMembership(buyerId)) {
+            // Real Coupang Wow-style unconditional waiver (2026-07-31) -- see
+            // PlatformMembership.kt's own doc comment: checked first since it's the
+            // strictly broader real guarantee (every restaurant, no merchant opt-in
+            // needed), falling back to Eats Club's own real Baemin Club-style waiver
+            // (2026-07-26, EatsMembership.kt's own doc comment), which stays only
+            // valid at a restaurant that has itself opted in
+            // (`participatesInEatsMembership`), never a blanket waiver, mirroring
+            // Baemin's own real "참여 가게" scoping.
+            deliveryFee = if (platformMembershipService.hasActiveMembership(buyerId) ||
+                (restaurant.participatesInEatsMembership && eatsMembershipService.hasActiveMembership(buyerId))
+            ) {
                 BigDecimal.ZERO
             } else {
                 computedDeliveryFee

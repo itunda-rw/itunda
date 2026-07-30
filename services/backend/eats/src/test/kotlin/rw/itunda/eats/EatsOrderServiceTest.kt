@@ -100,16 +100,20 @@ class EatsOrderServiceTest : BehaviorSpec({
         // signature" gotcha this project's own tests already document repeatedly
         // (MerchantServiceTest/OrderServiceTest/EatsOrderServiceTest/GroupMessagingServiceTest, etc).
         every { notificationRepository.save(any()) } answers { firstArg() }
+        // Real Baemin Club-style free-delivery membership (2026-07-26) -- relaxed, no
+        // active member by default, matching this suite's own "no pre-existing test
+        // predates this feature" convention already used for the single-order delivery
+        // guard's own default stubs.
+        val eatsMembershipService = mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false }
+        // Real Coupang Wow-style unconditional waiver (2026-07-31) -- same relaxed,
+        // no-active-member-by-default convention as EatsMembershipService above. Named
+        // (not inline) so the platform-membership test below can override it per-test.
+        val platformMembershipService = mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false }
         val service = EatsOrderService(
             merchantRepository, merchantProductRepository, riderRepository, eatsOrderRepository,
             eatsOrderItemRepository, menuOptionGroupRepository, menuOptionChoiceRepository, walletRepository, ledgerService, transactionRepository, fraudRuleEngine,
             ledgerEntryRepository, osrmRoutingClient, nominatimGeocodingClient, rateLimiter, notificationRepository,
-            // Real Baemin Club-style free-delivery membership (2026-07-26) -- relaxed,
-            // no active member by default, matching this suite's own "no pre-existing
-            // test predates this feature" convention already used for the single-order
-            // delivery guard's own default stubs.
-            mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
-            pushNotificationService,
+            eatsMembershipService, platformMembershipService, pushNotificationService,
         )
 
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
@@ -151,6 +155,24 @@ class EatsOrderServiceTest : BehaviorSpec({
 
             Then("the restaurant owner also gets a real push notification, not just the in-app one") {
                 verify(exactly = 1) { pushNotificationService.sendToUser("owner_1", "New order received", any(), any()) }
+            }
+        }
+
+        When("a real Coupang Wow-style platform member orders at a restaurant that has NOT opted into Eats Club") {
+            every { merchantRepository.findById("restaurant_1") } returns Optional.of(restaurant)
+            every { walletRepository.findById("wallet_restaurant") } returns Optional.of(restaurantWallet)
+            every { walletRepository.findByUserIdAndType("buyer_1", WalletType.MAIN) } returns buyerWallet
+            every { merchantProductRepository.findById("item_1") } returns Optional.of(menuItem)
+            every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_platform_member", emptyList())
+            every { eatsOrderRepository.save(any()) } answers { firstArg() }
+            every { platformMembershipService.hasActiveMembership("buyer_1") } returns true
+
+            val detail = service.placeOrder("buyer_1", "restaurant_1", listOf(EatsOrderItemRequest("item_1", 2)), "KG 9 Ave")
+
+            Then("delivery is real-free even though this specific restaurant never opted into Eats Club -- the unconditional, broader guarantee") {
+                restaurant.participatesInEatsMembership shouldBe false
+                detail.order.deliveryFee shouldBe BigDecimal.ZERO
+                detail.order.totalAmount shouldBe detail.order.itemsSubtotal
             }
         }
 
@@ -710,6 +732,9 @@ class EatsOrderServiceTest : BehaviorSpec({
             // test predates this feature" convention already used for the single-order
             // delivery guard's own default stubs.
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            // Real Coupang Wow-style unconditional waiver (2026-07-31) -- same
+            // relaxed, no-active-member-by-default convention as EatsMembershipService above.
+            mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE)
@@ -1113,6 +1138,9 @@ class EatsOrderServiceTest : BehaviorSpec({
             // test predates this feature" convention already used for the single-order
             // delivery guard's own default stubs.
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            // Real Coupang Wow-style unconditional waiver (2026-07-31) -- same
+            // relaxed, no-active-member-by-default convention as EatsMembershipService above.
+            mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
@@ -1310,6 +1338,9 @@ class EatsOrderServiceTest : BehaviorSpec({
             // test predates this feature" convention already used for the single-order
             // delivery guard's own default stubs.
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            // Real Coupang Wow-style unconditional waiver (2026-07-31) -- same
+            // relaxed, no-active-member-by-default convention as EatsMembershipService above.
+            mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE, latitude = -1.9536, longitude = 30.0605)
@@ -1403,6 +1434,9 @@ class EatsOrderServiceTest : BehaviorSpec({
             // test predates this feature" convention already used for the single-order
             // delivery guard's own default stubs.
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            // Real Coupang Wow-style unconditional waiver (2026-07-31) -- same
+            // relaxed, no-active-member-by-default convention as EatsMembershipService above.
+            mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
         )
         val restaurant = Merchant(id = "restaurant_1", ownerUserId = "owner_1", walletId = "wallet_restaurant", businessName = "Kigali Grill", status = MerchantStatus.ACTIVE, latitude = -1.9536, longitude = 30.0605)
@@ -1513,6 +1547,9 @@ class EatsOrderServiceTest : BehaviorSpec({
             // test predates this feature" convention already used for the single-order
             // delivery guard's own default stubs.
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            // Real Coupang Wow-style unconditional waiver (2026-07-31) -- same
+            // relaxed, no-active-member-by-default convention as EatsMembershipService above.
+            mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
         )
         val rider = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", available = true)
@@ -1630,6 +1667,9 @@ class EatsOrderServiceTest : BehaviorSpec({
             // test predates this feature" convention already used for the single-order
             // delivery guard's own default stubs.
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            // Real Coupang Wow-style unconditional waiver (2026-07-31) -- same
+            // relaxed, no-active-member-by-default convention as EatsMembershipService above.
+            mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
         )
         val riderWithLocation = Rider(id = "rider_1", userId = "rider_user_1", walletId = "wallet_rider", currentLatitude = -1.95, currentLongitude = 30.06, locationUpdatedAt = java.time.Instant.parse("2026-07-19T12:00:00Z"))
@@ -1769,6 +1809,9 @@ class EatsOrderServiceTest : BehaviorSpec({
             // test predates this feature" convention already used for the single-order
             // delivery guard's own default stubs.
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            // Real Coupang Wow-style unconditional waiver (2026-07-31) -- same
+            // relaxed, no-active-member-by-default convention as EatsMembershipService above.
+            mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
         )
 
@@ -1850,6 +1893,9 @@ class EatsOrderServiceTest : BehaviorSpec({
             // test predates this feature" convention already used for the single-order
             // delivery guard's own default stubs.
             mockk<EatsMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
+            // Real Coupang Wow-style unconditional waiver (2026-07-31) -- same
+            // relaxed, no-active-member-by-default convention as EatsMembershipService above.
+            mockk<PlatformMembershipService>(relaxed = true).also { every { it.hasActiveMembership(any()) } returns false },
             pushNotificationService,
         )
 

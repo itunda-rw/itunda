@@ -91,10 +91,10 @@ import {
 } from './lib/realestate';
 import {
   addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, completePickupOrder, EATS_MEMBERSHIP_TIERS, fetchAvailableDeliveries,
-  fetchEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyMembership, fetchMyRiderProfile, fetchRestaurantCategories,
-  fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRestaurantReviews, fetchRiderDeliveries, placeEatsOrder, registerRider,
-  removeFavoriteRestaurant, replyToRestaurantReview, searchDeliveryAddress, setRiderAvailability, subscribeMembership, submitEatsReview,
-  type AddressSuggestion, type EatsMembership, type EatsOrder, type EatsOrderStatus, type EatsReview, type FavoriteRestaurant, type MenuItem, type RatingSummary, type Rider,
+  fetchEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyMembership, fetchMyPlatformMembership, fetchMyRiderProfile, fetchRestaurantCategories,
+  fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRestaurantReviews, fetchRiderDeliveries, placeEatsOrder, PLATFORM_MEMBERSHIP_TIERS, registerRider,
+  removeFavoriteRestaurant, replyToRestaurantReview, searchDeliveryAddress, setRiderAvailability, subscribeMembership, subscribePlatformMembership, submitEatsReview,
+  type AddressSuggestion, type EatsMembership, type EatsOrder, type EatsOrderStatus, type EatsReview, type FavoriteRestaurant, type MenuItem, type PlatformMembership, type RatingSummary, type Rider,
 } from './lib/eats';
 import {
   addProductFavorite, advanceOrderStatus, askProductInquiry, cancelOrder, decideOrderReturn, fetchMerchantOrders, fetchMerchantProducts, fetchMerchantReturnQueue,
@@ -10628,6 +10628,7 @@ function EatsView() {
       </div>
       {mode === 'ORDER' ? (
         <div>
+          <PlatformMembershipCard />
           <EatsMembershipCard />
           <RestaurantOrdersView />
           <OrderFoodView />
@@ -10638,6 +10639,70 @@ function EatsView() {
         <div>
           <DineInRestaurantOrdersView />
           <DineInCustomerView />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Real Coupang 와우 (Wow)-style unconditional delivery-fee waiver (item 211) -- see
+// lib/eats.ts's own doc comment. Deliberately a separate card from Eats Club below,
+// not a replacement: this waives the fee at every restaurant, no merchant opt-in
+// required, the same real broader guarantee Coupang Wow has over Baemin Club's
+// participating-seller-only free delivery.
+function PlatformMembershipCard() {
+  const [membership, setMembership] = useState<PlatformMembership | null | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    fetchMyPlatformMembership().then(setMembership).catch(() => setMembership(null));
+  };
+  useEffect(load, []);
+
+  const isActive = membership != null && new Date(membership.activeUntil).getTime() > Date.now();
+
+  const handleSubscribe = async (days: number) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await subscribePlatformMembership(days);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not subscribe.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (membership === undefined) return null;
+
+  return (
+    <div className="toss-card" style={{ padding: '16px', marginBottom: '16px' }}>
+      <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>itunda Plus</h3>
+      {error && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '8px' }} role="alert">{error}</p>}
+      {isActive ? (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+          Free delivery active until {new Date(membership!.activeUntil).toLocaleDateString()} at every restaurant, no participation required.
+        </p>
+      ) : (
+        <div>
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '10px' }}>
+            Free delivery at every restaurant -- no minimum order, no restaurant opt-in required.
+          </p>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {PLATFORM_MEMBERSHIP_TIERS.map((tier) => (
+              <button
+                key={tier.days}
+                className="toss-btn toss-btn-primary"
+                disabled={busy}
+                onClick={() => handleSubscribe(tier.days)}
+                style={{ flex: 1, fontSize: '13px' }}
+              >
+                {busy ? '…' : `${tier.days} days -- ${tier.priceRwf.toLocaleString()} RWF`}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
