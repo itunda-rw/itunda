@@ -105,7 +105,7 @@ fun MiniWalletScreen(onBack: () -> Unit) {
         error = null
         coroutineScope.launch {
             try {
-                NetworkClient.apiService.setBirthDate(SetBirthDateRequest(birthDate.trim()))
+                NetworkClient.authApi.setBirthDate(SetBirthDateRequest(birthDate.trim()))
                 openWallet()
             } catch (e: HttpException) {
                 error = superAppErrorMessage(e)

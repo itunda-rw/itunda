@@ -372,12 +372,13 @@ private fun GroupAccountDetailContent(id: String) {
                         }
                         currentDues.duesAmount == null -> Text("The organizer hasn't set a monthly dues amount.", color = TossSecondary, fontSize = 13.sp)
                         else -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("${formatMoneyGroup(currentDues.duesAmount)} RWF / month · ${currentDues.cycleMonth}", fontSize = 13.sp)
+                            val duesAmount = currentDues.duesAmount!!
+                            Text("${formatMoneyGroup(duesAmount)} RWF / month · ${currentDues.cycleMonth}", fontSize = 13.sp)
                             currentDues.members.forEach { m ->
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Text("${m.firstName} ${m.lastName}${if (m.userId == myUserId) " (you)" else ""}", fontSize = 13.sp)
                                     Text(
-                                        if (m.paid) "✓ Paid" else "${formatMoneyGroup(m.contributedAmount)} / ${formatMoneyGroup(currentDues.duesAmount)}",
+                                        if (m.paid) "✓ Paid" else "${formatMoneyGroup(m.contributedAmount)} / ${formatMoneyGroup(duesAmount)}",
                                         color = if (m.paid) Ids.colors.success else TossSecondary,
                                         fontWeight = if (m.paid) FontWeight.Bold else FontWeight.Normal, fontSize = 13.sp,
                                     )

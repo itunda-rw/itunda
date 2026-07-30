@@ -38,6 +38,7 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.CurrencyExchange
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.DirectionsCar
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.Menu
@@ -1731,11 +1732,6 @@ private fun MyTab(
     }
 }
 
-// Real email/phone verification (item 169/178) -- see AuthApi.requestEmailVerification/
-// requestPhoneVerification's own doc comment. bank-mfe (item 169) already has this
-// (mirrored field-for-field); this is the first Android client. A real code is
-// delivered via a real in-app Notification + push, no real SMS/email gateway exists.
-@Composable
 // Real profile photo (URL, not a binary upload) -- also the real, buildable half of
 // Rewards' task_profile. Found 2026-07-29 via a full-backend-endpoint sweep: a real,
 // working `PUT /api/v1/auth/profile/photo` endpoint with zero client anywhere, and
@@ -1803,6 +1799,10 @@ private fun ProfilePhotoCard() {
     }
 }
 
+// Real email/phone verification (item 169/178) -- see AuthApi.requestEmailVerification/
+// requestPhoneVerification's own doc comment. bank-mfe (item 169) already has this
+// (mirrored field-for-field); this is the first Android client. A real code is
+// delivered via a real in-app Notification + push, no real SMS/email gateway exists.
 @Composable
 private fun VerificationCard() {
     var email by rememberSaveable { mutableStateOf<String?>(null) }
