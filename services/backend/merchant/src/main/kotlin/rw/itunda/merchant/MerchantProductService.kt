@@ -21,6 +21,7 @@ class InvalidProductImageUrlException(message: String) : RuntimeException(messag
 class InvalidProductDiscountException(message: String) : RuntimeException(message)
 class InvalidProductDurationException(message: String) : RuntimeException(message)
 class InvalidPriceTierException(message: String) : RuntimeException(message)
+class InvalidStockQuantityException(message: String) : RuntimeException(message)
 
 data class PriceTierRequest(val minQuantity: Int, val unitPrice: BigDecimal)
 
@@ -109,6 +110,11 @@ class MerchantProductService(
         }
     }
 
+    private fun validateStockQuantity(stockQuantity: Int?): Int? {
+        if (stockQuantity != null && stockQuantity < 0) throw InvalidStockQuantityException("Stock quantity cannot be negative")
+        return stockQuantity
+    }
+
     @Transactional
     fun addProduct(
         ownerUserId: String,
@@ -119,6 +125,7 @@ class MerchantProductService(
         description: String? = null,
         durationMinutes: Int? = null,
         requiresPrepay: Boolean = false,
+        stockQuantity: Int? = null,
     ): MerchantProduct {
         // Real anti-spam limit -- found missing in a 2026-07-19 security sweep. Not
         // money-moving (deliberately no Idempotency-Key, per the controller's own doc
@@ -143,6 +150,7 @@ class MerchantProductService(
             description = validateDescription(description),
             durationMinutes = validateDuration(durationMinutes),
             requiresPrepay = requiresPrepay,
+            stockQuantity = validateStockQuantity(stockQuantity),
         )
         return merchantProductRepository.save(product)
     }
@@ -163,6 +171,7 @@ class MerchantProductService(
         description: String? = null,
         durationMinutes: Int? = null,
         requiresPrepay: Boolean = false,
+        stockQuantity: Int? = null,
     ): MerchantProduct {
         val merchant = getMyMerchant(ownerUserId)
         if (price <= BigDecimal.ZERO) {
@@ -184,6 +193,19 @@ class MerchantProductService(
         product.description = validateDescription(description)
         product.durationMinutes = validateDuration(durationMinutes)
         product.requiresPrepay = requiresPrepay
+        product.stockQuantity = validateStockQuantity(stockQuantity)
+        return merchantProductRepository.save(product)
+    }
+
+    @Transactional
+    fun updateStockQuantity(ownerUserId: String, productId: String, stockQuantity: Int?): MerchantProduct {
+        val merchant = getMyMerchant(ownerUserId)
+        val product = merchantProductRepository.findById(productId)
+            .orElseThrow { MerchantProductNotFoundException("Product not found") }
+        if (product.merchantId != merchant.id) {
+            throw MerchantProductNotFoundException("Product not found")
+        }
+        product.stockQuantity = validateStockQuantity(stockQuantity)
         return merchantProductRepository.save(product)
     }
 

@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -31,7 +32,9 @@ data class AddProductRequest(
     // Real Kakao Hair Shop-style prepay-to-book (2026-07-25) -- see
     // BookingDeposit.kt's own doc comment. Only valid with durationMinutes set.
     val requiresPrepay: Boolean = false,
+    val stockQuantity: Int? = null,
 )
+data class UpdateProductStockRequest(val stockQuantity: Int? = null)
 data class AddMenuOptionGroupRequest(
     val name: String,
     val choices: List<MenuOptionChoiceRequest>,
@@ -63,7 +66,7 @@ class MerchantProductController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val product = merchantProductService.addProduct(
-            currentUser.userId, request.name, request.price, request.imageUrl, request.originalPrice, request.description, request.durationMinutes, request.requiresPrepay,
+            currentUser.userId, request.name, request.price, request.imageUrl, request.originalPrice, request.description, request.durationMinutes, request.requiresPrepay, request.stockQuantity,
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "product" to product))
     }
@@ -79,8 +82,21 @@ class MerchantProductController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val product = merchantProductService.updateProduct(
-            currentUser.userId, productId, request.name, request.price, request.imageUrl, request.originalPrice, request.description, request.durationMinutes, request.requiresPrepay,
+            currentUser.userId, productId, request.name, request.price, request.imageUrl, request.originalPrice, request.description, request.durationMinutes, request.requiresPrepay, request.stockQuantity,
         )
+        return ResponseEntity.ok(mapOf("success" to true, "product" to product))
+    }
+
+    // Stock is intentionally a focused operation: a cashier replenishing a shelf
+    // must not re-submit or accidentally erase the product's pricing, description,
+    // booking, or discount settings just to change availability.
+    @PatchMapping("/{productId}/stock")
+    fun updateStock(
+        @PathVariable productId: String,
+        @RequestBody request: UpdateProductStockRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val product = merchantProductService.updateStockQuantity(currentUser.userId, productId, request.stockQuantity)
         return ResponseEntity.ok(mapOf("success" to true, "product" to product))
     }
 
@@ -180,6 +196,10 @@ class MerchantProductController(
     @ExceptionHandler(InvalidProductDurationException::class)
     fun handleInvalidDuration(ex: InvalidProductDurationException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PRODUCT_DURATION", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidStockQuantityException::class)
+    fun handleInvalidStock(ex: InvalidStockQuantityException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_STOCK_QUANTITY", ex.message ?: "Bad request"))
 
     @ExceptionHandler(InvalidPriceTierException::class)
     fun handleInvalidPriceTier(ex: InvalidPriceTierException) =

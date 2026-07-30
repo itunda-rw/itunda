@@ -28,6 +28,7 @@ import rw.itunda.gift.GiftVoucherNotActiveException
 import rw.itunda.gift.GiftVoucherNotExtendableException
 import rw.itunda.gift.GiftVoucherNotFoundException
 import rw.itunda.gift.GiftVoucherProductNotFoundException
+import rw.itunda.gift.GiftVoucherProductUnavailableException
 import rw.itunda.gift.GiftVoucherRecipientNotFoundException
 import rw.itunda.gift.GiftVoucherSelfException
 import rw.itunda.gift.GiftVoucherService
@@ -129,6 +130,10 @@ class GiftVoucherController(private val giftVoucherService: GiftVoucherService, 
     @ExceptionHandler(GiftVoucherProductNotFoundException::class)
     fun handleProductNotFound(ex: GiftVoucherProductNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("PRODUCT_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(GiftVoucherProductUnavailableException::class)
+    fun handleProductUnavailable(ex: GiftVoucherProductUnavailableException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("PRODUCT_OUT_OF_STOCK", ex.message ?: "Conflict"))
 
     @ExceptionHandler(GiftVoucherNotExtendableException::class)
     fun handleNotExtendable(ex: GiftVoucherNotExtendableException) =

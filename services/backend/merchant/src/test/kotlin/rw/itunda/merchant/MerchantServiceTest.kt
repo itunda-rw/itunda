@@ -8,6 +8,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import jakarta.persistence.Version
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
@@ -46,6 +47,12 @@ import java.util.Optional
  * fee calculation, ownership checks, expiry, and double-collection prevention.
  */
 class MerchantServiceTest : BehaviorSpec({
+    Given("the payment-intent state machine") {
+        Then("it is versioned so stale concurrent transitions cannot silently overwrite one another") {
+            PaymentIntent::class.java.getDeclaredField("version").getAnnotation(Version::class.java) shouldNotBe null
+        }
+    }
+
 
     fun wallet(id: String, userId: String) = Wallet(
         id = id, userId = userId, accountNumber = "ACC-$id", accountName = "Test wallet",
@@ -419,7 +426,7 @@ class MerchantServiceTest : BehaviorSpec({
             service.collect("payer_2", "pi_hook")
 
             Then("real webhook delivery is attempted with the merchant's registered URL") {
-                verify(exactly = 1) { webhookDeliveryService.deliverPaymentStatusChanged("https://merchant.example/hooks", any()) }
+                verify(exactly = 1) { webhookDeliveryService.deliverPaymentStatusChanged("merchant_2", "https://merchant.example/hooks", any()) }
             }
         }
 
@@ -642,6 +649,24 @@ class MerchantServiceTest : BehaviorSpec({
             }
         }
 
+        When("a checkout callback is not an absolute HTTPS URL") {
+            Then("it rejects unsafe browser-navigation schemes and relative URLs") {
+                listOf(
+                    "javascript:alert(1)",
+                    "http://shop.example/success",
+                    "/checkout/success",
+                    "https://merchant:password@shop.example/success",
+                ).forEach { unsafeUrl ->
+                    try {
+                        service.createExternalPayment(merchant, BigDecimal("5000"), "Order", null, unsafeUrl, null)
+                        error("expected InvalidCheckoutRequestException for $unsafeUrl")
+                    } catch (_: InvalidCheckoutRequestException) {
+                        // expected
+                    }
+                }
+            }
+        }
+
         When("a customer's browser requests the real public checkout info for a paymentKey") {
             val intent = PaymentIntent(
                 id = "pi_checkout_1", merchantId = "merchant_1", amount = BigDecimal("2500"),
@@ -658,6 +683,24 @@ class MerchantServiceTest : BehaviorSpec({
                 info.amount shouldBe BigDecimal("2500")
                 info.successUrl shouldBe "https://shop.example/ok"
                 info.failUrl shouldBe "https://shop.example/no"
+            }
+        }
+
+        When("a customer's browser polls an expired external checkout") {
+            val expiredIntent = PaymentIntent(
+                id = "pi_checkout_expired", merchantId = "merchant_1", amount = BigDecimal("2500"),
+                description = "Expired order", expiresAt = Instant.now().minusSeconds(1),
+                successUrl = "https://shop.example/ok", failUrl = "https://shop.example/no",
+            )
+            every { paymentIntentRepository.findById("pi_checkout_expired") } returns Optional.of(expiredIntent)
+            every { merchantRepository.findById("merchant_1") } returns Optional.of(merchant)
+            every { paymentIntentRepository.save(expiredIntent) } returns expiredIntent
+
+            val info = service.getCheckoutInfo("pi_checkout_expired")
+
+            Then("it persists and returns EXPIRED so the hosted page can stop polling") {
+                info.status shouldBe PaymentIntentStatus.EXPIRED
+                verify(exactly = 1) { paymentIntentRepository.save(expiredIntent) }
             }
         }
 
@@ -931,6 +974,28 @@ class MerchantServiceTest : BehaviorSpec({
 
             Then("it returns an empty list, not an error") {
                 service.getReport("owner_4", day1, day1).size shouldBe 0
+            }
+        }
+
+        When("requesting a report with an inverted date range") {
+            Then("it rejects the request before querying transactions") {
+                try {
+                    service.getReport("owner_4", day2, day1)
+                    error("expected InvalidReportRangeException")
+                } catch (e: InvalidReportRangeException) {
+                    verify(exactly = 0) { transactionRepository.findByRecipientIdAndTypeAndCreatedAtBetween(any(), any(), any(), any()) }
+                }
+            }
+        }
+
+        When("requesting more than the supported 31-day report window") {
+            Then("it rejects the request before querying transactions") {
+                try {
+                    service.getReport("owner_4", day1, day1.plusDays(31))
+                    error("expected InvalidReportRangeException")
+                } catch (e: InvalidReportRangeException) {
+                    verify(exactly = 0) { transactionRepository.findByRecipientIdAndTypeAndCreatedAtBetween(any(), any(), any(), any()) }
+                }
             }
         }
     }

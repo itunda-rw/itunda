@@ -37,6 +37,7 @@ class GiftVoucherRecipientNotFoundException(message: String) : RuntimeException(
 class GiftVoucherInvalidAmountException(message: String) : RuntimeException(message)
 class GiftVoucherMerchantNotFoundException(message: String) : RuntimeException(message)
 class GiftVoucherProductNotFoundException(message: String) : RuntimeException(message)
+class GiftVoucherProductUnavailableException(message: String) : RuntimeException(message)
 class GiftVoucherNotMerchantOwnerException(message: String) : RuntimeException(message)
 class GiftVoucherNotExtendableException(message: String) : RuntimeException(message)
 class GiftVoucherAlreadyExtendedException(message: String) : RuntimeException(message)
@@ -88,6 +89,10 @@ class GiftVoucherService(
         val (amount, productNameSnapshot) = if (merchantProductId != null) {
             val product = merchantProductRepository.findById(merchantProductId).orElseThrow { GiftVoucherProductNotFoundException("Product not found") }
             if (product.merchantId != merchantId || !product.active) throw GiftVoucherProductNotFoundException("Product not found")
+            // A voucher does not reserve stock at purchase—the recipient may redeem it
+            // later—but selling a product-tied voucher for an item already known to be
+            // sold out is misleading and creates an avoidable fulfilment failure.
+            if (product.stockQuantity == 0) throw GiftVoucherProductUnavailableException("This product is currently out of stock")
             product.price to product.name
         } else {
             val trimmedAmount = flatAmount ?: throw GiftVoucherInvalidAmountException("Amount is required for a flat-value voucher")

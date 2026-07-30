@@ -111,6 +111,19 @@ class GiftVoucherServiceTest : BehaviorSpec({
             }
         }
 
+        When("the selected product is already sold out") {
+            product.stockQuantity = 0
+
+            Then("it refuses before placing a real escrow hold") {
+                try {
+                    svc.purchaseVoucher("user_purchaser", "+250788000002", "merchant_1", "product_1", null)
+                    error("expected GiftVoucherProductUnavailableException")
+                } catch (e: GiftVoucherProductUnavailableException) {
+                    verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+                }
+            }
+        }
+
         When("trying to gift a voucher to yourself") {
             every { userRepository.findByPhoneNumber("+250788000002") } returns user("user_purchaser", "+250788000002")
 
