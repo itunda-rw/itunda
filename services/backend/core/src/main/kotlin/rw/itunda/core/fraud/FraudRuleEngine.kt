@@ -1,8 +1,10 @@
 package rw.itunda.core.fraud
 
 import org.springframework.stereotype.Service
+import org.springframework.beans.factory.annotation.Value
 import rw.itunda.core.domain.FraudFlag
 import rw.itunda.core.domain.FraudRule
+import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.repository.FraudFlagRepository
 import rw.itunda.core.repository.TransactionRepository
 import java.math.BigDecimal
@@ -10,9 +12,17 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
-private val HIGH_VALUE_THRESHOLD = BigDecimal("100000")
-private const val VELOCITY_WINDOW_MINUTES = 5L
-private const val VELOCITY_THRESHOLD = 3
+private val DEFAULT_HIGH_VALUE_THRESHOLD = BigDecimal("100000")
+private const val DEFAULT_VELOCITY_WINDOW_MINUTES = 5L
+private const val DEFAULT_VELOCITY_THRESHOLD = 3
+private val DEFAULT_NEW_RECIPIENT_MINIMUM_AMOUNT = BigDecimal.ZERO
+
+data class FraudPolicySnapshot(
+    val highValueThreshold: BigDecimal,
+    val velocityWindowMinutes: Long,
+    val velocityThreshold: Int,
+    val newRecipientMinimumAmount: BigDecimal,
+)
 
 /**
  * Real fraud/velocity rules -- previously nothing existed here at all (see
@@ -38,33 +48,57 @@ private const val VELOCITY_THRESHOLD = 3
 class FraudRuleEngine(
     private val fraudFlagRepository: FraudFlagRepository,
     private val transactionRepository: TransactionRepository,
+    @Value("\${itunda.fraud.high-value-threshold:100000}")
+    private val highValueThreshold: BigDecimal = DEFAULT_HIGH_VALUE_THRESHOLD,
+    @Value("\${itunda.fraud.velocity-window-minutes:5}")
+    private val velocityWindowMinutes: Long = DEFAULT_VELOCITY_WINDOW_MINUTES,
+    @Value("\${itunda.fraud.velocity-threshold:3}")
+    private val velocityThreshold: Int = DEFAULT_VELOCITY_THRESHOLD,
+    @Value("\${itunda.fraud.new-recipient-minimum-amount:0}")
+    private val newRecipientMinimumAmount: BigDecimal = DEFAULT_NEW_RECIPIENT_MINIMUM_AMOUNT,
 ) {
+
+    init {
+        require(highValueThreshold > BigDecimal.ZERO) { "itunda.fraud.high-value-threshold must be positive" }
+        require(velocityWindowMinutes > 0) { "itunda.fraud.velocity-window-minutes must be positive" }
+        require(velocityThreshold > 0) { "itunda.fraud.velocity-threshold must be positive" }
+        require(newRecipientMinimumAmount >= BigDecimal.ZERO) { "itunda.fraud.new-recipient-minimum-amount must not be negative" }
+    }
+
+    fun activePolicy(): FraudPolicySnapshot = FraudPolicySnapshot(
+        highValueThreshold = highValueThreshold,
+        velocityWindowMinutes = velocityWindowMinutes,
+        velocityThreshold = velocityThreshold,
+        newRecipientMinimumAmount = newRecipientMinimumAmount,
+    )
 
     fun evaluate(userId: String, recipientUserId: String?, amount: BigDecimal, transactionId: String): List<FraudFlag> {
         val history = transactionRepository.findBySenderIdOrRecipientIdOrderByCreatedAtDesc(userId, userId)
-            .filter { it.senderId == userId }
+            // Fraud signals are based on settled money movement. Failed/cancelled
+            // attempts must not inflate velocity or make a recipient look familiar.
+            .filter { it.senderId == userId && it.status == TransactionStatus.COMPLETED }
 
         val flags = mutableListOf<FraudFlag>()
 
-        if (amount >= HIGH_VALUE_THRESHOLD) {
-            flags += flag(userId, transactionId, FraudRule.HIGH_VALUE, "Amount $amount RWF meets or exceeds the $HIGH_VALUE_THRESHOLD RWF high-value threshold", amount)
+        if (amount >= highValueThreshold) {
+            flags += flag(userId, transactionId, FraudRule.HIGH_VALUE, "Amount $amount RWF meets or exceeds the $highValueThreshold RWF high-value threshold", amount, "{\"highValueThreshold\":\"$highValueThreshold\"}")
         }
 
-        val windowStart = Instant.now().minus(VELOCITY_WINDOW_MINUTES, ChronoUnit.MINUTES)
+        val windowStart = Instant.now().minus(velocityWindowMinutes, ChronoUnit.MINUTES)
         val recentCount = history.count { it.createdAt.isAfter(windowStart) }
-        if (recentCount >= VELOCITY_THRESHOLD) {
-            flags += flag(userId, transactionId, FraudRule.VELOCITY, "$recentCount outgoing transactions in the last $VELOCITY_WINDOW_MINUTES minutes (threshold $VELOCITY_THRESHOLD)", amount)
+        if (recentCount >= velocityThreshold) {
+            flags += flag(userId, transactionId, FraudRule.VELOCITY, "$recentCount outgoing transactions in the last $velocityWindowMinutes minutes (threshold $velocityThreshold)", amount, "{\"windowMinutes\":$velocityWindowMinutes,\"transactionThreshold\":$velocityThreshold,\"observedTransactions\":$recentCount}")
         }
 
-        if (recipientUserId != null && history.none { it.recipientId == recipientUserId }) {
-            flags += flag(userId, transactionId, FraudRule.NEW_RECIPIENT, "First time this account has ever sent to recipient $recipientUserId", amount)
+        if (recipientUserId != null && amount >= newRecipientMinimumAmount && history.none { it.recipientId == recipientUserId }) {
+            flags += flag(userId, transactionId, FraudRule.NEW_RECIPIENT, "First time this account has ever sent to recipient $recipientUserId (minimum amount threshold $newRecipientMinimumAmount RWF)", amount, "{\"minimumAmount\":\"$newRecipientMinimumAmount\"}")
         }
 
         return flags.map { fraudFlagRepository.save(it) }
     }
 
-    private fun flag(userId: String, transactionId: String, rule: FraudRule, description: String, amount: BigDecimal) = FraudFlag(
+    private fun flag(userId: String, transactionId: String, rule: FraudRule, description: String, amount: BigDecimal, ruleParameters: String) = FraudFlag(
         id = "flag_${UUID.randomUUID()}", userId = userId, transactionId = transactionId,
-        rule = rule, description = description, amount = amount,
+        rule = rule, description = description, ruleParameters = ruleParameters, amount = amount,
     )
 }

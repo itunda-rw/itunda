@@ -9,14 +9,19 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import rw.itunda.core.domain.IncidentStatus
+import rw.itunda.core.domain.LinkedAccountStatus
+import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.health.ProviderHealthTracker
 import rw.itunda.core.incident.IncidentDetector
 import rw.itunda.core.provider.MtnMomoNotConfiguredException
 import rw.itunda.core.provider.MtnMomoRequestFailedException
 import rw.itunda.core.provider.MtnMomoSandboxClient
 import rw.itunda.core.reconciliation.ReconciliationService
+import rw.itunda.core.repository.LinkedAccountRepository
+import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.web.ApiError
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeParseException
 
 @RestController
@@ -26,32 +31,43 @@ class SystemController(
     private val incidentDetector: IncidentDetector,
     private val reconciliationService: ReconciliationService,
     private val mtnMomoSandboxClient: MtnMomoSandboxClient,
+    private val transactionRepository: TransactionRepository,
+    private val linkedAccountRepository: LinkedAccountRepository,
 ) {
 
-    // Simple mock endpoints for the system dashboard to complete the migration
+    // Operational summary from persisted records, not a static dashboard placeholder.
+    // A settled transaction belongs to the date it completed, evaluated in itunda's
+    // Rwanda operating timezone rather than the server/container's timezone.
     @GetMapping("/dashboard")
     fun getSystemDashboard(): ResponseEntity<Map<String, Any>> {
+        val zone = ZoneId.of("Africa/Kigali")
+        val dayStart = LocalDate.now(zone).atStartOfDay(zone).toInstant()
+        val nextDayStart = LocalDate.now(zone).plusDays(1).atStartOfDay(zone).toInstant()
+        val completedStatus = TransactionStatus.COMPLETED
+        val completedVolume = transactionRepository.sumAmountByStatusAndCompletedAtBetween(completedStatus, dayStart, nextDayStart)
+        val completedCount = transactionRepository.countByStatusAndCompletedAtGreaterThanEqualAndCompletedAtLessThan(completedStatus, dayStart, nextDayStart)
+        val activeConsents = linkedAccountRepository.countByStatus(LinkedAccountStatus.LINKED)
         return ResponseEntity.ok(mapOf(
             "success" to true,
             "dashboard" to mapOf(
                 "generatedAt" to java.time.Instant.now().toString(),
                 "country" to "Rwanda",
                 "currency" to "RWF",
-                "operations" to mapOf("todayVolume" to 0),
-                "operatingLayer" to mapOf("activeConsents" to 0)
+                "operations" to mapOf("todayVolume" to completedVolume, "todayCompletedTransactionCount" to completedCount),
+                "operatingLayer" to mapOf("activeConsents" to activeConsents)
             )
         ))
     }
-    
+
+    // These legacy migration placeholders have no in-repository consumer. Advertising
+    // empty lists as a successful source of truth is worse than an explicit contract.
     @GetMapping("/capabilities")
-    fun getProductCapabilities(): ResponseEntity<Map<String, Any>> {
-        return ResponseEntity.ok(mapOf("success" to true, "capabilities" to emptyList<Any>(), "summary" to emptyMap<String, Any>()))
-    }
-    
+    fun getProductCapabilities(): ResponseEntity<ApiError> =
+        ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(ApiError("CAPABILITIES_NOT_IMPLEMENTED", "Use the versioned product APIs; no capabilities catalog is published"))
+
     @GetMapping("/parity")
-    fun getParityMatrix(): ResponseEntity<Map<String, Any>> {
-        return ResponseEntity.ok(mapOf("success" to true, "parity" to emptyList<Any>(), "gates" to emptyList<Any>()))
-    }
+    fun getParityMatrix(): ResponseEntity<ApiError> =
+        ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).body(ApiError("PARITY_MATRIX_NOT_IMPLEMENTED", "No runtime parity matrix is published"))
 
     // Real per-rail health, built and live-verified 2026-07-13 -- see
     // docs/TOSS_PARITY_MATRIX.md's Operations/Provider health row. Unlike the stubs

@@ -38,6 +38,10 @@ class FraudFlag(
     @Column(nullable = false)
     val description: String,
 
+    /** Immutable, machine-readable rule settings used when this flag was created. */
+    @Column(name = "rule_parameters", length = 1000)
+    val ruleParameters: String? = null,
+
     @Column(nullable = false, precision = 18, scale = 2)
     val amount: BigDecimal,
 
@@ -53,6 +57,9 @@ class FraudFlag(
 
     @Column(name = "reviewed_at")
     var reviewedAt: Instant? = null,
+
+    @Column(name = "review_note", length = 2000)
+    var reviewNote: String? = null,
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
