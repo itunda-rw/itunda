@@ -13,6 +13,7 @@ import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.RideDriver
 import rw.itunda.core.domain.RideTrip
 import rw.itunda.core.domain.RideTripStatus
+import rw.itunda.core.domain.RideTripStop
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.ledger.InsufficientFundsException
@@ -22,6 +23,7 @@ import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.RideDriverRepository
 import rw.itunda.core.repository.RideTripRepository
+import rw.itunda.core.repository.RideTripStopRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -38,6 +40,7 @@ class RideTripServiceTest : BehaviorSpec({
     fun newService(
         rideDriverRepository: RideDriverRepository = mockk(),
         rideTripRepository: RideTripRepository = mockk(),
+        rideTripStopRepository: RideTripStopRepository = mockk(relaxed = true),
         walletRepository: WalletRepository = mockk(),
         ledgerService: LedgerService = mockk(),
         // Real, explicit stub, not relaxed=true's default -- same known "relaxed mockk
@@ -47,7 +50,10 @@ class RideTripServiceTest : BehaviorSpec({
         notificationRepository: NotificationRepository = mockk(relaxed = true),
         rateLimiter: RateLimiter = mockk(relaxed = true),
         pushNotificationService: PushNotificationService = mockk(relaxed = true),
-    ) = RideTripService(rideDriverRepository, rideTripRepository, walletRepository, ledgerService, transactionRepository, notificationRepository, rateLimiter, pushNotificationService)
+    ) = RideTripService(
+        rideDriverRepository, rideTripRepository, rideTripStopRepository, walletRepository, ledgerService,
+        transactionRepository, notificationRepository, rateLimiter, pushNotificationService,
+    )
 
     Given("a real passenger with sufficient balance and one real nearby driver") {
         val rideDriverRepository = mockk<RideDriverRepository>()
@@ -138,6 +144,111 @@ class RideTripServiceTest : BehaviorSpec({
                     service.requestTrip("passenger_2", "A", -1.9536, 30.0605, "B", -1.9506, 30.0925)
                     error("expected InsufficientFundsException")
                 } catch (e: InsufficientFundsException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real passenger requesting a real Kakao T-style multi-stop ride") {
+        val rideDriverRepository = mockk<RideDriverRepository>(relaxed = true)
+        val rideTripRepository = mockk<RideTripRepository>()
+        val rideTripStopRepository = mockk<RideTripStopRepository>(relaxed = true)
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val service = newService(
+            rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
+            rideTripStopRepository = rideTripStopRepository, walletRepository = walletRepository, ledgerService = ledgerService,
+        )
+
+        val passengerWallet = Wallet(
+            id = "wallet_passenger_6", userId = "passenger_6", accountNumber = "1000000006", accountName = "Passenger",
+            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        )
+        every { walletRepository.findByUserIdAndType("passenger_6", WalletType.MAIN) } returns passengerWallet
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_multistop", emptyList())
+        every { rideTripRepository.save(any()) } answers { firstArg() }
+
+        When("the trip has one real extra stop between pickup and dropoff") {
+            val stopSlot = slot<RideTripStop>()
+            every { rideTripStopRepository.save(capture(stopSlot)) } answers { firstArg() }
+
+            val trip = service.requestTrip(
+                "passenger_6", "Kigali Heights", -1.9536, 30.0605, "Kigali Convention Centre", -1.9506, 30.0925,
+                stops = listOf(RideStopInput("Kimironko Market", -1.9425, 30.1085)),
+            )
+
+            Then("the real fare/distance covers the whole route through the stop, longer than a direct trip") {
+                val directDistance = BigDecimal(rw.itunda.core.geo.GeoUtils.haversineKm(-1.9536, 30.0605, -1.9506, 30.0925))
+                (trip.distanceKm > directDistance) shouldBe true
+            }
+
+            Then("it persists the real stop at sequence 0, not yet arrived") {
+                stopSlot.captured.tripId shouldBe trip.id
+                stopSlot.captured.sequence shouldBe 0
+                stopSlot.captured.arrivedAt shouldBe null
+            }
+        }
+
+        When("a passenger requests more than the real max stop count") {
+            Then("it throws RideTooManyStopsException before touching the ledger") {
+                try {
+                    service.requestTrip(
+                        "passenger_6", "A", -1.9536, 30.0605, "B", -1.9506, 30.0925,
+                        stops = List(RideTripService.MAX_STOPS + 1) { RideStopInput("Stop $it", -1.95, 30.06) },
+                    )
+                    error("expected RideTooManyStopsException")
+                } catch (e: RideTooManyStopsException) {
+                    // expected
+                }
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+    }
+
+    Given("a real driver on an in-progress multi-stop trip") {
+        val rideDriverRepository = mockk<RideDriverRepository>(relaxed = true)
+        val rideTripRepository = mockk<RideTripRepository>()
+        val rideTripStopRepository = mockk<RideTripStopRepository>()
+        val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository, rideTripStopRepository = rideTripStopRepository)
+
+        val driver = RideDriver(id = "driver_6", userId = "driver_user_6", walletId = "wallet_driver_6", available = true)
+        val trip = RideTrip(
+            id = "ride_trip_multistop_1", passengerId = "passenger_7", driverId = "driver_6", pickupAddress = "A",
+            pickupLatitude = -1.95, pickupLongitude = 30.06, dropoffAddress = "B", dropoffLatitude = -1.96, dropoffLongitude = 30.09,
+            distanceKm = BigDecimal("5.0"), fare = BigDecimal("2250"), platformFee = BigDecimal("33.75"), transactionId = "txn_multistop_1",
+            status = RideTripStatus.IN_PROGRESS,
+        )
+        val firstStop = RideTripStop(id = "ride_trip_stop_1", tripId = trip.id, sequence = 0, address = "Stop 1", latitude = -1.955, longitude = 30.07)
+        val secondStop = RideTripStop(id = "ride_trip_stop_2", tripId = trip.id, sequence = 1, address = "Stop 2", latitude = -1.958, longitude = 30.08)
+
+        every { rideDriverRepository.findByUserId("driver_user_6") } returns driver
+        every { rideTripRepository.findById(trip.id) } returns java.util.Optional.of(trip)
+        every { rideTripStopRepository.save(any()) } answers { firstArg() }
+
+        When("the driver marks arrival at the next unvisited stop, in order") {
+            every { rideTripStopRepository.findByTripIdOrderBySequenceAsc(trip.id) } returns listOf(firstStop, secondStop)
+
+            val arrived = service.arriveAtStop("driver_user_6", trip.id)
+
+            Then("it marks the real first (not second) unvisited stop arrived") {
+                arrived.id shouldBe "ride_trip_stop_1"
+                (arrived.arrivedAt != null) shouldBe true
+            }
+        }
+
+        When("every real stop has already been marked arrived") {
+            val bothArrived = listOf(
+                RideTripStop(id = "ride_trip_stop_1", tripId = trip.id, sequence = 0, address = "Stop 1", latitude = -1.955, longitude = 30.07, arrivedAt = Instant.now()),
+                RideTripStop(id = "ride_trip_stop_2", tripId = trip.id, sequence = 1, address = "Stop 2", latitude = -1.958, longitude = 30.08, arrivedAt = Instant.now()),
+            )
+            every { rideTripStopRepository.findByTripIdOrderBySequenceAsc(trip.id) } returns bothArrived
+
+            Then("it throws RideNoRemainingStopsException") {
+                try {
+                    service.arriveAtStop("driver_user_6", trip.id)
+                    error("expected RideNoRemainingStopsException")
+                } catch (e: RideNoRemainingStopsException) {
                     // expected
                 }
             }

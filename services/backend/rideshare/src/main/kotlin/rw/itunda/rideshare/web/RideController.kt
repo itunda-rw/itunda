@@ -34,7 +34,10 @@ import rw.itunda.rideshare.RideDriverNotAvailableException
 import rw.itunda.rideshare.RideDriverNotRegisteredException
 import rw.itunda.rideshare.RideDriverService
 import rw.itunda.rideshare.RideNoActiveOfferException
+import rw.itunda.rideshare.RideNoRemainingStopsException
 import rw.itunda.rideshare.RideSelfTripException
+import rw.itunda.rideshare.RideStopInput
+import rw.itunda.rideshare.RideTooManyStopsException
 import rw.itunda.rideshare.RideTripAlreadyClaimedException
 import rw.itunda.rideshare.RideTripAlreadyReviewedException
 import rw.itunda.rideshare.RideTripNotFoundException
@@ -47,6 +50,7 @@ data class UpdateDriverLocationRequest(val latitude: Double, val longitude: Doub
 // Real Kakao T-style post-trip driver rating (item 213) -- see RideTripReview.kt's own
 // doc comment.
 data class SubmitRideReviewRequest(val rating: Int, val comment: String? = null)
+data class RideStopRequest(val address: String, val latitude: Double, val longitude: Double)
 data class RequestTripRequest(
     val pickupAddress: String,
     val pickupLatitude: Double,
@@ -58,6 +62,10 @@ data class RequestTripRequest(
     // means ASAP, every existing caller's behavior completely unchanged. See
     // RideTrip.scheduledFor's own doc comment.
     val scheduledFor: java.time.Instant? = null,
+    // Real Kakao T-style multi-stop rides (item 214) -- empty (the default) means a
+    // direct pickup-to-dropoff trip, every existing caller's behavior completely
+    // unchanged. See RideTripStop.kt's own doc comment.
+    val stops: List<RideStopRequest> = emptyList(),
 )
 
 // Real Kakao T-style ride-hailing -- see RideTripService's own doc comment for the full
@@ -104,8 +112,9 @@ class RideController(
             val trip = rideTripService.requestTrip(
                 currentUser.userId, request.pickupAddress, request.pickupLatitude, request.pickupLongitude,
                 request.dropoffAddress, request.dropoffLatitude, request.dropoffLongitude, request.scheduledFor,
+                request.stops.map { RideStopInput(it.address, it.latitude, it.longitude) },
             )
-            201 to mapOf("success" to true, "trip" to trip)
+            201 to mapOf("success" to true, "trip" to trip, "stops" to rideTripService.getTripStops(trip.id))
         }
         return ResponseEntity.status(status).body(body)
     }
@@ -151,6 +160,16 @@ class RideController(
     @PostMapping("/trips/{tripId}/cancel")
     fun cancelTrip(@PathVariable tripId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "trip" to rideTripService.cancelTrip(currentUser.userId, tripId)))
+
+    // Real Kakao T-style multi-stop rides (item 214) -- see RideTripStop.kt's own doc
+    // comment.
+    @GetMapping("/trips/{tripId}/stops")
+    fun getTripStops(@PathVariable tripId: String): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "stops" to rideTripService.getTripStops(tripId)))
+
+    @PostMapping("/trips/{tripId}/stops/arrive")
+    fun arriveAtStop(@PathVariable tripId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "stop" to rideTripService.arriveAtStop(currentUser.userId, tripId)))
 
     // Real Kakao T-style post-trip driver rating (item 213) -- see RideTripReviewService's
     // own doc comment.
@@ -218,6 +237,14 @@ class RideController(
     @ExceptionHandler(RideTripAlreadyReviewedException::class)
     fun handleTripAlreadyReviewed(ex: RideTripAlreadyReviewedException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("RIDE_TRIP_ALREADY_REVIEWED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(RideTooManyStopsException::class)
+    fun handleTooManyStops(ex: RideTooManyStopsException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("TOO_MANY_STOPS", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(RideNoRemainingStopsException::class)
+    fun handleNoRemainingStops(ex: RideNoRemainingStopsException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("NO_REMAINING_STOPS", ex.message ?: "Conflict"))
 
     @ExceptionHandler(RideTripNotFoundException::class)
     fun handleTripNotFound(ex: RideTripNotFoundException) =

@@ -123,10 +123,10 @@ import {
   type AutoTransfer, type AutoTransferFrequency,
 } from './lib/autoTransfers';
 import {
-  acceptRideTrip, cancelRideTrip, completeRideTrip, declineRideTrip, fetchAvailableTrips, fetchDriverRating, fetchMyDriverProfile,
-  fetchMyDriverTrips, fetchMyTrips, registerAsDriver, requestRideTrip, setDriverAvailability, startRideTrip, submitRideReview,
-  updateDriverLocation,
-  type RideDriver, type RideDriverRating, type RideTrip,
+  acceptRideTrip, arriveAtRideStop, cancelRideTrip, completeRideTrip, declineRideTrip, fetchAvailableTrips, fetchDriverRating,
+  fetchMyDriverProfile, fetchMyDriverTrips, fetchMyTrips, fetchTripStops, registerAsDriver, requestRideTrip, setDriverAvailability,
+  startRideTrip, submitRideReview, updateDriverLocation,
+  type RideDriver, type RideDriverRating, type RideTrip, type RideTripStop,
 } from './lib/rideshare';
 
 type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY';
@@ -9883,12 +9883,17 @@ function PlaceSearchInput({ label, placeholder, value, onSelect }: {
   );
 }
 
-function RideTripCard({ trip, action }: { trip: RideTrip; action?: React.ReactNode }) {
+function RideTripCard({ trip, action, stops }: { trip: RideTrip; action?: React.ReactNode; stops?: RideTripStop[] | null }) {
   return (
     <div className="toss-card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
         <div style={{ flex: 1 }}>
           <p style={{ fontSize: '13px', fontWeight: 700 }}>{trip.pickupAddress}</p>
+          {stops && stops.length > 0 && stops.map((s) => (
+            <p key={s.id} style={{ fontSize: '11px', color: s.arrivedAt ? 'var(--toss-grey-400)' : 'var(--toss-grey-700)', margin: '1px 0' }}>
+              {s.arrivedAt ? '✓' : '→'} {s.address}
+            </p>
+          ))}
           <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', margin: '2px 0' }}>→ {trip.dropoffAddress}</p>
           <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{trip.distanceKm.toFixed(1)} km · {trip.fare.toLocaleString()} RWF</p>
           {trip.scheduledFor && (
@@ -9970,6 +9975,10 @@ function RidesView() {
   // Passenger side
   const [pickup, setPickup] = useState<PlaceSearchResult | null>(null);
   const [dropoff, setDropoff] = useState<PlaceSearchResult | null>(null);
+  // Real Kakao T-style multi-stop rides (item 214) -- up to 3 real extra waypoints
+  // between pickup and dropoff, matching Kakao T's own real cap.
+  const [stops, setStops] = useState<(PlaceSearchResult | null)[]>([]);
+  const [activeTripStops, setActiveTripStops] = useState<RideTripStop[] | null>(null);
   const [myTrips, setMyTrips] = useState<RideTrip[] | null>(null);
   const [requesting, setRequesting] = useState(false);
   const [rideError, setRideError] = useState<string | null>(null);
@@ -9997,20 +10006,28 @@ function RidesView() {
   const activeTrip = (myTrips ?? []).find((t) => t.status === 'REQUESTED' || t.status === 'DRIVER_ASSIGNED' || t.status === 'IN_PROGRESS');
   const pastTrips = (myTrips ?? []).filter((t) => t.status === 'COMPLETED' || t.status === 'CANCELLED');
 
+  useEffect(() => {
+    if (!activeTrip) { setActiveTripStops(null); return; }
+    fetchTripStops(activeTrip.id).then((s) => setActiveTripStops(s.length > 0 ? s : null)).catch(() => {});
+  }, [activeTrip?.id]);
+
   const handleRequestRide = async () => {
     if (!pickup || !dropoff) return;
     if (rideTiming === 'later' && !scheduledAt) return;
+    const resolvedStops = stops.filter((s): s is PlaceSearchResult => s !== null);
     setRequesting(true);
     setRideError(null);
     try {
       await requestRideTrip(
         pickup.displayName, pickup.latitude, pickup.longitude, dropoff.displayName, dropoff.latitude, dropoff.longitude,
         rideTiming === 'later' ? new Date(scheduledAt).toISOString() : undefined,
+        resolvedStops.length > 0 ? resolvedStops.map((s) => ({ address: s.displayName, latitude: s.latitude, longitude: s.longitude })) : undefined,
       );
       setPickup(null);
       setDropoff(null);
       setRideTiming('now');
       setScheduledAt('');
+      setStops([]);
       loadMyTrips();
     } catch (err) {
       setRideError(err instanceof ApiError ? err.message : 'Could not request a ride.');
@@ -10041,6 +10058,9 @@ function RidesView() {
   // Real Kakao T-style post-trip driver rating (item 213) -- the real driver's own
   // aggregate rating, computed at read time from every real submitted review.
   const [driverRating, setDriverRating] = useState<RideDriverRating | null>(null);
+  // Real Kakao T-style multi-stop rides (item 214) -- keyed by trip id, so each real
+  // active trip's own waypoints render independently.
+  const [driverTripStops, setDriverTripStops] = useState<Record<string, RideTripStop[]>>({});
 
   const loadDriver = () => {
     fetchMyDriverProfile()
@@ -10115,6 +10135,27 @@ function RidesView() {
   const activeDriverTrips = (myDriverTrips ?? []).filter((t) => t.status === 'DRIVER_ASSIGNED' || t.status === 'IN_PROGRESS');
   const pastDriverTrips = (myDriverTrips ?? []).filter((t) => t.status === 'COMPLETED' || t.status === 'CANCELLED');
 
+  useEffect(() => {
+    activeDriverTrips.forEach((t) => {
+      fetchTripStops(t.id).then((s) => setDriverTripStops((prev) => (s.length > 0 ? { ...prev, [t.id]: s } : prev))).catch(() => {});
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeDriverTrips.map((t) => t.id).join(',')]);
+
+  const handleArriveAtStop = async (tripId: string) => {
+    setBusyDriverTripId(tripId);
+    setDriverError(null);
+    try {
+      await arriveAtRideStop(tripId);
+      const refreshed = await fetchTripStops(tripId);
+      setDriverTripStops((prev) => ({ ...prev, [tripId]: refreshed }));
+    } catch (err) {
+      setDriverError(err instanceof ApiError ? err.message : 'Could not mark this stop arrived.');
+    } finally {
+      setBusyDriverTripId(null);
+    }
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
@@ -10138,7 +10179,7 @@ function RidesView() {
             <div style={{ marginBottom: '20px' }}>
               <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your ride</h4>
               <RideTripCard
-                trip={activeTrip}
+                trip={activeTrip} stops={activeTripStops}
                 action={activeTrip.status !== 'IN_PROGRESS' && (
                   <button className="toss-btn toss-btn-danger" disabled={busyTripId === activeTrip.id} onClick={() => handleCancelTrip(activeTrip.id)}>
                     {busyTripId === activeTrip.id ? 'Cancelling…' : 'Cancel ride'}
@@ -10152,7 +10193,21 @@ function RidesView() {
                 <Car size={18} color="var(--toss-blue)" /> Request a ride
               </h3>
               <PlaceSearchInput label="Pickup" placeholder="Where from?" value={pickup} onSelect={setPickup} />
+              {stops.map((stop, i) => (
+                <PlaceSearchInput
+                  key={i} label={`Stop ${i + 1}`} placeholder="Add a stop" value={stop}
+                  onSelect={(place) => setStops((prev) => prev.map((s, idx) => (idx === i ? place : s)))}
+                />
+              ))}
               <PlaceSearchInput label="Dropoff" placeholder="Where to?" value={dropoff} onSelect={setDropoff} />
+              {stops.length < 3 && (
+                <button
+                  type="button" onClick={() => setStops((prev) => [...prev, null])}
+                  style={{ fontSize: '12px', fontWeight: 700, color: 'var(--toss-blue)', marginBottom: '12px' }}
+                >
+                  + Add a stop
+                </button>
+              )}
 
               <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '12px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
                 {(['now', 'later'] as const).map((v) => (
@@ -10177,7 +10232,7 @@ function RidesView() {
 
               <button
                 className="toss-btn toss-btn-primary"
-                disabled={!pickup || !dropoff || requesting || (rideTiming === 'later' && !scheduledAt)}
+                disabled={!pickup || !dropoff || requesting || (rideTiming === 'later' && !scheduledAt) || stops.some((s) => s === null)}
                 onClick={handleRequestRide} style={{ width: '100%' }}
               >
                 {requesting ? 'Requesting…' : rideTiming === 'later' ? 'Schedule ride' : 'Request ride'}
@@ -10244,19 +10299,30 @@ function RidesView() {
                 <div style={{ marginBottom: '20px' }}>
                   <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your active trip</h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {activeDriverTrips.map((t) => (
-                      <RideTripCard
-                        key={t.id} trip={t}
-                        action={
-                          <button
-                            className="toss-btn toss-btn-primary" disabled={busyDriverTripId === t.id}
-                            onClick={() => handleDriverTripAction(t.id, t.status === 'DRIVER_ASSIGNED' ? startRideTrip : completeRideTrip)}
-                          >
-                            {busyDriverTripId === t.id ? 'Updating…' : t.status === 'DRIVER_ASSIGNED' ? 'Start trip' : 'Complete trip'}
-                          </button>
-                        }
-                      />
-                    ))}
+                    {activeDriverTrips.map((t) => {
+                      const tripStops = driverTripStops[t.id];
+                      const nextStop = tripStops?.find((s) => !s.arrivedAt);
+                      return (
+                        <RideTripCard
+                          key={t.id} trip={t} stops={tripStops}
+                          action={
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {t.status === 'IN_PROGRESS' && nextStop && (
+                                <button className="toss-btn toss-btn-secondary" disabled={busyDriverTripId === t.id} onClick={() => handleArriveAtStop(t.id)}>
+                                  {busyDriverTripId === t.id ? 'Updating…' : `Arrived at ${nextStop.address}`}
+                                </button>
+                              )}
+                              <button
+                                className="toss-btn toss-btn-primary" disabled={busyDriverTripId === t.id}
+                                onClick={() => handleDriverTripAction(t.id, t.status === 'DRIVER_ASSIGNED' ? startRideTrip : completeRideTrip)}
+                              >
+                                {busyDriverTripId === t.id ? 'Updating…' : t.status === 'DRIVER_ASSIGNED' ? 'Start trip' : 'Complete trip'}
+                              </button>
+                            </div>
+                          }
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               )}

@@ -14,6 +14,7 @@ import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.RideDriver
 import rw.itunda.core.domain.RideTrip
 import rw.itunda.core.domain.RideTripStatus
+import rw.itunda.core.domain.RideTripStop
 import rw.itunda.core.domain.Transaction
 import rw.itunda.core.domain.TransactionStatus
 import rw.itunda.core.domain.TransactionType
@@ -26,6 +27,7 @@ import rw.itunda.core.push.PushNotificationService
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.RideDriverRepository
 import rw.itunda.core.repository.RideTripRepository
+import rw.itunda.core.repository.RideTripStopRepository
 import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
@@ -43,6 +45,12 @@ class RideDriverNotAvailableException(message: String) : RuntimeException(messag
 class InvalidRideTripStatusTransitionException(message: String) : RuntimeException(message)
 class RideNoActiveOfferException(message: String) : RuntimeException(message)
 class InvalidScheduledRideTimeException(message: String) : RuntimeException(message)
+class RideTooManyStopsException(message: String) : RuntimeException(message)
+class RideNoRemainingStopsException(message: String) : RuntimeException(message)
+
+// Real Kakao T-style multi-stop waypoint input (item 214) -- see RideTripStop.kt's own
+// doc comment.
+data class RideStopInput(val address: String, val latitude: Double, val longitude: Double)
 
 /**
  * Real Kakao T-style ride-hailing (2026-07-26) -- closes `docs/DESIGN_REFERENCES.md`'s
@@ -80,6 +88,7 @@ class InvalidScheduledRideTimeException(message: String) : RuntimeException(mess
 class RideTripService(
     private val rideDriverRepository: RideDriverRepository,
     private val rideTripRepository: RideTripRepository,
+    private val rideTripStopRepository: RideTripStopRepository,
     private val walletRepository: WalletRepository,
     private val ledgerService: LedgerService,
     private val transactionRepository: TransactionRepository,
@@ -117,6 +126,10 @@ class RideTripService(
         // wants picked up yet. Kakao's own real lead time isn't published; itunda's own
         // honest choice, not a fabricated real number.
         val SCHEDULED_RIDE_DISPATCH_LEAD_TIME: Duration = Duration.ofMinutes(10)
+
+        // Real Kakao T-style multi-stop rides (item 214) -- Kakao T's own real,
+        // currently-live cap on extra waypoints between pickup and dropoff.
+        const val MAX_STOPS = 3
     }
 
     private val log = LoggerFactory.getLogger(RideTripService::class.java)
@@ -138,9 +151,21 @@ class RideTripService(
         // ASAP, every existing caller's behavior completely unchanged. See
         // RideTrip.scheduledFor's own doc comment for the real bound/lead-time rules.
         scheduledFor: Instant? = null,
+        // Real Kakao T-style multi-stop rides (item 214) -- empty (the default) means a
+        // direct pickup-to-dropoff trip, every existing caller's behavior completely
+        // unchanged. See RideTripStop.kt's own doc comment.
+        stops: List<RideStopInput> = emptyList(),
     ): RideTrip {
         if (!GeoUtils.isValidCoordinate(pickupLatitude, pickupLongitude) || !GeoUtils.isValidCoordinate(dropoffLatitude, dropoffLongitude)) {
             throw InvalidRideLocationException("Invalid pickup or dropoff coordinate")
+        }
+        if (stops.size > MAX_STOPS) {
+            throw RideTooManyStopsException("A trip can have at most $MAX_STOPS extra stops")
+        }
+        stops.forEach {
+            if (!GeoUtils.isValidCoordinate(it.latitude, it.longitude)) {
+                throw InvalidRideLocationException("Invalid stop coordinate")
+            }
         }
         if (scheduledFor != null) {
             val now = Instant.now()
@@ -161,7 +186,13 @@ class RideTripService(
         val passengerWallet = walletRepository.findByUserIdAndType(passengerId, WalletType.MAIN)
             ?: throw RideDriverNoWalletException("No wallet found for this account")
 
-        val distanceKm = BigDecimal(GeoUtils.haversineKm(pickupLatitude, pickupLongitude, dropoffLatitude, dropoffLongitude)).setScale(3, RoundingMode.HALF_UP)
+        // Real multi-stop distance -- pickup -> stop 1 -> ... -> dropoff, summed as
+        // consecutive real GeoUtils.haversineKm legs (the same straight-line honesty
+        // GeoUtils.kt's own doc comment already names), not just pickup-to-dropoff once
+        // real stops exist in between.
+        val routePoints = listOf(pickupLatitude to pickupLongitude) + stops.map { it.latitude to it.longitude } + listOf(dropoffLatitude to dropoffLongitude)
+        val totalDistanceKm = routePoints.zipWithNext().sumOf { (a, b) -> GeoUtils.haversineKm(a.first, a.second, b.first, b.second) }
+        val distanceKm = BigDecimal(totalDistanceKm).setScale(3, RoundingMode.HALF_UP)
         val fare = baseFare.add(perKmRate.multiply(distanceKm)).setScale(2, RoundingMode.HALF_UP).max(minFare)
         val platformFee = fare.multiply(platformFeeRate).setScale(2, RoundingMode.HALF_UP)
 
@@ -203,6 +234,14 @@ class RideTripService(
                 fare = fare, platformFee = platformFee, transactionId = holdTransaction.id, scheduledFor = scheduledFor,
             ),
         )
+        stops.forEachIndexed { index, stop ->
+            rideTripStopRepository.save(
+                RideTripStop(
+                    id = "ride_trip_stop_${UUID.randomUUID()}", tripId = trip.id, sequence = index,
+                    address = stop.address.trim().take(500), latitude = stop.latitude, longitude = stop.longitude,
+                ),
+            )
+        }
         // Real Kakao T 예약 호출 -- a trip scheduled well ahead is not dispatched now;
         // RideDispatchScheduler starts real dispatch once it's within
         // SCHEDULED_RIDE_DISPATCH_LEAD_TIME of the requested time (see
@@ -350,6 +389,28 @@ class RideTripService(
         val saved = rideTripRepository.save(trip)
         dispatchToNextDriver(saved)
         return saved
+    }
+
+    // Real Kakao T-style multi-stop rides (item 214) -- every real waypoint recorded for
+    // a trip, in real visit order.
+    fun getTripStops(tripId: String): List<RideTripStop> = rideTripStopRepository.findByTripIdOrderBySequenceAsc(tripId)
+
+    /**
+     * Real driver-marks-arrival at the next unvisited stop, in order -- can't skip ahead
+     * to a later stop before an earlier one is real-marked arrived. See
+     * `RideTripStop.kt`'s own doc comment.
+     */
+    @Transactional
+    fun arriveAtStop(driverUserId: String, tripId: String): RideTripStop {
+        val driver = getMyDriver(driverUserId)
+        val trip = getOwnedTrip(tripId, driver.id)
+        if (trip.status != RideTripStatus.IN_PROGRESS) {
+            throw InvalidRideTripStatusTransitionException("Only an IN_PROGRESS trip can have a stop marked arrived")
+        }
+        val nextStop = rideTripStopRepository.findByTripIdOrderBySequenceAsc(tripId).firstOrNull { it.arrivedAt == null }
+            ?: throw RideNoRemainingStopsException("This trip has no remaining stops")
+        nextStop.arrivedAt = Instant.now()
+        return rideTripStopRepository.save(nextStop)
     }
 
     @Transactional

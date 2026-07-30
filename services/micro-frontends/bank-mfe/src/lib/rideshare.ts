@@ -30,6 +30,18 @@ export interface RideTrip {
   createdAt: string;
 }
 
+// Real Kakao T-style multi-stop rides (item 214) -- see the backend's RideTripStop.kt
+// doc comment for the full sourced account.
+export interface RideTripStop {
+  id: string;
+  tripId: string;
+  sequence: number;
+  address: string;
+  latitude: number;
+  longitude: number;
+  arrivedAt: string | null;
+}
+
 export type RideDriverStatus = 'ACTIVE' | 'SUSPENDED';
 
 export interface RideDriver {
@@ -67,12 +79,21 @@ export const requestRideTrip = (
   // Real Kakao T 예약 호출 (scheduled ride booking, item 212) -- omitted/undefined means
   // ASAP, unchanged from before.
   scheduledFor?: string,
+  // Real Kakao T-style multi-stop rides (item 214) -- omitted/empty means a direct
+  // pickup-to-dropoff trip, unchanged from before. Up to 3 extra stops.
+  stops?: { address: string; latitude: number; longitude: number }[],
 ) =>
   apiFetch<{ success: boolean; trip: RideTrip }>('/api/v1/rides/trips', {
     method: 'POST',
     headers: { 'Idempotency-Key': randomUUID() },
-    body: JSON.stringify({ pickupAddress, pickupLatitude, pickupLongitude, dropoffAddress, dropoffLatitude, dropoffLongitude, scheduledFor }),
+    body: JSON.stringify({ pickupAddress, pickupLatitude, pickupLongitude, dropoffAddress, dropoffLatitude, dropoffLongitude, scheduledFor, stops }),
   }).then((r) => r.trip);
+
+export const fetchTripStops = (tripId: string) =>
+  apiFetch<{ success: boolean; stops: RideTripStop[] }>(`/api/v1/rides/trips/${tripId}/stops`).then((r) => r.stops);
+
+export const arriveAtRideStop = (tripId: string) =>
+  apiFetch<{ success: boolean; stop: RideTripStop }>(`/api/v1/rides/trips/${tripId}/stops/arrive`, { method: 'POST' }).then((r) => r.stop);
 
 export const fetchAvailableTrips = () =>
   apiFetch<{ success: boolean; trips: RideTrip[] }>('/api/v1/rides/trips/available').then((r) => r.trips);
