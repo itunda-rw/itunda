@@ -5,9 +5,11 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.bigdecimal.shouldBeEqualIgnoringScale
 import io.kotest.matchers.shouldBe
 import io.mockk.every
+import io.mockk.clearMocks
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.Agent
 import rw.itunda.core.domain.AgentStatus
 import rw.itunda.core.domain.LedgerAccountType
@@ -212,6 +214,19 @@ class AgentServiceTest : BehaviorSpec({
                 verify(exactly = 1) { ledgerService3.postLedgerTransaction("RWF", capture(legs)) }
                 legs.first().size shouldBe 2
                 result["operatorCommission"] shouldBe BigDecimal.ZERO
+            }
+        }
+
+        Then("a cash-in waits to send the irreversible push until after commit") {
+            clearMocks(pushNotificationService3)
+            TransactionSynchronizationManager.initSynchronization()
+            try {
+                service3.cashIn(agent3.id, customerWallet3.accountNumber, BigDecimal("15000"), "KGL-C-003", "wallet_less_operator")
+                verify(exactly = 0) { pushNotificationService3.sendToUser(any(), any(), any(), any()) }
+                TransactionSynchronizationManager.getSynchronizations().single().afterCommit()
+                verify(exactly = 1) { pushNotificationService3.sendToUser("user_customer3", "Cash added", any(), any()) }
+            } finally {
+                TransactionSynchronizationManager.clearSynchronization()
             }
         }
     }

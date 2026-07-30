@@ -3,6 +3,8 @@ package rw.itunda.auth
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.TrustedDevice
 import rw.itunda.core.push.PushNotificationService
@@ -94,7 +96,19 @@ class DeviceService(
         // FraudReviewService.decide's confirmed-fraud push already established: if this
         // wasn't the real account owner, they need to know the instant it happens, not
         // whenever they next happen to open the app.
-        pushNotificationService.sendToUser(userId, title, body, mapOf("deviceId" to trimmedId))
+        sendNewDevicePushAfterCommit(userId, title, body, trimmedId)
+    }
+
+    /** An external security alert must not claim a device registration that rolled back. */
+    private fun sendNewDevicePushAfterCommit(userId: String, title: String, body: String, deviceId: String) {
+        val send = { pushNotificationService.sendToUser(userId, title, body, mapOf("deviceId" to deviceId)) }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     fun getMyDevices(userId: String): List<TrustedDevice> = trustedDeviceRepository.findByUserIdOrderByLastSeenAtDesc(userId)

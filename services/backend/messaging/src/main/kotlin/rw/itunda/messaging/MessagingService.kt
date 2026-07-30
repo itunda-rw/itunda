@@ -237,11 +237,16 @@ class MessagingService(
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"conversationId\":\"$conversationId\"}",
                 ),
             )
-            pushNotificationService.sendToUser(recipientId, senderName, body, mapOf("conversationId" to conversationId))
+            runAfterCommit {
+                pushNotificationService.sendToUser(recipientId, senderName, body, mapOf("conversationId" to conversationId))
+            }
         }
-        // Real live push, on a best-effort basis -- the message is already durably
-        // persisted above regardless of whether anyone is listening right now.
-        realtimeMessagePublisher.publishNewMessage(conversationId, recipientId, message)
+        // A live frame is an external, irreversible effect. Send it only after the
+        // message and notification rows are durable; the REST history endpoint remains
+        // the recovery path if a recipient was offline or delivery fails.
+        runAfterCommit {
+            realtimeMessagePublisher.publishNewMessage(conversationId, recipientId, message)
+        }
         return message
     }
 

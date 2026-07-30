@@ -7,7 +7,10 @@ import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import jakarta.persistence.LockModeType
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
+import org.springframework.data.jpa.repository.Lock
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.EmailVerificationToken
 import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.Notification
@@ -17,6 +20,7 @@ import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.EmailVerificationTokenRepository
 import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -55,8 +59,11 @@ class AuthServiceTest : BehaviorSpec({
         val jwtService = JwtService(testSecret)
         val tokenBlocklistService = mockk<TokenBlocklistService>()
         val rateLimiter = mockk<RateLimiter>()
+        every { rateLimiter.checkLimit(any(), any(), any()) } returns Unit
         val emailVerificationTokenRepository = mockk<EmailVerificationTokenRepository>()
+        every { emailVerificationTokenRepository.invalidateUnusedByUserId(any()) } returns 0
         val phoneVerificationTokenRepository = mockk<PhoneVerificationTokenRepository>()
+        every { phoneVerificationTokenRepository.invalidateUnusedByUserId(any()) } returns 0
         val notificationRepository = mockk<NotificationRepository>()
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>()
         // Real device binding (2026-07-20) -- relaxed since these tests aren't about
@@ -66,10 +73,11 @@ class AuthServiceTest : BehaviorSpec({
         // Real push (item 122) -- relaxed since these tests aren't about the push
         // pipeline itself, just registration/login/profile behavior.
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val realtimeMessagePublisher = mockk<RealtimeMessagePublisher>(relaxed = true)
         val service = AuthService(
             userRepository, walletRepository, interestJarRepository, jwtService, tokenBlocklistService, rateLimiter,
             emailVerificationTokenRepository, phoneVerificationTokenRepository, notificationRepository, nominatimGeocodingClient, deviceService,
-            pushNotificationService,
+            pushNotificationService, realtimeMessagePublisher,
         )
 
         When("registering a brand-new phone number") {
@@ -107,9 +115,10 @@ class AuthServiceTest : BehaviorSpec({
                 jarSlot.single().earnedThisMonth.signum() shouldBe 0
             }
             Then("it real-sends a 6-digit phone verification code via a real in-app notification, at registration itself") {
-                phoneTokenSlot.single().token.length shouldBe 6
-                phoneTokenSlot.single().token.toIntOrNull() shouldNotBe null
-                notificationSlot.single { it.type == "PHONE_VERIFICATION" } shouldNotBe null
+                phoneTokenSlot.single().token.startsWith("\$2") shouldBe true
+                val notification = notificationSlot.single { it.type == "PHONE_VERIFICATION" }
+                val deliveredCode = Regex("\\d{6}").find(notification.body)!!.value
+                passwordEncoder.matches(deliveredCode, phoneTokenSlot.single().token) shouldBe true
             }
         }
 
@@ -339,7 +348,37 @@ class AuthServiceTest : BehaviorSpec({
                 val notification = notificationSlot.single()
                 notification.userId shouldBe "user_9"
                 notification.type shouldBe "PROFILE_EMAIL_VERIFICATION"
-                notification.body.contains(tokenSlot.single().token) shouldBe true
+                passwordEncoder.matches(Regex("[a-f0-9]{32}").find(notification.body)!!.value, tokenSlot.single().token) shouldBe true
+                verify(exactly = 1) { emailVerificationTokenRepository.invalidateUnusedByUserId("user_9") }
+                verify(exactly = 1) { rateLimiter.checkLimit("auth:email-verify-request:user_9", 3, Duration.ofMinutes(15)) }
+            }
+        }
+
+        When("an email-verification request is still inside its transaction") {
+            val user = User(
+                id = "user_after_commit", phoneNumber = "+250788000099", firstName = "Jean", lastName = "B",
+                passwordHash = "unused", email = "jean@itunda.rw", emailVerified = false, createdAt = Instant.now(),
+            )
+            every { userRepository.findById(user.id) } returns Optional.of(user)
+            every { emailVerificationTokenRepository.save(any()) } answers { firstArg() }
+            every { notificationRepository.save(any()) } answers { firstArg() }
+
+            TransactionSynchronizationManager.initSynchronization()
+            try {
+                service.requestEmailVerification(user.id)
+
+                Then("the token and durable notification exist, while the OTP push is withheld") {
+                    verify(exactly = 1) { emailVerificationTokenRepository.save(any()) }
+                    verify(exactly = 1) { notificationRepository.save(any()) }
+                    verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any()) }
+                }
+
+                Then("the OTP push is sent only after the transaction commits") {
+                    TransactionSynchronizationManager.getSynchronizations().single().afterCommit()
+                    verify(exactly = 1) { pushNotificationService.sendToUser(user.id, "Verify your email", any()) }
+                }
+            } finally {
+                TransactionSynchronizationManager.clearSynchronization()
             }
         }
 
@@ -349,10 +388,10 @@ class AuthServiceTest : BehaviorSpec({
                 passwordHash = "unused", email = "jean12@itunda.rw", emailVerified = false, createdAt = Instant.now(),
             )
             val tokenRecord = EmailVerificationToken(
-                id = "evt_1", userId = "user_12", token = "realtoken123",
+                id = "evt_1", userId = "user_12", token = passwordEncoder.encode("realtoken123"),
                 expiresAt = Instant.now().plusSeconds(1800),
             )
-            every { emailVerificationTokenRepository.findByToken("realtoken123") } returns tokenRecord
+            every { emailVerificationTokenRepository.findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc("user_12") } returns tokenRecord
             every { emailVerificationTokenRepository.save(any()) } answers { firstArg() }
             every { userRepository.findById("user_12") } returns Optional.of(user)
             every { userRepository.save(any()) } answers { firstArg() }
@@ -368,10 +407,10 @@ class AuthServiceTest : BehaviorSpec({
 
         When("confirming email verification with a token that belongs to a different user") {
             val tokenRecord = EmailVerificationToken(
-                id = "evt_2", userId = "user_other", token = "stolentoken",
+                id = "evt_2", userId = "user_other", token = passwordEncoder.encode("stolentoken"),
                 expiresAt = Instant.now().plusSeconds(1800),
             )
-            every { emailVerificationTokenRepository.findByToken("stolentoken") } returns tokenRecord
+            every { emailVerificationTokenRepository.findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc("user_13") } returns tokenRecord
 
             Then("it throws InvalidVerificationTokenException -- ownership is checked, not just token validity") {
                 try {
@@ -385,10 +424,10 @@ class AuthServiceTest : BehaviorSpec({
 
         When("confirming email verification with an expired token") {
             val tokenRecord = EmailVerificationToken(
-                id = "evt_3", userId = "user_14", token = "expiredtoken",
+                id = "evt_3", userId = "user_14", token = passwordEncoder.encode("expiredtoken"),
                 expiresAt = Instant.now().minusSeconds(60),
             )
-            every { emailVerificationTokenRepository.findByToken("expiredtoken") } returns tokenRecord
+            every { emailVerificationTokenRepository.findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc("user_14") } returns tokenRecord
 
             Then("it throws InvalidVerificationTokenException -- a stale token can't verify an email") {
                 try {
@@ -402,10 +441,10 @@ class AuthServiceTest : BehaviorSpec({
 
         When("confirming email verification with an already-used token") {
             val tokenRecord = EmailVerificationToken(
-                id = "evt_4", userId = "user_15", token = "usedtoken",
+                id = "evt_4", userId = "user_15", token = passwordEncoder.encode("usedtoken"),
                 expiresAt = Instant.now().plusSeconds(1800), usedAt = Instant.now().minusSeconds(60),
             )
-            every { emailVerificationTokenRepository.findByToken("usedtoken") } returns tokenRecord
+            every { emailVerificationTokenRepository.findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc("user_15") } returns tokenRecord
 
             Then("it throws InvalidVerificationTokenException -- a token verifies an email exactly once") {
                 try {
@@ -449,11 +488,14 @@ class AuthServiceTest : BehaviorSpec({
 
             Then("it saves a real single-use 6-digit code and delivers it via a real in-app notification") {
                 tokenSlot.single().userId shouldBe "user_17"
-                tokenSlot.single().token.length shouldBe 6
+                tokenSlot.single().token.startsWith("\$2") shouldBe true
+                verify(exactly = 1) { phoneVerificationTokenRepository.invalidateUnusedByUserId("user_17") }
+                verify(exactly = 1) { rateLimiter.checkLimit("auth:phone-verify-request:user_17", 3, Duration.ofMinutes(15)) }
                 val notification = notificationSlot.single()
                 notification.userId shouldBe "user_17"
                 notification.type shouldBe "PHONE_VERIFICATION"
-                notification.body.contains(tokenSlot.single().token) shouldBe true
+                val deliveredCode = Regex("\\d{6}").find(notification.body)!!.value
+                passwordEncoder.matches(deliveredCode, tokenSlot.single().token) shouldBe true
             }
         }
 
@@ -463,10 +505,10 @@ class AuthServiceTest : BehaviorSpec({
                 passwordHash = "unused", phoneVerified = false, createdAt = Instant.now(),
             )
             val tokenRecord = PhoneVerificationToken(
-                id = "pvt_1", userId = "user_18", token = "654321",
+                id = "pvt_1", userId = "user_18", token = passwordEncoder.encode("654321"),
                 expiresAt = Instant.now().plusSeconds(1800),
             )
-            every { phoneVerificationTokenRepository.findByToken("654321") } returns tokenRecord
+            every { phoneVerificationTokenRepository.findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc("user_18") } returns tokenRecord
             every { phoneVerificationTokenRepository.save(any()) } answers { firstArg() }
             every { userRepository.findById("user_18") } returns Optional.of(user)
             every { userRepository.save(any()) } answers { firstArg() }
@@ -477,15 +519,16 @@ class AuthServiceTest : BehaviorSpec({
                 result.phoneVerified shouldBe true
                 tokenRecord.usedAt shouldNotBe null
                 verify(exactly = 1) { phoneVerificationTokenRepository.save(any()) }
+                verify(exactly = 1) { rateLimiter.checkLimit("auth:phone-verify:user_18", 5, Duration.ofMinutes(15)) }
             }
         }
 
         When("confirming phone verification with a code that belongs to a different user") {
             val tokenRecord = PhoneVerificationToken(
-                id = "pvt_2", userId = "user_other", token = "111111",
+                id = "pvt_2", userId = "user_other", token = passwordEncoder.encode("111111"),
                 expiresAt = Instant.now().plusSeconds(1800),
             )
-            every { phoneVerificationTokenRepository.findByToken("111111") } returns tokenRecord
+            every { phoneVerificationTokenRepository.findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc("user_19") } returns tokenRecord
 
             Then("it throws InvalidVerificationTokenException -- ownership is checked, not just code validity") {
                 try {
@@ -499,10 +542,10 @@ class AuthServiceTest : BehaviorSpec({
 
         When("confirming phone verification with an expired code") {
             val tokenRecord = PhoneVerificationToken(
-                id = "pvt_3", userId = "user_20", token = "222222",
+                id = "pvt_3", userId = "user_20", token = passwordEncoder.encode("222222"),
                 expiresAt = Instant.now().minusSeconds(60),
             )
-            every { phoneVerificationTokenRepository.findByToken("222222") } returns tokenRecord
+            every { phoneVerificationTokenRepository.findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc("user_20") } returns tokenRecord
 
             Then("it throws InvalidVerificationTokenException -- a stale code can't verify a phone number") {
                 try {
@@ -531,6 +574,22 @@ class AuthServiceTest : BehaviorSpec({
                 verify(exactly = 1) { tokenBlocklistService.blacklist(decoded.jti, decoded.expiresAt) }
                 jwtService.verify(response.accessToken)!!.userId shouldBe "user_5"
                 response.refreshToken shouldNotBe refreshToken
+            }
+        }
+
+        When("logging out with a valid access token") {
+            val accessToken = jwtService.issueAccessToken("user_77", "+250788000077", "USER")
+            val refreshToken = jwtService.issueRefreshToken("user_77")
+            val decodedAccess = jwtService.verify(accessToken)!!
+            val decodedRefresh = jwtService.verify(refreshToken)!!
+            every { tokenBlocklistService.blacklist(any(), any()) } returns Unit
+
+            service.logout(accessToken, refreshToken)
+
+            Then("it revokes the credentials and closes only this access token's live sockets") {
+                verify { tokenBlocklistService.blacklist(decodedAccess.jti, decodedAccess.expiresAt) }
+                verify { tokenBlocklistService.blacklist(decodedRefresh.jti, decodedRefresh.expiresAt) }
+                verify(exactly = 1) { realtimeMessagePublisher.closeSessionsForToken("user_77", decodedAccess.jti) }
             }
         }
 
@@ -623,6 +682,17 @@ class AuthServiceTest : BehaviorSpec({
                     verify(exactly = 0) { userRepository.save(any()) }
                 }
             }
+        }
+    }
+
+    Given("the verification-token repositories") {
+        Then("both active-token lookups are pessimistically locked for one-time consumption") {
+            EmailVerificationTokenRepository::class.java
+                .getMethod("findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc", String::class.java)
+                .getAnnotation(Lock::class.java).value shouldBe LockModeType.PESSIMISTIC_WRITE
+            PhoneVerificationTokenRepository::class.java
+                .getMethod("findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc", String::class.java)
+                .getAnnotation(Lock::class.java).value shouldBe LockModeType.PESSIMISTIC_WRITE
         }
     }
 }) {

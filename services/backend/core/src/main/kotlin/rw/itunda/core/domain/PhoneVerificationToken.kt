@@ -8,7 +8,7 @@ import java.time.Instant
 
 /**
  * A real, single-use, expiring token backing phone-number verification -- same shape as
- * `EmailVerificationToken`, just a random 6-digit OTP-style `token` value instead of a
+ * `EmailVerificationToken`, just a BCrypt-hashed random 6-digit OTP instead of a
  * hex string (matching the real-world phone-OTP UX this mirrors) and issued at
  * registration rather than opt-in from a profile screen. See
  * `AuthService.requestPhoneVerification`'s own doc comment for the full delivery story.

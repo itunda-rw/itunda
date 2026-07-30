@@ -36,7 +36,14 @@ class PushNotificationService(
     private val log = LoggerFactory.getLogger(PushNotificationService::class.java)
 
     fun sendToUser(userId: String, title: String, body: String, data: Map<String, String> = emptyMap()) {
-        val tokens = deviceTokenRepository.findByUserId(userId)
+        val tokens = try {
+            deviceTokenRepository.findByUserId(userId)
+        } catch (e: Exception) {
+            // Push is auxiliary. A transient token-store failure must not fail the
+            // payment, fraud-review, or other business action that triggered it.
+            log.warn("Could not load push tokens for user {}: {}", userId, e.message)
+            return
+        }
         if (tokens.isEmpty()) return
         tokens.forEach { token ->
             try {

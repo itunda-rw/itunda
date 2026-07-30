@@ -283,12 +283,16 @@ class GroupMessagingService(
         // "higher-signal" reasoning the GROUP_MENTION notification type above already
         // establishes.
         recipientIds.filter { it in mentionedUserIds }.forEach { recipientId ->
-            pushNotificationService.sendToUser(
-                recipientId, "$senderName mentioned you in ${group.name}", trimmed.take(120),
-                mapOf("groupConversationId" to groupId),
-            )
+            runAfterCommit {
+                pushNotificationService.sendToUser(
+                    recipientId, "$senderName mentioned you in ${group.name}", trimmed.take(120),
+                    mapOf("groupConversationId" to groupId),
+                )
+            }
         }
-        realtimeMessagePublisher.publishNewGroupMessage(groupId, recipientIds, message)
+        runAfterCommit {
+            realtimeMessagePublisher.publishNewGroupMessage(groupId, recipientIds, message)
+        }
         return message
     }
 

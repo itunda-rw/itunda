@@ -346,27 +346,61 @@ export interface MessagingSocketHandle {
 }
 
 export function connectMessagingSocket(onMessage: (payload: SocketPushPayload) => void): MessagingSocketHandle {
-  const token = getToken();
-  if (!token) return { close: () => {}, sendTyping: () => {} };
+  let socket: WebSocket | undefined;
+  let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+  let closedByCaller = false;
+  let reconnectAttempt = 0;
 
-  const wsUrl = `${BASE_URL.replace(/^http/, 'ws')}/ws/messaging?token=${encodeURIComponent(token)}`;
-  const socket = new WebSocket(wsUrl);
+  const scheduleReconnect = () => {
+    if (closedByCaller || reconnectTimer) return;
+    // Exponential backoff with bounded jitter prevents every open chat screen from
+    // reconnecting at once after a deploy, network switch, or upstream restart. REST
+    // polling remains the correctness path while this best-effort channel recovers.
+    const capMs = 30_000;
+    const baseMs = Math.min(1_000 * 2 ** reconnectAttempt, capMs);
+    const jitterMs = Math.floor(Math.random() * Math.max(1, Math.floor(baseMs * 0.25)));
+    reconnectAttempt += 1;
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = undefined;
+      connect();
+    }, baseMs + jitterMs);
+  };
 
-  socket.addEventListener('message', (event) => {
-    try {
-      const payload = JSON.parse(event.data) as SocketPushPayload;
-      if (payload.type === 'message' || payload.type === 'group_message' || payload.type === 'presence' || payload.type === 'typing' || payload.type === 'reaction' || payload.type === 'group_read_receipt') {
-        onMessage(payload);
+  const connect = () => {
+    const token = getToken();
+    if (!token || closedByCaller) return;
+
+    const wsUrl = `${BASE_URL.replace(/^http/, 'ws')}/ws/messaging?token=${encodeURIComponent(token)}`;
+    const nextSocket = new WebSocket(wsUrl);
+    socket = nextSocket;
+    nextSocket.addEventListener('open', () => {
+      reconnectAttempt = 0;
+    });
+    nextSocket.addEventListener('message', (event) => {
+      try {
+        const payload = JSON.parse(event.data) as SocketPushPayload;
+        if (payload.type === 'message' || payload.type === 'group_message' || payload.type === 'presence' || payload.type === 'typing' || payload.type === 'reaction' || payload.type === 'group_read_receipt') {
+          onMessage(payload);
+        }
+      } catch {
+        // Malformed/unexpected frame -- ignore, the poll fallback still covers delivery.
       }
-    } catch {
-      // Malformed/unexpected frame -- ignore, the poll fallback still covers delivery.
-    }
-  });
+    });
+    nextSocket.addEventListener('close', scheduleReconnect);
+    nextSocket.addEventListener('error', () => nextSocket.close());
+  };
+
+  connect();
 
   return {
-    close: () => socket.close(),
+    close: () => {
+      closedByCaller = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = undefined;
+      socket?.close();
+    },
     sendTyping: (target) => {
-      if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'typing', ...target }));
+      if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: 'typing', ...target }));
     },
   };
 }

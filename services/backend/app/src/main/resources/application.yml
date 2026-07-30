@@ -1,6 +1,13 @@
 server:
   port: 4001
 
+logging:
+  pattern:
+    # The correlation filter supplies this MDC value per request. Keep it compact
+    # and avoid URL/header interpolation so access tokens and message bodies never
+    # become application-log fields.
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] [requestId=%X{requestId:-}] %logger{36} - %msg%n"
+
 spring:
   application:
     name: itunda

@@ -1,8 +1,11 @@
 package rw.itunda.auth
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.EmailVerificationToken
 import rw.itunda.core.domain.InterestJar
 import rw.itunda.core.domain.Notification
@@ -13,6 +16,7 @@ import rw.itunda.core.domain.WalletType
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.NominatimGeocodingClient
 import rw.itunda.core.push.PushNotificationService
+import rw.itunda.core.realtime.RealtimeMessagePublisher
 import rw.itunda.core.repository.EmailVerificationTokenRepository
 import rw.itunda.core.repository.InterestJarRepository
 import rw.itunda.core.repository.NotificationRepository
@@ -25,6 +29,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.UUID
+import java.security.SecureRandom
 
 /**
  * Port of backend/src/controllers/auth.controller.ts's login/register, with one fix
@@ -47,8 +52,11 @@ class AuthService(
     private val nominatimGeocodingClient: NominatimGeocodingClient,
     private val deviceService: DeviceService,
     private val pushNotificationService: PushNotificationService,
+    private val realtimeMessagePublisher: RealtimeMessagePublisher,
 ) {
     private val passwordEncoder = BCryptPasswordEncoder()
+    private val logger = LoggerFactory.getLogger(AuthService::class.java)
+    private val secureRandom = SecureRandom()
 
     @Transactional
     fun register(request: RegisterRequest): AuthResponse {
@@ -187,7 +195,10 @@ class AuthService(
      * isn't a real logout at all.
      */
     fun logout(accessToken: String, refreshToken: String?) {
-        jwtService.verify(accessToken)?.let { tokenBlocklistService.blacklist(it.jti, it.expiresAt) }
+        jwtService.verify(accessToken)?.let { decoded ->
+            tokenBlocklistService.blacklist(decoded.jti, decoded.expiresAt)
+            realtimeMessagePublisher.closeSessionsForToken(decoded.userId, decoded.jti)
+        }
         refreshToken?.let { jwtService.verify(it)?.let { decoded -> tokenBlocklistService.blacklist(decoded.jti, decoded.expiresAt) } }
     }
 
@@ -294,14 +305,16 @@ class AuthService(
     // actually receiving it through that real channel.
     @Transactional
     fun requestEmailVerification(userId: String) {
+        rateLimiter.checkLimit("auth:email-verify-request:$userId", limit = 3, window = Duration.ofMinutes(15))
         val user = userRepository.findById(userId).orElseThrow { UserNotFoundException("User not found") }
         if (user.email == null) throw NoEmailOnFileException("No email address on file to verify")
         if (user.emailVerified) throw EmailAlreadyVerifiedException("Email is already verified")
 
         val token = UUID.randomUUID().toString().replace("-", "")
+        emailVerificationTokenRepository.invalidateUnusedByUserId(userId)
         emailVerificationTokenRepository.save(
             EmailVerificationToken(
-                id = "evt_${UUID.randomUUID()}", userId = userId, token = token,
+                id = "evt_${UUID.randomUUID()}", userId = userId, token = passwordEncoder.encode(token),
                 expiresAt = Instant.now().plusSeconds(1800), createdAt = Instant.now(),
             ),
         )
@@ -320,15 +333,15 @@ class AuthService(
         // types that are fine to pick up on the next in-app poll. See
         // PushNotificationService's own doc comment for the fuller "why these sites"
         // account.
-        pushNotificationService.sendToUser(userId, title, body)
+        sendVerificationPushAfterCommit(userId, title, body)
     }
 
     @Transactional
     fun confirmEmailVerification(userId: String, token: String): PublicUser {
-        val record = emailVerificationTokenRepository.findByToken(token)
+        val record = emailVerificationTokenRepository.findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc(userId)
             ?.takeIf { it.userId == userId }
             ?: throw InvalidVerificationTokenException("Invalid or expired verification token")
-        if (record.usedAt != null || record.expiresAt.isBefore(Instant.now())) {
+        if (record.usedAt != null || !passwordEncoder.matches(token, record.token) || record.expiresAt.isBefore(Instant.now())) {
             throw InvalidVerificationTokenException("Invalid or expired verification token")
         }
         record.usedAt = Instant.now()
@@ -357,10 +370,14 @@ class AuthService(
      * authenticated when they see the in-app notification.
      */
     private fun sendPhoneVerificationCode(userId: String) {
-        val code = (100000 + (Math.random() * 900000).toInt()).toString()
+        // Authentication codes are secrets: SecureRandom avoids the predictability of
+        // Math.random while preserving the existing six-digit UX and 30-minute expiry.
+        val code = (100000 + secureRandom.nextInt(900000)).toString()
+        // A resend replaces, rather than adds to, the active challenge set.
+        phoneVerificationTokenRepository.invalidateUnusedByUserId(userId)
         phoneVerificationTokenRepository.save(
             PhoneVerificationToken(
-                id = "pvt_${UUID.randomUUID()}", userId = userId, token = code,
+                id = "pvt_${UUID.randomUUID()}", userId = userId, token = passwordEncoder.encode(code),
                 expiresAt = Instant.now().plusSeconds(1800), createdAt = Instant.now(),
             ),
         )
@@ -374,12 +391,31 @@ class AuthService(
             ),
         )
         // Real push (item 122) -- see requestEmailVerification's own doc comment above.
-        pushNotificationService.sendToUser(userId, title, body)
+        sendVerificationPushAfterCommit(userId, title, body)
+    }
+
+    /** OTP pushes are external effects; only expose a code once its token row has committed. */
+    private fun sendVerificationPushAfterCommit(userId: String, title: String, body: String) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body)
+            } catch (e: Exception) {
+                logger.warn("Could not send verification push for user {}", userId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     /** Real resend, for the code sent automatically at registration expiring or getting lost. */
     @Transactional
     fun requestPhoneVerification(userId: String) {
+        rateLimiter.checkLimit("auth:phone-verify-request:$userId", limit = 3, window = Duration.ofMinutes(15))
         val user = userRepository.findById(userId).orElseThrow { UserNotFoundException("User not found") }
         if (user.phoneVerified) throw PhoneAlreadyVerifiedException("Phone number is already verified")
         sendPhoneVerificationCode(userId)
@@ -387,10 +423,13 @@ class AuthService(
 
     @Transactional
     fun confirmPhoneVerification(userId: String, code: String): PublicUser {
-        val record = phoneVerificationTokenRepository.findByToken(code)
+        // Six-digit OTPs have a deliberately small keyspace for usability, so limit
+        // guesses independently of resend limits before looking up the token.
+        rateLimiter.checkLimit("auth:phone-verify:$userId", limit = 5, window = Duration.ofMinutes(15))
+        val record = phoneVerificationTokenRepository.findFirstByUserIdAndUsedAtIsNullOrderByCreatedAtDesc(userId)
             ?.takeIf { it.userId == userId }
             ?: throw InvalidVerificationTokenException("Invalid or expired verification code")
-        if (record.usedAt != null || record.expiresAt.isBefore(Instant.now())) {
+        if (!passwordEncoder.matches(code, record.token) || record.expiresAt.isBefore(Instant.now())) {
             throw InvalidVerificationTokenException("Invalid or expired verification code")
         }
         record.usedAt = Instant.now()

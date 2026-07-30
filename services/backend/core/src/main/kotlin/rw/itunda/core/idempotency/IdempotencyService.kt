@@ -9,7 +9,9 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
@@ -17,9 +19,13 @@ import java.time.Instant
 
 class IdempotencyConflictException(message: String) : RuntimeException(message)
 class IdempotencyInProgressException(message: String) : RuntimeException(message)
+class InvalidIdempotencyKeyException(message: String) : RuntimeException(message)
 data class IdempotentReplay(val statusCode: Int, val body: Map<String, Any?>)
 
 private const val PROCESSING_STATUS = -1
+private const val MAX_IDEMPOTENCY_KEY_LENGTH = 300
+private const val MAX_SCOPED_IDEMPOTENCY_KEY_LENGTH = 512
+internal val IDEMPOTENCY_RETENTION: Duration = Duration.ofDays(15)
 
 /**
  * Mirrors Toss Payments' own public idempotency-key contract
@@ -31,7 +37,7 @@ private const val PROCESSING_STATUS = -1
 @Table(name = "idempotency_records")
 class IdempotencyRecordEntity(
     @Id
-    @Column(name = "record_key", length = 300)
+    @Column(name = "record_key", length = MAX_SCOPED_IDEMPOTENCY_KEY_LENGTH)
     val recordKey: String,
 
     @Column(name = "body_json", nullable = false, columnDefinition = "TEXT")
@@ -81,6 +87,10 @@ interface IdempotencyRecordRepository : JpaRepository<IdempotencyRecordEntity, S
         @Param("responseJson") responseJson: String,
         @Param("createdAt") createdAt: Instant,
     ): Int
+
+    @Modifying
+    @Query("DELETE FROM IdempotencyRecordEntity r WHERE r.createdAt < :expiredBefore")
+    fun deleteExpiredBefore(@Param("expiredBefore") expiredBefore: Instant): Int
 }
 
 sealed class ClaimOutcome {
@@ -103,8 +113,6 @@ class IdempotencyClaimStore(
     private val repository: IdempotencyRecordRepository,
     private val objectMapper: ObjectMapper,
 ) {
-    private val ttl: Duration = Duration.ofHours(24)
-
     /**
      * Runs in its own transaction and commits immediately, so the claim is visible to a
      * concurrent racer as soon as it lands rather than staying pending inside the
@@ -117,7 +125,7 @@ class IdempotencyClaimStore(
     fun claim(recordKey: String, bodyJson: String): ClaimOutcome {
         val existing = repository.findById(recordKey).orElse(null)
         if (existing != null) {
-            if (Duration.between(existing.createdAt, Instant.now()) > ttl) {
+            if (Duration.between(existing.createdAt, Instant.now()) > IDEMPOTENCY_RETENTION) {
                 repository.deleteById(recordKey)
             } else if (existing.statusCode == PROCESSING_STATUS) {
                 // Same key, still being handled by another in-flight request — Toss
@@ -144,13 +152,43 @@ class IdempotencyClaimStore(
     }
 }
 
+/**
+ * Expiry is also enforced on a same-key retry in [IdempotencyClaimStore]. This sweep
+ * handles keys that are never retried, keeping a 15-day replay contract from becoming
+ * unbounded database retention.
+ */
+@Component
+class IdempotencyCleanupScheduler(
+    private val repository: IdempotencyRecordRepository,
+) {
+    private val log = org.slf4j.LoggerFactory.getLogger(IdempotencyCleanupScheduler::class.java)
+
+    @Scheduled(fixedDelayString = "\${itunda.idempotency.cleanup-interval-ms:3600000}")
+    @Transactional
+    fun run() {
+        val deleted = repository.deleteExpiredBefore(Instant.now().minus(IDEMPOTENCY_RETENTION))
+        if (deleted > 0) log.info("Removed {} expired idempotency record(s)", deleted)
+    }
+}
+
 @Service
 class IdempotencyService(
     private val claimStore: IdempotencyClaimStore,
     private val repository: IdempotencyRecordRepository,
     private val objectMapper: ObjectMapper,
 ) {
-    private fun scopedKey(endpoint: String, key: String) = "$endpoint::$key"
+    private fun scopedKey(endpoint: String, key: String): String {
+        if (key.isBlank() || key.length > MAX_IDEMPOTENCY_KEY_LENGTH) {
+            throw InvalidIdempotencyKeyException("Idempotency-Key must be between 1 and $MAX_IDEMPOTENCY_KEY_LENGTH characters")
+        }
+        val scoped = "$endpoint::$key"
+        // Routes are server-controlled, but retain a defensive bound so a future route
+        // refactor cannot turn a client header into a database truncation failure.
+        if (scoped.length > MAX_SCOPED_IDEMPOTENCY_KEY_LENGTH) {
+            throw InvalidIdempotencyKeyException("Idempotency-Key is too long for this endpoint")
+        }
+        return scoped
+    }
     private fun canonicalJson(body: Any?) = objectMapper.writeValueAsString(body ?: emptyMap<String, Any?>())
 
     /**
@@ -175,17 +213,20 @@ class IdempotencyService(
             ClaimOutcome.InProgress -> throw IdempotencyInProgressException("A request with this Idempotency-Key is already being processed")
             ClaimOutcome.Conflict -> throw IdempotencyConflictException("Idempotency-Key was already used with a different request body")
             ClaimOutcome.Claimed -> {
-                val (status, response) = try {
-                    action()
+                try {
+                    val (status, response) = action()
+                    val record = repository.findById(recordKey).orElseThrow()
+                    record.statusCode = status
+                    record.responseJson = objectMapper.writeValueAsString(response)
+                    // Force pending business writes (including optimistic-lock checks)
+                    // before returning. A commit-time failure would otherwise leave the
+                    // REQUIRES_NEW claim stuck at PROCESSING until retention expires.
+                    repository.saveAndFlush(record)
+                    return status to response
                 } catch (e: Exception) {
                     claimStore.release(recordKey)
                     throw e
                 }
-                val record = repository.findById(recordKey).orElseThrow()
-                record.statusCode = status
-                record.responseJson = objectMapper.writeValueAsString(response)
-                repository.save(record)
-                return status to response
             }
         }
     }

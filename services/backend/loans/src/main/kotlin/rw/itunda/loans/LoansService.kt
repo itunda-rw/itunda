@@ -2,6 +2,8 @@ package rw.itunda.loans
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.creditscore.CreditScoreService
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
@@ -133,12 +135,24 @@ class LoansService(
                 isRead = false, createdAt = Instant.now(), dataJson = "{\"loanId\":\"${loan.id}\"}",
             ),
         )
-        pushNotificationService.sendToUser(userId, title, body, mapOf("loanId" to loan.id))
+        sendLoanDisbursedPushAfterCommit(userId, title, body, loan.id)
 
         return mapOf(
             "id" to loan.id, "type" to offer.name, "amount" to loan.principal,
             "status" to "approved", "disbursedAt" to loan.disbursedAt.toString(), "creditScore" to score,
         )
+    }
+
+    /** The security push is irreversible; send it only after the loan and ledger commit. */
+    private fun sendLoanDisbursedPushAfterCommit(userId: String, title: String, body: String, loanId: String) {
+        val send = { pushNotificationService.sendToUser(userId, title, body, mapOf("loanId" to loanId)) }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     @Transactional

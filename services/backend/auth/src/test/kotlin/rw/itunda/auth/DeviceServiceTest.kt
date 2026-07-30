@@ -9,6 +9,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.TrustedDevice
 import rw.itunda.core.domain.User
@@ -99,6 +100,45 @@ class DeviceServiceTest : BehaviorSpec({
                 existing.lastSeenAt shouldNotBe Instant.EPOCH
                 verify(exactly = 0) { notificationRepository.save(any()) }
                 verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any()) }
+            }
+        }
+    }
+
+    Given("a new-device login that is still inside a database transaction") {
+        val trustedDeviceRepository = mockk<TrustedDeviceRepository>()
+        val userRepository = mockk<UserRepository>()
+        val notificationRepository = mockk<NotificationRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val service = DeviceService(trustedDeviceRepository, userRepository, notificationRepository, rateLimiter, pushNotificationService)
+
+        every { trustedDeviceRepository.findByUserIdAndDeviceId("user_after_commit", "device_after_commit") } returns null
+        every { trustedDeviceRepository.save(any()) } answers { firstArg() }
+        every { notificationRepository.save(any()) } answers { firstArg() }
+
+        When("the new device has been recorded but its transaction has not committed") {
+            TransactionSynchronizationManager.initSynchronization()
+            try {
+                service.recordLoginDevice("user_after_commit", "device_after_commit", "Chrome on Mac")
+
+                Then("the durable in-app notification is saved, but no external push has been sent") {
+                    verify(exactly = 1) { notificationRepository.save(any()) }
+                    verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any()) }
+                }
+
+                Then("the push is sent only after the transaction's commit callback") {
+                    TransactionSynchronizationManager.getSynchronizations().single().afterCommit()
+                    verify(exactly = 1) {
+                        pushNotificationService.sendToUser(
+                            "user_after_commit",
+                            "New device signed in",
+                            any(),
+                            mapOf("deviceId" to "device_after_commit"),
+                        )
+                    }
+                }
+            } finally {
+                TransactionSynchronizationManager.clearSynchronization()
             }
         }
     }

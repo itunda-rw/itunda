@@ -2,6 +2,8 @@ package rw.itunda.agents
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.Agent
 import rw.itunda.core.agents.AgentWithdrawalAuthorizationService
 import rw.itunda.core.domain.AgentCashIn
@@ -338,7 +340,7 @@ class AgentService(
             isRead = false, createdAt = cashIn.createdAt,
             dataJson = "{\"agentId\":\"${agent.id}\",\"receiptNumber\":\"$receipt\",\"transactionId\":\"${ledger.transactionId}\"}",
         ))
-        pushNotificationService.sendToUser(wallet.userId, cashInTitle, cashInBody, mapOf("transactionId" to ledger.transactionId))
+        sendPushAfterCommit(wallet.userId, cashInTitle, cashInBody, ledger.transactionId)
         return mapOf(
             "cashIn" to cashIn, "transaction" to transaction, "newBalance" to wallet.balance,
             "operatorCommission" to (if (operatorWallet != null) commission else BigDecimal.ZERO),
@@ -421,7 +423,7 @@ class AgentService(
             isRead = false, createdAt = cashOut.createdAt,
             dataJson = "{\"agentId\":\"${agent.id}\",\"receiptNumber\":\"$receipt\",\"transactionId\":\"${ledger.transactionId}\"}",
         ))
-        pushNotificationService.sendToUser(wallet.userId, cashOutTitle, cashOutBody, mapOf("transactionId" to ledger.transactionId))
+        sendPushAfterCommit(wallet.userId, cashOutTitle, cashOutBody, ledger.transactionId)
         return mapOf(
             "cashOut" to cashOut, "transaction" to transaction, "newBalance" to wallet.balance,
             "operatorCommission" to (if (operatorWallet != null) commission else BigDecimal.ZERO),
@@ -435,6 +437,18 @@ class AgentService(
 
     private fun get(agentId: String): Agent = agentRepository.findById(agentId)
         .orElseThrow { AgentNotFoundException("Agent not found") }
+
+    /** A push is irreversible; only expose a cash movement after its ledger transaction commits. */
+    private fun sendPushAfterCommit(userId: String, title: String, body: String, transactionId: String) {
+        val send = { pushNotificationService.sendToUser(userId, title, body, mapOf("transactionId" to transactionId)) }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
+    }
 
     private fun getForUpdate(agentId: String): Agent = agentRepository.findByIdForUpdate(agentId)
         .orElseThrow { AgentNotFoundException("Agent not found") }

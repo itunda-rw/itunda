@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.LedgerEntry
@@ -201,6 +202,42 @@ class OrderReturnServiceTest : BehaviorSpec({
 
             Then("the buyer also gets a real mobile push notification, not just the in-app one") {
                 verify(exactly = 1) { pushNotificationService.sendToUser("buyer_1", "Return approved", any(), any()) }
+            }
+        }
+
+        When("a return refund decision is still inside its transaction") {
+            every { orderReturnRequestRepository.findById("return_1") } returns Optional.of(pendingReturn)
+            every { merchantRepository.findByOwnerUserId("seller_1") } returns merchant
+            every { orderRepository.findById("order_1") } returns Optional.of(deliveredOrder())
+            every { ledgerEntryRepository.findByTransactionId("ledgertxn_1") } returns listOf(
+                LedgerEntry(id = "le_1", transactionId = "ledgertxn_1", accountId = "wallet_buyer", accountType = LedgerAccountType.WALLET, direction = LedgerDirection.DEBIT, amount = BigDecimal("6000"), currency = "RWF", balanceAfter = BigDecimal("94000"), memo = "Order"),
+            )
+            every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("refund_after_commit", emptyList())
+            every { orderReturnRequestRepository.save(any()) } answers { firstArg() }
+
+            TransactionSynchronizationManager.initSynchronization()
+            try {
+                service.decide("seller_1", "return_1", approve = true)
+
+                Then("the refund decision and durable notification are recorded, but the buyer push is withheld") {
+                    verify(exactly = 1) { orderReturnRequestRepository.save(any()) }
+                    verify(exactly = 1) { notificationRepository.save(match { it.userId == "buyer_1" && it.type == "COMMERCE_RETURN_DECIDED" }) }
+                    verify(exactly = 0) { pushNotificationService.sendToUser(any(), any(), any(), any()) }
+                }
+
+                Then("the buyer receives the refund decision only after commit") {
+                    TransactionSynchronizationManager.getSynchronizations().single().afterCommit()
+                    verify(exactly = 1) {
+                        pushNotificationService.sendToUser(
+                            "buyer_1",
+                            "Return approved",
+                            any(),
+                            mapOf("orderId" to "order_1", "returnRequestId" to "return_1"),
+                        )
+                    }
+                }
+            } finally {
+                TransactionSynchronizationManager.clearSynchronization()
             }
         }
 

@@ -2,8 +2,11 @@ package rw.itunda.commerce
 
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.domain.OrderReturnRequest
@@ -67,6 +70,8 @@ class OrderReturnService(
     private val notificationRepository: NotificationRepository,
     private val pushNotificationService: PushNotificationService,
 ) {
+    private val logger = LoggerFactory.getLogger(OrderReturnService::class.java)
+
     companion object {
         val RETURN_WINDOW: Duration = Duration.ofDays(7)
         val VALID_REASON_CODES = setOf("DEFECTIVE", "WRONG_ITEM", "NOT_AS_DESCRIBED", "NO_LONGER_NEEDED", "SIZE_FIT", "OTHER")
@@ -112,7 +117,7 @@ class OrderReturnService(
                     isRead = false, createdAt = Instant.now(), dataJson = "{\"orderId\":\"${order.id}\",\"returnRequestId\":\"${request.id}\"}",
                 ),
             )
-            pushNotificationService.sendToUser(merchant.ownerUserId, title, body, mapOf("orderId" to order.id, "returnRequestId" to request.id))
+            sendPushAfterCommit(merchant.ownerUserId, title, body, order.id, request.id)
         }
         return request
     }
@@ -169,7 +174,26 @@ class OrderReturnService(
                 isRead = false, createdAt = Instant.now(), dataJson = "{\"orderId\":\"${request.orderId}\",\"returnRequestId\":\"${request.id}\"}",
             ),
         )
-        pushNotificationService.sendToUser(request.buyerId, decidedTitle, decidedBody, mapOf("orderId" to request.orderId, "returnRequestId" to request.id))
+        sendPushAfterCommit(request.buyerId, decidedTitle, decidedBody, request.orderId, request.id)
         return saved
+    }
+
+    /** Customer-facing return status must match the committed request and refund state. */
+    private fun sendPushAfterCommit(userId: String, title: String, body: String, orderId: String, returnRequestId: String) {
+        val data = mapOf("orderId" to orderId, "returnRequestId" to returnRequestId)
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body, data)
+            } catch (e: Exception) {
+                logger.warn("Could not send commerce-return push for request {}", returnRequestId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 }

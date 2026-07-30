@@ -5,6 +5,8 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
@@ -244,7 +246,7 @@ class RideTripService(
             // PushNotificationService.sendToUser never throws (best-effort per-token
             // internally), so this can't turn a successful dispatch into a logged
             // "dispatch failed" warning below.
-            pushNotificationService.sendToUser(next.userId, title, body, mapOf("tripId" to trip.id))
+            sendTripPushAfterCommit(next.userId, title, body, trip.id)
         } catch (e: Exception) {
             log.warn("Ride dispatch failed for trip {}: {}", trip.id, e.message)
         }
@@ -292,7 +294,7 @@ class RideTripService(
             // Real push (item 124) -- same "passenger waiting on a real-time status
             // update" urgency as this row's own already-pushed RIDE_TRIP_OFFER (driver
             // side); this closes the matching passenger-side gap.
-            pushNotificationService.sendToUser(trip.passengerId, title, body, mapOf("tripId" to trip.id))
+            sendTripPushAfterCommit(trip.passengerId, title, body, trip.id)
         }
         return saved
     }
@@ -363,7 +365,7 @@ class RideTripService(
                 ),
             )
             // Real push (item 124) -- see acceptTrip's own doc comment above.
-            pushNotificationService.sendToUser(trip.passengerId, title, body, mapOf("tripId" to trip.id))
+            sendTripPushAfterCommit(trip.passengerId, title, body, trip.id)
         }
         return saved
     }
@@ -406,6 +408,24 @@ class RideTripService(
     fun getMyDriverTrips(driverUserId: String, pageable: Pageable): Page<RideTrip> {
         val driver = getMyDriver(driverUserId)
         return rideTripRepository.findByDriverIdOrderByCreatedAtDesc(driver.id, pageable)
+    }
+
+    /** Dispatch and passenger updates must reflect committed trip and settlement state. */
+    private fun sendTripPushAfterCommit(userId: String, title: String, body: String, tripId: String) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(userId, title, body, mapOf("tripId" to tripId))
+            } catch (e: Exception) {
+                log.warn("Could not send ride-trip push for trip {}", tripId, e)
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     private fun getOwnedTrip(tripId: String, driverId: String): RideTrip {

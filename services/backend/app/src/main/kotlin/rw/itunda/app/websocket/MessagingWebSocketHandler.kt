@@ -1,7 +1,12 @@
 package rw.itunda.app.websocket
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.JsonNode
+import io.micrometer.core.instrument.Gauge
+import io.micrometer.core.instrument.MeterRegistry
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
@@ -19,6 +24,8 @@ import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 
 internal const val WS_USER_ID_ATTR = "userId"
+internal const val WS_TOKEN_ID_ATTR = "tokenId"
+internal const val WS_TOKEN_EXPIRES_AT_ATTR = "tokenExpiresAt"
 
 /**
  * Real live-transport for messaging (2026-07-18) -- see `RealtimeMessagePublisher`'s
@@ -39,9 +46,23 @@ class MessagingWebSocketHandler(
     private val conversationRepository: ConversationRepository,
     private val groupConversationMemberRepository: GroupConversationMemberRepository,
     private val rateLimiter: RateLimiter,
+    private val meterRegistry: MeterRegistry,
+    @Value("\${itunda.websocket.max-sessions-per-user:5}")
+    private val maxSessionsPerUser: Int,
 ) : TextWebSocketHandler(), RealtimeMessagePublisher {
     private val log = LoggerFactory.getLogger(MessagingWebSocketHandler::class.java)
     private val sessionsByUserId = ConcurrentHashMap<String, MutableSet<WebSocketSession>>()
+
+    init {
+        require(maxSessionsPerUser in 1..50) {
+            "itunda.websocket.max-sessions-per-user must be between 1 and 50"
+        }
+        Gauge.builder("itunda.messaging.websocket.sessions", sessionsByUserId) { sessionsByUser ->
+            sessionsByUser.values.sumOf { it.size }.toDouble()
+        }
+            .description("Open Itunda messaging WebSocket sessions on this backend instance")
+            .register(meterRegistry)
+    }
 
     override fun afterConnectionEstablished(session: WebSocketSession) {
         val userId = session.attributes[WS_USER_ID_ATTR] as? String
@@ -49,9 +70,25 @@ class MessagingWebSocketHandler(
             session.close(CloseStatus.NOT_ACCEPTABLE)
             return
         }
-        val sessions = sessionsByUserId.computeIfAbsent(userId) { ConcurrentHashMap.newKeySet() }
-        val wasOffline = sessions.isEmpty()
-        sessions.add(session)
+        // Use the map's per-key atomic operation rather than isEmpty()+add(). A
+        // tab opening while another closes must not produce a false offline/online
+        // pair, and empty sets must not accumulate forever for every historical
+        // user ID that has connected.
+        var wasOffline = false
+        var accepted = false
+        sessionsByUserId.compute(userId) { _, existingSessions ->
+            val sessions = existingSessions ?: ConcurrentHashMap.newKeySet()
+            if (sessions.size >= maxSessionsPerUser) return@compute sessions
+            wasOffline = sessions.isEmpty()
+            sessions.add(session)
+            accepted = true
+            sessions
+        }
+        if (!accepted) {
+            session.close(CloseStatus.POLICY_VIOLATION)
+            meterRegistry.counter("itunda.messaging.websocket.session_rejections", "reason", "per_user_limit").increment()
+            return
+        }
         // Real transition-only push (2026-07-19): only the FIRST session for this user
         // fires "online" -- a second open tab/device shouldn't re-announce.
         if (wasOffline) publishPresenceChange(userId, online = true)
@@ -59,10 +96,18 @@ class MessagingWebSocketHandler(
 
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
         val userId = session.attributes[WS_USER_ID_ATTR] as? String ?: return
-        val sessions = sessionsByUserId[userId] ?: return
-        sessions.remove(session)
+        var wentOffline = false
+        sessionsByUserId.computeIfPresent(userId) { _, sessions ->
+            sessions.remove(session)
+            if (sessions.isEmpty()) {
+                wentOffline = true
+                null
+            } else {
+                sessions
+            }
+        }
         // Real transition-only push: only the LAST session closing fires "offline".
-        if (sessions.isEmpty()) publishPresenceChange(userId, online = false)
+        if (wentOffline) publishPresenceChange(userId, online = false)
     }
 
     // Real typing indicators (2026-07-19) -- the first inbound (client-to-server) frame
@@ -78,21 +123,26 @@ class MessagingWebSocketHandler(
         try {
             val json = objectMapper.readTree(message.payload)
             if (json.get("type")?.asText() != "typing") return
-            json.get("conversationId")?.asText()?.let { conversationId ->
-                rateLimiter.checkLimit("typing:$userId:$conversationId", limit = 1, window = Duration.ofSeconds(2))
-                val conversation = conversationRepository.findById(conversationId).orElse(null) ?: return
+            val conversationId = typingTargetId(json, "conversationId")
+            val groupId = typingTargetId(json, "groupConversationId")
+            // One typing frame means one target. Reject dual/missing/oversized IDs
+            // before they reach the rate limiter or any repository lookup.
+            if ((conversationId == null) == (groupId == null)) return
+            conversationId?.let { targetConversationId ->
+                rateLimiter.checkLimit("typing:$userId:$targetConversationId", limit = 1, window = Duration.ofSeconds(2))
+                val conversation = conversationRepository.findById(targetConversationId).orElse(null) ?: return
                 val otherId = when (userId) {
                     conversation.participantAId -> conversation.participantBId
                     conversation.participantBId -> conversation.participantAId
                     else -> return
                 }
-                sendToUser(otherId, objectMapper.writeValueAsString(mapOf("type" to "typing", "conversationId" to conversationId, "userId" to userId)))
+                sendToUser(otherId, objectMapper.writeValueAsString(mapOf("type" to "typing", "conversationId" to targetConversationId, "userId" to userId)))
             }
-            json.get("groupConversationId")?.asText()?.let { groupId ->
-                rateLimiter.checkLimit("typing:$userId:$groupId", limit = 1, window = Duration.ofSeconds(2))
-                val members = groupConversationMemberRepository.findByGroupConversationId(groupId)
+            groupId?.let { targetGroupId ->
+                rateLimiter.checkLimit("typing:$userId:$targetGroupId", limit = 1, window = Duration.ofSeconds(2))
+                val members = groupConversationMemberRepository.findByGroupConversationId(targetGroupId)
                 if (members.none { it.userId == userId }) return
-                val payload = objectMapper.writeValueAsString(mapOf("type" to "typing", "groupConversationId" to groupId, "userId" to userId))
+                val payload = objectMapper.writeValueAsString(mapOf("type" to "typing", "groupConversationId" to targetGroupId, "userId" to userId))
                 members.filter { it.userId != userId }.forEach { sendToUser(it.userId, payload) }
             }
         } catch (e: Exception) {
@@ -101,7 +151,59 @@ class MessagingWebSocketHandler(
         }
     }
 
+    private fun typingTargetId(json: JsonNode, field: String): String? =
+        json.get(field)
+            ?.takeIf { it.isTextual }
+            ?.asText()
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() && it.length <= 128 }
+
     override fun isOnline(userId: String): Boolean = !sessionsByUserId[userId].isNullOrEmpty()
+
+    override fun closeSessionsForToken(userId: String, tokenId: String) {
+        // Logout revokes one access token, not every device a user owns. Session close
+        // callbacks perform normal registry cleanup and publish an offline transition
+        // only if this was the user's final open socket.
+        sessionsByUserId[userId]
+            ?.filter { it.attributes[WS_TOKEN_ID_ATTR] == tokenId }
+            ?.forEach { session ->
+                try {
+                    if (session.isOpen) {
+                        session.close(CloseStatus.POLICY_VIOLATION)
+                        meterRegistry.counter("itunda.messaging.websocket.session_closures", "reason", "token_revoked").increment()
+                    }
+                } catch (e: Exception) {
+                    log.warn("Failed to close revoked session {} for user {}: {}", session.id, userId, e.message)
+                }
+            }
+    }
+
+    /**
+     * A WebSocket remains authenticated after its initial handshake, so it must not
+     * outlive the access token that established it. Logout closes matching sessions
+     * immediately; this local sweep enforces ordinary expiry without calling Redis for
+     * every open socket on the application's shared scheduler thread.
+     */
+    @Scheduled(fixedDelayString = "\${itunda.websocket.session-validation-interval-ms:1800000}")
+    fun closeExpiredSessions() {
+        val now = Instant.now()
+        sessionsByUserId.values
+            .flatMap { it.toList() }
+            .filter { session ->
+                val expiresAt = session.attributes[WS_TOKEN_EXPIRES_AT_ATTR] as? Instant
+                expiresAt == null || !expiresAt.isAfter(now)
+            }
+            .forEach { session ->
+                try {
+                    if (session.isOpen) {
+                        session.close(CloseStatus.POLICY_VIOLATION)
+                        meterRegistry.counter("itunda.messaging.websocket.session_closures", "reason", "token_expired").increment()
+                    }
+                } catch (e: Exception) {
+                    log.warn("Failed to close expired session {}: {}", session.id, e.message)
+                }
+            }
+    }
 
     override fun publishPresenceChange(userId: String, online: Boolean) {
         val payload = objectMapper.writeValueAsString(mapOf("type" to "presence", "userId" to userId, "online" to online))

@@ -10,10 +10,11 @@ import java.time.Instant
 /**
  * Polls `outbox_events` for unprocessed rows and relays them to Kafka -- the second
  * half of the transactional outbox pattern [EventPublisher] writes the first half of.
- * Each poll is its own transaction so a mid-batch failure doesn't lose already-
- * processed rows. Kafka publish failures are logged and left unprocessed for the
- * next poll to retry -- real at-least-once delivery, unlike this backend's previous
- * "log and drop on failure" behavior.
+ * Each poll is its own transaction, and the repository locks the selected rows, so
+ * concurrent application replicas cannot relay the same pending event simultaneously.
+ * Kafka publish failures are logged and left unprocessed for the next poll to retry --
+ * real at-least-once delivery, unlike this backend's previous "log and drop on
+ * failure" behavior.
  *
  * Rows are kept (marked `processedAt`), not deleted, as a real audit trail of every
  * event actually published -- consistent with this backend's append-only ledger

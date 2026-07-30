@@ -359,9 +359,33 @@ class P2pService(
                     dataJson = "{\"amount\":\"$amount\",\"senderId\":\"$senderUserId\"}",
                 ),
             )
-            pushNotificationService.sendToUser(recipientUserId, title, body, mapOf("amount" to amount.toString(), "senderId" to senderUserId))
+            sendMoneyReceivedPushAfterCommit(recipientUserId, title, body, amount, senderUserId)
         } catch (e: Exception) {
             // Non-critical -- the real transfer already completed and succeeded.
         }
+    }
+
+    private fun sendMoneyReceivedPushAfterCommit(
+        recipientUserId: String,
+        title: String,
+        body: String,
+        amount: BigDecimal,
+        senderUserId: String,
+    ) {
+        val send = {
+            pushNotificationService.sendToUser(
+                recipientUserId,
+                title,
+                body,
+                mapOf("amount" to amount.toString(), "senderId" to senderUserId),
+            )
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 }
