@@ -91,6 +91,23 @@ subprojects {
     pluginManager.withPlugin("com.android.library") {
         extensions.configure<com.android.build.api.dsl.LibraryExtension> {
             compileSdk = 34
+            if (project.name == "react-native-safe-area-context") {
+                compileOptions {
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
+                }
+            }
+        }
+    }
+    // react-native-safe-area-context 5.6.2 still leaves Java compilation at the
+    // Android plugin default (1.8), while this repository's Kotlin toolchain is 17.
+    // Configure the autolinked module at the root rather than mutating node_modules,
+    // so Kotlin/Java target validation remains consistent and dependency reinstalls
+    // stay reproducible.
+    if (name == "react-native-safe-area-context") {
+        tasks.withType<org.gradle.api.tasks.compile.JavaCompile>().configureEach {
+            sourceCompatibility = JavaVersion.VERSION_17.toString()
+            targetCompatibility = JavaVersion.VERSION_17.toString()
         }
     }
 }
