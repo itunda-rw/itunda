@@ -77,11 +77,14 @@ import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.AddressSuggestionDto
 import rw.itunda.core.network.DineInOrderDto
 import rw.itunda.core.network.DineInOrderItemRequest
+import rw.itunda.core.network.EATS_MEMBERSHIP_TIERS
+import rw.itunda.core.network.EatsMembershipDto
 import rw.itunda.core.network.EatsOrderDto
 import rw.itunda.core.network.EatsOrderItemRequest
 import rw.itunda.core.network.EatsRatingResponse
 import rw.itunda.core.network.EatsReviewDto
 import rw.itunda.core.network.FavoriteRestaurantDto
+import rw.itunda.core.network.SubscribeEatsMembershipRequest
 import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.PlaceDineInOrderRequest
@@ -277,6 +280,91 @@ private fun eatsLineUnitPrice(item: MerchantProductDto, choiceIds: List<String>)
 }
 
 private enum class OrderFoodView { BROWSE, FAVORITES, ORDERS }
+
+// Real Baemin Club (배민클럽)-style free-delivery membership (item 209) -- see
+// EatsMembershipDto's own doc comment. First Android client; bank-mfe already has this
+// (item 102).
+@Composable
+private fun EatsMembershipCard() {
+    var membership by remember { mutableStateOf<EatsMembershipDto?>(null) }
+    var loaded by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                membership = NetworkClient.apiService.getMyEatsMembership().membership
+            } catch (e: Exception) {
+                // Real, non-critical -- the rest of Eats still works without this card.
+            } finally {
+                loaded = true
+            }
+        }
+    }
+    LaunchedEffect(Unit) { load() }
+
+    val current = membership
+    if (!loaded) return
+
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Eats Club", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp)) }
+            if (current != null && java.time.Instant.parse(current.activeUntil).isAfter(java.time.Instant.now())) {
+                val activeUntilDate = java.time.Instant.parse(current.activeUntil).let {
+                    java.time.LocalDateTime.ofInstant(it, java.time.ZoneId.systemDefault()).toLocalDate()
+                }
+                Text(
+                    "Free delivery active until $activeUntilDate at participating restaurants.",
+                    color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp),
+                )
+            } else {
+                Text(
+                    "Free delivery at participating restaurants -- no minimum order.",
+                    color = Ids.colors.textSecondary, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp, bottom = 10.dp),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    EATS_MEMBERSHIP_TIERS.forEach { tier ->
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Ids.colors.brand)
+                                .clickable(enabled = !busy) {
+                                    busy = true
+                                    error = null
+                                    coroutineScope.launch {
+                                        try {
+                                            NetworkClient.apiService.subscribeEatsMembership(
+                                                java.util.UUID.randomUUID().toString(),
+                                                SubscribeEatsMembershipRequest(tier.days),
+                                            )
+                                            load()
+                                        } catch (e: HttpException) {
+                                            error = superAppErrorMessage(e)
+                                        } catch (e: IOException) {
+                                            error = "Couldn't reach itunda. Check your connection and try again."
+                                        } finally {
+                                            busy = false
+                                        }
+                                    }
+                                }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                if (busy) "…" else "${tier.days} days -- %,d RWF".format(tier.priceRwf),
+                                color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun OrderFoodContent(
@@ -482,6 +570,7 @@ private fun OrderFoodContent(
     }
 
     LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(Ids.layout.cardGap)) {
+        item { EatsMembershipCard() }
         item {
             // Flat, horizontally-scrolling category strip (2026-07-24), same
             // Karrot/Toss-Shopping-style treatment as Hood's own nav rows --

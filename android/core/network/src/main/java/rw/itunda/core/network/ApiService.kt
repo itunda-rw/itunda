@@ -1258,6 +1258,20 @@ data class RiderResponse(val success: Boolean, val rider: RiderDto)
 data class FavoriteRestaurantDto(val restaurantId: String, val businessName: String, val category: String?, val favoritedAt: String)
 data class FavoriteRestaurantsResponse(val success: Boolean, val favorites: List<FavoriteRestaurantDto>)
 data class AddFavoriteResponse(val success: Boolean)
+
+// Real Baemin Club (배민클럽)-style free-delivery membership (item 209) -- see
+// getMyEatsMembership's own doc comment.
+data class EatsMembershipDto(
+    val id: String,
+    val userId: String,
+    val activeUntil: String,
+    val createdAt: String,
+    val updatedAt: String,
+)
+data class EatsMembershipResponse(val success: Boolean, val membership: EatsMembershipDto?)
+data class SubscribeEatsMembershipRequest(val days: Int)
+data class EatsMembershipTier(val days: Int, val priceRwf: Int)
+val EATS_MEMBERSHIP_TIERS = listOf(EatsMembershipTier(30, 1500), EatsMembershipTier(90, 4000))
 data class RemoveFavoriteResponse(val success: Boolean)
 
 // Real Toss Securities-style stock investing (2026-07-20) -- see ApiService's own
@@ -2414,6 +2428,17 @@ interface ApiService {
 
     @GET("api/v1/eats/favorites")
     suspend fun getMyFavoriteRestaurants(): FavoriteRestaurantsResponse
+
+    // Real Baemin Club (배민클럽)-style free-delivery membership (item 209) -- backend
+    // real since 2026-07-26, bank-mfe client since 2026-07-28 (item 102); this is the
+    // first Android client. See lib/eats.ts's own doc comment (bank-mfe) for the full
+    // sourced account: free delivery only at a restaurant that has itself opted in,
+    // never a blanket waiver.
+    @GET("api/v1/eats/membership/me")
+    suspend fun getMyEatsMembership(): EatsMembershipResponse
+
+    @POST("api/v1/eats/membership/subscribe")
+    suspend fun subscribeEatsMembership(@Header("Idempotency-Key") idempotencyKey: String, @Body request: SubscribeEatsMembershipRequest): EatsMembershipResponse
 
     // Real 배민오더-style table/QR in-store ordering (2026-07-25) -- see
     // rw.itunda.eats.web.DineInOrderController.

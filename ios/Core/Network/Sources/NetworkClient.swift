@@ -2074,6 +2074,22 @@ public struct FavoriteRestaurantDto: Decodable, Identifiable {
 public struct FavoriteRestaurantsResponse: Decodable { public let success: Bool; public let favorites: [FavoriteRestaurantDto] }
 public struct SuccessResponse: Decodable { public let success: Bool }
 
+// Real Baemin Club (배민클럽)-style free-delivery membership (item 209) -- backend real
+// since 2026-07-26, bank-mfe/Android clients since 2026-07-28/2026-07-31; this is the
+// iOS client. Free delivery only at a restaurant that has itself opted in, never a
+// blanket waiver.
+public struct EatsMembershipDto: Decodable {
+    public let id: String
+    public let userId: String
+    public let activeUntil: String
+    public let createdAt: String
+    public let updatedAt: String
+}
+public struct EatsMembershipResponse: Decodable { public let success: Bool; public let membership: EatsMembershipDto? }
+public struct SubscribeEatsMembershipRequest: Encodable { public let days: Int }
+public struct EatsMembershipTier { public let days: Int; public let priceRwf: Int }
+public let eatsMembershipTiers: [EatsMembershipTier] = [EatsMembershipTier(days: 30, priceRwf: 1500), EatsMembershipTier(days: 90, priceRwf: 4000)]
+
 // Real Toss Securities-style stock investing (2026-07-20) -- the first iOS UI this
 // feature has ever had, ported from bank-mfe/Android the same session. Day-over-day
 // movement/history are real deterministic simulations, not live RSE data -- see the
@@ -2965,6 +2981,12 @@ extension NetworkClient {
     }
 
     public func getMyFavoriteRestaurants() async throws -> FavoriteRestaurantsResponse { try await get("api/v1/eats/favorites") }
+
+    public func getMyEatsMembership() async throws -> EatsMembershipResponse { try await get("api/v1/eats/membership/me") }
+
+    public func subscribeEatsMembership(days: Int) async throws -> EatsMembershipResponse {
+        try await authenticatedPost("api/v1/eats/membership/subscribe", body: SubscribeEatsMembershipRequest(days: days), idempotencyKey: UUID().uuidString)
+    }
 
     // Real Toss Securities-style stock investing (2026-07-20) -- see StocksResponse's
     // own doc comment for the full account.
