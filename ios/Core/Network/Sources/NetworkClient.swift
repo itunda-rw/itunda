@@ -2090,6 +2090,14 @@ public struct SubscribeEatsMembershipRequest: Encodable { public let days: Int }
 public struct EatsMembershipTier { public let days: Int; public let priceRwf: Int }
 public let eatsMembershipTiers: [EatsMembershipTier] = [EatsMembershipTier(days: 30, priceRwf: 1500), EatsMembershipTier(days: 90, priceRwf: 4000)]
 
+// Real Coupang 와우 (Wow)-style unconditional delivery-fee waiver (item 211) -- see
+// backend PlatformMembership.kt's own doc comment. Deliberately distinct from Eats
+// Club above: waives the fee at every restaurant, no merchant opt-in required.
+public typealias PlatformMembershipDto = EatsMembershipDto
+public struct PlatformMembershipResponse: Decodable { public let success: Bool; public let membership: PlatformMembershipDto? }
+public struct SubscribePlatformMembershipRequest: Encodable { public let days: Int }
+public let platformMembershipTiers: [EatsMembershipTier] = [EatsMembershipTier(days: 30, priceRwf: 2500), EatsMembershipTier(days: 90, priceRwf: 6500)]
+
 // Real Toss Securities-style stock investing (2026-07-20) -- the first iOS UI this
 // feature has ever had, ported from bank-mfe/Android the same session. Day-over-day
 // movement/history are real deterministic simulations, not live RSE data -- see the
@@ -2986,6 +2994,12 @@ extension NetworkClient {
 
     public func subscribeEatsMembership(days: Int) async throws -> EatsMembershipResponse {
         try await authenticatedPost("api/v1/eats/membership/subscribe", body: SubscribeEatsMembershipRequest(days: days), idempotencyKey: UUID().uuidString)
+    }
+
+    public func getMyPlatformMembership() async throws -> PlatformMembershipResponse { try await get("api/v1/eats/platform-membership/me") }
+
+    public func subscribePlatformMembership(days: Int) async throws -> PlatformMembershipResponse {
+        try await authenticatedPost("api/v1/eats/platform-membership/subscribe", body: SubscribePlatformMembershipRequest(days: days), idempotencyKey: UUID().uuidString)
     }
 
     // Real Toss Securities-style stock investing (2026-07-20) -- see StocksResponse's

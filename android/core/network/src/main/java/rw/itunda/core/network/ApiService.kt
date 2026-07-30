@@ -1272,6 +1272,14 @@ data class EatsMembershipResponse(val success: Boolean, val membership: EatsMemb
 data class SubscribeEatsMembershipRequest(val days: Int)
 data class EatsMembershipTier(val days: Int, val priceRwf: Int)
 val EATS_MEMBERSHIP_TIERS = listOf(EatsMembershipTier(30, 1500), EatsMembershipTier(90, 4000))
+
+// Real Coupang 와우 (Wow)-style unconditional delivery-fee waiver (item 211) -- see
+// backend PlatformMembership.kt's own doc comment. Deliberately distinct from Eats
+// Club above: waives the fee at every restaurant, no merchant opt-in required.
+typealias PlatformMembershipDto = EatsMembershipDto
+data class PlatformMembershipResponse(val success: Boolean, val membership: PlatformMembershipDto?)
+data class SubscribePlatformMembershipRequest(val days: Int)
+val PLATFORM_MEMBERSHIP_TIERS = listOf(EatsMembershipTier(30, 2500), EatsMembershipTier(90, 6500))
 data class RemoveFavoriteResponse(val success: Boolean)
 
 // Real Toss Securities-style stock investing (2026-07-20) -- see ApiService's own
@@ -2439,6 +2447,14 @@ interface ApiService {
 
     @POST("api/v1/eats/membership/subscribe")
     suspend fun subscribeEatsMembership(@Header("Idempotency-Key") idempotencyKey: String, @Body request: SubscribeEatsMembershipRequest): EatsMembershipResponse
+
+    // Real Coupang 와우 (Wow)-style unconditional delivery-fee waiver (item 211) -- see
+    // PlatformMembershipDto's own doc comment.
+    @GET("api/v1/eats/platform-membership/me")
+    suspend fun getMyPlatformMembership(): PlatformMembershipResponse
+
+    @POST("api/v1/eats/platform-membership/subscribe")
+    suspend fun subscribePlatformMembership(@Header("Idempotency-Key") idempotencyKey: String, @Body request: SubscribePlatformMembershipRequest): PlatformMembershipResponse
 
     // Real 배민오더-style table/QR in-store ordering (2026-07-25) -- see
     // rw.itunda.eats.web.DineInOrderController.
