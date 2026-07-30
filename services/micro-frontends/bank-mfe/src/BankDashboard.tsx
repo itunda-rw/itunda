@@ -9890,13 +9890,18 @@ function RideTripCard({ trip, action }: { trip: RideTrip; action?: React.ReactNo
           <p style={{ fontSize: '13px', fontWeight: 700 }}>{trip.pickupAddress}</p>
           <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', margin: '2px 0' }}>→ {trip.dropoffAddress}</p>
           <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{trip.distanceKm.toFixed(1)} km · {trip.fare.toLocaleString()} RWF</p>
+          {trip.scheduledFor && (
+            <p style={{ fontSize: '11px', color: 'var(--toss-blue)', fontWeight: 700, marginTop: '2px' }}>
+              🕒 Scheduled for {new Date(trip.scheduledFor).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </p>
+          )}
         </div>
         <span style={{
           fontSize: '11px', fontWeight: 700, padding: '4px 8px', borderRadius: '6px',
           color: trip.status === 'CANCELLED' ? '#E53935' : trip.status === 'COMPLETED' ? 'var(--toss-grey-500)' : 'var(--toss-blue)',
           backgroundColor: trip.status === 'CANCELLED' ? '#FDECEA' : trip.status === 'COMPLETED' ? 'var(--toss-grey-100)' : '#E8F0FE',
         }}>
-          {RIDE_STATUS_LABEL[trip.status]}
+          {trip.status === 'REQUESTED' && trip.scheduledFor ? 'Scheduled' : RIDE_STATUS_LABEL[trip.status]}
         </span>
       </div>
       {action}
@@ -9914,6 +9919,10 @@ function RidesView() {
   const [requesting, setRequesting] = useState(false);
   const [rideError, setRideError] = useState<string | null>(null);
   const [busyTripId, setBusyTripId] = useState<string | null>(null);
+  // Real Kakao T 예약 호출 (scheduled ride booking, item 212) -- 'now' is unchanged
+  // ASAP dispatch; 'later' holds a datetime-local value the passenger picks.
+  const [rideTiming, setRideTiming] = useState<'now' | 'later'>('now');
+  const [scheduledAt, setScheduledAt] = useState('');
 
   const loadMyTrips = () => {
     fetchMyTrips().then(setMyTrips).catch((err) => setRideError(err instanceof ApiError ? err.message : 'Could not load your trips.'));
@@ -9931,12 +9940,18 @@ function RidesView() {
 
   const handleRequestRide = async () => {
     if (!pickup || !dropoff) return;
+    if (rideTiming === 'later' && !scheduledAt) return;
     setRequesting(true);
     setRideError(null);
     try {
-      await requestRideTrip(pickup.displayName, pickup.latitude, pickup.longitude, dropoff.displayName, dropoff.latitude, dropoff.longitude);
+      await requestRideTrip(
+        pickup.displayName, pickup.latitude, pickup.longitude, dropoff.displayName, dropoff.latitude, dropoff.longitude,
+        rideTiming === 'later' ? new Date(scheduledAt).toISOString() : undefined,
+      );
       setPickup(null);
       setDropoff(null);
+      setRideTiming('now');
+      setScheduledAt('');
       loadMyTrips();
     } catch (err) {
       setRideError(err instanceof ApiError ? err.message : 'Could not request a ride.');
@@ -10073,8 +10088,34 @@ function RidesView() {
               </h3>
               <PlaceSearchInput label="Pickup" placeholder="Where from?" value={pickup} onSelect={setPickup} />
               <PlaceSearchInput label="Dropoff" placeholder="Where to?" value={dropoff} onSelect={setDropoff} />
-              <button className="toss-btn toss-btn-primary" disabled={!pickup || !dropoff || requesting} onClick={handleRequestRide} style={{ width: '100%' }}>
-                {requesting ? 'Requesting…' : 'Request ride'}
+
+              <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '12px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+                {(['now', 'later'] as const).map((v) => (
+                  <button
+                    key={v} type="button" onClick={() => setRideTiming(v)}
+                    style={{
+                      flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
+                      color: rideTiming === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+                      backgroundColor: rideTiming === v ? 'var(--toss-blue)' : 'transparent',
+                    }}
+                  >
+                    {v === 'now' ? 'Ride now' : 'Schedule'}
+                  </button>
+                ))}
+              </div>
+              {rideTiming === 'later' && (
+                <input
+                  type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)}
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '12px' }}
+                />
+              )}
+
+              <button
+                className="toss-btn toss-btn-primary"
+                disabled={!pickup || !dropoff || requesting || (rideTiming === 'later' && !scheduledAt)}
+                onClick={handleRequestRide} style={{ width: '100%' }}
+              >
+                {requesting ? 'Requesting…' : rideTiming === 'later' ? 'Schedule ride' : 'Request ride'}
               </button>
             </div>
           )}

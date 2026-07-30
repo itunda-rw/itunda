@@ -101,6 +101,25 @@ class RideTrip(
     @Column(name = "excluded_driver_user_ids", length = 2000)
     var excludedDriverUserIds: String? = null,
 
+    // Real Kakao T 예약 호출 (scheduled ride booking) -- kakaomobility's own real,
+    // currently-live feature: request a ride for a future date/time instead of
+    // immediate dispatch. `null` (the default) means ASAP, every existing caller's
+    // behavior completely unchanged. Bounded to SCHEDULED_RIDE_MAX_WINDOW ahead, the
+    // same real "record the preference, bound the window" pattern
+    // EatsOrder.scheduledFor already established for Baemin-style 예약주문 -- itunda's
+    // own honest choice, since Kakao's own real booking-window length isn't published.
+    @Column(name = "scheduled_for")
+    var scheduledFor: Instant? = null,
+
+    // Set exactly once, by RideDispatchScheduler, the moment a scheduled trip's real
+    // dispatch attempt actually starts (see RideTripService.activateScheduledDispatch's
+    // own doc comment) -- distinguishes "not due yet" from "due, dispatch already
+    // attempted" so the scheduler never re-triggers the same trip every poll, and so
+    // getAvailableTrips knows a scheduled trip has genuinely become live rather than
+    // showing it to any driver hours or days early.
+    @Column(name = "scheduled_dispatch_started_at")
+    var scheduledDispatchStartedAt: Instant? = null,
+
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 

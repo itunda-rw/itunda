@@ -3,6 +3,7 @@ package rw.itunda.rideshare
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -139,6 +140,98 @@ class RideTripServiceTest : BehaviorSpec({
                 } catch (e: InsufficientFundsException) {
                     // expected
                 }
+            }
+        }
+    }
+
+    Given("a real passenger requesting a real Kakao T-style scheduled ride") {
+        val rideDriverRepository = mockk<RideDriverRepository>(relaxed = true)
+        val rideTripRepository = mockk<RideTripRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val service = newService(
+            rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository,
+            walletRepository = walletRepository, ledgerService = ledgerService,
+        )
+
+        val passengerWallet = Wallet(
+            id = "wallet_passenger_4", userId = "passenger_4", accountNumber = "1000000004", accountName = "Passenger",
+            type = WalletType.MAIN, balance = BigDecimal("20000"), availableBalance = BigDecimal("20000"),
+        )
+        every { walletRepository.findByUserIdAndType("passenger_4", WalletType.MAIN) } returns passengerWallet
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_scheduled", emptyList())
+        val savedSlot = slot<RideTrip>()
+        every { rideTripRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+        When("the requested time is well beyond the real dispatch lead time") {
+            val scheduledFor = Instant.now().plus(java.time.Duration.ofHours(3))
+            val trip = service.requestTrip(
+                "passenger_4", "Kigali Heights", -1.9536, 30.0605, "Kigali Convention Centre", -1.9506, 30.0925,
+                scheduledFor = scheduledFor,
+            )
+
+            Then("it holds the fare and records the real requested time, but does not dispatch yet") {
+                trip.scheduledFor shouldBe scheduledFor
+                savedSlot.captured.offeredDriverId shouldBe null
+                verify(exactly = 0) { rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() }
+            }
+        }
+
+        When("the requested time is in the past") {
+            Then("it throws InvalidScheduledRideTimeException before touching the ledger") {
+                try {
+                    service.requestTrip(
+                        "passenger_4", "A", -1.9536, 30.0605, "B", -1.9506, 30.0925,
+                        scheduledFor = Instant.now().minusSeconds(60),
+                    )
+                    error("expected InvalidScheduledRideTimeException")
+                } catch (e: InvalidScheduledRideTimeException) {
+                    // expected
+                }
+                verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+
+        When("the requested time is beyond the real max scheduling window") {
+            Then("it throws InvalidScheduledRideTimeException") {
+                try {
+                    service.requestTrip(
+                        "passenger_4", "A", -1.9536, 30.0605, "B", -1.9506, 30.0925,
+                        scheduledFor = Instant.now().plus(RideTripService.SCHEDULED_RIDE_MAX_WINDOW).plusSeconds(3600),
+                    )
+                    error("expected InvalidScheduledRideTimeException")
+                } catch (e: InvalidScheduledRideTimeException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real scheduled trip whose real dispatch lead time has just been crossed") {
+        val rideDriverRepository = mockk<RideDriverRepository>()
+        val rideTripRepository = mockk<RideTripRepository>()
+        val service = newService(rideDriverRepository = rideDriverRepository, rideTripRepository = rideTripRepository)
+
+        val nearbyDriver = RideDriver(id = "driver_5", userId = "driver_user_5", walletId = "wallet_driver_5", available = true, currentLatitude = -1.9536, currentLongitude = 30.0605)
+        val dueTrip = RideTrip(
+            id = "ride_trip_due", passengerId = "passenger_5", pickupAddress = "A", pickupLatitude = -1.9536, pickupLongitude = 30.0605,
+            dropoffAddress = "B", dropoffLatitude = -1.9506, dropoffLongitude = 30.0925, distanceKm = BigDecimal("3.5"),
+            fare = BigDecimal("1875"), platformFee = BigDecimal("28.13"), transactionId = "txn_due",
+            status = RideTripStatus.REQUESTED, scheduledFor = Instant.now(),
+        )
+
+        every { rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull() } returns listOf(nearbyDriver)
+        every { rideTripRepository.findDistinctDriverIdsByStatusIn(any()) } returns emptyList()
+        val savedSlot = slot<RideTrip>()
+        every { rideTripRepository.save(capture(savedSlot)) } answers { firstArg() }
+        every { rideDriverRepository.save(any()) } answers { firstArg() }
+
+        When("the scheduler activates it") {
+            service.activateScheduledDispatch(listOf(dueTrip))
+
+            Then("it marks real dispatch as started, exactly once, and offers the trip to the one real nearby driver") {
+                dueTrip.scheduledDispatchStartedAt shouldNotBe null
+                savedSlot.captured.offeredDriverId shouldBe "driver_5"
             }
         }
     }

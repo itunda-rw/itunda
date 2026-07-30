@@ -24,6 +24,9 @@ export interface RideTrip {
   fare: number;
   platformFee: number;
   status: RideTripStatus;
+  // Real Kakao T 예약 호출 (scheduled ride booking, item 212) -- null means an ASAP
+  // request, unchanged from before. See the backend's RideTrip.scheduledFor doc comment.
+  scheduledFor: string | null;
   createdAt: string;
 }
 
@@ -61,11 +64,14 @@ export const updateDriverLocation = (latitude: number, longitude: number) =>
 export const requestRideTrip = (
   pickupAddress: string, pickupLatitude: number, pickupLongitude: number,
   dropoffAddress: string, dropoffLatitude: number, dropoffLongitude: number,
+  // Real Kakao T 예약 호출 (scheduled ride booking, item 212) -- omitted/undefined means
+  // ASAP, unchanged from before.
+  scheduledFor?: string,
 ) =>
   apiFetch<{ success: boolean; trip: RideTrip }>('/api/v1/rides/trips', {
     method: 'POST',
     headers: { 'Idempotency-Key': randomUUID() },
-    body: JSON.stringify({ pickupAddress, pickupLatitude, pickupLongitude, dropoffAddress, dropoffLatitude, dropoffLongitude }),
+    body: JSON.stringify({ pickupAddress, pickupLatitude, pickupLongitude, dropoffAddress, dropoffLatitude, dropoffLongitude, scheduledFor }),
   }).then((r) => r.trip);
 
 export const fetchAvailableTrips = () =>

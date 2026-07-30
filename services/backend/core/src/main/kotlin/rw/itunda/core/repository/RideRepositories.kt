@@ -34,4 +34,13 @@ interface RideTripRepository : JpaRepository<RideTrip, String> {
 
     @Query("SELECT DISTINCT t.driverId FROM RideTrip t WHERE t.status IN :statuses AND t.driverId IS NOT NULL")
     fun findDistinctDriverIdsByStatusIn(@Param("statuses") statuses: List<RideTripStatus>): List<String>
+
+    // Real Kakao T 예약 호출 (scheduled ride booking) -- every real scheduled trip
+    // whose lead-time threshold has been crossed but whose first dispatch attempt
+    // hasn't started yet. See RideTripService.activateScheduledDispatch's own doc
+    // comment.
+    fun findByStatusAndScheduledForIsNotNullAndScheduledForBeforeAndScheduledDispatchStartedAtIsNull(
+        status: RideTripStatus,
+        threshold: Instant,
+    ): List<RideTrip>
 }

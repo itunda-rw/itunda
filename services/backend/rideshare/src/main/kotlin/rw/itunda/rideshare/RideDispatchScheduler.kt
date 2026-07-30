@@ -19,8 +19,19 @@ class RideDispatchScheduler(private val rideTripService: RideTripService) {
     @Scheduled(fixedDelay = 3000)
     fun run() {
         val expired = rideTripService.getExpiredOffers()
-        if (expired.isEmpty()) return
-        rideTripService.reassignExpiredOffers(expired)
-        log.info("Reassigned {} expired ride dispatch offer(s)", expired.size)
+        if (expired.isNotEmpty()) {
+            rideTripService.reassignExpiredOffers(expired)
+            log.info("Reassigned {} expired ride dispatch offer(s)", expired.size)
+        }
+
+        // Real Kakao T 예약 호출 (scheduled ride booking) -- see
+        // RideTripService.activateScheduledDispatch's own doc comment. Same poll tick
+        // as the reassignment check above; a real scheduled trip's own lead-time
+        // threshold is the actual business timing, not this poll interval.
+        val dueScheduled = rideTripService.getDueScheduledTrips()
+        if (dueScheduled.isNotEmpty()) {
+            rideTripService.activateScheduledDispatch(dueScheduled)
+            log.info("Started real dispatch for {} due scheduled ride(s)", dueScheduled.size)
+        }
     }
 }

@@ -42,6 +42,7 @@ class RideDriverAlreadyOnTripException(message: String) : RuntimeException(messa
 class RideDriverNotAvailableException(message: String) : RuntimeException(message)
 class InvalidRideTripStatusTransitionException(message: String) : RuntimeException(message)
 class RideNoActiveOfferException(message: String) : RuntimeException(message)
+class InvalidScheduledRideTimeException(message: String) : RuntimeException(message)
 
 /**
  * Real Kakao T-style ride-hailing (2026-07-26) -- closes `docs/DESIGN_REFERENCES.md`'s
@@ -105,6 +106,17 @@ class RideTripService(
         // be unfairly excluded for lack of data.
         private const val MIN_OFFERS_FOR_ACCEPTANCE_FILTER = 5
         private val MIN_ACCEPTANCE_RATE = BigDecimal("0.3")
+
+        // Real Kakao T 예약 호출 (scheduled ride booking) -- see RideTrip.scheduledFor's
+        // own doc comment. Same 2-day bound EatsOrderService.SCHEDULED_ORDER_MAX_WINDOW
+        // already established for Baemin-style 예약주문, itunda's own consistent choice.
+        val SCHEDULED_RIDE_MAX_WINDOW: Duration = Duration.ofDays(2)
+
+        // Real dispatch only starts shortly before a scheduled trip's real requested
+        // time -- dispatching hours or days early would offer a driver a trip nobody
+        // wants picked up yet. Kakao's own real lead time isn't published; itunda's own
+        // honest choice, not a fabricated real number.
+        val SCHEDULED_RIDE_DISPATCH_LEAD_TIME: Duration = Duration.ofMinutes(10)
     }
 
     private val log = LoggerFactory.getLogger(RideTripService::class.java)
@@ -122,9 +134,22 @@ class RideTripService(
         dropoffAddress: String,
         dropoffLatitude: Double,
         dropoffLongitude: Double,
+        // Real Kakao T 예약 호출 (scheduled ride booking) -- null (the default) means
+        // ASAP, every existing caller's behavior completely unchanged. See
+        // RideTrip.scheduledFor's own doc comment for the real bound/lead-time rules.
+        scheduledFor: Instant? = null,
     ): RideTrip {
         if (!GeoUtils.isValidCoordinate(pickupLatitude, pickupLongitude) || !GeoUtils.isValidCoordinate(dropoffLatitude, dropoffLongitude)) {
             throw InvalidRideLocationException("Invalid pickup or dropoff coordinate")
+        }
+        if (scheduledFor != null) {
+            val now = Instant.now()
+            if (!scheduledFor.isAfter(now)) {
+                throw InvalidScheduledRideTimeException("Scheduled time must be in the future")
+            }
+            if (scheduledFor.isAfter(now.plus(SCHEDULED_RIDE_MAX_WINDOW))) {
+                throw InvalidScheduledRideTimeException("Scheduled time must be within ${SCHEDULED_RIDE_MAX_WINDOW.toDays()} days")
+            }
         }
         val trimmedPickup = pickupAddress.trim().ifEmpty { throw InvalidRideLocationException("Pickup address is required") }.take(500)
         val trimmedDropoff = dropoffAddress.trim().ifEmpty { throw InvalidRideLocationException("Dropoff address is required") }.take(500)
@@ -175,10 +200,17 @@ class RideTripService(
                 id = "ride_trip_${UUID.randomUUID()}", passengerId = passengerId, pickupAddress = trimmedPickup,
                 pickupLatitude = pickupLatitude, pickupLongitude = pickupLongitude, dropoffAddress = trimmedDropoff,
                 dropoffLatitude = dropoffLatitude, dropoffLongitude = dropoffLongitude, distanceKm = distanceKm,
-                fare = fare, platformFee = platformFee, transactionId = holdTransaction.id,
+                fare = fare, platformFee = platformFee, transactionId = holdTransaction.id, scheduledFor = scheduledFor,
             ),
         )
-        dispatchToNextDriver(trip)
+        // Real Kakao T 예약 호출 -- a trip scheduled well ahead is not dispatched now;
+        // RideDispatchScheduler starts real dispatch once it's within
+        // SCHEDULED_RIDE_DISPATCH_LEAD_TIME of the requested time (see
+        // activateScheduledDispatch's own doc comment). A near-future or ASAP request
+        // dispatches immediately, completely unchanged.
+        if (scheduledFor == null || !scheduledFor.isAfter(Instant.now().plus(SCHEDULED_RIDE_DISPATCH_LEAD_TIME))) {
+            dispatchToNextDriver(trip)
+        }
         return trip
     }
 
@@ -400,6 +432,10 @@ class RideTripService(
         return rideTripRepository.findAll()
             .filter { it.status == RideTripStatus.REQUESTED && it.driverId == null }
             .filter { it.offerExpiresAt == null || it.offerExpiresAt!!.isBefore(now) || it.offeredDriverId == driver.id }
+            // Real Kakao T 예약 호출 -- a scheduled trip whose real dispatch hasn't
+            // started yet (RideDispatchScheduler.activateScheduledDispatch) must never
+            // appear in open browse hours or days early.
+            .filter { it.scheduledFor == null || it.scheduledDispatchStartedAt != null }
     }
 
     fun getMyTrips(passengerId: String, pageable: Pageable): Page<RideTrip> =
@@ -454,6 +490,35 @@ class RideTripService(
                 ).distinct().joinToString(",")
             trip.offeredDriverId = null
             trip.offerExpiresAt = null
+            rideTripRepository.save(trip)
+            dispatchToNextDriver(trip, candidatePool, busyDriverIds)
+        }
+    }
+
+    // Real Kakao T 예약 호출 (scheduled ride booking) -- every real scheduled trip
+    // whose SCHEDULED_RIDE_DISPATCH_LEAD_TIME threshold has just been crossed.
+    fun getDueScheduledTrips(): List<RideTrip> =
+        rideTripRepository.findByStatusAndScheduledForIsNotNullAndScheduledForBeforeAndScheduledDispatchStartedAtIsNull(
+            RideTripStatus.REQUESTED,
+            Instant.now().plus(SCHEDULED_RIDE_DISPATCH_LEAD_TIME),
+        )
+
+    /**
+     * Starts real dispatch for a batch of due scheduled trips, exactly once each --
+     * `scheduledDispatchStartedAt` is set unconditionally here (whether or not a real
+     * candidate driver is actually found), so a trip with no online driver nearby
+     * falls through to the real open-list fallback (`getAvailableTrips`, now honestly
+     * showing it since dispatch has genuinely started) rather than being re-processed
+     * every scheduler tick forever.
+     */
+    @Transactional
+    fun activateScheduledDispatch(trips: List<RideTrip>) {
+        if (trips.isEmpty()) return
+        val candidatePool = rideDriverRepository.findByAvailableTrueAndCurrentLatitudeIsNotNullAndCurrentLongitudeIsNotNull()
+        val busyDriverIds = rideTripRepository.findDistinctDriverIdsByStatusIn(listOf(RideTripStatus.DRIVER_ASSIGNED, RideTripStatus.IN_PROGRESS)).toSet()
+
+        for (trip in trips) {
+            trip.scheduledDispatchStartedAt = Instant.now()
             rideTripRepository.save(trip)
             dispatchToNextDriver(trip, candidatePool, busyDriverIds)
         }

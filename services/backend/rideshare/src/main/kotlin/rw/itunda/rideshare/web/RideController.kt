@@ -24,6 +24,7 @@ import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
 import rw.itunda.rideshare.InvalidRideDriverLocationException
 import rw.itunda.rideshare.InvalidRideLocationException
+import rw.itunda.rideshare.InvalidScheduledRideTimeException
 import rw.itunda.rideshare.InvalidRideTripStatusTransitionException
 import rw.itunda.rideshare.RideDriverAlreadyOnTripException
 import rw.itunda.rideshare.RideDriverAlreadyRegisteredException
@@ -46,6 +47,10 @@ data class RequestTripRequest(
     val dropoffAddress: String,
     val dropoffLatitude: Double,
     val dropoffLongitude: Double,
+    // Real Kakao T 예약 호출 (scheduled ride booking, item 212) -- null (the default)
+    // means ASAP, every existing caller's behavior completely unchanged. See
+    // RideTrip.scheduledFor's own doc comment.
+    val scheduledFor: java.time.Instant? = null,
 )
 
 // Real Kakao T-style ride-hailing -- see RideTripService's own doc comment for the full
@@ -90,7 +95,7 @@ class RideController(
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/rides/trips", idempotencyKey, request) {
             val trip = rideTripService.requestTrip(
                 currentUser.userId, request.pickupAddress, request.pickupLatitude, request.pickupLongitude,
-                request.dropoffAddress, request.dropoffLatitude, request.dropoffLongitude,
+                request.dropoffAddress, request.dropoffLatitude, request.dropoffLongitude, request.scheduledFor,
             )
             201 to mapOf("success" to true, "trip" to trip)
         }
@@ -162,6 +167,10 @@ class RideController(
     @ExceptionHandler(RideSelfTripException::class)
     fun handleSelfTrip(ex: RideSelfTripException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("SELF_TRIP_NOT_ALLOWED", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidScheduledRideTimeException::class)
+    fun handleInvalidScheduledRideTime(ex: InvalidScheduledRideTimeException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_SCHEDULED_TIME", ex.message ?: "Bad request"))
 
     @ExceptionHandler(RideTripNotFoundException::class)
     fun handleTripNotFound(ex: RideTripNotFoundException) =
