@@ -120,11 +120,17 @@ export const placeEatsOrder = (
   deliveryLatitude?: number,
   deliveryLongitude?: number,
   deliveryNotes?: string,
+  // Real Baemin-style 포장주문 (Pickup) order type (item 208) -- the backend has
+  // supported this since 2026-07-26 (EatsOrderService.placeOrder defaults to
+  // DELIVERY), but no client anywhere ever passed anything else, so a buyer could
+  // never actually choose it. Defaults to DELIVERY, preserving every existing call
+  // site's exact current behavior unchanged.
+  fulfillmentType: 'DELIVERY' | 'PICKUP' = 'DELIVERY',
 ) =>
   apiFetch<{ success: boolean; order: EatsOrder; items: EatsOrderItem[] }>('/api/v1/eats/orders', {
     method: 'POST',
     headers: { 'Idempotency-Key': randomUUID() },
-    body: JSON.stringify({ restaurantId, items, deliveryAddress, deliveryLatitude, deliveryLongitude, deliveryNotes }),
+    body: JSON.stringify({ restaurantId, items, deliveryAddress, deliveryLatitude, deliveryLongitude, deliveryNotes, fulfillmentType }),
   });
 
 export const fetchMyEatsOrders = () =>
@@ -143,6 +149,15 @@ export const advanceRestaurantOrder = (orderId: string, status: EatsOrderStatus)
   apiFetch<{ success: boolean; order: EatsOrder }>(`/api/v1/eats/orders/${orderId}/status`, {
     method: 'POST',
     body: JSON.stringify({ status }),
+  }).then((r) => r.order);
+
+// Real Baemin-style 포장주문 (Pickup) terminal edge (item 208) -- a PICKUP order has no
+// rider, so RESTAURANT_STATUS_CHAIN's own READY_FOR_PICKUP -> (rider takes over) path
+// never applies; the restaurant confirms the buyer actually collected it instead. See
+// EatsOrderService.completePickup's own doc comment.
+export const completePickupOrder = (orderId: string) =>
+  apiFetch<{ success: boolean; order: EatsOrder }>(`/api/v1/eats/orders/${orderId}/complete-pickup`, {
+    method: 'POST',
   }).then((r) => r.order);
 
 // Real cancellation + refund (2026-07-18) -- buyer or restaurant, PLACED orders only,

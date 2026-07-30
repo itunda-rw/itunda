@@ -90,7 +90,7 @@ import {
   submitPropertyListingReview, type FavoritePropertyListing, type PropertyListing, type PropertyListingType, type PropertyPriceOffer, type PropertyType,
 } from './lib/realestate';
 import {
-  addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, EATS_MEMBERSHIP_TIERS, fetchAvailableDeliveries,
+  addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, completePickupOrder, EATS_MEMBERSHIP_TIERS, fetchAvailableDeliveries,
   fetchEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyMembership, fetchMyRiderProfile, fetchRestaurantCategories,
   fetchRestaurantOrders, fetchRestaurants, fetchRestaurantRating, fetchRestaurantReviews, fetchRiderDeliveries, placeEatsOrder, registerRider,
   removeFavoriteRestaurant, replyToRestaurantReview, searchDeliveryAddress, setRiderAvailability, subscribeMembership, submitEatsReview,
@@ -8813,6 +8813,10 @@ function MenuView({
   const [deliveryNotes, setDeliveryNotes] = useState('');
   const [placing, setPlacing] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
+  // Real Baemin-style 포장주문 (Pickup) order type (item 208) -- the backend has
+  // supported this since 2026-07-26, but no client anywhere let a buyer choose it.
+  // DELIVERY is the default, matching every existing order's real behavior.
+  const [fulfillmentType, setFulfillmentType] = useState<'DELIVERY' | 'PICKUP'>('DELIVERY');
 
   const load = () => {
     setError(null);
@@ -8882,8 +8886,10 @@ function MenuView({
         selectedChoiceIds: line.choiceIds.length ? line.choiceIds : undefined,
       }));
       const result = await placeEatsOrder(
-        restaurant.merchantId, items, address.trim(), addressCoords?.latitude, addressCoords?.longitude,
-        deliveryNotes.trim() || undefined,
+        restaurant.merchantId, items, fulfillmentType === 'PICKUP' ? '' : address.trim(),
+        fulfillmentType === 'PICKUP' ? undefined : addressCoords?.latitude,
+        fulfillmentType === 'PICKUP' ? undefined : addressCoords?.longitude,
+        deliveryNotes.trim() || undefined, fulfillmentType,
       );
       onOrderPlaced(result.order);
     } catch (err) {
@@ -8939,22 +8945,46 @@ function MenuView({
               </div>
             );
           })}
-          <AddressAutocomplete
-            value={address}
-            onChangeText={(text) => { setAddress(text); setAddressCoords(null); }}
-            onSelectSuggestion={(s) => { setAddress(s.displayName); setAddressCoords({ latitude: s.latitude, longitude: s.longitude }); }}
-          />
-          {addressCoords && (
-            <p style={{ fontSize: '12px', color: 'var(--toss-green)' }}>Pinned -- real distance-based delivery fee applies</p>
+          <div style={{ display: 'flex', gap: '4px', padding: '4px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+            {(['DELIVERY', 'PICKUP'] as const).map((ft) => (
+              <button
+                key={ft}
+                type="button"
+                onClick={() => setFulfillmentType(ft)}
+                style={{
+                  flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
+                  color: fulfillmentType === ft ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+                  backgroundColor: fulfillmentType === ft ? 'var(--toss-blue)' : 'transparent',
+                }}
+              >
+                {ft === 'DELIVERY' ? 'Delivery' : 'Pickup'}
+              </button>
+            ))}
+          </div>
+          {fulfillmentType === 'PICKUP' ? (
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+              No delivery fee -- collect your order at {menu.businessName} once it's ready.
+            </p>
+          ) : (
+            <>
+              <AddressAutocomplete
+                value={address}
+                onChangeText={(text) => { setAddress(text); setAddressCoords(null); }}
+                onSelectSuggestion={(s) => { setAddress(s.displayName); setAddressCoords({ latitude: s.latitude, longitude: s.longitude }); }}
+              />
+              {addressCoords && (
+                <p style={{ fontSize: '12px', color: 'var(--toss-green)' }}>Pinned -- real distance-based delivery fee applies</p>
+              )}
+            </>
           )}
           <textarea
             value={deliveryNotes}
             onChange={(e) => setDeliveryNotes(e.target.value.slice(0, 500))}
-            placeholder="Delivery notes (optional) -- e.g. Leave at the gate, call on arrival"
+            placeholder={fulfillmentType === 'PICKUP' ? 'Pickup notes (optional)' : 'Delivery notes (optional) -- e.g. Leave at the gate, call on arrival'}
             rows={2}
             style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'none', fontFamily: 'inherit' }}
           />
-          <button type="submit" className="toss-btn toss-btn-primary" disabled={placing || !address.trim()}>
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={placing || (fulfillmentType === 'DELIVERY' && !address.trim())}>
             {placing ? 'Placing order…' : 'Place order'}
           </button>
           {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
@@ -9745,6 +9775,23 @@ function RestaurantOrdersView() {
     }
   };
 
+  // Real Baemin-style 포장주문 (Pickup) terminal edge (item 208) -- a PICKUP order at
+  // READY_FOR_PICKUP has no `next` in RESTAURANT_STATUS_CHAIN (there's no rider to hand
+  // off to), so it previously just sat there forever with no action anywhere to close
+  // it out, despite EatsOrderService.completePickup being real and live-verified.
+  const handleCompletePickup = async (order: EatsOrder) => {
+    setBusyOrderId(order.id);
+    setError(null);
+    try {
+      await completePickupOrder(order.id);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not complete this pickup.');
+    } finally {
+      setBusyOrderId(null);
+    }
+  };
+
   if (error) {
     return (
       <div className="toss-card">
@@ -9762,15 +9809,22 @@ function RestaurantOrdersView() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {orders.map((o) => {
           const next = nextInChain(RESTAURANT_STATUS_CHAIN, o.status);
+          const readyForPickupHandoff = o.fulfillmentType === 'PICKUP' && o.status === 'READY_FOR_PICKUP';
           return (
             <EatsOrderCard
               key={o.id}
               order={o}
-              action={next && (
-                <button className="toss-btn toss-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleAdvance(o)}>
-                  {busyOrderId === o.id ? 'Updating…' : `Mark ${EATS_STATUS_LABEL[next].toLowerCase()}`}
-                </button>
-              )}
+              action={
+                readyForPickupHandoff ? (
+                  <button className="toss-btn toss-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleCompletePickup(o)}>
+                    {busyOrderId === o.id ? 'Updating…' : 'Mark picked up'}
+                  </button>
+                ) : next && (
+                  <button className="toss-btn toss-btn-primary" disabled={busyOrderId === o.id} onClick={() => handleAdvance(o)}>
+                    {busyOrderId === o.id ? 'Updating…' : `Mark ${EATS_STATUS_LABEL[next].toLowerCase()}`}
+                  </button>
+                )
+              }
             />
           );
         })}
