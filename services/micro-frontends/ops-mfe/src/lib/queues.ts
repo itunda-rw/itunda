@@ -225,6 +225,18 @@ export interface AgentTillReconciliation {
   createdAt: string;
 }
 
+// Real agent till reconciliation report-by-date-range (item 133) -- the one real,
+// still-open follow-up this file's own TOSS_PARITY_MATRIX.md Agent Network row named:
+// AgentService.reconciliationReport/the matching GET endpoint were already real, tested
+// backend code with zero ops-mfe client anywhere.
+export interface AgentReconciliationReport {
+  from: string;
+  to: string;
+  reconciliations: AgentTillReconciliation[];
+  pendingReviewCount: number;
+  totalVariance: number;
+}
+
 export interface ReconciliationRow {
   railId: string;
   displayName: string;
@@ -363,6 +375,11 @@ export const resolveTillReconciliation = (reconciliationId: string, note: string
     method: 'POST',
     body: JSON.stringify({ note }),
   });
+
+export const fetchAgentReconciliationReport = (from: string, to: string) =>
+  apiFetch<{ success: boolean; report: AgentReconciliationReport }>(
+    `/api/v1/system/agents/till-reconciliations?from=${from}&to=${to}`,
+  ).then((r) => r.report);
 
 export const fetchMarketplaceEscrowDisputes = () =>
   apiFetch<{ success: boolean; disputes: MarketplaceEscrowDispute[] }>('/api/v1/system/marketplace-escrow/disputes').then((r) => r.disputes);
