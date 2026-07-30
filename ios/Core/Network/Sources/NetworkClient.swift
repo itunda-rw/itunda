@@ -61,7 +61,14 @@ public struct PublicUser: Decodable {
     // profile response since 2026-07-13/26; this client just never modeled them until now.
     public let emailVerified: Bool?
     public let phoneVerified: Bool?
+    // Real profile photo (URL, not a binary upload) -- also the real, buildable half
+    // of Rewards' task_profile. Found 2026-07-29 via a full-backend-endpoint sweep:
+    // real, working endpoint with zero client anywhere, and this field wasn't even
+    // carried by this DTO until now.
+    public let profilePhotoUrl: String?
 }
+
+public struct UpdateProfilePhotoRequest: Encodable { public let profilePhotoUrl: String }
 
 public struct ConfirmEmailVerificationRequest: Encodable { public let token: String }
 public struct ConfirmPhoneVerificationRequest: Encodable { public let code: String }
@@ -586,6 +593,12 @@ extension NetworkClient {
     // and bank-mfe's lib/neighborhood.ts, which this mirrors exactly.
     public func setNeighborhood(latitude: Double, longitude: Double) async throws -> ProfileResponse {
         try await authenticatedPost("api/v1/auth/profile/neighborhood", body: SetNeighborhoodRequest(latitude: latitude, longitude: longitude))
+    }
+
+    // Real profile photo (URL, not a binary upload) -- see PublicUser.profilePhotoUrl's
+    // own doc comment.
+    public func updateProfilePhoto(profilePhotoUrl: String) async throws -> ProfileResponse {
+        try await authenticatedPut("api/v1/auth/profile/photo", body: UpdateProfilePhotoRequest(profilePhotoUrl: profilePhotoUrl))
     }
 
     // Real age-eligibility gate for the Mini wallet (2026-07-28) -- see

@@ -504,6 +504,7 @@ struct MyTabView: View {
                     Spacer()
                     Color.clear.frame(width: 20)
                 }
+                ProfilePhotoCard()
                 VerificationCard()
                 // Real order tracking -- Naver Pay/Shopping's own "My" tab leads with
                 // recent orders across every product, not a settings list. Tapping
@@ -585,6 +586,66 @@ struct MyTabView: View {
 // comment. bank-mfe (item 169) and Android (item 178) already have this; this is the
 // iOS port. A real code is delivered via a real in-app Notification + push, no real
 // SMS/email gateway exists.
+// Real profile photo (URL, not a binary upload) -- also the real, buildable half of
+// Rewards' task_profile. Found 2026-07-29 via a full-backend-endpoint sweep: a real,
+// working `PUT /api/v1/auth/profile/photo` endpoint with zero client anywhere, and
+// `PublicUser.profilePhotoUrl` wasn't even carried by this DTO until now.
+private struct ProfilePhotoCard: View {
+    @State private var profilePhotoUrl: String?
+    @State private var urlInput = ""
+    @State private var saving = false
+    @State private var error: String?
+
+    var body: some View {
+        HStack(spacing: 12) {
+            if let profilePhotoUrl, let url = URL(string: profilePhotoUrl) {
+                AsyncImage(url: url) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Circle().fill(IDS.Colors.chipBackground)
+                }
+                .frame(width: 56, height: 56)
+                .clipShape(Circle())
+            } else {
+                Circle().fill(IDS.Colors.chipBackground).frame(width: 56, height: 56)
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                if let error { Text(error).font(.caption).foregroundColor(.red) }
+                TextField("Profile photo URL", text: $urlInput)
+                    .padding(8).background(IDS.Colors.chipBackground).cornerRadius(8)
+                Button(action: { Task { await save() } }) {
+                    Text(saving ? "Saving…" : "Save photo").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(IDS.Colors.card).cornerRadius(10)
+                }
+                .disabled(saving)
+            }
+        }
+        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+        .task {
+            do {
+                let user = try await NetworkClient.shared.getProfile().user
+                profilePhotoUrl = user.profilePhotoUrl
+                urlInput = user.profilePhotoUrl ?? ""
+            } catch {
+                // Real, non-critical -- the rest of "My" still works without this.
+            }
+        }
+    }
+
+    private func save() async {
+        let trimmed = urlInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { error = "Enter a photo URL."; return }
+        saving = true; error = nil
+        defer { saving = false }
+        do {
+            profilePhotoUrl = try await NetworkClient.shared.updateProfilePhoto(profilePhotoUrl: trimmed).user.profilePhotoUrl
+        } catch {
+            self.error = "Could not update your profile photo."
+        }
+    }
+}
+
 private struct VerificationCard: View {
     @State private var email: String?
     @State private var emailVerified = true
