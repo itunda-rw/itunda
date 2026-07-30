@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -60,6 +61,12 @@ class SavingsGoal(
     // treated as immediately due. See AutoSaveScheduler in the savings module.
     @Column(name = "last_auto_contribution_at")
     var lastAutoContributionAt: Instant? = null,
+
+    // Manual deposits and the recurring auto-save scheduler update this balance
+    // independently.  Versioning prevents a lost contribution update.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(id = "", userId = "", walletId = "", name = "", targetAmount = BigDecimal.ZERO, currentAmount = BigDecimal.ZERO, monthlyContribution = BigDecimal.ZERO, interestRate = 0.0)
 }

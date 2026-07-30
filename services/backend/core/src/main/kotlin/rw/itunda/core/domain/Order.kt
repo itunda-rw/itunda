@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -80,6 +81,12 @@ class Order(
 
     @Column(name = "rider_id", length = 64)
     var riderId: String? = null,
+
+    // Merchant, buyer, and rider actions can advance or cancel the same paid order.
+    // Guard its lifecycle so a concurrent refund cannot coexist with a delivery update.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(
         id = "", buyerId = "", merchantId = "", deliveryAddress = "", totalAmount = BigDecimal.ZERO,

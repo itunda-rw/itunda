@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -109,6 +110,12 @@ class WeeklySavingsPlan(
 
     @Column(name = "total_interest_paid", precision = 18, scale = 2)
     var totalInterestPaid: BigDecimal? = null,
+
+    // The weekly scheduler, maturity process, and user withdrawal all mutate the
+    // same plan and can move money.  One transition must win at a time.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(
         id = "", userId = "", walletId = "", name = "", baseWeeklyAmount = BigDecimal.ZERO,

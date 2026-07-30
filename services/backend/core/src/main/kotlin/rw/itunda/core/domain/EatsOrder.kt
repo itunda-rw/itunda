@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -150,6 +151,13 @@ class EatsOrder(
     // behavior, completely unchanged.
     @Column(name = "scheduled_for")
     val scheduledFor: Instant? = null,
+
+    // Restaurant, rider, scheduler, and cancellation actions advance the same order
+    // through different request paths.  Protect the row so a concurrent terminal
+    // transition cannot post a duplicate delivery payout or refund.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(
         id = "", buyerId = "", restaurantId = "", deliveryAddress = "", itemsSubtotal = BigDecimal.ZERO,

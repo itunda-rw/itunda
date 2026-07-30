@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 
 enum class MerchantBillingSubscriptionStatus { ACTIVE, CANCELLED }
@@ -58,6 +59,10 @@ class MerchantBillingSubscription(
 
     @Column(name = "cancelled_at")
     var cancelledAt: Instant? = null,
+
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(id = "", planId = "", merchantId = "", customerId = "")
 }

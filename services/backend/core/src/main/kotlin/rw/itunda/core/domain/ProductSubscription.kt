@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 
 enum class ProductSubscriptionStatus { ACTIVE, PAUSED, CANCELLED }
@@ -79,6 +80,12 @@ class ProductSubscription(
 
     @Column(name = "cancelled_at")
     var cancelledAt: Instant? = null,
+
+    // Customer updates/cancellation and the recurring delivery scheduler share this
+    // lifecycle; a due order must not be created after a concurrent cancellation.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(
         id = "", customerId = "", merchantId = "", productId = "", quantity = 1, intervalDays = 30, deliveryAddress = "",

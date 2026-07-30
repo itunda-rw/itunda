@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -76,6 +77,12 @@ class DineInOrder(
 
     @Column(name = "refund_transaction_id", length = 64)
     var refundTransactionId: String? = null,
+
+    // Buyer cancellation and restaurant status updates are independent requests.  A
+    // version check prevents conflicting fulfillment and refund outcomes.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(
         id = "", buyerId = "", restaurantId = "", tableNumber = "", itemsSubtotal = BigDecimal.ZERO,

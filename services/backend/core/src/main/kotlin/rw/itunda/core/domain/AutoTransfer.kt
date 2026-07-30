@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -86,6 +87,12 @@ class AutoTransfer(
 
     @Column(name = "cancelled_at")
     var cancelledAt: Instant? = null,
+
+    // User updates/cancellation and scheduled execution can race; only one state
+    // transition may advance or stop a transfer in a given cycle.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(
         id = "", userId = "", walletId = "", recipientIdentifier = "", recipientName = "",

@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -67,6 +68,11 @@ class UpfrontInterestDeposit(
 
     @Column(name = "withdrawn_at")
     var withdrawnAt: Instant? = null,
+
+    // Scheduled maturity and a user withdrawal must not race to release principal.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(
         id = "", userId = "", walletId = "", principal = BigDecimal.ZERO,

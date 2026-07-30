@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 
 enum class JobApplicationStatus { PENDING, ACCEPTED, DECLINED }
@@ -43,6 +44,12 @@ class JobApplication(
 
     @Column(name = "responded_at")
     var respondedAt: Instant? = null,
+
+    // A poster may respond from multiple sessions; only one terminal decision should
+    // resolve a pending application.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(id = "", jobPostId = "", applicantId = "", message = "")
 }

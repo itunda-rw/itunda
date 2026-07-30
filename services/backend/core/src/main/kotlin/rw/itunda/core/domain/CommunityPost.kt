@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 
 enum class CommunityPostStatus { ACTIVE, REMOVED }
@@ -98,6 +99,12 @@ class CommunityPost(
     // created before this field existed) -- a real, honest default, not a fabricated cap.
     @Column(nullable = true)
     var capacity: Int? = null,
+
+    // Comments, likes, removal, and first-meetup initialization all update this row.
+    // Versioning protects its cached counters and group linkage from lost updates.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(id = "", authorId = "", category = "", title = "", body = "")
 }

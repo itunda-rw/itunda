@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -73,6 +74,12 @@ class BookingDeposit(
 
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
+
+    // Completion, cancellation, and scheduled no-show handling may all settle the
+    // held deposit. Only one terminal settlement may commit.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(
         id = "", bookingId = "", merchantId = "", customerId = "", amount = BigDecimal.ZERO,

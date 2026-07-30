@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -52,6 +53,12 @@ class InsuranceClaim(
 
     @Column(name = "decision_reason")
     var decisionReason: String? = null,
+
+    // Approval posts a real payout.  Concurrent reviewers must not both approve the
+    // same submitted claim.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(id = "", policyId = "", userId = "", description = "", amount = BigDecimal.ZERO)
 }

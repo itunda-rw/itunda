@@ -4,6 +4,7 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 
 /**
@@ -55,6 +56,12 @@ class KycSubmission(
 
     @Column(name = "auto_verification_detail")
     var autoVerificationDetail: String? = null,
+
+    // A verification review is a terminal compliance decision; concurrent reviewers
+    // must not overwrite each other's outcome.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(id = "", userId = "", documentType = "", documentNumber = "", documentReference = "", status = "", submittedAt = Instant.now())
 }

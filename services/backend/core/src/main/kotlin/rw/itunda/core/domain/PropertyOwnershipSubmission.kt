@@ -4,6 +4,7 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 
 /**
@@ -45,6 +46,12 @@ class PropertyOwnershipSubmission(
 
     @Column(name = "decision_reason")
     var decisionReason: String? = null,
+
+    // Human-review decisions must be exclusive so a submission cannot be simultaneously
+    // accepted and rejected by concurrent reviewers.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(id = "", listingId = "", userId = "", documentUrl = "", status = "", submittedAt = Instant.now())
 }

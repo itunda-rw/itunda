@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -74,6 +75,11 @@ class PaymentIntent(
     // no separate CANCELLED status needed.
     @Column(name = "refunded_amount", nullable = false, precision = 18, scale = 2)
     var refundedAmount: BigDecimal = BigDecimal.ZERO,
+
+    /** Prevents concurrent collect/cancel/expiry transitions from silently overwriting each other. */
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(id = "", merchantId = "", amount = BigDecimal.ZERO, description = "", expiresAt = Instant.now())
 }

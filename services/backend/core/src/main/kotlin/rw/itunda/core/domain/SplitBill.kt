@@ -6,6 +6,7 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -97,6 +98,11 @@ class SplitBill(
 
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
+
+    // Participant payments and a new settlement round both mutate aggregate state.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(
         id = "", organizerId = "", groupConversationId = "", messageId = "",
@@ -146,6 +152,12 @@ class SplitBillParticipant(
     // participant is immediately due for their first real nudge.
     @Column(name = "last_reminder_sent_at")
     var lastReminderSentAt: Instant? = null,
+
+    // A share may be paid from retried or concurrent client requests.  Only one payment
+    // may settle this participant.
+    @Version
+    @Column(nullable = false)
+    var version: Long = 0,
 ) {
     protected constructor() : this(
         id = "", splitBillId = "", userId = "", shareAmount = BigDecimal.ZERO,
