@@ -6,6 +6,7 @@ import { DeviceStepUpPrompt } from '../components/DeviceStepUpPrompt';
 import {
   addOptionGroup,
   addProduct,
+  updateProductStock,
   chargeCard,
   generateQr,
   getOptionGroups,
@@ -76,9 +77,11 @@ function RegisterView() {
   useEffect(load, []);
 
   const addToCart = (product: MerchantProduct) => {
+    if (product.stockQuantity === 0) return;
     setCart((prev) => {
       const existing = prev.find((line) => line.product.id === product.id);
       if (existing) {
+        if (product.stockQuantity !== null && existing.quantity >= product.stockQuantity) return prev;
         return prev.map((line) => (line.product.id === product.id ? { ...line, quantity: line.quantity + 1 } : line));
       }
       return [...prev, { product, quantity: 1 }];
@@ -142,13 +145,16 @@ function RegisterView() {
               <button
                 key={product.id}
                 onClick={() => addToCart(product)}
+                disabled={product.stockQuantity === 0}
                 className="toss-card"
-                style={{ padding: '16px', textAlign: 'left', cursor: 'pointer' }}
+                style={{ padding: '16px', textAlign: 'left', cursor: 'pointer', opacity: product.stockQuantity === 0 ? 0.55 : 1 }}
               >
+                {product.imageUrl && <img src={product.imageUrl} alt="" style={{ width: '100%', aspectRatio: '1.5', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }} />}
                 <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{product.name}</p>
                 <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginTop: '4px' }}>
                   {product.price.toLocaleString()} RWF
                 </p>
+                {product.stockQuantity !== null && <p style={{ fontSize: '12px', color: product.stockQuantity === 0 ? '#E53935' : 'var(--toss-grey-500)', marginTop: '4px' }}>{product.stockQuantity === 0 ? 'Out of stock' : `${product.stockQuantity} available`}</p>}
               </button>
             ))}
           </div>
@@ -384,12 +390,17 @@ function CatalogView() {
   const [products, setProducts] = useState<MerchantProduct[] | null>(null);
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
+  const [originalPrice, setOriginalPrice] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [description, setDescription] = useState('');
+  const [stockQuantity, setStockQuantity] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   // Real menu-item option groups management (2026-07-21) -- only one product's panel
   // expanded at a time, same "inline-card-replaces-trigger" convention bank-mfe's own
   // buyer-side option UI already established.
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+  const lowStock = products?.filter((product) => product.stockQuantity !== null && product.stockQuantity <= 5) ?? [];
 
   const load = () => {
     getProductCatalog()
@@ -402,16 +413,55 @@ function CatalogView() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    const currentPrice = Number(price);
+    const previousPrice = originalPrice.trim() ? Number(originalPrice) : undefined;
+    const stock = stockQuantity.trim() ? Number(stockQuantity) : undefined;
+    if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
+      setError('Enter a price greater than zero.');
+      return;
+    }
+    if (previousPrice !== undefined && (!Number.isFinite(previousPrice) || previousPrice <= currentPrice)) {
+      setError('The original price must be greater than the current price.');
+      return;
+    }
+    if (stock !== undefined && (!Number.isInteger(stock) || stock < 0)) {
+      setError('Stock must be a whole number of zero or more. Leave it blank for unlimited availability.');
+      return;
+    }
     setSubmitting(true);
     try {
-      await addProduct(name, Number(price));
+      await addProduct(name, currentPrice, imageUrl.trim() || undefined, previousPrice, description.trim() || undefined, stock);
       setName('');
       setPrice('');
+      setOriginalPrice('');
+      setImageUrl('');
+      setDescription('');
+      setStockQuantity('');
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not add this product.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const adjustStock = async (product: MerchantProduct) => {
+    const value = window.prompt(
+      'Set available units. Leave blank for unlimited availability.',
+      product.stockQuantity === null ? '' : String(product.stockQuantity),
+    );
+    if (value === null) return;
+    const trimmed = value.trim();
+    const stock = trimmed === '' ? null : Number(trimmed);
+    if (stock !== null && (!Number.isInteger(stock) || stock < 0)) {
+      setError('Stock must be a whole number of zero or more. Leave it blank for unlimited availability.');
+      return;
+    }
+    try {
+      await updateProductStock(product.id, stock);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update stock.');
     }
   };
 
@@ -434,6 +484,34 @@ function CatalogView() {
               style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
             />
           </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '150px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Stock (optional)</span>
+            <input
+              type="number" min="0" step="1" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} placeholder="Unlimited"
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+            />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minWidth: '120px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Original price (optional)</span>
+            <input
+              type="number" min="1" value={originalPrice} onChange={(e) => setOriginalPrice(e.target.value)} placeholder="3000"
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+            />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 2, minWidth: '220px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Image URL (optional)</span>
+            <input
+              type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://…/latte.jpg"
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+            />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexBasis: '100%' }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-grey-700)' }}>Description (optional)</span>
+            <textarea
+              value={description} onChange={(e) => setDescription(e.target.value)} maxLength={2000} rows={2} placeholder="What customers should know about this item"
+              style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px', resize: 'vertical' }}
+            />
+          </label>
           <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting} style={{ height: '46px' }}>
             {submitting ? 'Adding…' : 'Add'}
           </button>
@@ -444,6 +522,17 @@ function CatalogView() {
           </p>
         )}
       </div>
+
+      {lowStock.length > 0 && (
+        <div className="toss-card" role="status" style={{ borderLeft: '4px solid #F59E0B', background: '#FFFBEB' }}>
+          <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>
+            {lowStock.length} product{lowStock.length === 1 ? '' : 's'} need stock attention
+          </p>
+          <p style={{ marginTop: '4px', fontSize: '13px', color: 'var(--toss-grey-700)' }}>
+            {lowStock.map((product) => `${product.name} (${product.stockQuantity === 0 ? 'out of stock' : `${product.stockQuantity} left`})`).join(', ')}
+          </p>
+        </div>
+      )}
 
       {products === null ? (
         <div className="toss-card">Loading…</div>
@@ -467,8 +556,19 @@ function CatalogView() {
                 return (
                   <Fragment key={product.id}>
                     <tr style={{ borderTop: '1px solid var(--toss-grey-200)' }}>
-                      <td style={{ padding: '10px 20px', fontWeight: 600 }}>{product.name}</td>
-                      <td style={{ padding: '10px 20px' }}>{product.price.toLocaleString()} RWF</td>
+                      <td style={{ padding: '10px 20px', fontWeight: 600 }}>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                          {product.imageUrl && <img src={product.imageUrl} alt="" width={36} height={36} style={{ borderRadius: '6px', objectFit: 'cover' }} />}
+                          <div><div>{product.name}</div>{product.description && <div style={{ fontWeight: 400, fontSize: '12px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>{product.description}</div>}</div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '10px 20px' }}>
+                        <div>{product.price.toLocaleString()} RWF</div>
+                        {product.originalPrice && product.discountPercent && <div style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginTop: '2px' }}><s>{product.originalPrice.toLocaleString()} RWF</s> · {product.discountPercent}% off</div>}
+                        <div style={{ fontSize: '12px', color: product.stockQuantity === 0 ? '#E53935' : 'var(--toss-grey-500)', marginTop: '2px' }}>
+                          {product.stockQuantity === null ? 'Unlimited stock' : product.stockQuantity === 0 ? 'Out of stock' : `${product.stockQuantity} in stock`}
+                        </div>
+                      </td>
                       <td style={{ padding: '10px 20px', textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '14px' }}>
                           <button
@@ -476,6 +576,12 @@ function CatalogView() {
                             style={{ color: 'var(--toss-blue)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
                           >
                             Options {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                          <button
+                            onClick={() => adjustStock(product)}
+                            style={{ color: 'var(--toss-blue)', fontSize: '13px', fontWeight: 600 }}
+                          >
+                            Adjust stock
                           </button>
                           <button
                             onClick={() => removeProduct(product.id).then(load)}

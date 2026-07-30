@@ -23,6 +23,7 @@ export interface CommerceProduct {
   originalPrice?: number | null;
   discountPercent?: number | null;
   description?: string | null;
+  stockQuantity?: number | null;
 }
 
 export const fetchMerchantProducts = (merchantId: string) =>

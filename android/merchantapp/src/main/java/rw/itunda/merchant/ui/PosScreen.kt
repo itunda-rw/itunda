@@ -83,8 +83,11 @@ fun PosTab() {
                     onAdd = { product ->
                         cart = cart.toMutableList().apply {
                             val index = indexOfFirst { it.product.id == product.id }
-                            if (index >= 0) this[index] = this[index].copy(quantity = this[index].quantity + 1)
-                            else add(CartLine(product, 1))
+                            val nextQuantity = if (index >= 0) this[index].quantity + 1 else 1
+                            if (product.stockQuantity == null || nextQuantity <= product.stockQuantity) {
+                                if (index >= 0) this[index] = this[index].copy(quantity = nextQuantity)
+                                else add(CartLine(product, 1))
+                            }
                         }
                     },
                 )
@@ -126,10 +129,20 @@ private fun ProductGrid(products: List<MerchantProductDto>, onAdd: (MerchantProd
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(products, key = { it.id }) { product ->
-            Card(modifier = Modifier.fillMaxWidth().clickable { onAdd(product) }) {
+            val soldOut = product.stockQuantity == 0
+            Card(modifier = Modifier.fillMaxWidth().clickable(enabled = !soldOut) { onAdd(product) }) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Text(product.name, fontWeight = FontWeight.Bold)
                     Text("${"%,.0f".format(product.price)} RWF", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        when (product.stockQuantity) {
+                            null -> "Unlimited stock"
+                            0 -> "Out of stock"
+                            else -> "${product.stockQuantity} in stock"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (soldOut) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }

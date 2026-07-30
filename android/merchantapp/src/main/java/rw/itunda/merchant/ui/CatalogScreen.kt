@@ -34,6 +34,7 @@ import rw.itunda.merchant.network.MerchantProductDto
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.network.PriceTierDto
 import rw.itunda.merchant.network.SetPriceTiersRequest
+import rw.itunda.merchant.network.UpdateProductStockRequest
 
 @Composable
 fun CatalogTab() {
@@ -41,6 +42,10 @@ fun CatalogTab() {
     var name by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
     var durationMinutes by remember { mutableStateOf("") }
+    var originalPrice by remember { mutableStateOf("") }
+    var imageUrl by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var stockQuantity by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var submitting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -59,6 +64,10 @@ fun CatalogTab() {
                 Text("Add a product", fontWeight = FontWeight.Bold)
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Price (RWF)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = originalPrice, onValueChange = { originalPrice = it }, label = { Text("Original price (optional, for a sale)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = imageUrl, onValueChange = { imageUrl = it }, label = { Text("Public image URL (optional)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description (optional)") }, modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 4)
+                OutlinedTextField(value = stockQuantity, onValueChange = { stockQuantity = it }, label = { Text("Stock (optional — blank means unlimited)") }, modifier = Modifier.fillMaxWidth())
                 // Real bookable-service duration (2026-07-25) -- leaving this blank
                 // keeps the product a normal cataloged good; a real minute value marks
                 // it bookable (e.g. "Haircut", 30) via the new Availability tab.
@@ -76,16 +85,30 @@ fun CatalogTab() {
                             return@Button
                         }
                         val duration = durationMinutes.trim().ifBlank { null }?.toIntOrNull()
+                        val previousPrice = originalPrice.trim().ifBlank { null }?.toDoubleOrNull()
+                        val stock = stockQuantity.trim().ifBlank { null }?.toIntOrNull()
                         if (durationMinutes.isNotBlank() && duration == null) {
                             error = "Booking duration must be a whole number of minutes."
+                            return@Button
+                        }
+                        if (originalPrice.isNotBlank() && (previousPrice == null || previousPrice <= amount)) {
+                            error = "Original price must be greater than the current price."
+                            return@Button
+                        }
+                        if (stockQuantity.isNotBlank() && (stock == null || stock < 0)) {
+                            error = "Stock must be a whole number of zero or more."
                             return@Button
                         }
                         submitting = true
                         error = null
                         scope.launch {
                             try {
-                                NetworkClient.apiService.addProduct(AddProductRequest(name.trim(), amount, duration))
-                                name = ""; price = ""; durationMinutes = ""
+                                NetworkClient.apiService.addProduct(AddProductRequest(
+                                    name = name.trim(), price = amount, durationMinutes = duration,
+                                    imageUrl = imageUrl.trim().ifBlank { null }, originalPrice = previousPrice,
+                                    description = description.trim().ifBlank { null }, stockQuantity = stock,
+                                ))
+                                name = ""; price = ""; durationMinutes = ""; originalPrice = ""; imageUrl = ""; description = ""; stockQuantity = ""
                                 load()
                             } catch (e: Exception) {
                                 error = "Couldn't add this product. Try again."
@@ -106,6 +129,21 @@ fun CatalogTab() {
         } else if (list.isEmpty()) {
             Text("No products yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
+            val lowStock = list.filter { it.stockQuantity != null && it.stockQuantity <= 5 }
+            if (lowStock.isNotEmpty()) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("${lowStock.size} product${if (lowStock.size == 1) "" else "s"} need stock attention", fontWeight = FontWeight.Bold)
+                        Text(
+                            lowStock.joinToString(", ") { product ->
+                                "${product.name} (${if (product.stockQuantity == 0) "out of stock" else "${product.stockQuantity} left"})"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(list, key = { it.id }) { product ->
                     ProductRow(product, onRemoved = ::load, onError = { error = it })
@@ -130,6 +168,9 @@ private fun ProductRow(product: MerchantProductDto, onRemoved: () -> Unit, onErr
     var tierRows by remember { mutableStateOf(listOf("" to "", "" to "", "" to "")) }
     var loadedTiers by remember { mutableStateOf(false) }
     var savingTiers by remember { mutableStateOf(false) }
+    var showStockEditor by remember { mutableStateOf(false) }
+    var stockDraft by remember { mutableStateOf(product.stockQuantity?.toString() ?: "") }
+    var savingStock by remember { mutableStateOf(false) }
 
     fun openTierEditor() {
         showTiers = true
@@ -159,14 +200,65 @@ private fun ProductRow(product: MerchantProductDto, onRemoved: () -> Unit, onErr
                     Text(product.name, fontWeight = FontWeight.Bold)
                     val priceLine = "${"%,.0f".format(product.price)} RWF" + (product.durationMinutes?.let { " · ${it} min booking" } ?: "")
                     Text(priceLine, style = MaterialTheme.typography.bodySmall)
+                    product.originalPrice?.let { original ->
+                        Text("Was ${"%,.0f".format(original)} RWF · ${product.discountPercent ?: 0}% off", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    }
+                    product.description?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    Text(
+                        product.stockQuantity?.let { if (it == 0) "Out of stock" else "$it in stock" } ?: "Unlimited stock",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (product.stockQuantity == 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 Row {
+                    TextButton(onClick = {
+                        stockDraft = product.stockQuantity?.toString() ?: ""
+                        showStockEditor = !showStockEditor
+                    }) { Text(if (showStockEditor) "Close stock" else "Adjust stock") }
                     TextButton(onClick = { if (showTiers) showTiers = false else openTierEditor() }) { Text(if (showTiers) "Close" else "Bulk pricing") }
                     TextButton(onClick = {
                         scope.launch {
                             try { NetworkClient.apiService.removeProduct(product.id); onRemoved() } catch (e: Exception) { onError("Couldn't remove this product.") }
                         }
                     }) { Text("Remove") }
+                }
+            }
+            if (showStockEditor) {
+                Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        "Set the units currently available. Leave blank for unlimited availability.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedTextField(
+                        value = stockDraft,
+                        onValueChange = { stockDraft = it },
+                        label = { Text("Available units") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    androidx.compose.material3.Button(
+                        onClick = {
+                            val stock = stockDraft.trim().ifBlank { null }?.toIntOrNull()
+                            if (stockDraft.isNotBlank() && (stock == null || stock < 0)) {
+                                onError("Stock must be a whole number of zero or more.")
+                                return@Button
+                            }
+                            savingStock = true
+                            scope.launch {
+                                try {
+                                    NetworkClient.apiService.updateProductStock(product.id, UpdateProductStockRequest(stock))
+                                    showStockEditor = false
+                                    onRemoved()
+                                } catch (e: Exception) {
+                                    onError("Couldn't update stock. Try again.")
+                                } finally {
+                                    savingStock = false
+                                }
+                            }
+                        },
+                        enabled = !savingStock,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text(if (savingStock) "Saving…" else "Save stock") }
                 }
             }
             if (showTiers) {

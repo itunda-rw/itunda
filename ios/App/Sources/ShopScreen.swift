@@ -300,6 +300,8 @@ private struct CommerceShopContent: View {
                                             VStack(alignment: .leading, spacing: 2) {
                                                 Text(r.name).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                                                 Text(r.merchantName).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                                Text(r.stockQuantity.map { $0 == 0 ? "Out of stock" : "\($0) available" } ?? "Available")
+                                                    .font(.caption).foregroundColor(r.stockQuantity == 0 ? .red : IDS.Colors.textSecondary)
                                             }
                                             Spacer()
                                             Text("\(Int(r.price)) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
@@ -330,6 +332,8 @@ private struct CommerceShopContent: View {
                                                     Text("\(discountPercent)% off").font(.caption2).bold().foregroundColor(.red)
                                                 }
                                                 Text("\(Int(d.price)) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                                Text(d.stockQuantity.map { $0 == 0 ? "Out of stock" : "\($0) available" } ?? "Available")
+                                                    .font(.caption2).foregroundColor(d.stockQuantity == 0 ? .red : IDS.Colors.textSecondary)
                                             }
                                             .frame(width: 120, alignment: .leading)
                                             .padding(10)
@@ -500,7 +504,9 @@ private struct MerchantDetailView: View {
     private func setQty(_ product: MerchantProductDto, _ quantity: Int) {
         let key = "\(merchant.merchantId):\(product.id)"
         if quantity <= 0 { cart.removeValue(forKey: key) }
-        else { cart[key] = CommerceCartLine(merchantId: merchant.merchantId, businessName: merchant.businessName, product: product, quantity: quantity) }
+        else if product.stockQuantity == nil || quantity <= product.stockQuantity! {
+            cart[key] = CommerceCartLine(merchantId: merchant.merchantId, businessName: merchant.businessName, product: product, quantity: quantity)
+        }
     }
 
     var body: some View {
@@ -566,11 +572,15 @@ private struct MerchantDetailView: View {
                                         .disabled(favoritingProductId == product.id)
                                     }
                                     ProductRatingBadge(productId: product.id)
+                                    Text(product.stockQuantity.map { $0 == 0 ? "Out of stock" : "\($0) available" } ?? "Available")
+                                        .font(.caption)
+                                        .foregroundColor(product.stockQuantity == 0 ? .red : IDS.Colors.textSecondary)
                                     HStack(spacing: 10) {
                                         Spacer()
                                         qtyButton("minus") { setQty(product, qty(product.id) - 1) }
                                         Text("\(qty(product.id))").frame(width: 24).font(.subheadline).bold()
                                         qtyButton("plus") { setQty(product, qty(product.id) + 1) }
+                                            .disabled(product.stockQuantity != nil && qty(product.id) >= product.stockQuantity!)
                                         Spacer()
                                     }
                                 }

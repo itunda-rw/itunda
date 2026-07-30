@@ -11,6 +11,7 @@ import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.PUT
 import retrofit2.http.POST
+import retrofit2.http.PATCH
 import retrofit2.http.Path
 import retrofit2.http.Query
 import rw.itunda.merchant.BuildConfig
@@ -72,10 +73,24 @@ data class MerchantProductDto(
     // comment on the backend. Non-null means this product is a real appointment-
     // bookable service (e.g. a 30-minute haircut), not a physical good.
     val durationMinutes: Int? = null,
+    val imageUrl: String? = null,
+    val originalPrice: Double? = null,
+    val discountPercent: Int? = null,
+    val description: String? = null,
+    val stockQuantity: Int? = null,
 )
 data class MerchantProductResponse(val success: Boolean, val product: MerchantProductDto)
 data class MerchantProductsResponse(val success: Boolean, val products: List<MerchantProductDto>)
-data class AddProductRequest(val name: String, val price: Double, val durationMinutes: Int? = null)
+data class AddProductRequest(
+    val name: String,
+    val price: Double,
+    val durationMinutes: Int? = null,
+    val imageUrl: String? = null,
+    val originalPrice: Double? = null,
+    val description: String? = null,
+    val stockQuantity: Int? = null,
+)
+data class UpdateProductStockRequest(val stockQuantity: Int? = null)
 
 // Real Commerce product reviews + owner-side reply (item 187/188) -- see
 // ProductReviewService.replyToProductReview's own doc comment. merchant-mfe already has
@@ -248,6 +263,9 @@ interface ApiService {
 
     @PUT("api/v1/merchant/products/{id}")
     suspend fun updateProduct(@Path("id") productId: String, @Body request: AddProductRequest): MerchantProductResponse
+
+    @PATCH("api/v1/merchant/products/{id}/stock")
+    suspend fun updateProductStock(@Path("id") productId: String, @Body request: UpdateProductStockRequest): MerchantProductResponse
 
     @DELETE("api/v1/merchant/products/{id}")
     suspend fun removeProduct(@Path("id") productId: String): MerchantProductResponse

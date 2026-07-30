@@ -34,10 +34,16 @@ struct MerchantProductDto: Decodable, Identifiable {
     let price: Double
     let active: Bool
     let createdAt: String
+    let imageUrl: String?
+    let originalPrice: Double?
+    let discountPercent: Int?
+    let description: String?
+    let stockQuantity: Int?
 }
 struct MerchantProductResponse: Decodable { let success: Bool; let product: MerchantProductDto }
 struct MerchantProductsResponse: Decodable { let success: Bool; let products: [MerchantProductDto] }
-struct AddProductRequest: Encodable { let name: String; let price: Double }
+struct AddProductRequest: Encodable { let name: String; let price: Double; let imageUrl: String?; let originalPrice: Double?; let description: String?; let stockQuantity: Int? }
+struct UpdateProductStockRequest: Encodable { let stockQuantity: Int? }
 
 // Real Commerce product reviews + owner-side reply (item 187/188/189) -- see
 // ProductReviewService.replyToProductReview's own doc comment. merchant-mfe (item 187)
@@ -90,6 +96,7 @@ struct ReportDayDto: Decodable, Identifiable {
     let grossAmount: Double
     let fees: Double
     let netAmount: Double
+    let byChannel: [String: Int]
 }
 struct ReportResponse: Decodable { let success: Bool; let from: String; let to: String; let days: [ReportDayDto] }
 
@@ -260,8 +267,13 @@ final class MerchantNetworkClient {
         try await post("api/v1/orders/reviews/\(reviewId)/reply", body: ReplyToProductReviewRequest(reply: reply))
     }
 
-    func addProduct(name: String, price: Double) async throws -> MerchantProductResponse {
-        try await post("api/v1/merchant/products", body: AddProductRequest(name: name, price: price))
+    func addProduct(name: String, price: Double, imageUrl: String?, originalPrice: Double?, description: String?, stockQuantity: Int?) async throws -> MerchantProductResponse {
+        try await post("api/v1/merchant/products", body: AddProductRequest(name: name, price: price, imageUrl: imageUrl, originalPrice: originalPrice, description: description, stockQuantity: stockQuantity))
+    }
+
+    func updateProductStock(_ productId: String, stockQuantity: Int?) async throws -> MerchantProductResponse {
+        let data = try await sendRequest(method: "PATCH", path: "api/v1/merchant/products/\(productId)/stock", body: UpdateProductStockRequest(stockQuantity: stockQuantity))
+        return try decoder.decode(MerchantProductResponse.self, from: data)
     }
 
     func removeProduct(_ productId: String) async throws -> MerchantProductResponse {
@@ -269,7 +281,12 @@ final class MerchantNetworkClient {
         return try decoder.decode(MerchantProductResponse.self, from: data)
     }
 
-    func getReport() async throws -> ReportResponse { try await get("api/v1/merchant/reports") }
+    func getReport(from: String? = nil, to: String? = nil) async throws -> ReportResponse {
+        var query: [URLQueryItem] = []
+        if let from { query.append(URLQueryItem(name: "from", value: from)) }
+        if let to { query.append(URLQueryItem(name: "to", value: to)) }
+        return try await get("api/v1/merchant/reports", query: query)
+    }
 
     func openBusinessAccount() async throws -> BusinessWalletResponse {
         try await post("api/v1/merchant/business-account", body: EmptyBody())
@@ -309,8 +326,13 @@ final class MerchantNetworkClient {
 
     // MARK: - Helpers
 
-    private func get<Response: Decodable>(_ path: String) async throws -> Response {
-        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+    private func get<Response: Decodable>(_ path: String, query: [URLQueryItem] = []) async throws -> Response {
+        guard var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false) else {
+            throw NetworkError.invalidResponse
+        }
+        components.queryItems = query.isEmpty ? nil : query
+        guard let url = components.url else { throw NetworkError.invalidResponse }
+        var request = URLRequest(url: url)
         request.httpMethod = "GET"
         if let token = MerchantKeychainTokenStore.shared.getAccessToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

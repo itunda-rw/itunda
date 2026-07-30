@@ -41,12 +41,16 @@ struct PosTab: View {
                                             VStack(alignment: .leading) {
                                                 Text(product.name).bold().foregroundColor(.primary)
                                                 Text("\(formattedRWF(product.price)) RWF").font(.footnote).foregroundColor(.secondary)
+                                                Text(stockLabel(product))
+                                                    .font(.footnote)
+                                                    .foregroundColor(product.stockQuantity == 0 ? .red : .secondary)
                                             }
                                             .padding(14)
                                             .frame(maxWidth: .infinity, alignment: .leading)
                                             .background(Color(.secondarySystemBackground))
                                             .cornerRadius(12)
                                         }
+                                        .disabled(product.stockQuantity == 0)
                                     }
                                 }
                                 .padding(16)
@@ -98,10 +102,17 @@ struct PosTab: View {
 
     private func addToCart(_ product: MerchantProductDto) {
         if let index = cart.firstIndex(where: { $0.product.id == product.id }) {
-            cart[index].quantity += 1
+            let nextQuantity = cart[index].quantity + 1
+            guard product.stockQuantity == nil || nextQuantity <= product.stockQuantity! else { return }
+            cart[index].quantity = nextQuantity
         } else {
             cart.append(CartLine(product: product, quantity: 1))
         }
+    }
+
+    private func stockLabel(_ product: MerchantProductDto) -> String {
+        guard let stockQuantity = product.stockQuantity else { return "Unlimited stock" }
+        return stockQuantity == 0 ? "Out of stock" : "\(stockQuantity) in stock"
     }
 }
 

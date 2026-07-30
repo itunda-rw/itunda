@@ -877,6 +877,7 @@ data class MerchantCategoriesResponse(val success: Boolean, val categories: List
 data class DealProductDto(
     val id: String, val merchantId: String, val merchantName: String, val name: String, val price: Double,
     val imageUrl: String? = null, val originalPrice: Double? = null, val discountPercent: Int? = null, val description: String? = null,
+    val stockQuantity: Int? = null,
 )
 data class DealsResponse(val success: Boolean, val products: List<DealProductDto>)
 
@@ -954,6 +955,7 @@ data class MerchantProductDto(
     // real tiers set, the pre-existing behavior for every product before this field
     // existed. See ProductPriceTier.kt's own doc comment on the backend.
     val priceTiers: List<PriceTierDto> = emptyList(),
+    val stockQuantity: Int? = null,
 )
 data class PriceTierDto(val minQuantity: Int, val unitPrice: Double)
 
@@ -998,6 +1000,7 @@ data class ProductSearchResultDto(
     val originalPrice: Double? = null,
     val discountPercent: Int? = null,
     val description: String? = null,
+    val stockQuantity: Int? = null,
 )
 data class ProductSearchResponse(val success: Boolean, val products: List<ProductSearchResultDto>)
 

@@ -11570,11 +11570,19 @@ function ProductCatalogView({
                 <p style={{ fontSize: '14px', fontWeight: 700, lineHeight: 1.3 }}>{item.name}</p>
                 <ProductPriceBlock price={item.price} originalPrice={item.originalPrice} discountPercent={item.discountPercent} />
               </button>
+              <p style={{ minHeight: '16px', fontSize: '12px', color: item.stockQuantity === 0 ? '#E53935' : 'var(--toss-grey-500)' }}>
+                {item.stockQuantity === null || item.stockQuantity === undefined ? 'Available' : item.stockQuantity === 0 ? 'Out of stock' : `${item.stockQuantity} available`}
+              </p>
               <ProductRatingBadge productId={item.id} />
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginTop: '4px' }}>
                 <button onClick={() => onSetQty(merchant, item, qtyFor(item.id) - 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>−</button>
                 <span style={{ minWidth: '16px', textAlign: 'center', fontWeight: 700 }}>{qtyFor(item.id)}</span>
-                <button onClick={() => onSetQty(merchant, item, qtyFor(item.id) + 1)} className="toss-btn toss-btn-secondary" style={{ padding: '6px 12px' }}>+</button>
+                <button
+                  onClick={() => onSetQty(merchant, item, qtyFor(item.id) + 1)}
+                  disabled={item.stockQuantity !== null && item.stockQuantity !== undefined && qtyFor(item.id) >= item.stockQuantity}
+                  className="toss-btn toss-btn-secondary"
+                  style={{ padding: '6px 12px' }}
+                >+</button>
               </div>
             </div>
           ))}
@@ -12258,6 +12266,9 @@ function ShopView() {
                 <ProductImageThumb imageUrl={d.imageUrl} size={96} />
                 <p style={{ fontSize: '12px', fontWeight: 700 }}>{d.name}</p>
                 <ProductPriceBlock price={d.price} originalPrice={d.originalPrice} discountPercent={d.discountPercent} />
+                <p style={{ fontSize: '11px', color: d.stockQuantity === 0 ? '#E53935' : 'var(--toss-grey-500)' }}>
+                  {d.stockQuantity === null || d.stockQuantity === undefined ? 'Available' : d.stockQuantity === 0 ? 'Out of stock' : `${d.stockQuantity} available`}
+                </p>
               </button>
             ))}
           </div>
@@ -12296,6 +12307,9 @@ function ShopView() {
                   <div>
                     <p style={{ fontSize: '14px', fontWeight: 700 }}>{r.name}</p>
                     <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Sold by {r.merchantName}</p>
+                    <p style={{ fontSize: '11px', color: r.stockQuantity === 0 ? '#E53935' : 'var(--toss-grey-500)' }}>
+                      {r.stockQuantity === null || r.stockQuantity === undefined ? 'Available' : r.stockQuantity === 0 ? 'Out of stock' : `${r.stockQuantity} available`}
+                    </p>
                   </div>
                 </div>
                 <ProductPriceBlock price={r.price} originalPrice={r.originalPrice} discountPercent={r.discountPercent} />

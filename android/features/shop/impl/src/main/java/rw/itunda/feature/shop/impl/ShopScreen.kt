@@ -462,6 +462,7 @@ fun CommerceShopContent(
                                     Column {
                                         Text(r.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                                         Text(r.merchantName, color = Ids.colors.textSecondary, fontSize = 13.sp)
+                                        Text(r.stockQuantity?.let { if (it == 0) "Out of stock" else "$it available" } ?: "Available", color = if (r.stockQuantity == 0) Ids.colors.danger else Ids.colors.textSecondary, fontSize = 11.sp)
                                     }
                                 }
                                 Text("%,.0f RWF".format(r.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
@@ -497,6 +498,7 @@ fun CommerceShopContent(
                                         Text("$discountPercent% off", color = Ids.colors.danger, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                                     }
                                     Text("%,.0f RWF".format(d.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    Text(d.stockQuantity?.let { if (it == 0) "Out of stock" else "$it available" } ?: "Available", color = if (d.stockQuantity == 0) Ids.colors.danger else Ids.colors.textSecondary, fontSize = 10.sp)
                                 }
                             }
                         }
@@ -683,7 +685,11 @@ private fun MerchantDetailView(
     fun qtyFor(productId: String) = cart["${merchant.merchantId}:$productId"]?.quantity ?: 0
     fun setQty(product: MerchantProductDto, qty: Int) {
         val key = "${merchant.merchantId}:${product.id}"
-        if (qty <= 0) cart.remove(key) else cart[key] = CommerceCartLine(merchant.merchantId, merchant.businessName, product, qty)
+        val stock = product.stockQuantity
+        if (qty <= 0) cart.remove(key)
+        else if (stock == null || qty <= stock) {
+            cart[key] = CommerceCartLine(merchant.merchantId, merchant.businessName, product, qty)
+        }
     }
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -755,6 +761,11 @@ private fun MerchantDetailView(
                             Spacer(modifier = Modifier.height(2.dp))
                             ProductPriceRow(p)
                         }
+                        Text(
+                            p.stockQuantity?.let { if (it == 0) "Out of stock" else "$it available" } ?: "Available",
+                            color = if (p.stockQuantity == 0) Ids.colors.danger else Ids.colors.textSecondary,
+                            fontSize = 11.sp,
+                        )
                         ProductRatingBadge(p.id)
                         Spacer(modifier = Modifier.height(8.dp))
                         // Real bookable-service entry point (2026-07-25) -- a product
@@ -775,7 +786,7 @@ private fun MerchantDetailView(
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                                 QtyButton("-") { setQty(p, qty - 1) }
                                 Text(qty.toString(), modifier = Modifier.width(28.dp), textAlign = TextAlign.Center, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold)
-                                QtyButton("+") { setQty(p, qty + 1) }
+                                QtyButton("+") { val stock = p.stockQuantity; if (stock == null || qty < stock) setQty(p, qty + 1) }
                             }
                         }
                     }
@@ -1044,7 +1055,11 @@ private fun ProductDetailScreen(
     val key = "${merchant.merchantId}:${product.id}"
     val qty = cart[key]?.quantity ?: 0
     fun setQty(newQty: Int) {
-        if (newQty <= 0) cart.remove(key) else cart[key] = CommerceCartLine(merchant.merchantId, merchant.businessName, product, newQty)
+        val stock = product.stockQuantity
+        if (newQty <= 0) cart.remove(key)
+        else if (stock == null || newQty <= stock) {
+            cart[key] = CommerceCartLine(merchant.merchantId, merchant.businessName, product, newQty)
+        }
     }
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = Ids.layout.screenHorizontal, vertical = Ids.layout.screenVertical)) {
         BackTopBar(merchant.businessName, onBack)
@@ -1072,6 +1087,11 @@ private fun ProductDetailScreen(
             ProductPriceRow(product)
             Spacer(modifier = Modifier.height(6.dp))
             ProductRatingBadge(product.id)
+            Text(
+                product.stockQuantity?.let { if (it == 0) "Out of stock" else "$it available" } ?: "Available",
+                color = if (product.stockQuantity == 0) Ids.colors.danger else Ids.colors.textSecondary,
+                fontSize = 12.sp,
+            )
             val description = product.description
             if (!description.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(12.dp))
@@ -1081,7 +1101,7 @@ private fun ProductDetailScreen(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 QtyButton("-") { setQty(qty - 1) }
                 Text(qty.toString(), modifier = Modifier.width(36.dp), textAlign = TextAlign.Center, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                QtyButton("+") { setQty(qty + 1) }
+                QtyButton("+") { val stock = product.stockQuantity; if (stock == null || qty < stock) setQty(qty + 1) }
             }
             Spacer(modifier = Modifier.height(16.dp))
             Box(
@@ -1089,7 +1109,9 @@ private fun ProductDetailScreen(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .background(Ids.colors.brand)
-                    .clickable { setQty(maxOf(1, qty)) }
+                    .clickable(enabled = product.stockQuantity.let { it == null || it > 0 }) {
+                        setQty(maxOf(1, qty))
+                    }
                     .padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center,
             ) {

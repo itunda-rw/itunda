@@ -53,6 +53,13 @@ export interface MerchantProduct {
   price: number;
   active: boolean;
   createdAt: string;
+  imageUrl: string | null;
+  originalPrice: number | null;
+  discountPercent: number | null;
+  description: string | null;
+  durationMinutes: number | null;
+  requiresPrepay: boolean;
+  stockQuantity: number | null;
 }
 
 export interface PaymentIntent {
@@ -201,10 +208,12 @@ export const chargeCard = (
     body: JSON.stringify({ amount, description, cardNumber, expiryMonth, expiryYear, cvc }),
   });
 
-export const addProduct = (name: string, price: number) =>
+export const addProduct = (
+  name: string, price: number, imageUrl?: string, originalPrice?: number, description?: string, stockQuantity?: number,
+) =>
   apiFetch<{ success: boolean; product: MerchantProduct }>('/api/v1/merchant/products', {
     method: 'POST',
-    body: JSON.stringify({ name, price }),
+    body: JSON.stringify({ name, price, imageUrl, originalPrice, description, stockQuantity }),
   }).then((r) => r.product);
 
 export const getProductCatalog = () =>
@@ -214,6 +223,12 @@ export const updateProduct = (productId: string, name: string, price: number) =>
   apiFetch<{ success: boolean; product: MerchantProduct }>(`/api/v1/merchant/products/${productId}`, {
     method: 'PUT',
     body: JSON.stringify({ name, price }),
+  }).then((r) => r.product);
+
+export const updateProductStock = (productId: string, stockQuantity: number | null) =>
+  apiFetch<{ success: boolean; product: MerchantProduct }>(`/api/v1/merchant/products/${productId}/stock`, {
+    method: 'PATCH',
+    body: JSON.stringify({ stockQuantity }),
   }).then((r) => r.product);
 
 export const removeProduct = (productId: string) =>

@@ -1704,6 +1704,7 @@ public struct DealProductDto: Decodable, Identifiable {
     public let originalPrice: Double?
     public let discountPercent: Int?
     public let description: String?
+    public let stockQuantity: Int?
 }
 public struct DealsResponse: Decodable { public let success: Bool; public let products: [DealProductDto] }
 
@@ -1785,6 +1786,7 @@ public struct MerchantProductDto: Decodable, Identifiable {
     // description added 2026-07-21, backing the new dedicated product-detail screen
     // (closes docs/DESIGN_REFERENCES.md Section 5 recommendation #6).
     public let description: String?
+    public let stockQuantity: Int?
     // Optional/absent on endpoints that don't fold it in (e.g. product search) --
     // only ShoppingController.getMerchantProducts (Eats' menu) populates this today.
     public let optionGroups: [MenuOptionGroupDto]?
@@ -1806,6 +1808,7 @@ public struct ProductSearchResultDto: Decodable, Identifiable {
     public let originalPrice: Double?
     public let discountPercent: Int?
     public let description: String?
+    public let stockQuantity: Int?
 }
 public struct ProductSearchResponse: Decodable { public let success: Bool; public let products: [ProductSearchResultDto] }
 

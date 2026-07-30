@@ -5,8 +5,14 @@ struct CatalogTab: View {
     @State private var products: [MerchantProductDto]?
     @State private var name = ""
     @State private var price = ""
+    @State private var originalPrice = ""
+    @State private var imageUrl = ""
+    @State private var description = ""
+    @State private var stockQuantity = ""
     @State private var error: String?
     @State private var submitting = false
+    @State private var stockProduct: MerchantProductDto?
+    @State private var stockDraft = ""
 
     var body: some View {
         ScrollView {
@@ -15,6 +21,10 @@ struct CatalogTab: View {
                     Text("Add a product").bold()
                     TextField("Name", text: $name).padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
                     TextField("Price (RWF)", text: $price).keyboardType(.numberPad).padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
+                    TextField("Original price (optional, for a sale)", text: $originalPrice).keyboardType(.numberPad).padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
+                    TextField("Public image URL (optional)", text: $imageUrl).keyboardType(.URL).textInputAutocapitalization(.never).padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
+                    TextField("Description (optional)", text: $description, axis: .vertical).lineLimit(2...4).padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
+                    TextField("Stock (optional — blank means unlimited)", text: $stockQuantity).keyboardType(.numberPad).padding(12).background(Color(.secondarySystemBackground)).cornerRadius(12)
                     if let error {
                         Text(error).foregroundColor(.red).font(.footnote)
                     }
@@ -34,13 +44,38 @@ struct CatalogTab: View {
                     if products.isEmpty {
                         Text("No products yet.").foregroundColor(.secondary)
                     } else {
+                        let lowStock = products.filter { ($0.stockQuantity ?? Int.max) <= 5 }
+                        if !lowStock.isEmpty {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("\(lowStock.count) product\(lowStock.count == 1 ? "" : "s") need stock attention").bold()
+                                Text(lowStock.map { "\($0.name) (\($0.stockQuantity == 0 ? "out of stock" : "\($0.stockQuantity!) left"))" }.joined(separator: ", "))
+                                    .font(.footnote).foregroundColor(.secondary)
+                            }
+                            .padding(16)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.orange.opacity(0.12))
+                            .cornerRadius(12)
+                        }
                         ForEach(products) { product in
                             HStack {
+                                if let imageUrl = product.imageUrl, let url = URL(string: imageUrl) {
+                                    AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: { Color.gray.opacity(0.15) }
+                                        .frame(width: 44, height: 44).clipShape(RoundedRectangle(cornerRadius: 8))
+                                }
                                 VStack(alignment: .leading) {
                                     Text(product.name).bold()
                                     Text("\(formattedRWF(product.price)) RWF").font(.footnote)
+                                    if let original = product.originalPrice { Text("Was \(formattedRWF(original)) RWF · \(product.discountPercent ?? 0)% off").font(.caption).foregroundColor(.accentColor) }
+                                    if let description = product.description { Text(description).font(.caption).foregroundColor(.secondary) }
+                                    Text(product.stockQuantity.map { $0 == 0 ? "Out of stock" : "\($0) in stock" } ?? "Unlimited stock")
+                                        .font(.caption).foregroundColor(product.stockQuantity == 0 ? .red : .secondary)
                                 }
                                 Spacer()
+                                Button("Adjust stock") {
+                                    stockDraft = product.stockQuantity.map(String.init) ?? ""
+                                    stockProduct = product
+                                }
+                                .font(.footnote)
                                 Button("Remove") { Task { await remove(product.id) } }
                                     .foregroundColor(.secondary)
                             }
@@ -55,6 +90,25 @@ struct CatalogTab: View {
             }
             .padding(16)
         }
+        .alert("Adjust stock", isPresented: Binding(
+            get: { stockProduct != nil },
+            set: { if !$0 { stockProduct = nil } }
+        )) {
+            TextField("Available units (blank = unlimited)", text: $stockDraft)
+                .keyboardType(.numberPad)
+            Button("Save") {
+                guard let product = stockProduct else { return }
+                let stock = stockDraft.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty.flatMap(Int.init)
+                guard stockDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (stock != nil && stock! >= 0) else {
+                    error = "Stock must be a whole number of zero or more."
+                    return
+                }
+                Task { await updateStock(product.id, stockQuantity: stock) }
+            }
+            Button("Cancel", role: .cancel) { stockProduct = nil }
+        } message: {
+            Text("Set available units, or leave the field blank for unlimited availability.")
+        }
         .task { await load() }
     }
 
@@ -67,12 +121,28 @@ struct CatalogTab: View {
             error = "Enter a name and a real price."
             return
         }
+        let previousPrice = originalPrice.isEmpty ? nil : Double(originalPrice)
+        guard originalPrice.isEmpty || (previousPrice != nil && previousPrice! > amount) else {
+            error = "Original price must be greater than the current price."
+            return
+        }
+        let stock = stockQuantity.isEmpty ? nil : Int(stockQuantity)
+        guard stockQuantity.isEmpty || (stock != nil && stock! >= 0) else {
+            error = "Stock must be a whole number of zero or more."
+            return
+        }
         submitting = true
         error = nil
         defer { submitting = false }
         do {
-            _ = try await MerchantNetworkClient.shared.addProduct(name: name, price: amount)
-            name = ""; price = ""
+            _ = try await MerchantNetworkClient.shared.addProduct(
+                name: name, price: amount,
+                imageUrl: imageUrl.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
+                originalPrice: previousPrice,
+                description: description.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty,
+                stockQuantity: stock,
+            )
+            name = ""; price = ""; originalPrice = ""; imageUrl = ""; description = ""; stockQuantity = ""
             await load()
         } catch {
             self.error = "Couldn't add this product. Try again."
@@ -83,4 +153,18 @@ struct CatalogTab: View {
         _ = try? await MerchantNetworkClient.shared.removeProduct(productId)
         await load()
     }
+
+    private func updateStock(_ productId: String, stockQuantity: Int?) async {
+        do {
+            _ = try await MerchantNetworkClient.shared.updateProductStock(productId, stockQuantity: stockQuantity)
+            stockProduct = nil
+            await load()
+        } catch {
+            self.error = "Couldn't update stock. Try again."
+        }
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
 }

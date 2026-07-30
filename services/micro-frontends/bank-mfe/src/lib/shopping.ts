@@ -64,6 +64,7 @@ export interface ProductSearchResult {
   originalPrice?: number | null;
   discountPercent?: number | null;
   description?: string | null;
+  stockQuantity?: number | null;
 }
 
 // Real cross-merchant product search (2026-07-20) -- until now a shopper could only
