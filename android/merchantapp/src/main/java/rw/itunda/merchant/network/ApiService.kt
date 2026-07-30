@@ -119,6 +119,18 @@ data class PriceTierDto(val minQuantity: Int, val unitPrice: Double)
 data class SetPriceTiersRequest(val tiers: List<PriceTierDto>)
 data class PriceTiersResponse(val success: Boolean, val tiers: List<PriceTierDto>)
 
+// Real menu-item option groups (item 210) -- merchant-mfe already has this
+// (ProductOptionsPanel); this is the first native-merchant-app client. v1 scope
+// matches merchant-mfe's own: required, single-select groups only (e.g. "Size":
+// Small/Medium/Large, exactly one choice) -- see MenuOptionService.addOptionGroup's
+// own doc comment on the backend.
+data class MenuOptionChoiceDto(val id: String, val name: String, val priceDelta: Double)
+data class MenuOptionGroupDto(val id: String, val name: String, val required: Boolean, val multiSelect: Boolean, val choices: List<MenuOptionChoiceDto>)
+data class MenuOptionChoiceRequest(val name: String, val priceDelta: Double = 0.0)
+data class AddMenuOptionGroupRequest(val name: String, val choices: List<MenuOptionChoiceRequest>)
+data class MenuOptionGroupResponse(val success: Boolean, val optionGroup: MenuOptionGroupDto)
+data class MenuOptionGroupsResponse(val success: Boolean, val optionGroups: List<MenuOptionGroupDto>)
+
 data class GenerateQrRequest(val amount: Double, val description: String)
 data class PaymentIntentDto(val id: String, val merchantId: String, val amount: Double, val description: String, val status: String, val expiresAt: String, val createdAt: String)
 data class PaymentIntentResponse(val success: Boolean, val paymentIntent: PaymentIntentDto)
@@ -340,6 +352,16 @@ interface ApiService {
 
     @GET("api/v1/merchant/products/{id}/price-tiers")
     suspend fun getPriceTiers(@Path("id") productId: String): PriceTiersResponse
+
+    // Real menu-item option groups (item 210) -- see MenuOptionGroupDto's own doc comment.
+    @POST("api/v1/merchant/products/{id}/option-groups")
+    suspend fun addOptionGroup(@Path("id") productId: String, @Body request: AddMenuOptionGroupRequest): MenuOptionGroupResponse
+
+    @GET("api/v1/merchant/products/{id}/option-groups")
+    suspend fun getOptionGroups(@Path("id") productId: String): MenuOptionGroupsResponse
+
+    @DELETE("api/v1/merchant/products/{id}/option-groups/{groupId}")
+    suspend fun removeOptionGroup(@Path("id") productId: String, @Path("groupId") groupId: String)
 
     // Real push device-token registration (item 130) -- see riderapp's own
     // ApiService.kt doc comment, same pass: PushNotificationService.sendToUser

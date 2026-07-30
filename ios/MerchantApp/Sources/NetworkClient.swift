@@ -43,6 +43,16 @@ struct MerchantProductDto: Decodable, Identifiable {
 struct MerchantProductResponse: Decodable { let success: Bool; let product: MerchantProductDto }
 struct MerchantProductsResponse: Decodable { let success: Bool; let products: [MerchantProductDto] }
 struct AddProductRequest: Encodable { let name: String; let price: Double; let imageUrl: String?; let originalPrice: Double?; let description: String?; let stockQuantity: Int? }
+
+// Real menu-item option groups (item 210) -- merchant-mfe/Android already have this;
+// this is the iOS MerchantApp client. v1 scope matches merchant-mfe's own: required,
+// single-select groups only (e.g. "Size": Small/Medium/Large, exactly one choice).
+struct MenuOptionChoiceDto: Decodable, Identifiable { let id: String; let name: String; let priceDelta: Double }
+struct MenuOptionGroupDto: Decodable, Identifiable { let id: String; let name: String; let required: Bool; let multiSelect: Bool; let choices: [MenuOptionChoiceDto] }
+struct MenuOptionChoiceRequest: Encodable { let name: String; let priceDelta: Double }
+struct AddMenuOptionGroupRequest: Encodable { let name: String; let choices: [MenuOptionChoiceRequest] }
+struct MenuOptionGroupResponse: Decodable { let success: Bool; let optionGroup: MenuOptionGroupDto }
+struct MenuOptionGroupsResponse: Decodable { let success: Bool; let optionGroups: [MenuOptionGroupDto] }
 struct UpdateProductStockRequest: Encodable { let stockQuantity: Int? }
 
 // Real Commerce product reviews + owner-side reply (item 187/188/189) -- see
@@ -283,6 +293,18 @@ final class MerchantNetworkClient {
     func removeProduct(_ productId: String) async throws -> MerchantProductResponse {
         let data = try await sendRequest(method: "DELETE", path: "api/v1/merchant/products/\(productId)", body: Optional<EmptyBody>.none)
         return try decoder.decode(MerchantProductResponse.self, from: data)
+    }
+
+    func getOptionGroups(_ productId: String) async throws -> MenuOptionGroupsResponse {
+        try await get("api/v1/merchant/products/\(productId)/option-groups")
+    }
+
+    func addOptionGroup(_ productId: String, name: String, choices: [MenuOptionChoiceRequest]) async throws -> MenuOptionGroupResponse {
+        try await post("api/v1/merchant/products/\(productId)/option-groups", body: AddMenuOptionGroupRequest(name: name, choices: choices))
+    }
+
+    func removeOptionGroup(_ productId: String, groupId: String) async throws {
+        _ = try await sendRequest(method: "DELETE", path: "api/v1/merchant/products/\(productId)/option-groups/\(groupId)", body: Optional<EmptyBody>.none)
     }
 
     func getReport(from: String? = nil, to: String? = nil) async throws -> ReportResponse {

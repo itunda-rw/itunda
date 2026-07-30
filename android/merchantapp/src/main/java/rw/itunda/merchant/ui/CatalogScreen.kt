@@ -29,7 +29,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import rw.itunda.merchant.network.AddMenuOptionGroupRequest
 import rw.itunda.merchant.network.AddProductRequest
+import rw.itunda.merchant.network.MenuOptionChoiceRequest
+import rw.itunda.merchant.network.MenuOptionGroupDto
 import rw.itunda.merchant.network.MerchantProductDto
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.network.PriceTierDto
@@ -171,6 +174,19 @@ private fun ProductRow(product: MerchantProductDto, onRemoved: () -> Unit, onErr
     var showStockEditor by remember { mutableStateOf(false) }
     var stockDraft by remember { mutableStateOf(product.stockQuantity?.toString() ?: "") }
     var savingStock by remember { mutableStateOf(false) }
+    var showOptions by remember { mutableStateOf(false) }
+    var optionGroups by remember { mutableStateOf<List<MenuOptionGroupDto>?>(null) }
+    var newGroupName by remember { mutableStateOf("") }
+    var newChoiceRows by remember { mutableStateOf(listOf("" to "0", "" to "0")) }
+    var savingGroup by remember { mutableStateOf(false) }
+    var removingGroupId by remember { mutableStateOf<String?>(null) }
+    var optionsError by remember { mutableStateOf<String?>(null) }
+
+    fun loadOptionGroups() {
+        scope.launch {
+            optionGroups = try { NetworkClient.apiService.getOptionGroups(product.id).optionGroups } catch (e: Exception) { emptyList() }
+        }
+    }
 
     fun openTierEditor() {
         showTiers = true
@@ -216,6 +232,10 @@ private fun ProductRow(product: MerchantProductDto, onRemoved: () -> Unit, onErr
                         showStockEditor = !showStockEditor
                     }) { Text(if (showStockEditor) "Close stock" else "Adjust stock") }
                     TextButton(onClick = { if (showTiers) showTiers = false else openTierEditor() }) { Text(if (showTiers) "Close" else "Bulk pricing") }
+                    TextButton(onClick = {
+                        showOptions = !showOptions
+                        if (showOptions && optionGroups == null) loadOptionGroups()
+                    }) { Text(if (showOptions) "Close options" else "Options") }
                     TextButton(onClick = {
                         scope.launch {
                             try { NetworkClient.apiService.removeProduct(product.id); onRemoved() } catch (e: Exception) { onError("Couldn't remove this product.") }
@@ -301,6 +321,98 @@ private fun ProductRow(product: MerchantProductDto, onRemoved: () -> Unit, onErr
                         enabled = !savingTiers,
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text(if (savingTiers) "Saving…" else "Save bulk pricing") }
+                }
+            }
+            if (showOptions) {
+                Column(modifier = Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        "Real option groups -- e.g. \"Size\" with Small/Medium/Large. A buyer picks exactly one choice per group.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    optionsError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                    val groups = optionGroups
+                    if (groups == null) {
+                        Text("Loading…", style = MaterialTheme.typography.bodySmall)
+                    } else if (groups.isEmpty()) {
+                        Text("No option groups yet.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        groups.forEach { group ->
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(group.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                                    Text(
+                                        group.choices.joinToString(", ") { c -> if (c.priceDelta > 0) "${c.name} (+${"%,.0f".format(c.priceDelta)} RWF)" else c.name },
+                                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                TextButton(
+                                    onClick = {
+                                        removingGroupId = group.id
+                                        scope.launch {
+                                            try {
+                                                NetworkClient.apiService.removeOptionGroup(product.id, group.id)
+                                                loadOptionGroups()
+                                            } catch (e: Exception) {
+                                                optionsError = "Couldn't remove this option group."
+                                            } finally {
+                                                removingGroupId = null
+                                            }
+                                        }
+                                    },
+                                    enabled = removingGroupId != group.id,
+                                ) { Text(if (removingGroupId == group.id) "Removing…" else "Remove") }
+                            }
+                        }
+                    }
+                    Text("Add an option group", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
+                    OutlinedTextField(
+                        value = newGroupName, onValueChange = { newGroupName = it },
+                        label = { Text("Group name (e.g. Size)") }, modifier = Modifier.fillMaxWidth(),
+                    )
+                    newChoiceRows.forEachIndexed { index, (choiceName, priceDelta) ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = choiceName,
+                                onValueChange = { v -> newChoiceRows = newChoiceRows.toMutableList().also { it[index] = v to priceDelta } },
+                                label = { Text("Choice") }, modifier = Modifier.weight(1f),
+                            )
+                            OutlinedTextField(
+                                value = priceDelta,
+                                onValueChange = { v -> newChoiceRows = newChoiceRows.toMutableList().also { it[index] = choiceName to v } },
+                                label = { Text("+RWF") }, modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                    TextButton(onClick = { newChoiceRows = newChoiceRows + ("" to "0") }) { Text("Add another choice") }
+                    androidx.compose.material3.Button(
+                        onClick = {
+                            val choices = newChoiceRows.mapNotNull { (choiceName, priceDeltaText) ->
+                                val trimmed = choiceName.trim()
+                                if (trimmed.isEmpty()) return@mapNotNull null
+                                MenuOptionChoiceRequest(trimmed, priceDeltaText.trim().toDoubleOrNull() ?: 0.0)
+                            }
+                            if (newGroupName.isBlank() || choices.size < 2) {
+                                optionsError = "Enter a group name and at least 2 named choices."
+                                return@Button
+                            }
+                            savingGroup = true
+                            optionsError = null
+                            scope.launch {
+                                try {
+                                    NetworkClient.apiService.addOptionGroup(product.id, AddMenuOptionGroupRequest(newGroupName.trim(), choices))
+                                    newGroupName = ""
+                                    newChoiceRows = listOf("" to "0", "" to "0")
+                                    loadOptionGroups()
+                                } catch (e: Exception) {
+                                    optionsError = "Couldn't add this option group -- a required group needs at least one +0 RWF choice."
+                                } finally {
+                                    savingGroup = false
+                                }
+                            }
+                        },
+                        enabled = !savingGroup,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text(if (savingGroup) "Saving…" else "Add option group") }
                 }
             }
         }

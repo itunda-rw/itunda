@@ -13,6 +13,9 @@ struct CatalogTab: View {
     @State private var submitting = false
     @State private var stockProduct: MerchantProductDto?
     @State private var stockDraft = ""
+    // Real menu-item option groups (item 210) -- see MenuOptionGroupDto's own doc
+    // comment. A selected product presents ProductOptionsView as a sheet.
+    @State private var optionsProduct: MerchantProductDto?
 
     var body: some View {
         ScrollView {
@@ -76,6 +79,8 @@ struct CatalogTab: View {
                                     stockProduct = product
                                 }
                                 .font(.footnote)
+                                Button("Options") { optionsProduct = product }
+                                    .font(.footnote)
                                 Button("Remove") { Task { await remove(product.id) } }
                                     .foregroundColor(.secondary)
                             }
@@ -108,6 +113,9 @@ struct CatalogTab: View {
             Button("Cancel", role: .cancel) { stockProduct = nil }
         } message: {
             Text("Set available units, or leave the field blank for unlimited availability.")
+        }
+        .sheet(item: $optionsProduct) { product in
+            ProductOptionsView(productId: product.id, productName: product.name)
         }
         .task { await load() }
     }
@@ -167,4 +175,127 @@ struct CatalogTab: View {
 
 private extension String {
     var nilIfEmpty: String? { isEmpty ? nil : self }
+}
+
+// Real menu-item option groups (item 210) -- merchant-mfe/Android already have this;
+// this is the iOS MerchantApp client. v1 scope matches merchant-mfe's own: required,
+// single-select groups only (e.g. "Size": Small/Medium/Large, exactly one choice --
+// see MenuOptionService.addOptionGroup's own doc comment on the backend).
+private struct ProductOptionsView: View {
+    let productId: String
+    let productName: String
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var groups: [MenuOptionGroupDto]?
+    @State private var groupName = ""
+    @State private var choiceRows: [(name: String, priceDelta: String)] = [("", "0"), ("", "0")]
+    @State private var saving = false
+    @State private var removingId: String?
+    @State private var error: String?
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Real option groups -- e.g. \"Size\" with Small/Medium/Large. A buyer picks exactly one choice per group.")
+                        .font(.caption).foregroundColor(.secondary)
+                    if let error {
+                        Text(error).font(.caption).foregroundColor(.red)
+                    }
+                    if let groups {
+                        if groups.isEmpty {
+                            Text("No option groups yet.").font(.caption).foregroundColor(.secondary)
+                        } else {
+                            ForEach(groups) { group in
+                                HStack(alignment: .top) {
+                                    VStack(alignment: .leading) {
+                                        Text(group.name).bold().font(.subheadline)
+                                        Text(group.choices.map { $0.priceDelta > 0 ? "\($0.name) (+\(Int($0.priceDelta)) RWF)" : $0.name }.joined(separator: ", "))
+                                            .font(.caption).foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                    Button(removingId == group.id ? "Removing…" : "Remove") { Task { await remove(group.id) } }
+                                        .font(.caption).foregroundColor(.secondary)
+                                        .disabled(removingId == group.id)
+                                }
+                                .padding(12)
+                                .background(Color(.secondarySystemBackground))
+                                .cornerRadius(10)
+                            }
+                        }
+                    } else {
+                        ProgressView()
+                    }
+
+                    Text("Add an option group").bold().font(.subheadline)
+                    TextField("Group name (e.g. Size)", text: $groupName)
+                        .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(8)
+                    ForEach(choiceRows.indices, id: \.self) { i in
+                        HStack {
+                            TextField("Choice", text: Binding(get: { choiceRows[i].name }, set: { choiceRows[i].name = $0 }))
+                                .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(8)
+                            TextField("+RWF", text: Binding(get: { choiceRows[i].priceDelta }, set: { choiceRows[i].priceDelta = $0 }))
+                                .keyboardType(.numberPad)
+                                .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(8)
+                        }
+                    }
+                    Button("Add another choice") { choiceRows.append(("", "0")) }
+                        .font(.caption)
+                    Button(action: { Task { await addGroup() } }) {
+                        Text(saving ? "Saving…" : "Add option group")
+                            .bold().foregroundColor(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(IDS.Colors.brand).cornerRadius(10)
+                    }
+                    .disabled(saving)
+                }
+                .padding(16)
+            }
+            .navigationTitle(productName)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        groups = (try? await MerchantNetworkClient.shared.getOptionGroups(productId).optionGroups) ?? []
+    }
+
+    private func addGroup() async {
+        let choices = choiceRows.compactMap { row -> MenuOptionChoiceRequest? in
+            let trimmed = row.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return nil }
+            return MenuOptionChoiceRequest(name: trimmed, priceDelta: Double(row.priceDelta.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0)
+        }
+        guard !groupName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, choices.count >= 2 else {
+            error = "Enter a group name and at least 2 named choices."
+            return
+        }
+        saving = true
+        error = nil
+        defer { saving = false }
+        do {
+            _ = try await MerchantNetworkClient.shared.addOptionGroup(productId, name: groupName.trimmingCharacters(in: .whitespacesAndNewlines), choices: choices)
+            groupName = ""
+            choiceRows = [("", "0"), ("", "0")]
+            await load()
+        } catch {
+            self.error = "Couldn't add this option group -- a required group needs at least one +0 RWF choice."
+        }
+    }
+
+    private func remove(_ groupId: String) async {
+        removingId = groupId
+        do {
+            try await MerchantNetworkClient.shared.removeOptionGroup(productId, groupId: groupId)
+            await load()
+        } catch {
+            self.error = "Couldn't remove this option group."
+        }
+        removingId = nil
+    }
 }
