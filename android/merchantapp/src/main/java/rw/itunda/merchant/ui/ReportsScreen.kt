@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,15 +25,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.network.ReportDayDto
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun ReportsTab() {
     var days by remember { mutableStateOf<List<ReportDayDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
+    var rangeDays by remember { mutableStateOf(7) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(rangeDays) {
+        days = null
+        error = null
         try {
-            days = NetworkClient.apiService.getReport().days
+            val to = LocalDate.now()
+            val from = to.minusDays((rangeDays - 1).toLong())
+            days = NetworkClient.apiService.getReport(
+                from = from.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                to = to.format(DateTimeFormatter.ISO_LOCAL_DATE),
+            ).days
         } catch (e: Exception) {
             error = "Couldn't load your reports right now."
         }
@@ -45,17 +56,46 @@ fun ReportsTab() {
         androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         return
     }
-    if (list.isEmpty()) {
-        androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No sales yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        return
-    }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        item {
+            Text("Collections report", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("Settled collections only", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
+                listOf(7, 30).forEach { period ->
+                    FilterChip(
+                        selected = rangeDays == period,
+                        onClick = { rangeDays = period },
+                        label = { Text("Last $period days") },
+                    )
+                }
+            }
+        }
+        if (list.isEmpty()) {
+            item {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Text("No settled collections in this range.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
+                }
+            }
+        } else {
+            item {
+                val collectionCount = list.sumOf { it.collectionCount }
+                val channelCounts = list.flatMap { it.byChannel.entries }.groupingBy { it.key }.fold(0.0) { total, entry -> total + entry.value }
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("$collectionCount collections", fontWeight = FontWeight.Bold)
+                        Text(
+                            channelCounts.entries.sortedByDescending { it.value }.joinToString(" · ") { (channel, count) -> "${channel.replace('_', ' ')} ${count.toInt()}" },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
         items(list, key = { it.date }) { day ->
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {

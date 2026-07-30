@@ -5,6 +5,7 @@ import { jwtRevocation } from './jwt-revocation';
 import { rateLimiting } from './rate-limiting';
 import { theBugThatWasntInfrastructure } from './the-bug-that-wasnt-infrastructure';
 import { diskPressureCascadingFailure } from './disk-pressure-cascading-failure';
+import { oneReportThreeClients } from './one-report-three-clients';
 
 export interface Post {
   slug: string;
@@ -16,7 +17,7 @@ export interface Post {
   content: string;
 }
 
-export const posts: Post[] = [fakeSuccess, hardcodedUserId, idempotencyKeys, jwtRevocation, rateLimiting, theBugThatWasntInfrastructure, diskPressureCascadingFailure].sort(
+export const posts: Post[] = [oneReportThreeClients, fakeSuccess, hardcodedUserId, idempotencyKeys, jwtRevocation, rateLimiting, theBugThatWasntInfrastructure, diskPressureCascadingFailure].sort(
   (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
 );
 
