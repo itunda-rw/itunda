@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Briefcase, CircleDollarSign, CreditCard, LogOut, Megaphone, QrCode, Settings, ShoppingCart, Star, Store, Tag, Users } from 'lucide-react';
+import { Briefcase, CircleDollarSign, CreditCard, LogOut, Megaphone, QrCode, Settings, ShoppingCart, Star, Store, Tag, UtensilsCrossed, Users } from 'lucide-react';
 import { getStoredUser, logout } from './lib/api';
 import { getMyMerchant, type Merchant } from './lib/merchant';
 import RegisterScreen from './RegisterScreen';
@@ -8,6 +8,7 @@ import BillingScreen from './screens/BillingScreen';
 import BusinessAccountScreen from './screens/BusinessAccountScreen';
 import CollectScreen from './screens/CollectScreen';
 import CouponsScreen from './screens/CouponsScreen';
+import EatsOrdersScreen from './screens/EatsOrdersScreen';
 import PayrollScreen from './screens/PayrollScreen';
 import PosScreen from './screens/PosScreen';
 import ReportsScreen from './screens/ReportsScreen';
@@ -15,11 +16,16 @@ import ReviewsScreen from './screens/ReviewsScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import { QueueError, QueueSkeleton } from './QueueState';
 
-type Tab = 'collect' | 'pos' | 'reports' | 'reviews' | 'billing' | 'coupons' | 'ads' | 'business' | 'payroll' | 'settings';
+type Tab = 'collect' | 'pos' | 'eats' | 'reports' | 'reviews' | 'billing' | 'coupons' | 'ads' | 'business' | 'payroll' | 'settings';
 
 const TABS: { id: Tab; label: string; icon: typeof QrCode }[] = [
   { id: 'collect', label: 'Collect', icon: QrCode },
   { id: 'pos', label: 'POS', icon: ShoppingCart },
+  // Real Coupang Eats/Baemin-style restaurant order queue (item 208) -- see
+  // screens/EatsOrdersScreen.tsx's own doc comment. A merchant with no real
+  // restaurant orders sees an honest empty state, not a hidden tab -- there's no
+  // cheap way to know in advance whether a given merchant is a restaurant.
+  { id: 'eats', label: 'Eats orders', icon: UtensilsCrossed },
   { id: 'reports', label: 'Reports', icon: CircleDollarSign },
   { id: 'reviews', label: 'Reviews', icon: Star },
   { id: 'billing', label: 'Billing', icon: CreditCard },
@@ -135,6 +141,7 @@ export default function MerchantDashboard({ onLogout }: { onLogout: () => void }
       <main style={{ flex: 1, padding: '32px 40px', maxWidth: '960px' }}>
         {tab === 'collect' && <CollectScreen />}
         {tab === 'pos' && <PosScreen />}
+        {tab === 'eats' && <EatsOrdersScreen />}
         {tab === 'reports' && <ReportsScreen />}
         {tab === 'reviews' && <ReviewsScreen merchant={merchant} />}
         {tab === 'billing' && <BillingScreen />}
