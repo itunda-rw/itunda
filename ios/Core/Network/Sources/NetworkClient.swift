@@ -3149,6 +3149,51 @@ public struct OverdraftRepayResponse: Decodable {
     public let newBalance: Double
 }
 
+// Real Toss Bank 체크카드 (check/debit card) client (item 207) -- see backend
+// DebitCard.kt's own doc comment. bank-mfe/Android shipped first; this is the iOS
+// client. "Paying with your card" is itunda's own honest, ledger-backed simulation of
+// a card-present purchase -- no real Visa/Mastercard rail exists.
+public struct CardDto: Decodable, Identifiable {
+    public let id: String
+    public let last4: String
+    public let dailyLimit: Double
+    public let monthlyLimit: Double
+    public let frozen: Bool
+    public let issuedAt: String
+    public let spentToday: Double
+    public let spentThisMonth: Double
+    public let remainingToday: Double
+    public let remainingThisMonth: Double
+
+    // Explicit memberwise init -- Swift doesn't synthesize a public one across module
+    // boundaries, same real gotcha OverdraftAccountDto's own doc comment already
+    // documents.
+    public init(id: String, last4: String, dailyLimit: Double, monthlyLimit: Double, frozen: Bool, issuedAt: String, spentToday: Double, spentThisMonth: Double, remainingToday: Double, remainingThisMonth: Double) {
+        self.id = id
+        self.last4 = last4
+        self.dailyLimit = dailyLimit
+        self.monthlyLimit = monthlyLimit
+        self.frozen = frozen
+        self.issuedAt = issuedAt
+        self.spentToday = spentToday
+        self.spentThisMonth = spentThisMonth
+        self.remainingToday = remainingToday
+        self.remainingThisMonth = remainingThisMonth
+    }
+}
+public struct CardResponse: Decodable { public let success: Bool; public let card: CardDto }
+public struct CardTransactionDto: Decodable, Identifiable {
+    public let id: String
+    public let cardId: String
+    public let amount: Double
+    public let merchantName: String
+    public let createdAt: String
+}
+public struct CardTransactionsResponse: Decodable { public let success: Bool; public let transactions: [CardTransactionDto]; public let totalElements: Int; public let totalPages: Int }
+public struct SetCardLimitsRequest: Encodable { public let dailyLimit: Double; public let monthlyLimit: Double }
+public struct ChargeCardRequest: Encodable { public let amount: Double; public let merchantName: String }
+public struct ChargeCardResponse: Decodable { public let success: Bool; public let transaction: CardTransactionDto; public let card: CardDto }
+
 public struct CreditScoreFactorDto: Decodable, Identifiable { public let name: String; public let points: Int; public let description: String; public var id: String { name } }
 public struct CreditScoreResponse: Decodable { public let success: Bool; public let score: Int; public let factors: [CreditScoreFactorDto]; public let computedAt: String }
 
@@ -3260,6 +3305,30 @@ extension NetworkClient {
 
     public func repayOverdraft(amount: Double) async throws -> OverdraftRepayResponse {
         try await authenticatedPost("api/v1/loans/overdraft/repay", body: OverdraftAmountRequest(amount: amount), idempotencyKey: UUID().uuidString)
+    }
+
+    public func issueCard() async throws -> CardResponse {
+        try await authenticatedPost("api/v1/card/issue", body: EmptyRequest())
+    }
+
+    public func getMyCard() async throws -> CardResponse { try await get("api/v1/card/my-card") }
+
+    public func getCardTransactions() async throws -> CardTransactionsResponse { try await get("api/v1/card/transactions") }
+
+    public func setCardLimits(dailyLimit: Double, monthlyLimit: Double) async throws -> CardResponse {
+        try await authenticatedPut("api/v1/card/limits", body: SetCardLimitsRequest(dailyLimit: dailyLimit, monthlyLimit: monthlyLimit))
+    }
+
+    public func freezeCard() async throws -> CardResponse {
+        try await authenticatedPost("api/v1/card/freeze", body: EmptyRequest())
+    }
+
+    public func unfreezeCard() async throws -> CardResponse {
+        try await authenticatedPost("api/v1/card/unfreeze", body: EmptyRequest())
+    }
+
+    public func chargeCard(amount: Double, merchantName: String) async throws -> ChargeCardResponse {
+        try await authenticatedPost("api/v1/card/charge", body: ChargeCardRequest(amount: amount, merchantName: merchantName), idempotencyKey: UUID().uuidString)
     }
 
     public func getCreditScore() async throws -> CreditScoreResponse { try await get("api/v1/credit-score") }

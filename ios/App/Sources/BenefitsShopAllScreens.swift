@@ -213,6 +213,9 @@ struct EntireMenuScreen: View {
     // Real KakaoBank mini-style capped starter wallet (2026-07-28, item 101) -- last
     // remaining client platform for this feature (bank-mfe/Android already have it).
     @State private var showMiniWallet = false
+    // Real Toss Bank 체크카드 (check/debit card) screen (2026-07-31, item 207) --
+    // bank-mfe/Android shipped first; this is the last remaining client platform.
+    @State private var showCard = false
     // Real Kakao Bank 모임통장 (group/shared account) screen (2026-07-28, item 105) --
     // last remaining client platform for this feature (bank-mfe always had it, Android
     // ported the same day as item 104).
@@ -266,6 +269,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Invest", subtitle: "RSE stocks, real portfolio", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showInvest = true }),
                         FlatRow(title: "26-Week Savings", subtitle: "Escalating auto-save, streak bonus", symbol: "calendar.badge.clock", tint: .accentOrange, action: { showWeeklySavings = true }),
                         FlatRow(title: "Mini account", subtitle: "Capped starter wallet, ages 7-18", symbol: "banknote.fill", tint: .accentTeal, action: { showMiniWallet = true }),
+                        FlatRow(title: "Card", subtitle: "App-controlled spend limits, one-tap freeze", symbol: "creditcard.fill", tint: .accentBlue, action: { showCard = true }),
                         FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", symbol: "person.2.fill", tint: .accentPurple, action: { showGroupAccounts = true }),
                         FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", symbol: "map.fill", tint: .accentTeal, action: { showMap = true }),
                     ])
@@ -438,6 +442,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showMiniWallet) {
             MiniWalletScreenView(onBack: { showMiniWallet = false })
+        }
+        .sheet(isPresented: $showCard) {
+            CardScreenView(onBack: { showCard = false })
         }
         .sheet(isPresented: $showGroupAccounts) {
             GroupAccountScreenView(onBack: { showGroupAccounts = false })
