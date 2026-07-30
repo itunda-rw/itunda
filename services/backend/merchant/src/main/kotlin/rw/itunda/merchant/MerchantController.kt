@@ -50,6 +50,7 @@ data class ChargeCardRequest(
 class MerchantController(
     private val merchantService: MerchantService,
     private val idempotencyService: IdempotencyService,
+    private val webhookDeliveryService: WebhookDeliveryService,
 ) {
     @PostMapping("/register")
     fun register(
@@ -90,6 +91,24 @@ class MerchantController(
     ): ResponseEntity<Map<String, Any?>> {
         val merchant = merchantService.setWebhookUrl(currentUser.userId, request.webhookUrl)
         return ResponseEntity.ok(mapOf("success" to true, "merchant" to merchant))
+    }
+
+    @GetMapping("/webhook-deliveries")
+    fun webhookDeliveries(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val merchant = merchantService.getMyMerchant(currentUser.userId)
+        return ResponseEntity.ok(mapOf("success" to true, "deliveries" to webhookDeliveryService.deliveryHistory(merchant.id)))
+    }
+
+    @PostMapping("/webhook-deliveries/{deliveryId}/replay")
+    fun replayWebhookDelivery(
+        @PathVariable deliveryId: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val merchant = merchantService.getMyMerchant(currentUser.userId)
+        val webhookUrl = merchant.webhookUrl ?: return ResponseEntity.badRequest().body(mapOf("success" to false, "error" to "WEBHOOK_URL_NOT_CONFIGURED"))
+        val replay = webhookDeliveryService.replayExhausted(merchant.id, deliveryId, webhookUrl)
+            ?: return ResponseEntity.status(HttpStatus.CONFLICT).body(mapOf("success" to false, "error" to "WEBHOOK_DELIVERY_NOT_REPLAYABLE"))
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(mapOf("success" to true, "delivery" to replay))
     }
 
     // Real location (2026-07-18) -- see MerchantService.setLocation's own doc comment.
@@ -237,6 +256,10 @@ class MerchantController(
     @ExceptionHandler(DateTimeParseException::class)
     fun handleBadDate(ex: DateTimeParseException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_DATE_FORMAT", "from/to must be in YYYY-MM-DD format"))
+
+    @ExceptionHandler(InvalidReportRangeException::class)
+    fun handleInvalidReportRange(ex: InvalidReportRangeException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_REPORT_RANGE", ex.message ?: "Invalid report range"))
 
     @ExceptionHandler(MerchantAlreadyRegisteredException::class)
     fun handleAlreadyRegistered(ex: MerchantAlreadyRegisteredException) =

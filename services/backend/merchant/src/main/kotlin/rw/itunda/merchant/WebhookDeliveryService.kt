@@ -23,11 +23,13 @@ import java.util.UUID
  * fire-and-log design docs/PAYMENTS.md explicitly named as the gap versus Toss's actual
  * documented scheme: up to 7 attempts total, intervals 1, 4, 16, 64, 256, 1024, 4096
  * minutes (each 4x the last -- sourced from docs.tosspayments.com/en/webhooks), a
- * ~2.8-day retry window. The first attempt is still made synchronously inline (matches
- * both Toss's own behavior -- it delivers immediately, retries are for failures -- and
- * keeps the fast, common "webhook endpoint is up" path free of extra latency); only a
- * failure gets persisted to [WebhookDeliveryRepository] for [WebhookRetryScheduler] to
- * pick up, same durable-outbox reasoning as [rw.itunda.core.events.OutboxEventEntity].
+ * ~2.8-day retry window. Every delivery is persisted as pending and delivered by
+ * [WebhookRetryScheduler] after the
+ * transaction commits. This means a receiver can never observe an event for a
+ * rolled-back payment, and a slow receiver cannot delay the payment response. This
+ * gives merchants a complete audit trail while leaving failed rows pending for
+ * [WebhookRetryScheduler] to pick up, with the same durable-outbox reasoning as
+ * [rw.itunda.core.events.OutboxEventEntity].
  * A merchant's unreachable webhook endpoint must never fail the actual payment
  * collection -- this method never throws.
  */
@@ -47,7 +49,7 @@ class WebhookDeliveryService(
         const val MAX_ATTEMPTS = 7
     }
 
-    fun deliverPaymentStatusChanged(webhookUrl: String?, data: Map<String, Any?>) = deliver("PAYMENT_STATUS_CHANGED", webhookUrl, data)
+    fun deliverPaymentStatusChanged(merchantId: String, webhookUrl: String?, data: Map<String, Any?>) = deliver("PAYMENT_STATUS_CHANGED", merchantId, webhookUrl, data)
 
     // Real cancel/refund webhook event (2026-07-21) -- Toss Payments' own real webhooks
     // distinguish CANCEL_STATUS_CHANGED from PAYMENT_STATUS_CHANGED as a genuinely
@@ -55,69 +57,110 @@ class WebhookDeliveryService(
     // reused with a different status field -- so a merchant's webhook receiver can
     // dispatch on `eventType` alone without inspecting `data` first. See
     // MerchantService.cancelPayment.
-    fun deliverCancelStatusChanged(webhookUrl: String?, data: Map<String, Any?>) = deliver("CANCEL_STATUS_CHANGED", webhookUrl, data)
+    fun deliverCancelStatusChanged(merchantId: String, webhookUrl: String?, data: Map<String, Any?>) = deliver("CANCEL_STATUS_CHANGED", merchantId, webhookUrl, data)
 
-    private fun deliver(eventType: String, webhookUrl: String?, data: Map<String, Any?>) {
+    fun deliveryHistory(merchantId: String): List<Map<String, Any?>> =
+        webhookDeliveryRepository.findTop100ByMerchantIdOrderByCreatedAtDesc(merchantId).map { delivery ->
+            mapOf(
+                "id" to delivery.id,
+                "eventType" to delivery.eventType,
+                "status" to delivery.status.name,
+                "attemptCount" to delivery.attemptCount,
+                "createdAt" to delivery.createdAt.toString(),
+                "nextAttemptAt" to delivery.nextAttemptAt.toString(),
+                "deliveredAt" to delivery.deliveredAt?.toString(),
+                "lastError" to delivery.lastError,
+            )
+        }
+
+    fun replayExhausted(merchantId: String, deliveryId: String, currentWebhookUrl: String): Map<String, Any?>? {
+        val original = webhookDeliveryRepository.findById(deliveryId).orElse(null)
+            ?.takeIf { it.merchantId == merchantId && it.status == WebhookDeliveryStatus.EXHAUSTED }
+            ?: return null
+        val replay = webhookDeliveryRepository.save(
+            WebhookDelivery(
+                id = "whd_${UUID.randomUUID()}",
+                merchantId = merchantId,
+                eventType = original.eventType,
+                webhookUrl = currentWebhookUrl,
+                payload = original.payload,
+                nextAttemptAt = Instant.now(),
+            ),
+        )
+        return mapOf("id" to replay.id, "status" to replay.status.name, "replayOf" to original.id)
+    }
+
+    private fun deliver(eventType: String, merchantId: String, webhookUrl: String?, data: Map<String, Any?>) {
         if (webhookUrl.isNullOrBlank()) return
 
+        // Generate this before constructing the immutable payload, so every receiver
+        // can deduplicate from either the payload or X-Itunda-Delivery-Id header.
+        val deliveryId = "whd_${UUID.randomUUID()}"
         val payload = mapOf(
+            "eventId" to deliveryId,
             "eventType" to eventType,
             "createdAt" to Instant.now().toString(),
             "data" to data,
         )
         val payloadJson = objectMapper.writeValueAsString(payload)
 
-        val (success, error) = attempt(webhookUrl, payloadJson)
-        if (success) return
-
-        log.warn("Webhook delivery to {} failed (attempt 1/{}): {} -- queued for real retry", webhookUrl, MAX_ATTEMPTS, error)
-        webhookDeliveryRepository.save(
-            WebhookDelivery(
-                id = "whd_${UUID.randomUUID()}",
-                webhookUrl = webhookUrl,
-                payload = payloadJson,
-                attemptCount = 1,
-                nextAttemptAt = Instant.now().plusSeconds(RETRY_INTERVALS_MINUTES[0] * 60),
-                lastError = error,
-            ),
+        val delivery = WebhookDelivery(
+            id = deliveryId,
+            merchantId = merchantId,
+            eventType = eventType,
+            webhookUrl = webhookUrl,
+            payload = payloadJson,
+            // A scheduler worker sees this row only after the enclosing transaction
+            // commits, so delivery is both asynchronous and transactionally ordered.
+            nextAttemptAt = Instant.now(),
         )
+        persist(delivery)
     }
 
     /** Retries an already-queued delivery. Called only by [WebhookRetryScheduler]. */
     fun retry(delivery: WebhookDelivery) {
-        val (success, error) = attempt(delivery.webhookUrl, delivery.payload)
+        val (success, error) = attempt(delivery.webhookUrl, delivery.payload, delivery.id, delivery.eventType)
         delivery.attemptCount += 1
         if (success) {
             delivery.status = WebhookDeliveryStatus.DELIVERED
             delivery.deliveredAt = Instant.now()
-            webhookDeliveryRepository.save(delivery)
-            log.info("Webhook delivery {} to {} succeeded on attempt {}", delivery.id, delivery.webhookUrl, delivery.attemptCount)
+            persist(delivery)
+            log.info("Webhook delivery {} to {} succeeded on attempt {}", delivery.id, WebhookUrlPolicy.displayTarget(delivery.webhookUrl), delivery.attemptCount)
             return
         }
 
         delivery.lastError = error
         if (delivery.attemptCount >= MAX_ATTEMPTS) {
             delivery.status = WebhookDeliveryStatus.EXHAUSTED
-            log.warn("Webhook delivery {} to {} exhausted all {} attempts: {}", delivery.id, delivery.webhookUrl, MAX_ATTEMPTS, error)
+            log.warn("Webhook delivery {} to {} exhausted all {} attempts: {}", delivery.id, WebhookUrlPolicy.displayTarget(delivery.webhookUrl), MAX_ATTEMPTS, error)
         } else {
             val intervalMinutes = RETRY_INTERVALS_MINUTES[delivery.attemptCount - 1]
             delivery.nextAttemptAt = Instant.now().plusSeconds(intervalMinutes * 60)
             log.warn(
                 "Webhook delivery {} to {} failed (attempt {}/{}): {} -- next retry in {} minutes",
-                delivery.id, delivery.webhookUrl, delivery.attemptCount, MAX_ATTEMPTS, error, intervalMinutes,
+                delivery.id, WebhookUrlPolicy.displayTarget(delivery.webhookUrl), delivery.attemptCount, MAX_ATTEMPTS, error, intervalMinutes,
             )
         }
-        webhookDeliveryRepository.save(delivery)
+        persist(delivery)
     }
 
-    private fun attempt(webhookUrl: String, payloadJson: String): Pair<Boolean, String?> {
+    /** A webhook must never affect the completed financial operation that triggered it. */
+    private fun persist(delivery: WebhookDelivery) {
+        try {
+            webhookDeliveryRepository.save(delivery)
+        } catch (e: Exception) {
+            log.error("Could not persist webhook delivery {}: {}", delivery.id, e.message)
+        }
+    }
+
+    private fun attempt(
+        webhookUrl: String,
+        payloadJson: String,
+        deliveryId: String,
+        eventType: String?,
+    ): Pair<Boolean, String?> {
         return try {
-            val request = HttpRequest.newBuilder()
-                .uri(URI.create(webhookUrl))
-                .header("Content-Type", "application/json")
-                .timeout(Duration.ofSeconds(5))
-                .POST(HttpRequest.BodyPublishers.ofString(payloadJson))
-                .build()
+            val request = buildRequest(WebhookUrlPolicy.parseForDelivery(webhookUrl), payloadJson, deliveryId, eventType)
             val response = httpClient.send(request, HttpResponse.BodyHandlers.discarding())
             if (response.statusCode() in 200..299) {
                 true to null
@@ -127,5 +170,17 @@ class WebhookDeliveryService(
         } catch (e: Exception) {
             false to (e.message ?: e.javaClass.simpleName)
         }
+    }
+
+    internal fun buildRequest(target: URI, payloadJson: String, deliveryId: String, eventType: String?): HttpRequest {
+        val builder = HttpRequest.newBuilder()
+            .uri(target)
+            .header("Content-Type", "application/json")
+            .header("X-Itunda-Delivery-Id", deliveryId)
+            .timeout(Duration.ofSeconds(5))
+        if (!eventType.isNullOrBlank()) {
+            builder.header("X-Itunda-Event-Type", eventType)
+        }
+        return builder.POST(HttpRequest.BodyPublishers.ofString(payloadJson)).build()
     }
 }

@@ -26,6 +26,13 @@ class WebhookDelivery(
     @Column(length = 64)
     val id: String,
 
+    @Column(name = "merchant_id", length = 64)
+    val merchantId: String? = null,
+
+    /** Immutable domain-event contract, retained independently of the JSON payload. */
+    @Column(name = "event_type", length = 64)
+    val eventType: String? = null,
+
     @Column(name = "webhook_url", nullable = false, length = 2048)
     val webhookUrl: String,
 
@@ -52,6 +59,6 @@ class WebhookDelivery(
     var deliveredAt: Instant? = null,
 ) {
     protected constructor() : this(
-        id = "", webhookUrl = "", payload = "", nextAttemptAt = Instant.now(),
+        id = "", merchantId = null, eventType = null, webhookUrl = "", payload = "", nextAttemptAt = Instant.now(),
     )
 }

@@ -16,7 +16,10 @@ import rw.itunda.core.idempotency.IdempotencyConflictException
 import rw.itunda.core.idempotency.IdempotencyInProgressException
 import rw.itunda.core.idempotency.IdempotencyService
 import rw.itunda.core.web.ApiError
+import rw.itunda.auth.RateLimiter
+import rw.itunda.auth.RateLimitExceededException
 import java.math.BigDecimal
+import java.time.Duration
 
 data class CreatePaymentRequest(
     val amount: BigDecimal,
@@ -73,27 +76,37 @@ data class CancelPaymentRequest(
 class PaymentsApiController(
     private val merchantService: MerchantService,
     private val idempotencyService: IdempotencyService,
+    private val rateLimiter: RateLimiter,
     @Value("\${itunda.pay.checkout-base-url}")
     private val checkoutBaseUrl: String,
 ) {
     @PostMapping("/payments")
     fun createPayment(
         @RequestHeader("X-Api-Key") apiKey: String,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
         @RequestBody request: CreatePaymentRequest,
     ): ResponseEntity<Map<String, Any?>> {
         val merchant = merchantService.resolveMerchantByApiKey(apiKey)
-        val intent = merchantService.createExternalPayment(
-            merchant, request.amount, request.description, request.orderId, request.successUrl, request.failUrl,
-        )
-        return ResponseEntity.status(HttpStatus.CREATED).body(
-            mapOf(
+        rateLimiter.checkLimit("merchant-api:${merchant.id}:payment-create", limit = 30, window = Duration.ofMinutes(1))
+        // Checkout creation does not move money, but retrying it can otherwise create
+        // several concurrently payable intents for one merchant order. The merchant ID
+        // belongs in the idempotency scope: unlike a payment-key path, this collection
+        // endpoint is shared by every merchant API credential.
+        val (status, body) = idempotencyService.replayOrExecute(
+            "POST /api/v1/pay/merchants/${merchant.id}/payments", idempotencyKey, request,
+        ) {
+            val intent = merchantService.createExternalPayment(
+                merchant, request.amount, request.description, request.orderId, request.successUrl, request.failUrl,
+            )
+            HttpStatus.CREATED.value() to mapOf(
                 "success" to true,
                 "paymentKey" to intent.id,
                 "checkoutUrl" to "$checkoutBaseUrl/checkout/${intent.id}",
                 "status" to intent.status,
                 "expiresAt" to intent.expiresAt,
-            ),
-        )
+            )
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     @GetMapping("/payments/{paymentKey}")
@@ -102,6 +115,7 @@ class PaymentsApiController(
         @PathVariable paymentKey: String,
     ): ResponseEntity<Map<String, Any?>> {
         val merchant = merchantService.resolveMerchantByApiKey(apiKey)
+        rateLimiter.checkLimit("merchant-api:${merchant.id}:payment-read", limit = 120, window = Duration.ofMinutes(1))
         val intent = merchantService.getPaymentStatusForMerchant(merchant, paymentKey)
         return ResponseEntity.ok(
             mapOf(
@@ -129,6 +143,7 @@ class PaymentsApiController(
         @RequestBody request: CancelPaymentRequest,
     ): ResponseEntity<Map<String, Any?>> {
         val merchant = merchantService.resolveMerchantByApiKey(apiKey)
+        rateLimiter.checkLimit("merchant-api:${merchant.id}:payment-cancel", limit = 30, window = Duration.ofMinutes(1))
         val (status, body) = idempotencyService.replayOrExecute(
             "POST /api/v1/pay/payments/$paymentKey/cancel", idempotencyKey, request,
         ) {
@@ -172,9 +187,9 @@ class PaymentsApiController(
     fun handleMerchantNotFound(ex: MerchantNotFoundException) =
         ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MERCHANT_NOT_FOUND", ex.message ?: "Not found"))
 
-    // Distinguishes which header is actually missing -- this controller now requires
-    // two different headers on different endpoints (X-Api-Key everywhere, Idempotency-Key
-    // on cancel only), so a single hardcoded message would be wrong for the other case.
+    // Distinguishes which header is actually missing -- this controller requires
+    // X-Api-Key for merchant authentication and Idempotency-Key for every POST, so a
+    // single hardcoded message would be wrong for the other case.
     @ExceptionHandler(MissingRequestHeaderException::class)
     fun handleMissingHeader(ex: MissingRequestHeaderException) =
         if (ex.headerName == "Idempotency-Key") {
@@ -198,4 +213,8 @@ class PaymentsApiController(
     @ExceptionHandler(IdempotencyInProgressException::class)
     fun handleIdempotencyInProgress(ex: IdempotencyInProgressException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("IDEMPOTENT_REQUEST_PROCESSING", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(RateLimitExceededException::class)
+    fun handleRateLimit(ex: RateLimitExceededException) =
+        ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiError("RATE_LIMITED", ex.message ?: "Too many requests"))
 }

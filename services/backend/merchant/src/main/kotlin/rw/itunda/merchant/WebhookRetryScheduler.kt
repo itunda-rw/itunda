@@ -3,6 +3,7 @@ package rw.itunda.merchant
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
 import rw.itunda.core.domain.WebhookDeliveryStatus
 import rw.itunda.core.repository.WebhookDeliveryRepository
 import java.time.Instant
@@ -25,13 +26,14 @@ class WebhookRetryScheduler(
     private val log = LoggerFactory.getLogger(WebhookRetryScheduler::class.java)
 
     @Scheduled(fixedDelay = 10000)
+    @Transactional
     fun run() {
         val due = webhookDeliveryRepository.findTop100ByStatusAndNextAttemptAtBeforeOrderByNextAttemptAtAsc(
             WebhookDeliveryStatus.PENDING,
             Instant.now(),
         )
         for (delivery in due) {
-            log.info("Retrying webhook delivery {} to {} (attempt {}/{})", delivery.id, delivery.webhookUrl, delivery.attemptCount + 1, WebhookDeliveryService.MAX_ATTEMPTS)
+            log.info("Delivering queued webhook {} to {} (attempt {}/{})", delivery.id, WebhookUrlPolicy.displayTarget(delivery.webhookUrl), delivery.attemptCount + 1, WebhookDeliveryService.MAX_ATTEMPTS)
             webhookDeliveryService.retry(delivery)
         }
     }

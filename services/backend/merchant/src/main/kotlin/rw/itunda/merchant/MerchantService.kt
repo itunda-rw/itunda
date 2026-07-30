@@ -2,6 +2,8 @@ package rw.itunda.merchant
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.LedgerAccountType
 import rw.itunda.core.domain.LedgerDirection
@@ -27,6 +29,7 @@ import rw.itunda.core.repository.TransactionRepository
 import rw.itunda.core.repository.WalletRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.net.URI
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.time.Duration
@@ -52,6 +55,7 @@ class InvalidApiKeyException(message: String) : RuntimeException(message)
 class InvalidCheckoutRequestException(message: String) : RuntimeException(message)
 class PaymentIntentNotRefundableException(message: String) : RuntimeException(message)
 class InvalidCancelRequestException(message: String) : RuntimeException(message)
+class InvalidReportRangeException(message: String) : RuntimeException(message)
 
 // Real external-checkout DTOs (2026-07-21) -- see PaymentsApiController's own doc
 // comment for the full account of the real Toss Payments feature this mirrors.
@@ -165,6 +169,7 @@ class MerchantService(
         if (trimmed.length > 500) {
             throw InvalidWebhookUrlException("Webhook URL must be 500 characters or fewer")
         }
+        WebhookUrlPolicy.parse(trimmed)
         merchant.webhookUrl = trimmed
         return merchantRepository.save(merchant)
     }
@@ -333,9 +338,8 @@ class MerchantService(
             throw InvalidCheckoutRequestException("Description must be between 1 and 500 characters")
         }
         if ((orderId?.length ?: 0) > 200) throw InvalidCheckoutRequestException("orderId must be 200 characters or fewer")
-        if ((successUrl?.length ?: 0) > 500 || (failUrl?.length ?: 0) > 500) {
-            throw InvalidCheckoutRequestException("successUrl/failUrl must be 500 characters or fewer")
-        }
+        val normalizedSuccessUrl = normalizeCheckoutRedirectUrl("successUrl", successUrl)
+        val normalizedFailUrl = normalizeCheckoutRedirectUrl("failUrl", failUrl)
         val intent = PaymentIntent(
             id = "pi_${UUID.randomUUID()}",
             merchantId = merchant.id,
@@ -343,10 +347,33 @@ class MerchantService(
             description = trimmedDescription,
             expiresAt = Instant.now().plusSeconds(900),
             orderId = orderId?.trim()?.ifBlank { null },
-            successUrl = successUrl?.trim()?.ifBlank { null },
-            failUrl = failUrl?.trim()?.ifBlank { null },
+            successUrl = normalizedSuccessUrl,
+            failUrl = normalizedFailUrl,
         )
         return paymentIntentRepository.save(intent)
+    }
+
+    /**
+     * The hosted checkout assigns these directly to `window.location`. They are not
+     * server-side fetch targets, but accepting relative, script, or credential-bearing
+     * values would turn a payment result into an unsafe browser navigation. Merchant
+     * origin registration is not modelled yet, so HTTPS absolute URLs are the strict
+     * safe baseline while preserving legitimate merchant callback paths and queries.
+     */
+    private fun normalizeCheckoutRedirectUrl(field: String, value: String?): String? {
+        val trimmed = value?.trim()?.ifBlank { return null } ?: return null
+        if (trimmed.length > 500) {
+            throw InvalidCheckoutRequestException("$field must be 500 characters or fewer")
+        }
+        val uri = try {
+            URI(trimmed)
+        } catch (_: Exception) {
+            throw InvalidCheckoutRequestException("$field must be a valid HTTPS URL")
+        }
+        if (uri.scheme?.lowercase() != "https" || uri.host == null || uri.userInfo != null) {
+            throw InvalidCheckoutRequestException("$field must be an absolute HTTPS URL without credentials")
+        }
+        return trimmed
     }
 
     // Real public checkout info (2026-07-21) -- deliberately NOT behind the API key:
@@ -355,9 +382,11 @@ class MerchantService(
     // id), the same public/secret split every real payment gateway's checkout page
     // uses. Returns only what's safe to show a paying customer -- never the merchant's
     // internal id, webhook URL, or any other account detail.
+    @Transactional
     fun getCheckoutInfo(paymentKey: String): CheckoutInfo {
         val intent = paymentIntentRepository.findById(paymentKey)
             .orElseThrow { PaymentIntentNotFoundException("Payment not found") }
+        expireIfPending(intent)
         val merchant = merchantRepository.findById(intent.merchantId)
             .orElseThrow { MerchantNotFoundException("Merchant not found") }
         return CheckoutInfo(
@@ -377,11 +406,21 @@ class MerchantService(
     // an order, not rely on the webhook alone arriving in time. Ownership-checked: the
     // API key resolves to a specific merchant, and this real-404s (not just returns
     // someone else's data) for a paymentKey belonging to a different merchant.
+    @Transactional
     fun getPaymentStatusForMerchant(merchant: Merchant, paymentKey: String): PaymentIntent {
         val intent = paymentIntentRepository.findById(paymentKey)
             .orElseThrow { PaymentIntentNotFoundException("Payment not found") }
         if (intent.merchantId != merchant.id) throw PaymentIntentNotFoundException("Payment not found")
+        expireIfPending(intent)
         return intent
+    }
+
+    /** Makes passive hosted-checkout polling observe the same terminal expiry state as collect(). */
+    private fun expireIfPending(intent: PaymentIntent) {
+        if (intent.status == PaymentIntentStatus.PENDING && !intent.expiresAt.isAfter(Instant.now())) {
+            intent.status = PaymentIntentStatus.EXPIRED
+            paymentIntentRepository.save(intent)
+        }
     }
 
     // Real cancel/refund (2026-07-21) -- mirrors Toss Payments' own real cancel API
@@ -448,7 +487,7 @@ class MerchantService(
         // Same "never let a slow/unreachable webhook block real money movement" discipline
         // as collect()/chargeCard -- called last, after the refund ledger transaction and
         // intent are already saved.
-        webhookDeliveryService.deliverCancelStatusChanged(merchant.webhookUrl, resultMap)
+        webhookDeliveryService.deliverCancelStatusChanged(merchant.id, merchant.webhookUrl, resultMap)
         return resultMap
     }
 
@@ -625,7 +664,7 @@ class MerchantService(
                     dataJson = "{\"amount\":\"$chargeAmount\",\"payerId\":\"$payerUserId\"}",
                 ),
             )
-            pushNotificationService.sendToUser(merchant.ownerUserId, title, body, mapOf("amount" to chargeAmount.toString(), "payerId" to payerUserId))
+            sendPaymentReceivedPushAfterCommit(merchant.ownerUserId, title, body, chargeAmount, payerUserId)
         } catch (e: Exception) {
             // Non-critical -- the real payment already completed and succeeded.
         }
@@ -656,10 +695,35 @@ class MerchantService(
         // (PaymentsApiController) ever set one, so this is purely additive for every existing
         // webhook consumer.
         webhookDeliveryService.deliverPaymentStatusChanged(
+            merchant.id,
             merchant.webhookUrl,
             resultMap + ("paymentIntentId" to intentId) + ("payerId" to payerUserId) + ("orderId" to intent.orderId),
         )
         return resultMap
+    }
+
+    /** Merchant pushes are external effects, so never advertise a payment before commit. */
+    private fun sendPaymentReceivedPushAfterCommit(
+        ownerUserId: String,
+        title: String,
+        body: String,
+        amount: BigDecimal,
+        payerUserId: String,
+    ) {
+        val send = {
+            try {
+                pushNotificationService.sendToUser(ownerUserId, title, body, mapOf("amount" to amount.toString(), "payerId" to payerUserId))
+            } catch (_: Exception) {
+                // A mobile delivery failure must not affect an already-committed payment.
+            }
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            send()
+            return
+        }
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() = send()
+        })
     }
 
     // Real demo card-processing flow (2026-07-17), closing the actionable half of this
@@ -744,7 +808,7 @@ class MerchantService(
             "cardLast4" to authResult.last4,
             "completedAt" to Instant.now().toString(),
         )
-        webhookDeliveryService.deliverPaymentStatusChanged(merchant.webhookUrl, resultMap + ("payerId" to "external_card_${authResult.last4}"))
+        webhookDeliveryService.deliverPaymentStatusChanged(merchant.id, merchant.webhookUrl, resultMap + ("payerId" to "external_card_${authResult.last4}"))
         return resultMap
     }
 
@@ -758,6 +822,12 @@ class MerchantService(
     // wallet synchronously in the same ledger transaction as the collection, so there's
     // no separate pending-settlement state to report on, unlike a real payout batch.
     fun getReport(ownerUserId: String, from: LocalDate, to: LocalDate): List<MerchantReportDay> {
+        if (from.isAfter(to)) {
+            throw InvalidReportRangeException("Report start date must be on or before the end date")
+        }
+        if (from.plusDays(30).isBefore(to)) {
+            throw InvalidReportRangeException("Reports are limited to 31 days at a time")
+        }
         val merchant = getMyMerchant(ownerUserId)
         val fromInstant = from.atStartOfDay(ZoneOffset.UTC).toInstant()
         val toInstant = to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()
