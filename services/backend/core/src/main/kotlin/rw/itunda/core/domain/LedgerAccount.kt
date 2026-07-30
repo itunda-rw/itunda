@@ -94,6 +94,11 @@ class LedgerAccount(
             // "Unknown ledger account agent_commission_expense" the first time this
             // feature was ever actually exercised end-to-end.
             "agent_commission_expense" to "Agent Commission Expense",
+            // Real Toss Bank 체크카드 (check/debit card) purchase expense (2026-07-31) --
+            // see DebitCard.kt's own doc comment. Learned from the interest_income/
+            // agent_commission_expense precedent above: seed this before the first real
+            // card purchase, not after one 500s discovering it's missing.
+            "card_spend_expense" to "Debit Card Spend Expense",
         )
     }
 }

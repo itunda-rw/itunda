@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowUpRight, Bike, Car, Heart, LogOut, MessageCircle, Plus,
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { configureAutoTopUp, fetchAutoTopUpSetting, fetchBudgets, fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchWallets, setBudget, triggerAutoTopUp, type AutoTopUpSetting, type BudgetView, type DetectedSubscription, type SpendingCategory, type Transaction, type Wallet } from './lib/wallet';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
+import { chargeCard, fetchCardTransactions, fetchMyCard, freezeCard, issueCard, setCardLimits, unfreezeCard, type Card, type CardTransaction } from './lib/card';
 import { claimInterest, createGoal, depositToGoal, fetchGoals, fetchInterestJar, fetchRoundUpSettings, ROUND_UP_INCREMENTS, setRoundUpSettings, type InterestJar, type RoundUpSettings, type SavingsGoal } from './lib/savings';
 import {
   createGroupAccount, depositToGroupAccount, fetchGroupAccount, fetchGroupAccountDues, fetchMyGroupAccounts, inviteGroupAccountMember,
@@ -127,7 +128,7 @@ import {
   type RideDriver, type RideTrip,
 } from './lib/rideshare';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
@@ -12434,6 +12435,211 @@ function DevicesView() {
   );
 }
 
+// Real Toss Bank 체크카드 (check/debit card) -- see the backend's DebitCard.kt doc
+// comment for the full sourced account (item 207) and the honest boundary around this
+// not riding a real Visa/Mastercard rail. "Pay with card" below is itunda's own real,
+// ledger-backed simulation of a card-present purchase (real money moves, real limits
+// are enforced), the same honest "demo the part that can be real" convention
+// DemoCardAuthorizationService already established for the merchant-side equivalent.
+function CardView() {
+  const [card, setCard] = useState<Card | null | undefined>(undefined);
+  const [transactions, setTransactions] = useState<CardTransaction[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [dailyLimitInput, setDailyLimitInput] = useState('');
+  const [monthlyLimitInput, setMonthlyLimitInput] = useState('');
+  const [merchantName, setMerchantName] = useState('');
+  const [chargeAmount, setChargeAmount] = useState('');
+  const [chargeError, setChargeError] = useState<string | null>(null);
+  const [chargeSuccess, setChargeSuccess] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchMyCard()
+      .then((c) => {
+        setCard(c);
+        setDailyLimitInput(String(c.dailyLimit));
+        setMonthlyLimitInput(String(c.monthlyLimit));
+      })
+      .catch((err) => {
+        if (err instanceof ApiError && err.code === 'CARD_NOT_FOUND') {
+          setCard(null);
+          return;
+        }
+        setError(err instanceof ApiError ? err.message : 'Could not load your card.');
+      });
+    fetchCardTransactions().then((r) => setTransactions(r.transactions)).catch(() => {});
+  };
+  useEffect(load, []);
+
+  const handleIssue = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await issueCard();
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not issue a card.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleToggleFreeze = async () => {
+    if (!card) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = card.frozen ? await unfreezeCard() : await freezeCard();
+      setCard(updated);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update your card.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSaveLimits = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await setCardLimits(Number(dailyLimitInput), Number(monthlyLimitInput));
+      setCard(updated);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update your limits.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCharge = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setChargeError(null);
+    setChargeSuccess(null);
+    setBusy(true);
+    try {
+      const result = await chargeCard(Number(chargeAmount), merchantName);
+      setCard(result.card);
+      setChargeSuccess(`Paid ${result.transaction.amount.toLocaleString()} RWF at ${result.transaction.merchantName}`);
+      setMerchantName('');
+      setChargeAmount('');
+      load();
+    } catch (err) {
+      setChargeError(err instanceof ApiError ? err.message : 'Could not complete this purchase.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="toss-card">
+        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+        <button className="toss-btn toss-btn-secondary" onClick={load} style={{ marginTop: '12px' }}>Retry</button>
+      </div>
+    );
+  }
+  if (card === undefined) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+
+  if (card === null) {
+    return (
+      <div className="toss-card" style={{ textAlign: 'center' }}>
+        <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>You don't have an itunda debit card yet</p>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+          App-controlled spend limits and one-tap freeze — no branch visit, no waiting.
+        </p>
+        <button className="toss-btn toss-btn-primary" disabled={busy} onClick={handleIssue}>
+          {busy ? 'Issuing…' : 'Get your itunda card'}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div
+        className="toss-card"
+        style={{
+          background: card.frozen ? 'var(--toss-grey-500)' : 'linear-gradient(135deg, var(--toss-blue), #1B64DA)',
+          color: 'white', padding: '20px',
+        }}
+      >
+        <p style={{ fontSize: '13px', opacity: 0.85 }}>itunda card</p>
+        <p style={{ fontSize: '20px', fontWeight: 700, letterSpacing: '2px', margin: '10px 0' }}>•••• •••• •••• {card.last4}</p>
+        <p style={{ fontSize: '12px', opacity: 0.85 }}>{card.frozen ? '🔒 Frozen — no purchases can be made' : '✓ Active'}</p>
+      </div>
+
+      <button className={`toss-btn ${card.frozen ? 'toss-btn-primary' : 'toss-btn-danger'}`} disabled={busy} onClick={handleToggleFreeze}>
+        {card.frozen ? 'Unfreeze card' : 'Freeze card'}
+      </button>
+
+      <div className="toss-card">
+        <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '10px' }}>Spend limits</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+          <span style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Today</span>
+          <span style={{ fontSize: '12px' }}>{card.spentToday.toLocaleString()} / {card.dailyLimit.toLocaleString()} RWF</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+          <span style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>This month</span>
+          <span style={{ fontSize: '12px' }}>{card.spentThisMonth.toLocaleString()} / {card.monthlyLimit.toLocaleString()} RWF</span>
+        </div>
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+          <input
+            type="number" placeholder="Daily limit" value={dailyLimitInput} onChange={(e) => setDailyLimitInput(e.target.value)}
+            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)' }}
+          />
+          <input
+            type="number" placeholder="Monthly limit" value={monthlyLimitInput} onChange={(e) => setMonthlyLimitInput(e.target.value)}
+            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)' }}
+          />
+        </div>
+        <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={handleSaveLimits} style={{ width: '100%' }}>
+          Save limits
+        </button>
+      </div>
+
+      <div className="toss-card">
+        <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '4px' }}>Pay with your card</p>
+        <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', marginBottom: '10px' }}>
+          itunda has no real card-network partnership yet, so this simulates a real card-present purchase — real money moves, real limits apply.
+        </p>
+        <form onSubmit={handleCharge} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {chargeError && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{chargeError}</p>}
+          {chargeSuccess && <p style={{ fontSize: '12px', color: 'var(--toss-green)' }}>{chargeSuccess}</p>}
+          <input
+            placeholder="Merchant name" value={merchantName} onChange={(e) => setMerchantName(e.target.value)} required
+            style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)' }}
+          />
+          <input
+            type="number" placeholder="Amount (RWF)" value={chargeAmount} onChange={(e) => setChargeAmount(e.target.value)} required min="1"
+            style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)' }}
+          />
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={busy || card.frozen}>
+            {card.frozen ? 'Card is frozen' : busy ? 'Paying…' : 'Pay'}
+          </button>
+        </form>
+      </div>
+
+      <div className="toss-card">
+        <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '10px' }}>Recent card activity</p>
+        {transactions.length === 0 ? (
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No purchases yet.</p>
+        ) : (
+          transactions.map((t) => (
+            <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
+              <div>
+                <p style={{ fontSize: '13px' }}>{t.merchantName}</p>
+                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{new Date(t.createdAt).toLocaleString()}</p>
+              </div>
+              <span style={{ fontSize: '13px', fontWeight: 700 }}>{t.amount.toLocaleString()} RWF</span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Real Kakao Bank SafeBox (세이프박스) equivalent -- claim-anytime interest that grows
 // for real off the actual SAVINGS wallet balance (InterestAccrualScheduler, 2026-07-20).
 // Real Kakao Pay 머니굴리기 ("rolling money") round-up auto-saving -- see
@@ -13559,6 +13765,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'CERTIFICATE', label: 'Certificate' },
     { id: 'SHOPPING', label: 'Shopping' },
     { id: 'DEVICES', label: 'Devices' },
+    { id: 'CARD', label: 'Card' },
     { id: 'OVERVIEW', label: 'Overview' },
     { id: 'LOANS', label: 'Loans' },
     { id: 'CREDIT_SCORE', label: 'Credit score' },
@@ -13624,6 +13831,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'CERTIFICATE' && <CertificateView />}
       {tab === 'SHOPPING' && <ShoppingView />}
       {tab === 'DEVICES' && <DevicesView />}
+      {tab === 'CARD' && <CardView />}
       {tab === 'OVERVIEW' && <OverviewView />}
       {tab === 'LOANS' && <LoansView />}
       {tab === 'CREDIT_SCORE' && <CreditScoreView />}

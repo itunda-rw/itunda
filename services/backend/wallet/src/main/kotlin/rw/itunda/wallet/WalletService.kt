@@ -136,6 +136,11 @@ class WalletService(
                 LedgerAccountType.RIDE_HOLDING -> "Rides"
                 LedgerAccountType.EMOTICON_REVENUE -> "Emoticons"
                 LedgerAccountType.GIFT_VOUCHER_HOLDING -> "Gift vouchers"
+                // Unlike the credit-side expense accounts grouped into "Other" below,
+                // CARD_SPEND_EXPENSE is genuinely credited in the very same transaction
+                // a debit card purchase debits the wallet (CardService.chargeWithCard),
+                // so it real-appears here and deserves its own category, not "Other".
+                LedgerAccountType.CARD_SPEND_EXPENSE -> "Card purchases"
                 // REWARDS_EXPENSE/INTEREST_EXPENSE/INSURANCE_CLAIMS_EXPENSE are all credit-side
                 // accounts (they pay money *into* a wallet) -- they'd never realistically be the
                 // counterpart to a WALLET debit here, but the compiler correctly demands every

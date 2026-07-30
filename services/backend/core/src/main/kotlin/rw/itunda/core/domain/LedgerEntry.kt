@@ -71,6 +71,12 @@ enum class LedgerAccountType {
     // expense account, the same shape REWARDS_EXPENSE/INTEREST_EXPENSE already
     // establish, distinct from AGENT_CASH (the agent's own physical float/till).
     AGENT_COMMISSION_EXPENSE,
+    // Real Toss Bank 체크카드 (check/debit card) purchase expense (2026-07-31) -- see
+    // DebitCard.kt's own doc comment. A real "itunda pays this out" expense account,
+    // the same shape REWARDS_EXPENSE/AGENT_COMMISSION_EXPENSE already establish: a card
+    // purchase's real counterparty is an external, unmodeled merchant/POS, not another
+    // itunda account.
+    CARD_SPEND_EXPENSE,
 }
 
 /**

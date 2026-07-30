@@ -38,5 +38,6 @@ include(
     ":rideshare",
     ":vehicle",
     ":family",
+    ":card",
     ":app"
 )
