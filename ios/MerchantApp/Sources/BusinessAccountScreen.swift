@@ -33,6 +33,7 @@ struct BusinessAccountTab: View {
         VStack(alignment: .leading, spacing: 12) {
             if let merchant {
                 FeeWaiverCard(merchant: merchant, onUpdated: { self.merchant = $0 })
+                WebhookUrlCard(merchant: merchant, onUpdated: { self.merchant = $0 })
             }
             Text("Business account").font(.title3).bold()
             Text("Keep your business money separate from your personal wallet. Your real card/QR collections still settle to your personal wallet as before — move money into your business account whenever you're ready to set it aside.")
@@ -241,6 +242,60 @@ private struct FeeWaiverCard: View {
             onUpdated(try await MerchantNetworkClient.shared.applyForFeeWaiver().merchant)
         } catch {
             self.error = "Couldn't apply for a fee waiver."
+        }
+    }
+}
+
+/// Real payment-event webhook URL settings -- see
+/// rw.itunda.merchant.MerchantService.setWebhookUrl's own doc comment. merchant-mfe/
+/// Android already have this; this is the first iOS client.
+private struct WebhookUrlCard: View {
+    let merchant: MerchantDto
+    let onUpdated: (MerchantDto) -> Void
+
+    @State private var webhookUrl = ""
+    @State private var busy = false
+    @State private var error: String?
+    @State private var saved = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Webhook URL").bold()
+            TextField("https://your-server.example.com/webhooks/itunda", text: $webhookUrl)
+                .padding(12).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                .onChange(of: webhookUrl) { _ in saved = false }
+            Text("We'll notify this address every time a payment completes. If it doesn't respond, we'll keep retrying for about 3 days.")
+                .font(.footnote).foregroundColor(.secondary)
+            if let error {
+                Text(error).font(.footnote).foregroundColor(.red)
+            }
+            if saved {
+                Text("Saved.").font(.footnote).foregroundColor(IDS.Colors.brand)
+            }
+            Button(action: { Task { await save() } }) {
+                Text(busy ? "Saving…" : "Save")
+                    .bold().foregroundColor(.white)
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .background(IDS.Colors.brand).cornerRadius(8)
+            }
+            .disabled(busy)
+        }
+        .padding(16)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
+        .onAppear { webhookUrl = merchant.webhookUrl ?? "" }
+    }
+
+    private func save() async {
+        busy = true
+        error = nil
+        saved = false
+        defer { busy = false }
+        do {
+            onUpdated(try await MerchantNetworkClient.shared.setWebhookUrl(webhookUrl).merchant)
+            saved = true
+        } catch {
+            self.error = "Could not save."
         }
     }
 }

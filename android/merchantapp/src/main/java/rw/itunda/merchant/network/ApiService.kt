@@ -80,6 +80,8 @@ data class MerchantCouponDto(
 data class MerchantCouponResponse(val success: Boolean, val coupon: MerchantCouponDto)
 data class MerchantCouponsResponse(val success: Boolean, val coupons: List<MerchantCouponDto>)
 
+data class SetWebhookUrlRequest(val webhookUrl: String)
+
 data class RegisterMerchantRequest(val businessName: String)
 
 data class MerchantProductDto(
@@ -372,6 +374,12 @@ interface ApiService {
     // not here. merchant-mfe already has this; this is the first Android client.
     @POST("api/v1/merchant/coupons")
     suspend fun createCoupon(@Body request: CreateCouponRequest): MerchantCouponResponse
+
+    // Real payment-event webhook URL settings -- see
+    // rw.itunda.merchant.MerchantService.setWebhookUrl's own doc comment. merchant-mfe
+    // already has this; this is the first Android client.
+    @POST("api/v1/merchant/webhook-url")
+    suspend fun setWebhookUrl(@Body request: SetWebhookUrlRequest): MerchantResponse
 
     @GET("api/v1/merchant/coupons")
     suspend fun getMyCoupons(): MerchantCouponsResponse

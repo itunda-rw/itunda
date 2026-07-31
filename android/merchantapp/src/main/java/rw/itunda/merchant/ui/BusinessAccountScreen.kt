@@ -92,6 +92,7 @@ fun BusinessAccountTab() {
     if (current == null) {
         Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             merchant?.let { m -> FeeWaiverCard(merchant = m, onUpdated = { merchant = it }) }
+            merchant?.let { m -> WebhookUrlCard(merchant = m, onUpdated = { merchant = it }) }
             Text("Business account", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             Text(
                 "Keep your business money separate from your personal wallet. Your real card/QR " +
@@ -122,6 +123,7 @@ fun BusinessAccountTab() {
 
     LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         merchant?.let { m -> item { FeeWaiverCard(merchant = m, onUpdated = { merchant = it }) } }
+        merchant?.let { m -> item { WebhookUrlCard(merchant = m, onUpdated = { merchant = it }) } }
         item {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -277,6 +279,56 @@ private fun FeeWaiverCard(merchant: MerchantDto, onUpdated: (MerchantDto) -> Uni
                 }
             }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        }
+    }
+}
+
+/**
+ * Real payment-event webhook URL settings -- see
+ * rw.itunda.merchant.MerchantService.setWebhookUrl's own doc comment. merchant-mfe
+ * already has this; this is the first Android client.
+ */
+@Composable
+private fun WebhookUrlCard(merchant: MerchantDto, onUpdated: (MerchantDto) -> Unit) {
+    var webhookUrl by remember(merchant.id) { mutableStateOf(merchant.webhookUrl ?: "") }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var saved by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Webhook URL", fontWeight = FontWeight.Bold)
+            OutlinedTextField(
+                value = webhookUrl,
+                onValueChange = { webhookUrl = it; saved = false },
+                placeholder = { Text("https://your-server.example.com/webhooks/itunda") },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                "We'll notify this address every time a payment completes. If it doesn't respond, we'll keep retrying for about 3 days.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            if (saved) Text("Saved.", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+            Button(
+                onClick = {
+                    busy = true
+                    error = null
+                    saved = false
+                    scope.launch {
+                        try {
+                            onUpdated(NetworkClient.apiService.setWebhookUrl(rw.itunda.merchant.network.SetWebhookUrlRequest(webhookUrl)).merchant)
+                            saved = true
+                        } catch (e: Exception) {
+                            error = "Could not save."
+                        } finally {
+                            busy = false
+                        }
+                    }
+                },
+                enabled = !busy,
+            ) { Text(if (busy) "Saving…" else "Save") }
         }
     }
 }

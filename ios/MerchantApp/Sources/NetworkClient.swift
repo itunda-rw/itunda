@@ -55,6 +55,11 @@ struct MerchantCouponDto: Decodable, Identifiable {
 }
 struct MerchantCouponResponse: Decodable { let success: Bool; let coupon: MerchantCouponDto }
 struct MerchantCouponsResponse: Decodable { let success: Bool; let coupons: [MerchantCouponDto] }
+
+struct SetWebhookUrlRequest: Encodable {
+    let webhookUrl: String
+    init(webhookUrl: String) { self.webhookUrl = webhookUrl }
+}
 struct RegisterMerchantRequest: Encodable { let businessName: String }
 
 struct MerchantProductDto: Decodable, Identifiable {
@@ -383,6 +388,13 @@ final class MerchantNetworkClient {
     func getMyCoupons() async throws -> MerchantCouponsResponse { try await get("api/v1/merchant/coupons") }
     func deactivateCoupon(_ couponId: String) async throws -> MerchantCouponResponse {
         try await post("api/v1/merchant/coupons/\(couponId)/deactivate", body: EmptyBody())
+    }
+
+    // Real payment-event webhook URL settings -- see
+    // rw.itunda.merchant.MerchantService.setWebhookUrl's own doc comment. merchant-mfe/
+    // Android already have this; this is the first iOS client.
+    func setWebhookUrl(_ webhookUrl: String) async throws -> MerchantResponse {
+        try await post("api/v1/merchant/webhook-url", body: SetWebhookUrlRequest(webhookUrl: webhookUrl))
     }
 
     func getRestaurantOrders() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/restaurant-orders") }
