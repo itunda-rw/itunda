@@ -550,6 +550,15 @@ private struct NewListingForm: View {
     @State private var myLocation: CLLocationCoordinate2D?
     @StateObject private var locationFetcher = HoodLocationFetcher()
 
+    // Real seller-uploaded photo (2026-08-01) -- see NetworkClient.swift's own doc
+    // comment on ListingDto.photoUrl. Android already has this
+    // (MarketplaceScreen.kt's pickPhoto flow); iOS never had a photo field at all
+    // until now. Reuses the same ImagePickerView -> uploadPhoto chain the ownership-
+    // verification form (PropertyListingCard) already established.
+    @State private var showPhotoPicker = false
+    @State private var photoUrl: String?
+    @State private var uploadingPhoto = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("List an item").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
@@ -563,6 +572,22 @@ private struct NewListingForm: View {
                 .padding(12).background(IDS.Colors.chipBackground).cornerRadius(12)
             Text("Use a public landmark, not a home address.")
                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            Button(action: { showPhotoPicker = true }) {
+                Text(uploadingPhoto ? "Uploading…" : photoUrl != nil ? "✓ Photo uploaded" : "Add a photo (optional)")
+                    .font(.caption)
+                    .foregroundColor(photoUrl != nil ? IDS.Colors.brand : IDS.Colors.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14).padding(.vertical, 12)
+                    .background(IDS.Colors.chipBackground)
+                    .cornerRadius(12)
+            }
+            .disabled(uploadingPhoto)
+            .sheet(isPresented: $showPhotoPicker) {
+                ImagePickerView { image in
+                    showPhotoPicker = false
+                    if let image { Task { await uploadPhoto(image: image) } }
+                }
+            }
             Button(action: {
                 if shareLocation { shareLocation = false } else { locationFetcher.requestLocation() }
             }) {
@@ -591,7 +616,7 @@ private struct NewListingForm: View {
                         .background(IDS.Colors.brand)
                         .cornerRadius(14)
                 }
-                .disabled(submitting)
+                .disabled(submitting || uploadingPhoto)
             }
         }
         .padding(20)
@@ -605,6 +630,21 @@ private struct NewListingForm: View {
         }
         .onChange(of: locationFetcher.errorMessage) { newValue in
             if let newValue { error = newValue }
+        }
+    }
+
+    private func uploadPhoto(image: UIImage) async {
+        guard let jpegData = image.jpegData(compressionQuality: 0.8) else {
+            error = "Couldn't read that photo."
+            return
+        }
+        uploadingPhoto = true
+        defer { uploadingPhoto = false }
+        do {
+            let uploaded = try await NetworkClient.shared.uploadPhoto(data: jpegData, filename: "listing.jpg", mimeType: "image/jpeg")
+            photoUrl = uploaded.url
+        } catch {
+            self.error = "Could not upload this photo."
         }
     }
 
@@ -622,6 +662,7 @@ private struct NewListingForm: View {
                 title: title, description: description, price: priceValue, category: category,
                 latitude: loc?.latitude, longitude: loc?.longitude,
                 meetingPlace: meetingPlace.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : meetingPlace.trimmingCharacters(in: .whitespacesAndNewlines),
+                photoUrl: photoUrl,
             )
             onCreated()
         } catch let NetworkError.httpError(statusCode) {
@@ -871,6 +912,21 @@ private struct ListingCard: View {
                     .padding(.trailing, 6)
                 }
                 Text("\(Int(listing.price)) RWF").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+            }
+            // Real seller-uploaded photo (2026-08-01) -- see NetworkClient.swift's own
+            // doc comment on ListingDto.photoUrl. Android already renders this; iOS
+            // never had a photo field at all until now.
+            if let photoUrlString = listing.photoUrl, let photoUrl = URL(string: photoUrlString) {
+                AsyncImage(url: photoUrl) { phase in
+                    if let image = phase.image {
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    } else {
+                        IDS.Colors.chipBackground
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: 220)
+                .clipped()
+                .cornerRadius(12)
             }
             // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc
             // comment. Only shown for someone else's listing.

@@ -29,6 +29,11 @@ export interface Listing {
   // mark-sold time, see backend Listing.kt's own doc comment. Only set once a real
   // review becomes possible for this transaction.
   buyerId?: string | null;
+  // Real seller-uploaded photo (rw.itunda.marketplace.web.UploadController), real on
+  // backend + Android since 2026-07-24/25 -- bank-mfe never had this field at all
+  // despite createListing already accepting it server-side. Set once at creation time
+  // only (no separate edit-photo endpoint).
+  photoUrl?: string | null;
 }
 
 // Real post-transaction review with asymmetric public/private visibility (2026-07-24)
@@ -84,10 +89,11 @@ export const createListing = (
   latitude?: number,
   longitude?: number,
   meetingPlace?: string,
+  photoUrl?: string,
 ) =>
   apiFetch<{ success: boolean; listing: Listing }>('/api/v1/marketplace/listings', {
     method: 'POST',
-    body: JSON.stringify({ title, description, price, category, latitude, longitude, meetingPlace }),
+    body: JSON.stringify({ title, description, price, category, latitude, longitude, meetingPlace, photoUrl }),
   }).then((r) => r.listing);
 
 export const markListingSold = (listingId: string, buyerPhoneNumber?: string) =>

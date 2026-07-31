@@ -6798,6 +6798,27 @@ function NewListingCard({ onCreated }: { onCreated: () => void }) {
   const [myLocation, setMyLocation] = useState<[number, number] | null>(null); // [lat, lng]
   const [locating, setLocating] = useState(false);
 
+  // Real seller-uploaded photo (2026-08-01) -- see lib/marketplace.ts's own doc
+  // comment on Listing.photoUrl. Android already has this (MarketplaceScreen.kt's
+  // pickPhoto flow); bank-mfe never had a photo field at all until now.
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const handlePhotoSelected = async (file: File | undefined) => {
+    if (!file) return;
+    setPhotoUrl(null);
+    setUploadingPhoto(true);
+    setError(null);
+    try {
+      const { url } = await uploadFile(file);
+      setPhotoUrl(url);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not upload this photo.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   const handleToggleShareLocation = () => {
     if (shareLocation) {
       setShareLocation(false);
@@ -6829,7 +6850,7 @@ function NewListingCard({ onCreated }: { onCreated: () => void }) {
     setSubmitting(true);
     try {
       const [lat, lng] = shareLocation && myLocation ? myLocation : [undefined, undefined];
-      await createListing(title, description, Number(price), category, lat, lng, meetingPlace.trim() || undefined);
+      await createListing(title, description, Number(price), category, lat, lng, meetingPlace.trim() || undefined, photoUrl ?? undefined);
       setTitle('');
       setDescription('');
       setPrice('');
@@ -6837,6 +6858,7 @@ function NewListingCard({ onCreated }: { onCreated: () => void }) {
       setMeetingPlace('');
       setShareLocation(false);
       setMyLocation(null);
+      setPhotoUrl(null);
       setOpen(false);
       onCreated();
     } catch (err) {
@@ -6882,6 +6904,15 @@ function NewListingCard({ onCreated }: { onCreated: () => void }) {
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
       />
       <small id="meeting-place-help" style={{ color: 'var(--toss-grey-600)' }}>Use a public landmark, not a home address.</small>
+      <input
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        disabled={uploadingPhoto}
+        onChange={(e) => handlePhotoSelected(e.target.files?.[0])}
+        style={{ fontSize: '13px' }}
+      />
+      {uploadingPhoto && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Uploading…</p>}
+      {photoUrl && !uploadingPhoto && <p style={{ fontSize: '12px', color: 'var(--toss-green)' }}>✓ Photo uploaded</p>}
       <button
         type="button"
         className="toss-btn toss-btn-secondary"
@@ -6893,7 +6924,7 @@ function NewListingCard({ onCreated }: { onCreated: () => void }) {
       </button>
       <div style={{ display: 'flex', gap: '10px' }}>
         <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
-        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
+        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting || uploadingPhoto}>
           {submitting ? 'Listing…' : 'List it'}
         </button>
       </div>
@@ -7072,6 +7103,16 @@ function ListingCard({ listing, isMine, onChanged, onMessageSeller, favorited, f
           <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--toss-grey-900)' }}>{listing.price.toLocaleString()} RWF</span>
         </div>
       </div>
+      {/* Real seller-uploaded photo (2026-08-01) -- see lib/marketplace.ts's own doc
+          comment on Listing.photoUrl. Android already renders this; bank-mfe never
+          had a photo field at all until now. */}
+      {listing.photoUrl && (
+        <img
+          src={listing.photoUrl}
+          alt={listing.title}
+          style={{ width: '100%', maxHeight: '220px', objectFit: 'cover', borderRadius: '10px' }}
+        />
+      )}
       {/* Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc
           comment. Only shown for someone else's listing. */}
       {!isMine && sellerTrustScore != null && <TrustBadge score={sellerTrustScore} />}

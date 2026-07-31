@@ -1683,6 +1683,10 @@ public struct ListingDto: Decodable, Identifiable {
     // boostedUntil only -- never fabricated for an unpaid or expired listing.
     // Android already has this; this is the first iOS client.
     public let boostedUntil: String?
+    // Real seller-uploaded photo (rw.itunda.marketplace.web.UploadController), real on
+    // backend + Android since 2026-07-24/25 -- iOS never had this field at all until
+    // now. Set once at creation time only (no separate edit-photo endpoint).
+    public let photoUrl: String?
 }
 
 public struct CreateListingRequest: Encodable {
@@ -1693,6 +1697,7 @@ public struct CreateListingRequest: Encodable {
     public let latitude: Double?
     public let longitude: Double?
     public let meetingPlace: String?
+    public let photoUrl: String?
 }
 
 public struct ListingResponse: Decodable { public let success: Bool; public let listing: ListingDto }
@@ -2822,8 +2827,8 @@ extension NetworkClient {
         }
     }
 
-    public func createListing(title: String, description: String, price: Double, category: String, latitude: Double? = nil, longitude: Double? = nil, meetingPlace: String? = nil) async throws -> ListingResponse {
-        try await authenticatedPost("api/v1/marketplace/listings", body: CreateListingRequest(title: title, description: description, price: price, category: category, latitude: latitude, longitude: longitude, meetingPlace: meetingPlace))
+    public func createListing(title: String, description: String, price: Double, category: String, latitude: Double? = nil, longitude: Double? = nil, meetingPlace: String? = nil, photoUrl: String? = nil) async throws -> ListingResponse {
+        try await authenticatedPost("api/v1/marketplace/listings", body: CreateListingRequest(title: title, description: description, price: price, category: category, latitude: latitude, longitude: longitude, meetingPlace: meetingPlace, photoUrl: photoUrl))
     }
 
     public func browseListings(category: String? = nil) async throws -> ListingsResponse {
