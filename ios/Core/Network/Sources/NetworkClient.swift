@@ -959,6 +959,36 @@ extension NetworkClient {
         return try decoder.decode(Response.self, from: data)
     }
 
+    // Real photo upload (item 152-adjacent, added 2026-08-01) -- see UploadController.kt's
+    // own doc comment: POST /api/v1/uploads (multipart, 5MB cap, JPEG/PNG/WebP only)
+    // stores real files on itunda-dc-a and hands back a URL any "photoUrl"/"documentUrl"
+    // field can use. Android's uploadPhoto (ApiService.kt) already proved this real
+    // pipeline out for the property-ownership-verification and marketplace-listing-photo
+    // flows; this is the first iOS client, closing an honest "documentUrl text field, not
+    // a real photo picker" scope-down this session's own ownership-verification port
+    // (2026-07-31) named directly.
+    public func uploadPhoto(data: Data, filename: String, mimeType: String) async throws -> UploadResponse {
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var request = URLRequest(url: baseURL.appendingPathComponent("api/v1/uploads"))
+        request.httpMethod = "POST"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        if let token = KeychainTokenStore.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(data)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
+
+        let (responseData, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(httpResponse.statusCode) else { throw NetworkError.httpError(statusCode: httpResponse.statusCode) }
+        return try decoder.decode(UploadResponse.self, from: responseData)
+    }
+
     private func postMiniWallet<Body: Encodable, Response: Decodable>(_ path: String, body: Body) async throws -> Response {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "POST"
@@ -2549,6 +2579,7 @@ public struct FavoriteRestaurantDto: Decodable, Identifiable {
 }
 public struct FavoriteRestaurantsResponse: Decodable { public let success: Bool; public let favorites: [FavoriteRestaurantDto] }
 public struct SuccessResponse: Decodable { public let success: Bool }
+public struct UploadResponse: Decodable { public let success: Bool; public let url: String }
 
 // Real Baemin Club (배민클럽)-style free-delivery membership (item 209) -- backend real
 // since 2026-07-26, bank-mfe/Android clients since 2026-07-28/2026-07-31; this is the

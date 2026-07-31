@@ -1,7 +1,41 @@
 import SwiftUI
+import UIKit
 import CoreLocation
 import CoreDesignSystem
 import CoreNetwork
+
+/// Real photo/document picker (2026-08-01) -- UIImagePickerController wrapped for
+/// SwiftUI rather than the iOS-16-only PhotosPicker, since this project's deployment
+/// target isn't pinned to 16+ anywhere and this is the app's first photo-picker use.
+/// Used by PropertyListingCard's real ownership-verification upload; a plain, reusable
+/// callback-based wrapper if another flow needs a real picker later.
+struct ImagePickerView: UIViewControllerRepresentable {
+    let onPicked: (UIImage?) -> Void
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.delegate = context.coordinator
+        picker.sourceType = .photoLibrary
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(onPicked: onPicked) }
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let onPicked: (UIImage?) -> Void
+        init(onPicked: @escaping (UIImage?) -> Void) { self.onPicked = onPicked }
+
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            onPicked(info[.originalImage] as? UIImage)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            onPicked(nil)
+        }
+    }
+}
 
 /// Real device-location fetch, shared by NewListingForm's "share my location" toggle and
 /// ListingCard's "directions to this seller" -- same runtime-permission-gated
@@ -3334,13 +3368,15 @@ private struct PropertyListingCard: View {
     // Real read-back for the review above (item 192/198/199).
     @State private var hoodReviews: [HoodReviewDto]?
 
-    // Real ownership verification (2026-07-25) -- see NetworkClient.swift's own doc
-    // comment on submitPropertyOwnershipVerification for why this is a documentUrl
-    // field, not a real photo/document picker. submittedStatus is local so "pending"
-    // shows immediately without a full listing refetch, mirroring Android's own
-    // submittedOwnershipStatus in PropertyScreen.kt.
+    // Real ownership verification (2026-07-25, real photo upload added 2026-08-01) --
+    // see NetworkClient.swift's own doc comment on uploadPhoto/
+    // submitPropertyOwnershipVerification. submittedStatus is local so "pending" shows
+    // immediately without a full listing refetch, mirroring Android's own
+    // submittedOwnershipStatus in PropertyScreen.kt (which this now matches field-for-
+    // field: a real UIImagePickerController -> uploadPhoto -> submit chain, not a
+    // paste-a-URL text field).
     @State private var showOwnershipForm = false
-    @State private var ownershipDocUrl = ""
+    @State private var showOwnershipPicker = false
     @State private var submittingOwnership = false
     @State private var submittedOwnershipStatus: String?
 
@@ -3457,13 +3493,16 @@ private struct PropertyListingCard: View {
             // nothing to do; VERIFIED -> already covered by the badge above.
             if isMine, ownershipStatus == "NONE" {
                 if showOwnershipForm {
-                    TextField("Link to a deed/title document", text: $ownershipDocUrl)
-                        .padding(10)
-                        .background(IDS.Colors.chipBackground)
-                        .cornerRadius(10)
                     HStack(spacing: 10) {
                         actionButton("Cancel", filled: false) { showOwnershipForm = false }
-                        actionButton(submittingOwnership ? "Submitting…" : "Submit", filled: true) { await submitOwnership() }
+                        actionButton(submittingOwnership ? "Uploading…" : "Choose a deed/title photo", filled: true) { showOwnershipPicker = true }
+                    }
+                    .disabled(submittingOwnership)
+                    .sheet(isPresented: $showOwnershipPicker) {
+                        ImagePickerView { image in
+                            showOwnershipPicker = false
+                            if let image { Task { await submitOwnership(image: image) } }
+                        }
                     }
                 } else {
                     actionButton("Verify ownership", filled: false) { showOwnershipForm = true }
@@ -3541,19 +3580,24 @@ private struct PropertyListingCard: View {
         .disabled(busy)
     }
 
-    // Real ownership verification (2026-07-25) -- see NetworkClient.swift's own doc
-    // comment on submitPropertyOwnershipVerification.
-    private func submitOwnership() async {
-        guard !ownershipDocUrl.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+    // Real ownership verification (2026-07-25, real photo upload added 2026-08-01) --
+    // see NetworkClient.swift's own doc comment on uploadPhoto/
+    // submitPropertyOwnershipVerification. Mirrors PropertyScreen.kt's real
+    // upload-then-submit chain exactly.
+    private func submitOwnership(image: UIImage) async {
+        guard let jpegData = image.jpegData(compressionQuality: 0.8) else {
+            self.error = "Couldn't read that photo."
+            return
+        }
         submittingOwnership = true
         defer { submittingOwnership = false }
         do {
-            _ = try await NetworkClient.shared.submitPropertyOwnershipVerification(listing.id, documentUrl: ownershipDocUrl.trimmingCharacters(in: .whitespaces))
+            let uploaded = try await NetworkClient.shared.uploadPhoto(data: jpegData, filename: "ownership-doc.jpg", mimeType: "image/jpeg")
+            _ = try await NetworkClient.shared.submitPropertyOwnershipVerification(listing.id, documentUrl: uploaded.url)
             submittedOwnershipStatus = "PENDING"
             showOwnershipForm = false
-            ownershipDocUrl = ""
         } catch {
-            self.error = "Could not submit this document."
+            self.error = "Could not upload or submit this document."
         }
     }
 
