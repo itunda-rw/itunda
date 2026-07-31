@@ -235,6 +235,9 @@ struct EntireMenuScreen: View {
     // Real Toss 유스 (Toss Youth)-style guardian-child link screen (2026-07-31) --
     // bank-mfe and Android shipped first; same pattern.
     @State private var showFamilyLink = false
+    // Real detected + merchant-billing subscriptions screen (2026-07-31) -- bank-mfe
+    // and Android shipped first; same pattern.
+    @State private var showSubscriptions = false
     // Real Kakao Pay round-up auto-saving screen (2026-07-28, item 113) -- last
     // remaining client platform for this feature (bank-mfe item 112, Android already
     // had it).
@@ -332,6 +335,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Vehicle inspection", subtitle: "Pay a mechanic to inspect a used car before you buy", symbol: "wrench.and.screwdriver.fill", tint: .accentTeal, action: { showVehicleInspection = true }),
                         FlatRow(title: "My vehicles", subtitle: "Track your car's estimated resale value", symbol: "car.fill", tint: .accentTeal, action: { showVehicleValuation = true }),
                         FlatRow(title: "Family", subtitle: "Link a guardian or child, view read-only spending", symbol: "person.2.fill", tint: .accentPurple, action: { showFamilyLink = true }),
+                        FlatRow(title: "Subscriptions", subtitle: "Detected recurring payments + merchant billing plans", symbol: "calendar", tint: .accentBlue, action: { showSubscriptions = true }),
                         FlatRow(title: "Round-up savings", subtitle: "Auto-save spare change from every transfer", symbol: "arrow.up.circle.fill", tint: .accentOrange, action: { showRoundUp = true }),
                         FlatRow(title: "Foreign currency", subtitle: "Hold and convert USD, EUR, GBP", symbol: "arrow.left.arrow.right.circle.fill", tint: .accentBlue, action: { showForeignCurrency = true }),
                         FlatRow(title: "12-month deposit", subtitle: "Interest paid upfront, principal locked 12 months", symbol: "lock.fill", tint: .accentTeal, action: { showUpfrontDeposit = true }),
@@ -472,6 +476,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showFamilyLink) {
             FamilyLinkScreenView(onBack: { showFamilyLink = false })
+        }
+        .sheet(isPresented: $showSubscriptions) {
+            SubscriptionsScreenView(onBack: { showSubscriptions = false })
         }
         .sheet(isPresented: $showRides) {
             RideScreenView(onBack: { showRides = false })

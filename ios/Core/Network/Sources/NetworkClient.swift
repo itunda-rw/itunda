@@ -2277,6 +2277,50 @@ public struct ProductInquiryDto: Decodable, Identifiable {
 public struct ProductInquiryResponse: Decodable { public let success: Bool; public let inquiry: ProductInquiryDto }
 public struct ProductInquiriesResponse: Decodable { public let success: Bool; public let inquiries: [ProductInquiryDto] }
 
+// Real Kakao Pay 정기결제/Toss 빌링키-style recurring merchant billing -- mirrors
+// bank-mfe's lib/shopping.ts exactly.
+public struct MerchantBillingPlanDto: Decodable, Identifiable {
+    public let id: String
+    public let merchantId: String
+    public let name: String
+    public let description: String?
+    public let amount: Double
+    public let intervalDays: Int
+    public let active: Bool
+    public let createdAt: String
+}
+public struct MerchantBillingSubscriptionDto: Decodable, Identifiable {
+    public let id: String
+    public let planId: String
+    public let merchantId: String
+    public let customerId: String
+    public let status: String
+    public let nextChargeAt: String
+    public let lastChargedAt: String?
+    public let chargeCount: Int
+    public let lastFailureReason: String?
+    public let createdAt: String
+    public let cancelledAt: String?
+}
+public struct MerchantBillingPlansResponse: Decodable { public let success: Bool; public let plans: [MerchantBillingPlanDto] }
+public struct MerchantBillingSubscriptionResponse: Decodable { public let success: Bool; public let subscription: MerchantBillingSubscriptionDto }
+public struct MerchantBillingSubscriptionsResponse: Decodable { public let success: Bool; public let subscriptions: [MerchantBillingSubscriptionDto] }
+
+// Real recurring-payment ("subscription") detection -- mirrors bank-mfe's lib/wallet.ts
+// DetectedSubscription exactly.
+public struct DetectedSubscriptionDto: Decodable {
+    public let displayName: String
+    public let amount: Double
+    public let cadence: String
+    public let occurrenceCount: Int
+    public let lastPaidAt: String
+    public let nextExpectedAt: String
+    public let monthlyEquivalent: Double
+    public let priceIncreased: Bool
+    public let previousAmount: Double?
+}
+public struct DetectedSubscriptionsResponse: Decodable { public let success: Bool; public let subscriptions: [DetectedSubscriptionDto]; public let estimatedMonthlyTotal: Double }
+
 /// Mirrors services/backend/eats's real DTOs exactly (2026-07-18) -- restaurant/menu
 /// browsing reuses ShoppingMerchantDto/MerchantProductDto above (a restaurant IS a
 /// Merchant, a menu item IS a MerchantProduct -- see rw.itunda.eats.EatsOrderService's
@@ -3235,6 +3279,28 @@ extension NetworkClient {
     public func getProductInquiries(_ productId: String) async throws -> ProductInquiriesResponse {
         try await get("api/v1/orders/products/\(productId)/inquiries")
     }
+
+    // Real Kakao Pay 정기결제/Toss Payments 빌링키-style recurring merchant billing --
+    // see rw.itunda.merchant.MerchantBillingService's own doc comment. Customer-facing
+    // half only, matching bank-mfe's own scope (plan creation is merchant-owner-only,
+    // not built here). bank-mfe/Android already have this; this is the first iOS client.
+    public func getMerchantBillingPlans(_ merchantId: String) async throws -> MerchantBillingPlansResponse {
+        try await get("api/v1/merchant/\(merchantId)/billing-plans")
+    }
+    public func subscribeToBillingPlan(_ planId: String) async throws -> MerchantBillingSubscriptionResponse {
+        try await authenticatedPost("api/v1/merchant/billing-plans/\(planId)/subscribe", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+    }
+    public func getMyBillingSubscriptions() async throws -> MerchantBillingSubscriptionsResponse {
+        try await get("api/v1/merchant/billing-subscriptions/my")
+    }
+    public func cancelBillingSubscription(_ subscriptionId: String) async throws -> MerchantBillingSubscriptionResponse {
+        try await authenticatedPost("api/v1/merchant/billing-subscriptions/\(subscriptionId)/cancel", body: EmptyBody())
+    }
+
+    // Real recurring-payment ("subscription") detection -- see
+    // rw.itunda.wallet.SubscriptionDetectionService's own doc comment. bank-mfe/Android
+    // already have this; this is the first iOS client.
+    public func getDetectedSubscriptions() async throws -> DetectedSubscriptionsResponse { try await get("api/v1/wallet/subscriptions") }
 
     // Real Shop product wishlist (2026-07-24) -- backend shipped 2026-07-20
     // (ProductFavoriteService), bank-mfe wired the same day; this closes the iOS-side

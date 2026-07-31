@@ -1159,6 +1159,30 @@ data class ProductInquiryDto(
 data class ProductInquiryResponse(val success: Boolean, val inquiry: ProductInquiryDto)
 data class ProductInquiriesResponse(val success: Boolean, val inquiries: List<ProductInquiryDto>)
 
+// Real Kakao Pay 정기결제/Toss 빌링키-style recurring merchant billing -- mirrors
+// bank-mfe's lib/shopping.ts exactly.
+data class MerchantBillingPlanDto(
+    val id: String, val merchantId: String, val name: String, val description: String?,
+    val amount: java.math.BigDecimal, val intervalDays: Int, val active: Boolean, val createdAt: String,
+)
+data class MerchantBillingSubscriptionDto(
+    val id: String, val planId: String, val merchantId: String, val customerId: String,
+    val status: String, val nextChargeAt: String, val lastChargedAt: String?,
+    val chargeCount: Int, val lastFailureReason: String?, val createdAt: String, val cancelledAt: String?,
+)
+data class MerchantBillingPlansResponse(val success: Boolean, val plans: List<MerchantBillingPlanDto>)
+data class MerchantBillingSubscriptionResponse(val success: Boolean, val subscription: MerchantBillingSubscriptionDto)
+data class MerchantBillingSubscriptionsResponse(val success: Boolean, val subscriptions: List<MerchantBillingSubscriptionDto>)
+
+// Real recurring-payment ("subscription") detection -- mirrors bank-mfe's lib/wallet.ts
+// DetectedSubscription exactly.
+data class DetectedSubscriptionDto(
+    val displayName: String, val amount: java.math.BigDecimal, val cadence: String, val occurrenceCount: Int,
+    val lastPaidAt: String, val nextExpectedAt: String, val monthlyEquivalent: java.math.BigDecimal,
+    val priceIncreased: Boolean, val previousAmount: java.math.BigDecimal?,
+)
+data class DetectedSubscriptionsResponse(val success: Boolean, val subscriptions: List<DetectedSubscriptionDto>, val estimatedMonthlyTotal: java.math.BigDecimal)
+
 // Mirrors services/backend/eats's real DTOs exactly (2026-07-18) -- backs the Eats mode
 // folded into the Shop tab. Restaurant/menu browsing reuses ShoppingMerchantDto/
 // MerchantProductDto above (a restaurant IS a Merchant, a menu item IS a
@@ -2473,6 +2497,30 @@ interface ApiService {
 
     @GET("api/v1/orders/products/{id}/inquiries")
     suspend fun getProductInquiries(@Path("id") productId: String): ProductInquiriesResponse
+
+    // Real Kakao Pay 정기결제/Toss Payments 빌링키-style recurring merchant billing --
+    // see rw.itunda.merchant.MerchantBillingService's own doc comment. Customer-facing
+    // half only (browse a merchant's own plans, subscribe, view/cancel), matching
+    // bank-mfe's own scope -- plan creation is merchant-owner-only, a merchant-mfe/
+    // merchant-app concern, not built here. bank-mfe already has this; this is the
+    // first Android client.
+    @GET("api/v1/merchant/{merchantId}/billing-plans")
+    suspend fun getMerchantBillingPlans(@Path("merchantId") merchantId: String): MerchantBillingPlansResponse
+
+    @POST("api/v1/merchant/billing-plans/{planId}/subscribe")
+    suspend fun subscribeToBillingPlan(@Path("planId") planId: String, @Header("Idempotency-Key") idempotencyKey: String): MerchantBillingSubscriptionResponse
+
+    @GET("api/v1/merchant/billing-subscriptions/my")
+    suspend fun getMyBillingSubscriptions(): MerchantBillingSubscriptionsResponse
+
+    @POST("api/v1/merchant/billing-subscriptions/{subscriptionId}/cancel")
+    suspend fun cancelBillingSubscription(@Path("subscriptionId") subscriptionId: String): MerchantBillingSubscriptionResponse
+
+    // Real recurring-payment ("subscription") detection over a user's own real
+    // transaction history -- see rw.itunda.wallet.SubscriptionDetectionService's own
+    // doc comment. bank-mfe already has this; this is the first Android client.
+    @GET("api/v1/wallet/subscriptions")
+    suspend fun getDetectedSubscriptions(): DetectedSubscriptionsResponse
 
     // Real Shop product wishlist (2026-07-24) -- backend shipped 2026-07-20
     // (ProductFavoriteService), bank-mfe wired the same day; this closes the

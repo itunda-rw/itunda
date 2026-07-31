@@ -269,6 +269,9 @@ fun ItundaAppScreen(
         // Real Toss 유스 (Toss Youth)-style guardian-child link screen (2026-07-31) --
         // bank-mfe shipped first; same pattern.
         var showFamilyLink by rememberSaveable { mutableStateOf(false) }
+        // Real detected + merchant-billing subscriptions screen (2026-07-31) --
+        // bank-mfe shipped first; same pattern.
+        var showSubscriptions by rememberSaveable { mutableStateOf(false) }
         // Real 토스뱅크 외화통장 (foreign-currency account) screen (2026-07-25) -- same
         // "backend existed with zero mobile UI" gap-close pattern as the two above.
         var showForeignCurrency by rememberSaveable { mutableStateOf(false) }
@@ -758,6 +761,10 @@ fun ItundaAppScreen(
             BackHandler { showFamilyLink = false }
             FamilyLinkScreen(onBack = { showFamilyLink = false })
         }
+        if (showSubscriptions) {
+            BackHandler { showSubscriptions = false }
+            SubscriptionsScreen(onBack = { showSubscriptions = false })
+        }
         if (showRides) {
             BackHandler { showRides = false }
             RideScreen(onBack = { showRides = false })
@@ -884,6 +891,7 @@ fun ItundaAppScreen(
                             onOpenVehicleInspection = { showVehicleInspection = true },
                             onOpenVehicleValuation = { showVehicleValuation = true },
                             onOpenFamilyLink = { showFamilyLink = true },
+                            onOpenSubscriptions = { showSubscriptions = true },
                             onOpenForeignCurrency = { showForeignCurrency = true },
                             onOpenRequestMoney = { showRequestMoney = true },
                             onOpenAutoTopUp = { showAutoTopUp = true },
@@ -1412,6 +1420,7 @@ private fun MenuScreen(
     onOpenVehicleInspection: () -> Unit = {},
     onOpenVehicleValuation: () -> Unit = {},
     onOpenFamilyLink: () -> Unit = {},
+    onOpenSubscriptions: () -> Unit = {},
     onOpenForeignCurrency: () -> Unit = {},
     onOpenRequestMoney: () -> Unit = {},
     onOpenAutoTopUp: () -> Unit = {},
@@ -1552,6 +1561,7 @@ private fun MenuScreen(
                 FlatRow("Vehicle inspection", subtitle = "Pay a mechanic to inspect a used car before you buy", icon = Icons.Outlined.Build, iconColor = AccentTeal, onClick = onOpenVehicleInspection),
                 FlatRow("My vehicles", subtitle = "Track your car's estimated resale value", icon = Icons.Outlined.DirectionsCar, iconColor = AccentTeal, onClick = onOpenVehicleValuation),
                 FlatRow("Family", subtitle = "Link a guardian or child, view read-only spending", icon = Icons.Outlined.Groups, iconColor = AccentPurple, onClick = onOpenFamilyLink),
+                FlatRow("Subscriptions", subtitle = "Detected recurring payments + merchant billing plans", icon = Icons.Outlined.CalendarMonth, iconColor = AccentBlue, onClick = onOpenSubscriptions),
                 FlatRow("Foreign currency", subtitle = "Hold and convert USD, EUR, GBP", icon = Icons.Outlined.CurrencyExchange, iconColor = AccentBlue, onClick = onOpenForeignCurrency),
                 FlatRow("Mobile plan", subtitle = "MTN, Airtel, broadband", icon = Icons.Outlined.Public, iconColor = AccentTeal)
             ))

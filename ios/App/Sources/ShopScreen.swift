@@ -524,6 +524,12 @@ private struct MerchantDetailView: View {
     var followBusy: Bool = false
     var onToggleFollow: () -> Void = {}
 
+    // Real Kakao Pay 정기결제/Toss 빌링키-style recurring billing plans this merchant
+    // itself has published -- see MerchantBillingService's own doc comment. bank-mfe/
+    // Android already have this; this is the first iOS client.
+    @State private var billingPlans: [MerchantBillingPlanDto] = []
+    @State private var mySubscriptions: [MerchantBillingSubscriptionDto] = []
+
     private var totalItems: Int { cart.values.reduce(0) { $0 + $1.quantity } }
     private func qty(_ productId: String) -> Int { cart["\(merchant.merchantId):\(productId)"]?.quantity ?? 0 }
     private func setQty(_ product: MerchantProductDto, _ quantity: Int) {
@@ -559,6 +565,20 @@ private struct MerchantDetailView: View {
             .padding(.horizontal, 8)
 
             ScrollView {
+                if !billingPlans.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Subscription plans").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                        ForEach(billingPlans) { plan in
+                            BillingPlanRow(
+                                plan: plan,
+                                subscription: mySubscriptions.first { $0.planId == plan.id && $0.status == "ACTIVE" },
+                                onChanged: { Task { await loadBilling() } }
+                            )
+                        }
+                    }
+                    .padding(14).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                    .padding(.bottom, 10)
+                }
                 if let products {
                     if products.isEmpty {
                         Text("No products yet.").foregroundColor(IDS.Colors.textSecondary).padding(.top, 20)
@@ -628,6 +648,13 @@ private struct MerchantDetailView: View {
             }
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+        .task { await loadBilling() }
+    }
+
+    private func loadBilling() async {
+        billingPlans = (try? await NetworkClient.shared.getMerchantBillingPlans(merchant.merchantId))?.plans ?? []
+        let subs = (try? await NetworkClient.shared.getMyBillingSubscriptions())?.subscriptions ?? []
+        mySubscriptions = subs.filter { $0.merchantId == merchant.merchantId }
     }
 
     private func qtyButton(_ symbol: String, action: @escaping () -> Void) -> some View {
@@ -637,6 +664,82 @@ private struct MerchantDetailView: View {
                 Image(systemName: symbol).font(.caption).foregroundColor(IDS.Colors.textPrimary)
             }
             .frame(width: 30, height: 30)
+        }
+    }
+}
+
+/// Real Kakao Pay 정기결제/Toss 빌링키-style subscribe/cancel -- subscribing charges the
+/// first cycle immediately (real "인증 + 첫결제"), same as
+/// MerchantBillingService.subscribe's own doc comment. One real active subscription per
+/// plan; cancelling stops future charges but doesn't refund the current cycle already
+/// paid for. bank-mfe/Android already have this; this is the first iOS client.
+private struct BillingPlanRow: View {
+    let plan: MerchantBillingPlanDto
+    let subscription: MerchantBillingSubscriptionDto?
+    let onChanged: () -> Void
+
+    @State private var busy = false
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(plan.name).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    Text("\(Int(plan.amount)) RWF every \(plan.intervalDays) days").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    if let description = plan.description, !description.isEmpty {
+                        Text(description).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                    }
+                }
+                Spacer()
+                if let subscription {
+                    Button(action: { Task { await cancel(subscription.id) } }) {
+                        Text(busy ? "…" : "Cancel").bold().font(.caption)
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                    }
+                    .disabled(busy)
+                } else {
+                    Button(action: { Task { await subscribe() } }) {
+                        Text(busy ? "…" : "Subscribe").bold().font(.caption).foregroundColor(.white)
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(IDS.Colors.brand).cornerRadius(8)
+                    }
+                    .disabled(busy)
+                }
+            }
+            if let subscription {
+                Text(subscription.status == "ACTIVE" ? "Next charge \(String(subscription.nextChargeAt.prefix(10)))" : "Cancelled")
+                    .font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+            }
+            if let error {
+                Text(error).font(.caption2).foregroundColor(.red)
+            }
+        }
+        .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+    }
+
+    private func subscribe() async {
+        busy = true
+        error = nil
+        defer { busy = false }
+        do {
+            _ = try await NetworkClient.shared.subscribeToBillingPlan(plan.id)
+            onChanged()
+        } catch {
+            self.error = "Could not subscribe to this plan."
+        }
+    }
+
+    private func cancel(_ subscriptionId: String) async {
+        busy = true
+        error = nil
+        defer { busy = false }
+        do {
+            _ = try await NetworkClient.shared.cancelBillingSubscription(subscriptionId)
+            onChanged()
+        } catch {
+            self.error = "Could not cancel this subscription."
         }
     }
 }

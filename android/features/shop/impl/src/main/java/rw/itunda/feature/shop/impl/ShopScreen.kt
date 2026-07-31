@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
@@ -93,6 +94,8 @@ import rw.itunda.core.network.OrderReturnRequestDto
 import rw.itunda.core.network.PlaceOrderRequest
 import rw.itunda.core.network.ProductRatingResponse
 import rw.itunda.core.network.AskProductInquiryRequest
+import rw.itunda.core.network.MerchantBillingPlanDto
+import rw.itunda.core.network.MerchantBillingSubscriptionDto
 import rw.itunda.core.network.ProductInquiryDto
 import rw.itunda.core.network.ProductReviewDto
 import rw.itunda.core.network.CollectPaymentRequest
@@ -309,9 +312,35 @@ fun CommerceShopContent(
         loadMerchants()
     }
 
+    // Real Kakao Pay 정기결제/Toss 빌링키-style recurring merchant billing plans this
+    // merchant itself has published -- see MerchantBillingService's own doc comment.
+    // bank-mfe already has this; this is the first Android client.
+    var billingPlans by remember { mutableStateOf<List<MerchantBillingPlanDto>>(emptyList()) }
+    var mySubscriptions by remember { mutableStateOf<List<MerchantBillingSubscriptionDto>>(emptyList()) }
+
+    fun loadBillingForMerchant(merchantId: String) {
+        coroutineScope.launch {
+            try {
+                billingPlans = NetworkClient.apiService.getMerchantBillingPlans(merchantId).plans
+            } catch (e: Exception) {
+                // Real, non-critical -- same discipline as follow/wishlist status.
+            }
+        }
+        coroutineScope.launch {
+            try {
+                mySubscriptions = NetworkClient.apiService.getMyBillingSubscriptions().subscriptions.filter { it.merchantId == merchantId }
+            } catch (e: Exception) {
+                // Real, non-critical -- same discipline as follow/wishlist status.
+            }
+        }
+    }
+
     fun openMerchant(m: ShoppingMerchantDto) {
         selectedMerchant = m
         products = null
+        billingPlans = emptyList()
+        mySubscriptions = emptyList()
+        loadBillingForMerchant(m.merchantId)
         coroutineScope.launch {
             try {
                 val res = NetworkClient.apiService.getMerchantProducts(m.merchantId)
@@ -391,6 +420,9 @@ fun CommerceShopContent(
             following = merchant.merchantId in followedMerchantIds,
             followBusy = followBusyMerchantId == merchant.merchantId,
             onToggleFollow = { toggleFollow(merchant.merchantId) },
+            billingPlans = billingPlans,
+            mySubscriptions = mySubscriptions,
+            onBillingChanged = { loadBillingForMerchant(merchant.merchantId) },
         )
         return
     }
@@ -717,6 +749,9 @@ private fun MerchantDetailView(
     following: Boolean = false,
     followBusy: Boolean = false,
     onToggleFollow: () -> Unit = {},
+    billingPlans: List<MerchantBillingPlanDto> = emptyList(),
+    mySubscriptions: List<MerchantBillingSubscriptionDto> = emptyList(),
+    onBillingChanged: () -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     val totalItems = cart.values.sumOf { it.quantity }
@@ -765,6 +800,16 @@ private fun MerchantDetailView(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 contentPadding = PaddingValues(vertical = 12.dp),
             ) {
+                if (billingPlans.isNotEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text("Subscription plans", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            billingPlans.forEach { plan ->
+                                BillingPlanRow(plan = plan, subscription = mySubscriptions.firstOrNull { it.planId == plan.id && it.status == "ACTIVE" }, onChanged = onBillingChanged)
+                            }
+                        }
+                    }
+                }
                 gridItems(products, key = { it.id }) { p ->
                     val qty = qtyFor(p.id)
                     Column(
@@ -1616,6 +1661,75 @@ private fun MyReturnRequestsView() {
                 }
             }
         }
+    }
+}
+
+/**
+ * Real Kakao Pay 정기결제/Toss 빌링키-style subscribe/cancel -- subscribing charges the
+ * first cycle immediately (real "인증 + 첫결제"), same as
+ * rw.itunda.merchant.MerchantBillingService.subscribe's own doc comment. One real
+ * active subscription per plan; cancelling stops future charges but doesn't refund the
+ * current cycle already paid for. bank-mfe already has this; this is the first Android
+ * client.
+ */
+@Composable
+private fun BillingPlanRow(plan: MerchantBillingPlanDto, subscription: MerchantBillingSubscriptionDto?, onChanged: () -> Unit) {
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    Column(
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Ids.colors.surfaceSoft).padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(plan.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text(
+                    "%,.0f RWF every ${plan.intervalDays} days".format(plan.amount),
+                    color = Ids.colors.textSecondary, fontSize = 12.sp,
+                )
+                plan.description?.takeIf { it.isNotBlank() }?.let { Text(it, color = Ids.colors.textSecondary, fontSize = 11.sp) }
+            }
+            if (subscription != null) {
+                ListingActionButtonShop(if (busy) "…" else "Cancel", busy) {
+                    busy = true
+                    error = null
+                    coroutineScope.launch {
+                        try {
+                            NetworkClient.apiService.cancelBillingSubscription(subscription.id)
+                            onChanged()
+                        } catch (e: Exception) {
+                            error = "Could not cancel this subscription."
+                        } finally {
+                            busy = false
+                        }
+                    }
+                }
+            } else {
+                ListingActionButtonShop(if (busy) "…" else "Subscribe", busy, filled = true) {
+                    busy = true
+                    error = null
+                    coroutineScope.launch {
+                        try {
+                            NetworkClient.apiService.subscribeToBillingPlan(plan.id, UUID.randomUUID().toString())
+                            onChanged()
+                        } catch (e: Exception) {
+                            error = "Could not subscribe to this plan."
+                        } finally {
+                            busy = false
+                        }
+                    }
+                }
+            }
+        }
+        if (subscription != null) {
+            Text(
+                if (subscription.status == "ACTIVE") "Next charge ${subscription.nextChargeAt.take(10)}" else "Cancelled",
+                color = Ids.colors.textSecondary, fontSize = 11.sp,
+            )
+        }
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 11.sp) }
     }
 }
 
