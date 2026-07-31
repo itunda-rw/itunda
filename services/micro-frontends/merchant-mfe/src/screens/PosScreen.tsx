@@ -8,12 +8,14 @@ import {
   addProduct,
   updateProductStock,
   chargeCard,
+  fetchPriceTiers,
   generateQr,
   getOptionGroups,
   getProductCatalog,
   paymentIntentQrPayload,
   removeOptionGroup,
   removeProduct,
+  setPriceTiers,
   type CardChargeResult,
   type MenuOptionGroup,
   type MerchantProduct,
@@ -400,6 +402,10 @@ function CatalogView() {
   // expanded at a time, same "inline-card-replaces-trigger" convention bank-mfe's own
   // buyer-side option UI already established.
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+  // Real bulk/wholesale price tiers (item 149, backend-only until now) -- same
+  // "one panel expanded at a time" convention as the Options panel above, its own
+  // separate toggle since a product can have both option groups and price tiers.
+  const [expandedPricingProductId, setExpandedPricingProductId] = useState<string | null>(null);
   const lowStock = products?.filter((product) => product.stockQuantity !== null && product.stockQuantity <= 5) ?? [];
 
   const load = () => {
@@ -553,6 +559,7 @@ function CatalogView() {
             <tbody>
               {products.map((product) => {
                 const isExpanded = expandedProductId === product.id;
+                const isPricingExpanded = expandedPricingProductId === product.id;
                 return (
                   <Fragment key={product.id}>
                     <tr style={{ borderTop: '1px solid var(--toss-grey-200)' }}>
@@ -578,6 +585,12 @@ function CatalogView() {
                             Options {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                           </button>
                           <button
+                            onClick={() => setExpandedPricingProductId(isPricingExpanded ? null : product.id)}
+                            style={{ color: 'var(--toss-blue)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
+                          >
+                            Pricing {isPricingExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                          <button
                             onClick={() => adjustStock(product)}
                             style={{ color: 'var(--toss-blue)', fontSize: '13px', fontWeight: 600 }}
                           >
@@ -596,6 +609,13 @@ function CatalogView() {
                       <tr style={{ borderTop: '1px solid var(--toss-grey-200)', backgroundColor: 'var(--toss-grey-100)' }}>
                         <td colSpan={3} style={{ padding: '16px 20px' }}>
                           <ProductOptionsPanel productId={product.id} />
+                        </td>
+                      </tr>
+                    )}
+                    {isPricingExpanded && (
+                      <tr style={{ borderTop: '1px solid var(--toss-grey-200)', backgroundColor: 'var(--toss-grey-100)' }}>
+                        <td colSpan={3} style={{ padding: '16px 20px' }}>
+                          <PriceTiersPanel productId={product.id} regularPrice={product.price} />
                         </td>
                       </tr>
                     )}
@@ -746,6 +766,128 @@ function ProductOptionsPanel({ productId }: { productId: string }) {
           {submitting ? 'Adding…' : 'Add option group'}
         </button>
       </form>
+    </div>
+  );
+}
+
+interface TierDraft {
+  minQuantity: string;
+  unitPrice: string;
+}
+
+// Real bulk/wholesale price tiers (item 149) -- see backend ProductPriceTier's own doc
+// comment. First client UI for this endpoint on ANY platform (no bank-mfe/Android/iOS
+// UI exists yet to have ported this from). Real checkout money impact: OrderService
+// applies the highest-qualifying tier automatically at order time, so this is real
+// pricing configuration, not a cosmetic label. Replace-all on save, mirroring
+// ProductOptionsPanel's own add/remove-row editing pattern above; server-side
+// validation (strictly increasing minQuantity, strictly decreasing unitPrice, each
+// tier below the regular price, max 10 tiers) is the real source of truth -- this form
+// mirrors those same rules client-side only for a faster error round trip.
+function PriceTiersPanel({ productId, regularPrice }: { productId: string; regularPrice: number }) {
+  const [tiers, setTiers] = useState<TierDraft[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const load = () => {
+    fetchPriceTiers(productId)
+      .then((real) => setTiers(real.map((t) => ({ minQuantity: String(t.minQuantity), unitPrice: String(t.unitPrice) }))))
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load price tiers.'));
+  };
+
+  useEffect(load, [productId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const updateTier = (index: number, field: keyof TierDraft, value: string) => {
+    setSaved(false);
+    setTiers((prev) => (prev ?? []).map((t, i) => (i === index ? { ...t, [field]: value } : t)));
+  };
+
+  const addTierRow = () => {
+    setSaved(false);
+    setTiers((prev) => [...(prev ?? []), { minQuantity: '', unitPrice: '' }]);
+  };
+  const removeTierRow = (index: number) => {
+    setSaved(false);
+    setTiers((prev) => (prev ?? []).filter((_, i) => i !== index));
+  };
+
+  const handleSave = async () => {
+    setError(null);
+    const parsed = (tiers ?? [])
+      .filter((t) => t.minQuantity.trim() !== '' || t.unitPrice.trim() !== '')
+      .map((t) => ({ minQuantity: Number(t.minQuantity), unitPrice: Number(t.unitPrice) }));
+    for (const t of parsed) {
+      if (!Number.isInteger(t.minQuantity) || t.minQuantity < 1) {
+        setError('Each minimum quantity must be a whole number of at least 1.');
+        return;
+      }
+      if (!Number.isFinite(t.unitPrice) || t.unitPrice <= 0) {
+        setError('Each unit price must be greater than zero.');
+        return;
+      }
+      if (t.unitPrice >= regularPrice) {
+        setError(`Each tier must cost less per unit than the regular price (${regularPrice.toLocaleString()} RWF).`);
+        return;
+      }
+    }
+    if (parsed.length > 10) {
+      setError('Too many price tiers -- 10 is the real limit.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const real = await setPriceTiers(productId, parsed);
+      setTiers(real.map((t) => ({ minQuantity: String(t.minQuantity), unitPrice: String(t.unitPrice) })));
+      setSaved(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not save these price tiers.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <p style={{ fontSize: '13px', fontWeight: 700 }}>Bulk/wholesale pricing</p>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+        A buyer ordering at least the minimum quantity automatically pays the lower unit price at checkout -- real pricing, not a label. Leave empty for no bulk discount.
+      </p>
+      {tiers === null ? (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {tiers.map((tier, i) => (
+            <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="number" min="1" step="1" value={tier.minQuantity} onChange={(e) => updateTier(i, 'minQuantity', e.target.value)}
+                placeholder="Min quantity (e.g. 10)"
+                style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+              />
+              <input
+                type="number" min="1" value={tier.unitPrice} onChange={(e) => updateTier(i, 'unitPrice', e.target.value)}
+                placeholder="Unit price (RWF)"
+                style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+              />
+              <button type="button" onClick={() => removeTierRow(i)} style={{ color: 'var(--toss-grey-500)' }} aria-label="Remove tier">
+                <Minus size={14} />
+              </button>
+            </div>
+          ))}
+          <button type="button" onClick={addTierRow} style={{ alignSelf: 'flex-start', color: 'var(--toss-blue)', fontSize: '12px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <Plus size={12} /> Add a tier
+          </button>
+        </div>
+      )}
+      {error && (
+        <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>
+      )}
+      {saved && !error && (
+        <p style={{ fontSize: '13px', color: 'var(--toss-blue)', margin: 0 }}>Saved.</p>
+      )}
+      <button type="button" className="toss-btn toss-btn-primary" disabled={saving || tiers === null} onClick={handleSave} style={{ alignSelf: 'flex-start' }}>
+        {saving ? 'Saving…' : 'Save price tiers'}
+      </button>
     </div>
   );
 }

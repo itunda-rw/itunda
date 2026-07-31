@@ -247,6 +247,25 @@ export const removeProduct = (productId: string) =>
     method: 'DELETE',
   }).then((r) => r.product);
 
+// Real bulk/wholesale pricing -- see the backend's ProductPriceTier doc comment.
+// Real checkout money impact: OrderService applies the highest-qualifying tier's
+// unitPrice automatically once a buyer's order quantity meets minQuantity -- this
+// isn't informational-only pricing. Replace-all, same convention
+// MerchantBookingService.setAvailability already established.
+export interface PriceTier {
+  minQuantity: number;
+  unitPrice: number;
+}
+
+export const fetchPriceTiers = (productId: string) =>
+  apiFetch<{ success: boolean; tiers: PriceTier[] }>(`/api/v1/merchant/products/${productId}/price-tiers`).then((r) => r.tiers);
+
+export const setPriceTiers = (productId: string, tiers: PriceTier[]) =>
+  apiFetch<{ success: boolean; tiers: PriceTier[] }>(`/api/v1/merchant/products/${productId}/price-tiers`, {
+    method: 'POST',
+    body: JSON.stringify({ tiers }),
+  }).then((r) => r.tiers);
+
 // Real menu-item option groups (2026-07-21, v1: required single-select only) -- the
 // merchant-facing half of a gap the buyer side (bank-mfe's "Choose options" panel) has
 // had since the same day: this backend endpoint (MerchantProductController.kt's own
