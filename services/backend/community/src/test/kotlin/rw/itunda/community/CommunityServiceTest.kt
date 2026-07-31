@@ -24,6 +24,8 @@ import rw.itunda.core.repository.CommunityLikeRepository
 import rw.itunda.core.repository.CommunityPostRepository
 import rw.itunda.core.repository.GroupConversationMemberRepository
 import rw.itunda.core.repository.GroupConversationRepository
+import rw.itunda.core.repository.MeetupAttendanceRepository
+import rw.itunda.core.repository.MeetupSessionRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import java.time.Duration
@@ -45,10 +47,12 @@ class CommunityServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
         val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
+        val meetupSessionRepository = mockk<MeetupSessionRepository>(relaxed = true)
+        val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
-            groupConversationRepository, groupConversationMemberRepository, rateLimiter, nominatimGeocodingClient,
-            pushNotificationService,
+            groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
+            rateLimiter, nominatimGeocodingClient, pushNotificationService,
         )
 
         When("posting with valid fields") {
@@ -137,10 +141,12 @@ class CommunityServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
         val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
+        val meetupSessionRepository = mockk<MeetupSessionRepository>(relaxed = true)
+        val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
-            groupConversationRepository, groupConversationMemberRepository, rateLimiter, nominatimGeocodingClient,
-            pushNotificationService,
+            groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
+            rateLimiter, nominatimGeocodingClient, pushNotificationService,
         )
         val post = CommunityPost(id = "post_1", authorId = "author_1", category = "question", title = "T", body = "B")
 
@@ -279,10 +285,12 @@ class CommunityServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
         val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
+        val meetupSessionRepository = mockk<MeetupSessionRepository>(relaxed = true)
+        val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
-            groupConversationRepository, groupConversationMemberRepository, rateLimiter, nominatimGeocodingClient,
-            pushNotificationService,
+            groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
+            rateLimiter, nominatimGeocodingClient, pushNotificationService,
         )
 
         When("no category filter is given") {
@@ -319,10 +327,12 @@ class CommunityServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
         val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
+        val meetupSessionRepository = mockk<MeetupSessionRepository>(relaxed = true)
+        val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
-            groupConversationRepository, groupConversationMemberRepository, rateLimiter, nominatimGeocodingClient,
-            pushNotificationService,
+            groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
+            rateLimiter, nominatimGeocodingClient, pushNotificationService,
         )
 
         // Real Kigali-area coordinates, same convention every geo test in this codebase uses.
@@ -362,10 +372,12 @@ class CommunityServiceTest : BehaviorSpec({
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
         val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
         val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
+        val meetupSessionRepository = mockk<MeetupSessionRepository>(relaxed = true)
+        val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>(relaxed = true)
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
-            groupConversationRepository, groupConversationMemberRepository, rateLimiter, nominatimGeocodingClient,
-            pushNotificationService,
+            groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
+            rateLimiter, nominatimGeocodingClient, pushNotificationService,
         )
 
         When("the caller has a real neighborhood set") {
@@ -390,6 +402,166 @@ class CommunityServiceTest : BehaviorSpec({
                     service.myNeighborhood("user_1", null, PageRequest.of(0, 20))
                     error("expected CommunityNeighborhoodNotSetException")
                 } catch (e: CommunityNeighborhoodNotSetException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real meetup author scheduling a real recurring session series") {
+        val postRepository = mockk<CommunityPostRepository>()
+        val commentRepository = mockk<CommunityCommentRepository>()
+        val likeRepository = mockk<CommunityLikeRepository>()
+        val userRepository = mockk<UserRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
+        val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
+        val meetupSessionRepository = mockk<MeetupSessionRepository>()
+        val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>()
+        val service = CommunityService(
+            postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
+            groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
+            rateLimiter, nominatimGeocodingClient, pushNotificationService,
+        )
+
+        val meetupPost = CommunityPost(id = "post_1", authorId = "author_1", category = "meetup", title = "Weekly run", body = "Join us")
+        every { postRepository.findById("post_1") } returns Optional.of(meetupPost)
+        every { meetupSessionRepository.findByPostIdOrderBySequenceAsc("post_1") } returns emptyList()
+        every { meetupSessionRepository.deleteAll(any<List<rw.itunda.core.domain.MeetupSession>>()) } returns Unit
+        val savedSlot = mutableListOf<rw.itunda.core.domain.MeetupSession>()
+        every { meetupSessionRepository.save(capture(savedSlot)) } answers { firstArg() }
+
+        When("scheduling a real 3-session weekly series") {
+            val dates = listOf(
+                java.time.Instant.now().plusSeconds(86400 * 7),
+                java.time.Instant.now().plusSeconds(86400 * 14),
+                java.time.Instant.now().plusSeconds(86400 * 21),
+            )
+            val sessions = service.scheduleMeetupSessions("author_1", "post_1", dates)
+
+            Then("it real-creates a session per date, real-ordered by sequence") {
+                sessions.size shouldBe 3
+                sessions.map { it.sequence } shouldBe listOf(0, 1, 2)
+            }
+        }
+
+        When("a non-author tries to schedule sessions") {
+            Then("it throws CommunityPostNotFoundException, not a 403 that would confirm the post exists") {
+                try {
+                    service.scheduleMeetupSessions("stranger", "post_1", listOf(java.time.Instant.now().plusSeconds(86400)))
+                    error("expected CommunityPostNotFoundException")
+                } catch (e: CommunityPostNotFoundException) {
+                    // expected
+                }
+            }
+        }
+
+        When("scheduling more than the real Karrot-sourced max of 6 sessions") {
+            Then("it throws InvalidMeetupScheduleException before ever touching the repository") {
+                val tooMany = (1..7).map { java.time.Instant.now().plusSeconds(86400L * it) }
+                try {
+                    service.scheduleMeetupSessions("author_1", "post_1", tooMany)
+                    error("expected InvalidMeetupScheduleException")
+                } catch (e: InvalidMeetupScheduleException) {
+                    verify(exactly = 0) { meetupSessionRepository.save(any()) }
+                }
+            }
+        }
+
+        When("scheduling a real session date in the past") {
+            Then("it throws InvalidMeetupScheduleException") {
+                try {
+                    service.scheduleMeetupSessions("author_1", "post_1", listOf(java.time.Instant.now().minusSeconds(3600)))
+                    error("expected InvalidMeetupScheduleException")
+                } catch (e: InvalidMeetupScheduleException) {
+                    // expected
+                }
+            }
+        }
+
+        When("scheduling sessions for a non-meetup post") {
+            val questionPost = CommunityPost(id = "post_2", authorId = "author_1", category = "question", title = "Q", body = "B")
+            every { postRepository.findById("post_2") } returns Optional.of(questionPost)
+
+            Then("it throws InvalidMeetupScheduleException") {
+                try {
+                    service.scheduleMeetupSessions("author_1", "post_2", listOf(java.time.Instant.now().plusSeconds(86400)))
+                    error("expected InvalidMeetupScheduleException")
+                } catch (e: InvalidMeetupScheduleException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real joined member of a real meetup, checking in to a real scheduled session") {
+        val postRepository = mockk<CommunityPostRepository>()
+        val commentRepository = mockk<CommunityCommentRepository>()
+        val likeRepository = mockk<CommunityLikeRepository>()
+        val userRepository = mockk<UserRepository>()
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
+        val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>()
+        val meetupSessionRepository = mockk<MeetupSessionRepository>()
+        val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>()
+        val service = CommunityService(
+            postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
+            groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
+            rateLimiter, nominatimGeocodingClient, pushNotificationService,
+        )
+
+        val meetupPost = CommunityPost(
+            id = "post_1", authorId = "author_1", category = "meetup", title = "Weekly run", body = "Join us",
+            groupConversationId = "group_1",
+        )
+        val session = rw.itunda.core.domain.MeetupSession(id = "session_1", postId = "post_1", sequence = 0, scheduledFor = java.time.Instant.now().plusSeconds(3600))
+        every { meetupSessionRepository.findById("session_1") } returns Optional.of(session)
+        every { postRepository.findById("post_1") } returns Optional.of(meetupPost)
+        every { meetupAttendanceRepository.save(any()) } answers { firstArg() }
+
+        When("a real joined member checks in, never having checked in before") {
+            every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "member_1") } returns
+                rw.itunda.core.domain.GroupConversationMember(id = "gm_1", groupConversationId = "group_1", userId = "member_1")
+            every { meetupAttendanceRepository.findBySessionIdAndUserId("session_1", "member_1") } returns null
+
+            val attendance = service.checkIntoSession("member_1", "session_1")
+
+            Then("it real-records the real attendance row") {
+                attendance.sessionId shouldBe "session_1"
+                attendance.userId shouldBe "member_1"
+            }
+        }
+
+        When("someone who never joined the meetup tries to check in") {
+            every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "stranger") } returns null
+
+            Then("it throws MeetupAttendanceNotAMemberException, never saving anything") {
+                try {
+                    service.checkIntoSession("stranger", "session_1")
+                    error("expected MeetupAttendanceNotAMemberException")
+                } catch (e: MeetupAttendanceNotAMemberException) {
+                    verify(exactly = 0) { meetupAttendanceRepository.save(any()) }
+                }
+            }
+        }
+
+        When("a real member who already checked in tries again") {
+            every { groupConversationMemberRepository.findByGroupConversationIdAndUserId("group_1", "member_1") } returns
+                rw.itunda.core.domain.GroupConversationMember(id = "gm_1", groupConversationId = "group_1", userId = "member_1")
+            every { meetupAttendanceRepository.findBySessionIdAndUserId("session_1", "member_1") } returns
+                rw.itunda.core.domain.MeetupAttendance(id = "attendance_1", sessionId = "session_1", userId = "member_1")
+
+            Then("it throws MeetupAttendanceAlreadyCheckedInException") {
+                try {
+                    service.checkIntoSession("member_1", "session_1")
+                    error("expected MeetupAttendanceAlreadyCheckedInException")
+                } catch (e: MeetupAttendanceAlreadyCheckedInException) {
                     // expected
                 }
             }

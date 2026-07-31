@@ -12,6 +12,8 @@ import rw.itunda.core.domain.CommunityPost
 import rw.itunda.core.domain.CommunityPostStatus
 import rw.itunda.core.domain.GroupConversation
 import rw.itunda.core.domain.GroupConversationMember
+import rw.itunda.core.domain.MeetupAttendance
+import rw.itunda.core.domain.MeetupSession
 import rw.itunda.core.domain.Notification
 import rw.itunda.core.geo.GeoUtils
 import rw.itunda.core.geo.NominatimGeocodingClient
@@ -21,6 +23,8 @@ import rw.itunda.core.repository.CommunityLikeRepository
 import rw.itunda.core.repository.CommunityPostRepository
 import rw.itunda.core.repository.GroupConversationMemberRepository
 import rw.itunda.core.repository.GroupConversationRepository
+import rw.itunda.core.repository.MeetupAttendanceRepository
+import rw.itunda.core.repository.MeetupSessionRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
 import java.time.Duration
@@ -36,6 +40,10 @@ class CommunityNeighborhoodNotSetException(message: String) : RuntimeException(m
 class CommunityMeetupJoinException(message: String) : RuntimeException(message)
 class InvalidMeetupException(message: String) : RuntimeException(message)
 class MeetupFullException(message: String) : RuntimeException(message)
+class InvalidMeetupScheduleException(message: String) : RuntimeException(message)
+class MeetupSessionNotFoundException(message: String) : RuntimeException(message)
+class MeetupAttendanceAlreadyCheckedInException(message: String) : RuntimeException(message)
+class MeetupAttendanceNotAMemberException(message: String) : RuntimeException(message)
 
 data class CommunityCategory(val id: String, val label: String)
 
@@ -66,6 +74,8 @@ class CommunityService(
     private val notificationRepository: NotificationRepository,
     private val groupConversationRepository: GroupConversationRepository,
     private val groupConversationMemberRepository: GroupConversationMemberRepository,
+    private val meetupSessionRepository: MeetupSessionRepository,
+    private val meetupAttendanceRepository: MeetupAttendanceRepository,
     private val rateLimiter: RateLimiter,
     private val nominatimGeocodingClient: NominatimGeocodingClient,
     private val pushNotificationService: PushNotificationService,
@@ -80,6 +90,10 @@ class CommunityService(
             CommunityCategory("free", "Free talk"),
         )
         private val CATEGORY_IDS = CATEGORIES.map { it.id }.toSet()
+
+        // Real 당근모임 (Karrot Meetups) own sourced cap -- a real recurring series is
+        // limited to this many fixed sessions in one action.
+        const val MAX_MEETUP_SESSIONS = 6
     }
 
     private fun requireAuthor(authorId: String, postId: String): CommunityPost {
@@ -365,4 +379,56 @@ class CommunityService(
             true
         }
     }
+
+    /**
+     * Real 당근모임 (Karrot Meetups) recurring schedule -- see `MeetupSession`'s own doc
+     * comment for the full sourced account. Only the real meetup's own author can
+     * schedule sessions (same `requireAuthor` gate `removePost` already uses), and only
+     * for a real `category == "meetup"` post. Replaces any previously-scheduled series
+     * outright rather than appending -- itunda's own honest choice, since Karrot's own
+     * real UI doesn't publicly document whether re-scheduling merges or replaces.
+     */
+    @Transactional
+    fun scheduleMeetupSessions(authorId: String, postId: String, dates: List<Instant>): List<MeetupSession> {
+        val post = requireAuthor(authorId, postId)
+        if (post.category != "meetup") {
+            throw InvalidMeetupScheduleException("Only meetup posts can have a real recurring schedule")
+        }
+        if (dates.isEmpty() || dates.size > MAX_MEETUP_SESSIONS) {
+            throw InvalidMeetupScheduleException("A meetup schedule must have between 1 and $MAX_MEETUP_SESSIONS sessions")
+        }
+        val now = Instant.now()
+        if (dates.any { !it.isAfter(now) }) {
+            throw InvalidMeetupScheduleException("Every scheduled session must be in the future")
+        }
+        meetupSessionRepository.deleteAll(meetupSessionRepository.findByPostIdOrderBySequenceAsc(postId))
+        return dates.sorted().mapIndexed { index, date ->
+            meetupSessionRepository.save(MeetupSession(id = "meetup_session_${UUID.randomUUID()}", postId = postId, sequence = index, scheduledFor = date))
+        }
+    }
+
+    fun getMeetupSessions(postId: String): List<MeetupSession> = meetupSessionRepository.findByPostIdOrderBySequenceAsc(postId)
+
+    /**
+     * Real 당근모임 (Karrot Meetups) attendance check-in -- see `MeetupAttendance`'s own
+     * doc comment. Only a real joined member of the meetup's own group chat can check
+     * in (same real membership itunda already tracks via `joinMeetup`) -- checking in
+     * without ever having joined would record attendance for someone who was never
+     * actually part of the group.
+     */
+    @Transactional
+    fun checkIntoSession(userId: String, sessionId: String): MeetupAttendance {
+        val session = meetupSessionRepository.findById(sessionId).orElseThrow { MeetupSessionNotFoundException("Session not found") }
+        val post = postRepository.findById(session.postId).orElseThrow { CommunityPostNotFoundException("Post not found") }
+        val groupId = post.groupConversationId
+        if (groupId == null || groupConversationMemberRepository.findByGroupConversationIdAndUserId(groupId, userId) == null) {
+            throw MeetupAttendanceNotAMemberException("Join this meetup before checking in to a session")
+        }
+        if (meetupAttendanceRepository.findBySessionIdAndUserId(sessionId, userId) != null) {
+            throw MeetupAttendanceAlreadyCheckedInException("Already checked in to this session")
+        }
+        return meetupAttendanceRepository.save(MeetupAttendance(id = "meetup_attendance_${UUID.randomUUID()}", sessionId = sessionId, userId = userId))
+    }
+
+    fun getSessionAttendance(sessionId: String): List<MeetupAttendance> = meetupAttendanceRepository.findBySessionId(sessionId)
 }

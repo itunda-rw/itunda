@@ -23,7 +23,11 @@ import rw.itunda.community.InvalidCommunityCommentException
 import rw.itunda.community.InvalidCommunityCoordinatesException
 import rw.itunda.community.InvalidCommunityPostException
 import rw.itunda.community.InvalidMeetupException
+import rw.itunda.community.InvalidMeetupScheduleException
+import rw.itunda.community.MeetupAttendanceAlreadyCheckedInException
+import rw.itunda.community.MeetupAttendanceNotAMemberException
 import rw.itunda.community.MeetupFullException
+import rw.itunda.community.MeetupSessionNotFoundException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
@@ -41,6 +45,9 @@ data class CreateCommunityPostRequest(
     val capacity: Int? = null,
 )
 data class AddCommunityCommentRequest(val body: String)
+// Real 당근모임 (Karrot Meetups) recurring schedule -- see
+// CommunityService.scheduleMeetupSessions's own doc comment.
+data class ScheduleMeetupSessionsRequest(val dates: List<Instant>)
 
 // Real 동네생활-style community board -- see CommunityService's own doc comment. Normal
 // itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
@@ -178,6 +185,34 @@ class CommunityController(private val communityService: CommunityService) {
         return ResponseEntity.ok(mapOf("success" to true, "groupId" to group.id))
     }
 
+    // Real 당근모임 (Karrot Meetups) recurring schedule -- see
+    // CommunityService.scheduleMeetupSessions's own doc comment.
+    @PostMapping("/posts/{postId}/sessions")
+    fun scheduleMeetupSessions(
+        @PathVariable postId: String,
+        @RequestBody request: ScheduleMeetupSessionsRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val sessions = communityService.scheduleMeetupSessions(currentUser.userId, postId, request.dates)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "sessions" to sessions))
+    }
+
+    @GetMapping("/posts/{postId}/sessions")
+    fun getMeetupSessions(@PathVariable postId: String): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "sessions" to communityService.getMeetupSessions(postId)))
+
+    // Real 당근모임 (Karrot Meetups) attendance check-in -- see
+    // CommunityService.checkIntoSession's own doc comment.
+    @PostMapping("/sessions/{sessionId}/check-in")
+    fun checkIntoSession(@PathVariable sessionId: String, @AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> {
+        val attendance = communityService.checkIntoSession(currentUser.userId, sessionId)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "attendance" to attendance))
+    }
+
+    @GetMapping("/sessions/{sessionId}/attendance")
+    fun getSessionAttendance(@PathVariable sessionId: String): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "attendance" to communityService.getSessionAttendance(sessionId)))
+
     @ExceptionHandler(CommunityMeetupJoinException::class)
     fun handleMeetupJoin(ex: CommunityMeetupJoinException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("COMMUNITY_MEETUP_JOIN_INVALID", ex.message ?: "Bad request"))
@@ -213,4 +248,20 @@ class CommunityController(private val communityService: CommunityService) {
     @ExceptionHandler(MeetupFullException::class)
     fun handleMeetupFull(ex: MeetupFullException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("MEETUP_FULL", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(InvalidMeetupScheduleException::class)
+    fun handleInvalidSchedule(ex: InvalidMeetupScheduleException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_MEETUP_SCHEDULE", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(MeetupSessionNotFoundException::class)
+    fun handleSessionNotFound(ex: MeetupSessionNotFoundException) =
+        ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("MEETUP_SESSION_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(MeetupAttendanceAlreadyCheckedInException::class)
+    fun handleAlreadyCheckedIn(ex: MeetupAttendanceAlreadyCheckedInException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("ALREADY_CHECKED_IN", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(MeetupAttendanceNotAMemberException::class)
+    fun handleNotAMember(ex: MeetupAttendanceNotAMemberException) =
+        ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("NOT_A_MEMBER", ex.message ?: "Forbidden"))
 }

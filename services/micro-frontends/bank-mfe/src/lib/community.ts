@@ -111,3 +111,37 @@ export const joinCommunityMeetup = (postId: string) =>
   apiFetch<{ success: boolean; groupId: string }>(`/api/v1/community/posts/${postId}/join`, {
     method: 'POST',
   }).then((r) => r.groupId);
+
+// Real 당근모임 (Karrot Meetups) recurring schedule + attendance check-in -- see the
+// backend's MeetupSession.kt/MeetupAttendance.kt doc comments.
+export interface MeetupSession {
+  id: string;
+  postId: string;
+  sequence: number;
+  scheduledFor: string;
+  createdAt: string;
+}
+
+export interface MeetupAttendance {
+  id: string;
+  sessionId: string;
+  userId: string;
+  checkedInAt: string;
+}
+
+export const scheduleMeetupSessions = (postId: string, dates: string[]) =>
+  apiFetch<{ success: boolean; sessions: MeetupSession[] }>(`/api/v1/community/posts/${postId}/sessions`, {
+    method: 'POST',
+    body: JSON.stringify({ dates }),
+  }).then((r) => r.sessions);
+
+export const fetchMeetupSessions = (postId: string) =>
+  apiFetch<{ success: boolean; sessions: MeetupSession[] }>(`/api/v1/community/posts/${postId}/sessions`).then((r) => r.sessions);
+
+export const checkIntoMeetupSession = (sessionId: string) =>
+  apiFetch<{ success: boolean; attendance: MeetupAttendance }>(`/api/v1/community/sessions/${sessionId}/check-in`, {
+    method: 'POST',
+  }).then((r) => r.attendance);
+
+export const fetchSessionAttendance = (sessionId: string) =>
+  apiFetch<{ success: boolean; attendance: MeetupAttendance[] }>(`/api/v1/community/sessions/${sessionId}/attendance`).then((r) => r.attendance);

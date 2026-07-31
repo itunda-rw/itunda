@@ -74,9 +74,10 @@ import { confirmEmailVerification, confirmPhoneVerification, requestEmailVerific
 import { depositToMiniWallet, openMiniWallet } from './lib/miniWallet';
 import { claimGift, fetchGiftsForConversation, sendGiftInConversation, type Gift, type GiftStatus } from './lib/gift';
 import {
-  addCommunityComment, createCommunityPost, fetchCommunityCategories, fetchCommunityComments, fetchCommunityPost,
-  fetchCommunityPosts, fetchCommunityPostsMyNeighborhood, fetchMyCommunityPosts, joinCommunityMeetup, removeCommunityPost, toggleCommunityLike,
-  type CommunityCategory, type CommunityComment, type CommunityPost, type JoinedCounts,
+  addCommunityComment, checkIntoMeetupSession, createCommunityPost, fetchCommunityCategories, fetchCommunityComments, fetchCommunityPost,
+  fetchCommunityPosts, fetchCommunityPostsMyNeighborhood, fetchMeetupSessions, fetchMyCommunityPosts, joinCommunityMeetup, removeCommunityPost,
+  scheduleMeetupSessions, toggleCommunityLike,
+  type CommunityCategory, type CommunityComment, type CommunityPost, type JoinedCounts, type MeetupSession,
 } from './lib/community';
 import {
   addJobPostFavorite, applyToJob, contactPoster, createJobPost, fetchApplicationsForJobPost, fetchJobCategories, fetchJobPost, fetchJobPostReviews,
@@ -7339,6 +7340,103 @@ function CommunityPostCard({ post, categoryLabel, isMine, onOpen, onChanged, joi
   );
 }
 
+// Real 당근모임 (Karrot Meetups) recurring schedule + attendance check-in -- see
+// lib/community.ts's own doc comment for the full sourced account. Only rendered for a
+// real category === 'meetup' post; the author gets a real schedule form, any real
+// joined member gets a real per-session check-in button.
+function MeetupSessionsSection({ post, currentUserId }: { post: CommunityPost; currentUserId: string | undefined }) {
+  const [sessions, setSessions] = useState<MeetupSession[] | null>(null);
+  const [dates, setDates] = useState<string[]>(['']);
+  const [scheduling, setScheduling] = useState(false);
+  const [checkingInId, setCheckingInId] = useState<string | null>(null);
+  const [checkedInIds, setCheckedInIds] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    fetchMeetupSessions(post.id).then(setSessions).catch(() => setSessions([]));
+  };
+
+  useEffect(load, [post.id]);
+
+  const isAuthor = currentUserId != null && currentUserId === post.authorId;
+
+  const handleSchedule = async () => {
+    const isoDates = dates.filter((d) => d).map((d) => new Date(d).toISOString());
+    if (isoDates.length === 0) { setError('Add at least one session date.'); return; }
+    setScheduling(true);
+    setError(null);
+    try {
+      await scheduleMeetupSessions(post.id, isoDates);
+      setDates(['']);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not schedule these sessions.');
+    } finally {
+      setScheduling(false);
+    }
+  };
+
+  const handleCheckIn = async (sessionId: string) => {
+    setCheckingInId(sessionId);
+    setError(null);
+    try {
+      await checkIntoMeetupSession(sessionId);
+      setCheckedInIds((prev) => new Set(prev).add(sessionId));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not check in to this session.');
+    } finally {
+      setCheckingInId(null);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: '16px' }}>
+      <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Sessions</h3>
+      {sessions === null && <div className="toss-card skeleton" style={{ height: '60px' }} />}
+      {sessions !== null && sessions.length === 0 && (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>No sessions scheduled yet.</p>
+      )}
+      {sessions !== null && sessions.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+          {sessions.map((s) => (
+            <div key={s.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px' }}>
+              <p style={{ fontSize: '13px' }}>{new Date(s.scheduledFor).toLocaleString()}</p>
+              <button
+                className="toss-btn toss-btn-secondary" style={{ fontSize: '12px', padding: '6px 12px' }}
+                disabled={checkingInId === s.id || checkedInIds.has(s.id)}
+                onClick={() => handleCheckIn(s.id)}
+              >
+                {checkedInIds.has(s.id) ? '✓ Checked in' : checkingInId === s.id ? '…' : 'Check in'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {isAuthor && (
+        <div className="toss-card">
+          <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '8px' }}>Schedule sessions (up to 6)</p>
+          {dates.map((d, i) => (
+            <input
+              key={i} type="datetime-local" value={d}
+              onChange={(e) => setDates((prev) => prev.map((v, idx) => (idx === i ? e.target.value : v)))}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginBottom: '6px' }}
+            />
+          ))}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {dates.length < 6 && (
+              <button className="toss-btn toss-btn-secondary" onClick={() => setDates((prev) => [...prev, ''])}>+ Add date</button>
+            )}
+            <button className="toss-btn toss-btn-primary" disabled={scheduling} onClick={handleSchedule}>
+              {scheduling ? 'Scheduling…' : 'Schedule'}
+            </button>
+          </div>
+        </div>
+      )}
+      {error && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '8px' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
 function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: () => void }) {
   const [post, setPost] = useState<CommunityPost | null>(null);
   const [authorName, setAuthorName] = useState('');
@@ -7348,6 +7446,7 @@ function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: (
   const [error, setError] = useState<string | null>(null);
   const [liking, setLiking] = useState(false);
   const [commenting, setCommenting] = useState(false);
+  const currentUser = getStoredUser();
 
   const load = () => {
     setError(null);
@@ -7410,6 +7509,7 @@ function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: (
           </button>
         </div>
       )}
+      {post && post.category === 'meetup' && <MeetupSessionsSection post={post} currentUserId={currentUser?.id} />}
       <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Comments</h3>
       {comments === null && <div className="toss-card skeleton" style={{ height: '80px' }} />}
       {comments !== null && comments.length === 0 && (
