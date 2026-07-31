@@ -33,6 +33,10 @@ import { fetchRewardTasks, fetchReferralInfo, claimRewardTask, reportSteps, fetc
 import { fetchInsurancePlans, fetchMyPolicies, enrollInPlan, submitClaim, fetchMyClaims, type InsurancePlan, type InsurancePolicy, type InsuranceClaim } from './lib/insurance';
 import { fetchBillProviders, fetchPendingBills, payBill, buyAirtime, type BillProvider, type PendingBill } from './lib/bills';
 import {
+  fetchAgentTill, fetchAgentActivity, agentCashIn, agentCashOut, submitAgentTillCount,
+  isNotAgentOperatorError, type AgentTillSnapshot, type AgentActivityItem,
+} from './lib/agentOperator';
+import {
   fetchMyUpfrontDeposits, openUpfrontDeposit, withdrawUpfrontDeposit,
   UPFRONT_DEPOSIT_ANNUAL_RATE, UPFRONT_DEPOSIT_MIN_PRINCIPAL, UPFRONT_DEPOSIT_MAX_PRINCIPAL,
   type UpfrontInterestDeposit,
@@ -145,7 +149,7 @@ import {
   type VehicleInspectionBooking, type VehicleInspectionMechanic,
 } from './lib/vehicleInspection';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
@@ -2418,6 +2422,178 @@ function BillsView() {
           <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
             <span>{p.logo} {p.name}</span>
             <span style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{p.category}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Real Itunda cash-agent operator console -- see lib/agentOperator.ts's own doc
+// comment. A regular account only sees this view usefully once admin-assigned as an
+// operator (AgentAdminController.assignOperator); an unassigned account gets a clean
+// "you are not an agent operator" state instead of a generic error.
+function AgentOperatorView() {
+  const [till, setTill] = useState<AgentTillSnapshot | null>(null);
+  const [activity, setActivity] = useState<AgentActivityItem[]>([]);
+  const [notOperator, setNotOperator] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const [cashInAccount, setCashInAccount] = useState('');
+  const [cashInAmount, setCashInAmount] = useState('');
+  const [cashInReceipt, setCashInReceipt] = useState('');
+  const [cashOutAccount, setCashOutAccount] = useState('');
+  const [cashOutAmount, setCashOutAmount] = useState('');
+  const [cashOutReceipt, setCashOutReceipt] = useState('');
+  const [cashOutCode, setCashOutCode] = useState('');
+  const [countedCash, setCountedCash] = useState('');
+
+  const load = () => {
+    setError(null);
+    fetchAgentTill()
+      .then((t) => { setTill(t); setNotOperator(false); })
+      .catch((err) => {
+        if (isNotAgentOperatorError(err)) { setNotOperator(true); return; }
+        setError(err instanceof ApiError ? err.message : 'Could not load your till.');
+      });
+    fetchAgentActivity().then(setActivity).catch(() => setActivity([]));
+  };
+  useEffect(load, []);
+
+  const handleCashIn = async () => {
+    const amount = Number(cashInAmount);
+    if (!cashInAccount.trim() || !cashInReceipt.trim() || !Number.isFinite(amount) || amount <= 0) {
+      setError('Enter a real account number, receipt number, and a positive amount.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await agentCashIn(cashInAccount.trim(), amount, cashInReceipt.trim());
+      setMessage(`Cash in accepted — new customer balance ${result.newBalance.toLocaleString()} RWF`);
+      setCashInAccount(''); setCashInAmount(''); setCashInReceipt('');
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not accept this cash-in.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCashOut = async () => {
+    const amount = Number(cashOutAmount);
+    if (!cashOutAccount.trim() || !cashOutReceipt.trim() || !cashOutCode.trim() || !Number.isFinite(amount) || amount <= 0) {
+      setError('Enter a real account number, receipt number, withdrawal code, and a positive amount.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await agentCashOut(cashOutAccount.trim(), amount, cashOutReceipt.trim(), cashOutCode.trim());
+      setMessage(`Cash out paid — new customer balance ${result.newBalance.toLocaleString()} RWF`);
+      setCashOutAccount(''); setCashOutAmount(''); setCashOutReceipt(''); setCashOutCode('');
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not pay this cash-out. Check the withdrawal code.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSubmitTillCount = async () => {
+    const counted = Number(countedCash);
+    if (!Number.isFinite(counted) || counted < 0) {
+      setError('Enter a real counted-cash amount.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const reconciliation = await submitAgentTillCount(counted);
+      setMessage(`Till count submitted — variance ${reconciliation.variance.toLocaleString()} RWF (${reconciliation.status})`);
+      setCountedCash('');
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not submit this till count.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (notOperator) {
+    return (
+      <div className="toss-card">
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+          You are not assigned as an Itunda agent till operator. Ask an Itunda staff admin to assign your account to a store.
+        </p>
+      </div>
+    );
+  }
+
+  if (!till) {
+    return error ? <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
+      <div className="toss-card" style={{ padding: '24px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{till.agentName}</p>
+        <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{till.expectedCash.toLocaleString()} RWF expected in till</h2>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+          Today: {till.todayCashIn.toLocaleString()} RWF in · {till.todayCashOut.toLocaleString()} RWF out
+        </p>
+        {till.reconciliation && (
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+            Last count: {till.reconciliation.countedCash.toLocaleString()} RWF ({till.reconciliation.status}, variance {till.reconciliation.variance.toLocaleString()})
+          </p>
+        )}
+      </div>
+
+      <div className="toss-card">
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Accept cash-in</h3>
+        <input type="text" placeholder="Customer account number" value={cashInAccount} onChange={(e) => setCashInAccount(e.target.value)}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
+        <input type="number" placeholder="Amount (RWF)" value={cashInAmount} onChange={(e) => setCashInAmount(e.target.value)}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
+        <input type="text" placeholder="Receipt number" value={cashInReceipt} onChange={(e) => setCashInReceipt(e.target.value)}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
+        <button className="toss-btn toss-btn-primary" disabled={busy} onClick={handleCashIn}>{busy ? 'Working…' : 'Accept cash-in'}</button>
+      </div>
+
+      <div className="toss-card">
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Pay cash-out</h3>
+        <input type="text" placeholder="Customer account number" value={cashOutAccount} onChange={(e) => setCashOutAccount(e.target.value)}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
+        <input type="number" placeholder="Amount (RWF)" value={cashOutAmount} onChange={(e) => setCashOutAmount(e.target.value)}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
+        <input type="text" placeholder="Receipt number" value={cashOutReceipt} onChange={(e) => setCashOutReceipt(e.target.value)}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
+        <input type="text" placeholder="Customer's withdrawal code" value={cashOutCode} onChange={(e) => setCashOutCode(e.target.value)}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
+        <button className="toss-btn toss-btn-primary" disabled={busy} onClick={handleCashOut}>{busy ? 'Working…' : 'Pay cash-out'}</button>
+      </div>
+
+      <div className="toss-card">
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Submit today's till count</h3>
+        <input type="number" placeholder="Counted cash (RWF)" value={countedCash} onChange={(e) => setCountedCash(e.target.value)}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
+        <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={handleSubmitTillCount}>{busy ? 'Working…' : 'Submit count'}</button>
+      </div>
+
+      <div className="toss-card">
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Recent activity</h3>
+        {activity.length === 0 && <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No cash movements yet today.</p>}
+        {activity.map((a) => (
+          <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
+            <span>{a.type === 'CASH_IN' ? '↓ Cash in' : '↑ Cash out'} · {a.receiptNumber}</span>
+            <span style={{ fontWeight: 600 }}>{a.amount.toLocaleString()} RWF</span>
           </div>
         ))}
       </div>
@@ -15543,6 +15719,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'REWARDS', label: 'Rewards' },
     { id: 'INSURANCE', label: 'Insurance' },
     { id: 'BILLS', label: 'Pay bills' },
+    { id: 'AGENT', label: 'Agent till' },
     { id: 'FOREIGN_CURRENCY', label: 'Foreign currency' },
     { id: 'SPENDING', label: 'Spending' },
     { id: 'SUBSCRIPTIONS', label: 'Subscriptions' },
@@ -15612,6 +15789,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'REWARDS' && <RewardsView />}
       {tab === 'INSURANCE' && <InsuranceView />}
       {tab === 'BILLS' && <BillsView />}
+      {tab === 'AGENT' && <AgentOperatorView />}
       {tab === 'FOREIGN_CURRENCY' && <ForeignCurrencyView />}
       {tab === 'SPENDING' && <SpendingInsightView />}
       {tab === 'SUBSCRIPTIONS' && <SubscriptionsView />}
