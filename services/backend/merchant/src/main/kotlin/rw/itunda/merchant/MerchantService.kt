@@ -568,7 +568,10 @@ class MerchantService(
             throw InvalidCouponException("This coupon would reduce the payment to zero -- itunda doesn't support 100%-off payments")
         }
 
-        val fee = chargeAmount.multiply(feeRate).setScale(2, RoundingMode.HALF_UP)
+        // Real Naver Pay 영세 가맹점 수수료 지원 (small-merchant fee waiver) -- see
+        // MerchantFeeWaiverService's own doc comment. Null means this merchant never
+        // qualified/applied, the standard rate applies unchanged.
+        val fee = chargeAmount.multiply(merchant.feeRateOverride ?: feeRate).setScale(2, RoundingMode.HALF_UP)
         val netToMerchant = chargeAmount.subtract(fee)
         // channel-labeled memo/description (2026-07-13, added for Face Pay) -- keeps a
         // real, honest audit trail of which authentication factor collected a given
@@ -777,7 +780,9 @@ class MerchantService(
             throw CardDeclinedException(authResult.detail)
         }
 
-        val fee = amount.multiply(feeRate).setScale(2, RoundingMode.HALF_UP)
+        // Real Naver Pay 영세 가맹점 수수료 지원 (small-merchant fee waiver) -- see
+        // MerchantFeeWaiverService's own doc comment.
+        val fee = amount.multiply(merchant.feeRateOverride ?: feeRate).setScale(2, RoundingMode.HALF_UP)
         val netToMerchant = amount.subtract(fee)
 
         val result = ledgerService.postLedgerTransaction(

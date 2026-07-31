@@ -21,6 +21,10 @@ export interface Merchant {
   // until MerchantAdService's own radius-targeted ads required it (item 147).
   latitude: number | null;
   longitude: number | null;
+  // Real Naver Pay 영세 가맹점 수수료 지원 (small-merchant fee-waiver support program) --
+  // see the backend's Merchant.kt doc comment. Null means the standard platform fee
+  // rate applies unchanged; 0 means a real active full waiver.
+  feeRateOverride: number | null;
 }
 
 export const setMerchantLocation = (latitude: number, longitude: number) =>
@@ -161,6 +165,13 @@ export const setWebhookUrl = (webhookUrl: string) =>
   apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/webhook-url', {
     method: 'POST',
     body: JSON.stringify({ webhookUrl }),
+  }).then((r) => r.merchant);
+
+// Real Naver Pay 영세 가맹점 수수료 지원 (small-merchant fee-waiver support program) --
+// see the backend's MerchantFeeWaiverService doc comment.
+export const applyForFeeWaiver = () =>
+  apiFetch<{ success: boolean; merchant: Merchant }>('/api/v1/merchant/fee-waiver/apply', {
+    method: 'POST',
   }).then((r) => r.merchant);
 
 // Real category/cuisine (2026-07-19) -- powers restaurant categories + search/filter on

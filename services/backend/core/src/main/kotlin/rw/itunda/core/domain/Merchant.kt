@@ -129,6 +129,18 @@ class Merchant(
     @Column(name = "cashback_rate", precision = 6, scale = 4, nullable = true)
     var cashbackRate: BigDecimal? = null,
 
+    // Real Naver Pay 영세 가맹점 수수료 지원 (small-merchant fee-waiver support program,
+    // 2026-07-31) -- Naver Pay's own real, currently-running campaign waives itunda-side
+    // transaction fees for small/thin-margin merchants. Same nullable-override shape
+    // `cashbackRate` already establishes: unset means this merchant pays
+    // `MerchantService.feeRate`'s own standard rate unchanged; a real, itunda-computed
+    // "small merchant" eligibility check (see `MerchantFeeWaiverService`'s own doc
+    // comment) sets this to a real, honest 0% (a full waiver, matching Naver's own real
+    // "지원" framing, not a fabricated partial discount) rather than requiring external
+    // SME-certification data this codebase has no access to.
+    @Column(name = "fee_rate_override", precision = 6, scale = 4, nullable = true)
+    var feeRateOverride: BigDecimal? = null,
+
     // Real Baemin Club (배민클럽)-style participating-restaurant opt-in (2026-07-26) --
     // see EatsMembership.kt's own doc comment. Free delivery for a real active member
     // only ever applies here when true -- never a blanket waiver across every

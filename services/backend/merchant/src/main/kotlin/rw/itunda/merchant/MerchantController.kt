@@ -55,6 +55,7 @@ class MerchantController(
     private val idempotencyService: IdempotencyService,
     private val webhookDeliveryService: WebhookDeliveryService,
     private val merchantStaticQrService: MerchantStaticQrService,
+    private val merchantFeeWaiverService: MerchantFeeWaiverService,
 ) {
     @PostMapping("/register")
     fun register(
@@ -68,6 +69,12 @@ class MerchantController(
     @GetMapping("/me")
     fun me(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "merchant" to merchantService.getMyMerchant(currentUser.userId)))
+
+    // Real Naver Pay 영세 가맹점 수수료 지원 (small-merchant fee-waiver support program) --
+    // see MerchantFeeWaiverService's own doc comment.
+    @PostMapping("/fee-waiver/apply")
+    fun applyForFeeWaiver(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "merchant" to merchantFeeWaiverService.applyForFeeWaiver(currentUser.userId)))
 
     // Real "Pay with itunda" external checkout API key (2026-07-21) -- see
     // MerchantService.generateApiKey's own doc comment. The raw key is returned exactly
@@ -371,6 +378,14 @@ class MerchantController(
     @ExceptionHandler(InvalidPhotoUrlException::class)
     fun handleInvalidPhotoUrl(ex: InvalidPhotoUrlException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PHOTO_URL", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(MerchantAlreadyWaivedException::class)
+    fun handleAlreadyWaived(ex: MerchantAlreadyWaivedException) =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("MERCHANT_ALREADY_WAIVED", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(MerchantNotEligibleForFeeWaiverException::class)
+    fun handleNotEligibleForFeeWaiver(ex: MerchantNotEligibleForFeeWaiverException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("MERCHANT_NOT_ELIGIBLE_FOR_FEE_WAIVER", ex.message ?: "Unprocessable"))
 
     @ExceptionHandler(InvalidStaticQrAmountException::class)
     fun handleInvalidStaticQrAmount(ex: InvalidStaticQrAmountException) =

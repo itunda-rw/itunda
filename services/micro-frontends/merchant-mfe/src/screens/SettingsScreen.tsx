@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { ApiError } from '../lib/api';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, type TrustedDevice } from '../lib/device';
-import { broadcastToFollowers, fetchFollowerCount, getMyIdentitySubmissions, setCategory, setParticipatesInEatsMembership, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant } from '../lib/merchant';
+import { applyForFeeWaiver, broadcastToFollowers, fetchFollowerCount, getMyIdentitySubmissions, setCategory, setParticipatesInEatsMembership, setWebhookUrl, submitKyb, type IdentitySubmission, type Merchant } from '../lib/merchant';
 
 export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merchant; onUpdated: (merchant: Merchant) => void }) {
   const [webhookUrl, setWebhookUrlInput] = useState(merchant.webhookUrl ?? '');
@@ -66,6 +66,7 @@ export default function SettingsScreen({ merchant, onUpdated }: { merchant: Merc
 
       <CategoryCard merchant={merchant} onUpdated={onUpdated} />
       <EatsMembershipParticipationCard merchant={merchant} onUpdated={onUpdated} />
+      <FeeWaiverCard merchant={merchant} onUpdated={onUpdated} />
       <FollowersCard />
       <KybCard merchant={merchant} />
       <DevicesCard />
@@ -326,6 +327,57 @@ function EatsMembershipParticipationCard({ merchant, onUpdated }: { merchant: Me
         >
           {busy ? '…' : merchant.participatesInEatsMembership ? 'Participating' : 'Opt in'}
         </button>
+      </div>
+      {error && (
+        <p style={{ fontSize: '13px', color: '#E53935', margin: '8px 0 0' }} role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Real Naver Pay 영세 가맹점 수수료 지원 (small-merchant fee-waiver support program) --
+// see lib/merchant.ts's own applyForFeeWaiver doc comment. Eligibility (a real 30-day
+// payment-volume threshold) is checked server-side; this card just surfaces the current
+// state and lets an eligible merchant apply.
+function FeeWaiverCard({ merchant, onUpdated }: { merchant: Merchant; onUpdated: (merchant: Merchant) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const waived = merchant.feeRateOverride === 0;
+
+  const handleApply = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await applyForFeeWaiver();
+      onUpdated(updated);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not apply for a fee waiver.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="toss-card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>Small-merchant fee waiver</h2>
+          <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>
+            {waived
+              ? 'Active -- you pay no platform fee on payments you collect.'
+              : "If your payment volume over the last 30 days is small, you may qualify for a full fee waiver."}
+          </p>
+        </div>
+        {!waived && (
+          <button
+            type="button" className="toss-btn toss-btn-primary" disabled={busy} onClick={handleApply}
+            style={{ fontSize: '13px', padding: '8px 14px', whiteSpace: 'nowrap' }}
+          >
+            {busy ? '…' : 'Apply'}
+          </button>
+        )}
       </div>
       {error && (
         <p style={{ fontSize: '13px', color: '#E53935', margin: '8px 0 0' }} role="alert">
