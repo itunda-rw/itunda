@@ -1149,6 +1149,7 @@ private struct ChatThreadScreen: View {
     @State private var giftComposerOpen = false
     @State private var giftAmount = ""
     @State private var giftNote = ""
+    @State private var giftTheme: String? = nil
     @State private var sendingGift = false
     // Real KakaoTalk Emoticon Store (item 136) -- see EmoticonPickerPanel's own doc
     // comment.
@@ -1317,6 +1318,21 @@ private struct ChatThreadScreen: View {
                         .padding(10)
                         .background(IDS.Colors.card)
                         .cornerRadius(8)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach([(nil as String?, "No theme")] + giftThemeLabels.sorted(by: { $0.key < $1.key }).map { ($0.key as String?, $0.value) }, id: \.0) { value, label in
+                                let selected = giftTheme == value
+                                Button(action: { giftTheme = value }) {
+                                    Text(label).font(.caption).bold()
+                                        .foregroundColor(selected ? .white : IDS.Colors.textPrimary)
+                                        .padding(.horizontal, 10).padding(.vertical, 6)
+                                        .background(selected ? IDS.Colors.brand : IDS.Colors.card)
+                                        .cornerRadius(10)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
                     HStack(spacing: 8) {
                         Button(action: { Task { await sendGift() } }) {
                             Text(sendingGift ? "Sending…" : "Send gift").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
@@ -1534,10 +1550,12 @@ private struct ChatThreadScreen: View {
             _ = try await NetworkClient.shared.sendGiftInConversation(
                 conversationId: conversation.conversationId,
                 amount: amount,
-                note: giftNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : giftNote
+                note: giftNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : giftNote,
+                theme: giftTheme
             )
             giftAmount = ""
             giftNote = ""
+            giftTheme = nil
             giftComposerOpen = false
             await refresh()
         } catch NetworkError.deviceNotVerified {
@@ -1826,7 +1844,7 @@ private struct GiftBubble: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("🎁 \(Int(gift.amount)) RWF").font(.headline).foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
+            Text("\(gift.theme.flatMap { giftThemeLabels[$0] } ?? "🎁") \(Int(gift.amount)) RWF").font(.headline).foregroundColor(isMine ? .white : IDS.Colors.textPrimary)
             if let note = gift.note {
                 Text("\"\(note)\"").font(.caption).foregroundColor(isMine ? .white.opacity(0.9) : IDS.Colors.textSecondary)
             }

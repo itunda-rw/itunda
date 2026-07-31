@@ -81,6 +81,7 @@ import rw.itunda.core.network.CreateSplitBillRequest
 import rw.itunda.core.network.EmoticonDto
 import rw.itunda.core.network.EmoticonPackDto
 import rw.itunda.core.network.GiftDto
+import rw.itunda.core.network.GIFT_THEME_LABELS
 import rw.itunda.core.network.GiftEmoticonPackRequest
 import rw.itunda.core.network.GiftVoucherDto
 import rw.itunda.core.network.OwnedEmoticonPackDto
@@ -1217,6 +1218,7 @@ private fun ChatThreadView(
     var giftComposerOpen by remember { mutableStateOf(false) }
     var giftAmount by remember { mutableStateOf("") }
     var giftNote by remember { mutableStateOf("") }
+    var giftTheme by remember { mutableStateOf<String?>(null) }
     var sendingGift by remember { mutableStateOf(false) }
     // Real KakaoTalk Emoticon Store (item 135) -- see EmoticonPickerPanel's own doc
     // comment.
@@ -1589,6 +1591,24 @@ private fun ChatThreadView(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    val themeOptions = listOf<Pair<String?, String>>(null to "No theme") + GIFT_THEME_LABELS.entries.map { it.key to it.value }
+                    themeOptions.forEach { (value, label) ->
+                        val selected = giftTheme == value
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (selected) Ids.colors.brand else Ids.colors.surface)
+                                .clickable { giftTheme = value }
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                        ) {
+                            Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else Ids.colors.textPrimary)
+                        }
+                    }
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     val amountValue = giftAmount.toDoubleOrNull()
                     OfferActionButton(if (sendingGift) "Sending…" else "Send gift") {
@@ -1600,10 +1620,11 @@ private fun ChatThreadView(
                             NetworkClient.apiService.sendGiftInConversation(
                                 conversation.conversationId,
                                 UUID.randomUUID().toString(),
-                                SendGiftInConversationRequest(amountValue, giftNote.trim().ifBlank { null }),
+                                SendGiftInConversationRequest(amountValue, giftNote.trim().ifBlank { null }, giftTheme),
                             )
                             giftAmount = ""
                             giftNote = ""
+                            giftTheme = null
                             giftComposerOpen = false
                             refresh()
                         }
@@ -1894,7 +1915,8 @@ private fun GiftBubble(gift: GiftDto, isMine: Boolean, currentUserId: String?, o
             .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("🎁 %,.0f RWF".format(gift.amount), color = if (isMine) Color.White else Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            val prefix = gift.theme?.let { GIFT_THEME_LABELS[it] } ?: "🎁"
+            Text("$prefix %,.0f RWF".format(gift.amount), color = if (isMine) Color.White else Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             gift.note?.let { Text("\"$it\"", color = if (isMine) Color.White.copy(alpha = 0.9f) else Ids.colors.textSecondary, fontSize = 12.sp) }
             Text(statusLabel, color = if (isMine) Color.White.copy(alpha = 0.85f) else Ids.colors.textSecondary, fontSize = 12.sp)
             if (canClaim) {

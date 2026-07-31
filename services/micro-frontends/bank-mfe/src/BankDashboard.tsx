@@ -75,7 +75,7 @@ import {
 import { fetchProfile, setBirthDate, setNeighborhood, updateProfilePhoto } from './lib/neighborhood';
 import { confirmEmailVerification, confirmPhoneVerification, requestEmailVerification, requestPhoneVerification } from './lib/verification';
 import { depositToMiniWallet, openMiniWallet } from './lib/miniWallet';
-import { claimGift, fetchGiftsForConversation, sendGiftInConversation, type Gift, type GiftStatus } from './lib/gift';
+import { claimGift, fetchGiftsForConversation, sendGiftInConversation, GIFT_THEME_LABELS, type Gift, type GiftStatus, type GiftTheme } from './lib/gift';
 import {
   addCommunityComment, checkIntoMeetupSession, createCommunityPost, fetchCommunityCategories, fetchCommunityComments, fetchCommunityPost,
   fetchCommunityPosts, fetchCommunityPostsMyNeighborhood, fetchMeetupSessions, fetchMyCommunityPosts, finalizeGroupBuy, joinCommunityMeetup,
@@ -4264,7 +4264,9 @@ function GiftBubble({
         display: 'flex', flexDirection: 'column', gap: '6px',
       }}
     >
-      <p style={{ fontWeight: 700, fontSize: '16px' }}>🎁 {gift.amount.toLocaleString()} RWF</p>
+      <p style={{ fontWeight: 700, fontSize: '16px' }}>
+        {gift.theme ? GIFT_THEME_LABELS[gift.theme] : '🎁'} {gift.amount.toLocaleString()} RWF
+      </p>
       {gift.note && <p style={{ fontStyle: 'italic', opacity: 0.9 }}>&ldquo;{gift.note}&rdquo;</p>}
       <p style={{ fontSize: '12px', opacity: 0.8 }}>{statusLabel[gift.status]}</p>
       {canClaim && (
@@ -4688,6 +4690,7 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
   const [giftComposerOpen, setGiftComposerOpen] = useState(false);
   const [giftAmount, setGiftAmount] = useState('');
   const [giftNote, setGiftNote] = useState('');
+  const [giftTheme, setGiftTheme] = useState<GiftTheme | ''>('');
   const [sendingGift, setSendingGift] = useState(false);
   // Real KakaoTalk Emoticon Store (item 133) -- see lib/emoticons.ts's own doc comment.
   const [emoticonPickerOpen, setEmoticonPickerOpen] = useState(false);
@@ -4874,9 +4877,10 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
     setError(null);
     setNeedsDeviceVerification(false);
     try {
-      await sendGiftInConversation(conversation.conversationId, amount, giftNote);
+      await sendGiftInConversation(conversation.conversationId, amount, giftNote, giftTheme || null);
       setGiftAmount('');
       setGiftNote('');
+      setGiftTheme('');
       setGiftComposerOpen(false);
       load();
     } catch (err) {
@@ -5174,6 +5178,16 @@ function ConversationThread({ conversation, onBack }: { conversation: Conversati
             maxLength={200}
             style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
           />
+          <select
+            value={giftTheme}
+            onChange={(e) => setGiftTheme(e.target.value as GiftTheme | '')}
+            style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          >
+            <option value="">No theme (plain gift)</option>
+            {(Object.keys(GIFT_THEME_LABELS) as GiftTheme[]).map((t) => (
+              <option key={t} value={t}>{GIFT_THEME_LABELS[t]}</option>
+            ))}
+          </select>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
               type="submit"

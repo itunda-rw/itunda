@@ -670,6 +670,7 @@ data class GiftDto(
     val messageId: String,
     val amount: Double,
     val note: String?,
+    val theme: String?,
     val status: String,
     val holdTransactionId: String,
     val claimTransactionId: String?,
@@ -677,7 +678,17 @@ data class GiftDto(
     val claimedAt: String?,
     val createdAt: String,
 )
-data class SendGiftInConversationRequest(val amount: Double, val note: String? = null)
+data class SendGiftInConversationRequest(val amount: Double, val note: String? = null, val theme: String? = null)
+
+// Real KakaoPay 송금봉투 (money envelope) themed presets (backend since 2026-07-26,
+// GiftTheme's own doc comment) -- exactly these 4 real, sourced presets, optional and
+// additive alongside the free-text note. Had zero client anywhere until now.
+val GIFT_THEME_LABELS: Map<String, String> = mapOf(
+    "CONGRATULATIONS" to "🎉 Congratulations",
+    "HEARTFELT" to "💌 From the heart",
+    "GOOD_LUCK" to "🍀 Good luck",
+    "SETTLE_UP" to "🧾 Settling up",
+)
 data class GiftResponse(val success: Boolean, val gift: GiftDto)
 data class GiftsResponse(val success: Boolean, val gifts: List<GiftDto>)
 

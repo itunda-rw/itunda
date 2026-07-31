@@ -1720,6 +1720,7 @@ public struct GiftDto: Decodable, Identifiable {
     public let messageId: String
     public let amount: Double
     public let note: String?
+    public let theme: String?
     public let status: String
     public let holdTransactionId: String
     public let claimTransactionId: String?
@@ -1727,9 +1728,19 @@ public struct GiftDto: Decodable, Identifiable {
     public let claimedAt: String?
     public let createdAt: String
 }
-public struct SendGiftInConversationRequest: Encodable { public let amount: Double; public let note: String? }
+public struct SendGiftInConversationRequest: Encodable { public let amount: Double; public let note: String?; public let theme: String? }
 public struct GiftResponse: Decodable { public let success: Bool; public let gift: GiftDto }
 public struct GiftsResponse: Decodable { public let success: Bool; public let gifts: [GiftDto] }
+
+// Real KakaoPay 송금봉투 (money envelope) themed presets (backend since 2026-07-26,
+// GiftTheme's own doc comment) -- exactly these 4 real, sourced presets, optional and
+// additive alongside the free-text note. Had zero client anywhere until now.
+public let giftThemeLabels: [String: String] = [
+    "CONGRATULATIONS": "🎉 Congratulations",
+    "HEARTFELT": "💌 From the heart",
+    "GOOD_LUCK": "🍀 Good luck",
+    "SETTLE_UP": "🧾 Settling up",
+]
 
 // Real KakaoTalk Emoticon Store (item 136) -- see backend Emoticon.kt's own doc
 // comment. Mirrors bank-mfe's lib/emoticons.ts (item 133) and Android's ApiService.kt
@@ -2838,10 +2849,10 @@ extension NetworkClient {
     public func getMyFavoriteListings() async throws -> FavoriteListingsResponse { try await get("api/v1/marketplace/listings/favorites") }
 
     // Real KakaoTalk-style gift send/claim (2026-07-20) -- see GiftService.
-    public func sendGiftInConversation(conversationId: String, amount: Double, note: String?) async throws -> GiftResponse {
+    public func sendGiftInConversation(conversationId: String, amount: Double, note: String?, theme: String? = nil) async throws -> GiftResponse {
         try await authenticatedPost(
             "api/v1/gifts/conversations/\(conversationId)",
-            body: SendGiftInConversationRequest(amount: amount, note: note),
+            body: SendGiftInConversationRequest(amount: amount, note: note, theme: theme),
             idempotencyKey: UUID().uuidString
         )
     }
