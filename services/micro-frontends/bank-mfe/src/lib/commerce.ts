@@ -187,6 +187,20 @@ export const fetchProductInquiries = (productId: string) =>
 export const fetchProductRating = (productId: string) =>
   apiFetch<{ success: boolean; average: number | null; count: number }>(`/api/v1/orders/products/${productId}/rating`);
 
+// Real bulk/wholesale pricing -- see the backend's ProductPriceTier doc comment.
+// Buyer-facing read half: merchant-mfe already has the owner-config half
+// (PosScreen.tsx's "Pricing" panel). Real checkout money impact, not cosmetic --
+// OrderService applies the highest-qualifying tier automatically once the buyer's
+// order quantity meets minQuantity, so this is a real "buy more, pay less per unit"
+// preview, not a label.
+export interface PriceTier {
+  minQuantity: number;
+  unitPrice: number;
+}
+
+export const fetchPriceTiers = (productId: string) =>
+  apiFetch<{ success: boolean; tiers: PriceTier[] }>(`/api/v1/merchant/products/${productId}/price-tiers`).then((r) => r.tiers);
+
 // Real product wishlist (2026-07-20) -- the real "찜하기"/wishlist every real Coupang/
 // Naver/Kakao/Toss Shopping-style app has. See ProductFavoriteService's own doc comment.
 export interface FavoriteProduct {

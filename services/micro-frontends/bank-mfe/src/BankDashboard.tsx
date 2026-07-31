@@ -100,9 +100,9 @@ import {
 } from './lib/eats';
 import {
   addProductFavorite, advanceOrderStatus, askProductInquiry, cancelOrder, decideOrderReturn, fetchMerchantOrders, fetchMerchantProducts, fetchMerchantReturnQueue,
-  fetchMyFavoriteProducts, fetchMyOrders, fetchMyReturnRequests, fetchOrderDetail,
+  fetchMyFavoriteProducts, fetchMyOrders, fetchMyReturnRequests, fetchOrderDetail, fetchPriceTiers,
   fetchProductInquiries, fetchProductRating, fetchProductReviews, ORDER_RETURN_REASON_CODES, placeOrder, removeProductFavorite, requestOrderReturn, submitProductReview,
-  type CommerceOrder, type CommerceOrderItem, type CommerceOrderStatus, type CommerceProduct, type FavoriteProduct, type OrderReturnRequestDto, type OrderReturnType, type ProductInquiry, type ProductReview,
+  type CommerceOrder, type CommerceOrderItem, type CommerceOrderStatus, type CommerceProduct, type FavoriteProduct, type OrderReturnRequestDto, type OrderReturnType, type PriceTier, type ProductInquiry, type ProductReview,
 } from './lib/commerce';
 import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
@@ -11681,6 +11681,42 @@ function ProductRatingBadge({ productId }: { productId: string }) {
   );
 }
 
+// Real bulk/wholesale pricing buyer-facing display -- see lib/commerce.ts's own
+// fetchPriceTiers doc comment. merchant-mfe already has the owner-config half
+// (PosScreen.tsx's "Pricing" panel); this is the first buyer-facing client anywhere.
+// Real checkout money impact, not cosmetic: OrderService already applies the
+// highest-qualifying tier automatically once the buyer's order quantity meets
+// minQuantity, so this previews what the buyer will actually pay, not a label.
+function PriceTiersDisplay({ productId, regularPrice }: { productId: string; regularPrice: number }) {
+  const [tiers, setTiers] = useState<PriceTier[] | null>(null);
+
+  useEffect(() => {
+    fetchPriceTiers(productId)
+      .then(setTiers)
+      .catch(() => setTiers([]));
+  }, [productId]);
+
+  if (!tiers || tiers.length === 0) return null;
+
+  return (
+    <div style={{ padding: '12px', borderRadius: '10px', background: 'var(--toss-grey-100)' }}>
+      <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>Buy more, pay less</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+          <span>1+</span>
+          <span>{regularPrice.toLocaleString()} RWF each</span>
+        </div>
+        {tiers.map((t) => (
+          <div key={t.minQuantity} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--toss-grey-700)', fontWeight: 600 }}>
+            <span>{t.minQuantity}+</span>
+            <span>{t.unitPrice.toLocaleString()} RWF each</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Real Coupang-style pre-purchase product Q&A (상품문의) (2026-07-26) -- see
 // ProductInquiryService's own doc comment on the backend. Genuinely distinct from
 // ProductRatingBadge's reviews above: no order/purchase required at all, so this is
@@ -12335,6 +12371,7 @@ function ProductDetailView({
         {product.description && (
           <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{product.description}</p>
         )}
+        <PriceTiersDisplay productId={product.id} regularPrice={product.price} />
         <ProductInquirySection productId={product.id} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', paddingTop: '4px', borderTop: '1px solid var(--toss-grey-100)' }}>
           <button onClick={() => onSetQty(merchant, product, Math.max(0, qty - 1))} className="toss-btn toss-btn-secondary" style={{ padding: '8px 16px' }}>−</button>
