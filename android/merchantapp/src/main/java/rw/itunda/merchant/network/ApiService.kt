@@ -412,11 +412,25 @@ interface ApiService {
     // instant new-order/booking push -- never registered one at all.
     @POST("api/v1/notifications/device-tokens")
     suspend fun registerDeviceToken(@Body request: RegisterDeviceTokenRequest): SuccessResponse
+
+    // Real Naver Smart Store-style "관심고객" (interested-customer) follower count +
+    // broadcast-to-followers -- see MerchantFollowController's own doc comment.
+    // Distinct from the customer-facing follow/unfollow already real on bank-mfe/
+    // Android app/iOS app. merchant-mfe already has this (item 118); this is the
+    // first native-merchant-app client for the owner-facing half.
+    @GET("api/v1/merchant/followers/count")
+    suspend fun getFollowerCount(): FollowerCountResponse
+
+    @POST("api/v1/merchant/followers/broadcast")
+    suspend fun broadcastToFollowers(@Body request: BroadcastToFollowersRequest): BroadcastToFollowersResponse
 }
 
 enum class DevicePlatform { ANDROID, IOS, WEB }
 data class RegisterDeviceTokenRequest(val platform: DevicePlatform, val token: String)
 data class SuccessResponse(val success: Boolean)
+data class FollowerCountResponse(val success: Boolean, val count: Int)
+data class BroadcastToFollowersRequest(val title: String, val body: String)
+data class BroadcastToFollowersResponse(val success: Boolean, val recipientCount: Int)
 
 /**
  * Real, minimal Retrofit/OkHttp client, mirroring :riderapp's own NetworkClient

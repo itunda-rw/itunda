@@ -1,7 +1,7 @@
 import SwiftUI
 import CoreDesignSystem
 
-private enum MerchantTab { case orders, catalog, register, reports, business, dineIn, reviews, coupons }
+private enum MerchantTab { case orders, catalog, register, reports, business, dineIn, reviews, coupons, followers }
 
 struct MerchantHomeScreen: View {
     let merchant: MerchantDto
@@ -32,6 +32,7 @@ struct MerchantHomeScreen: View {
                 Text("Dine-in").tag(MerchantTab.dineIn)
                 Text("Reviews").tag(MerchantTab.reviews)
                 Text("Coupons").tag(MerchantTab.coupons)
+                Text("Followers").tag(MerchantTab.followers)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, 16)
@@ -46,6 +47,7 @@ struct MerchantHomeScreen: View {
             case .dineIn: DineInTab(restaurantId: merchant.id)
             case .reviews: ReviewsTab(restaurantId: merchant.id)
             case .coupons: CouponsTab()
+            case .followers: FollowersTab()
             }
         }
     }
@@ -380,6 +382,68 @@ private struct ProductReviewReplyCard: View {
             self.error = "Could not submit your reply."
         }
         submitting = false
+    }
+}
+
+/// Real Naver Smart Store-style "관심고객" (interested-customer) follower count +
+/// broadcast-to-followers (item 118) -- the merchant-owner-facing half of
+/// MerchantFollowService; the customer-facing follow/unfollow toggle already shipped
+/// on bank-mfe/Android app/iOS app. merchant-mfe already has this; this is the first
+/// native-merchant-app client, mirroring its FollowersCard field-for-field.
+private struct FollowersTab: View {
+    @State private var count: Int?
+    @State private var title = ""
+    @State private var body_ = ""
+    @State private var sending = false
+    @State private var sentCount: Int?
+    @State private var error: String?
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(count == nil ? "Loading…" : "\(count!) customer\(count == 1 ? "" : "s") following your store")
+                    .font(.subheadline).foregroundColor(.secondary)
+                TextField("Title", text: $title)
+                    .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                TextField("Tell your followers what's new.", text: $body_)
+                    .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                if let error { Text(error).font(.caption).foregroundColor(.red) }
+                let hasFollowers = (count ?? 0) > 0
+                Button(action: { Task { await send() } }) {
+                    Text(sending ? "Sending…" : "Broadcast to followers").bold().foregroundColor(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 12)
+                        .background(hasFollowers ? Color.accentColor : Color.gray).cornerRadius(10)
+                }
+                .disabled(sending || !hasFollowers || title.trimmingCharacters(in: .whitespaces).isEmpty || body_.trimmingCharacters(in: .whitespaces).isEmpty)
+                if !hasFollowers {
+                    Text("You need at least one follower to send a broadcast.").font(.caption).foregroundColor(.secondary)
+                }
+                if let sentCount {
+                    Text("Sent to \(sentCount) follower\(sentCount == 1 ? "" : "s").").font(.caption).foregroundColor(.accentColor)
+                }
+            }
+            .padding(16)
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        count = (try? await MerchantNetworkClient.shared.getFollowerCount())?.count ?? 0
+    }
+
+    private func send() async {
+        sending = true
+        error = nil
+        sentCount = nil
+        do {
+            let res = try await MerchantNetworkClient.shared.broadcastToFollowers(title: title.trimmingCharacters(in: .whitespaces), body: body_.trimmingCharacters(in: .whitespaces))
+            sentCount = res.recipientCount
+            title = ""
+            body_ = ""
+        } catch {
+            self.error = "Could not send this broadcast."
+        }
+        sending = false
     }
 }
 

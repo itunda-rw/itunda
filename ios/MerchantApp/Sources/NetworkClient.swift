@@ -266,6 +266,15 @@ func dineInTableQrPayload(restaurantId: String, tableNumber: String) -> String {
 struct RegisterDeviceTokenRequest: Encodable { let platform: String; let token: String }
 struct SuccessResponse: Decodable { let success: Bool }
 
+// Real Naver Smart Store-style "관심고객" (interested-customer) follower count +
+// broadcast-to-followers -- see MerchantFollowController's own doc comment. Distinct
+// from the customer-facing follow/unfollow already real on bank-mfe/Android app/iOS
+// app. merchant-mfe already has this (item 118); this is the first native-merchant-app
+// client for the owner-facing half.
+struct FollowerCountResponse: Decodable { let success: Bool; let count: Int }
+struct BroadcastToFollowersRequest: Encodable { let title: String; let body: String }
+struct BroadcastToFollowersResponse: Decodable { let success: Bool; let recipientCount: Int }
+
 enum NetworkError: Error {
     case invalidResponse
     case httpError(statusCode: Int)
@@ -416,6 +425,12 @@ final class MerchantNetworkClient {
     // Android already have this; this is the first iOS client.
     func setWebhookUrl(_ webhookUrl: String) async throws -> MerchantResponse {
         try await post("api/v1/merchant/webhook-url", body: SetWebhookUrlRequest(webhookUrl: webhookUrl))
+    }
+
+    func getFollowerCount() async throws -> FollowerCountResponse { try await get("api/v1/merchant/followers/count") }
+
+    func broadcastToFollowers(title: String, body: String) async throws -> BroadcastToFollowersResponse {
+        try await post("api/v1/merchant/followers/broadcast", body: BroadcastToFollowersRequest(title: title, body: body))
     }
 
     func getRestaurantOrders() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/restaurant-orders") }

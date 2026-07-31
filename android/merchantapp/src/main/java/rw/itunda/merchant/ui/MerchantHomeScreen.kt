@@ -39,7 +39,7 @@ import rw.itunda.merchant.network.MerchantDto
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.network.UpdateEatsOrderStatusRequest
 
-private enum class MerchantTab { ORDERS, DINE_IN, BOOKINGS, CATALOG, REGISTER, BUSINESS_ACCOUNT, REPORTS, REVIEWS, COUPONS }
+private enum class MerchantTab { ORDERS, DINE_IN, BOOKINGS, CATALOG, REGISTER, BUSINESS_ACCOUNT, REPORTS, REVIEWS, COUPONS, FOLLOWERS }
 
 @Composable
 fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
@@ -71,6 +71,7 @@ fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
                 MerchantTab.REPORTS to "Reports",
                 MerchantTab.REVIEWS to "Reviews",
                 MerchantTab.COUPONS to "Coupons",
+                MerchantTab.FOLLOWERS to "Followers",
             ).forEach { (t, label) ->
                 val selected = t == tab
                 Text(
@@ -92,6 +93,7 @@ fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
             MerchantTab.REPORTS -> ReportsTab()
             MerchantTab.REVIEWS -> ReviewsTab(restaurantId = merchant.id)
             MerchantTab.COUPONS -> CouponsTab()
+            MerchantTab.FOLLOWERS -> FollowersTab()
         }
     }
 }
@@ -399,6 +401,90 @@ private fun ProductReviewReplyRow(review: rw.itunda.merchant.network.ProductRevi
         }
         else -> {
             Button(onClick = { replying = true }) { Text("Reply") }
+        }
+    }
+}
+
+// Real Naver Smart Store-style "관심고객" (interested-customer) follower count +
+// broadcast-to-followers (item 118) -- the merchant-owner-facing half of
+// MerchantFollowService; the customer-facing follow/unfollow toggle already shipped
+// on bank-mfe/Android app/iOS app. merchant-mfe already has this; this is the first
+// native-merchant-app client, mirroring its FollowersCard field-for-field.
+@Composable
+private fun FollowersTab() {
+    var count by remember { mutableStateOf<Int?>(null) }
+    var title by remember { mutableStateOf("") }
+    var body by remember { mutableStateOf("") }
+    var sending by remember { mutableStateOf(false) }
+    var sentCount by remember { mutableStateOf<Int?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        try {
+            count = rw.itunda.merchant.network.NetworkClient.apiService.getFollowerCount().count
+        } catch (e: Exception) {
+            count = 0
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Followers", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(
+            if (count == null) "Loading…" else "${count} customer${if (count == 1) "" else "s"} following your store",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        androidx.compose.material3.OutlinedTextField(
+            value = title,
+            onValueChange = { title = it },
+            label = { Text("Title") },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        androidx.compose.material3.OutlinedTextField(
+            value = body,
+            onValueChange = { body = it },
+            label = { Text("Tell your followers what's new.") },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        val hasFollowers = (count ?: 0) > 0
+        Button(
+            onClick = {
+                sending = true
+                error = null
+                sentCount = null
+                scope.launch {
+                    try {
+                        val recipients = rw.itunda.merchant.network.NetworkClient.apiService.broadcastToFollowers(
+                            rw.itunda.merchant.network.BroadcastToFollowersRequest(title.trim(), body.trim()),
+                        ).recipientCount
+                        sentCount = recipients
+                        title = ""
+                        body = ""
+                    } catch (e: Exception) {
+                        error = "Could not send this broadcast."
+                    } finally {
+                        sending = false
+                    }
+                }
+            },
+            enabled = !sending && hasFollowers && title.isNotBlank() && body.isNotBlank(),
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text(if (sending) "Sending…" else "Broadcast to followers") }
+        if (!hasFollowers) {
+            Text(
+                "You need at least one follower to send a broadcast.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        sentCount?.let {
+            Text(
+                "Sent to $it follower${if (it == 1) "" else "s"}.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }
