@@ -880,6 +880,7 @@ data class DealProductDto(
     val stockQuantity: Int? = null,
 )
 data class DealsResponse(val success: Boolean, val products: List<DealProductDto>)
+data class MembershipDayStatusResponse(val success: Boolean, val isMembershipDay: Boolean, val multiplier: Double)
 
 // Real "nearby places" category search + bookmarked/favorite places (2026-07-19) -- see
 // rw.itunda.maps.MapsService's own doc comment on the backend. `MAP_NEARBY_CATEGORIES`
@@ -2290,6 +2291,12 @@ interface ApiService {
     // own doc comment.
     @GET("api/v1/shopping/products/deals")
     suspend fun getShopDeals(): DealsResponse
+
+    // Real Naver Pay 멤버십 데이 (Membership Day) cashback boost -- see
+    // rw.itunda.merchant.ShoppingCashbackService's own doc comment. bank-mfe already has
+    // this; this is the first Android client.
+    @GET("api/v1/shopping/membership-day")
+    suspend fun getMembershipDayStatus(): MembershipDayStatusResponse
 
     @GET("api/v1/shopping/merchants/{id}/products")
     suspend fun getMerchantProducts(@Path("id") merchantId: String): MerchantProductsResponse

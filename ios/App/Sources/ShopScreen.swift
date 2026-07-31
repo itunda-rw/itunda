@@ -91,6 +91,12 @@ private struct CommerceShopContent: View {
     // comment.
     @State private var deals: [DealProductDto]?
 
+    // Real Naver Pay 멤버십 데이 (Membership Day) cashback boost -- bank-mfe/Android
+    // already have this; this is the first iOS client. See the backend's
+    // ShoppingCashbackService doc comment for the real "first Monday of the month"
+    // eligibility rule.
+    @State private var membershipDay: MembershipDayStatusResponse?
+
     // Real cross-merchant product search (item 191) -- closes
     // docs/DESIGN_REFERENCES.md Section 5 recommendation #1: bank-mfe has had "search
     // across every merchant" since 2026-07-20 (lib/shopping.ts's own doc comment), and
@@ -177,6 +183,9 @@ private struct CommerceShopContent: View {
             await loadFollowedMerchantIds()
             if deals == nil {
                 do { deals = try await NetworkClient.shared.getShopDeals().products } catch {}
+            }
+            if membershipDay == nil {
+                do { membershipDay = try await NetworkClient.shared.getMembershipDayStatus() } catch {}
             }
         }
     }
@@ -266,6 +275,16 @@ private struct CommerceShopContent: View {
                     } else if view == .wishlist {
                         ProductWishlistView(onRemoved: { Task { await loadFavoriteProductIds() } })
                     } else {
+                        if let membershipDay, membershipDay.isMembershipDay {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("🎉 Membership Day — \(Int(membershipDay.multiplier))x cashback today")
+                                    .font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.brand)
+                                Text("Every purchase you make today earns \(Int(membershipDay.multiplier))x the usual cashback.")
+                                    .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            }
+                            .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                            .background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                        }
                         HStack(spacing: 8) {
                             TextField("Search products across every merchant", text: $productSearchInput)
                                 .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)

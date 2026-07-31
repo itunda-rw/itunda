@@ -1869,6 +1869,7 @@ public struct DealProductDto: Decodable, Identifiable {
     public let stockQuantity: Int?
 }
 public struct DealsResponse: Decodable { public let success: Bool; public let products: [DealProductDto] }
+public struct MembershipDayStatusResponse: Decodable { public let success: Bool; public let isMembershipDay: Bool; public let multiplier: Double }
 
 // Real "nearby places" category search + bookmarked/favorite places (2026-07-19) -- see
 // rw.itunda.maps.MapsService's own doc comment on the backend. `mapNearbyCategories`
@@ -2826,6 +2827,11 @@ extension NetworkClient {
     // Real "Deals" rail (2026-07-25) -- see backend MerchantProductRepository.findDeals's
     // own doc comment.
     public func getShopDeals() async throws -> DealsResponse { try await get("api/v1/shopping/products/deals") }
+
+    // Real Naver Pay 멤버십 데이 (Membership Day) cashback boost -- see
+    // rw.itunda.merchant.ShoppingCashbackService's own doc comment. bank-mfe/Android
+    // already have this; this is the first iOS client.
+    public func getMembershipDayStatus() async throws -> MembershipDayStatusResponse { try await get("api/v1/shopping/membership-day") }
 
     // Real "search this map" + "directions" (2026-07-19) -- see MapsService.
     public func searchPlaces(query: String) async throws -> MapsSearchResponse {

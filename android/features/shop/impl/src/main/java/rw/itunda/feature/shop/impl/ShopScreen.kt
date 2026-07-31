@@ -79,6 +79,7 @@ import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.BookingSlotDto
 import rw.itunda.core.network.CreateBookingRequest
 import rw.itunda.core.network.DealProductDto
+import rw.itunda.core.network.MembershipDayStatusResponse
 import rw.itunda.core.network.ProductSearchResultDto
 import rw.itunda.core.network.FavoriteProductDto
 import rw.itunda.core.network.MerchantBookingDto
@@ -169,6 +170,18 @@ fun CommerceShopContent(
             if (res.success) deals = res.products
         } catch (e: Exception) {
             // Real, non-critical -- the Deals rail just won't render if this fails.
+        }
+    }
+
+    // Real Naver Pay 멤버십 데이 (Membership Day) cashback boost -- bank-mfe already has
+    // this; this is the first Android client. See the backend's ShoppingCashbackService
+    // doc comment for the real "first Monday of the month" eligibility rule.
+    var membershipDay by remember { mutableStateOf<MembershipDayStatusResponse?>(null) }
+    LaunchedEffect(Unit) {
+        try {
+            membershipDay = NetworkClient.apiService.getMembershipDayStatus()
+        } catch (e: Exception) {
+            // Real, non-critical -- the banner just won't render if this fails.
         }
     }
 
@@ -417,6 +430,23 @@ fun CommerceShopContent(
         } else if (view == CommerceView.WISHLIST) {
             item { ProductWishlistView(onRemoved = ::loadFavoriteProductIds) }
         } else {
+            if (membershipDay?.isMembershipDay == true) {
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(Ids.layout.cardCornerRadius))
+                            .background(Ids.colors.surface).padding(14.dp),
+                    ) {
+                        Text(
+                            "🎉 Membership Day -- ${membershipDay!!.multiplier}x cashback today",
+                            color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                        )
+                        Text(
+                            "Every purchase you make today earns ${membershipDay!!.multiplier}x the usual cashback.",
+                            color = Ids.colors.textSecondary, fontSize = 12.sp,
+                        )
+                    }
+                }
+            }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
