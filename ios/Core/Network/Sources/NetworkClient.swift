@@ -3822,10 +3822,27 @@ public struct SupportTicketDto: Decodable, Identifiable {
 public struct CreateSupportTicketResponse: Decodable { public let success: Bool; public let ticket: SupportTicketDto }
 public struct SupportTicketsResponse: Decodable { public let success: Bool; public let tickets: [SupportTicketDto] }
 
-public struct CreateSplitBillRequest: Encodable { public let totalAmount: Double; public let description: String; public let participantUserIds: [String] }
+public struct CreateSplitBillRequest: Encodable {
+    public let totalAmount: Double; public let description: String; public let participantUserIds: [String]
+    // Real KakaoPay 사다리타기 (ladder-game) mode (2026-07-25) -- see backend
+    // SplitBillService.ladderSplit's own doc comment. "EVEN" is the unchanged v1 default.
+    public let mode: String
+    public let ladderVarianceLevel: Int?
+    public init(totalAmount: Double, description: String, participantUserIds: [String], mode: String = "EVEN", ladderVarianceLevel: Int? = nil) {
+        self.totalAmount = totalAmount; self.description = description; self.participantUserIds = participantUserIds
+        self.mode = mode; self.ladderVarianceLevel = ladderVarianceLevel
+    }
+}
 public struct SplitBillDto: Decodable, Identifiable {
     public let id: String; public let organizerId: String; public let groupConversationId: String; public let messageId: String
     public let totalAmount: Double; public let description: String; public let status: String; public let settledAt: String?; public let createdAt: String
+    public let mode: String; public let ladderVarianceLevel: Int?
+    // Real photo receipt attach (2026-07-28) -- see backend SplitBillService.attachReceipt's
+    // own doc comment. nil means no receipt attached yet.
+    public let receiptImageUrl: String?
+    // Real up-to-5 sequential settlement round counter (2026-07-28) -- see backend
+    // SplitBillService.requestNextRound's own doc comment. Starts at 1.
+    public let currentRound: Int
 }
 public struct SplitBillParticipantDto: Decodable, Identifiable {
     public let id: String; public let splitBillId: String; public let userId: String; public let shareAmount: Double
@@ -3835,6 +3852,10 @@ public struct SplitBillWithParticipants: Decodable, Identifiable { public let sp
 public struct CreateSplitBillResponse: Decodable { public let success: Bool; public let splitBill: SplitBillDto; public let participants: [SplitBillParticipantDto] }
 public struct SplitBillsForGroupResponse: Decodable { public let success: Bool; public let splitBills: [SplitBillWithParticipants] }
 public struct PaySplitBillShareResponse: Decodable { public let success: Bool; public let participant: SplitBillParticipantDto }
+public struct AttachSplitBillReceiptRequest: Encodable { public let imageUrl: String; public init(imageUrl: String) { self.imageUrl = imageUrl } }
+// Distinct from SplitBillsForGroupResponse-shaped responses -- attachReceipt/
+// requestNextRound's controller responses carry only {success, splitBill}, no participants.
+public struct SplitBillOnlyResponse: Decodable { public let success: Bool; public let splitBill: SplitBillDto }
 
 public struct AddContactRequest: Encodable { public let name: String; public let bank: String?; public let phoneNumber: String }
 public struct ContactDto: Decodable, Identifiable { public let id: String; public let userId: String; public let name: String; public let bank: String; public let acc: String; public let phoneNumber: String; public let color: String; public let letter: String }
@@ -3972,10 +3993,10 @@ extension NetworkClient {
 
     public func getSupportTickets() async throws -> SupportTicketsResponse { try await get("api/v1/support/tickets") }
 
-    public func createSplitBill(groupConversationId: String, totalAmount: Double, description: String, participantUserIds: [String]) async throws -> CreateSplitBillResponse {
+    public func createSplitBill(groupConversationId: String, totalAmount: Double, description: String, participantUserIds: [String], mode: String = "EVEN", ladderVarianceLevel: Int? = nil) async throws -> CreateSplitBillResponse {
         try await authenticatedPost(
             "api/v1/split-bills/conversations/\(groupConversationId)",
-            body: CreateSplitBillRequest(totalAmount: totalAmount, description: description, participantUserIds: participantUserIds),
+            body: CreateSplitBillRequest(totalAmount: totalAmount, description: description, participantUserIds: participantUserIds, mode: mode, ladderVarianceLevel: ladderVarianceLevel),
             idempotencyKey: UUID().uuidString
         )
     }
@@ -3986,6 +4007,14 @@ extension NetworkClient {
 
     public func paySplitBillShare(splitBillId: String) async throws -> PaySplitBillShareResponse {
         try await authenticatedPost("api/v1/split-bills/\(splitBillId)/pay", body: EmptyRequest(), idempotencyKey: UUID().uuidString)
+    }
+
+    public func attachSplitBillReceipt(splitBillId: String, imageUrl: String) async throws -> SplitBillOnlyResponse {
+        try await authenticatedPost("api/v1/split-bills/\(splitBillId)/receipt", body: AttachSplitBillReceiptRequest(imageUrl: imageUrl))
+    }
+
+    public func requestSplitBillNextRound(splitBillId: String) async throws -> SplitBillOnlyResponse {
+        try await authenticatedPost("api/v1/split-bills/\(splitBillId)/next-round", body: EmptyRequest())
     }
 
     public func getContacts() async throws -> ContactsResponse { try await get("api/v1/contacts") }

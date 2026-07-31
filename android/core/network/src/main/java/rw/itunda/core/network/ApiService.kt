@@ -1606,7 +1606,17 @@ data class SplitBillDto(
     val totalAmount: java.math.BigDecimal, val description: String, val status: String,
     val settledAt: String?, val createdAt: String,
     val mode: String = "EVEN", val ladderVarianceLevel: Int? = null,
+    // Real photo receipt attach (2026-07-28) -- see backend SplitBillService.attachReceipt's
+    // own doc comment. null means no receipt attached yet.
+    val receiptImageUrl: String? = null,
+    // Real up-to-5 sequential settlement round counter (2026-07-28) -- see backend
+    // SplitBillService.requestNextRound's own doc comment. Starts at 1.
+    val currentRound: Int = 1,
 )
+data class AttachSplitBillReceiptRequest(val imageUrl: String)
+// Distinct from SplitBillResponse -- attachReceipt/requestNextRound's controller
+// responses carry only {success, splitBill}, no participants key.
+data class SplitBillOnlyResponse(val success: Boolean, val splitBill: SplitBillDto)
 data class SplitBillParticipantDto(
     val id: String, val splitBillId: String, val userId: String, val shareAmount: java.math.BigDecimal,
     val status: String, val paidTransactionId: String?, val paidAt: String?, val createdAt: String,
@@ -2820,6 +2830,12 @@ interface ApiService {
 
     @POST("api/v1/split-bills/{id}/pay")
     suspend fun paySplitBillShare(@Path("id") splitBillId: String, @Header("Idempotency-Key") idempotencyKey: String): PaySplitBillShareResponse
+
+    @POST("api/v1/split-bills/{id}/receipt")
+    suspend fun attachSplitBillReceipt(@Path("id") splitBillId: String, @Body request: AttachSplitBillReceiptRequest): SplitBillOnlyResponse
+
+    @POST("api/v1/split-bills/{id}/next-round")
+    suspend fun requestSplitBillNextRound(@Path("id") splitBillId: String): SplitBillOnlyResponse
 
     @GET("api/v1/contacts")
     suspend fun getContacts(): ContactsResponse

@@ -63,7 +63,9 @@ import {
   type Emoticon, type EmoticonPack, type OwnedEmoticonPack,
 } from './lib/emoticons';
 import { extendGiftVoucherExpiry, fetchGiftVouchersForConversation, purchaseGiftVoucher, type GiftVoucher, type GiftVoucherStatus } from './lib/giftVouchers';
-import { createSplitBill, fetchSplitBillsForGroup, paySplitBillShare, type SplitBillWithParticipants } from './lib/splitBill';
+import {
+  attachSplitBillReceipt, createSplitBill, fetchSplitBillsForGroup, paySplitBillShare, requestSplitBillNextRound, type SplitBillWithParticipants,
+} from './lib/splitBill';
 import {
   addKeywordAlert, addListingFavorite, contactSeller, createListing, fetchKeywordAlertQuietHours, fetchKeywordAlerts, fetchListingReviews, fetchListings,
   fetchListingsMyNeighborhood, fetchMyFavoriteListings, fetchMyListings, fetchMyPurchases, fetchOffersForConversation, makeOffer,
@@ -5824,6 +5826,12 @@ function GroupSplitBillsView({
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // Real KakaoPay 사다리타기 (ladder-game) mode (2026-07-25 on Android's TalkScreen.kt --
+  // bank-mfe never got this despite usually shipping first) -- see backend
+  // SplitBillService.ladderSplit's own doc comment for the 3 variance levels.
+  const [ladderMode, setLadderMode] = useState(false);
+  const [varianceLevel, setVarianceLevel] = useState(1);
+  const [receiptUrlDrafts, setReceiptUrlDrafts] = useState<Record<string, string>>({});
 
   const refresh = () =>
     fetchSplitBillsForGroup(groupConversationId)
@@ -5839,8 +5847,11 @@ function GroupSplitBillsView({
     setBusyId('new');
     setError(null);
     try {
-      await createSplitBill(groupConversationId, Number(amount), description, Array.from(selectedIds));
-      setAmount(''); setDescription(''); setSelectedIds(new Set()); setShowNewForm(false);
+      await createSplitBill(
+        groupConversationId, Number(amount), description, Array.from(selectedIds),
+        ladderMode ? 'LADDER' : 'EVEN', ladderMode ? varianceLevel : undefined,
+      );
+      setAmount(''); setDescription(''); setSelectedIds(new Set()); setShowNewForm(false); setLadderMode(false);
       refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'That split bill could not be created.');
@@ -5857,6 +5868,35 @@ function GroupSplitBillsView({
       refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'That payment could not be completed.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleAttachReceipt = async (splitBillId: string) => {
+    const url = (receiptUrlDrafts[splitBillId] ?? '').trim();
+    if (!url) return;
+    setBusyId(splitBillId);
+    setError(null);
+    try {
+      await attachSplitBillReceipt(splitBillId, url);
+      setReceiptUrlDrafts((prev) => ({ ...prev, [splitBillId]: '' }));
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'That receipt could not be attached.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleNextRound = async (splitBillId: string) => {
+    setBusyId(splitBillId);
+    setError(null);
+    try {
+      await requestSplitBillNextRound(splitBillId);
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not start the next settlement round.');
     } finally {
       setBusyId(null);
     }
@@ -5898,6 +5938,29 @@ function GroupSplitBillsView({
               />
             </label>
           ))}
+          <label
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', cursor: 'pointer' }}
+            onClick={(e) => { e.preventDefault(); setLadderMode((v) => !v); }}
+          >
+            🎲 Ladder game (randomized split)
+            <span style={{ fontSize: '12px', color: ladderMode ? 'var(--toss-blue)' : 'var(--toss-grey-500)', fontWeight: 700 }}>
+              {ladderMode ? 'On' : 'Off'}
+            </span>
+          </label>
+          {ladderMode && (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {[1, 2, 3].map((level) => (
+                <button
+                  key={level} type="button"
+                  className={level === varianceLevel ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+                  style={{ flex: 1, fontSize: '12px' }}
+                  onClick={() => setVarianceLevel(level)}
+                >
+                  Level {level}
+                </button>
+              ))}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: '10px' }}>
             <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setShowNewForm(false)}>Cancel</button>
             <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={busyId === 'new' || selectedIds.size === 0}>
@@ -5912,11 +5975,15 @@ function GroupSplitBillsView({
       )}
       {splitBills?.map(({ splitBill, participants }) => {
         const myShare = participants.find((p) => p.userId === currentUserId);
+        const isOrganizer = splitBill.organizerId === currentUserId;
+        const hasPending = participants.some((p) => p.status === 'PENDING');
+        const modeLabel = splitBill.mode === 'LADDER' ? ` · 🎲 Ladder L${splitBill.ladderVarianceLevel}` : '';
         return (
           <div key={splitBill.id} className="toss-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <h4 style={{ fontSize: '14px', fontWeight: 700 }}>{splitBill.description}</h4>
             <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
-              Total {splitBill.totalAmount.toLocaleString()} RWF · {splitBill.status}
+              Total {splitBill.totalAmount.toLocaleString()} RWF · {splitBill.status}{modeLabel}
+              {splitBill.currentRound > 1 ? ` · Round ${splitBill.currentRound}` : ''}
             </p>
             {participants.map((p) => {
               const name = members.find((m) => m.userId === p.userId)?.name ?? p.userId.slice(0, 8);
@@ -5926,6 +5993,11 @@ function GroupSplitBillsView({
                 </p>
               );
             })}
+            {splitBill.receiptImageUrl && (
+              <a href={splitBill.receiptImageUrl} target="_blank" rel="noreferrer" style={{ fontSize: '12px', color: 'var(--toss-blue)' }}>
+                🧾 View receipt
+              </a>
+            )}
             {myShare && myShare.status === 'PENDING' && (
               <button
                 className="toss-btn toss-btn-primary" style={{ marginTop: '6px' }}
@@ -5934,6 +6006,35 @@ function GroupSplitBillsView({
               >
                 {busyId === splitBill.id ? 'Paying…' : `Pay my share (${myShare.shareAmount.toLocaleString()} RWF)`}
               </button>
+            )}
+            {isOrganizer && (
+              <>
+                {!splitBill.receiptImageUrl && (
+                  <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                    <input
+                      type="text" placeholder="Receipt photo URL" value={receiptUrlDrafts[splitBill.id] ?? ''}
+                      onChange={(e) => setReceiptUrlDrafts((prev) => ({ ...prev, [splitBill.id]: e.target.value }))}
+                      style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '12px' }}
+                    />
+                    <button
+                      type="button" className="toss-btn toss-btn-secondary" style={{ fontSize: '12px' }}
+                      disabled={busyId === splitBill.id || !(receiptUrlDrafts[splitBill.id] ?? '').trim()}
+                      onClick={() => handleAttachReceipt(splitBill.id)}
+                    >
+                      Attach
+                    </button>
+                  </div>
+                )}
+                {splitBill.status === 'OPEN' && hasPending && splitBill.currentRound < 5 && (
+                  <button
+                    type="button" className="toss-btn toss-btn-secondary" style={{ marginTop: '4px', fontSize: '12px' }}
+                    disabled={busyId === splitBill.id}
+                    onClick={() => handleNextRound(splitBill.id)}
+                  >
+                    Nudge unpaid → round {splitBill.currentRound + 1}
+                  </button>
+                )}
+              </>
             )}
           </div>
         );

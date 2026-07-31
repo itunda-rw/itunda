@@ -19,6 +19,16 @@ export interface SplitBill {
   status: string;
   settledAt: string | null;
   createdAt: string;
+  // Real KakaoPay 사다리타기 (ladder-game) mode (2026-07-25) -- see backend
+  // SplitBillService.ladderSplit's own doc comment. 'EVEN' is the unchanged v1 default.
+  mode: 'EVEN' | 'LADDER';
+  ladderVarianceLevel: number | null;
+  // Real photo receipt attach (2026-07-28) -- see SplitBillService.attachReceipt's own
+  // doc comment. null means no receipt attached yet.
+  receiptImageUrl: string | null;
+  // Real up-to-5 sequential settlement round counter (2026-07-28) -- see
+  // SplitBillService.requestNextRound's own doc comment. Starts at 1.
+  currentRound: number;
 }
 
 export interface SplitBillParticipant {
@@ -37,12 +47,30 @@ export interface SplitBillWithParticipants {
   participants: SplitBillParticipant[];
 }
 
-export const createSplitBill = (groupConversationId: string, totalAmount: number, description: string, participantUserIds: string[]) =>
+export const createSplitBill = (
+  groupConversationId: string,
+  totalAmount: number,
+  description: string,
+  participantUserIds: string[],
+  mode: 'EVEN' | 'LADDER' = 'EVEN',
+  ladderVarianceLevel?: number,
+) =>
   apiFetch<{ success: boolean } & SplitBillWithParticipants>(`/api/v1/split-bills/conversations/${groupConversationId}`, {
     method: 'POST',
     headers: { 'Idempotency-Key': randomUUID() },
-    body: JSON.stringify({ totalAmount, description, participantUserIds }),
+    body: JSON.stringify({ totalAmount, description, participantUserIds, mode, ladderVarianceLevel }),
   });
+
+export const attachSplitBillReceipt = (splitBillId: string, imageUrl: string) =>
+  apiFetch<{ success: boolean; splitBill: SplitBill }>(`/api/v1/split-bills/${splitBillId}/receipt`, {
+    method: 'POST',
+    body: JSON.stringify({ imageUrl }),
+  }).then((r) => r.splitBill);
+
+export const requestSplitBillNextRound = (splitBillId: string) =>
+  apiFetch<{ success: boolean; splitBill: SplitBill }>(`/api/v1/split-bills/${splitBillId}/next-round`, {
+    method: 'POST',
+  }).then((r) => r.splitBill);
 
 export const fetchSplitBillsForGroup = (groupConversationId: string) =>
   apiFetch<{ success: boolean; splitBills: SplitBillWithParticipants[] }>(

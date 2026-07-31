@@ -39,6 +39,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -72,6 +73,7 @@ import rw.itunda.core.designsystem.components.TabHeader
 import rw.itunda.core.designsystem.components.chatMessageTime
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.AddGroupMemberRequest
+import rw.itunda.core.network.AttachSplitBillReceiptRequest
 import rw.itunda.core.network.ConversationSummaryDto
 import rw.itunda.core.network.CreateChatReportRequest
 import rw.itunda.core.network.CreateGroupRequest
@@ -804,6 +806,7 @@ private fun GroupSplitBillsView(
     // SplitBillService.ladderSplit's own doc comment for the 3 variance levels.
     var ladderMode by remember { mutableStateOf(false) }
     var varianceLevel by remember { mutableStateOf(1) }
+    var receiptUrlDrafts by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     val coroutineScope = rememberCoroutineScope()
 
     suspend fun refresh() {
@@ -916,14 +919,20 @@ private fun GroupSplitBillsView(
             else if (current.isEmpty()) item { Text("No split bills in this group yet.", color = Ids.colors.textSecondary, fontSize = 13.sp) }
             else items(current, key = { it.splitBill.id }) { entry ->
                 val myShare = entry.participants.find { it.userId == currentUserId }
+                val isOrganizer = entry.splitBill.organizerId == currentUserId
+                val hasPending = entry.participants.any { it.status == "PENDING" }
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(entry.splitBill.description, fontWeight = FontWeight.SemiBold)
                         val modeLabel = if (entry.splitBill.mode == "LADDER") " · 🎲 Ladder L${entry.splitBill.ladderVarianceLevel}" else ""
-                        Text("Total RWF ${entry.splitBill.totalAmount} · ${entry.splitBill.status}$modeLabel", fontSize = 13.sp, color = Ids.colors.textSecondary)
+                        val roundLabel = if (entry.splitBill.currentRound > 1) " · Round ${entry.splitBill.currentRound}" else ""
+                        Text("Total RWF ${entry.splitBill.totalAmount} · ${entry.splitBill.status}$modeLabel$roundLabel", fontSize = 13.sp, color = Ids.colors.textSecondary)
                         entry.participants.forEach { participant ->
                             val name = members.find { it.userId == participant.userId }?.name ?: participant.userId.take(8)
                             Text("$name: RWF ${participant.shareAmount} (${participant.status})", fontSize = 13.sp)
+                        }
+                        entry.splitBill.receiptImageUrl?.let { url ->
+                            Text("🧾 Receipt: $url", fontSize = 12.sp, color = Ids.colors.brand)
                         }
                         if (myShare != null && myShare.status == "PENDING") {
                             Spacer(modifier = Modifier.height(8.dp))
@@ -941,6 +950,50 @@ private fun GroupSplitBillsView(
                                     }
                                 },
                             ) { Text(if (busyId == entry.splitBill.id) "Paying…" else "Pay my share (RWF ${myShare.shareAmount})") }
+                        }
+                        if (isOrganizer && entry.splitBill.receiptImageUrl == null) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                OutlinedTextField(
+                                    receiptUrlDrafts[entry.splitBill.id] ?: "",
+                                    { receiptUrlDrafts = receiptUrlDrafts + (entry.splitBill.id to it) },
+                                    label = { Text("Receipt photo URL", fontSize = 11.sp) },
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Button(
+                                    enabled = busyId == null && !(receiptUrlDrafts[entry.splitBill.id].isNullOrBlank()),
+                                    onClick = {
+                                        val url = receiptUrlDrafts[entry.splitBill.id] ?: return@Button
+                                        busyId = entry.splitBill.id
+                                        coroutineScope.launch {
+                                            try {
+                                                NetworkClient.apiService.attachSplitBillReceipt(entry.splitBill.id, AttachSplitBillReceiptRequest(url))
+                                                receiptUrlDrafts = receiptUrlDrafts - entry.splitBill.id
+                                                refresh()
+                                            } catch (_: Exception) {
+                                                error = "That receipt could not be attached."
+                                            } finally { busyId = null }
+                                        }
+                                    },
+                                ) { Text("Attach") }
+                            }
+                        }
+                        if (isOrganizer && entry.splitBill.status == "OPEN" && hasPending && entry.splitBill.currentRound < 5) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(
+                                enabled = busyId == null,
+                                onClick = {
+                                    busyId = entry.splitBill.id
+                                    coroutineScope.launch {
+                                        try {
+                                            NetworkClient.apiService.requestSplitBillNextRound(entry.splitBill.id)
+                                            refresh()
+                                        } catch (_: Exception) {
+                                            error = "Could not start the next settlement round."
+                                        } finally { busyId = null }
+                                    }
+                                },
+                            ) { Text("Nudge unpaid → round ${entry.splitBill.currentRound + 1}") }
                         }
                     }
                 }
