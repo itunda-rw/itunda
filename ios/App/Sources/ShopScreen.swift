@@ -73,7 +73,7 @@ struct ShopScreen: View {
     }
 }
 
-private enum CommerceView { case browse, orders, wishlist }
+private enum CommerceView { case browse, orders, wishlist, subscriptions }
 
 // Real cross-merchant cart (2026-07-20) -- closes the "real Coupang splits a
 // multi-seller cart into per-seller orders, not attempted here" simplification the
@@ -323,6 +323,7 @@ private struct CommerceShopContent: View {
                         Text("Merchants").tag(CommerceView.browse)
                         Text("My orders").tag(CommerceView.orders)
                         Text("♡ Wishlist").tag(CommerceView.wishlist)
+                        Text("Subscriptions").tag(CommerceView.subscriptions)
                     }
                     .pickerStyle(.segmented)
 
@@ -330,6 +331,8 @@ private struct CommerceShopContent: View {
                         MyCommerceOrdersView()
                     } else if view == .wishlist {
                         ProductWishlistView(onRemoved: { Task { await loadFavoriteProductIds() } })
+                    } else if view == .subscriptions {
+                        MyProductSubscriptionsView()
                     } else {
                         PayAMerchantSection(paymentResult: $paymentResult)
                         if let membershipDay, membershipDay.isMembershipDay {
@@ -830,6 +833,55 @@ private struct BillingPlanRow: View {
 /// name, price row, rating badge, description, quantity stepper, and an
 /// add/update-cart action -- reached by tapping a product card in
 /// MerchantDetailView's grid (see that grid's own doc comment).
+// Real Coupang 정기배송 (subscribe & save) -- see NetworkClient's ProductSubscriptionDto
+// doc comment. A minimal delivery-address prompt via .alert rather than a full address
+// form, matching bank-mfe's own compact-card scope (fixed qty=1, every 30d).
+private struct SubscribeAndSaveButton: View {
+    let merchantId: String
+    let productId: String
+
+    @State private var showAlert = false
+    @State private var address = ""
+    @State private var busy = false
+    @State private var done = false
+    @State private var error: String?
+
+    var body: some View {
+        if done {
+            Text("✓ Subscribed -- delivered every 30 days").font(.caption).foregroundColor(IDS.Colors.brand)
+        } else {
+            VStack(alignment: .leading, spacing: 4) {
+                Button(action: { showAlert = true }) {
+                    Text("Subscribe & save (every 30 days)").font(.caption).bold().foregroundColor(IDS.Colors.brand)
+                }
+                if let error { Text(error).font(.caption2).foregroundColor(.red) }
+            }
+            .alert("Subscribe & save", isPresented: $showAlert) {
+                TextField("Delivery address", text: $address)
+                Button("Subscribe") { Task { await subscribe() } }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Delivered every 30 days. Cancel anytime.")
+            }
+        }
+    }
+
+    private func subscribe() async {
+        guard !address.trimmingCharacters(in: .whitespaces).isEmpty else {
+            error = "Enter a delivery address."
+            return
+        }
+        busy = true
+        defer { busy = false }
+        do {
+            _ = try await NetworkClient.shared.subscribeToProduct(merchantId: merchantId, productId: productId, quantity: 1, intervalDays: 30, deliveryAddress: address.trimmingCharacters(in: .whitespaces))
+            done = true
+        } catch {
+            self.error = "Could not set up this subscription."
+        }
+    }
+}
+
 private struct ProductDetailView: View {
     let merchant: ShoppingMerchantDto
     let product: MerchantProductDto
@@ -892,6 +944,8 @@ private struct ProductDetailView: View {
                     }
                     Spacer().frame(height: 16)
                     ProductInquirySection(productId: product.id)
+                    Spacer().frame(height: 12)
+                    SubscribeAndSaveButton(merchantId: merchant.merchantId, productId: product.id)
                     Spacer().frame(height: 20)
                     HStack(spacing: 10) {
                         Spacer()
@@ -1211,6 +1265,98 @@ private struct ProductWishlistView: View {
             onRemoved()
         } catch {
             self.error = "Couldn't remove this item. Check your connection and try again."
+        }
+    }
+}
+
+// Real Coupang 정기배송 (subscribe & save)-style recurring product delivery -- see
+// NetworkClient's ProductSubscriptionDto doc comment. bank-mfe already had this;
+// this is the first iOS client, mirroring bank-mfe's MyProductSubscriptionsCard.
+private struct MyProductSubscriptionsView: View {
+    @State private var subscriptions: [ProductSubscriptionDto]?
+    @State private var error: String?
+    @State private var busyId: String?
+
+    var body: some View {
+        Group {
+            if let error {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(error).foregroundColor(.red).font(.subheadline)
+                    Button("Retry") { Task { await load() } }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(20)
+                .background(IDS.Colors.card)
+                .cornerRadius(IDS.Layout.cardCornerRadius)
+            } else if subscriptions == nil {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+            } else if subscriptions!.isEmpty {
+                Text("No recurring deliveries yet -- subscribe from any product's detail page.")
+                    .foregroundColor(IDS.Colors.textSecondary)
+            } else {
+                ForEach(subscriptions!) { s in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Qty \(s.quantity) · every \(s.intervalDays)d").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                        Text("\(s.status) · \(s.deliveryCount) delivered").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        if s.status != "CANCELLED" {
+                            HStack(spacing: 8) {
+                                Button(action: { Task { await toggle(s) } }) {
+                                    Text(busyId == s.id ? "…" : (s.status == "ACTIVE" ? "Pause" : "Resume"))
+                                        .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                        .padding(.horizontal, 12).padding(.vertical, 8)
+                                        .background(IDS.Colors.chipBackground).cornerRadius(10)
+                                }
+                                .disabled(busyId == s.id)
+                                Button(action: { Task { await cancel(s.id) } }) {
+                                    Text("Cancel")
+                                        .font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
+                                        .padding(.horizontal, 12).padding(.vertical, 8)
+                                        .background(IDS.Colors.chipBackground).cornerRadius(10)
+                                }
+                                .disabled(busyId == s.id)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16)
+                    .background(IDS.Colors.card)
+                    .cornerRadius(IDS.Layout.cardCornerRadius)
+                }
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        do {
+            let res = try await NetworkClient.shared.getMyProductSubscriptions()
+            subscriptions = res.subscriptions
+            error = nil
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func toggle(_ s: ProductSubscriptionDto) async {
+        busyId = s.id
+        defer { busyId = nil }
+        do {
+            if s.status == "ACTIVE" { _ = try await NetworkClient.shared.pauseProductSubscription(s.id) }
+            else { _ = try await NetworkClient.shared.resumeProductSubscription(s.id) }
+            await load()
+        } catch {
+            self.error = "Could not update this subscription."
+        }
+    }
+
+    private func cancel(_ id: String) async {
+        busyId = id
+        defer { busyId = nil }
+        do {
+            _ = try await NetworkClient.shared.cancelProductSubscription(id)
+            await load()
+        } catch {
+            self.error = "Could not cancel this subscription."
         }
     }
 }

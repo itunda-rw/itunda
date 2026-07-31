@@ -2067,6 +2067,18 @@ public struct DealProductDto: Decodable, Identifiable {
 public struct DealsResponse: Decodable { public let success: Bool; public let products: [DealProductDto] }
 public struct MembershipDayStatusResponse: Decodable { public let success: Bool; public let isMembershipDay: Bool; public let multiplier: Double }
 
+// Real Coupang 정기배송 (subscribe & save)-style recurring product delivery -- see
+// Android's ProductSubscriptionDto doc comment. bank-mfe already had this; found
+// 2026-08-01 with zero client on Android/iOS despite that.
+public struct ProductSubscriptionDto: Decodable, Identifiable {
+    public let id: String; public let merchantId: String; public let productId: String; public let quantity: Int; public let intervalDays: Int
+    public let deliveryAddress: String; public let status: String; public let nextDeliveryAt: String; public let createdAt: String
+    public let lastDeliveredAt: String?; public let deliveryCount: Int; public let lastFailureReason: String?; public let cancelledAt: String?
+}
+public struct CreateProductSubscriptionRequest: Encodable { public let merchantId: String; public let productId: String; public let quantity: Int; public let intervalDays: Int; public let deliveryAddress: String }
+public struct ProductSubscriptionResponse: Decodable { public let success: Bool; public let subscription: ProductSubscriptionDto }
+public struct ProductSubscriptionsResponse: Decodable { public let success: Bool; public let subscriptions: [ProductSubscriptionDto] }
+
 // Real "nearby places" category search + bookmarked/favorite places (2026-07-19) -- see
 // rw.itunda.maps.MapsService's own doc comment on the backend. `mapNearbyCategories`
 // mirrors bank-mfe's own hardcoded `NEARBY_CATEGORIES` list exactly.
@@ -3178,6 +3190,14 @@ extension NetworkClient {
     // rw.itunda.merchant.ShoppingCashbackService's own doc comment. bank-mfe/Android
     // already have this; this is the first iOS client.
     public func getMembershipDayStatus() async throws -> MembershipDayStatusResponse { try await get("api/v1/shopping/membership-day") }
+
+    public func subscribeToProduct(merchantId: String, productId: String, quantity: Int, intervalDays: Int, deliveryAddress: String) async throws -> ProductSubscriptionResponse {
+        try await authenticatedPost("api/v1/product-subscriptions", body: CreateProductSubscriptionRequest(merchantId: merchantId, productId: productId, quantity: quantity, intervalDays: intervalDays, deliveryAddress: deliveryAddress), idempotencyKey: UUID().uuidString)
+    }
+    public func getMyProductSubscriptions() async throws -> ProductSubscriptionsResponse { try await get("api/v1/product-subscriptions") }
+    public func pauseProductSubscription(_ id: String) async throws -> ProductSubscriptionResponse { try await authenticatedPost("api/v1/product-subscriptions/\(id)/pause", body: EmptyBody()) }
+    public func resumeProductSubscription(_ id: String) async throws -> ProductSubscriptionResponse { try await authenticatedPost("api/v1/product-subscriptions/\(id)/resume", body: EmptyBody()) }
+    public func cancelProductSubscription(_ id: String) async throws -> ProductSubscriptionResponse { try await authenticatedPost("api/v1/product-subscriptions/\(id)/cancel", body: EmptyBody()) }
 
     // Real "search this map" + "directions" (2026-07-19) -- see MapsService.
     public func searchPlaces(query: String) async throws -> MapsSearchResponse {

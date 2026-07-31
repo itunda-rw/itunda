@@ -921,6 +921,19 @@ data class DealProductDto(
 data class DealsResponse(val success: Boolean, val products: List<DealProductDto>)
 data class MembershipDayStatusResponse(val success: Boolean, val isMembershipDay: Boolean, val multiplier: Double)
 
+// Real Coupang 정기배송 (subscribe & save)-style recurring product delivery
+// (rw.itunda.commerce's ProductSubscriptionService) -- real on bank-mfe since
+// 2026-07-25, found 2026-08-01 with zero client on Android/iOS despite that.
+// Honest scope boundary matches bank-mfe's own: 5% single-item discount only.
+data class ProductSubscriptionDto(
+    val id: String, val merchantId: String, val productId: String, val quantity: Int, val intervalDays: Int,
+    val deliveryAddress: String, val status: String, val nextDeliveryAt: String, val createdAt: String,
+    val lastDeliveredAt: String?, val deliveryCount: Int, val lastFailureReason: String?, val cancelledAt: String?,
+)
+data class CreateProductSubscriptionRequest(val merchantId: String, val productId: String, val quantity: Int, val intervalDays: Int, val deliveryAddress: String)
+data class ProductSubscriptionResponse(val success: Boolean, val subscription: ProductSubscriptionDto)
+data class ProductSubscriptionsResponse(val success: Boolean, val subscriptions: List<ProductSubscriptionDto>)
+
 // Real "nearby places" category search + bookmarked/favorite places (2026-07-19) -- see
 // rw.itunda.maps.MapsService's own doc comment on the backend. `MAP_NEARBY_CATEGORIES`
 // mirrors bank-mfe's own hardcoded `NEARBY_CATEGORIES` list exactly.
@@ -2442,6 +2455,21 @@ interface ApiService {
     // this; this is the first Android client.
     @GET("api/v1/shopping/membership-day")
     suspend fun getMembershipDayStatus(): MembershipDayStatusResponse
+
+    @POST("api/v1/product-subscriptions")
+    suspend fun subscribeToProduct(@Body request: CreateProductSubscriptionRequest, @Header("Idempotency-Key") idempotencyKey: String): ProductSubscriptionResponse
+
+    @GET("api/v1/product-subscriptions")
+    suspend fun getMyProductSubscriptions(): ProductSubscriptionsResponse
+
+    @POST("api/v1/product-subscriptions/{id}/pause")
+    suspend fun pauseProductSubscription(@Path("id") id: String): ProductSubscriptionResponse
+
+    @POST("api/v1/product-subscriptions/{id}/resume")
+    suspend fun resumeProductSubscription(@Path("id") id: String): ProductSubscriptionResponse
+
+    @POST("api/v1/product-subscriptions/{id}/cancel")
+    suspend fun cancelProductSubscription(@Path("id") id: String): ProductSubscriptionResponse
 
     @GET("api/v1/shopping/merchants/{id}/products")
     suspend fun getMerchantProducts(@Path("id") merchantId: String): MerchantProductsResponse

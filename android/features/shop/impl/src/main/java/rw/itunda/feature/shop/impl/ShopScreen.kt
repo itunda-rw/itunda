@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.RateReview
 import androidx.compose.material.icons.outlined.ShoppingBag
@@ -80,8 +81,10 @@ import rw.itunda.core.designsystem.components.StarRatingRow
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.BookingSlotDto
 import rw.itunda.core.network.CreateBookingRequest
+import rw.itunda.core.network.CreateProductSubscriptionRequest
 import rw.itunda.core.network.DealProductDto
 import rw.itunda.core.network.MembershipDayStatusResponse
+import rw.itunda.core.network.ProductSubscriptionDto
 import rw.itunda.core.network.ProductSearchResultDto
 import rw.itunda.core.network.FavoriteProductDto
 import rw.itunda.core.network.MerchantBookingDto
@@ -125,7 +128,7 @@ import java.util.UUID
 //   split exists) -- so this stays an app-level composition, injected here exactly like
 //   routeMiniMap, rather than pulled into this module.
 
-private enum class CommerceView { BROWSE, ORDERS, WISHLIST }
+private enum class CommerceView { BROWSE, ORDERS, WISHLIST, SUBSCRIPTIONS }
 
 // Real cross-merchant cart (2026-07-20) -- closes the "real Coupang splits a
 // multi-seller cart into per-seller orders, not attempted here" simplification the
@@ -464,7 +467,7 @@ fun CommerceShopContent(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
             ) {
-                listOf(CommerceView.BROWSE to "Merchants", CommerceView.ORDERS to "My orders", CommerceView.WISHLIST to "♡ Wishlist").forEach { (v, label) ->
+                listOf(CommerceView.BROWSE to "Merchants", CommerceView.ORDERS to "My orders", CommerceView.WISHLIST to "♡ Wishlist", CommerceView.SUBSCRIPTIONS to "Subscriptions").forEach { (v, label) ->
                     val selected = v == view
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { view = v }) {
                         Text(
@@ -489,6 +492,8 @@ fun CommerceShopContent(
             item { MyBookingsView() }
         } else if (view == CommerceView.WISHLIST) {
             item { ProductWishlistView(onRemoved = ::loadFavoriteProductIds) }
+        } else if (view == CommerceView.SUBSCRIPTIONS) {
+            item { MyProductSubscriptionsView() }
         } else {
             item {
                 PayAMerchantSection(deviceStepUpHost = deviceStepUpHost)
@@ -1171,6 +1176,65 @@ private fun MerchantBookingFlowView(
 // (ProductImageThumb larger, ProductPriceRow, ProductRatingBadge which already lazily
 // expands into the written-review list, QtyButton) rather than inventing new ones --
 // this is a real second surface for the same real data, not new business logic.
+// Real Coupang 정기배송 (subscribe & save) -- see core/network's ProductSubscriptionDto
+// doc comment. A minimal delivery-address prompt via AlertDialog rather than a full
+// address form, matching bank-mfe's own compact-card scope (fixed qty=1, every 30d).
+@Composable
+private fun SubscribeAndSaveButton(merchantId: String, productId: String) {
+    var showDialog by remember { mutableStateOf(false) }
+    var address by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var done by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    if (done) {
+        Text("✓ Subscribed -- delivered every 30 days", color = Ids.colors.success, fontSize = 13.sp)
+        return
+    }
+
+    TextButton(onClick = { showDialog = true }) {
+        Text("Subscribe & save (every 30 days)", fontSize = 13.sp)
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Subscribe & save") },
+            text = {
+                Column {
+                    Text("Delivered every 30 days. Cancel anytime.", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(value = address, onValueChange = { address = it }, label = { Text("Delivery address") }, singleLine = true)
+                    error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)) }
+                }
+            },
+            confirmButton = {
+                TextButton(enabled = address.isNotBlank() && !busy, onClick = {
+                    busy = true
+                    coroutineScope.launch {
+                        try {
+                            NetworkClient.apiService.subscribeToProduct(
+                                CreateProductSubscriptionRequest(merchantId, productId, 1, 30, address.trim()),
+                                UUID.randomUUID().toString(),
+                            )
+                            done = true
+                            showDialog = false
+                        } catch (e: HttpException) {
+                            error = superAppErrorMessage(e)
+                        } catch (e: IOException) {
+                            error = "Couldn't reach itunda. Check your connection and try again."
+                        } finally {
+                            busy = false
+                        }
+                    }
+                }) { Text(if (busy) "…" else "Subscribe") }
+            },
+            dismissButton = { TextButton(onClick = { showDialog = false }) { Text("Cancel") } },
+        )
+    }
+}
+
 @Composable
 private fun ProductDetailScreen(
     merchant: ShoppingMerchantDto,
@@ -1231,6 +1295,8 @@ private fun ProductDetailScreen(
             }
             Spacer(modifier = Modifier.height(16.dp))
             ProductInquirySection(product.id)
+            Spacer(modifier = Modifier.height(12.dp))
+            SubscribeAndSaveButton(merchantId = merchant.merchantId, productId = product.id)
             Spacer(modifier = Modifier.height(20.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 QtyButton("-") { setQty(qty - 1) }
@@ -1486,6 +1552,87 @@ private fun ProductWishlistView(onRemoved: () -> Unit) {
                             }
                         }) {
                             Text(if (removingId == f.productId) "Removing…" else "Remove", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Real Coupang 정기배송 (subscribe & save)-style recurring product delivery -- see
+// core/network's ProductSubscriptionDto doc comment. bank-mfe already had this;
+// this is the first Android client, mirroring bank-mfe's MyProductSubscriptionsCard.
+@Composable
+private fun MyProductSubscriptionsView() {
+    var subscriptions by remember { mutableStateOf<List<ProductSubscriptionDto>?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busyId by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                val res = NetworkClient.apiService.getMyProductSubscriptions()
+                if (res.success) subscriptions = res.subscriptions
+                error = null
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            }
+        }
+    }
+    LaunchedEffect(Unit) { load() }
+
+    when {
+        error != null -> ErrorCard(error!!, onRetry = ::load)
+        subscriptions == null -> SkeletonBlock()
+        subscriptions!!.isEmpty() -> EmptyState("No recurring deliveries yet -- subscribe from any product's detail page.", icon = Icons.Outlined.Autorenew)
+        else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            subscriptions!!.forEach { s ->
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Qty ${s.quantity} · every ${s.intervalDays}d", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text("${s.status} · ${s.deliveryCount} delivered", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                        if (s.status != "CANCELLED") {
+                            Row(modifier = Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(onClick = {
+                                    busyId = s.id
+                                    coroutineScope.launch {
+                                        try {
+                                            if (s.status == "ACTIVE") NetworkClient.apiService.pauseProductSubscription(s.id)
+                                            else NetworkClient.apiService.resumeProductSubscription(s.id)
+                                            load()
+                                        } catch (e: HttpException) {
+                                            error = superAppErrorMessage(e)
+                                        } catch (e: IOException) {
+                                            error = "Couldn't reach itunda. Check your connection and try again."
+                                        } finally {
+                                            busyId = null
+                                        }
+                                    }
+                                }, enabled = busyId != s.id) {
+                                    Text(if (busyId == s.id) "…" else if (s.status == "ACTIVE") "Pause" else "Resume", fontSize = 13.sp)
+                                }
+                                TextButton(onClick = {
+                                    busyId = s.id
+                                    coroutineScope.launch {
+                                        try {
+                                            NetworkClient.apiService.cancelProductSubscription(s.id)
+                                            load()
+                                        } catch (e: HttpException) {
+                                            error = superAppErrorMessage(e)
+                                        } catch (e: IOException) {
+                                            error = "Couldn't reach itunda. Check your connection and try again."
+                                        } finally {
+                                            busyId = null
+                                        }
+                                    }
+                                }, enabled = busyId != s.id) {
+                                    Text("Cancel", color = Ids.colors.textSecondary, fontSize = 13.sp)
+                                }
+                            }
                         }
                     }
                 }
