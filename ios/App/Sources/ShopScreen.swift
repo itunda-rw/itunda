@@ -1,6 +1,44 @@
 import SwiftUI
 import CoreDesignSystem
 import CoreNetwork
+import CoreLocation
+
+/// Real "silent" one-shot location fetch for the nearby-ads rail below -- no UI, no
+/// error surfaced to the user (a customer who denies/lacks location just never sees
+/// the rail), same discipline RideScreenView's own RideLocationFetcher establishes for
+/// an interactive fetch.
+private final class SilentLocationFetcher: NSObject, ObservableObject, CLLocationManagerDelegate {
+    @Published var coordinate: CLLocationCoordinate2D?
+    private let manager = CLLocationManager()
+
+    override init() {
+        super.init()
+        manager.delegate = self
+    }
+
+    func requestLocation() {
+        let status = manager.authorizationStatus
+        if status == .notDetermined {
+            manager.requestWhenInUseAuthorization()
+        } else if status == .authorizedWhenInUse || status == .authorizedAlways {
+            manager.requestLocation()
+        }
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {
+            manager.requestLocation()
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        coordinate = locations.last?.coordinate
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        // Real, non-critical -- the rail just won't render if this fails.
+    }
+}
 
 /// Real Coupang-style multi-item checkout (2026-07-18) -- iOS mirror of Android's
 /// (new) ShopTab (SuperAppTabs.kt), replacing the old Toss-Shopping-cashback
@@ -90,6 +128,12 @@ private struct CommerceShopContent: View {
     // fabricated promo -- see backend MerchantProductRepository.findDeals's own doc
     // comment.
     @State private var deals: [DealProductDto]?
+
+    // Real 당근(Karrot) 반경 타기팅-style nearby ads rail -- see lib/shopping.ts's own
+    // NearbyMerchantAd doc comment. bank-mfe/Android already have this; this is the
+    // first iOS client.
+    @State private var nearbyAds: [NearbyMerchantAdDto] = []
+    @StateObject private var nearbyAdsLocationFetcher = SilentLocationFetcher()
 
     // Real Naver Pay 멤버십 데이 (Membership Day) cashback boost -- bank-mfe/Android
     // already have this; this is the first iOS client. See the backend's
@@ -191,6 +235,13 @@ private struct CommerceShopContent: View {
             }
             if membershipDay == nil {
                 do { membershipDay = try await NetworkClient.shared.getMembershipDayStatus() } catch {}
+            }
+            nearbyAdsLocationFetcher.requestLocation()
+        }
+        .onChange(of: nearbyAdsLocationFetcher.coordinate?.latitude) { _ in
+            guard let coordinate = nearbyAdsLocationFetcher.coordinate else { return }
+            Task {
+                nearbyAds = (try? await NetworkClient.shared.getNearbyMerchantAds(latitude: coordinate.latitude, longitude: coordinate.longitude))?.ads ?? []
             }
         }
     }
@@ -336,6 +387,36 @@ private struct CommerceShopContent: View {
                                 }
                             }
                         } else {
+                        // Real 당근(Karrot) 반경 타기팅-style nearby ads rail -- only shown
+                        // on the unfiltered landing state, same discipline the Deals rail
+                        // below follows. Tapping one opens that merchant's real catalog,
+                        // same minimal-ShoppingMerchantDto shortcut the Deals rail uses.
+                        if selectedCategory == nil, searchInput.trimmingCharacters(in: .whitespaces).isEmpty, !nearbyAds.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("📍 Near you").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 10) {
+                                        ForEach(nearbyAds) { a in
+                                            Button(action: {
+                                                Task { await openMerchant(ShoppingMerchantDto(merchantId: a.ad.merchantId, businessName: a.businessName, category: nil, cashbackRate: "1%")) }
+                                            }) {
+                                                VStack(alignment: .leading, spacing: 4) {
+                                                    Text(a.ad.title).font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                                    Text(a.businessName).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                                    if let description = a.ad.description, !description.isEmpty {
+                                                        Text(description).font(.caption2).foregroundColor(IDS.Colors.textSecondary)
+                                                    }
+                                                    Text(String(format: "%.1f km away", a.distanceKm)).font(.caption2).bold().foregroundColor(IDS.Colors.brand)
+                                                }
+                                                .padding(10).frame(width: 160, alignment: .leading)
+                                                .background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         // Real "Deals" rail (2026-07-25) -- only shown on the
                         // unfiltered landing state, same "merchandising above the raw
                         // list, hidden once the user starts filtering" discipline a

@@ -2321,6 +2321,24 @@ public struct DetectedSubscriptionDto: Decodable {
 }
 public struct DetectedSubscriptionsResponse: Decodable { public let success: Bool; public let subscriptions: [DetectedSubscriptionDto]; public let estimatedMonthlyTotal: Double }
 
+// Real 당근(Karrot) 반경 타기팅-style radius-targeted local ads -- mirrors bank-mfe's
+// lib/shopping.ts NearbyMerchantAd exactly.
+public struct NearbyAdDto: Decodable {
+    public let id: String
+    public let merchantId: String
+    public let title: String
+    public let description: String?
+    public let radiusMeters: Int
+    public let activeUntil: String
+}
+public struct NearbyMerchantAdDto: Decodable, Identifiable {
+    public let ad: NearbyAdDto
+    public let businessName: String
+    public let distanceKm: Double
+    public var id: String { ad.id }
+}
+public struct NearbyMerchantAdsResponse: Decodable { public let success: Bool; public let ads: [NearbyMerchantAdDto] }
+
 /// Mirrors services/backend/eats's real DTOs exactly (2026-07-18) -- restaurant/menu
 /// browsing reuses ShoppingMerchantDto/MerchantProductDto above (a restaurant IS a
 /// Merchant, a menu item IS a MerchantProduct -- see rw.itunda.eats.EatsOrderService's
@@ -3301,6 +3319,13 @@ extension NetworkClient {
     // rw.itunda.wallet.SubscriptionDetectionService's own doc comment. bank-mfe/Android
     // already have this; this is the first iOS client.
     public func getDetectedSubscriptions() async throws -> DetectedSubscriptionsResponse { try await get("api/v1/wallet/subscriptions") }
+
+    // Real 당근(Karrot) 반경 타기팅-style radius-targeted local ads -- the
+    // customer-facing browse half (merchant-mfe owns the paid create/extend side).
+    // bank-mfe/Android already have this; this is the first iOS client.
+    public func getNearbyMerchantAds(latitude: Double, longitude: Double) async throws -> NearbyMerchantAdsResponse {
+        try await get("api/v1/merchant/ads/nearby", query: [URLQueryItem(name: "latitude", value: "\(latitude)"), URLQueryItem(name: "longitude", value: "\(longitude)")])
+    }
 
     // Real Shop product wishlist (2026-07-24) -- backend shipped 2026-07-20
     // (ProductFavoriteService), bank-mfe wired the same day; this closes the iOS-side

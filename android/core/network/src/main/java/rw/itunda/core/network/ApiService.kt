@@ -1183,6 +1183,12 @@ data class DetectedSubscriptionDto(
 )
 data class DetectedSubscriptionsResponse(val success: Boolean, val subscriptions: List<DetectedSubscriptionDto>, val estimatedMonthlyTotal: java.math.BigDecimal)
 
+// Real 당근(Karrot) 반경 타기팅-style radius-targeted local ads -- mirrors bank-mfe's
+// lib/shopping.ts NearbyMerchantAd exactly.
+data class NearbyAdDto(val id: String, val merchantId: String, val title: String, val description: String?, val radiusMeters: Int, val activeUntil: String)
+data class NearbyMerchantAdDto(val ad: NearbyAdDto, val businessName: String, val distanceKm: Double)
+data class NearbyMerchantAdsResponse(val success: Boolean, val ads: List<NearbyMerchantAdDto>)
+
 // Mirrors services/backend/eats's real DTOs exactly (2026-07-18) -- backs the Eats mode
 // folded into the Shop tab. Restaurant/menu browsing reuses ShoppingMerchantDto/
 // MerchantProductDto above (a restaurant IS a Merchant, a menu item IS a
@@ -2521,6 +2527,14 @@ interface ApiService {
     // doc comment. bank-mfe already has this; this is the first Android client.
     @GET("api/v1/wallet/subscriptions")
     suspend fun getDetectedSubscriptions(): DetectedSubscriptionsResponse
+
+    // Real 당근(Karrot) 반경 타기팅-style radius-targeted local ads -- the
+    // customer-facing browse half (merchant-mfe owns the paid create/extend side).
+    // "Pull" discovery, same as every other nearby() in this codebase: the caller's
+    // live coordinate is a request param, not a stored location itunda doesn't keep.
+    // bank-mfe already has this; this is the first Android client.
+    @GET("api/v1/merchant/ads/nearby")
+    suspend fun getNearbyMerchantAds(@Query("latitude") latitude: Double, @Query("longitude") longitude: Double): NearbyMerchantAdsResponse
 
     // Real Shop product wishlist (2026-07-24) -- backend shipped 2026-07-20
     // (ProductFavoriteService), bank-mfe wired the same day; this closes the

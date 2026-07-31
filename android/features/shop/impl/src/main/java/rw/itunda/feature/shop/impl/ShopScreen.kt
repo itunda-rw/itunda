@@ -72,6 +72,7 @@ import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.components.EmptyState
 import rw.itunda.core.designsystem.components.ErrorCard
 import rw.itunda.core.designsystem.components.QtyButton
+import rw.itunda.core.designsystem.components.rememberRealLocationRequester
 import rw.itunda.core.designsystem.components.SearchAndCategoryChips
 import rw.itunda.core.designsystem.components.SkeletonBlock
 import rw.itunda.core.designsystem.components.StarGold
@@ -96,6 +97,7 @@ import rw.itunda.core.network.ProductRatingResponse
 import rw.itunda.core.network.AskProductInquiryRequest
 import rw.itunda.core.network.MerchantBillingPlanDto
 import rw.itunda.core.network.MerchantBillingSubscriptionDto
+import rw.itunda.core.network.NearbyMerchantAdDto
 import rw.itunda.core.network.ProductInquiryDto
 import rw.itunda.core.network.ProductReviewDto
 import rw.itunda.core.network.CollectPaymentRequest
@@ -192,6 +194,27 @@ fun CommerceShopContent(
             // Real, non-critical -- the banner just won't render if this fails.
         }
     }
+
+    // Real 당근(Karrot) 반경 타기팅-style nearby ads rail -- see lib/shopping.ts's own
+    // NearbyMerchantAd doc comment. Silent, non-blocking: a customer who denies/lacks
+    // location just never sees this rail, same discipline rememberRealLocationRequester
+    // already establishes elsewhere. bank-mfe already has this; this is the first
+    // Android client.
+    var nearbyAds by remember { mutableStateOf<List<NearbyMerchantAdDto>>(emptyList()) }
+    val requestNearbyAdsLocation = rememberRealLocationRequester(
+        onLocating = {},
+        onSuccess = { lat, lng ->
+            coroutineScope.launch {
+                try {
+                    nearbyAds = NetworkClient.apiService.getNearbyMerchantAds(lat, lng).ads
+                } catch (e: Exception) {
+                    // Real, non-critical -- the rail just won't render if this fails.
+                }
+            }
+        },
+        onError = {},
+    )
+    LaunchedEffect(Unit) { requestNearbyAdsLocation() }
 
     // Real cross-merchant product search (item 190) -- closes docs/DESIGN_REFERENCES.md
     // Section 5 recommendation #1: bank-mfe has had "search across every merchant" since
@@ -541,6 +564,32 @@ fun CommerceShopContent(
                     }
                 }
                 return@LazyColumn
+            }
+            // Real 당근(Karrot) 반경 타기팅-style nearby ads rail -- only shown on the
+            // unfiltered landing state, same discipline the Deals rail below follows.
+            // Tapping one opens that merchant's real catalog, same minimal-
+            // ShoppingMerchantDto shortcut the Deals rail below already uses.
+            if (selectedCategory == null && searchInput.isBlank() && nearbyAds.isNotEmpty()) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("📍 Near you", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            nearbyAds.forEach { a ->
+                                Column(
+                                    modifier = Modifier.width(160.dp).clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface)
+                                        .clickable { openMerchant(ShoppingMerchantDto(merchantId = a.ad.merchantId, businessName = a.businessName, category = null, cashbackRate = "1%")) }
+                                        .padding(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Text(a.ad.title, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text(a.businessName, color = Ids.colors.textSecondary, fontSize = 12.sp)
+                                    a.ad.description?.takeIf { it.isNotBlank() }?.let { Text(it, color = Ids.colors.textSecondary, fontSize = 11.sp) }
+                                    Text("%.1f km away".format(a.distanceKm), color = Ids.colors.brand, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    }
+                }
             }
             // Real "Deals" rail (2026-07-25) -- only shown on the unfiltered landing
             // state, same "merchandising above the raw list, hidden once the user
