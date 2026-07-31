@@ -392,9 +392,28 @@ public struct RideTripDto: Decodable {
     public let platformFee: Double
     public let status: String
     public let createdAt: String
+    // Real Kakao T 예약 호출 (scheduled ride booking, item 212) -- nil means an ASAP
+    // request, unchanged from before.
+    public let scheduledFor: String?
 }
 public struct RideTripResponse: Decodable { public let success: Bool; public let trip: RideTripDto }
 public struct RideTripsResponse: Decodable { public let success: Bool; public let trips: [RideTripDto] }
+// Real Kakao T-style multi-stop rides (item 214) -- see the backend's RideTripStop.kt
+// doc comment.
+public struct RideStopRequestDto: Encodable {
+    public let address: String
+    public let latitude: Double
+    public let longitude: Double
+    // Real cross-module construction (item 214) -- RideScreenView.swift builds these
+    // directly from its own passenger-entered stop inputs, so a real explicit public
+    // init is required, the same "public struct in a different module needs an
+    // explicit public init" gotcha already found live for OverdraftAccountDto.
+    public init(address: String, latitude: Double, longitude: Double) {
+        self.address = address
+        self.latitude = latitude
+        self.longitude = longitude
+    }
+}
 public struct RequestRideTripRequest: Encodable {
     public let pickupAddress: String
     public let pickupLatitude: Double
@@ -402,7 +421,35 @@ public struct RequestRideTripRequest: Encodable {
     public let dropoffAddress: String
     public let dropoffLatitude: Double
     public let dropoffLongitude: Double
+    public let scheduledFor: String?
+    public let stops: [RideStopRequestDto]?
 }
+public struct RideTripStopDto: Decodable, Identifiable {
+    public let id: String
+    public let tripId: String
+    public let sequence: Int
+    public let address: String
+    public let latitude: Double
+    public let longitude: Double
+    public let arrivedAt: String?
+}
+public struct RideTripStopResponse: Decodable { public let success: Bool; public let stop: RideTripStopDto }
+public struct RideTripStopsResponse: Decodable { public let success: Bool; public let stops: [RideTripStopDto] }
+
+// Real Kakao T-style post-trip driver rating (item 213) -- see the backend's
+// RideTripReview.kt doc comment.
+public struct SubmitRideReviewRequest: Encodable { public let rating: Int; public let comment: String? }
+public struct RideTripReviewDto: Decodable {
+    public let id: String
+    public let tripId: String
+    public let passengerId: String
+    public let driverId: String
+    public let rating: Int
+    public let comment: String?
+    public let createdAt: String
+}
+public struct RideTripReviewResponse: Decodable { public let success: Bool; public let review: RideTripReviewDto }
+public struct RideDriverRatingResponse: Decodable { public let success: Bool; public let average: Double?; public let count: Int }
 
 public struct SavingsGoal: Decodable {
     public let id: String
@@ -523,13 +570,15 @@ extension NetworkClient {
 
     public func requestRideTrip(
         pickupAddress: String, pickupLatitude: Double, pickupLongitude: Double,
-        dropoffAddress: String, dropoffLatitude: Double, dropoffLongitude: Double
+        dropoffAddress: String, dropoffLatitude: Double, dropoffLongitude: Double,
+        scheduledFor: String? = nil, stops: [RideStopRequestDto]? = nil
     ) async throws -> RideTripResponse {
         try await authenticatedPost(
             "api/v1/rides/trips",
             body: RequestRideTripRequest(
                 pickupAddress: pickupAddress, pickupLatitude: pickupLatitude, pickupLongitude: pickupLongitude,
-                dropoffAddress: dropoffAddress, dropoffLatitude: dropoffLatitude, dropoffLongitude: dropoffLongitude
+                dropoffAddress: dropoffAddress, dropoffLatitude: dropoffLatitude, dropoffLongitude: dropoffLongitude,
+                scheduledFor: scheduledFor, stops: stops
             ),
             idempotencyKey: UUID().uuidString
         )
@@ -554,6 +603,21 @@ extension NetworkClient {
     public func cancelRideTrip(id: String) async throws -> RideTripResponse {
         try await authenticatedPost("api/v1/rides/trips/\(id)/cancel", body: EmptyBody())
     }
+
+    // Real Kakao T 예약 호출 (scheduled ride booking, item 212)/multi-stop (item 214)/
+    // driver rating (item 213) -- first iOS client for these three, backend and
+    // bank-mfe/Android real since 2026-07-31. Mirrors Android's ApiService.kt exactly.
+    public func getRideTripStops(tripId: String) async throws -> RideTripStopsResponse { try await get("api/v1/rides/trips/\(tripId)/stops") }
+
+    public func arriveAtRideStop(tripId: String) async throws -> RideTripStopResponse {
+        try await authenticatedPost("api/v1/rides/trips/\(tripId)/stops/arrive", body: EmptyBody())
+    }
+
+    public func submitRideReview(tripId: String, rating: Int, comment: String?) async throws -> RideTripReviewResponse {
+        try await authenticatedPost("api/v1/rides/trips/\(tripId)/review", body: SubmitRideReviewRequest(rating: rating, comment: comment))
+    }
+
+    public func getRideDriverRating(driverId: String) async throws -> RideDriverRatingResponse { try await get("api/v1/rides/drivers/\(driverId)/rating") }
     public func getSavingsGoals() async throws -> SavingsGoalsResponse { try await get("api/v1/savings/goals") }
     public func getInterestJar() async throws -> InterestJarResponse { try await get("api/v1/savings/interest-jar") }
 

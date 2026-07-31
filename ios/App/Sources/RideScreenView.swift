@@ -48,6 +48,14 @@ private final class RideLocationFetcher: NSObject, ObservableObject, CLLocationM
 // Android ported it the same day as item 109). Honest v1 scoping: manual dropoff
 // address/lat/lng entry, no autocomplete search integration this pass -- pickup uses a
 // one-tap "use my location" via CLLocationManager instead.
+//
+// **Real Kakao T 예약 호출 (scheduled ride booking, item 212)/multi-stop (item 214)/
+// driver rating (item 213) added 2026-07-31** -- first iOS client for these three,
+// backend/bank-mfe/Android real since the same day. Same honest platform-specific
+// scope-down Android's own port just established: no date/time-picker precedent exists
+// anywhere in this app either, so scheduling here is "N hours from now" instead of an
+// exact real calendar date/time -- the real backend contract (`scheduledFor` as an ISO
+// instant) is identical either way.
 struct RideScreenView: View {
     var onBack: () -> Void = {}
     @State private var tab = 0
@@ -80,15 +88,26 @@ struct RideScreenView: View {
     }
 }
 
+private struct RideStopInput: Identifiable {
+    let id = UUID()
+    var address = ""
+    var lat = ""
+    var lng = ""
+}
+
 private struct RidePassengerContent: View {
     @StateObject private var locationFetcher = RideLocationFetcher()
     @State private var pickupAddress = ""
     @State private var dropoffAddress = ""
     @State private var dropoffLat = ""
     @State private var dropoffLng = ""
+    @State private var scheduleHours = ""
+    @State private var stops: [RideStopInput] = []
     @State private var myTrips: [RideTripDto] = []
+    @State private var activeTripStops: [RideTripStopDto] = []
     @State private var requesting = false
     @State private var busyTripId: String?
+    @State private var reviewedTripIds: Set<String> = []
     @State private var error: String?
     @State private var pollTask: Task<Void, Never>?
 
@@ -105,7 +124,7 @@ private struct RidePassengerContent: View {
                 }
                 if let active = activeTrip {
                     Text("Your ride").bold().foregroundColor(IDS.Colors.textPrimary)
-                    RideTripCard(trip: active) {
+                    RideTripCard(trip: active, stops: activeTripStops) {
                         if active.status != "IN_PROGRESS" {
                             Button(action: { Task { await cancelTrip(active.id) } }) {
                                 Text(busyTripId == active.id ? "Cancelling…" : "Cancel ride").bold().foregroundColor(.white)
@@ -137,8 +156,35 @@ private struct RidePassengerContent: View {
                                 .keyboardType(.decimalPad)
                                 .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
                         }
+                        ForEach($stops) { $stop in
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    Text("Stop").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
+                                    Spacer()
+                                    Button("Remove") { stops.removeAll { $0.id == stop.id } }
+                                        .font(.caption).foregroundColor(.red)
+                                }
+                                TextField("Address", text: $stop.address)
+                                    .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                                HStack(spacing: 8) {
+                                    TextField("Latitude", text: $stop.lat).keyboardType(.decimalPad)
+                                        .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                                    TextField("Longitude", text: $stop.lng).keyboardType(.decimalPad)
+                                        .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                                }
+                            }
+                            .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(10)
+                        }
+                        if stops.count < 3 {
+                            Button("+ Add a stop") { stops.append(RideStopInput()) }
+                                .font(.caption).bold().foregroundColor(IDS.Colors.brand)
+                        }
+                        TextField("Schedule for later (hours from now, optional)", text: $scheduleHours)
+                            .keyboardType(.decimalPad)
+                            .padding(12).background(Color(.secondarySystemBackground)).cornerRadius(10)
                         Button(action: { Task { await requestRide() } }) {
-                            Text(requesting ? "Requesting…" : "Request ride").bold().foregroundColor(.white)
+                            Text(requesting ? "Requesting…" : (Double(scheduleHours) != nil ? "Schedule ride" : "Request ride"))
+                                .bold().foregroundColor(.white)
                                 .frame(maxWidth: .infinity).padding(.vertical, 14)
                                 .background(IDS.Colors.brand).cornerRadius(10)
                         }
@@ -155,7 +201,15 @@ private struct RidePassengerContent: View {
 
                 if !pastTrips.isEmpty {
                     Text("Past rides").bold().foregroundColor(IDS.Colors.textPrimary)
-                    ForEach(pastTrips, id: \.id) { trip in RideTripCard(trip: trip) }
+                    ForEach(pastTrips, id: \.id) { trip in
+                        RideTripCard(trip: trip) {
+                            if trip.status == "COMPLETED", trip.driverId != nil, !reviewedTripIds.contains(trip.id) {
+                                RideReviewRow(busy: busyTripId == trip.id) { rating, comment in
+                                    await submitReview(trip.id, rating, comment)
+                                }
+                            }
+                        }
+                    }
                 }
             }
             .padding(.horizontal)
@@ -169,10 +223,18 @@ private struct RidePassengerContent: View {
             }
         }
         .onDisappear { pollTask?.cancel() }
+        .onChange(of: activeTrip?.id) { _ in
+            Task { await loadActiveTripStops() }
+        }
     }
 
     private func loadTrips() async {
         myTrips = (try? await NetworkClient.shared.getMyRideTrips().trips) ?? myTrips
+    }
+
+    private func loadActiveTripStops() async {
+        guard let id = activeTrip?.id else { activeTripStops = []; return }
+        activeTripStops = (try? await NetworkClient.shared.getRideTripStops(tripId: id).stops) ?? []
     }
 
     private func requestRide() async {
@@ -180,14 +242,24 @@ private struct RidePassengerContent: View {
               let dLat = Double(dropoffLat), let dLng = Double(dropoffLng), !dropoffAddress.isEmpty else { return }
         requesting = true
         error = nil
+        let resolvedStops = stops.compactMap { stop -> RideStopRequestDto? in
+            guard !stop.address.isEmpty, let lat = Double(stop.lat), let lng = Double(stop.lng) else { return nil }
+            return RideStopRequestDto(address: stop.address, latitude: lat, longitude: lng)
+        }
+        let scheduledFor: String? = Double(scheduleHours).map { hours in
+            ISO8601DateFormatter().string(from: Date().addingTimeInterval(hours * 3600))
+        }
         do {
             _ = try await NetworkClient.shared.requestRideTrip(
                 pickupAddress: pickupAddress, pickupLatitude: coordinate.latitude, pickupLongitude: coordinate.longitude,
-                dropoffAddress: dropoffAddress, dropoffLatitude: dLat, dropoffLongitude: dLng
+                dropoffAddress: dropoffAddress, dropoffLatitude: dLat, dropoffLongitude: dLng,
+                scheduledFor: scheduledFor, stops: resolvedStops.isEmpty ? nil : resolvedStops
             )
             dropoffAddress = ""
             dropoffLat = ""
             dropoffLng = ""
+            scheduleHours = ""
+            stops = []
             await loadTrips()
         } catch {
             self.error = "Could not request a ride."
@@ -205,15 +277,62 @@ private struct RidePassengerContent: View {
         }
         busyTripId = nil
     }
+
+    private func submitReview(_ tripId: String, _ rating: Int, _ comment: String) async {
+        busyTripId = tripId
+        do {
+            _ = try await NetworkClient.shared.submitRideReview(tripId: tripId, rating: rating, comment: comment.isEmpty ? nil : comment)
+            reviewedTripIds.insert(tripId)
+        } catch NetworkError.httpError(let statusCode) where statusCode == 409 {
+            reviewedTripIds.insert(tripId)
+        } catch {
+            self.error = "Could not submit your rating."
+        }
+        busyTripId = nil
+    }
+}
+
+// Real Kakao T-style post-trip driver rating (item 213) -- see this file's own doc
+// comment. Simple 5-star tap-to-rate row, matching bank-mfe's RideReviewPrompt shape.
+private struct RideReviewRow: View {
+    let busy: Bool
+    let onSubmit: (Int, String) async -> Void
+    @State private var rating = 0
+    @State private var comment = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Rate your driver").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+            HStack(spacing: 4) {
+                ForEach(1...5, id: \.self) { n in
+                    Text("★")
+                        .foregroundColor(n <= rating ? .yellow : IDS.Colors.textSecondary)
+                        .onTapGesture { rating = n }
+                }
+            }
+            if rating > 0 {
+                TextField("Comment (optional)", text: $comment)
+                    .padding(10).background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                Button(action: { Task { await onSubmit(rating, comment) } }) {
+                    Text(busy ? "Submitting…" : "Submit rating").bold().foregroundColor(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 10)
+                        .background(IDS.Colors.brand).cornerRadius(10)
+                }
+                .disabled(busy)
+            }
+        }
+    }
 }
 
 private struct RideDriverContent: View {
     @StateObject private var locationFetcher = RideLocationFetcher()
     @State private var driver: RideDriverDto?
+    @State private var driverRating: RideDriverRatingResponse?
     @State private var loaded = false
     @State private var registering = false
     @State private var availableTrips: [RideTripDto] = []
     @State private var myDriverTrips: [RideTripDto] = []
+    @State private var activeTripStops: [String: [RideTripStopDto]] = [:]
     @State private var busyTripId: String?
     @State private var error: String?
     @State private var pollTask: Task<Void, Never>?
@@ -248,6 +367,10 @@ private struct RideDriverContent: View {
                             Text(current.available ? "You're online" : "You're offline").bold().foregroundColor(IDS.Colors.textPrimary)
                             Text(current.available ? "Visible for new trip requests" : "Go online to see trip requests")
                                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            if let rating = driverRating, rating.count > 0 {
+                                Text("★ \(String(format: "%.1f", rating.average ?? 0)) (\(rating.count) rating\(rating.count == 1 ? "" : "s"))")
+                                    .font(.caption).bold().foregroundColor(.yellow)
+                            }
                         }
                         Spacer()
                         Button(action: { Task { await toggleAvailable() } }) {
@@ -261,19 +384,31 @@ private struct RideDriverContent: View {
                     if !activeDriverTrips.isEmpty {
                         Text("Active trips").bold().foregroundColor(IDS.Colors.textPrimary)
                         ForEach(activeDriverTrips, id: \.id) { trip in
-                            RideTripCard(trip: trip) {
-                                if trip.status == "DRIVER_ASSIGNED" {
-                                    Button(action: { Task { await act(trip.id) { try await NetworkClient.shared.startRideTrip(id: $0).trip } } }) {
-                                        Text(busyTripId == trip.id ? "…" : "Start trip").bold().foregroundColor(.white)
-                                            .frame(maxWidth: .infinity).padding(.vertical, 12).background(IDS.Colors.brand).cornerRadius(10)
+                            let tripStops = activeTripStops[trip.id] ?? []
+                            let nextStop = tripStops.first { $0.arrivedAt == nil }
+                            RideTripCard(trip: trip, stops: tripStops) {
+                                VStack(spacing: 8) {
+                                    if trip.status == "IN_PROGRESS", let nextStop {
+                                        Button(action: { Task { await arriveAtStop(trip.id) } }) {
+                                            Text(busyTripId == trip.id ? "…" : "Arrived at \(nextStop.address)").bold()
+                                                .frame(maxWidth: .infinity).padding(.vertical, 12)
+                                                .background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                                        }
+                                        .disabled(busyTripId == trip.id)
                                     }
-                                    .disabled(busyTripId == trip.id)
-                                } else if trip.status == "IN_PROGRESS" {
-                                    Button(action: { Task { await act(trip.id) { try await NetworkClient.shared.completeRideTrip(id: $0).trip } } }) {
-                                        Text(busyTripId == trip.id ? "…" : "Complete trip").bold().foregroundColor(.white)
-                                            .frame(maxWidth: .infinity).padding(.vertical, 12).background(IDS.Colors.brand).cornerRadius(10)
+                                    if trip.status == "DRIVER_ASSIGNED" {
+                                        Button(action: { Task { await act(trip.id) { try await NetworkClient.shared.startRideTrip(id: $0).trip } } }) {
+                                            Text(busyTripId == trip.id ? "…" : "Start trip").bold().foregroundColor(.white)
+                                                .frame(maxWidth: .infinity).padding(.vertical, 12).background(IDS.Colors.brand).cornerRadius(10)
+                                        }
+                                        .disabled(busyTripId == trip.id)
+                                    } else if trip.status == "IN_PROGRESS" {
+                                        Button(action: { Task { await act(trip.id) { try await NetworkClient.shared.completeRideTrip(id: $0).trip } } }) {
+                                            Text(busyTripId == trip.id ? "…" : "Complete trip").bold().foregroundColor(.white)
+                                                .frame(maxWidth: .infinity).padding(.vertical, 12).background(IDS.Colors.brand).cornerRadius(10)
+                                        }
+                                        .disabled(busyTripId == trip.id)
                                     }
-                                    .disabled(busyTripId == trip.id)
                                 }
                             }
                         }
@@ -330,7 +465,9 @@ private struct RideDriverContent: View {
 
     private func loadDriver() async {
         do {
-            driver = try await NetworkClient.shared.getMyRideDriverProfile().driver
+            let d = try await NetworkClient.shared.getMyRideDriverProfile().driver
+            driver = d
+            driverRating = try? await NetworkClient.shared.getRideDriverRating(driverId: d.id)
         } catch NetworkError.httpError(let statusCode) where statusCode == 404 {
             driver = nil
         } catch {
@@ -342,6 +479,11 @@ private struct RideDriverContent: View {
     private func loadTrips() async {
         availableTrips = (try? await NetworkClient.shared.getAvailableRideTrips().trips) ?? availableTrips
         myDriverTrips = (try? await NetworkClient.shared.getMyRideDriverTrips().trips) ?? myDriverTrips
+        for trip in activeDriverTrips {
+            if let stops = try? await NetworkClient.shared.getRideTripStops(tripId: trip.id).stops, !stops.isEmpty {
+                activeTripStops[trip.id] = stops
+            }
+        }
     }
 
     private func register() async {
@@ -375,22 +517,46 @@ private struct RideDriverContent: View {
         }
         busyTripId = nil
     }
+
+    private func arriveAtStop(_ tripId: String) async {
+        busyTripId = tripId
+        do {
+            _ = try await NetworkClient.shared.arriveAtRideStop(tripId: tripId)
+            if let stops = try? await NetworkClient.shared.getRideTripStops(tripId: tripId).stops {
+                activeTripStops[tripId] = stops
+            }
+        } catch {
+            self.error = "Could not mark this stop arrived."
+        }
+        busyTripId = nil
+    }
 }
 
 private struct RideTripCard<Action: View>: View {
     let trip: RideTripDto
+    var stops: [RideTripStopDto] = []
     let action: () -> Action
 
-    init(trip: RideTripDto, @ViewBuilder action: @escaping () -> Action = { EmptyView() }) {
+    init(trip: RideTripDto, stops: [RideTripStopDto] = [], @ViewBuilder action: @escaping () -> Action = { EmptyView() }) {
         self.trip = trip
+        self.stops = stops
         self.action = action
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("\(trip.pickupAddress) → \(trip.dropoffAddress)").bold().foregroundColor(IDS.Colors.textPrimary)
+            Text(trip.pickupAddress).bold().foregroundColor(IDS.Colors.textPrimary)
+            ForEach(stops) { stop in
+                Text("\(stop.arrivedAt != nil ? "✓" : "→") \(stop.address)")
+                    .font(.caption).foregroundColor(stop.arrivedAt != nil ? IDS.Colors.textSecondary : IDS.Colors.textPrimary)
+            }
+            Text("→ \(trip.dropoffAddress)").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
+            if let scheduledFor = trip.scheduledFor {
+                Text("🕒 Scheduled for \(String(scheduledFor.prefix(16)).replacingOccurrences(of: "T", with: " "))")
+                    .font(.caption).bold().foregroundColor(IDS.Colors.brand)
+            }
             HStack {
-                Text(rideTripStatusLabel(trip.status)).font(.caption).bold().foregroundColor(rideTripStatusColor(trip.status))
+                Text(rideTripStatusLabel(trip)).font(.caption).bold().foregroundColor(rideTripStatusColor(trip.status))
                 Spacer()
                 Text("\(formatMoneyRide(trip.fare)) RWF · \(String(format: "%.1f", trip.distanceKm)) km")
                     .font(.caption).foregroundColor(IDS.Colors.textSecondary)
@@ -402,14 +568,15 @@ private struct RideTripCard<Action: View>: View {
     }
 }
 
-private func rideTripStatusLabel(_ status: String) -> String {
-    switch status {
+private func rideTripStatusLabel(_ trip: RideTripDto) -> String {
+    if trip.status == "REQUESTED", trip.scheduledFor != nil { return "Scheduled" }
+    switch trip.status {
     case "REQUESTED": return "Finding a driver…"
     case "DRIVER_ASSIGNED": return "Driver assigned"
     case "IN_PROGRESS": return "In progress"
     case "COMPLETED": return "Completed"
     case "CANCELLED": return "Cancelled"
-    default: return status
+    default: return trip.status
     }
 }
 
