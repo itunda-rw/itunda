@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreRisk
+import CoreNetwork
 
 @main
 struct ItundaApp: App {
@@ -12,15 +13,26 @@ struct ItundaApp: App {
     // unconditionally with no session at all; see SessionManager.swift.
     @StateObject private var sessionManager = SessionManager.shared
 
+    // Real app-launch biometric unlock gate -- tracked per PROCESS, not persisted, so a
+    // view redraw doesn't re-prompt but a genuine fresh app launch always does. See
+    // AppLockScreenView.swift's own doc comment; mirrors Android's MainActivity.kt
+    // AppUnlockState exactly.
+    @State private var unlockedThisProcess = false
+
     var body: some Scene {
         WindowGroup {
             if isDeviceTrusted {
                 Group {
                     switch sessionManager.sessionState {
                     case .loggedIn:
-                        ContentView()
+                        if isBiometricUnlockAvailable() && KeychainTokenStore.shared.isAppLockEnabled() && !unlockedThisProcess {
+                            AppLockScreenView(onUnlocked: { unlockedThisProcess = true })
+                        } else {
+                            ContentView()
+                        }
                     case .loggedOut:
                         LoginScreen(sessionManager: sessionManager)
+                            .onAppear { unlockedThisProcess = false }
                     }
                 }
                 .onAppear { sessionManager.restoreSession() }

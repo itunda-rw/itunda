@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreNetwork
 
 /// Real account settings screen, matching Android's SettingsScreen.kt exactly
 /// (2026-07-12): "내 정보" (real name/phone from /api/v1/auth/profile), a real
@@ -15,6 +16,7 @@ import SwiftUI
 struct SettingsScreen: View {
     @StateObject private var viewModel = SettingsViewModel()
     let onDone: () -> Void
+    @State private var appLockEnabled = KeychainTokenStore.shared.isAppLockEnabled()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -96,6 +98,30 @@ struct SettingsScreen: View {
                         if viewModel.unreadCount > 0 {
                             Button("Mark all read") { Task { await viewModel.markAllRead() } }
                                 .font(.system(size: 13, weight: .semibold))
+                        }
+                    }
+                }
+
+                // Real biometric app-lock toggle -- see AppLockScreenView.swift's own
+                // doc comment. Only shown when the device actually has biometrics
+                // enrolled; a tappable row that goes nowhere is worse than not showing
+                // it, same discipline Android's own SettingsScreen.kt establishes.
+                if isBiometricUnlockAvailable() {
+                    Section("Security") {
+                        Toggle(isOn: $appLockEnabled) {
+                            HStack(spacing: 14) {
+                                Image(systemName: "faceid")
+                                    .frame(width: 44, height: 44)
+                                    .background(Color.gray.opacity(0.15))
+                                    .clipShape(Circle())
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Unlock with biometrics").font(.system(size: 16, weight: .semibold))
+                                    Text("Require Face/Touch ID to open Itunda").font(.system(size: 13)).foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                        .onChange(of: appLockEnabled) { newValue in
+                            KeychainTokenStore.shared.setAppLockEnabled(newValue)
                         }
                     }
                 }

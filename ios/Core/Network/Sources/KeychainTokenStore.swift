@@ -29,6 +29,21 @@ public final class KeychainTokenStore {
     public func getUserId() -> String? { get(.userId) }
     public func hasSession() -> Bool { getAccessToken() != nil }
 
+    // Real app-launch biometric unlock gate -- mirrors Android's TokenStore.kt exactly:
+    // a plain, non-secret boolean preference (UserDefaults here, EncryptedSharedPreferences
+    // there), not the Keychain -- there's no credential to protect, just a UI toggle.
+    // Default true, matching Android.
+    private static let appLockEnabledKey = "rw.itunda.app.appLockEnabled"
+
+    public func isAppLockEnabled() -> Bool {
+        if UserDefaults.standard.object(forKey: Self.appLockEnabledKey) == nil { return true }
+        return UserDefaults.standard.bool(forKey: Self.appLockEnabledKey)
+    }
+
+    public func setAppLockEnabled(_ enabled: Bool) {
+        UserDefaults.standard.set(enabled, forKey: Self.appLockEnabledKey)
+    }
+
     private enum Key: String {
         case userId = "user_id"
         case accessToken = "access_token"
