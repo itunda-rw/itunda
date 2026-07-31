@@ -1149,6 +1149,16 @@ data class ProductReviewResponse(val success: Boolean, val review: ProductReview
 data class ProductReviewsResponse(val success: Boolean, val reviews: List<ProductReviewDto>)
 data class ProductRatingResponse(val success: Boolean, val average: Double?, val count: Long)
 
+// Real Coupang-style pre-purchase product Q&A -- mirrors bank-mfe's lib/commerce.ts
+// ProductInquiry exactly.
+data class AskProductInquiryRequest(val question: String)
+data class ProductInquiryDto(
+    val id: String, val productId: String, val merchantId: String, val buyerId: String,
+    val question: String, val answer: String?, val answeredAt: String?, val createdAt: String,
+)
+data class ProductInquiryResponse(val success: Boolean, val inquiry: ProductInquiryDto)
+data class ProductInquiriesResponse(val success: Boolean, val inquiries: List<ProductInquiryDto>)
+
 // Mirrors services/backend/eats's real DTOs exactly (2026-07-18) -- backs the Eats mode
 // folded into the Shop tab. Restaurant/menu browsing reuses ShoppingMerchantDto/
 // MerchantProductDto above (a restaurant IS a Merchant, a menu item IS a
@@ -2451,6 +2461,18 @@ interface ApiService {
 
     @GET("api/v1/orders/products/{id}/reviews")
     suspend fun getProductReviews(@Path("id") productId: String): ProductReviewsResponse
+
+    // Real Coupang-style pre-purchase product Q&A (상품문의) -- see
+    // rw.itunda.commerce.ProductInquiryService's own doc comment. Genuinely distinct
+    // from a review: no order/purchase required at all. bank-mfe already has the
+    // buyer-side ask/view flow; this is the first Android client. Honest scope
+    // boundary: the seller-answer flow has zero UI anywhere yet, not even on
+    // bank-mfe/merchant-mfe -- not a mobile-specific gap, so not built here either.
+    @POST("api/v1/orders/products/{id}/inquiries")
+    suspend fun askProductInquiry(@Path("id") productId: String, @Body request: AskProductInquiryRequest): ProductInquiryResponse
+
+    @GET("api/v1/orders/products/{id}/inquiries")
+    suspend fun getProductInquiries(@Path("id") productId: String): ProductInquiriesResponse
 
     // Real Shop product wishlist (2026-07-24) -- backend shipped 2026-07-20
     // (ProductFavoriteService), bank-mfe wired the same day; this closes the

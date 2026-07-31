@@ -92,6 +92,8 @@ import rw.itunda.core.network.OrderItemRequest
 import rw.itunda.core.network.OrderReturnRequestDto
 import rw.itunda.core.network.PlaceOrderRequest
 import rw.itunda.core.network.ProductRatingResponse
+import rw.itunda.core.network.AskProductInquiryRequest
+import rw.itunda.core.network.ProductInquiryDto
 import rw.itunda.core.network.ProductReviewDto
 import rw.itunda.core.network.CollectPaymentRequest
 import rw.itunda.core.network.CollectPaymentResultDto
@@ -1133,6 +1135,8 @@ private fun ProductDetailScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(description, color = Ids.colors.textSecondary, fontSize = 13.sp, lineHeight = 19.sp)
             }
+            Spacer(modifier = Modifier.height(16.dp))
+            ProductInquirySection(product.id)
             Spacer(modifier = Modifier.height(20.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 QtyButton("-") { setQty(qty - 1) }
@@ -1608,6 +1612,86 @@ private fun MyReturnRequestsView() {
                             )
                         }
                         Text(r.reasonCode, color = Ids.colors.textSecondary, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Real Coupang-style pre-purchase product Q&A (상품문의) -- see
+ * rw.itunda.commerce.ProductInquiryService's own doc comment. Genuinely distinct from
+ * ProductRatingBadge's reviews below: no order/purchase required at all, so this is
+ * always visible on a product's detail page, not gated behind having bought it.
+ * bank-mfe already has this; this is the first Android client.
+ */
+@Composable
+private fun ProductInquirySection(productId: String) {
+    var inquiries by remember { mutableStateOf<List<ProductInquiryDto>?>(null) }
+    var question by remember { mutableStateOf("") }
+    var asking by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                inquiries = NetworkClient.apiService.getProductInquiries(productId).inquiries
+            } catch (e: Exception) {
+                inquiries = emptyList()
+            }
+        }
+    }
+    LaunchedEffect(productId) { load() }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text("Questions & answers", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(value = question, onValueChange = { question = it }, placeholder = { Text("Ask the seller a question") }, singleLine = true, modifier = Modifier.weight(1f))
+            Box(
+                modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                    .background(if (asking || question.isBlank()) Ids.colors.textTertiary else Ids.colors.surfaceSoft)
+                    .clickable(enabled = !asking && question.isNotBlank()) {
+                        asking = true
+                        error = null
+                        coroutineScope.launch {
+                            try {
+                                NetworkClient.apiService.askProductInquiry(productId, AskProductInquiryRequest(question.trim()))
+                                question = ""
+                                load()
+                            } catch (e: HttpException) {
+                                error = superAppErrorMessage(e)
+                            } finally {
+                                asking = false
+                            }
+                        }
+                    }.padding(horizontal = 14.dp, vertical = 12.dp),
+            ) { Text("Ask", color = Ids.colors.textPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+        }
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp)) }
+        val list = inquiries
+        Spacer(modifier = Modifier.height(8.dp))
+        when {
+            list == null -> Text("Loading questions…", color = Ids.colors.textSecondary, fontSize = 12.sp)
+            list.isEmpty() -> Text("No questions yet -- be the first to ask.", color = Ids.colors.textSecondary, fontSize = 12.sp)
+            else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                list.forEach { q ->
+                    Column {
+                        Row {
+                            Text("Q. ", color = Ids.colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(q.question, color = Ids.colors.textSecondary, fontSize = 12.sp)
+                        }
+                        val answer = q.answer
+                        if (answer != null) {
+                            Row(modifier = Modifier.padding(start = 12.dp, top = 2.dp)) {
+                                Text("A. ", color = Ids.colors.textSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text(answer, color = Ids.colors.textSecondary, fontSize = 12.sp)
+                            }
+                        } else {
+                            Text("Awaiting seller response", color = Ids.colors.textTertiary, fontSize = 11.sp, modifier = Modifier.padding(start = 12.dp, top = 2.dp))
+                        }
                     }
                 }
             }

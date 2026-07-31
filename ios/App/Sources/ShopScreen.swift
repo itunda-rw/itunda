@@ -706,6 +706,8 @@ private struct ProductDetailView: View {
                         Spacer().frame(height: 12)
                         Text(description).font(.footnote).foregroundColor(IDS.Colors.textSecondary)
                     }
+                    Spacer().frame(height: 16)
+                    ProductInquirySection(productId: product.id)
                     Spacer().frame(height: 20)
                     HStack(spacing: 10) {
                         Spacer()
@@ -1187,6 +1189,86 @@ private struct ProductPriceRow: View {
             }
         } else {
             Text("\(Int(product.price)) RWF").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
+        }
+    }
+}
+
+/// Real Coupang-style pre-purchase product Q&A (상품문의) -- see
+/// rw.itunda.commerce.ProductInquiryService's own doc comment. Genuinely distinct from
+/// ProductRatingBadge's reviews below: no order/purchase required at all, so this is
+/// always visible on a product's detail page, not gated behind having bought it.
+/// bank-mfe/Android already have this; this is the first iOS client.
+private struct ProductInquirySection: View {
+    let productId: String
+    @State private var inquiries: [ProductInquiryDto]?
+    @State private var question = ""
+    @State private var asking = false
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Questions & answers").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+            HStack(spacing: 8) {
+                TextField("Ask the seller a question", text: $question)
+                    .padding(10).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
+                Button(action: { Task { await ask() } }) {
+                    Text("Ask").bold().font(.caption).foregroundColor(IDS.Colors.textPrimary)
+                        .padding(.horizontal, 14).padding(.vertical, 10)
+                        .background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                }
+                .disabled(asking || question.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            if let error {
+                Text(error).font(.caption2).foregroundColor(.red)
+            }
+            if let inquiries {
+                if inquiries.isEmpty {
+                    Text("No questions yet — be the first to ask.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                } else {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(inquiries) { q in
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(alignment: .top, spacing: 0) {
+                                    Text("Q. ").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
+                                    Text(q.question).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                }
+                                if let answer = q.answer {
+                                    HStack(alignment: .top, spacing: 0) {
+                                        Text("A. ").font(.caption).bold().foregroundColor(IDS.Colors.textSecondary)
+                                        Text(answer).font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                                    }
+                                    .padding(.leading, 12)
+                                } else {
+                                    Text("Awaiting seller response").font(.caption2).foregroundColor(IDS.Colors.textTertiary)
+                                        .padding(.leading, 12)
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                Text("Loading questions…").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        inquiries = (try? await NetworkClient.shared.getProductInquiries(productId))?.inquiries ?? []
+    }
+
+    private func ask() async {
+        let trimmed = question.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        asking = true
+        error = nil
+        defer { asking = false }
+        do {
+            _ = try await NetworkClient.shared.askProductInquiry(productId, question: trimmed)
+            question = ""
+            await load()
+        } catch {
+            self.error = "Could not submit your question."
         }
     }
 }

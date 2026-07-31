@@ -2261,6 +2261,22 @@ public struct ProductReviewResponse: Decodable { public let success: Bool; publi
 public struct ProductReviewsResponse: Decodable { public let success: Bool; public let reviews: [ProductReviewDto] }
 public struct ProductRatingResponse: Decodable { public let success: Bool; public let average: Double?; public let count: Int }
 
+// Real Coupang-style pre-purchase product Q&A -- mirrors bank-mfe's lib/commerce.ts
+// ProductInquiry exactly.
+public struct AskProductInquiryRequest: Encodable { public let question: String }
+public struct ProductInquiryDto: Decodable, Identifiable {
+    public let id: String
+    public let productId: String
+    public let merchantId: String
+    public let buyerId: String
+    public let question: String
+    public let answer: String?
+    public let answeredAt: String?
+    public let createdAt: String
+}
+public struct ProductInquiryResponse: Decodable { public let success: Bool; public let inquiry: ProductInquiryDto }
+public struct ProductInquiriesResponse: Decodable { public let success: Bool; public let inquiries: [ProductInquiryDto] }
+
 /// Mirrors services/backend/eats's real DTOs exactly (2026-07-18) -- restaurant/menu
 /// browsing reuses ShoppingMerchantDto/MerchantProductDto above (a restaurant IS a
 /// Merchant, a menu item IS a MerchantProduct -- see rw.itunda.eats.EatsOrderService's
@@ -3206,6 +3222,18 @@ extension NetworkClient {
 
     public func getProductReviews(_ productId: String) async throws -> ProductReviewsResponse {
         try await get("api/v1/orders/products/\(productId)/reviews")
+    }
+
+    // Real Coupang-style pre-purchase product Q&A (상품문의) -- see
+    // rw.itunda.commerce.ProductInquiryService's own doc comment. bank-mfe/Android
+    // already have the buyer-side ask/view flow; this is the first iOS client. Honest
+    // scope boundary: the seller-answer flow has zero UI anywhere yet, not even on
+    // bank-mfe/merchant-mfe -- not a mobile-specific gap, so not built here either.
+    public func askProductInquiry(_ productId: String, question: String) async throws -> ProductInquiryResponse {
+        try await authenticatedPost("api/v1/orders/products/\(productId)/inquiries", body: AskProductInquiryRequest(question: question))
+    }
+    public func getProductInquiries(_ productId: String) async throws -> ProductInquiriesResponse {
+        try await get("api/v1/orders/products/\(productId)/inquiries")
     }
 
     // Real Shop product wishlist (2026-07-24) -- backend shipped 2026-07-20
