@@ -134,3 +134,54 @@ export const repayOverdraft = (amount: number) =>
     headers: { 'Idempotency-Key': randomUUID() },
     body: JSON.stringify({ amount }),
   });
+
+// Real Naver Pay/Kakao Pay/Toss 후불결제 (postpaid/BNPL credit line) -- see the
+// backend's PostpaidCreditLine.kt doc comment for the full sourced account. Genuinely,
+// structurally distinct from the overdraft above: real interest-free on-time repayment
+// (a late fee only accrues once a real 30-day billing cycle is actually missed), a much
+// lower real qualification bar reaching users overdraft/loans don't, and an
+// auto-computed (not user-requested) limit.
+export interface PostpaidCreditLine {
+  id: string;
+  userId: string;
+  walletId: string;
+  creditLimit: number;
+  currentBalance: number;
+  status: 'ACTIVE' | 'SUSPENDED';
+  cycleDueAt: string | null;
+  lastLateFeeAccrualAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const fetchMyPostpaidCredit = () =>
+  apiFetch<{ success: boolean; line: PostpaidCreditLine | null }>('/api/v1/loans/postpaid-credit').then((r) => r.line);
+
+export const applyForPostpaidCredit = () =>
+  apiFetch<{ success: boolean; line: PostpaidCreditLine }>('/api/v1/loans/postpaid-credit/apply', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+  }).then((r) => r.line);
+
+export interface PostpaidCreditActionResult {
+  success: boolean;
+  transactionId: string;
+  amount: number;
+  currentBalance: number;
+  availableCredit: number;
+  newBalance?: number;
+}
+
+export const spendPostpaidCredit = (amount: number) =>
+  apiFetch<PostpaidCreditActionResult>('/api/v1/loans/postpaid-credit/spend', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ amount }),
+  });
+
+export const repayPostpaidCredit = (amount: number) =>
+  apiFetch<PostpaidCreditActionResult>('/api/v1/loans/postpaid-credit/repay', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ amount }),
+  });

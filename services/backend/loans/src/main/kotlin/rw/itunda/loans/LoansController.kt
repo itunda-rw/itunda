@@ -26,6 +26,7 @@ data class RepayLoanRequest(val loanId: String, val amount: BigDecimal)
 data class RefinanceLoanRequest(val loanId: String)
 data class OpenOverdraftRequest(val requestedLimit: BigDecimal)
 data class OverdraftAmountRequest(val amount: BigDecimal)
+data class PostpaidCreditAmountRequest(val amount: BigDecimal)
 
 @RestController
 @RequestMapping("/api/v1/loans")
@@ -33,6 +34,7 @@ class LoansController(
     private val loansService: LoansService,
     private val idempotencyService: IdempotencyService,
     private val overdraftService: OverdraftService,
+    private val postpaidCreditService: PostpaidCreditService,
 ) {
 
     @GetMapping("/offers")
@@ -130,6 +132,68 @@ class LoansController(
         }
         return ResponseEntity.status(status).body(body)
     }
+
+    // Real Naver Pay/Kakao Pay/Toss 후불결제 (postpaid/BNPL credit line) -- see
+    // PostpaidCreditLine.kt's own doc comment for the full sourced account.
+    @PostMapping("/postpaid-credit/apply")
+    fun applyForPostpaidCredit(
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/loans/postpaid-credit/apply", idempotencyKey, currentUser.userId) {
+            val line = postpaidCreditService.applyForPostpaidCredit(currentUser.userId)
+            201 to mapOf("success" to true, "line" to line)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    @GetMapping("/postpaid-credit")
+    fun getMyPostpaidCredit(@AuthenticationPrincipal currentUser: CurrentUser): ResponseEntity<Map<String, Any?>> =
+        ResponseEntity.ok(mapOf("success" to true, "line" to postpaidCreditService.getMyPostpaidCredit(currentUser.userId)))
+
+    @PostMapping("/postpaid-credit/spend")
+    fun spendPostpaidCredit(
+        @RequestBody request: PostpaidCreditAmountRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/loans/postpaid-credit/spend", idempotencyKey, request) {
+            val result = postpaidCreditService.spend(currentUser.userId, request.amount)
+            200 to (mapOf("success" to true) + result)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    @PostMapping("/postpaid-credit/repay")
+    fun repayPostpaidCredit(
+        @RequestBody request: PostpaidCreditAmountRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/loans/postpaid-credit/repay", idempotencyKey, request) {
+            val result = postpaidCreditService.repay(currentUser.userId, request.amount)
+            200 to (mapOf("success" to true) + result)
+        }
+        return ResponseEntity.status(status).body(body)
+    }
+
+    @ExceptionHandler(PostpaidCreditAlreadyOpenException::class)
+    fun handlePostpaidAlreadyOpen(ex: PostpaidCreditAlreadyOpenException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("POSTPAID_CREDIT_ALREADY_OPEN", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(PostpaidCreditNotActiveException::class)
+    fun handlePostpaidNotActive(ex: PostpaidCreditNotActiveException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("POSTPAID_CREDIT_NOT_ACTIVE", ex.message ?: "Not found"))
+
+    @ExceptionHandler(PostpaidCreditLimitExceededException::class)
+    fun handlePostpaidLimitExceeded(ex: PostpaidCreditLimitExceededException) = ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("POSTPAID_CREDIT_LIMIT_EXCEEDED", ex.message ?: "Unprocessable"))
+
+    @ExceptionHandler(PostpaidCreditInvalidAmountException::class)
+    fun handlePostpaidInvalidAmount(ex: PostpaidCreditInvalidAmountException) = ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AMOUNT", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(PostpaidCreditNoWalletException::class)
+    fun handlePostpaidNoWallet(ex: PostpaidCreditNoWalletException) = ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError("WALLET_NOT_FOUND", ex.message ?: "Not found"))
+
+    @ExceptionHandler(PostpaidCreditSuspendedException::class)
+    fun handlePostpaidSuspended(ex: PostpaidCreditSuspendedException) = ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("POSTPAID_CREDIT_SUSPENDED", ex.message ?: "Forbidden"))
 
     @ExceptionHandler(OverdraftAlreadyActiveException::class)
     fun handleOverdraftAlreadyActive(ex: OverdraftAlreadyActiveException) = ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("OVERDRAFT_ALREADY_ACTIVE", ex.message ?: "Conflict"))

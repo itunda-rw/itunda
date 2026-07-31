@@ -21,8 +21,9 @@ import { fetchMyP2pRequests, generateP2pRequest, payP2pRequest, sendDirect, type
 import { getMyCertificate, issueCertificate, revokeCertificate, type Certificate } from './lib/certificate';
 import { fetchLinkedAccounts, fetchOverview, linkAccount, unlinkAccount, type LinkedAccount, type Overview } from './lib/overview';
 import {
-  applyForLoan, drawOverdraft, fetchLenders, fetchLoanOffers, fetchMyLoans, fetchMyOverdraft, openOverdraft, refinanceLoan, repayLoan,
-  repayOverdraft, type Lender, type LoanAccount, type LoanOffer, type OverdraftAccount,
+  applyForLoan, applyForPostpaidCredit, drawOverdraft, fetchLenders, fetchLoanOffers, fetchMyLoans, fetchMyOverdraft,
+  fetchMyPostpaidCredit, openOverdraft, refinanceLoan, repayLoan, repayOverdraft, repayPostpaidCredit, spendPostpaidCredit,
+  type Lender, type LoanAccount, type LoanOffer, type OverdraftAccount, type PostpaidCreditLine,
 } from './lib/loans';
 import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreResult, type CreditScoreSuggestion } from './lib/creditScore';
 import { fetchTrustScore, type TrustScoreResult } from './lib/trustScore';
@@ -1456,7 +1457,7 @@ function OverviewView() {
 // (rw.itunda.loans, BNR-licensed partner banks alongside itunda's own book, see
 // LoanOffer.kt's own doc comment) with zero client UI anywhere.
 function LoansView() {
-  const [mode, setMode] = useState<'OFFERS' | 'MY_LOANS' | 'OVERDRAFT'>('OFFERS');
+  const [mode, setMode] = useState<'OFFERS' | 'MY_LOANS' | 'OVERDRAFT' | 'POSTPAID_CREDIT'>('OFFERS');
   const [offers, setOffers] = useState<LoanOffer[] | null>(null);
   const [myLoans, setMyLoans] = useState<LoanAccount[] | null>(null);
   const [lenders, setLenders] = useState<Lender[] | null>(null);
@@ -1540,10 +1541,12 @@ function LoansView() {
         <button className="toss-btn toss-btn-secondary" onClick={() => setMode('OFFERS')}>Offers</button>
         <button className="toss-btn toss-btn-secondary" onClick={() => setMode('MY_LOANS')}>My loans ({myLoans?.length ?? 0})</button>
         <button className="toss-btn toss-btn-secondary" onClick={() => setMode('OVERDRAFT')}>Overdraft</button>
+        <button className="toss-btn toss-btn-secondary" onClick={() => setMode('POSTPAID_CREDIT')}>Postpaid credit</button>
       </div>
       {mode === 'OVERDRAFT' && <OverdraftView />}
-      {mode !== 'OVERDRAFT' && error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
-      {mode !== 'OVERDRAFT' && refinanceResult && (
+      {mode === 'POSTPAID_CREDIT' && <PostpaidCreditView />}
+      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && refinanceResult && (
         <div className="toss-card" style={{ padding: '16px', border: '1px solid var(--toss-blue)' }}>
           <p style={{ fontSize: '13px', fontWeight: 700 }}>Refinanced into {refinanceResult.newLoanName}</p>
           <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{refinanceResult.oldRate}% → {refinanceResult.newRate}%</p>
@@ -1745,6 +1748,122 @@ function OverdraftView() {
         style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
       />
       <button className="toss-btn toss-btn-secondary" disabled={busy || account.drawnBalance <= 0} onClick={handleRepay}>{busy ? 'Repaying…' : 'Repay'}</button>
+    </div>
+  );
+}
+
+// Real Naver Pay/Kakao Pay/Toss 후불결제 (postpaid/BNPL credit line) -- see
+// lib/loans.ts's PostpaidCreditLine doc comment for the full sourced account. Genuinely
+// distinct from OverdraftView above: no requested-limit input (the limit is
+// auto-computed from the caller's own real credit score), no interest shown for
+// spending (only a real late fee if a cycle goes unpaid).
+function PostpaidCreditView() {
+  const [line, setLine] = useState<PostpaidCreditLine | null | undefined>(undefined);
+  const [spendAmount, setSpendAmount] = useState('');
+  const [repayAmount, setRepayAmount] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchMyPostpaidCredit()
+      .then(setLine)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your postpaid credit line.'));
+  };
+
+  useEffect(load, []);
+
+  const handleApply = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      setLine(await applyForPostpaidCredit());
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not open a postpaid credit line.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSpend = async () => {
+    const amount = Number(spendAmount);
+    if (!amount || amount <= 0) { setError('Enter a valid amount to spend.'); return; }
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await spendPostpaidCredit(amount);
+      setLine((prev) => (prev ? { ...prev, currentBalance: res.currentBalance } : prev));
+      setSpendAmount('');
+      setNotice(`Added ${res.amount.toLocaleString()} RWF to your wallet -- ${res.availableCredit.toLocaleString()} RWF still available.`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not spend from your postpaid credit line.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRepay = async () => {
+    const amount = Number(repayAmount);
+    if (!amount || amount <= 0) { setError('Enter a valid repayment amount.'); return; }
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await repayPostpaidCredit(amount);
+      setLine((prev) => (prev ? { ...prev, currentBalance: res.currentBalance, status: res.currentBalance <= 0 ? 'ACTIVE' : prev.status } : prev));
+      setRepayAmount('');
+      setNotice(`Repaid ${res.amount.toLocaleString()} RWF -- ${res.availableCredit.toLocaleString()} RWF now available.`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not repay your postpaid credit line.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (line === undefined) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+
+  if (line === null) {
+    return (
+      <div className="toss-card" style={{ padding: '16px' }}>
+        <h4 style={{ fontSize: '14px', fontWeight: 700 }}>Get postpaid credit</h4>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+          A small credit line for real purchases, interest-free if you pay within 30 days -- your limit is set automatically from your credit score, up to 300,000 RWF.
+        </p>
+        {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+        <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busy} onClick={handleApply}>
+          {busy ? 'Applying…' : 'Get postpaid credit'}
+        </button>
+      </div>
+    );
+  }
+
+  const availableCredit = line.creditLimit - line.currentBalance;
+  return (
+    <div className="toss-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <h4 style={{ fontSize: '14px', fontWeight: 700 }}>Postpaid credit</h4>
+      <p style={{ fontSize: '13px' }}>Owed: {line.currentBalance.toLocaleString()} RWF of {line.creditLimit.toLocaleString()} RWF</p>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Available: {availableCredit.toLocaleString()} RWF · interest-free if repaid within 30 days</p>
+      {line.status === 'SUSPENDED' && (
+        <p style={{ fontSize: '12px', color: '#E53935', fontWeight: 700 }}>Suspended -- repay your overdue balance to keep spending.</p>
+      )}
+      {line.cycleDueAt && line.status === 'ACTIVE' && (
+        <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>Due by {new Date(line.cycleDueAt).toLocaleDateString()}</p>
+      )}
+      {notice && <p style={{ fontSize: '12px', color: 'var(--toss-blue)' }}>{notice}</p>}
+      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      <input
+        type="number" value={spendAmount} onChange={(e) => setSpendAmount(e.target.value)} placeholder="Spend amount (RWF)"
+        disabled={line.status === 'SUSPENDED'}
+        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+      />
+      <button className="toss-btn toss-btn-primary" disabled={busy || line.status === 'SUSPENDED'} onClick={handleSpend}>{busy ? 'Adding…' : 'Add to wallet'}</button>
+      <input
+        type="number" value={repayAmount} onChange={(e) => setRepayAmount(e.target.value)} placeholder="Repay amount (RWF)"
+        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+      />
+      <button className="toss-btn toss-btn-secondary" disabled={busy || line.currentBalance <= 0} onClick={handleRepay}>{busy ? 'Repaying…' : 'Repay'}</button>
     </div>
   );
 }

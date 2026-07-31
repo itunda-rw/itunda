@@ -99,6 +99,12 @@ class LedgerAccount(
             // agent_commission_expense precedent above: seed this before the first real
             // card purchase, not after one 500s discovering it's missing.
             "card_spend_expense" to "Debit Card Spend Expense",
+            // Real Naver Pay/Kakao Pay/Toss 후불결제 (postpaid/BNPL credit line,
+            // 2026-07-31) -- see PostpaidCreditLine.kt's own doc comment. Learned from
+            // the interest_income/agent_commission_expense/card_spend_expense precedent
+            // above: seed this before the first real spend, not after one 500s
+            // discovering it's missing.
+            "postpaid_credit_payable" to "Postpaid Credit Payable",
         )
     }
 }

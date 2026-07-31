@@ -77,6 +77,14 @@ enum class LedgerAccountType {
     // purchase's real counterparty is an external, unmodeled merchant/POS, not another
     // itunda account.
     CARD_SPEND_EXPENSE,
+    // Real Naver Pay/Kakao Pay/Toss 후불결제 (postpaid/BNPL credit line, 2026-07-31) --
+    // see PostpaidCreditLine.kt's own doc comment. A real "owed by the user" receivable,
+    // the same shape LOAN_PAYABLE already establishes -- its own dedicated account so
+    // postpaid-credit exposure can be reconciled independently of term-loan/overdraft
+    // exposure, matching how every other new money-movement product in this ledger
+    // (EATS_DELIVERY_HOLDING, RIDE_HOLDING, CARD_SPEND_EXPENSE) gets its own account
+    // rather than sharing LOAN_PAYABLE the way OverdraftAccount deliberately does.
+    POSTPAID_CREDIT_PAYABLE,
 }
 
 /**

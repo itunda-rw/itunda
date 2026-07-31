@@ -141,6 +141,11 @@ class WalletService(
                 // a debit card purchase debits the wallet (CardService.chargeWithCard),
                 // so it real-appears here and deserves its own category, not "Other".
                 LedgerAccountType.CARD_SPEND_EXPENSE -> "Card purchases"
+                // Same reasoning as CARD_SPEND_EXPENSE directly above -- a real postpaid
+                // credit spend (PostpaidCreditService.spend) credits the wallet in the
+                // very same transaction it debits POSTPAID_CREDIT_PAYABLE, so it
+                // real-appears here and deserves its own category, not "Other".
+                LedgerAccountType.POSTPAID_CREDIT_PAYABLE -> "Postpaid credit"
                 // REWARDS_EXPENSE/INTEREST_EXPENSE/INSURANCE_CLAIMS_EXPENSE are all credit-side
                 // accounts (they pay money *into* a wallet) -- they'd never realistically be the
                 // counterpart to a WALLET debit here, but the compiler correctly demands every
