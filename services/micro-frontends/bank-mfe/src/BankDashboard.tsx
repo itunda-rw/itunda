@@ -129,6 +129,11 @@ import {
   startRideTrip, submitRideReview, updateDriverLocation,
   type RideDriver, type RideDriverRating, type RideTrip, type RideTripStop,
 } from './lib/rideshare';
+import {
+  acceptInspection, cancelInspection, completeInspection, fetchAvailableMechanics, fetchMyInspectionBookings,
+  fetchMyMechanicBookings, fetchMyMechanicProfile, registerAsMechanic, requestInspection, setMechanicAvailability,
+  type VehicleInspectionBooking, type VehicleInspectionMechanic,
+} from './lib/vehicleInspection';
 
 type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY';
 
@@ -6742,7 +6747,7 @@ function KeywordAlertsView() {
 function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId: string) => void }) {
   // Real "My purchases" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
   // recommendation #6, see backend ListingRepository's own doc comment.
-  const [view, setView] = useState<'BROWSE' | 'MINE' | 'PURCHASES' | 'NEIGHBORHOOD' | 'WISHLIST' | 'ALERTS'>('BROWSE');
+  const [view, setView] = useState<'BROWSE' | 'MINE' | 'PURCHASES' | 'NEIGHBORHOOD' | 'WISHLIST' | 'ALERTS' | 'INSPECTIONS'>('BROWSE');
   const [listings, setListings] = useState<Listing[] | null>(null);
   // Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc comment.
   const [trustScores, setTrustScores] = useState<TrustScores>({});
@@ -6779,7 +6784,7 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
         });
       return;
     }
-    if (view === 'WISHLIST' || view === 'ALERTS') return;
+    if (view === 'WISHLIST' || view === 'ALERTS' || view === 'INSPECTIONS') return;
     const fetcher = view === 'BROWSE' ? fetchListings() : view === 'PURCHASES' ? fetchMyPurchases() : fetchMyListings();
     fetcher
       .then((result) => {
@@ -6813,17 +6818,17 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'PURCHASES', 'WISHLIST', 'ALERTS'] as const).map((v) => (
+        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'PURCHASES', 'WISHLIST', 'ALERTS', 'INSPECTIONS'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
             style={{
-              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
+              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '12px', fontWeight: 700,
               color: view === v ? 'var(--toss-white)' : 'var(--toss-grey-700)',
               backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'PURCHASES' ? 'Purchases' : v === 'WISHLIST' ? '♡ Wishlist' : '🔔 Alerts'}
+            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'PURCHASES' ? 'Purchases' : v === 'WISHLIST' ? '♡ Wishlist' : v === 'ALERTS' ? '🔔 Alerts' : '🔧 Inspections'}
           </button>
         ))}
       </div>
@@ -6832,6 +6837,8 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
         <ListingWishlistView />
       ) : view === 'ALERTS' ? (
         <KeywordAlertsView />
+      ) : view === 'INSPECTIONS' ? (
+        <VehicleInspectionsView />
       ) : (
         <>
           {view === 'MINE' && <NewListingCard onCreated={load} />}
@@ -6878,6 +6885,276 @@ function MarketplaceView({ onMessageSeller }: { onMessageSeller: (conversationId
             </div>
           )}
         </>
+      )}
+    </div>
+  );
+}
+
+// Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- see
+// lib/vehicleInspection.ts's own doc comment for the full sourced account. A buyer
+// books and 100%-prepays a real mechanic to inspect a real used-car listing before
+// purchase; a mechanic can register, browse incoming bookings, and deliver findings.
+function VehicleInspectionsView() {
+  const [tab, setTab] = useState<'BUYER' | 'MECHANIC'>('BUYER');
+
+  // Buyer side
+  const [mechanics, setMechanics] = useState<VehicleInspectionMechanic[] | null>(null);
+  const [myBookings, setMyBookings] = useState<VehicleInspectionBooking[] | null>(null);
+  const [listingId, setListingId] = useState('');
+  const [mechanicId, setMechanicId] = useState('');
+  const [fee, setFee] = useState('');
+  const [scheduledAt, setScheduledAt] = useState('');
+  const [requesting, setRequesting] = useState(false);
+  const [buyerError, setBuyerError] = useState<string | null>(null);
+  const [busyBookingId, setBusyBookingId] = useState<string | null>(null);
+
+  const loadBuyerData = () => {
+    Promise.all([fetchAvailableMechanics(), fetchMyInspectionBookings()])
+      .then(([m, b]) => { setMechanics(m); setMyBookings(b); })
+      .catch((err) => setBuyerError(err instanceof ApiError ? err.message : 'Could not load inspections.'));
+  };
+
+  useEffect(() => {
+    if (tab === 'BUYER') loadBuyerData();
+  }, [tab]);
+
+  const handleRequest = async () => {
+    const numericFee = Number(fee);
+    if (!listingId.trim() || !mechanicId || !numericFee || numericFee <= 0 || !scheduledAt) {
+      setBuyerError('Fill in the listing id, a mechanic, a valid fee, and a scheduled time.');
+      return;
+    }
+    setRequesting(true);
+    setBuyerError(null);
+    try {
+      await requestInspection(listingId.trim(), mechanicId, numericFee, new Date(scheduledAt).toISOString());
+      setListingId('');
+      setMechanicId('');
+      setFee('');
+      setScheduledAt('');
+      loadBuyerData();
+    } catch (err) {
+      setBuyerError(err instanceof ApiError ? err.message : 'Could not request this inspection.');
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const handleCancel = async (bookingId: string) => {
+    setBusyBookingId(bookingId);
+    try {
+      await cancelInspection(bookingId);
+      loadBuyerData();
+    } catch (err) {
+      setBuyerError(err instanceof ApiError ? err.message : 'Could not cancel this booking.');
+    } finally {
+      setBusyBookingId(null);
+    }
+  };
+
+  // Mechanic side
+  const [mechanicProfile, setMechanicProfile] = useState<VehicleInspectionMechanic | null | undefined>(undefined);
+  const [businessName, setBusinessName] = useState('');
+  const [registering, setRegistering] = useState(false);
+  const [mechanicBookings, setMechanicBookings] = useState<VehicleInspectionBooking[] | null>(null);
+  const [mechanicError, setMechanicError] = useState<string | null>(null);
+  const [findings, setFindings] = useState<Record<string, string>>({});
+
+  const loadMechanicData = () => {
+    fetchMyMechanicProfile()
+      .then((m) => {
+        setMechanicProfile(m);
+        if (m) fetchMyMechanicBookings().then(setMechanicBookings).catch(() => {});
+      })
+      .catch((err) => setMechanicError(err instanceof ApiError ? err.message : 'Could not load your mechanic profile.'));
+  };
+
+  useEffect(() => {
+    if (tab === 'MECHANIC') loadMechanicData();
+  }, [tab]);
+
+  const handleRegister = async () => {
+    if (!businessName.trim()) return;
+    setRegistering(true);
+    setMechanicError(null);
+    try {
+      setMechanicProfile(await registerAsMechanic(businessName.trim()));
+    } catch (err) {
+      setMechanicError(err instanceof ApiError ? err.message : 'Could not register as a mechanic.');
+    } finally {
+      setRegistering(false);
+    }
+  };
+
+  const handleToggleAvailable = async () => {
+    if (!mechanicProfile) return;
+    try {
+      setMechanicProfile(await setMechanicAvailability(!mechanicProfile.available));
+    } catch {
+      // Real, non-critical -- an availability toggle failure isn't worth a hard error.
+    }
+  };
+
+  const handleAccept = async (bookingId: string) => {
+    setBusyBookingId(bookingId);
+    try {
+      await acceptInspection(bookingId);
+      loadMechanicData();
+    } catch (err) {
+      setMechanicError(err instanceof ApiError ? err.message : 'Could not accept this booking.');
+    } finally {
+      setBusyBookingId(null);
+    }
+  };
+
+  const handleComplete = async (bookingId: string) => {
+    setBusyBookingId(bookingId);
+    try {
+      await completeInspection(bookingId, findings[bookingId]);
+      loadMechanicData();
+    } catch (err) {
+      setMechanicError(err instanceof ApiError ? err.message : 'Could not complete this booking.');
+    } finally {
+      setBusyBookingId(null);
+    }
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
+        {(['BUYER', 'MECHANIC'] as const).map((t) => (
+          <button
+            key={t} onClick={() => setTab(t)}
+            style={{
+              flex: 1, padding: '8px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
+              color: tab === t ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+              backgroundColor: tab === t ? 'var(--toss-blue)' : 'transparent',
+            }}
+          >
+            {t === 'BUYER' ? 'Get a car inspected' : 'Mechanic'}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'BUYER' ? (
+        <div>
+          <div className="toss-card" style={{ marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Book an inspection</h3>
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+              Pay a local mechanic to inspect a used car before you buy it -- held until they deliver their findings.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <input
+                type="text" value={listingId} onChange={(e) => setListingId(e.target.value)} placeholder="Listing ID"
+                style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+              />
+              <select
+                value={mechanicId} onChange={(e) => setMechanicId(e.target.value)}
+                style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+              >
+                <option value="">Choose a mechanic</option>
+                {(mechanics ?? []).map((m) => <option key={m.id} value={m.id}>{m.businessName}</option>)}
+              </select>
+              <input
+                type="number" value={fee} onChange={(e) => setFee(e.target.value)} placeholder="Inspection fee (RWF)"
+                style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+              />
+              <input
+                type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)}
+                style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+              />
+              <button className="toss-btn toss-btn-primary" disabled={requesting} onClick={handleRequest}>
+                {requesting ? 'Booking…' : 'Book & pay'}
+              </button>
+            </div>
+            {buyerError && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '8px' }} role="alert">{buyerError}</p>}
+          </div>
+
+          {myBookings === null ? (
+            <div className="toss-card skeleton" style={{ height: '100px' }} />
+          ) : myBookings.length === 0 ? (
+            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No inspections booked yet.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {myBookings.map((b) => (
+                <div key={b.id} className="toss-card">
+                  <p style={{ fontSize: '13px', fontWeight: 700 }}>Listing {b.listingId}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{b.fee.toLocaleString()} RWF · {b.status}</p>
+                  {b.findings && <p style={{ fontSize: '13px', marginTop: '6px' }}>{b.findings}</p>}
+                  {(b.status === 'REQUESTED' || b.status === 'ACCEPTED') && (
+                    <button
+                      className="toss-btn toss-btn-danger" style={{ marginTop: '8px' }} disabled={busyBookingId === b.id}
+                      onClick={() => handleCancel(b.id)}
+                    >
+                      {busyBookingId === b.id ? 'Cancelling…' : 'Cancel'}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : mechanicProfile === undefined ? (
+        <div className="toss-card skeleton" style={{ height: '160px' }} />
+      ) : mechanicProfile === null ? (
+        <div className="toss-card">
+          <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Become an inspection mechanic</h3>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+            Get booked and paid to inspect used cars for real buyers before they purchase.
+          </p>
+          <input
+            type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Business name"
+            style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginBottom: '8px' }}
+          />
+          <button className="toss-btn toss-btn-primary" disabled={registering} onClick={handleRegister}>
+            {registering ? 'Registering…' : 'Register'}
+          </button>
+          {mechanicError && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '8px' }} role="alert">{mechanicError}</p>}
+        </div>
+      ) : (
+        <div>
+          <div className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div>
+              <p style={{ fontSize: '15px', fontWeight: 700 }}>{mechanicProfile.businessName}</p>
+              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{mechanicProfile.available ? 'Visible for new bookings' : 'Not accepting bookings'}</p>
+            </div>
+            <button className={mechanicProfile.available ? 'toss-btn toss-btn-danger' : 'toss-btn toss-btn-primary'} onClick={handleToggleAvailable}>
+              {mechanicProfile.available ? 'Go unavailable' : 'Go available'}
+            </button>
+          </div>
+          {mechanicError && <p style={{ fontSize: '13px', color: '#E53935', marginBottom: '12px' }} role="alert">{mechanicError}</p>}
+          {mechanicBookings === null ? (
+            <div className="toss-card skeleton" style={{ height: '100px' }} />
+          ) : mechanicBookings.length === 0 ? (
+            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No inspection bookings yet.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {mechanicBookings.map((b) => (
+                <div key={b.id} className="toss-card">
+                  <p style={{ fontSize: '13px', fontWeight: 700 }}>Listing {b.listingId}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{b.fee.toLocaleString()} RWF · {b.status}</p>
+                  {b.status === 'REQUESTED' && (
+                    <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busyBookingId === b.id} onClick={() => handleAccept(b.id)}>
+                      {busyBookingId === b.id ? 'Accepting…' : 'Accept'}
+                    </button>
+                  )}
+                  {b.status === 'ACCEPTED' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+                      <textarea
+                        value={findings[b.id] ?? ''} onChange={(e) => setFindings((prev) => ({ ...prev, [b.id]: e.target.value }))}
+                        placeholder="Inspection findings" rows={2}
+                        style={{ padding: '10px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', resize: 'vertical' }}
+                      />
+                      <button className="toss-btn toss-btn-primary" disabled={busyBookingId === b.id} onClick={() => handleComplete(b.id)}>
+                        {busyBookingId === b.id ? 'Completing…' : 'Mark complete'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

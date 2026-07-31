@@ -105,6 +105,12 @@ class LedgerAccount(
             // above: seed this before the first real spend, not after one 500s
             // discovering it's missing.
             "postpaid_credit_payable" to "Postpaid Credit Payable",
+            // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection
+            // accompaniment, 2026-07-31) -- see VehicleInspectionBooking.kt's own doc
+            // comment. Seeded before the first real booking, learning from the
+            // interest_income/agent_commission_expense/postpaid_credit_payable
+            // precedent above.
+            "vehicle_inspection_holding" to "Vehicle Inspection Fee Holding",
         )
     }
 }

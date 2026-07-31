@@ -133,6 +133,9 @@ class WalletService(
                 LedgerAccountType.FX_CLEARING -> "Currency conversion"
                 LedgerAccountType.MARKETPLACE_ESCROW_HOLDING -> "Marketplace"
                 LedgerAccountType.BOOKING_DEPOSIT_HOLDING -> "Bookings"
+                // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection
+                // accompaniment) -- see VehicleInspectionBooking.kt's own doc comment.
+                LedgerAccountType.VEHICLE_INSPECTION_HOLDING -> "Vehicle inspection"
                 LedgerAccountType.RIDE_HOLDING -> "Rides"
                 LedgerAccountType.EMOTICON_REVENUE -> "Emoticons"
                 LedgerAccountType.GIFT_VOUCHER_HOLDING -> "Gift vouchers"

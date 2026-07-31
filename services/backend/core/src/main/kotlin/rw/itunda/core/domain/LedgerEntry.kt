@@ -85,6 +85,12 @@ enum class LedgerAccountType {
     // (EATS_DELIVERY_HOLDING, RIDE_HOLDING, CARD_SPEND_EXPENSE) gets its own account
     // rather than sharing LOAN_PAYABLE the way OverdraftAccount deliberately does.
     POSTPAID_CREDIT_PAYABLE,
+    // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment,
+    // 2026-07-31) -- see VehicleInspectionBooking.kt's own doc comment. Same real
+    // escrow-clearing-account shape MARKETPLACE_ESCROW_HOLDING/BOOKING_DEPOSIT_HOLDING
+    // already establish: a buyer's real inspection fee already left their wallet, it
+    // just hasn't reached the mechanic (or been refunded) yet.
+    VEHICLE_INSPECTION_HOLDING,
 }
 
 /**
