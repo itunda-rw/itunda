@@ -31,6 +31,7 @@ import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreResult, 
 import { fetchTrustScore, type TrustScoreResult } from './lib/trustScore';
 import { fetchRewardTasks, fetchReferralInfo, claimRewardTask, reportSteps, fetchTodaySteps, type RewardTasksResult, type ReferralInfo } from './lib/rewards';
 import { fetchInsurancePlans, fetchMyPolicies, enrollInPlan, submitClaim, fetchMyClaims, type InsurancePlan, type InsurancePolicy, type InsuranceClaim } from './lib/insurance';
+import { fetchBillProviders, fetchPendingBills, payBill, buyAirtime, type BillProvider, type PendingBill } from './lib/bills';
 import {
   fetchMyUpfrontDeposits, openUpfrontDeposit, withdrawUpfrontDeposit,
   UPFRONT_DEPOSIT_ANNUAL_RATE, UPFRONT_DEPOSIT_MIN_PRINCIPAL, UPFRONT_DEPOSIT_MAX_PRINCIPAL,
@@ -143,7 +144,7 @@ import {
   type VehicleInspectionBooking, type VehicleInspectionMechanic,
 } from './lib/vehicleInspection';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
@@ -2289,6 +2290,133 @@ function InsuranceView() {
                 {enrolledPlanIds.has(plan.id) ? 'Enrolled' : enrollingId === plan.id ? '...' : 'Enroll'}
               </button>
             </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Real bill-pay/airtime client -- see lib/bills.ts's own doc comment. Android/iOS
+// already have this via the Saronite RN mini-app bridge; bank-mfe itself never had a
+// screen for it despite the real, ledger-backed backend.
+function BillsView() {
+  const [providers, setProviders] = useState<BillProvider[] | null>(null);
+  const [pending, setPending] = useState<PendingBill[]>([]);
+  const [payingId, setPayingId] = useState<string | null>(null);
+  const [airtimePhone, setAirtimePhone] = useState('');
+  const [airtimeAmount, setAirtimeAmount] = useState('');
+  const [airtimeProvider, setAirtimeProvider] = useState('');
+  const [buyingAirtime, setBuyingAirtime] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const load = () => {
+    fetchBillProviders().then(setProviders).catch(() => setProviders([]));
+    fetchPendingBills().then(setPending).catch(() => setPending([]));
+  };
+  useEffect(load, []);
+
+  const handlePay = async (bill: PendingBill) => {
+    setPayingId(bill.id);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await payBill(bill.id, bill.amount, bill.accountNumber, bill.provider);
+      setMessage(`Paid ${result.amount.toLocaleString()} RWF — ${result.referenceNumber}`);
+      setPending((prev) => prev.filter((b) => b.id !== bill.id));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not pay this bill.');
+    } finally {
+      setPayingId(null);
+    }
+  };
+
+  const handleBuyAirtime = async () => {
+    const amount = Number(airtimeAmount);
+    if (!airtimePhone.trim() || !Number.isFinite(amount) || amount <= 0) {
+      setError('Enter a real phone number and an amount greater than zero.');
+      return;
+    }
+    setBuyingAirtime(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await buyAirtime(airtimePhone.trim(), amount, airtimeProvider || undefined);
+      setMessage(`Sent ${result.amount.toLocaleString()} RWF airtime — ${result.referenceNumber}`);
+      setAirtimePhone('');
+      setAirtimeAmount('');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not buy airtime.');
+    } finally {
+      setBuyingAirtime(false);
+    }
+  };
+
+  if (!providers) {
+    return error ? <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
+
+      {pending.length > 0 && (
+        <div className="toss-card" style={{ padding: '16px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Pending bills</h3>
+          {pending.map((b) => (
+            <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+              <div>
+                <p style={{ fontSize: '13px', fontWeight: 600 }}>{b.provider}</p>
+                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{b.accountNumber} · due {b.dueDate} · {b.amount.toLocaleString()} RWF</p>
+              </div>
+              <button className="toss-btn toss-btn-secondary" disabled={payingId === b.id} onClick={() => handlePay(b)}>
+                {payingId === b.id ? '...' : 'Pay'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="toss-card" style={{ padding: '16px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Buy airtime</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <input
+            placeholder="Phone number"
+            value={airtimePhone}
+            onChange={(e) => setAirtimePhone(e.target.value)}
+            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)' }}
+          />
+          <input
+            type="number"
+            placeholder="Amount (RWF)"
+            value={airtimeAmount}
+            onChange={(e) => setAirtimeAmount(e.target.value)}
+            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)' }}
+          />
+          <select
+            value={airtimeProvider}
+            onChange={(e) => setAirtimeProvider(e.target.value)}
+            style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)' }}
+          >
+            <option value="">Default provider</option>
+            {providers.filter((p) => p.category === 'airtime').map((p) => (
+              <option key={p.id} value={p.name}>{p.logo} {p.name}</option>
+            ))}
+          </select>
+          <button className="toss-btn toss-btn-secondary" disabled={buyingAirtime} onClick={handleBuyAirtime}>
+            {buyingAirtime ? '...' : 'Buy airtime'}
+          </button>
+        </div>
+      </div>
+
+      <div className="toss-card" style={{ padding: '16px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>All billers</h3>
+        {providers.map((p) => (
+          <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
+            <span>{p.logo} {p.name}</span>
+            <span style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{p.category}</span>
           </div>
         ))}
       </div>
@@ -15354,6 +15482,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'TRUST_SCORE', label: 'Trust score' },
     { id: 'REWARDS', label: 'Rewards' },
     { id: 'INSURANCE', label: 'Insurance' },
+    { id: 'BILLS', label: 'Pay bills' },
     { id: 'FOREIGN_CURRENCY', label: 'Foreign currency' },
     { id: 'SPENDING', label: 'Spending' },
     { id: 'SUBSCRIPTIONS', label: 'Subscriptions' },
@@ -15422,6 +15551,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'TRUST_SCORE' && <TrustScoreView />}
       {tab === 'REWARDS' && <RewardsView />}
       {tab === 'INSURANCE' && <InsuranceView />}
+      {tab === 'BILLS' && <BillsView />}
       {tab === 'FOREIGN_CURRENCY' && <ForeignCurrencyView />}
       {tab === 'SPENDING' && <SpendingInsightView />}
       {tab === 'SUBSCRIPTIONS' && <SubscriptionsView />}
