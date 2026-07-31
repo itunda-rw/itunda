@@ -40,6 +40,8 @@ import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.OpenOverdraftRequest
 import rw.itunda.core.network.OverdraftAccountDto
 import rw.itunda.core.network.OverdraftAmountRequest
+import rw.itunda.core.network.PostpaidCreditAmountRequest
+import rw.itunda.core.network.PostpaidCreditLineDto
 import rw.itunda.core.network.RefinanceLoanRequest
 import rw.itunda.core.network.RefinanceResult
 import rw.itunda.core.network.RepayLoanRequest
@@ -51,7 +53,7 @@ import java.util.UUID
 // book, see LoanOffer.kt's own doc comment) while every "Loan"/"Get a loan" row in
 // this app was 100% hardcoded static text ("11% ~ 24%") with zero API call behind it.
 // This screen replaces that decoration with the real offers/apply/repay flow.
-private enum class LoansMode { OFFERS, MY_LOANS, OVERDRAFT }
+private enum class LoansMode { OFFERS, MY_LOANS, OVERDRAFT, POSTPAID_CREDIT }
 
 @Composable
 fun LoansScreen(onBack: () -> Unit) {
@@ -100,6 +102,7 @@ fun LoansScreen(onBack: () -> Unit) {
             Button(onClick = { mode = LoansMode.OFFERS }) { Text("Offers") }
             Button(onClick = { mode = LoansMode.MY_LOANS }) { Text("My loans (${myLoans?.size ?: 0})") }
             Button(onClick = { mode = LoansMode.OVERDRAFT }) { Text("Overdraft") }
+            Button(onClick = { mode = LoansMode.POSTPAID_CREDIT }) { Text("Postpaid credit") }
         }
         Spacer(Modifier.height(8.dp))
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -147,6 +150,8 @@ fun LoansScreen(onBack: () -> Unit) {
                 }
             } else if (mode == LoansMode.OVERDRAFT) {
                 item { OverdraftPanel() }
+            } else if (mode == LoansMode.POSTPAID_CREDIT) {
+                item { PostpaidCreditPanel() }
             } else {
                 val currentLoans = myLoans
                 if (currentLoans == null) item { SkeletonBlock() }
@@ -364,6 +369,130 @@ private fun OverdraftPanel() {
                             notice = "Repaid RWF ${res.amount} -- RWF ${res.availableCredit} now available."
                         } catch (_: Exception) {
                             error = "Could not repay your overdraft."
+                        } finally { busy = false }
+                    }
+                },
+            ) { Text(if (busy) "Repaying…" else "Repay") }
+        }
+    }
+}
+
+// Real Naver Pay/Kakao Pay/Toss 후불결제 (postpaid/BNPL credit line, real since
+// 2026-07-31) -- first Android client for this feature, mirroring bank-mfe's
+// PostpaidCreditView.tsx and this screen's own OverdraftPanel shape exactly. Genuinely
+// distinct from overdraft above: no requested-limit input (auto-computed from the
+// caller's own real credit score), no interest shown for spending (only a real late fee
+// if a cycle goes unpaid).
+@Composable
+private fun PostpaidCreditPanel() {
+    var line by remember { mutableStateOf<PostpaidCreditLineDto?>(null) }
+    var loaded by remember { mutableStateOf(false) }
+    var spendAmount by remember { mutableStateOf("") }
+    var repayAmount by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var notice by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        try {
+            line = NetworkClient.apiService.getMyPostpaidCredit().line
+        } catch (_: Exception) {
+            error = "Could not load your postpaid credit line."
+        } finally {
+            loaded = true
+        }
+    }
+
+    if (!loaded) { SkeletonBlock(); return }
+
+    val current = line
+    if (current == null) {
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp)) {
+                Text("Get postpaid credit", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "A small credit line for real purchases, interest-free if you pay within 30 days -- your limit is set automatically from your credit score, up to 300,000 RWF.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        busy = true
+                        error = null
+                        scope.launch {
+                            try {
+                                line = NetworkClient.apiService.applyForPostpaidCredit(UUID.randomUUID().toString()).line
+                            } catch (_: Exception) {
+                                error = "Could not open a postpaid credit line."
+                            } finally { busy = false }
+                        }
+                    },
+                ) { Text(if (busy) "Applying…" else "Get postpaid credit") }
+            }
+        }
+        return
+    }
+
+    val availableCredit = current.creditLimit.subtract(current.currentBalance)
+    val suspended = current.status == "SUSPENDED"
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Text("Postpaid credit", style = MaterialTheme.typography.titleMedium)
+            Text("Owed: RWF ${current.currentBalance} of RWF ${current.creditLimit}", style = MaterialTheme.typography.bodyMedium)
+            Text("Available: RWF $availableCredit · interest-free if repaid within 30 days", style = MaterialTheme.typography.bodySmall)
+            if (suspended) {
+                Text("Suspended -- repay your overdue balance to keep spending.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+            notice?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall) }
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(spendAmount, { spendAmount = it }, label = { Text("Spend amount (RWF)") }, modifier = Modifier.fillMaxWidth(), enabled = !suspended)
+            Spacer(Modifier.height(8.dp))
+            Button(
+                enabled = !busy && !suspended,
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    val amount = spendAmount.toBigDecimalOrNull()
+                    if (amount == null || amount <= BigDecimal.ZERO) { error = "Enter a valid amount to spend."; return@Button }
+                    busy = true
+                    error = null
+                    notice = null
+                    scope.launch {
+                        try {
+                            val res = NetworkClient.apiService.spendPostpaidCredit(UUID.randomUUID().toString(), PostpaidCreditAmountRequest(amount))
+                            line = current.copy(currentBalance = res.currentBalance)
+                            spendAmount = ""
+                            notice = "Added RWF ${res.amount} to your wallet -- RWF ${res.availableCredit} still available."
+                        } catch (_: Exception) {
+                            error = "Could not spend from your postpaid credit line."
+                        } finally { busy = false }
+                    }
+                },
+            ) { Text(if (busy) "Adding…" else "Add to wallet") }
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(repayAmount, { repayAmount = it }, label = { Text("Repay amount (RWF)") }, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                enabled = !busy && current.currentBalance > BigDecimal.ZERO,
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    val amount = repayAmount.toBigDecimalOrNull()
+                    if (amount == null || amount <= BigDecimal.ZERO) { error = "Enter a valid repayment amount."; return@OutlinedButton }
+                    busy = true
+                    error = null
+                    notice = null
+                    scope.launch {
+                        try {
+                            val res = NetworkClient.apiService.repayPostpaidCredit(UUID.randomUUID().toString(), PostpaidCreditAmountRequest(amount))
+                            line = current.copy(currentBalance = res.currentBalance, status = if (res.currentBalance <= BigDecimal.ZERO) "ACTIVE" else current.status)
+                            repayAmount = ""
+                            notice = "Repaid RWF ${res.amount} -- RWF ${res.availableCredit} now available."
+                        } catch (_: Exception) {
+                            error = "Could not repay your postpaid credit line."
                         } finally { busy = false }
                     }
                 },

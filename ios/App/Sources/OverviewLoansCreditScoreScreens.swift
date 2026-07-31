@@ -137,7 +137,7 @@ struct OverviewScreenView: View {
     }
 }
 
-private enum LoansMode: String, CaseIterable { case offers = "Offers", myLoans = "My loans", overdraft = "Overdraft" }
+private enum LoansMode: String, CaseIterable { case offers = "Offers", myLoans = "My loans", overdraft = "Overdraft", postpaidCredit = "Postpaid credit" }
 
 struct LoansScreenView: View {
     var onBack: () -> Void = {}
@@ -220,8 +220,10 @@ struct LoansScreenView: View {
                                 .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
                             }
                         } else { ProgressView() }
-                    } else {
+                    } else if mode == .overdraft {
                         OverdraftPanel()
+                    } else {
+                        PostpaidCreditPanel()
                     }
                 }
                 .padding(IDS.Layout.screenHorizontal)
@@ -418,6 +420,113 @@ private struct OverdraftPanel: View {
             notice = "Repaid \(Int(res.amount)) RWF — \(Int(res.availableCredit)) RWF now available."
         } catch {
             self.error = "Could not repay your overdraft."
+        }
+    }
+}
+
+// Real Naver Pay/Kakao Pay/Toss 후불결제 (postpaid/BNPL credit line, real since
+// 2026-07-31) -- first iOS client for this feature, mirroring bank-mfe's
+// PostpaidCreditView.tsx and this screen's own OverdraftPanel shape exactly. Genuinely
+// distinct from overdraft above: no requested-limit input (auto-computed from the
+// caller's own real credit score), no interest shown for spending (only a real late fee
+// if a cycle goes unpaid).
+private struct PostpaidCreditPanel: View {
+    @State private var line: PostpaidCreditLineDto?
+    @State private var loaded = false
+    @State private var spendAmount = ""
+    @State private var repayAmount = ""
+    @State private var busy = false
+    @State private var error: String?
+    @State private var notice: String?
+
+    var body: some View {
+        Group {
+            if !loaded {
+                ProgressView()
+            } else if let line {
+                let availableCredit = line.creditLimit - line.currentBalance
+                let suspended = line.status == "SUSPENDED"
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Postpaid credit").bold()
+                    Text("Owed: \(Int(line.currentBalance)) RWF of \(Int(line.creditLimit)) RWF").font(.subheadline)
+                    Text("Available: \(Int(availableCredit)) RWF · interest-free if repaid within 30 days")
+                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    if suspended {
+                        Text("Suspended — repay your overdue balance to keep spending.").font(.caption).foregroundColor(.red)
+                    }
+                    if let notice { Text(notice).font(.caption).foregroundColor(IDS.Colors.brand) }
+                    if let error { Text(error).font(.caption).foregroundColor(.red) }
+                    TextField("Spend amount (RWF)", text: $spendAmount).keyboardType(.numberPad).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8).disabled(suspended)
+                    Button(action: { Task { await spend() } }) {
+                        Text(busy ? "Adding…" : "Add to wallet").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(10).background(IDS.Colors.brand).cornerRadius(8)
+                    }
+                    .disabled(busy || suspended)
+                    TextField("Repay amount (RWF)", text: $repayAmount).keyboardType(.numberPad).padding(8).background(IDS.Colors.chipBackground).cornerRadius(8)
+                    Button(action: { Task { await repay() } }) {
+                        Text(busy ? "Repaying…" : "Repay").bold().frame(maxWidth: .infinity).padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
+                    }
+                    .disabled(busy || line.currentBalance <= 0)
+                }
+                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Get postpaid credit").bold()
+                    Text("A small credit line for real purchases, interest-free if you pay within 30 days — your limit is set automatically from your credit score, up to 300,000 RWF.")
+                        .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    if let error { Text(error).font(.caption).foregroundColor(.red) }
+                    Button(action: { Task { await apply() } }) {
+                        Text(busy ? "Applying…" : "Get postpaid credit").bold().foregroundColor(.white).frame(maxWidth: .infinity).padding(10).background(IDS.Colors.brand).cornerRadius(8)
+                    }
+                    .disabled(busy)
+                }
+                .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+            }
+        }
+        .task {
+            do { line = try await NetworkClient.shared.getMyPostpaidCredit().line } catch { self.error = "Could not load your postpaid credit line." }
+            loaded = true
+        }
+    }
+
+    private func apply() async {
+        busy = true; error = nil
+        defer { busy = false }
+        do {
+            line = try await NetworkClient.shared.applyForPostpaidCredit().line
+        } catch {
+            self.error = "Could not open a postpaid credit line."
+        }
+    }
+
+    private func spend() async {
+        guard let amount = Double(spendAmount), amount > 0 else { error = "Enter a valid amount to spend."; return }
+        busy = true; error = nil; notice = nil
+        defer { busy = false }
+        do {
+            let res = try await NetworkClient.shared.spendPostpaidCredit(amount: amount)
+            if var current = line { current = PostpaidCreditLineDto(id: current.id, userId: current.userId, walletId: current.walletId, creditLimit: current.creditLimit, currentBalance: res.currentBalance, status: current.status, cycleDueAt: current.cycleDueAt, lastLateFeeAccrualAt: current.lastLateFeeAccrualAt, createdAt: current.createdAt, updatedAt: current.updatedAt); line = current }
+            spendAmount = ""
+            notice = "Added \(Int(res.amount)) RWF to your wallet — \(Int(res.availableCredit)) RWF still available."
+        } catch {
+            self.error = "Could not spend from your postpaid credit line."
+        }
+    }
+
+    private func repay() async {
+        guard let amount = Double(repayAmount), amount > 0 else { error = "Enter a valid repayment amount."; return }
+        busy = true; error = nil; notice = nil
+        defer { busy = false }
+        do {
+            let res = try await NetworkClient.shared.repayPostpaidCredit(amount: amount)
+            if var current = line {
+                let newStatus = res.currentBalance <= 0 ? "ACTIVE" : current.status
+                current = PostpaidCreditLineDto(id: current.id, userId: current.userId, walletId: current.walletId, creditLimit: current.creditLimit, currentBalance: res.currentBalance, status: newStatus, cycleDueAt: current.cycleDueAt, lastLateFeeAccrualAt: current.lastLateFeeAccrualAt, createdAt: current.createdAt, updatedAt: current.updatedAt)
+                line = current
+            }
+            repayAmount = ""
+            notice = "Repaid \(Int(res.amount)) RWF — \(Int(res.availableCredit)) RWF now available."
+        } catch {
+            self.error = "Could not repay your postpaid credit line."
         }
     }
 }

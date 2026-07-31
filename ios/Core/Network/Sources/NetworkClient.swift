@@ -3252,6 +3252,48 @@ public struct OverdraftRepayResponse: Decodable {
     public let newBalance: Double
 }
 
+// Real Naver Pay/Kakao Pay/Toss 후불결제 (postpaid/BNPL credit line) -- see backend
+// PostpaidCreditLine.kt's own doc comment. Genuinely distinct from the overdraft above:
+// real interest-free on-time repayment, a much lower real qualification bar, and an
+// auto-computed (not user-requested) limit.
+public struct PostpaidCreditLineDto: Decodable {
+    public let id: String
+    public let userId: String
+    public let walletId: String
+    public let creditLimit: Double
+    public let currentBalance: Double
+    public let status: String
+    public let cycleDueAt: String?
+    public let lastLateFeeAccrualAt: String?
+    public let createdAt: String
+    public let updatedAt: String
+
+    // Explicit memberwise init -- same real cross-module-construction gotcha
+    // OverdraftAccountDto's own doc comment already names.
+    public init(id: String, userId: String, walletId: String, creditLimit: Double, currentBalance: Double, status: String, cycleDueAt: String?, lastLateFeeAccrualAt: String?, createdAt: String, updatedAt: String) {
+        self.id = id
+        self.userId = userId
+        self.walletId = walletId
+        self.creditLimit = creditLimit
+        self.currentBalance = currentBalance
+        self.status = status
+        self.cycleDueAt = cycleDueAt
+        self.lastLateFeeAccrualAt = lastLateFeeAccrualAt
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+}
+public struct PostpaidCreditLineResponse: Decodable { public let success: Bool; public let line: PostpaidCreditLineDto? }
+public struct PostpaidCreditAmountRequest: Encodable { public let amount: Double }
+public struct PostpaidCreditActionResponse: Decodable {
+    public let success: Bool
+    public let transactionId: String
+    public let amount: Double
+    public let currentBalance: Double
+    public let availableCredit: Double
+    public let newBalance: Double?
+}
+
 // Real Toss Bank 체크카드 (check/debit card) client (item 207) -- see backend
 // DebitCard.kt's own doc comment. bank-mfe/Android shipped first; this is the iOS
 // client. "Paying with your card" is itunda's own honest, ledger-backed simulation of
@@ -3408,6 +3450,23 @@ extension NetworkClient {
 
     public func repayOverdraft(amount: Double) async throws -> OverdraftRepayResponse {
         try await authenticatedPost("api/v1/loans/overdraft/repay", body: OverdraftAmountRequest(amount: amount), idempotencyKey: UUID().uuidString)
+    }
+
+    // Real Naver Pay/Kakao Pay/Toss 후불결제 (postpaid/BNPL credit line, real since
+    // 2026-07-31) -- first iOS client for this feature, mirroring bank-mfe's
+    // lib/loans.ts and Android's ApiService.kt exactly.
+    public func getMyPostpaidCredit() async throws -> PostpaidCreditLineResponse { try await get("api/v1/loans/postpaid-credit") }
+
+    public func applyForPostpaidCredit() async throws -> PostpaidCreditLineResponse {
+        try await authenticatedPost("api/v1/loans/postpaid-credit/apply", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+    }
+
+    public func spendPostpaidCredit(amount: Double) async throws -> PostpaidCreditActionResponse {
+        try await authenticatedPost("api/v1/loans/postpaid-credit/spend", body: PostpaidCreditAmountRequest(amount: amount), idempotencyKey: UUID().uuidString)
+    }
+
+    public func repayPostpaidCredit(amount: Double) async throws -> PostpaidCreditActionResponse {
+        try await authenticatedPost("api/v1/loans/postpaid-credit/repay", body: PostpaidCreditAmountRequest(amount: amount), idempotencyKey: UUID().uuidString)
     }
 
     public func issueCard() async throws -> CardResponse {

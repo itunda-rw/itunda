@@ -1406,6 +1406,33 @@ data class OverdraftRepayResponse(
     val newBalance: java.math.BigDecimal,
 )
 
+// Real Naver Pay/Kakao Pay/Toss 후불결제 (postpaid/BNPL credit line) -- see backend
+// PostpaidCreditLine.kt's own doc comment. Genuinely distinct from the overdraft above:
+// real interest-free on-time repayment, a much lower real qualification bar, and an
+// auto-computed (not user-requested) limit.
+data class PostpaidCreditLineDto(
+    val id: String,
+    val userId: String,
+    val walletId: String,
+    val creditLimit: java.math.BigDecimal,
+    val currentBalance: java.math.BigDecimal,
+    val status: String,
+    val cycleDueAt: String?,
+    val lastLateFeeAccrualAt: String?,
+    val createdAt: String,
+    val updatedAt: String,
+)
+data class PostpaidCreditLineResponse(val success: Boolean, val line: PostpaidCreditLineDto?)
+data class PostpaidCreditAmountRequest(val amount: java.math.BigDecimal)
+data class PostpaidCreditActionResponse(
+    val success: Boolean,
+    val transactionId: String,
+    val amount: java.math.BigDecimal,
+    val currentBalance: java.math.BigDecimal,
+    val availableCredit: java.math.BigDecimal,
+    val newBalance: java.math.BigDecimal? = null,
+)
+
 // Real Toss Bank 체크카드 (check/debit card) client (item 207) -- see backend
 // DebitCard.kt's own doc comment. bank-mfe shipped first (2026-07-31); this is the
 // first Android client. "Paying with your card" is itunda's own honest, ledger-backed
@@ -2544,6 +2571,21 @@ interface ApiService {
 
     @POST("api/v1/loans/overdraft/repay")
     suspend fun repayOverdraft(@Header("Idempotency-Key") idempotencyKey: String, @Body request: OverdraftAmountRequest): OverdraftRepayResponse
+
+    // Real Naver Pay/Kakao Pay/Toss 후불결제 (postpaid/BNPL credit line, real since
+    // 2026-07-31) -- first Android client for this feature, mirroring bank-mfe's
+    // lib/loans.ts and Android's own OverdraftPanel shape exactly.
+    @GET("api/v1/loans/postpaid-credit")
+    suspend fun getMyPostpaidCredit(): PostpaidCreditLineResponse
+
+    @POST("api/v1/loans/postpaid-credit/apply")
+    suspend fun applyForPostpaidCredit(@Header("Idempotency-Key") idempotencyKey: String): PostpaidCreditLineResponse
+
+    @POST("api/v1/loans/postpaid-credit/spend")
+    suspend fun spendPostpaidCredit(@Header("Idempotency-Key") idempotencyKey: String, @Body request: PostpaidCreditAmountRequest): PostpaidCreditActionResponse
+
+    @POST("api/v1/loans/postpaid-credit/repay")
+    suspend fun repayPostpaidCredit(@Header("Idempotency-Key") idempotencyKey: String, @Body request: PostpaidCreditAmountRequest): PostpaidCreditActionResponse
 
     @POST("api/v1/card/issue")
     suspend fun issueCard(): CardResponse
