@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowUpRight, Bike, Car, Heart, LogOut, MessageCircle, Plus,
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { configureAutoTopUp, fetchAutoTopUpSetting, fetchBudgets, fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchWallets, setBudget, triggerAutoTopUp, type AutoTopUpSetting, type BudgetView, type DetectedSubscription, type SpendingCategory, type Transaction, type Wallet } from './lib/wallet';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
+import { fetchNotifications, markNotificationRead, markAllNotificationsRead, type NotificationItem } from './lib/notifications';
 import { fetchDiscoverItems, type DiscoverItem } from './lib/discover';
 import { chargeCard, fetchCardTransactions, fetchMyCard, freezeCard, issueCard, setCardLimits, unfreezeCard, type Card, type CardTransaction } from './lib/card';
 import { claimInterest, createGoal, depositToGoal, fetchGoals, fetchInterestJar, fetchRoundUpSettings, ROUND_UP_INCREMENTS, setRoundUpSettings, type InterestJar, type RoundUpSettings, type SavingsGoal } from './lib/savings';
@@ -2966,6 +2967,7 @@ function MyView() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <ProfilePhotoCard />
       <VerificationCard />
+      <NotificationsCard />
       {(shopOrders.length > 0 || eatsOrders.length > 0) && (
         <div className="toss-card" style={{ padding: '16px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>My orders</h3>
@@ -3021,6 +3023,71 @@ function MyView() {
             ))}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// Real in-app notification inbox (item, found via a backend-module sweep) -- see
+// lib/notifications.ts's own doc comment. Already ported to Android (SettingsScreen.kt)
+// and iOS (SettingsViewModel.swift), but bank-mfe had zero client for the inbox itself.
+function NotificationsCard() {
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const load = () => {
+    fetchNotifications()
+      .then((r) => {
+        setNotifications(r.notifications);
+        setUnreadCount(r.unreadCount);
+      })
+      .catch(() => {});
+  };
+  useEffect(load, []);
+
+  const handleRead = async (id: string) => {
+    await markNotificationRead(id).catch(() => {});
+    load();
+  };
+  const handleReadAll = async () => {
+    await markAllNotificationsRead().catch(() => {});
+    load();
+  };
+
+  return (
+    <div className="toss-card" style={{ padding: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Notifications</h3>
+        {unreadCount > 0 && (
+          <span
+            role="button"
+            onClick={handleReadAll}
+            style={{ fontSize: '13px', fontWeight: 600, color: 'var(--toss-blue)', cursor: 'pointer' }}
+          >
+            Mark all read
+          </span>
+        )}
+      </div>
+      {notifications.length === 0 ? (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', textAlign: 'center', padding: '16px 0' }}>No notifications</p>
+      ) : (
+        notifications.slice(0, 10).map((n) => (
+          <div
+            key={n.id}
+            onClick={() => !n.isRead && handleRead(n.id)}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '2px',
+              padding: '10px 0',
+              borderTop: '1px solid var(--toss-grey-100)',
+              cursor: n.isRead ? 'default' : 'pointer',
+            }}
+          >
+            <span style={{ fontSize: '14px', fontWeight: n.isRead ? 400 : 700 }}>{n.title}</span>
+            <span style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{n.body}</span>
+          </div>
+        ))
       )}
     </div>
   );
