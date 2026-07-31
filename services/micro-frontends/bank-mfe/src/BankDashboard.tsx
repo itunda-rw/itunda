@@ -44,7 +44,7 @@ import { submitHoodReport, type HoodReportTargetType } from './lib/hoodReport';
 import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type KycSubmission } from './lib/identity';
 import { addContact, fetchContacts, type Contact } from './lib/contacts';
 import { createSupportTicket, fetchSupportTickets, type SupportTicket, type SupportTicketCategory } from './lib/support';
-import { cancelBillingSubscription, collectPayment, fetchMerchantBillingPlans, fetchMerchantCategories, fetchMyBillingSubscriptions, fetchMyFollowedMerchants, fetchNearbyAds, fetchShopDeals, fetchShoppingCatalog, followMerchant, previewPaymentIntent, searchProducts, subscribeToBillingPlan, unfollowMerchant, type CollectPaymentResult, type MerchantBillingPlan, type MerchantBillingSubscription, type MerchantCouponView, type NearbyMerchantAd, type PaymentIntentPreview, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
+import { cancelBillingSubscription, collectPayment, fetchMerchantBillingPlans, fetchMerchantCategories, fetchMyBillingSubscriptions, fetchMyFollowedMerchants, fetchNearbyAds, fetchShopDeals, fetchShoppingCatalog, followMerchant, payByStaticQr, previewPaymentIntent, searchProducts, subscribeToBillingPlan, unfollowMerchant, type CollectPaymentResult, type MerchantBillingPlan, type MerchantBillingSubscription, type MerchantCouponView, type NearbyMerchantAd, type PaymentIntentPreview, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
 import {
   buyStock, fetchPortfolio, fetchPortfolioHistory, fetchStockHistory, fetchStocks, fetchWatchlist,
   sellStock, unwatchStock, watchStock,
@@ -3455,6 +3455,57 @@ function PayByCodeCard({ onPaid, facePayEnrolled }: { onPaid: (result: CollectPa
   );
 }
 
+// Real Kakao Pay 정액 QR (static/fixed merchant QR) -- see lib/shopping.ts's own
+// payByStaticQr doc comment. Genuinely distinct from PayByCodeCard above: that pays a
+// merchant-preset amount off a fresh per-sale code; this pays a merchant's own
+// permanent merchantId with the CUSTOMER choosing the amount, matching Kakao's own real
+// small-vendor use case (a market stall's one printed, unchanging code).
+function PayByStaticQrCard({ onPaid }: { onPaid: (result: CollectPaymentResult) => void }) {
+  const [merchantId, setMerchantId] = useState('');
+  const [amount, setAmount] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    const numericAmount = Number(amount);
+    if (!numericAmount || numericAmount <= 0) { setError('Enter a valid amount.'); return; }
+    setSubmitting(true);
+    try {
+      const result = await payByStaticQr(merchantId.trim(), numericAmount);
+      onPaid(result);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not complete this payment.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="toss-card" style={{ marginBottom: '16px' }}>
+      <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '4px' }}>Pay a merchant's static QR</h3>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '14px' }}>
+        For a merchant with one permanent code (like a market stall) -- enter their merchant ID and how much you're paying.
+      </p>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <input
+          type="text" value={merchantId} onChange={(e) => setMerchantId(e.target.value)} placeholder="Merchant ID" required
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        />
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <input
+            type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount (RWF)" required
+            style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>{submitting ? 'Paying…' : 'Pay'}</button>
+        </div>
+      </form>
+      {error && <p style={{ fontSize: '13px', color: '#E53935', marginTop: '10px' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
 function PaymentConfirmation({ result, onDone }: { result: CollectPaymentResult; onDone: () => void }) {
   return (
     <div className="toss-card" style={{ textAlign: 'center', padding: '28px' }}>
@@ -3514,6 +3565,7 @@ function ShoppingView() {
     <div>
       <FacePaySettingsCard enrolled={facePayEnrolled} onChanged={loadFacePayStatus} />
       <PayByCodeCard onPaid={setPaymentResult} facePayEnrolled={facePayEnrolled ?? false} />
+      <PayByStaticQrCard onPaid={setPaymentResult} />
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px', padding: '0 4px' }}>
         Earn cashback every time you shop with Itunda merchants.
       </p>

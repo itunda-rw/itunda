@@ -110,6 +110,20 @@ export const collectPayment = (intentId: string, couponId?: string) =>
     body: couponId ? JSON.stringify({ couponId }) : undefined,
   });
 
+// Real Kakao Pay 정액 QR (static/fixed merchant QR) -- see the backend's
+// MerchantStaticQrService doc comment. Genuinely distinct from collectPayment above:
+// that pays a merchant-preset amount (a fresh PaymentIntent code per sale); this pays a
+// merchant's own permanent merchantId, with the CUSTOMER choosing the amount -- the same
+// honest manual-entry alternative to camera scanning this file's own collectPayment
+// doc comment already establishes, just for the merchant's static code instead of a
+// per-sale one.
+export const payByStaticQr = (merchantId: string, amount: number, description?: string) =>
+  apiFetch<{ success: boolean } & CollectPaymentResult>(`/api/v1/merchant/${merchantId}/static-qr/pay`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': randomUUID() },
+    body: JSON.stringify({ amount, description }),
+  });
+
 // Real read-only preview (item 149) -- see backend MerchantService.previewIntent's own
 // doc comment. Lets a payer see which merchant/amount a code resolves to, and their own
 // real coupon eligibility, before committing to collectPayment -- the actual blocker

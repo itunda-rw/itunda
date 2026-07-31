@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { CreditCard, RefreshCw, Ticket } from 'lucide-react';
 import { ApiError } from '../lib/api';
-import { chargeCard, generateQr, paymentIntentQrPayload, redeemGiftVoucher, type CardChargeResult, type PaymentIntent, type RedeemedGiftVoucher } from '../lib/merchant';
+import { chargeCard, generateQr, getMyMerchant, paymentIntentQrPayload, redeemGiftVoucher, staticQrPayload, type CardChargeResult, type PaymentIntent, type RedeemedGiftVoucher } from '../lib/merchant';
 import { DeviceStepUpPrompt } from '../components/DeviceStepUpPrompt';
 
-type Mode = 'QR' | 'CARD' | 'VOUCHER';
+type Mode = 'QR' | 'STATIC' | 'CARD' | 'VOUCHER';
 
 export default function CollectScreen() {
   const [mode, setMode] = useState<Mode>('QR');
@@ -13,7 +13,7 @@ export default function CollectScreen() {
   return (
     <div style={{ maxWidth: '400px' }}>
       <div className="toss-card" style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px' }}>
-        {(['QR', 'CARD', 'VOUCHER'] as const).map((m) => (
+        {(['QR', 'STATIC', 'CARD', 'VOUCHER'] as const).map((m) => (
           <button
             key={m}
             onClick={() => setMode(m)}
@@ -21,17 +21,61 @@ export default function CollectScreen() {
               flex: 1,
               padding: '10px',
               borderRadius: '10px',
-              fontSize: '14px',
+              fontSize: '13px',
               fontWeight: 700,
               color: mode === m ? 'var(--toss-white)' : 'var(--toss-grey-700)',
               backgroundColor: mode === m ? 'var(--toss-blue)' : 'transparent',
             }}
           >
-            {m === 'QR' ? 'QR code' : m === 'CARD' ? 'Card' : 'Voucher'}
+            {m === 'QR' ? 'QR code' : m === 'STATIC' ? 'Static QR' : m === 'CARD' ? 'Card' : 'Voucher'}
           </button>
         ))}
       </div>
-      {mode === 'QR' ? <QrCollect /> : mode === 'CARD' ? <CardCollect /> : <VoucherRedeem />}
+      {mode === 'QR' ? <QrCollect /> : mode === 'STATIC' ? <StaticQrCollect /> : mode === 'CARD' ? <CardCollect /> : <VoucherRedeem />}
+    </div>
+  );
+}
+
+// Real Kakao Pay 정액 QR (static/fixed merchant QR) -- see lib/merchant.ts's own
+// staticQrPayload doc comment. Genuinely distinct from QrCollect above: that generates a
+// fresh, amount-preset code per sale; this one code is real-permanent -- print it once,
+// a customer scans it and types in their own amount, no per-sale app interaction needed
+// at all, matching Kakao's own real small-vendor (no POS) target use case.
+function StaticQrCollect() {
+  const [merchantId, setMerchantId] = useState<string | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getMyMerchant()
+      .then((merchant) => {
+        if (!merchant) { setError('Register as a merchant first.'); return; }
+        setMerchantId(merchant.id);
+        return QRCode.toDataURL(staticQrPayload(merchant.id), { width: 240, margin: 1 }).then(setQrDataUrl);
+      })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your static QR code.'));
+  }, []);
+
+  if (error) {
+    return (
+      <div className="toss-card">
+        <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>
+      </div>
+    );
+  }
+
+  if (!qrDataUrl || !merchantId) {
+    return <div className="toss-card skeleton" style={{ height: '320px' }} />;
+  }
+
+  return (
+    <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '32px', textAlign: 'center' }}>
+      <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Your permanent QR code</h2>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+        Print this once and display it at your till -- a customer scans it, enters their own amount, and pays. No app needed on your end at sale time.
+      </p>
+      <img src={qrDataUrl} alt="Static merchant QR code" width={240} height={240} style={{ borderRadius: '16px' }} />
+      <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)', fontFamily: 'monospace' }}>{merchantId}</p>
     </div>
   );
 }

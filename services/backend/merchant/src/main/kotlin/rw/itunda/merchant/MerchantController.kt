@@ -36,6 +36,9 @@ data class SetAcceptsScheduledOrdersRequest(val accepts: Boolean)
 data class SetPhotoUrlRequest(val photoUrl: String)
 data class SetMinOrderAmountRequest(val minOrderAmount: BigDecimal?)
 data class CollectPaymentRequest(val couponId: String? = null)
+// Real Kakao Pay 정액 QR (static/fixed merchant QR) -- see MerchantStaticQrService's own
+// doc comment.
+data class StaticQrPayRequest(val amount: BigDecimal, val description: String? = null)
 data class ChargeCardRequest(
     val amount: BigDecimal,
     val description: String,
@@ -51,6 +54,7 @@ class MerchantController(
     private val merchantService: MerchantService,
     private val idempotencyService: IdempotencyService,
     private val webhookDeliveryService: WebhookDeliveryService,
+    private val merchantStaticQrService: MerchantStaticQrService,
 ) {
     @PostMapping("/register")
     fun register(
@@ -80,6 +84,25 @@ class MerchantController(
     ): ResponseEntity<Map<String, Any?>> {
         val intent = merchantService.generateQr(currentUser.userId, request.amount, request.description)
         return ResponseEntity.ok(mapOf("success" to true, "paymentIntent" to intent))
+    }
+
+    // Real Kakao Pay 정액 QR (static/fixed merchant QR) -- see MerchantStaticQrService's
+    // own doc comment. Public merchantId lookup, not the authenticated payer's own
+    // merchant -- any real active merchant can be paid this way, the same "any
+    // registered merchant already accepts dynamic QR" openness this feature honestly
+    // extends, not a new authorization surface (only the customer's own money moves).
+    @PostMapping("/{merchantId}/static-qr/pay")
+    fun payByStaticQr(
+        @PathVariable merchantId: String,
+        @RequestBody request: StaticQrPayRequest,
+        @RequestHeader("Idempotency-Key") idempotencyKey: String,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/merchant/$merchantId/static-qr/pay", idempotencyKey, request) {
+            val result = merchantStaticQrService.payByStaticQr(currentUser.userId, merchantId, request.amount, request.description)
+            200 to (mapOf("success" to true) + result)
+        }
+        return ResponseEntity.status(status).body(body)
     }
 
     // Real webhook registration (2026-07-13) -- see docs/TOSS_PARITY_MATRIX.md's Merchant
@@ -348,6 +371,10 @@ class MerchantController(
     @ExceptionHandler(InvalidPhotoUrlException::class)
     fun handleInvalidPhotoUrl(ex: InvalidPhotoUrlException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_PHOTO_URL", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(InvalidStaticQrAmountException::class)
+    fun handleInvalidStaticQrAmount(ex: InvalidStaticQrAmountException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AMOUNT", ex.message ?: "Bad request"))
 
     @ExceptionHandler(InvalidMinOrderAmountException::class)
     fun handleInvalidMinOrderAmount(ex: InvalidMinOrderAmountException) =

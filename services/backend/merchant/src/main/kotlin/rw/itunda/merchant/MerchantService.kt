@@ -265,9 +265,18 @@ class MerchantService(
     @Transactional
     fun generateQr(ownerUserId: String, amount: BigDecimal, description: String): PaymentIntent {
         val merchant = getMyMerchant(ownerUserId)
+        return createIntent(merchant.id, amount, description)
+    }
+
+    // Extracted (2026-07-31) so MerchantStaticQrService's own real Kakao Pay 정액 QR
+    // (static/fixed merchant QR) flow can create an identical real PaymentIntent from a
+    // public merchantId lookup, without going through generateQr's own
+    // getMyMerchant(ownerUserId) ownership check -- a static QR's whole real point is
+    // that a CUSTOMER, not the merchant, initiates the intent.
+    internal fun createIntent(merchantId: String, amount: BigDecimal, description: String): PaymentIntent {
         val intent = PaymentIntent(
             id = "pi_${UUID.randomUUID()}",
-            merchantId = merchant.id,
+            merchantId = merchantId,
             amount = amount,
             description = description,
             expiresAt = Instant.now().plusSeconds(900),
@@ -564,7 +573,13 @@ class MerchantService(
         // channel-labeled memo/description (2026-07-13, added for Face Pay) -- keeps a
         // real, honest audit trail of which authentication factor collected a given
         // payment (QR scan vs Face Pay biometric match) rather than always saying "QR".
-        val channelLabel = if (channel == "FACE_PAY") "Face Pay" else "QR"
+        val channelLabel = when (channel) {
+            "FACE_PAY" -> "Face Pay"
+            // Real Kakao Pay 정액 QR (static/fixed merchant QR) -- see
+            // MerchantStaticQrService's own doc comment.
+            "STATIC_QR" -> "Static QR"
+            else -> "QR"
+        }
 
         val result = ledgerService.postLedgerTransaction(
             payerWallet.currency,

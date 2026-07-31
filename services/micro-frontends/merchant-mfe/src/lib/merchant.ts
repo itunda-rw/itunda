@@ -322,6 +322,12 @@ export const getPayslips = (payrollRunId: string) =>
 // app would resolve into a POST /api/v1/merchant/collect/{intentId} call.
 export const paymentIntentQrPayload = (intentId: string) => `itunda://pay?intentId=${intentId}`;
 
+// Real Kakao Pay 정액 QR (static/fixed merchant QR) -- see the backend's
+// MerchantStaticQrService doc comment. Same client-side encoding convention as
+// paymentIntentQrPayload above, keyed on the merchant's own permanent id instead of a
+// fresh per-sale intentId -- this one QR never needs regenerating.
+export const staticQrPayload = (merchantId: string) => `itunda://pay-static?merchantId=${merchantId}`;
+
 // Real post-appointment booking reviews + owner-side reply (item 143) -- see backend
 // MerchantBookingReview.kt's own doc comment: closes the "owner-side review replies"
 // half of Naver Smart Place's own real, sourced feature. Found via a fresh discovery
