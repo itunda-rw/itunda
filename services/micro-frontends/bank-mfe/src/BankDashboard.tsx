@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowUpRight, Bike, Car, Heart, LogOut, MessageCircle, Plus,
 import { getStoredUser, logout, ApiError } from './lib/api';
 import { configureAutoTopUp, fetchAutoTopUpSetting, fetchBudgets, fetchSpendingInsight, fetchSubscriptions, fetchTransactions, fetchTransactionTimeline, fetchWallets, setBudget, triggerAutoTopUp, type AutoTopUpSetting, type BudgetView, type DetectedSubscription, type SpendingCategory, type Transaction, type Wallet } from './lib/wallet';
 import { fetchMyDevices, getOrCreateDeviceId, revokeDevice, verifyDevice, type TrustedDevice } from './lib/device';
+import { fetchDiscoverItems, type DiscoverItem } from './lib/discover';
 import { chargeCard, fetchCardTransactions, fetchMyCard, freezeCard, issueCard, setCardLimits, unfreezeCard, type Card, type CardTransaction } from './lib/card';
 import { claimInterest, createGoal, depositToGoal, fetchGoals, fetchInterestJar, fetchRoundUpSettings, ROUND_UP_INCREMENTS, setRoundUpSettings, type InterestJar, type RoundUpSettings, type SavingsGoal } from './lib/savings';
 import {
@@ -573,6 +574,42 @@ function HomeView() {
       {wallet && <AutoTopUpCard walletId={wallet.id} />}
       <RequestMoneyCard />
       <MiniWalletCard />
+      <DiscoverSection />
+    </div>
+  );
+}
+
+// Real curated promo rail -- see lib/discover.ts's own doc comment. Android already has
+// this (DiscoverSection in ItundaAppScreen.kt, found real on backend + Android with zero
+// client anywhere else); this is the first bank-mfe/iOS client. Purely informational --
+// no click-through action or money movement, mirroring Android's own honest scope.
+function DiscoverSection() {
+  const [items, setItems] = useState<DiscoverItem[]>([]);
+
+  useEffect(() => {
+    fetchDiscoverItems().then(setItems).catch(() => {});
+  }, []);
+
+  if (items.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: '16px' }}>
+      <h3 style={{ fontSize: '19px', fontWeight: 700, marginBottom: '10px' }}>Discover</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {items.map((item) => (
+          <div key={item.id} className="toss-card" style={{ display: 'flex', alignItems: 'center', gap: '12px', borderRadius: '20px' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '4px', backgroundColor: item.color, flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '16px', fontWeight: 600 }}>{item.title}</span>
+                {item.isNew && <span style={{ fontSize: '11px', fontWeight: 700, color: item.color }}>NEW</span>}
+              </div>
+              <p style={{ fontSize: '14px', color: 'var(--toss-grey-500)' }}>{item.subtitle}</p>
+            </div>
+            {item.badge && <span style={{ fontSize: '13px', fontWeight: 600, color: item.color }}>{item.badge}</span>}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

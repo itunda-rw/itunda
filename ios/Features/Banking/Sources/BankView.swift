@@ -31,9 +31,32 @@ public struct SavingsRowData: Identifiable {
     }
 }
 
+/// A row for BankView's real "Discover" section -- plain primitives, same cross-module
+/// data-passing pattern SavingsRowData already establishes. See
+/// rw.itunda.discover.web.DiscoverController on the backend: a real curated promo rail
+/// (a CMS-style catalog, not user-specific data), purely informational, no
+/// click-through action or money movement. Android already has this (DiscoverSection
+/// in ItundaAppScreen.kt, found real on backend + Android with zero client anywhere
+/// else); this is the first iOS client.
+public struct DiscoverRowData: Identifiable {
+    public let id = UUID()
+    public let title: String
+    public let subtitle: String
+    public let badge: String?
+    public let isNew: Bool
+
+    public init(title: String, subtitle: String, badge: String?, isNew: Bool) {
+        self.title = title
+        self.subtitle = subtitle
+        self.badge = badge
+        self.isNew = isNew
+    }
+}
+
 public struct BankView: View {
     private let balanceText: String
     private let savingsRows: [SavingsRowData]
+    private let discoverRows: [DiscoverRowData]
     private let onSend: () -> Void
     private let onOpenTransactionHistory: () -> Void
 
@@ -47,11 +70,13 @@ public struct BankView: View {
     public init(
         balanceText: String = "RWF 0",
         savingsRows: [SavingsRowData] = [],
+        discoverRows: [DiscoverRowData] = [],
         onSend: @escaping () -> Void = {},
         onOpenTransactionHistory: @escaping () -> Void = {}
     ) {
         self.balanceText = balanceText
         self.savingsRows = savingsRows
+        self.discoverRows = discoverRows
         self.onSend = onSend
         self.onOpenTransactionHistory = onOpenTransactionHistory
     }
@@ -83,6 +108,21 @@ public struct BankView: View {
                 )
                 HomeSectionCard(title: "For life in Rwanda", actionLabel: "More", rows: BankViewData.rwandaServices)
                 HomeSectionCard(title: "Rewards and savings", actionLabel: "View", rows: BankViewData.rewards)
+                if !discoverRows.isEmpty {
+                    HomeSectionCard(
+                        title: "Discover",
+                        actionLabel: "",
+                        rows: discoverRows.enumerated().map { index, row in
+                            HomeRowData(
+                                title: row.isNew ? "\(row.title) · NEW" : row.title,
+                                subtitle: row.subtitle,
+                                trailing: row.badge ?? "",
+                                symbol: "sparkles",
+                                iconBackground: [IDS.Colors.successTint, IDS.Colors.pressed, IDS.Colors.warningTint, IDS.Colors.backgroundTertiary][index % 4]
+                            )
+                        }
+                    )
+                }
             }
             .padding(.horizontal, IDS.Layout.screenHorizontal)
             .padding(.top, IDS.Layout.screenTop)

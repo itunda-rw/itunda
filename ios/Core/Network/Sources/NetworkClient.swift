@@ -613,6 +613,22 @@ public struct InterestJar: Decodable {
 
 public struct InterestJarResponse: Decodable { public let success: Bool; public let jar: InterestJar }
 
+// Real curated promo rail -- see the backend's DiscoverController.kt. Purely
+// informational/display, no click-through action or money movement. Android already
+// has this (DiscoverSection in ItundaAppScreen.kt, found real on backend + Android with
+// zero client anywhere else); this is the first iOS client.
+public struct DiscoverItem: Decodable, Identifiable {
+    public let id: String
+    public let category: String
+    public let title: String
+    public let subtitle: String
+    public let description: String
+    public let color: String
+    public let isNew: Bool
+    public let badge: String?
+}
+public struct DiscoverResponse: Decodable { public let success: Bool; public let items: [DiscoverItem] }
+
 /// Authenticated GET helper for feature screens that need to call the rest of
 /// services/backend's API once logged in -- reads the bearer token from
 /// KeychainTokenStore so callers never have to thread it through manually. First
@@ -795,6 +811,8 @@ extension NetworkClient {
 
     public func getSavingsGoals() async throws -> SavingsGoalsResponse { try await get("api/v1/savings/goals") }
     public func getInterestJar() async throws -> InterestJarResponse { try await get("api/v1/savings/interest-jar") }
+
+    public func getDiscoverItems() async throws -> DiscoverResponse { try await get("api/v1/discover") }
 
     // Real Kakao Pay 머니굴리기 round-up auto-saving (rw.itunda.savings.RoundUpService,
     // real since well before this session) -- first iOS client for this feature (item

@@ -12,6 +12,7 @@ import CoreNetwork
 final class BankViewModel: ObservableObject {
     @Published private(set) var balanceText = "RWF 0"
     @Published private(set) var savingsRows: [SavingsRowData] = []
+    @Published private(set) var discoverRows: [DiscoverRowData] = []
     @Published private(set) var isOffline = false
     // Raw values for screens that need to compute with them (send-money/deposit
     // flows), not just display them -- balanceText/savingsRows are formatted display
@@ -165,6 +166,17 @@ final class BankViewModel: ObservableObject {
                 }
             }
             savingsRows = rows
+
+            // Real curated promo rail -- see rw.itunda.discover.web.DiscoverController
+            // on the backend. Purely informational, so scoped in its own try/catch,
+            // same discipline as the interest-jar 404 handling above: a Discover
+            // hiccup must never block the rest of Home from loading real data.
+            if let discoverRes = try? await NetworkClient.shared.getDiscoverItems(), discoverRes.success {
+                discoverRows = discoverRes.items.map {
+                    DiscoverRowData(title: $0.title, subtitle: $0.subtitle, badge: $0.badge, isNew: $0.isNew)
+                }
+            }
+
             isOffline = false
         } catch is URLError {
             // Genuinely unreachable backend -- the only case that should fall back to

@@ -98,6 +98,7 @@ struct ContentView: View {
             BankView(
                 balanceText: bankViewModel.balanceText,
                 savingsRows: savingsRows,
+                discoverRows: bankViewModel.discoverRows,
                 onSend: { showTransferFlow = true },
                 onOpenTransactionHistory: { showTransactionHistory = true }
             )
