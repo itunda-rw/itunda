@@ -2694,6 +2694,21 @@ interface ApiService {
     @POST("api/v1/rides/trips/{tripId}/cancel")
     suspend fun cancelRideTrip(@Path("tripId") tripId: String): RideTripResponse
 
+    // Real Kakao T 예약 호출 (scheduled ride booking, item 212)/multi-stop (item 214)/
+    // driver rating (item 213) -- first Android client for these three, backend and
+    // bank-mfe real since 2026-07-31. Mirrors bank-mfe's lib/rideshare.ts exactly.
+    @GET("api/v1/rides/trips/{tripId}/stops")
+    suspend fun getRideTripStops(@Path("tripId") tripId: String): RideTripStopsResponse
+
+    @POST("api/v1/rides/trips/{tripId}/stops/arrive")
+    suspend fun arriveAtRideStop(@Path("tripId") tripId: String): RideTripStopResponse
+
+    @POST("api/v1/rides/trips/{tripId}/review")
+    suspend fun submitRideReview(@Path("tripId") tripId: String, @Body request: SubmitRideReviewRequest): RideTripReviewResponse
+
+    @GET("api/v1/rides/drivers/{driverId}/rating")
+    suspend fun getRideDriverRating(@Path("driverId") driverId: String): RideDriverRatingResponse
+
     // Real Kakao Bank 모임통장 (group/shared account) equivalent -- first Android client
     // for this feature (item 104, found via a fresh matrix scan: zero client on either
     // mobile platform despite being real and live since well before this session).
@@ -2758,13 +2773,37 @@ data class RideTripDto(
     val pickupLatitude: Double, val pickupLongitude: Double, val dropoffAddress: String,
     val dropoffLatitude: Double, val dropoffLongitude: Double, val distanceKm: Double,
     val fare: java.math.BigDecimal, val platformFee: java.math.BigDecimal, val status: String, val createdAt: String,
+    // Real Kakao T 예약 호출 (scheduled ride booking, item 212) -- null means an ASAP
+    // request, unchanged from before.
+    val scheduledFor: String? = null,
 )
 data class RideTripResponse(val success: Boolean, val trip: RideTripDto)
 data class RideTripsResponse(val success: Boolean, val trips: List<RideTripDto>)
+// Real Kakao T-style multi-stop rides (item 214) -- see the backend's RideTripStop.kt
+// doc comment.
+data class RideStopRequestDto(val address: String, val latitude: Double, val longitude: Double)
 data class RequestRideTripRequest(
     val pickupAddress: String, val pickupLatitude: Double, val pickupLongitude: Double,
     val dropoffAddress: String, val dropoffLatitude: Double, val dropoffLongitude: Double,
+    val scheduledFor: String? = null,
+    val stops: List<RideStopRequestDto>? = null,
 )
+data class RideTripStopDto(
+    val id: String, val tripId: String, val sequence: Int, val address: String,
+    val latitude: Double, val longitude: Double, val arrivedAt: String?,
+)
+data class RideTripStopResponse(val success: Boolean, val stop: RideTripStopDto)
+data class RideTripStopsResponse(val success: Boolean, val stops: List<RideTripStopDto>)
+
+// Real Kakao T-style post-trip driver rating (item 213) -- see the backend's
+// RideTripReview.kt doc comment.
+data class SubmitRideReviewRequest(val rating: Int, val comment: String? = null)
+data class RideTripReviewDto(
+    val id: String, val tripId: String, val passengerId: String, val driverId: String,
+    val rating: Int, val comment: String?, val createdAt: String,
+)
+data class RideTripReviewResponse(val success: Boolean, val review: RideTripReviewDto)
+data class RideDriverRatingResponse(val success: Boolean, val average: Double?, val count: Long)
 
 data class SpendingCategoryDto(val name: String, val amount: java.math.BigDecimal)
 data class SpendingInsightResponse(val success: Boolean, val categories: List<SpendingCategoryDto>, val totalSpent: java.math.BigDecimal)
