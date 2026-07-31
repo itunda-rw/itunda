@@ -56,6 +56,51 @@ struct MerchantCouponDto: Decodable, Identifiable {
 struct MerchantCouponResponse: Decodable { let success: Bool; let coupon: MerchantCouponDto }
 struct MerchantCouponsResponse: Decodable { let success: Bool; let coupons: [MerchantCouponDto] }
 
+// Real B2B payroll -- real wallet-to-wallet money movement (see PayrollController.kt's
+// own doc comment), real on merchant-mfe/web + Android only until now -- zero iOS UI.
+struct AddPayrollEmployeeRequest: Encodable { let phoneNumber: String; let salaryAmount: Double }
+struct PayrollEmployeeDto: Decodable, Identifiable {
+    let id: String
+    let merchantId: String
+    let employeeUserId: String
+    let employeeName: String
+    let salaryAmount: Double
+    let active: Bool
+    let createdAt: String
+}
+struct PayrollEmployeeResponse: Decodable { let success: Bool; let employee: PayrollEmployeeDto }
+struct PayrollRosterResponse: Decodable { let success: Bool; let employees: [PayrollEmployeeDto] }
+struct PayslipDto: Decodable, Identifiable {
+    let id: String
+    let payrollRunId: String
+    let employeeUserId: String
+    let employeeName: String
+    let amount: Double
+    let transactionId: String
+    let createdAt: String
+}
+// PayrollService.runPayroll's own response returns a lighter line-item shape than the
+// full Payslip entity (no id/payrollRunId/employeeUserId/createdAt).
+struct RunPayslipDto: Decodable, Identifiable { let employeeName: String; let amount: Double; let transactionId: String; var id: String { transactionId } }
+struct PayrollRunResponse: Decodable {
+    let success: Bool
+    let payrollRunId: String
+    let totalAmount: Double
+    let employeeCount: Int
+    let completedAt: String
+    let payslips: [RunPayslipDto]
+}
+struct PayrollRunDto: Decodable, Identifiable {
+    let id: String
+    let merchantId: String
+    let ledgerTransactionId: String
+    let totalAmount: Double
+    let employeeCount: Int
+    let createdAt: String
+}
+struct PayrollHistoryResponse: Decodable { let success: Bool; let runs: [PayrollRunDto] }
+struct PayslipsResponse: Decodable { let success: Bool; let payslips: [PayslipDto] }
+
 struct SetWebhookUrlRequest: Encodable {
     let webhookUrl: String
     init(webhookUrl: String) { self.webhookUrl = webhookUrl }
@@ -420,6 +465,21 @@ final class MerchantNetworkClient {
         try await post("api/v1/merchant/coupons/\(couponId)/deactivate", body: EmptyBody())
     }
 
+    // Real B2B payroll -- see PayrollController.kt's own doc comment. merchant-mfe/
+    // Android already have this; this is the first iOS client.
+    func addPayrollEmployee(_ request: AddPayrollEmployeeRequest) async throws -> PayrollEmployeeResponse {
+        try await post("api/v1/merchant/payroll/employees", body: request)
+    }
+    func getPayrollRoster() async throws -> PayrollRosterResponse { try await get("api/v1/merchant/payroll/employees") }
+    func removePayrollEmployee(_ employeeId: String) async throws -> PayrollEmployeeResponse {
+        try await delete("api/v1/merchant/payroll/employees/\(employeeId)")
+    }
+    func runPayroll() async throws -> PayrollRunResponse {
+        try await postWithHeader("api/v1/merchant/payroll/run", body: EmptyBody(), header: ("Idempotency-Key", UUID().uuidString))
+    }
+    func getPayrollHistory() async throws -> PayrollHistoryResponse { try await get("api/v1/merchant/payroll/runs") }
+    func getPayslips(_ runId: String) async throws -> PayslipsResponse { try await get("api/v1/merchant/payroll/runs/\(runId)/payslips") }
+
     // Real payment-event webhook URL settings -- see
     // rw.itunda.merchant.MerchantService.setWebhookUrl's own doc comment. merchant-mfe/
     // Android already have this; this is the first iOS client.
@@ -479,6 +539,11 @@ final class MerchantNetworkClient {
 
     private func postWithHeader<Body: Encodable, Response: Decodable>(_ path: String, body: Body, header: (String, String)) async throws -> Response {
         let data = try await sendRequest(method: "POST", path: path, body: body, extraHeader: header)
+        return try decoder.decode(Response.self, from: data)
+    }
+
+    private func delete<Response: Decodable>(_ path: String) async throws -> Response {
+        let data = try await sendRequest(method: "DELETE", path: path, body: EmptyBody())
         return try decoder.decode(Response.self, from: data)
     }
 

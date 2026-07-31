@@ -1,7 +1,7 @@
 import SwiftUI
 import CoreDesignSystem
 
-private enum MerchantTab { case orders, catalog, register, reports, business, dineIn, reviews, coupons, followers }
+private enum MerchantTab { case orders, catalog, register, reports, business, dineIn, reviews, coupons, followers, payroll }
 
 struct MerchantHomeScreen: View {
     let merchant: MerchantDto
@@ -33,6 +33,7 @@ struct MerchantHomeScreen: View {
                 Text("Reviews").tag(MerchantTab.reviews)
                 Text("Coupons").tag(MerchantTab.coupons)
                 Text("Followers").tag(MerchantTab.followers)
+                Text("Payroll").tag(MerchantTab.payroll)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, 16)
@@ -48,6 +49,7 @@ struct MerchantHomeScreen: View {
             case .reviews: ReviewsTab(restaurantId: merchant.id)
             case .coupons: CouponsTab()
             case .followers: FollowersTab()
+            case .payroll: PayrollTab()
             }
         }
     }
