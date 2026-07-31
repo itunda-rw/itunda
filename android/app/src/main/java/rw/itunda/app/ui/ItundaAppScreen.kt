@@ -280,6 +280,9 @@ fun ItundaAppScreen(
         var showRequestMoney by rememberSaveable { mutableStateOf(false) }
         // Real Naver Pay Money 자동충전 auto top-up screen (item 176) -- same pattern.
         var showAutoTopUp by rememberSaveable { mutableStateOf(false) }
+        // Real Karrot-Score-style trust/reputation self-view screen (item 152) --
+        // bank-mfe shipped first; same "backend real, zero native UI" pattern.
+        var showTrustScore by rememberSaveable { mutableStateOf(false) }
         // Real 전체 (All services) menu (2026-07-22) -- separated from My per the
         // user's direct request; see MenuScreen's own doc comment.
         var showMyTab by rememberSaveable { mutableStateOf(false) }
@@ -695,6 +698,11 @@ fun ItundaAppScreen(
             CreditScoreScreen(onBack = { showCreditScore = false })
             return@IdsTheme
         }
+        if (showTrustScore) {
+            BackHandler { showTrustScore = false }
+            TrustScoreScreen(onBack = { showTrustScore = false })
+            return@IdsTheme
+        }
         if (showCertificate) {
             BackHandler { showCertificate = false }
             CertificateScreen(onBack = { showCertificate = false })
@@ -895,6 +903,7 @@ fun ItundaAppScreen(
                             onOpenForeignCurrency = { showForeignCurrency = true },
                             onOpenRequestMoney = { showRequestMoney = true },
                             onOpenAutoTopUp = { showAutoTopUp = true },
+                            onOpenTrustScore = { showTrustScore = true },
                             onOpenTransferHub = { showTransferHub = true },
                             onClaimInterest = { savingsFlowStep = SavingsFlowStep.ClaimInterest },
                             onSwitchToTalk = { selectedTab = TossTab.Talk },
@@ -1424,6 +1433,7 @@ private fun MenuScreen(
     onOpenForeignCurrency: () -> Unit = {},
     onOpenRequestMoney: () -> Unit = {},
     onOpenAutoTopUp: () -> Unit = {},
+    onOpenTrustScore: () -> Unit = {},
     onOpenTransferHub: () -> Unit = {},
     onClaimInterest: () -> Unit = {},
     onSwitchToTalk: () -> Unit = {},
@@ -1550,6 +1560,7 @@ private fun MenuScreen(
                 FlatRow("Auto top-up", subtitle = "Refill your wallet automatically from a linked account", icon = Icons.Outlined.Autorenew, iconColor = AccentBlue, onClick = onOpenAutoTopUp),
                 FlatRow("Get a loan", subtitle = "Personal, salary-backed, SME working capital", icon = Icons.Outlined.AccountBalanceWallet, iconColor = AccentBlue, onClick = onOpenLoans),
                 FlatRow("Credit score", subtitle = "Free check, alternative data", icon = Icons.Outlined.TrendingUp, iconColor = AccentPurple, onClick = onOpenCreditScore),
+                FlatRow("Trust score", subtitle = "How your neighbors see you on Marketplace, Jobs, and Property", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenTrustScore),
                 FlatRow("Spending", subtitle = "Real, ledger-based category breakdown", icon = Icons.Outlined.PieChart, iconColor = AccentBlue, onClick = onOpenSpending),
                 FlatRow("Digital certificate", subtitle = "Sign agreements in Itunda", icon = Icons.Outlined.VerifiedUser, iconColor = AccentTeal, onClick = onOpenCertificate),
                 FlatRow("26-week savings", subtitle = "Escalating weekly deposit plan", icon = Icons.Outlined.Savings, iconColor = AccentBlue, onClick = onOpenWeeklySavings),

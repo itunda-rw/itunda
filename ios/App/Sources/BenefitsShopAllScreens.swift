@@ -254,6 +254,9 @@ struct EntireMenuScreen: View {
     // platform for this feature (bank-mfe/item 167, Android/item 170).
     @State private var showRequestMoney = false
     @State private var showAutoTopUp = false
+    // Real Karrot-Score-style trust/reputation self-view screen (item 152) --
+    // bank-mfe/Android shipped first; same pattern.
+    @State private var showTrustScore = false
 
     var body: some View {
         ScrollView {
@@ -330,6 +333,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Auto top-up", subtitle: "Refill your wallet automatically from a linked account", symbol: "arrow.triangle.2.circlepath", tint: .accentBlue, action: { showAutoTopUp = true }),
                         FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
                         FlatRow(title: "Credit score", subtitle: "Free check, alternative data", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showCreditScore = true }),
+                        FlatRow(title: "Trust score", subtitle: "How your neighbors see you on Marketplace, Jobs, and Property", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showTrustScore = true }),
                         FlatRow(title: "Spending", subtitle: "Real, ledger-based category breakdown", symbol: "chart.pie.fill", tint: .accentBlue, action: { showSpending = true }),
                         FlatRow(title: "Rides", subtitle: "Request a ride or drive for real fares", symbol: "car.fill", tint: .accentBlue, action: { showRides = true }),
                         FlatRow(title: "Vehicle inspection", subtitle: "Pay a mechanic to inspect a used car before you buy", symbol: "wrench.and.screwdriver.fill", tint: .accentTeal, action: { showVehicleInspection = true }),
@@ -443,6 +447,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showCreditScore) {
             CreditScoreScreenView(onBack: { showCreditScore = false })
+        }
+        .sheet(isPresented: $showTrustScore) {
+            TrustScoreScreenView(onBack: { showTrustScore = false })
         }
         .sheet(isPresented: $showCertificate) {
             CertificateScreenView(onBack: { showCertificate = false })

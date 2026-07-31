@@ -1550,6 +1550,14 @@ data class SupportTicketsResponse(val success: Boolean, val tickets: List<Suppor
 data class CreditScoreFactorDto(val name: String, val points: Int, val description: String)
 data class CreditScoreResponse(val success: Boolean, val score: Int, val factors: List<CreditScoreFactorDto>, val computedAt: String)
 
+// Real Karrot-Score-style numeric trust/reputation badge (rw.itunda.trustscore) --
+// distinct from the per-listing trustScores batch map used for seller/poster/lister
+// badges on Hood cards (see MarketplaceDto etc.) -- this is GET /api/v1/trust-score,
+// a user's own full factor breakdown, mirroring CreditScoreResponse's shape exactly.
+// Found 2026-07-31 real on bank-mfe only, zero UI on Android/iOS despite that.
+data class TrustScoreFactorDto(val name: String, val points: Int, val description: String)
+data class TrustScoreResponse(val success: Boolean, val score: Int, val factors: List<TrustScoreFactorDto>, val computedAt: String)
+
 // Real digital identity/signing certificate (rw.itunda.certificate) -- already real
 // and wired into bank-mfe (web) since 2026-07-17, but found 2026-07-22 completely
 // absent from the Android app, a platform-parity gap rather than a never-built
@@ -2778,6 +2786,9 @@ interface ApiService {
 
     @GET("api/v1/credit-score")
     suspend fun getCreditScore(): CreditScoreResponse
+
+    @GET("api/v1/trust-score")
+    suspend fun getTrustScore(): TrustScoreResponse
 
     @POST("api/v1/certificate/issue")
     suspend fun issueCertificate(): IssueCertificateResponse

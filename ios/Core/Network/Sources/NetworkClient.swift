@@ -3788,6 +3788,14 @@ public struct ChargeCardResponse: Decodable { public let success: Bool; public l
 public struct CreditScoreFactorDto: Decodable, Identifiable { public let name: String; public let points: Int; public let description: String; public var id: String { name } }
 public struct CreditScoreResponse: Decodable { public let success: Bool; public let score: Int; public let factors: [CreditScoreFactorDto]; public let computedAt: String }
 
+// Real Karrot-Score-style numeric trust/reputation badge (item 152) -- distinct from
+// the per-listing trustScores batch map used for seller/poster/lister badges on Hood
+// cards. GET /api/v1/trust-score returns a user's own full factor breakdown,
+// mirroring CreditScoreResponse's shape exactly. Found 2026-07-31 real on bank-mfe
+// only, zero UI on Android/iOS despite that.
+public struct TrustScoreFactorDto: Decodable, Identifiable { public let name: String; public let points: Int; public let description: String; public var id: String { name } }
+public struct TrustScoreResponse: Decodable { public let success: Bool; public let score: Int; public let factors: [TrustScoreFactorDto]; public let computedAt: String }
+
 public struct CertificateDto: Decodable {
     public let id: String; public let userId: String; public let serialNumber: String; public let publicKeyBase64: String
     public let algorithm: String; public let status: String; public let issuedAt: String; public let expiresAt: String; public let revokedAt: String?
@@ -3940,6 +3948,7 @@ extension NetworkClient {
     }
 
     public func getCreditScore() async throws -> CreditScoreResponse { try await get("api/v1/credit-score") }
+    public func getTrustScore() async throws -> TrustScoreResponse { try await get("api/v1/trust-score") }
 
     public func issueCertificate() async throws -> IssueCertificateResponse {
         try await authenticatedPost("api/v1/certificate/issue", body: EmptyRequest())
