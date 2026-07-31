@@ -1596,6 +1596,11 @@ public struct ListingDto: Decodable, Identifiable {
     // mark-sold time, see backend Listing.kt's own doc comment. Only set once a real
     // review becomes possible for this transaction.
     public let buyerId: String?
+    // Real seller-paid sponsored placement -- see backend
+    // MarketplaceService.boostListing's own doc comment. A real, still-future
+    // boostedUntil only -- never fabricated for an unpaid or expired listing.
+    // Android already has this; this is the first iOS client.
+    public let boostedUntil: String?
 }
 
 public struct CreateListingRequest: Encodable {
@@ -1610,6 +1615,12 @@ public struct CreateListingRequest: Encodable {
 
 public struct ListingResponse: Decodable { public let success: Bool; public let listing: ListingDto }
 public struct MarkSoldRequest: Encodable { public let buyerPhoneNumber: String? }
+// Real seller-paid sponsored placement -- mirrors Android's ApiService.kt exactly.
+public struct BoostListingRequest: Encodable {
+    public let days: Int
+    public init(days: Int) { self.days = days }
+}
+public struct BoostTiersResponse: Decodable { public let success: Bool; public let tiers: [String: Double] }
 // Real post-transaction review with asymmetric public/private visibility (2026-07-24)
 // -- see backend HoodTransactionReview.kt's own doc comment. goodPoints/
 // uncomfortablePoints are preset tag ids (never free text), matching Karrot's own real
@@ -2724,6 +2735,14 @@ extension NetworkClient {
 
     public func markListingSold(_ listingId: String, buyerPhoneNumber: String? = nil) async throws -> ListingResponse {
         try await authenticatedPost("api/v1/marketplace/listings/\(listingId)/mark-sold", body: MarkSoldRequest(buyerPhoneNumber: buyerPhoneNumber))
+    }
+
+    // Real seller-paid sponsored placement -- see backend
+    // rw.itunda.marketplace.MarketplaceService.boostListing's own doc comment. Android
+    // already has this; this is the first iOS client (bank-mfe never built it either).
+    public func getBoostTiers() async throws -> BoostTiersResponse { try await get("api/v1/marketplace/boost-tiers") }
+    public func boostListing(_ listingId: String, days: Int) async throws -> ListingResponse {
+        try await authenticatedPost("api/v1/marketplace/listings/\(listingId)/boost", body: BoostListingRequest(days: days), idempotencyKey: UUID().uuidString)
     }
 
     // Real post-transaction review with asymmetric public/private visibility

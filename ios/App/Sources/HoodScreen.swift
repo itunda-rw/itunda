@@ -734,6 +734,18 @@ private struct HoodReviewResultView: View {
     }
 }
 
+/// Real seller-paid sponsored placement -- see backend
+/// MarketplaceService.boostListing's own doc comment. A real, still-future
+/// boostedUntil only -- never fabricated for an unpaid or expired listing.
+private func isListingBoosted(_ boostedUntil: String?) -> Bool {
+    guard let boostedUntil else { return false }
+    let standard = ISO8601DateFormatter()
+    let fractional = ISO8601DateFormatter()
+    fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    guard let date = standard.date(from: boostedUntil) ?? fractional.date(from: boostedUntil) else { return false }
+    return date > Date()
+}
+
 private struct ListingCard: View {
     let listing: ListingDto
     let isMine: Bool
@@ -762,6 +774,13 @@ private struct ListingCard: View {
     // Skip, either way the sale completes.
     @State private var markingSold = false
     @State private var buyerPhone = ""
+
+    // Real seller-paid sponsored placement -- see backend
+    // MarketplaceService.boostListing's own doc comment. Android already has this;
+    // this is the first iOS client.
+    @State private var showBoostPicker = false
+    @State private var boostTiers: [String: Double]?
+    @State private var boosting = false
 
     // Real post-transaction review with asymmetric public/private visibility
     // (2026-07-24) -- see backend HoodReviewService's own doc comment.
@@ -794,6 +813,16 @@ private struct ListingCard: View {
                                 .padding(.horizontal, 8).padding(.vertical, 2)
                                 .background(IDS.Colors.chipBackground)
                                 .cornerRadius(8)
+                        }
+                        // Real "Sponsored" badge -- only ever shown for a listing with a
+                        // real, still-future boostedUntil, matching Coupang/Baemin's own
+                        // real sponsored-placement labeling convention.
+                        if isListingBoosted(listing.boostedUntil) {
+                            Text("Sponsored")
+                                .font(.caption2).bold().foregroundColor(.white)
+                                .padding(.horizontal, 8).padding(.vertical, 2)
+                                .background(IDS.Colors.brand)
+                                .cornerRadius(6)
                         }
                     }
                     Text("\(listing.category) · \(hoodRelativeTime(listing.createdAt))").font(.caption).foregroundColor(IDS.Colors.textSecondary)
@@ -890,10 +919,36 @@ private struct ListingCard: View {
                     actionButton("Rate this buyer", filled: true) { showReviewSheet = true }
                 }
             }
+            // Real seller-paid sponsored placement picker -- see backend
+            // MarketplaceService.boostListing's own doc comment for the real flat-fee
+            // tiers (never client-invented -- fetched from GET /boost-tiers).
+            if showBoostPicker {
+                if let boostTiers {
+                    if boostTiers.isEmpty {
+                        Text("Couldn't load boost options. Try again.").font(.footnote).foregroundColor(.red)
+                    } else {
+                        Text("Boost this listing to the top of search results").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                        HStack(spacing: 8) {
+                            ForEach(boostTiers.sorted { (Int($0.key) ?? 0) < (Int($1.key) ?? 0) }, id: \.key) { days, price in
+                                actionButton(boosting ? "…" : "\(days)d · \(Int(price)) RWF", filled: true) { await boost(days: Int(days) ?? 0) }
+                            }
+                        }
+                        actionButton("Cancel", filled: false) { showBoostPicker = false }
+                    }
+                } else {
+                    Text("Loading boost options…").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                }
+            }
             HStack(spacing: 10) {
                 if isMine {
                     if listing.status == "ACTIVE" && !markingSold {
                         actionButton("Mark sold", filled: false) { markingSold = true }
+                        actionButton("Boost", filled: false) {
+                            showBoostPicker = true
+                            if boostTiers == nil {
+                                boostTiers = (try? await NetworkClient.shared.getBoostTiers())?.tiers ?? [:]
+                            }
+                        }
                     }
                     if listing.status != "REMOVED" {
                         actionButton("Remove", filled: false) { await remove() }
@@ -1002,6 +1057,21 @@ private struct ListingCard: View {
         defer { busy = false }
         do {
             _ = try await NetworkClient.shared.removeListing(listing.id)
+            onChanged()
+        } catch let NetworkError.httpError(statusCode) {
+            error = TalkScreen.errorMessage(statusCode)
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+
+    private func boost(days: Int) async {
+        boosting = true
+        error = nil
+        defer { boosting = false }
+        do {
+            _ = try await NetworkClient.shared.boostListing(listing.id, days: days)
+            showBoostPicker = false
             onChanged()
         } catch let NetworkError.httpError(statusCode) {
             error = TalkScreen.errorMessage(statusCode)
