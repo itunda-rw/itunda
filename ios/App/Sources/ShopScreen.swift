@@ -1479,6 +1479,10 @@ private struct MyReturnRequestsView: View {
 /// `previewPaymentIntent` flow) -- a named, deliberately deferred follow-up.
 private struct PayAMerchantSection: View {
     @Binding var paymentResult: CollectPaymentResultDto?
+    // Real Face Pay -- see FacePaySettingsCard/PayByCodeCard's own doc comments. Lifted
+    // here, same as bank-mfe's own ShoppingView, so this card and PayByCodeCard don't
+    // each fetch enrollment status independently.
+    @State private var facePayEnrolled: Bool?
 
     var body: some View {
         if let result = paymentResult {
@@ -1498,14 +1502,78 @@ private struct PayAMerchantSection: View {
             .padding(18).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
         } else {
             VStack(alignment: .leading, spacing: 10) {
-                PayByCodeCard(onPaid: { paymentResult = $0 })
+                FacePaySettingsCard(enrolled: facePayEnrolled, onChanged: { Task { await loadFacePayStatus() } })
+                PayByCodeCard(facePayEnrolled: facePayEnrolled ?? false, onPaid: { paymentResult = $0 })
                 PayByStaticQrCard(onPaid: { paymentResult = $0 })
             }
+            .task { await loadFacePayStatus() }
+        }
+    }
+
+    private func loadFacePayStatus() async {
+        facePayEnrolled = (try? await NetworkClient.shared.getFacePayStatus())?.enrolled
+    }
+}
+
+/// Real Face Pay enroll/disable toggle -- see rw.itunda.merchant.FacePayService's own
+/// doc comment. bank-mfe/Android already have this; this is the first iOS client.
+/// Enrolling swaps Pay-by-code's own collect call to the Face Pay channel -- same manual
+/// code entry, just a different real ledger channel label, matching bank-mfe's own
+/// honest scope exactly (no device biometric prompt gates it on any client, itunda's own).
+private struct FacePaySettingsCard: View {
+    let enrolled: Bool?
+    let onChanged: () -> Void
+
+    @State private var busy = false
+    @State private var error: String?
+
+    var body: some View {
+        if enrolled == nil {
+            Color(.secondarySystemBackground).frame(height: 64).cornerRadius(IDS.Layout.cardCornerRadius)
+        } else {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("😊 Face Pay").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                        Text(enrolled == true ? "Enabled — authorize payment codes with your face, no code re-entry needed" : "Not enabled on this account")
+                            .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                    }
+                    Spacer()
+                    Button(action: { Task { await toggle() } }) {
+                        Text(busy ? "…" : (enrolled == true ? "Disable" : "Enable"))
+                            .bold().font(.caption).foregroundColor(enrolled == true ? IDS.Colors.textPrimary : .white)
+                            .padding(.horizontal, 14).padding(.vertical, 8)
+                            .background(enrolled == true ? Color(.tertiarySystemBackground) : IDS.Colors.brand).cornerRadius(8)
+                    }
+                    .disabled(busy)
+                }
+                if let error {
+                    Text(error).font(.caption).foregroundColor(.red)
+                }
+            }
+            .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+        }
+    }
+
+    private func toggle() async {
+        busy = true
+        error = nil
+        defer { busy = false }
+        do {
+            if enrolled == true {
+                _ = try await NetworkClient.shared.revokeFacePay()
+            } else {
+                _ = try await NetworkClient.shared.enrollFacePay()
+            }
+            onChanged()
+        } catch {
+            self.error = "Could not update Face Pay."
         }
     }
 }
 
 private struct PayByCodeCard: View {
+    let facePayEnrolled: Bool
     let onPaid: (CollectPaymentResultDto) -> Void
 
     @State private var code = ""
@@ -1516,13 +1584,16 @@ private struct PayByCodeCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Pay by code").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
-            Text("No scanner handy? Enter the payment code the merchant shows you to pay instantly and earn cashback.")
+            Text(facePayEnrolled
+                ? "Face Pay is on — enter the code the merchant shows you to authorize with your face."
+                : "No scanner handy? Enter the payment code the merchant shows you to pay instantly and earn cashback.")
                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
             HStack(spacing: 10) {
                 TextField("Payment code", text: $code)
                     .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
                 Button(action: { Task { await pay() } }) {
-                    Text(submitting ? "Paying…" : "Pay").bold().foregroundColor(.white)
+                    Text(submitting ? (facePayEnrolled ? "Authorizing…" : "Paying…") : (facePayEnrolled ? "😊 Pay" : "Pay"))
+                        .bold().foregroundColor(.white)
                         .padding(.horizontal, 16).padding(.vertical, 14)
                         .background(submitting || code.isEmpty ? IDS.Colors.textTertiary : IDS.Colors.brand)
                         .cornerRadius(10)
@@ -1543,7 +1614,9 @@ private struct PayByCodeCard: View {
         needsDeviceVerification = false
         defer { submitting = false }
         do {
-            let result = try await NetworkClient.shared.collectPayment(intentId: code.trimmingCharacters(in: .whitespaces))
+            let result = facePayEnrolled
+                ? try await NetworkClient.shared.collectWithFacePay(intentId: code.trimmingCharacters(in: .whitespaces))
+                : try await NetworkClient.shared.collectPayment(intentId: code.trimmingCharacters(in: .whitespaces))
             code = ""
             onPaid(result)
         } catch NetworkError.deviceNotVerified {

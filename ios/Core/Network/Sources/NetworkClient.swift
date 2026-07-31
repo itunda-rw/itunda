@@ -2158,6 +2158,17 @@ public struct CollectPaymentResultDto: Decodable {
     public let cashbackEarned: Double
 }
 
+// Real Face Pay -- mirrors bank-mfe's lib/facepay.ts exactly.
+public struct FacePayEnrollmentDto: Decodable {
+    public let id: String
+    public let userId: String
+    public let active: Bool
+    public let enrolledAt: String
+    public let revokedAt: String?
+}
+public struct FacePayEnrollmentResponse: Decodable { public let success: Bool; public let enrollment: FacePayEnrollmentDto }
+public struct FacePayStatusResponse: Decodable { public let success: Bool; public let enrolled: Bool; public let enrollment: FacePayEnrollmentDto? }
+
 // Real Shop product wishlist (2026-07-24) -- closes docs/DESIGN_REFERENCES.md Section 5
 // recommendation #3: backend (ProductFavoriteService, 2026-07-20) and bank-mfe already
 // had this; iOS had zero wiring. Mirrors FavoriteListingDto/FavoriteJobPostDto/
@@ -3143,6 +3154,23 @@ extension NetworkClient {
     }
     public func payByStaticQr(merchantId: String, amount: Double, description: String? = nil) async throws -> CollectPaymentResultDto {
         try await authenticatedPost("api/v1/merchant/\(merchantId)/static-qr/pay", body: StaticQrPayRequest(amount: amount, description: description), idempotencyKey: UUID().uuidString)
+    }
+
+    // Real Face Pay -- see rw.itunda.merchant.FacePayService's own doc comment. The
+    // backend has been fully real since 2026-07-13; bank-mfe/Android already have this;
+    // this is the first iOS client. Enrolling swaps Pay-by-code's own collect call to
+    // this channel -- same manual code entry, just a different real ledger channel
+    // label, matching bank-mfe's own honest scope exactly (no device biometric prompt
+    // gates it on any client, itunda's own).
+    public func enrollFacePay() async throws -> FacePayEnrollmentResponse {
+        try await authenticatedPost("api/v1/facepay/enroll", body: EmptyBody())
+    }
+    public func revokeFacePay() async throws -> FacePayEnrollmentResponse {
+        try await authenticatedPost("api/v1/facepay/revoke", body: EmptyBody())
+    }
+    public func getFacePayStatus() async throws -> FacePayStatusResponse { try await get("api/v1/facepay/status") }
+    public func collectWithFacePay(intentId: String) async throws -> CollectPaymentResultDto {
+        try await authenticatedPost("api/v1/facepay/collect/\(intentId)", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     public func placeOrder(_ request: PlaceOrderRequest) async throws -> OrderDetailResponse {

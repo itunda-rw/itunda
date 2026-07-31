@@ -1795,6 +1795,24 @@ private fun PayAMerchantSection(
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
 ) {
     var paymentResult by remember { mutableStateOf<CollectPaymentResultDto?>(null) }
+    // Real Face Pay -- see FacePaySettingsCard/PayByCodeCard's own doc comments. Lifted
+    // here, same as bank-mfe's own ShoppingView, so this card and PayByCodeCard don't
+    // each fetch enrollment status independently (PayByCodeCard would otherwise never
+    // learn about an enrollment that happened in the same session until a full reload).
+    var facePayEnrolled by remember { mutableStateOf<Boolean?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun loadFacePayStatus() {
+        coroutineScope.launch {
+            try {
+                facePayEnrolled = NetworkClient.apiService.getFacePayStatus().enrolled
+            } catch (e: Exception) {
+                // Real, non-critical -- the toggle just won't render if this fails.
+            }
+        }
+    }
+    LaunchedEffect(Unit) { loadFacePayStatus() }
+
     val result = paymentResult
     if (result != null) {
         Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
@@ -1811,14 +1829,67 @@ private fun PayAMerchantSection(
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        PayByCodeCard(deviceStepUpHost = deviceStepUpHost, onPaid = { paymentResult = it })
+        FacePaySettingsCard(enrolled = facePayEnrolled, onChanged = ::loadFacePayStatus)
+        PayByCodeCard(deviceStepUpHost = deviceStepUpHost, facePayEnrolled = facePayEnrolled ?: false, onPaid = { paymentResult = it })
         PayByStaticQrCard(onPaid = { paymentResult = it })
+    }
+}
+
+/**
+ * Real Face Pay enroll/disable toggle -- see rw.itunda.merchant.FacePayService's own
+ * doc comment. bank-mfe already has this; this is the first Android client. Enrolling
+ * swaps Pay-by-code's own collect call to the Face Pay channel -- same manual code
+ * entry, just a different real ledger channel label, matching bank-mfe's own honest
+ * scope exactly (no device biometric prompt gates it on any client, itunda's own).
+ */
+@Composable
+private fun FacePaySettingsCard(enrolled: Boolean?, onChanged: () -> Unit) {
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    if (enrolled == null) {
+        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(64.dp)) {}
+        return
+    }
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("😊 Face Pay", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(
+                        if (enrolled) "Enabled -- authorize payment codes with your face, no code re-entry needed" else "Not enabled on this account",
+                        color = Ids.colors.textSecondary, fontSize = 12.sp,
+                    )
+                }
+                ListingActionButtonShop(if (busy) "…" else if (enrolled) "Disable" else "Enable", busy, filled = !enrolled) {
+                    busy = true
+                    error = null
+                    coroutineScope.launch {
+                        try {
+                            if (enrolled) NetworkClient.apiService.revokeFacePay() else NetworkClient.apiService.enrollFacePay()
+                            onChanged()
+                        } catch (e: Exception) {
+                            error = "Could not update Face Pay."
+                        } finally {
+                            busy = false
+                        }
+                    }
+                }
+            }
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+        }
     }
 }
 
 @Composable
 private fun PayByCodeCard(
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
+    facePayEnrolled: Boolean,
     onPaid: (CollectPaymentResultDto) -> Unit,
 ) {
     var code by remember { mutableStateOf("") }
@@ -1833,7 +1904,12 @@ private fun PayByCodeCard(
         needsDeviceVerification = false
         coroutineScope.launch {
             try {
-                val result = NetworkClient.apiService.collectPayment(code.trim(), UUID.randomUUID().toString(), CollectPaymentRequest())
+                val idempotencyKey = UUID.randomUUID().toString()
+                val result = if (facePayEnrolled) {
+                    NetworkClient.apiService.collectWithFacePay(code.trim(), idempotencyKey)
+                } else {
+                    NetworkClient.apiService.collectPayment(code.trim(), idempotencyKey, CollectPaymentRequest())
+                }
                 code = ""
                 onPaid(result)
             } catch (e: HttpException) {
@@ -1854,12 +1930,19 @@ private fun PayByCodeCard(
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Pay by code", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Text(
-                "No scanner handy? Enter the payment code the merchant shows you to pay instantly and earn cashback.",
+                if (facePayEnrolled) {
+                    "Face Pay is on -- enter the code the merchant shows you to authorize with your face."
+                } else {
+                    "No scanner handy? Enter the payment code the merchant shows you to pay instantly and earn cashback."
+                },
                 color = Ids.colors.textSecondary, fontSize = 12.sp,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(value = code, onValueChange = { code = it }, placeholder = { Text("Payment code") }, singleLine = true, modifier = Modifier.weight(1f))
-                ListingActionButtonShop(if (submitting) "Paying…" else "Pay", submitting || code.isBlank(), filled = true) { pay() }
+                ListingActionButtonShop(
+                    if (submitting) (if (facePayEnrolled) "Authorizing…" else "Paying…") else if (facePayEnrolled) "😊 Pay" else "Pay",
+                    submitting || code.isBlank(), filled = true,
+                ) { pay() }
             }
             error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         }

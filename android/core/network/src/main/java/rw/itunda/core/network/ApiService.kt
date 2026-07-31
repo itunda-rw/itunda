@@ -1058,6 +1058,11 @@ data class CollectPaymentResultDto(
     val channel: String, val completedAt: String, val cashbackEarned: java.math.BigDecimal,
 )
 
+// Real Face Pay -- mirrors bank-mfe's lib/facepay.ts exactly.
+data class FacePayEnrollmentDto(val id: String, val userId: String, val active: Boolean, val enrolledAt: String, val revokedAt: String?)
+data class FacePayEnrollmentResponse(val success: Boolean, val enrollment: FacePayEnrollmentDto)
+data class FacePayStatusResponse(val success: Boolean, val enrolled: Boolean, val enrollment: FacePayEnrollmentDto?)
+
 // Real Shop product wishlist (2026-07-24) -- closes docs/DESIGN_REFERENCES.md Section 5
 // recommendation #3: the backend (ProductFavoriteService, shipped 2026-07-20) and
 // bank-mfe (ProductCatalogView.toggleFavorite) already had this; Android had zero
@@ -2390,6 +2395,24 @@ interface ApiService {
 
     @POST("api/v1/merchant/{merchantId}/static-qr/pay")
     suspend fun payByStaticQr(@Path("merchantId") merchantId: String, @Header("Idempotency-Key") idempotencyKey: String, @Body request: StaticQrPayRequest): CollectPaymentResultDto
+
+    // Real Face Pay -- see rw.itunda.merchant.FacePayService's own doc comment. The
+    // backend has been fully real since 2026-07-13; bank-mfe wired it 2026-07-20; this
+    // is the first Android client. Enrolling swaps Pay-by-code's own collect call to
+    // this channel -- same manual code entry, just a different real ledger channel
+    // label ("Face Pay" vs "QR"), matching bank-mfe's own honest scope exactly (no
+    // device biometric prompt gates it on any client, itunda's own).
+    @POST("api/v1/facepay/enroll")
+    suspend fun enrollFacePay(): FacePayEnrollmentResponse
+
+    @POST("api/v1/facepay/revoke")
+    suspend fun revokeFacePay(): FacePayEnrollmentResponse
+
+    @GET("api/v1/facepay/status")
+    suspend fun getFacePayStatus(): FacePayStatusResponse
+
+    @POST("api/v1/facepay/collect/{intentId}")
+    suspend fun collectWithFacePay(@Path("intentId") intentId: String, @Header("Idempotency-Key") idempotencyKey: String): CollectPaymentResultDto
 
     // Real Coupang-style multi-item checkout (2026-07-18) -- see rw.itunda.commerce.web.OrderController.
     @POST("api/v1/orders")
