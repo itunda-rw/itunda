@@ -28,6 +28,7 @@ import {
 } from './lib/loans';
 import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreResult, type CreditScoreSuggestion } from './lib/creditScore';
 import { fetchTrustScore, type TrustScoreResult } from './lib/trustScore';
+import { fetchRewardTasks, fetchReferralInfo, claimRewardTask, reportSteps, fetchTodaySteps, type RewardTasksResult, type ReferralInfo } from './lib/rewards';
 import {
   fetchMyUpfrontDeposits, openUpfrontDeposit, withdrawUpfrontDeposit,
   UPFRONT_DEPOSIT_ANNUAL_RATE, UPFRONT_DEPOSIT_MIN_PRINCIPAL, UPFRONT_DEPOSIT_MAX_PRINCIPAL,
@@ -139,7 +140,7 @@ import {
   type VehicleInspectionBooking, type VehicleInspectionMechanic,
 } from './lib/vehicleInspection';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
@@ -2012,6 +2013,125 @@ function TrustScoreView() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// Real Toss-style rewards/mission-task center -- see lib/rewards.ts's own doc
+// comment: real on Android/iOS since day one via the Saronite mini-app bridge, but
+// bank-mfe (the actual banking app) never had a client for it. Same task-list +
+// referral-code + step-counter shape those native bridges already expose.
+function RewardsView() {
+  const [tasks, setTasks] = useState<RewardTasksResult | null>(null);
+  const [referral, setReferral] = useState<ReferralInfo | null>(null);
+  const [todaySteps, setTodaySteps] = useState<number | null>(null);
+  const [stepsInput, setStepsInput] = useState('');
+  const [claimingId, setClaimingId] = useState<string | null>(null);
+  const [reportingSteps, setReportingSteps] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const load = () => {
+    fetchRewardTasks().then(setTasks).catch(() => setTasks(null));
+    fetchReferralInfo().then(setReferral).catch(() => setReferral(null));
+    fetchTodaySteps().then(setTodaySteps).catch(() => setTodaySteps(null));
+  };
+  useEffect(load, []);
+
+  const handleClaim = async (taskId: string) => {
+    setClaimingId(taskId);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await claimRewardTask(taskId);
+      setMessage(`${result.message} (+${result.rewardAmount} RWF)`);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not claim this reward.');
+    } finally {
+      setClaimingId(null);
+    }
+  };
+
+  const handleReportSteps = async () => {
+    const steps = Number(stepsInput);
+    if (!Number.isFinite(steps) || steps <= 0) { setError('Enter a real step count.'); return; }
+    setReportingSteps(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await reportSteps(steps);
+      setTodaySteps(result.steps);
+      setStepsInput('');
+      if (result.newlyEarnedAmount > 0) {
+        setMessage(`Walking bonus unlocked: +${result.newlyEarnedAmount} RWF`);
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not report steps.');
+    } finally {
+      setReportingSteps(false);
+    }
+  };
+
+  if (!tasks) {
+    return error ? <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
+      <div className="toss-card" style={{ padding: '24px' }}>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Total earned</p>
+        <h2 style={{ fontSize: '26px', fontWeight: 700 }}>{tasks.rewardsTotal} RWF</h2>
+      </div>
+      <div className="toss-card" style={{ padding: '16px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Missions</h3>
+        {tasks.tasks.map((t) => (
+          <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '8px 0' }}>
+            <div>
+              <p>{t.title}</p>
+              <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{t.subtitle}</p>
+            </div>
+            {t.claimed ? (
+              <span style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Claimed</span>
+            ) : (
+              <button
+                className="toss-btn toss-btn-secondary"
+                disabled={!t.eligible || claimingId === t.id}
+                onClick={() => handleClaim(t.id)}
+              >
+                {claimingId === t.id ? '...' : `+${t.rewardAmount} RWF`}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="toss-card" style={{ padding: '16px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>🚶 Walking rewards</h3>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Today: {todaySteps ?? 0} steps</p>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+          <input
+            type="number"
+            placeholder="Enter steps"
+            value={stepsInput}
+            onChange={(e) => setStepsInput(e.target.value)}
+            style={{ flex: 1, padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)' }}
+          />
+          <button className="toss-btn toss-btn-secondary" disabled={reportingSteps} onClick={handleReportSteps}>
+            {reportingSteps ? '...' : 'Report'}
+          </button>
+        </div>
+      </div>
+      {referral && (
+        <div className="toss-card" style={{ padding: '16px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Invite friends</h3>
+          <p style={{ fontSize: '18px', fontWeight: 700 }}>{referral.referralCode}</p>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+            {referral.completedReferralCount} completed of {referral.referredCount} referred
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -14905,6 +15025,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'LOANS', label: 'Loans' },
     { id: 'CREDIT_SCORE', label: 'Credit score' },
     { id: 'TRUST_SCORE', label: 'Trust score' },
+    { id: 'REWARDS', label: 'Rewards' },
     { id: 'FOREIGN_CURRENCY', label: 'Foreign currency' },
     { id: 'SPENDING', label: 'Spending' },
     { id: 'SUBSCRIPTIONS', label: 'Subscriptions' },
@@ -14971,6 +15092,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'LOANS' && <LoansView />}
       {tab === 'CREDIT_SCORE' && <CreditScoreView />}
       {tab === 'TRUST_SCORE' && <TrustScoreView />}
+      {tab === 'REWARDS' && <RewardsView />}
       {tab === 'FOREIGN_CURRENCY' && <ForeignCurrencyView />}
       {tab === 'SPENDING' && <SpendingInsightView />}
       {tab === 'SUBSCRIPTIONS' && <SubscriptionsView />}
