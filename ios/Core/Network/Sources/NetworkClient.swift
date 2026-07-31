@@ -501,6 +501,39 @@ public struct VehicleInspectionMechanicsResponse: Decodable { public let success
 public struct VehicleInspectionBookingResponse: Decodable { public let success: Bool; public let booking: VehicleInspectionBookingDto }
 public struct VehicleInspectionBookingsResponse: Decodable { public let success: Bool; public let bookings: [VehicleInspectionBookingDto] }
 
+// Real Toss 내 차 시세 (my car's market value)-style vehicle value estimator -- mirrors
+// bank-mfe's lib/vehicles.ts exactly.
+public struct VehicleDto: Decodable, Identifiable {
+    public let id: String
+    public let make: String
+    public let model: String
+    public let modelYear: Int
+    public let purchasePrice: Double
+    public let purchaseDate: String
+    public let mileageKm: Int
+    public let createdAt: String
+}
+public struct RegisterVehicleRequest: Encodable {
+    public let make: String
+    public let model: String
+    public let modelYear: Int
+    public let purchasePrice: Double
+    public let purchaseDate: String
+    public let mileageKm: Int
+}
+public struct VehicleValuationDto: Decodable {
+    public let vehicle: VehicleDto
+    public let ageYears: Int
+    public let expectedMileageKm: Int
+    public let currentEstimatedValue: Double
+    public let estimatedValueIn1Year: Double
+    public let estimatedValueIn2Years: Double
+    public let estimatedValueIn3Years: Double
+}
+public struct VehicleResponse: Decodable { public let success: Bool; public let vehicle: VehicleDto }
+public struct VehiclesResponse: Decodable { public let success: Bool; public let vehicles: [VehicleDto] }
+public struct VehicleValuationResponse: Decodable { public let success: Bool; public let valuation: VehicleValuationDto }
+
 public struct SavingsGoal: Decodable {
     public let id: String
     public let userId: String
@@ -702,6 +735,16 @@ extension NetworkClient {
     public func cancelVehicleInspection(bookingId: String) async throws -> VehicleInspectionBookingResponse {
         try await authenticatedPost("api/v1/marketplace/inspections/\(bookingId)/cancel", body: EmptyBody())
     }
+
+    // Real Toss 내 차 시세 (my car's market value)-style vehicle value estimator -- see
+    // rw.itunda.vehicle.VehicleValuationService's own doc comment. bank-mfe/Android
+    // already have this; this is the first iOS client.
+    public func registerVehicle(make: String, model: String, modelYear: Int, purchasePrice: Double, purchaseDate: String, mileageKm: Int) async throws -> VehicleResponse {
+        try await authenticatedPost("api/v1/vehicles", body: RegisterVehicleRequest(make: make, model: model, modelYear: modelYear, purchasePrice: purchasePrice, purchaseDate: purchaseDate, mileageKm: mileageKm))
+    }
+    public func getMyVehicles() async throws -> VehiclesResponse { try await get("api/v1/vehicles") }
+    public func getVehicleValuation(_ id: String) async throws -> VehicleValuationResponse { try await get("api/v1/vehicles/\(id)/valuation") }
+    public func removeVehicle(_ id: String) async throws -> SuccessResponse { try await authenticatedDelete("api/v1/vehicles/\(id)") }
 
     public func getSavingsGoals() async throws -> SavingsGoalsResponse { try await get("api/v1/savings/goals") }
     public func getInterestJar() async throws -> InterestJarResponse { try await get("api/v1/savings/interest-jar") }

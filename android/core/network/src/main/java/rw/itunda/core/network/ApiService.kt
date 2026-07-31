@@ -2840,6 +2840,24 @@ interface ApiService {
     @POST("api/v1/marketplace/inspections/{bookingId}/cancel")
     suspend fun cancelVehicleInspection(@Path("bookingId") bookingId: String): VehicleInspectionBookingResponse
 
+    // Real Toss 내 차 시세 (my car's market value)-style vehicle value estimator -- see
+    // rw.itunda.vehicle.VehicleValuationService's own doc comment. bank-mfe already has
+    // this; this is the first Android client.
+    @POST("api/v1/vehicles")
+    suspend fun registerVehicle(@Body request: RegisterVehicleRequest): VehicleResponse
+
+    @GET("api/v1/vehicles")
+    suspend fun getMyVehicles(): VehiclesResponse
+
+    @GET("api/v1/vehicles/{id}/valuation")
+    suspend fun getVehicleValuation(@Path("id") id: String): VehicleValuationResponse
+
+    @POST("api/v1/vehicles/{id}/mileage")
+    suspend fun updateVehicleMileage(@Path("id") id: String, @Body request: UpdateVehicleMileageRequest): VehicleResponse
+
+    @DELETE("api/v1/vehicles/{id}")
+    suspend fun removeVehicle(@Path("id") id: String): SuccessResponse
+
     // Real Kakao Bank 모임통장 (group/shared account) equivalent -- first Android client
     // for this feature (item 104, found via a fresh matrix scan: zero client on either
     // mobile platform despite being real and live since well before this session).
@@ -2956,6 +2974,26 @@ data class VehicleInspectionMechanicOrNullResponse(val success: Boolean, val mec
 data class VehicleInspectionMechanicsResponse(val success: Boolean, val mechanics: List<VehicleInspectionMechanicDto>)
 data class VehicleInspectionBookingResponse(val success: Boolean, val booking: VehicleInspectionBookingDto)
 data class VehicleInspectionBookingsResponse(val success: Boolean, val bookings: List<VehicleInspectionBookingDto>)
+
+// Real Toss 내 차 시세 (my car's market value)-style vehicle value estimator -- mirrors
+// bank-mfe's lib/vehicles.ts exactly.
+data class VehicleDto(
+    val id: String, val make: String, val model: String, val modelYear: Int,
+    val purchasePrice: java.math.BigDecimal, val purchaseDate: String, val mileageKm: Int, val createdAt: String,
+)
+data class RegisterVehicleRequest(
+    val make: String, val model: String, val modelYear: Int,
+    val purchasePrice: java.math.BigDecimal, val purchaseDate: String, val mileageKm: Int,
+)
+data class UpdateVehicleMileageRequest(val mileageKm: Int)
+data class VehicleValuationDto(
+    val vehicle: VehicleDto, val ageYears: Int, val expectedMileageKm: Int,
+    val currentEstimatedValue: java.math.BigDecimal, val estimatedValueIn1Year: java.math.BigDecimal,
+    val estimatedValueIn2Years: java.math.BigDecimal, val estimatedValueIn3Years: java.math.BigDecimal,
+)
+data class VehicleResponse(val success: Boolean, val vehicle: VehicleDto)
+data class VehiclesResponse(val success: Boolean, val vehicles: List<VehicleDto>)
+data class VehicleValuationResponse(val success: Boolean, val valuation: VehicleValuationDto)
 
 data class SpendingCategoryDto(val name: String, val amount: java.math.BigDecimal)
 data class SpendingInsightResponse(val success: Boolean, val categories: List<SpendingCategoryDto>, val totalSpent: java.math.BigDecimal)
