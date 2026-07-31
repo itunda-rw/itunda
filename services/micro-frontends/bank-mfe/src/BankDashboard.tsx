@@ -99,6 +99,7 @@ import {
   submitPropertyListingReview, submitPropertyOwnershipVerification,
   type FavoritePropertyListing, type PropertyListing, type PropertyListingType, type PropertyPriceOffer, type PropertyType,
 } from './lib/realestate';
+import { uploadFile } from './lib/upload';
 import {
   addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, completePickupOrder, EATS_MEMBERSHIP_TIERS, fetchAvailableDeliveries,
   fetchEatsOrder, fetchMenu, fetchMyEatsOrders, fetchMyFavoriteRestaurants, fetchMyMembership, fetchMyPlatformMembership, fetchMyRiderProfile, fetchRestaurantCategories,
@@ -9213,15 +9214,32 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
   const [hoodReviews, setHoodReviews] = useState<HoodReview[] | null>(null);
   const myUserId = getStoredUser()?.id;
 
-  // Real ownership verification (2026-07-25) -- see lib/realestate.ts's own doc
-  // comment on ownershipVerificationStatus for why this is a documentUrl field, not a
-  // binary upload, on this web client. submittedStatus is local so "pending" shows
-  // immediately without a full listing refetch, mirroring Android's own submittedOwnershipStatus.
+  // Real ownership verification (2026-07-25, real upload added 2026-08-01) -- see
+  // lib/realestate.ts's own doc comment on ownershipVerificationStatus. Was a
+  // paste-a-URL text field (an honest v1 scope-down) until lib/upload.ts's real
+  // POST /api/v1/uploads client -- mirrors PropertyScreen.kt's own pickOwnershipDoc
+  // flow exactly now. submittedStatus is local so "pending" shows immediately without
+  // a full listing refetch, mirroring Android's own submittedOwnershipStatus.
   const [showOwnershipForm, setShowOwnershipForm] = useState(false);
   const [ownershipDocUrl, setOwnershipDocUrl] = useState('');
+  const [uploadingOwnershipDoc, setUploadingOwnershipDoc] = useState(false);
   const [submittingOwnership, setSubmittingOwnership] = useState(false);
   const [submittedOwnershipStatus, setSubmittedOwnershipStatus] = useState<string | null>(null);
   const ownershipStatus = submittedOwnershipStatus ?? listing.ownershipVerificationStatus ?? 'NONE';
+
+  const handleOwnershipDocSelected = async (file: File | undefined) => {
+    if (!file) return;
+    setUploadingOwnershipDoc(true);
+    setError(null);
+    try {
+      const { url } = await uploadFile(file);
+      setOwnershipDocUrl(url);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not upload this document.');
+    } finally {
+      setUploadingOwnershipDoc(false);
+    }
+  };
 
   const handleSubmitOwnership = async () => {
     if (!ownershipDocUrl.trim()) return;
@@ -9397,26 +9415,27 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
           </button>
         )
       )}
-      {/* Real ownership verification action (2026-07-25) -- NONE -> offer to submit a
-          document URL; PENDING -> awaiting a real human reviewer, nothing to do;
-          VERIFIED -> already covered by the badge above. Mirrors PropertyScreen.kt's
-          own pickOwnershipDoc flow, minus the binary upload (see state hook's own
-          doc comment). */}
+      {/* Real ownership verification action (2026-07-25, real upload 2026-08-01) --
+          NONE -> offer to upload a real deed/title photo; PENDING -> awaiting a real
+          human reviewer, nothing to do; VERIFIED -> already covered by the badge
+          above. Mirrors PropertyScreen.kt's own pickOwnershipDoc flow exactly. */}
       {isMine && ownershipStatus === 'NONE' && (
         showOwnershipForm ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <input
-              type="url"
-              value={ownershipDocUrl}
-              onChange={(e) => setOwnershipDocUrl(e.target.value)}
-              placeholder="Link to a deed/title document"
-              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              disabled={uploadingOwnershipDoc || submittingOwnership}
+              onChange={(e) => handleOwnershipDocSelected(e.target.files?.[0])}
+              style={{ fontSize: '13px' }}
             />
+            {uploadingOwnershipDoc && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Uploading…</p>}
+            {ownershipDocUrl && !uploadingOwnershipDoc && <p style={{ fontSize: '12px', color: 'var(--toss-green)' }}>✓ Document uploaded</p>}
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={submittingOwnership} onClick={() => setShowOwnershipForm(false)}>
+              <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={submittingOwnership} onClick={() => { setShowOwnershipForm(false); setOwnershipDocUrl(''); }}>
                 Cancel
               </button>
-              <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submittingOwnership || !ownershipDocUrl.trim()} onClick={handleSubmitOwnership}>
+              <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submittingOwnership || uploadingOwnershipDoc || !ownershipDocUrl.trim()} onClick={handleSubmitOwnership}>
                 {submittingOwnership ? 'Submitting…' : 'Submit'}
               </button>
             </div>

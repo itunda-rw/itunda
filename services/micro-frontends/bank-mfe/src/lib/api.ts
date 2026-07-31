@@ -50,7 +50,7 @@ export function logout(): void {
   localStorage.removeItem(USER_KEY);
 }
 
-async function parseErrorBody(response: Response): Promise<{ code: string; message: string }> {
+export async function parseErrorBody(response: Response): Promise<{ code: string; message: string }> {
   try {
     const body = await response.json();
     return { code: body.code ?? 'UNKNOWN_ERROR', message: body.message ?? response.statusText };
