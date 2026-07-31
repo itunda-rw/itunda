@@ -3334,6 +3334,20 @@ private struct PropertyListingCard: View {
     // Real read-back for the review above (item 192/198/199).
     @State private var hoodReviews: [HoodReviewDto]?
 
+    // Real ownership verification (2026-07-25) -- see NetworkClient.swift's own doc
+    // comment on submitPropertyOwnershipVerification for why this is a documentUrl
+    // field, not a real photo/document picker. submittedStatus is local so "pending"
+    // shows immediately without a full listing refetch, mirroring Android's own
+    // submittedOwnershipStatus in PropertyScreen.kt.
+    @State private var showOwnershipForm = false
+    @State private var ownershipDocUrl = ""
+    @State private var submittingOwnership = false
+    @State private var submittedOwnershipStatus: String?
+
+    private var ownershipStatus: String {
+        submittedOwnershipStatus ?? listing.ownershipVerificationStatus ?? "NONE"
+    }
+
     private var priceLabel: String {
         let base = "\(Int(listing.price)) RWF"
         return listing.listingType == "RENT" ? "\(base)/mo" : base
@@ -3370,6 +3384,14 @@ private struct PropertyListingCard: View {
             // comment. Only shown for someone else's listing.
             if !isMine, let listerTrustScore {
                 TrustBadge(score: listerTrustScore)
+            }
+            // Real ownership verification badge (2026-07-25) -- shown to every viewer,
+            // not just the lister, a trust signal for the buyer/tenant deciding whether
+            // to contact this listing. Mirrors PropertyScreen.kt's own badge exactly.
+            if ownershipStatus == "VERIFIED" {
+                Text("✓ Owner verified").font(.caption2).bold().foregroundColor(IDS.Colors.brand)
+                    .padding(.horizontal, 8).padding(.vertical, 2)
+                    .background(IDS.Colors.brand.opacity(0.12)).cornerRadius(8)
             }
             Text(listing.description).font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
             if offering {
@@ -3429,6 +3451,26 @@ private struct PropertyListingCard: View {
                 } else {
                     actionButton(listing.listingType == "RENT" ? "Rate this tenant" : "Rate this buyer", filled: true) { showReviewSheet = true }
                 }
+            }
+            // Real ownership verification action (2026-07-25) -- NONE -> offer to
+            // submit a document URL; PENDING -> awaiting a real human reviewer,
+            // nothing to do; VERIFIED -> already covered by the badge above.
+            if isMine, ownershipStatus == "NONE" {
+                if showOwnershipForm {
+                    TextField("Link to a deed/title document", text: $ownershipDocUrl)
+                        .padding(10)
+                        .background(IDS.Colors.chipBackground)
+                        .cornerRadius(10)
+                    HStack(spacing: 10) {
+                        actionButton("Cancel", filled: false) { showOwnershipForm = false }
+                        actionButton(submittingOwnership ? "Submitting…" : "Submit", filled: true) { await submitOwnership() }
+                    }
+                } else {
+                    actionButton("Verify ownership", filled: false) { showOwnershipForm = true }
+                }
+            }
+            if isMine, ownershipStatus == "PENDING" {
+                Text("Verification pending review").font(.caption).foregroundColor(IDS.Colors.textSecondary)
             }
             HStack(spacing: 10) {
                 if isMine {
@@ -3497,6 +3539,22 @@ private struct PropertyListingCard: View {
                 .cornerRadius(12)
         }
         .disabled(busy)
+    }
+
+    // Real ownership verification (2026-07-25) -- see NetworkClient.swift's own doc
+    // comment on submitPropertyOwnershipVerification.
+    private func submitOwnership() async {
+        guard !ownershipDocUrl.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        submittingOwnership = true
+        defer { submittingOwnership = false }
+        do {
+            _ = try await NetworkClient.shared.submitPropertyOwnershipVerification(listing.id, documentUrl: ownershipDocUrl.trimmingCharacters(in: .whitespaces))
+            submittedOwnershipStatus = "PENDING"
+            showOwnershipForm = false
+            ownershipDocUrl = ""
+        } catch {
+            self.error = "Could not submit this document."
+        }
     }
 
     private func markTaken(counterpartyPhoneNumber: String?) async {

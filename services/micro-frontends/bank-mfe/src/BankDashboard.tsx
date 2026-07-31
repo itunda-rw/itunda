@@ -94,7 +94,8 @@ import {
   addPropertyListingFavorite, contactLister, createPropertyListing, fetchMyAcquiredPropertyListings, fetchMyFavoritePropertyListings, fetchMyPropertyListings,
   fetchPropertyListingReviews, fetchPropertyListings, fetchPropertyListingsMyNeighborhood, fetchPropertyOffersForConversation, fetchPropertyTypes,
   makePropertyOffer, markPropertyListingTaken, removePropertyListing, removePropertyListingFavorite, respondToPropertyOffer,
-  submitPropertyListingReview, type FavoritePropertyListing, type PropertyListing, type PropertyListingType, type PropertyPriceOffer, type PropertyType,
+  submitPropertyListingReview, submitPropertyOwnershipVerification,
+  type FavoritePropertyListing, type PropertyListing, type PropertyListingType, type PropertyPriceOffer, type PropertyType,
 } from './lib/realestate';
 import {
   addFavoriteRestaurant, advanceRestaurantOrder, advanceRiderOrder, cancelEatsOrder, claimDelivery, completePickupOrder, EATS_MEMBERSHIP_TIERS, fetchAvailableDeliveries,
@@ -8982,6 +8983,32 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
   // Real read-back (item 192) -- see lib/marketplace.ts's fetchListingReviews doc comment.
   const [hoodReviews, setHoodReviews] = useState<HoodReview[] | null>(null);
   const myUserId = getStoredUser()?.id;
+
+  // Real ownership verification (2026-07-25) -- see lib/realestate.ts's own doc
+  // comment on ownershipVerificationStatus for why this is a documentUrl field, not a
+  // binary upload, on this web client. submittedStatus is local so "pending" shows
+  // immediately without a full listing refetch, mirroring Android's own submittedOwnershipStatus.
+  const [showOwnershipForm, setShowOwnershipForm] = useState(false);
+  const [ownershipDocUrl, setOwnershipDocUrl] = useState('');
+  const [submittingOwnership, setSubmittingOwnership] = useState(false);
+  const [submittedOwnershipStatus, setSubmittedOwnershipStatus] = useState<string | null>(null);
+  const ownershipStatus = submittedOwnershipStatus ?? listing.ownershipVerificationStatus ?? 'NONE';
+
+  const handleSubmitOwnership = async () => {
+    if (!ownershipDocUrl.trim()) return;
+    setSubmittingOwnership(true);
+    setError(null);
+    try {
+      await submitPropertyOwnershipVerification(listing.id, ownershipDocUrl.trim());
+      setSubmittedOwnershipStatus('PENDING');
+      setShowOwnershipForm(false);
+      setOwnershipDocUrl('');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not submit this document.');
+    } finally {
+      setSubmittingOwnership(false);
+    }
+  };
   useEffect(() => {
     if (!(isMine && listing.status === 'TAKEN' && listing.counterpartyId)) return;
     fetchPropertyListingReviews(listing.id)
@@ -9073,6 +9100,14 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
       {/* Real Karrot-Score trust badge (2026-07-24) -- see TrustBadge's own doc
           comment. Only shown for someone else's listing. */}
       {!isMine && listerTrustScore != null && <TrustBadge score={listerTrustScore} />}
+      {/* Real ownership verification badge (2026-07-25) -- shown to every viewer, not
+          just the lister, a trust signal for the buyer/tenant deciding whether to
+          contact this listing. Mirrors PropertyScreen.kt's own badge exactly. */}
+      {ownershipStatus === 'VERIFIED' && (
+        <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--toss-blue)', backgroundColor: 'rgba(49,130,246,0.12)', padding: '2px 8px', borderRadius: '8px', width: 'fit-content' }}>
+          ✓ Owner verified
+        </span>
+      )}
       <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>{listing.description}</p>
       {offering && (
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -9132,6 +9167,39 @@ function PropertyListingCard({ listing, propertyTypeLabel, isMine, onChanged, on
             {listing.listingType === 'RENT' ? 'Rate this tenant' : 'Rate this buyer'}
           </button>
         )
+      )}
+      {/* Real ownership verification action (2026-07-25) -- NONE -> offer to submit a
+          document URL; PENDING -> awaiting a real human reviewer, nothing to do;
+          VERIFIED -> already covered by the badge above. Mirrors PropertyScreen.kt's
+          own pickOwnershipDoc flow, minus the binary upload (see state hook's own
+          doc comment). */}
+      {isMine && ownershipStatus === 'NONE' && (
+        showOwnershipForm ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <input
+              type="url"
+              value={ownershipDocUrl}
+              onChange={(e) => setOwnershipDocUrl(e.target.value)}
+              placeholder="Link to a deed/title document"
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+            />
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="toss-btn toss-btn-secondary" style={{ flex: 1 }} disabled={submittingOwnership} onClick={() => setShowOwnershipForm(false)}>
+                Cancel
+              </button>
+              <button className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submittingOwnership || !ownershipDocUrl.trim()} onClick={handleSubmitOwnership}>
+                {submittingOwnership ? 'Submitting…' : 'Submit'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={() => setShowOwnershipForm(true)}>
+            Verify ownership
+          </button>
+        )
+      )}
+      {isMine && ownershipStatus === 'PENDING' && (
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Verification pending review</p>
       )}
       <div style={{ display: 'flex', gap: '10px' }}>
         {isMine ? (

@@ -1911,8 +1911,13 @@ public struct PropertyListingDto: Decodable, Identifiable {
     // captured at mark-taken time, see backend PropertyListing.kt's own doc comment.
     // Only set once a real review becomes possible for this transaction.
     public let counterpartyId: String?
+    // Real ownership verification (2026-07-25) -- NONE/PENDING/VERIFIED, see backend
+    // PropertyOwnershipService's own doc comment. Real on Android since that day; found
+    // 2026-08-01 via a fresh backend-module sweep with zero iOS client despite that.
+    public let ownershipVerificationStatus: String?
 }
 public struct MarkTakenRequest: Encodable { public let counterpartyPhoneNumber: String? }
+public struct SubmitOwnershipVerificationRequest: Encodable { public let documentUrl: String }
 public struct CreatePropertyListingRequest: Encodable {
     public let listingType: String; public let propertyType: String; public let title: String; public let description: String; public let price: Double
     public let bedrooms: Int?; public let sizeSqm: Double?; public let latitude: Double?; public let longitude: Double?
@@ -3101,6 +3106,17 @@ extension NetworkClient {
 
     public func getPropertyListingReviews(_ propertyListingId: String) async throws -> HoodReviewsResponse {
         try await get("api/v1/realestate/listings/\(propertyListingId)/review")
+    }
+
+    // Real ownership verification (2026-07-25) -- see PropertyListingDto's own doc
+    // comment. document-upload + human review; iOS has no real photo/document upload
+    // pipeline (same gap bank-mfe's own port named), so this takes a documentUrl
+    // directly rather than inventing one -- an honest v1 scope-down, not a silent gap.
+    public func submitPropertyOwnershipVerification(_ propertyListingId: String, documentUrl: String) async throws -> SuccessResponse {
+        try await authenticatedPost(
+            "api/v1/realestate/listings/\(propertyListingId)/verify-ownership",
+            body: SubmitOwnershipVerificationRequest(documentUrl: documentUrl),
+        )
     }
 
     public func removePropertyListing(_ propertyListingId: String) async throws -> PropertyListingResponse {

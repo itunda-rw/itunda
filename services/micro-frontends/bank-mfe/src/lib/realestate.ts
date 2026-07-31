@@ -27,6 +27,13 @@ export interface PropertyListing {
   // captured at mark-taken time, see backend PropertyListing.kt's own doc comment.
   // Only set once a real review becomes possible for this transaction.
   counterpartyId?: string | null;
+  // Real ownership verification (2026-07-25) -- NONE/PENDING/VERIFIED, see backend
+  // PropertyOwnershipService's own doc comment. Real client added to Android the same
+  // day (a document-picker + submit flow); bank-mfe had zero client for it despite
+  // that -- found via a fresh backend-module sweep. Same "URL, not a binary upload"
+  // honest scope-down lib/neighborhood.ts's updateProfilePhoto already established for
+  // this web client, since bank-mfe has no real photo/document upload pipeline at all.
+  ownershipVerificationStatus?: 'NONE' | 'PENDING' | 'VERIFIED';
 }
 
 export interface PropertyType {
@@ -183,3 +190,9 @@ export const fetchMyFavoritePropertyListings = () =>
   apiFetch<{ success: boolean; favorites: FavoritePropertyListing[] }>('/api/v1/realestate/listings/favorites').then(
     (r) => r.favorites,
   );
+
+export const submitPropertyOwnershipVerification = (propertyListingId: string, documentUrl: string) =>
+  apiFetch<{ success: boolean; submission: { status: string } }>(`/api/v1/realestate/listings/${propertyListingId}/verify-ownership`, {
+    method: 'POST',
+    body: JSON.stringify({ documentUrl }),
+  });
