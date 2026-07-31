@@ -56,7 +56,7 @@ import {
 } from './lib/stocks';
 import {
   addGroupMember, connectMessagingSocket, createGroup, fetchConversations, fetchGroupMembers, fetchGroupMessages, fetchGroups, fetchMessages, fetchPinnedConversationMessage, fetchPinnedGroupMessage,
-  blockConversationParticipant, deleteGroupMessage, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, forwardGroupMessage, forwardMessage, leaveGroup, pinConversationMessage, pinGroupMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationQuiet, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unblockConversationParticipant, unpinConversationMessage, unpinGroupMessage,
+  blockConversationParticipant, deleteGroupMessage, deleteMessage, fetchConversationQuiet, fetchPresence, fetchTalkContacts, forwardGroupMessage, forwardMessage, leaveGroup, pinConversationMessage, pinGroupMessage, reportChatMessage, searchConversationMessages, sendGroupMessage, sendMessage, setConversationQuiet, setGroupDescription, setGroupPhotoUrl, startConversation, startConversationWithUser, toggleGroupReaction, toggleReaction, unblockConversationParticipant, unpinConversationMessage, unpinGroupMessage,
   type ConversationSummary, type GroupMember, type GroupMessage,
   type GroupSummary, type Message, type MessagingSocketHandle, type ReactionGroup, type TalkContact,
 } from './lib/messaging';
@@ -6417,12 +6417,34 @@ function GroupManageMembersView({
   const [error, setError] = useState<string | null>(null);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
+  // Real group photo/description (2026-07-28) -- see lib/messaging.ts's own doc
+  // comment. Found 2026-08-01 via a defined-but-uncalled-endpoint sweep: real on
+  // backend since it shipped, zero client anywhere until now.
+  const [photoUrl, setPhotoUrl] = useState(group.photoUrl ?? '');
+  const [description, setDescription] = useState(group.description ?? '');
+  const [savingInfo, setSavingInfo] = useState(false);
+  const [infoSaved, setInfoSaved] = useState(false);
 
   useEffect(() => {
     fetchTalkContacts().then(setContacts).catch(() => {});
   }, []);
 
   const addable = contacts.filter((c) => !members.some((m) => m.userId === c.userId));
+
+  const handleSaveInfo = async () => {
+    setSavingInfo(true);
+    setError(null);
+    setInfoSaved(false);
+    try {
+      await setGroupPhotoUrl(group.groupId, photoUrl.trim());
+      await setGroupDescription(group.groupId, description.trim());
+      setInfoSaved(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not update group info.');
+    } finally {
+      setSavingInfo(false);
+    }
+  };
 
   const handleLeave = async () => {
     if (!window.confirm('Leave this group?')) return;
@@ -6459,6 +6481,18 @@ function GroupManageMembersView({
         <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Manage members</h3>
       </div>
       {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      <h4 style={{ fontSize: '13px', fontWeight: 700 }}>Group info</h4>
+      <input
+        type="text" placeholder="Photo URL (blank to clear)" value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      />
+      <textarea
+        placeholder="Group description (blank to clear)" value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', fontFamily: 'inherit' }}
+      />
+      <button className="toss-btn toss-btn-secondary" disabled={savingInfo} onClick={handleSaveInfo}>
+        {savingInfo ? 'Saving…' : infoSaved ? 'Saved' : 'Save group info'}
+      </button>
       <h4 style={{ fontSize: '13px', fontWeight: 700 }}>Members ({members.length})</h4>
       {members.map((m) => (
         <p key={m.userId} style={{ fontSize: '13px' }}>{m.userId === currentUserId ? `${m.name} (you)` : m.name}</p>

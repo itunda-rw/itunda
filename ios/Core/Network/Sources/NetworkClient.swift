@@ -1542,8 +1542,17 @@ public struct GroupSummaryDto: Decodable, Identifiable {
     public let lastMessageAt: String
     public let lastMessagePreview: String?
     public let unreadCount: Int
+    // Real group photo/description (2026-07-28) -- see GroupMessagingService's own doc
+    // comments. Found 2026-08-01 via a defined-but-uncalled-endpoint sweep: real on
+    // backend since it shipped, zero client anywhere on any of the 3 platforms until
+    // now.
+    public let photoUrl: String?
+    public let description: String?
     public var id: String { groupId }
 }
+public struct SetGroupPhotoUrlRequest: Encodable { public let photoUrl: String }
+public struct SetGroupDescriptionRequest: Encodable { public let description: String }
+public struct GroupSummaryResponse: Decodable { public let success: Bool; public let group: GroupSummaryDto }
 public struct GroupMessageDto: Decodable, Identifiable {
     public let id: String
     public let groupConversationId: String
@@ -4083,6 +4092,14 @@ extension NetworkClient {
 
     public func leaveGroup(groupId: String) async throws -> SuccessResponse {
         try await authenticatedDelete("api/v1/messages/groups/\(groupId)/members/me")
+    }
+
+    public func setGroupPhotoUrl(groupId: String, photoUrl: String) async throws -> GroupSummaryResponse {
+        try await authenticatedPost("api/v1/messages/groups/\(groupId)/photo", body: SetGroupPhotoUrlRequest(photoUrl: photoUrl))
+    }
+
+    public func setGroupDescription(groupId: String, description: String) async throws -> GroupSummaryResponse {
+        try await authenticatedPost("api/v1/messages/groups/\(groupId)/description", body: SetGroupDescriptionRequest(description: description))
     }
 }
 

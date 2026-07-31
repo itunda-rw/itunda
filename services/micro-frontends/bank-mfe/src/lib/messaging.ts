@@ -151,6 +151,12 @@ export interface GroupSummary {
   lastMessageAt: string;
   lastMessagePreview: string | null;
   unreadCount: number;
+  // Real group photo/description (2026-07-28) -- see GroupMessagingService
+  // .setGroupPhotoUrl/setGroupDescription's own doc comments. Found 2026-08-01 via a
+  // defined-but-uncalled-endpoint sweep: real on backend since it shipped, zero client
+  // anywhere on any of the 3 platforms until now.
+  photoUrl?: string | null;
+  description?: string | null;
 }
 
 export interface GroupMessage {
@@ -252,6 +258,21 @@ export const addGroupMember = (groupId: string, userId: string) =>
 
 export const leaveGroup = (groupId: string) =>
   apiFetch<{ success: boolean }>(`/api/v1/messages/groups/${groupId}/members/me`, { method: 'DELETE' });
+
+// Real group photo/description (2026-07-28), open to any real member -- same flat-
+// membership discipline the pin/leave/add-member actions above already use. A URL, not
+// a binary upload (this backend has no file-storage layer); blank clears it.
+export const setGroupPhotoUrl = (groupId: string, photoUrl: string) =>
+  apiFetch<{ success: boolean; group: GroupSummary }>(`/api/v1/messages/groups/${groupId}/photo`, {
+    method: 'POST',
+    body: JSON.stringify({ photoUrl }),
+  }).then((r) => r.group);
+
+export const setGroupDescription = (groupId: string, description: string) =>
+  apiFetch<{ success: boolean; group: GroupSummary }>(`/api/v1/messages/groups/${groupId}/description`, {
+    method: 'POST',
+    body: JSON.stringify({ description }),
+  }).then((r) => r.group);
 
 interface MessagePushPayload {
   type: 'message';

@@ -1064,6 +1064,24 @@ private struct GroupManageMembersView: View {
     @State private var error: String?
     @State private var busyUserId: String?
     @State private var leaving = false
+    // Real group photo/description (2026-07-28) -- see NetworkClient.swift's own doc
+    // comment. Found 2026-08-01 via a defined-but-uncalled-endpoint sweep: real on
+    // backend since it shipped, zero client anywhere on any of the 3 platforms until
+    // now.
+    @State private var photoUrl: String
+    @State private var groupDescription: String
+    @State private var savingInfo = false
+    @State private var infoSaved = false
+
+    init(group: GroupSummaryDto, members: [GroupMemberDto], currentUserId: String?, onMembersChanged: @escaping () -> Void, onLeft: @escaping () -> Void) {
+        self.group = group
+        self.members = members
+        self.currentUserId = currentUserId
+        self.onMembersChanged = onMembersChanged
+        self.onLeft = onLeft
+        _photoUrl = State(initialValue: group.photoUrl ?? "")
+        _groupDescription = State(initialValue: group.description ?? "")
+    }
 
     private var addable: [TalkContactDto] { contacts.filter { contact in !members.contains { $0.userId == contact.userId } } }
 
@@ -1072,7 +1090,16 @@ private struct GroupManageMembersView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     if let error { Text(error).font(.caption).foregroundColor(.red) }
-                    Text("Members (\(members.count))").bold()
+                    Text("Group info").bold()
+                    TextField("Photo URL (blank to clear)", text: $photoUrl)
+                        .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(8)
+                    TextField("Group description (blank to clear)", text: $groupDescription)
+                        .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(8)
+                    Button(action: { Task { await saveInfo() } }) {
+                        Text(savingInfo ? "Saving…" : (infoSaved ? "Saved" : "Save group info")).bold().frame(maxWidth: .infinity).padding(10).background(IDS.Colors.chipBackground).cornerRadius(8)
+                    }
+                    .disabled(savingInfo)
+                    Text("Members (\(members.count))").bold().padding(.top, 8)
                     ForEach(members) { m in
                         Text(m.userId == currentUserId ? "\(m.name) (you)" : m.name).font(.subheadline)
                     }
@@ -1124,6 +1151,18 @@ private struct GroupManageMembersView: View {
             onMembersChanged()
         } catch {
             self.error = "Could not add \(contact.name)."
+        }
+    }
+
+    private func saveInfo() async {
+        savingInfo = true; error = nil; infoSaved = false
+        defer { savingInfo = false }
+        do {
+            _ = try await NetworkClient.shared.setGroupPhotoUrl(groupId: group.groupId, photoUrl: photoUrl.trimmingCharacters(in: .whitespaces))
+            _ = try await NetworkClient.shared.setGroupDescription(groupId: group.groupId, description: groupDescription.trimmingCharacters(in: .whitespaces))
+            infoSaved = true
+        } catch {
+            self.error = "Could not update group info."
         }
     }
 }

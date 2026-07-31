@@ -73,6 +73,8 @@ import rw.itunda.core.designsystem.components.TabHeader
 import rw.itunda.core.designsystem.components.chatMessageTime
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.AddGroupMemberRequest
+import rw.itunda.core.network.SetGroupDescriptionRequest
+import rw.itunda.core.network.SetGroupPhotoUrlRequest
 import rw.itunda.core.network.AttachSplitBillReceiptRequest
 import rw.itunda.core.network.ConversationSummaryDto
 import rw.itunda.core.network.CreateChatReportRequest
@@ -1022,6 +1024,14 @@ private fun GroupManageMembersView(
     var error by remember { mutableStateOf<String?>(null) }
     var busyUserId by remember { mutableStateOf<String?>(null) }
     var leaving by remember { mutableStateOf(false) }
+    // Real group photo/description (2026-07-28) -- see ApiService.kt's own doc
+    // comment. Found 2026-08-01 via a defined-but-uncalled-endpoint sweep: real on
+    // backend since it shipped, zero client anywhere on any of the 3 platforms until
+    // now.
+    var photoUrl by remember { mutableStateOf(group.photoUrl ?: "") }
+    var description by remember { mutableStateOf(group.description ?: "") }
+    var savingInfo by remember { mutableStateOf(false) }
+    var infoSaved by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
@@ -1035,6 +1045,42 @@ private fun GroupManageMembersView(
         Spacer(modifier = Modifier.height(8.dp))
         LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             error?.let { item { Text(it, color = Ids.colors.danger, fontSize = 13.sp) } }
+            item { Text("Group info", fontWeight = FontWeight.SemiBold, fontSize = 15.sp) }
+            item {
+                OutlinedTextField(
+                    value = photoUrl,
+                    onValueChange = { photoUrl = it },
+                    label = { Text("Photo URL (blank to clear)") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            item {
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Group description (blank to clear)") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            item {
+                Button(
+                    enabled = !savingInfo,
+                    onClick = {
+                        savingInfo = true
+                        infoSaved = false
+                        coroutineScope.launch {
+                            try {
+                                NetworkClient.apiService.setGroupPhotoUrl(group.groupId, SetGroupPhotoUrlRequest(photoUrl.trim()))
+                                NetworkClient.apiService.setGroupDescription(group.groupId, SetGroupDescriptionRequest(description.trim()))
+                                infoSaved = true
+                            } catch (_: Exception) {
+                                error = "Could not update group info."
+                            } finally { savingInfo = false }
+                        }
+                    },
+                ) { Text(if (savingInfo) "Saving…" else if (infoSaved) "Saved" else "Save group info") }
+            }
+            item { Spacer(modifier = Modifier.height(8.dp)) }
             item { Text("Members (${members.size})", fontWeight = FontWeight.SemiBold, fontSize = 15.sp) }
             items(members, key = { it.userId }) { member ->
                 Text(if (member.userId == currentUserId) "${member.name} (you)" else member.name, fontSize = 14.sp, modifier = Modifier.padding(vertical = 4.dp))

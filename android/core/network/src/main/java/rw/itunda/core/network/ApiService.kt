@@ -520,7 +520,16 @@ data class GroupSummaryDto(
     val lastMessagePreview: String?,
     val unreadCount: Long,
     val quiet: Boolean = false,
+    // Real group photo/description (2026-07-28) -- see GroupMessagingService
+    // .setGroupPhotoUrl/setGroupDescription's own doc comments. Found 2026-08-01 via a
+    // defined-but-uncalled-endpoint sweep: real on backend since it shipped, zero
+    // client anywhere on any of the 3 platforms until now.
+    val photoUrl: String? = null,
+    val description: String? = null,
 )
+data class SetGroupPhotoUrlRequest(val photoUrl: String)
+data class SetGroupDescriptionRequest(val description: String)
+data class GroupSummaryResponse(val success: Boolean, val group: GroupSummaryDto)
 data class GroupMessageDto(
     val id: String,
     val groupConversationId: String,
@@ -1960,6 +1969,12 @@ interface ApiService {
 
     @GET("api/v1/messages/groups/{id}/members")
     suspend fun getGroupMembers(@Path("id") groupId: String): GroupMembersResponse
+
+    @POST("api/v1/messages/groups/{id}/photo")
+    suspend fun setGroupPhotoUrl(@Path("id") groupId: String, @Body request: SetGroupPhotoUrlRequest): GroupSummaryResponse
+
+    @POST("api/v1/messages/groups/{id}/description")
+    suspend fun setGroupDescription(@Path("id") groupId: String, @Body request: SetGroupDescriptionRequest): GroupSummaryResponse
 
     // Real online/offline presence (2026-07-19) -- see MessagingService.getPresence's
     // own doc comment on the backend. Works for any set of user ids, not just 1:1
