@@ -93,8 +93,11 @@ import rw.itunda.core.network.OrderReturnRequestDto
 import rw.itunda.core.network.PlaceOrderRequest
 import rw.itunda.core.network.ProductRatingResponse
 import rw.itunda.core.network.ProductReviewDto
+import rw.itunda.core.network.CollectPaymentRequest
+import rw.itunda.core.network.CollectPaymentResultDto
 import rw.itunda.core.network.RequestOrderReturnRequest
 import rw.itunda.core.network.ShoppingMerchantDto
+import rw.itunda.core.network.StaticQrPayRequest
 import rw.itunda.core.network.SubmitProductReviewRequest
 import rw.itunda.core.network.isDeviceNotVerifiedError
 import rw.itunda.core.network.superAppErrorMessage
@@ -430,6 +433,9 @@ fun CommerceShopContent(
         } else if (view == CommerceView.WISHLIST) {
             item { ProductWishlistView(onRemoved = ::loadFavoriteProductIds) }
         } else {
+            item {
+                PayAMerchantSection(deviceStepUpHost = deviceStepUpHost)
+            }
             if (membershipDay?.isMembershipDay == true) {
                 item {
                     Column(
@@ -1773,4 +1779,153 @@ private fun OrderItemReviews(order: OrderDto) {
             list.forEach { item -> ProductReviewRow(item) }
         }
     }
+}
+
+/**
+ * Real "pay a merchant" -- the manual-code-entry alternative to camera QR scanning
+ * (this app has no scanner), mirrors bank-mfe's `PayByCodeCard`/`PayByStaticQrCard`
+ * exactly. bank-mfe already has both; this is the first Android client for either --
+ * previously neither the dynamic per-sale flow nor the static QR flow existed anywhere
+ * on this native consumer app. Honest v1 scope-down: no coupon-preview-before-pay this
+ * pass (bank-mfe's own `previewPaymentIntent` flow) -- a named, deliberately deferred
+ * follow-up.
+ */
+@Composable
+private fun PayAMerchantSection(
+    deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
+) {
+    var paymentResult by remember { mutableStateOf<CollectPaymentResultDto?>(null) }
+    val result = paymentResult
+    if (result != null) {
+        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Payment complete", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(result.merchantName, color = Ids.colors.textPrimary, fontSize = 14.sp)
+                Text("%,.0f RWF".format(result.amount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                if (result.cashbackEarned > java.math.BigDecimal.ZERO) {
+                    Text("+ %,.0f RWF cashback".format(result.cashbackEarned), color = Ids.colors.brand, fontSize = 13.sp)
+                }
+                ListingActionButtonShop("Done", false) { paymentResult = null }
+            }
+        }
+        return
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        PayByCodeCard(deviceStepUpHost = deviceStepUpHost, onPaid = { paymentResult = it })
+        PayByStaticQrCard(onPaid = { paymentResult = it })
+    }
+}
+
+@Composable
+private fun PayByCodeCard(
+    deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
+    onPaid: (CollectPaymentResultDto) -> Unit,
+) {
+    var code by remember { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var needsDeviceVerification by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun pay() {
+        submitting = true
+        error = null
+        needsDeviceVerification = false
+        coroutineScope.launch {
+            try {
+                val result = NetworkClient.apiService.collectPayment(code.trim(), UUID.randomUUID().toString(), CollectPaymentRequest())
+                code = ""
+                onPaid(result)
+            } catch (e: HttpException) {
+                if (isDeviceNotVerifiedError(e)) {
+                    needsDeviceVerification = true
+                } else {
+                    error = superAppErrorMessage(e)
+                }
+            } catch (e: IOException) {
+                error = "Couldn't reach itunda. Check your connection and try again."
+            } finally {
+                submitting = false
+            }
+        }
+    }
+
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Pay by code", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(
+                "No scanner handy? Enter the payment code the merchant shows you to pay instantly and earn cashback.",
+                color = Ids.colors.textSecondary, fontSize = 12.sp,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(value = code, onValueChange = { code = it }, placeholder = { Text("Payment code") }, singleLine = true, modifier = Modifier.weight(1f))
+                ListingActionButtonShop(if (submitting) "Paying…" else "Pay", submitting || code.isBlank(), filled = true) { pay() }
+            }
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+        }
+    }
+    deviceStepUpHost(needsDeviceVerification, { needsDeviceVerification = false }, { needsDeviceVerification = false })
+}
+
+@Composable
+private fun PayByStaticQrCard(onPaid: (CollectPaymentResultDto) -> Unit) {
+    var merchantId by remember { mutableStateOf("") }
+    var amount by remember { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Pay a merchant's static QR", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(
+                "For a merchant with one permanent code (like a market stall) -- enter their merchant ID and how much you're paying.",
+                color = Ids.colors.textSecondary, fontSize = 12.sp,
+            )
+            OutlinedTextField(value = merchantId, onValueChange = { merchantId = it }, placeholder = { Text("Merchant ID") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(value = amount, onValueChange = { amount = it }, placeholder = { Text("Amount (RWF)") }, singleLine = true, modifier = Modifier.weight(1f))
+                ListingActionButtonShop(
+                    if (submitting) "Paying…" else "Pay",
+                    submitting || merchantId.isBlank() || amount.toBigDecimalOrNull() == null,
+                    filled = true,
+                ) {
+                    val numericAmount = amount.toBigDecimalOrNull()
+                    if (numericAmount == null || numericAmount <= java.math.BigDecimal.ZERO) {
+                        error = "Enter a valid amount."
+                        return@ListingActionButtonShop
+                    }
+                    submitting = true
+                    error = null
+                    coroutineScope.launch {
+                        try {
+                            val result = NetworkClient.apiService.payByStaticQr(merchantId.trim(), UUID.randomUUID().toString(), StaticQrPayRequest(numericAmount))
+                            merchantId = ""
+                            amount = ""
+                            onPaid(result)
+                        } catch (e: HttpException) {
+                            error = superAppErrorMessage(e)
+                        } catch (e: IOException) {
+                            error = "Couldn't reach itunda. Check your connection and try again."
+                        } finally {
+                            submitting = false
+                        }
+                    }
+                }
+            }
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+        }
+    }
+}
+
+@Composable
+private fun ListingActionButtonShop(label: String, disabled: Boolean, filled: Boolean = false, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (disabled) Ids.colors.textTertiary else if (filled) Ids.colors.brand else Ids.colors.surfaceSoft)
+            .clickable(enabled = !disabled, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        contentAlignment = Alignment.Center,
+    ) { Text(label, color = if (filled || disabled) Color.White else Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
 }

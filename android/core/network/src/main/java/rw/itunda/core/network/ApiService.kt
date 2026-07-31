@@ -1048,6 +1048,16 @@ data class FollowedMerchantsResponse(val success: Boolean, val follows: List<Fol
 data class MerchantFollowDto(val id: String, val userId: String, val merchantId: String, val createdAt: String)
 data class MerchantFollowResponse(val success: Boolean, val follow: MerchantFollowDto)
 
+// Real "pay a merchant" -- mirrors bank-mfe's lib/shopping.ts CollectPaymentResult
+// exactly (a flat response, not nested under a key).
+data class CollectPaymentRequest(val couponId: String? = null)
+data class StaticQrPayRequest(val amount: java.math.BigDecimal, val description: String? = null)
+data class CollectPaymentResultDto(
+    val success: Boolean, val transactionId: String, val merchantName: String,
+    val amount: java.math.BigDecimal, val fee: java.math.BigDecimal, val status: String,
+    val channel: String, val completedAt: String, val cashbackEarned: java.math.BigDecimal,
+)
+
 // Real Shop product wishlist (2026-07-24) -- closes docs/DESIGN_REFERENCES.md Section 5
 // recommendation #3: the backend (ProductFavoriteService, shipped 2026-07-20) and
 // bank-mfe (ProductCatalogView.toggleFavorite) already had this; Android had zero
@@ -2369,6 +2379,17 @@ interface ApiService {
 
     @POST("api/v1/merchant/bookings/{id}/cancel")
     suspend fun cancelBooking(@Path("id") bookingId: String): MerchantBookingDetailResponse
+
+    // Real "pay a merchant" -- the manual-code-entry alternative to camera QR scanning
+    // (this app has no scanner), mirrors bank-mfe's lib/shopping.ts collectPayment/
+    // payByStaticQr exactly. bank-mfe already has both; this is the first Android client
+    // for either. Honest v1 scope-down: no coupon-preview-before-pay this pass (bank-mfe's
+    // previewPaymentIntent flow) -- a named, deliberately deferred follow-up.
+    @POST("api/v1/merchant/collect/{intentId}")
+    suspend fun collectPayment(@Path("intentId") intentId: String, @Header("Idempotency-Key") idempotencyKey: String, @Body request: CollectPaymentRequest): CollectPaymentResultDto
+
+    @POST("api/v1/merchant/{merchantId}/static-qr/pay")
+    suspend fun payByStaticQr(@Path("merchantId") merchantId: String, @Header("Idempotency-Key") idempotencyKey: String, @Body request: StaticQrPayRequest): CollectPaymentResultDto
 
     // Real Coupang-style multi-item checkout (2026-07-18) -- see rw.itunda.commerce.web.OrderController.
     @POST("api/v1/orders")

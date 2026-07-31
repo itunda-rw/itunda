@@ -2045,6 +2045,29 @@ public struct FollowedMerchantsResponse: Decodable { public let success: Bool; p
 public struct MerchantFollowDto: Decodable { public let id: String; public let userId: String; public let merchantId: String; public let createdAt: String }
 public struct MerchantFollowResponse: Decodable { public let success: Bool; public let follow: MerchantFollowDto }
 
+// Real "pay a merchant" -- mirrors bank-mfe's lib/shopping.ts CollectPaymentResult
+// exactly (a flat response, not nested under a key).
+public struct CollectPaymentRequest: Encodable {
+    public let couponId: String?
+    public init(couponId: String? = nil) { self.couponId = couponId }
+}
+public struct StaticQrPayRequest: Encodable {
+    public let amount: Double
+    public let description: String?
+    public init(amount: Double, description: String? = nil) { self.amount = amount; self.description = description }
+}
+public struct CollectPaymentResultDto: Decodable {
+    public let success: Bool
+    public let transactionId: String
+    public let merchantName: String
+    public let amount: Double
+    public let fee: Double
+    public let status: String
+    public let channel: String
+    public let completedAt: String
+    public let cashbackEarned: Double
+}
+
 // Real Shop product wishlist (2026-07-24) -- closes docs/DESIGN_REFERENCES.md Section 5
 // recommendation #3: backend (ProductFavoriteService, 2026-07-20) and bank-mfe already
 // had this; iOS had zero wiring. Mirrors FavoriteListingDto/FavoriteJobPostDto/
@@ -3018,6 +3041,18 @@ extension NetworkClient {
     }
     public func getMyFollowedMerchants() async throws -> FollowedMerchantsResponse {
         try await get("api/v1/merchant/follows?size=200")
+    }
+
+    // Real "pay a merchant" -- the manual-code-entry alternative to camera QR scanning
+    // (this app has no scanner), mirrors bank-mfe's lib/shopping.ts collectPayment/
+    // payByStaticQr and Android's ApiService.kt exactly. This is the first iOS client for
+    // either -- previously neither the dynamic per-sale flow nor the static QR flow
+    // existed anywhere on this native consumer app.
+    public func collectPayment(intentId: String, couponId: String? = nil) async throws -> CollectPaymentResultDto {
+        try await authenticatedPost("api/v1/merchant/collect/\(intentId)", body: CollectPaymentRequest(couponId: couponId), idempotencyKey: UUID().uuidString)
+    }
+    public func payByStaticQr(merchantId: String, amount: Double, description: String? = nil) async throws -> CollectPaymentResultDto {
+        try await authenticatedPost("api/v1/merchant/\(merchantId)/static-qr/pay", body: StaticQrPayRequest(amount: amount, description: description), idempotencyKey: UUID().uuidString)
     }
 
     public func placeOrder(_ request: PlaceOrderRequest) async throws -> OrderDetailResponse {

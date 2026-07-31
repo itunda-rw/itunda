@@ -97,6 +97,11 @@ private struct CommerceShopContent: View {
     // eligibility rule.
     @State private var membershipDay: MembershipDayStatusResponse?
 
+    // Real "pay a merchant" -- the manual-code-entry alternative to camera QR scanning
+    // (this app has no scanner), mirrors bank-mfe's PayByCodeCard/PayByStaticQrCard and
+    // Android's PayAMerchantSection exactly. This is the first iOS client for either.
+    @State private var paymentResult: CollectPaymentResultDto?
+
     // Real cross-merchant product search (item 191) -- closes
     // docs/DESIGN_REFERENCES.md Section 5 recommendation #1: bank-mfe has had "search
     // across every merchant" since 2026-07-20 (lib/shopping.ts's own doc comment), and
@@ -275,6 +280,7 @@ private struct CommerceShopContent: View {
                     } else if view == .wishlist {
                         ProductWishlistView(onRemoved: { Task { await loadFavoriteProductIds() } })
                     } else {
+                        PayAMerchantSection(paymentResult: $paymentResult)
                         if let membershipDay, membershipDay.isMembershipDay {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("🎉 Membership Day — \(Int(membershipDay.multiplier))x cashback today")
@@ -1460,6 +1466,143 @@ private struct MyReturnRequestsView: View {
             } catch {
                 requests = []
             }
+        }
+    }
+}
+
+/// Real "pay a merchant" -- the manual-code-entry alternative to camera QR scanning
+/// (this app has no scanner), mirrors bank-mfe's `PayByCodeCard`/`PayByStaticQrCard` and
+/// Android's `PayAMerchantSection` exactly. bank-mfe/Android already have both; this is
+/// the first iOS client for either -- previously neither the dynamic per-sale flow nor
+/// the static QR flow existed anywhere on this native consumer app. Honest v1
+/// scope-down: no coupon-preview-before-pay this pass (bank-mfe's own
+/// `previewPaymentIntent` flow) -- a named, deliberately deferred follow-up.
+private struct PayAMerchantSection: View {
+    @Binding var paymentResult: CollectPaymentResultDto?
+
+    var body: some View {
+        if let result = paymentResult {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Payment complete").font(.headline).bold().foregroundColor(IDS.Colors.textPrimary)
+                Text(result.merchantName).font(.subheadline).foregroundColor(IDS.Colors.textPrimary)
+                Text("\(Int(result.amount)) RWF").font(.title2).bold().foregroundColor(IDS.Colors.textPrimary)
+                if result.cashbackEarned > 0 {
+                    Text("+ \(Int(result.cashbackEarned)) RWF cashback").font(.footnote).foregroundColor(IDS.Colors.brand)
+                }
+                Button(action: { paymentResult = nil }) {
+                    Text("Done").bold().foregroundColor(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 12)
+                        .background(IDS.Colors.brand).cornerRadius(10)
+                }
+            }
+            .padding(18).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                PayByCodeCard(onPaid: { paymentResult = $0 })
+                PayByStaticQrCard(onPaid: { paymentResult = $0 })
+            }
+        }
+    }
+}
+
+private struct PayByCodeCard: View {
+    let onPaid: (CollectPaymentResultDto) -> Void
+
+    @State private var code = ""
+    @State private var submitting = false
+    @State private var error: String?
+    @State private var needsDeviceVerification = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Pay by code").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+            Text("No scanner handy? Enter the payment code the merchant shows you to pay instantly and earn cashback.")
+                .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            HStack(spacing: 10) {
+                TextField("Payment code", text: $code)
+                    .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
+                Button(action: { Task { await pay() } }) {
+                    Text(submitting ? "Paying…" : "Pay").bold().foregroundColor(.white)
+                        .padding(.horizontal, 16).padding(.vertical, 14)
+                        .background(submitting || code.isEmpty ? IDS.Colors.textTertiary : IDS.Colors.brand)
+                        .cornerRadius(10)
+                }
+                .disabled(submitting || code.isEmpty)
+            }
+            if let error {
+                Text(error).font(.caption).foregroundColor(.red)
+            }
+        }
+        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+        DeviceStepUpHost(visible: needsDeviceVerification, onDismiss: { needsDeviceVerification = false }, onVerified: { needsDeviceVerification = false })
+    }
+
+    private func pay() async {
+        submitting = true
+        error = nil
+        needsDeviceVerification = false
+        defer { submitting = false }
+        do {
+            let result = try await NetworkClient.shared.collectPayment(intentId: code.trimmingCharacters(in: .whitespaces))
+            code = ""
+            onPaid(result)
+        } catch NetworkError.deviceNotVerified {
+            needsDeviceVerification = true
+        } catch {
+            self.error = "Could not complete this payment."
+        }
+    }
+}
+
+private struct PayByStaticQrCard: View {
+    let onPaid: (CollectPaymentResultDto) -> Void
+
+    @State private var merchantId = ""
+    @State private var amount = ""
+    @State private var submitting = false
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Pay a merchant's static QR").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+            Text("For a merchant with one permanent code (like a market stall) — enter their merchant ID and how much you're paying.")
+                .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+            TextField("Merchant ID", text: $merchantId)
+                .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
+            HStack(spacing: 10) {
+                TextField("Amount (RWF)", text: $amount)
+                    .keyboardType(.decimalPad)
+                    .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
+                Button(action: { Task { await pay() } }) {
+                    Text(submitting ? "Paying…" : "Pay").bold().foregroundColor(.white)
+                        .padding(.horizontal, 16).padding(.vertical, 14)
+                        .background(submitting || merchantId.isEmpty || Double(amount) == nil ? IDS.Colors.textTertiary : IDS.Colors.brand)
+                        .cornerRadius(10)
+                }
+                .disabled(submitting || merchantId.isEmpty || Double(amount) == nil)
+            }
+            if let error {
+                Text(error).font(.caption).foregroundColor(.red)
+            }
+        }
+        .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+    }
+
+    private func pay() async {
+        guard let numericAmount = Double(amount), numericAmount > 0 else {
+            error = "Enter a valid amount."
+            return
+        }
+        submitting = true
+        error = nil
+        defer { submitting = false }
+        do {
+            let result = try await NetworkClient.shared.payByStaticQr(merchantId: merchantId.trimmingCharacters(in: .whitespaces), amount: numericAmount)
+            merchantId = ""
+            amount = ""
+            onPaid(result)
+        } catch {
+            self.error = "Could not complete this payment."
         }
     }
 }
