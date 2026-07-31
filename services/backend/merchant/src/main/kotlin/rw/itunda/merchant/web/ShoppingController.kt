@@ -20,8 +20,11 @@ import rw.itunda.core.repository.MerchantRepository
 import rw.itunda.core.repository.ProductPriceTierRepository
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
+import rw.itunda.merchant.ShoppingCashbackService
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.LocalDate
+import java.time.ZoneId
 
 class ShoppingMerchantNotFoundException(message: String) : RuntimeException(message)
 
@@ -271,6 +274,15 @@ class ShoppingController(
             )
         }
         return ResponseEntity.ok(mapOf("success" to true, "products" to products) + pageMeta(page))
+    }
+
+    // Real Naver Pay 멤버십 데이 (Membership Day) boost -- see ShoppingCashbackService's
+    // own doc comment. A single source of truth for "is today boosted", so bank-mfe's
+    // own banner never drifts from what awardCashback actually applies server-side.
+    @GetMapping("/membership-day")
+    fun getMembershipDayStatus(): ResponseEntity<Map<String, Any?>> {
+        val isMembershipDay = ShoppingCashbackService.isMembershipDay(LocalDate.now(ZoneId.of("Africa/Kigali")))
+        return ResponseEntity.ok(mapOf("success" to true, "isMembershipDay" to isMembershipDay, "multiplier" to ShoppingCashbackService.MEMBERSHIP_DAY_MULTIPLIER))
     }
 
     @ExceptionHandler(ShoppingMerchantNotFoundException::class)

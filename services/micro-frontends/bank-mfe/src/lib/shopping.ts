@@ -27,6 +27,12 @@ export interface ShoppingMerchant {
   deliveryTimeMinutes?: number | null;
 }
 
+// Real Naver Pay 멤버십 데이 (Membership Day) boost -- see the backend's
+// ShoppingCashbackService doc comment. Single source of truth for "is today boosted",
+// so this banner never drifts from what the server actually applies.
+export const fetchMembershipDayStatus = () =>
+  apiFetch<{ success: boolean; isMembershipDay: boolean; multiplier: number }>('/api/v1/shopping/membership-day');
+
 // Real category/search filter (2026-07-21) -- both optional and combinable, mirroring
 // Eats' fetchRestaurants (lib/eats.ts) exactly, since both hit the same
 // ShoppingController.getEligibleMerchants endpoint on the backend.

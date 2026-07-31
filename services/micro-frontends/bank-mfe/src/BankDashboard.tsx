@@ -44,7 +44,7 @@ import { submitHoodReport, type HoodReportTargetType } from './lib/hoodReport';
 import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type KycSubmission } from './lib/identity';
 import { addContact, fetchContacts, type Contact } from './lib/contacts';
 import { createSupportTicket, fetchSupportTickets, type SupportTicket, type SupportTicketCategory } from './lib/support';
-import { cancelBillingSubscription, collectPayment, fetchMerchantBillingPlans, fetchMerchantCategories, fetchMyBillingSubscriptions, fetchMyFollowedMerchants, fetchNearbyAds, fetchShopDeals, fetchShoppingCatalog, followMerchant, payByStaticQr, previewPaymentIntent, searchProducts, subscribeToBillingPlan, unfollowMerchant, type CollectPaymentResult, type MerchantBillingPlan, type MerchantBillingSubscription, type MerchantCouponView, type NearbyMerchantAd, type PaymentIntentPreview, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
+import { cancelBillingSubscription, collectPayment, fetchMembershipDayStatus, fetchMerchantBillingPlans, fetchMerchantCategories, fetchMyBillingSubscriptions, fetchMyFollowedMerchants, fetchNearbyAds, fetchShopDeals, fetchShoppingCatalog, followMerchant, payByStaticQr, previewPaymentIntent, searchProducts, subscribeToBillingPlan, unfollowMerchant, type CollectPaymentResult, type MerchantBillingPlan, type MerchantBillingSubscription, type MerchantCouponView, type NearbyMerchantAd, type PaymentIntentPreview, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
 import {
   buyStock, fetchPortfolio, fetchPortfolioHistory, fetchStockHistory, fetchStocks, fetchWatchlist,
   sellStock, unwatchStock, watchStock,
@@ -3535,6 +3535,9 @@ function ShoppingView() {
   const [error, setError] = useState<string | null>(null);
   const [paymentResult, setPaymentResult] = useState<CollectPaymentResult | null>(null);
   const [facePayEnrolled, setFacePayEnrolled] = useState<boolean | null>(null);
+  // Real Naver Pay 멤버십 데이 (Membership Day) boost -- see lib/shopping.ts's own
+  // fetchMembershipDayStatus doc comment.
+  const [membershipDay, setMembershipDay] = useState<{ isMembershipDay: boolean; multiplier: number } | null>(null);
 
   const load = () => {
     setError(null);
@@ -3545,9 +3548,13 @@ function ShoppingView() {
   const loadFacePayStatus = () => {
     fetchFacePayStatus().then((r) => setFacePayEnrolled(r.enrolled)).catch(() => setFacePayEnrolled(false));
   };
+  const loadMembershipDayStatus = () => {
+    fetchMembershipDayStatus().then(setMembershipDay).catch(() => {});
+  };
 
   useEffect(load, []);
   useEffect(loadFacePayStatus, []);
+  useEffect(loadMembershipDayStatus, []);
 
   if (paymentResult) {
     return <PaymentConfirmation result={paymentResult} onDone={() => setPaymentResult(null)} />;
@@ -3568,6 +3575,12 @@ function ShoppingView() {
 
   return (
     <div>
+      {membershipDay?.isMembershipDay && (
+        <div className="toss-card" style={{ marginBottom: '16px', backgroundColor: 'var(--toss-blue-light)', border: '1px solid var(--toss-blue)' }}>
+          <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--toss-blue)' }}>🎉 Membership Day -- {membershipDay.multiplier}x cashback today</p>
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-700)' }}>Every purchase you make today earns {membershipDay.multiplier}x the usual cashback.</p>
+        </div>
+      )}
       <FacePaySettingsCard enrolled={facePayEnrolled} onChanged={loadFacePayStatus} />
       <PayByCodeCard onPaid={setPaymentResult} facePayEnrolled={facePayEnrolled ?? false} />
       <PayByStaticQrCard onPaid={setPaymentResult} />

@@ -13,7 +13,10 @@ import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.TransactionRepository
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
 
 /**
@@ -65,6 +68,20 @@ import java.util.UUID
  * (this backend has no real KRW/RWF conversion path; see
  * `ForeignCurrencyWalletService`'s own supported-currency list, which doesn't include
  * KRW -- reusing the raw number as RWF would misrepresent a sourced fact).
+ *
+ * **Real Naver Pay 멤버십 데이 (Membership Day) boost added 2026-07-31** -- Naver Pay's
+ * own real, currently-running mechanic (brunch.co.kr's own coverage of Naver's
+ * published point terms): on designated calendar days each month, point accrual
+ * multiplies a real 4-5x over whatever base rate would otherwise apply. Naver's own
+ * real designated days are opaque and vary month to month ("mostly Mondays", per the
+ * same source) with no fixed rule this backend could honestly replicate -- itunda's own
+ * choice instead is a real, fixed, computable day: the first Monday of each month
+ * (`isMembershipDay`), same "reuse the sourced structure (multiplier value, monthly
+ * cadence), itunda's own specific rule" discipline `MiniWalletService`'s age
+ * range/`AgentCommissionSchedule`'s bands already establish. [MEMBERSHIP_DAY_MULTIPLIER]
+ * is Naver's own real sourced ceiling (5x, not a fabricated number); the existing
+ * [MAX_CASHBACK_PER_TRANSACTION] cap still applies on a boosted day, matching how a
+ * real loyalty program's per-transaction cap doesn't lift during a bonus period either.
  */
 @Service
 class ShoppingCashbackService(
@@ -75,11 +92,30 @@ class ShoppingCashbackService(
         val DEFAULT_CASHBACK_RATE: BigDecimal = BigDecimal("0.01")
         val MAX_CASHBACK_RATE: BigDecimal = BigDecimal("0.05")
         val MAX_CASHBACK_PER_TRANSACTION: BigDecimal = BigDecimal("1000")
+        val MEMBERSHIP_DAY_MULTIPLIER: BigDecimal = BigDecimal("5")
+        private val RWANDA_ZONE: ZoneId = ZoneId.of("Africa/Kigali")
+
+        /** Itunda's own honest Membership Day rule -- see this class's own doc comment
+         * for why a fixed first-Monday-of-the-month stands in for Naver's own opaque,
+         * varying real calendar. A pure function of the date, real-testable without a
+         * mocked clock. */
+        fun isMembershipDay(date: LocalDate): Boolean = date.dayOfWeek == DayOfWeek.MONDAY && date.dayOfMonth <= 7
     }
 
     @Transactional
-    fun awardCashback(payerWallet: Wallet, purchaseAmount: BigDecimal, merchantName: String, rate: BigDecimal = DEFAULT_CASHBACK_RATE): BigDecimal {
-        val cashbackAmount = purchaseAmount.multiply(rate).setScale(2, RoundingMode.HALF_UP).min(MAX_CASHBACK_PER_TRANSACTION)
+    fun awardCashback(
+        payerWallet: Wallet,
+        purchaseAmount: BigDecimal,
+        merchantName: String,
+        rate: BigDecimal = DEFAULT_CASHBACK_RATE,
+        // Real "now", not injected in production -- same "no mocked clock" convention
+        // every other real-time check in this codebase already uses. Overridable here
+        // only so a test can pin a specific real calendar date deterministically,
+        // without this call becoming flaky on an actual first-Monday-of-the-month.
+        today: LocalDate = LocalDate.now(RWANDA_ZONE),
+    ): BigDecimal {
+        val effectiveRate = if (isMembershipDay(today)) rate.multiply(MEMBERSHIP_DAY_MULTIPLIER) else rate
+        val cashbackAmount = purchaseAmount.multiply(effectiveRate).setScale(2, RoundingMode.HALF_UP).min(MAX_CASHBACK_PER_TRANSACTION)
         if (cashbackAmount <= BigDecimal.ZERO) return BigDecimal.ZERO
 
         val result = ledgerService.postLedgerTransaction(
