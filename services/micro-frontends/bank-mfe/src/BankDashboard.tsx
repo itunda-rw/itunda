@@ -29,6 +29,7 @@ import {
 import { fetchCreditScore, fetchCreditScoreSuggestions, type CreditScoreResult, type CreditScoreSuggestion } from './lib/creditScore';
 import { fetchTrustScore, type TrustScoreResult } from './lib/trustScore';
 import { fetchRewardTasks, fetchReferralInfo, claimRewardTask, reportSteps, fetchTodaySteps, type RewardTasksResult, type ReferralInfo } from './lib/rewards';
+import { fetchInsurancePlans, fetchMyPolicies, enrollInPlan, submitClaim, fetchMyClaims, type InsurancePlan, type InsurancePolicy, type InsuranceClaim } from './lib/insurance';
 import {
   fetchMyUpfrontDeposits, openUpfrontDeposit, withdrawUpfrontDeposit,
   UPFRONT_DEPOSIT_ANNUAL_RATE, UPFRONT_DEPOSIT_MIN_PRINCIPAL, UPFRONT_DEPOSIT_MAX_PRINCIPAL,
@@ -140,7 +141,7 @@ import {
   type VehicleInspectionBooking, type VehicleInspectionMechanic,
 } from './lib/vehicleInspection';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
@@ -2132,6 +2133,163 @@ function RewardsView() {
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+// Real insurance browse/enroll/my-policies/claims client -- see lib/insurance.ts's
+// own doc comment. Previously bank-mfe only rendered a read-only "Insurance: N active
+// plan(s)" summary line inside OverviewView; this is the actual self-service flow.
+function InsuranceView() {
+  const [plans, setPlans] = useState<InsurancePlan[] | null>(null);
+  const [policies, setPolicies] = useState<InsurancePolicy[]>([]);
+  const [claims, setClaims] = useState<InsuranceClaim[]>([]);
+  const [enrollingId, setEnrollingId] = useState<string | null>(null);
+  const [claimPolicyId, setClaimPolicyId] = useState<string | null>(null);
+  const [claimDescription, setClaimDescription] = useState('');
+  const [claimAmount, setClaimAmount] = useState('');
+  const [submittingClaim, setSubmittingClaim] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const load = () => {
+    fetchInsurancePlans().then(setPlans).catch(() => setPlans([]));
+    fetchMyPolicies().then(setPolicies).catch(() => setPolicies([]));
+    fetchMyClaims().then(setClaims).catch(() => setClaims([]));
+  };
+  useEffect(load, []);
+
+  const handleEnroll = async (planId: string) => {
+    setEnrollingId(planId);
+    setError(null);
+    setMessage(null);
+    try {
+      const policy = await enrollInPlan(planId);
+      setMessage(`Enrolled in ${policy.planName}`);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not enroll in this plan.');
+    } finally {
+      setEnrollingId(null);
+    }
+  };
+
+  const handleSubmitClaim = async () => {
+    const amount = Number(claimAmount);
+    if (!claimPolicyId || !claimDescription.trim() || !Number.isFinite(amount) || amount <= 0) {
+      setError('Fill in a real description and a claim amount greater than zero.');
+      return;
+    }
+    setSubmittingClaim(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await submitClaim(claimPolicyId, claimDescription.trim(), amount);
+      setMessage('Claim submitted for review.');
+      setClaimPolicyId(null);
+      setClaimDescription('');
+      setClaimAmount('');
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not submit this claim.');
+    } finally {
+      setSubmittingClaim(false);
+    }
+  };
+
+  if (!plans) {
+    return error ? <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p> : <div className="toss-card skeleton" style={{ height: '200px' }} />;
+  }
+
+  const enrolledPlanIds = new Set(policies.map((p) => p.planId));
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
+
+      {policies.length > 0 && (
+        <div className="toss-card" style={{ padding: '16px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My policies</h3>
+          {policies.map((p) => (
+            <div key={p.id} style={{ padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <p style={{ fontSize: '13px', fontWeight: 600 }}>{p.planName}</p>
+                  <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{p.policyNumber} · {p.status} · {p.monthlyPremium.toLocaleString()} RWF/mo</p>
+                </div>
+                <button
+                  className="toss-btn toss-btn-secondary"
+                  disabled={p.status !== 'active'}
+                  onClick={() => setClaimPolicyId(p.id)}
+                >
+                  File a claim
+                </button>
+              </div>
+              {claimPolicyId === p.id && (
+                <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <input
+                    placeholder="What happened?"
+                    value={claimDescription}
+                    onChange={(e) => setClaimDescription(e.target.value)}
+                    style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)' }}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Claim amount (RWF)"
+                    value={claimAmount}
+                    onChange={(e) => setClaimAmount(e.target.value)}
+                    style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-300)' }}
+                  />
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button className="toss-btn toss-btn-secondary" disabled={submittingClaim} onClick={handleSubmitClaim}>
+                      {submittingClaim ? '...' : 'Submit claim'}
+                    </button>
+                    <button className="toss-btn toss-btn-secondary" onClick={() => setClaimPolicyId(null)}>Cancel</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {claims.length > 0 && (
+        <div className="toss-card" style={{ padding: '16px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My claims</h3>
+          {claims.map((c) => (
+            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
+              <div>
+                <p>{c.description}</p>
+                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{c.status}</p>
+              </div>
+              <span>{c.amount.toLocaleString()} RWF</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="toss-card" style={{ padding: '16px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Browse plans</h3>
+        {plans.map((plan) => (
+          <div key={plan.id} style={{ padding: '10px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <p style={{ fontSize: '13px', fontWeight: 600 }}>{plan.name}</p>
+                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{plan.provider} · {plan.monthlyPremium.toLocaleString()} RWF/mo · cover {plan.coverageAmount.toLocaleString()} RWF</p>
+                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{plan.description}</p>
+              </div>
+              <button
+                className="toss-btn toss-btn-secondary"
+                disabled={enrolledPlanIds.has(plan.id) || enrollingId === plan.id}
+                onClick={() => handleEnroll(plan.id)}
+              >
+                {enrolledPlanIds.has(plan.id) ? 'Enrolled' : enrollingId === plan.id ? '...' : 'Enroll'}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -15026,6 +15184,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'CREDIT_SCORE', label: 'Credit score' },
     { id: 'TRUST_SCORE', label: 'Trust score' },
     { id: 'REWARDS', label: 'Rewards' },
+    { id: 'INSURANCE', label: 'Insurance' },
     { id: 'FOREIGN_CURRENCY', label: 'Foreign currency' },
     { id: 'SPENDING', label: 'Spending' },
     { id: 'SUBSCRIPTIONS', label: 'Subscriptions' },
@@ -15093,6 +15252,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'CREDIT_SCORE' && <CreditScoreView />}
       {tab === 'TRUST_SCORE' && <TrustScoreView />}
       {tab === 'REWARDS' && <RewardsView />}
+      {tab === 'INSURANCE' && <InsuranceView />}
       {tab === 'FOREIGN_CURRENCY' && <ForeignCurrencyView />}
       {tab === 'SPENDING' && <SpendingInsightView />}
       {tab === 'SUBSCRIPTIONS' && <SubscriptionsView />}
