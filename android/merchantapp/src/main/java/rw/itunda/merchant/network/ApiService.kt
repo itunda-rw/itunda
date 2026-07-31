@@ -66,6 +66,20 @@ data class MerchantDto(
 )
 data class MerchantResponse(val success: Boolean, val merchant: MerchantDto)
 
+// Real merchant coupons + 단골 (regular customer) loyalty gating -- mirrors
+// merchant-mfe's lib/merchant.ts exactly.
+data class CreateCouponRequest(
+    val title: String, val description: String? = null, val discountType: String,
+    val discountValue: java.math.BigDecimal, val regularsOnly: Boolean = false, val expiresAt: String? = null,
+)
+data class MerchantCouponDto(
+    val id: String, val merchantId: String, val title: String, val description: String?,
+    val discountType: String, val discountValue: java.math.BigDecimal, val regularsOnly: Boolean,
+    val active: Boolean, val expiresAt: String?, val createdAt: String,
+)
+data class MerchantCouponResponse(val success: Boolean, val coupon: MerchantCouponDto)
+data class MerchantCouponsResponse(val success: Boolean, val coupons: List<MerchantCouponDto>)
+
 data class RegisterMerchantRequest(val businessName: String)
 
 data class MerchantProductDto(
@@ -351,6 +365,19 @@ interface ApiService {
     // already has this; this is the first Android client.
     @POST("api/v1/merchant/fee-waiver/apply")
     suspend fun applyForFeeWaiver(): MerchantResponse
+
+    // Real merchant coupons + 단골 (regular customer) loyalty gating -- see
+    // rw.itunda.merchant.MerchantCouponService's own doc comment. Merchant-owner-facing
+    // create/list/deactivate only; a coupon redeems against a real Pay-by-code payment,
+    // not here. merchant-mfe already has this; this is the first Android client.
+    @POST("api/v1/merchant/coupons")
+    suspend fun createCoupon(@Body request: CreateCouponRequest): MerchantCouponResponse
+
+    @GET("api/v1/merchant/coupons")
+    suspend fun getMyCoupons(): MerchantCouponsResponse
+
+    @POST("api/v1/merchant/coupons/{couponId}/deactivate")
+    suspend fun deactivateCoupon(@Path("couponId") couponId: String): MerchantCouponResponse
 
     // Real bulk/wholesale pricing (2026-07-25) -- see
     // rw.itunda.merchant.MerchantProductController.setPriceTiers.

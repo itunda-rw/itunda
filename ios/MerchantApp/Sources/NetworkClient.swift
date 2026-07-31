@@ -26,6 +26,35 @@ struct MerchantDto: Decodable {
     let feeRateOverride: Double?
 }
 struct MerchantResponse: Decodable { let success: Bool; let merchant: MerchantDto }
+
+// Real merchant coupons + 단골 (regular customer) loyalty gating -- mirrors
+// merchant-mfe's lib/merchant.ts exactly.
+struct CreateCouponRequest: Encodable {
+    let title: String
+    let description: String?
+    let discountType: String
+    let discountValue: Double
+    let regularsOnly: Bool
+    let expiresAt: String?
+    init(title: String, description: String?, discountType: String, discountValue: Double, regularsOnly: Bool, expiresAt: String?) {
+        self.title = title; self.description = description; self.discountType = discountType
+        self.discountValue = discountValue; self.regularsOnly = regularsOnly; self.expiresAt = expiresAt
+    }
+}
+struct MerchantCouponDto: Decodable, Identifiable {
+    let id: String
+    let merchantId: String
+    let title: String
+    let description: String?
+    let discountType: String
+    let discountValue: Double
+    let regularsOnly: Bool
+    let active: Bool
+    let expiresAt: String?
+    let createdAt: String
+}
+struct MerchantCouponResponse: Decodable { let success: Bool; let coupon: MerchantCouponDto }
+struct MerchantCouponsResponse: Decodable { let success: Bool; let coupons: [MerchantCouponDto] }
 struct RegisterMerchantRequest: Encodable { let businessName: String }
 
 struct MerchantProductDto: Decodable, Identifiable {
@@ -342,6 +371,18 @@ final class MerchantNetworkClient {
     // Android already have this; this is the first iOS client.
     func applyForFeeWaiver() async throws -> MerchantResponse {
         try await post("api/v1/merchant/fee-waiver/apply", body: EmptyBody())
+    }
+
+    // Real merchant coupons + 단골 (regular customer) loyalty gating -- see
+    // rw.itunda.merchant.MerchantCouponService's own doc comment. Merchant-owner-facing
+    // create/list/deactivate half only. merchant-mfe/Android already have this; this is
+    // the first iOS client.
+    func createCoupon(_ request: CreateCouponRequest) async throws -> MerchantCouponResponse {
+        try await post("api/v1/merchant/coupons", body: request)
+    }
+    func getMyCoupons() async throws -> MerchantCouponsResponse { try await get("api/v1/merchant/coupons") }
+    func deactivateCoupon(_ couponId: String) async throws -> MerchantCouponResponse {
+        try await post("api/v1/merchant/coupons/\(couponId)/deactivate", body: EmptyBody())
     }
 
     func getRestaurantOrders() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/restaurant-orders") }
