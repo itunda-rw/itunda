@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import rw.itunda.merchant.network.BusinessLedgerEntryDto
 import rw.itunda.merchant.network.BusinessWalletDto
+import rw.itunda.merchant.network.MerchantDto
 import rw.itunda.merchant.network.MoveBusinessMoneyRequest
 import rw.itunda.merchant.network.NetworkClient
 import java.util.UUID
@@ -46,6 +47,7 @@ import java.util.UUID
 fun BusinessAccountTab() {
     var wallet by remember { mutableStateOf<BusinessWalletDto?>(null) }
     var loaded by remember { mutableStateOf(false) }
+    var merchant by remember { mutableStateOf<MerchantDto?>(null) }
     var transactions by remember { mutableStateOf<List<BusinessLedgerEntryDto>?>(null) }
     var opening by remember { mutableStateOf(false) }
     var moveAmount by remember { mutableStateOf("") }
@@ -76,7 +78,10 @@ fun BusinessAccountTab() {
             }
         }
     }
-    LaunchedEffect(Unit) { load() }
+    LaunchedEffect(Unit) {
+        load()
+        try { merchant = NetworkClient.apiService.getMyMerchant().merchant } catch (e: Exception) { /* fee-waiver card just stays hidden */ }
+    }
 
     if (!loaded) {
         Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) { CircularProgressIndicator() }
@@ -86,6 +91,7 @@ fun BusinessAccountTab() {
     val current = wallet
     if (current == null) {
         Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            merchant?.let { m -> FeeWaiverCard(merchant = m, onUpdated = { merchant = it }) }
             Text("Business account", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             Text(
                 "Keep your business money separate from your personal wallet. Your real card/QR " +
@@ -115,6 +121,7 @@ fun BusinessAccountTab() {
     }
 
     LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        merchant?.let { m -> item { FeeWaiverCard(merchant = m, onUpdated = { merchant = it }) } }
         item {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -214,5 +221,62 @@ fun BusinessAccountTab() {
             }
         }
         item { Spacer(modifier = Modifier.height(8.dp)) }
+    }
+}
+
+/**
+ * Real Naver Pay 영세 가맹점 수수료 지원 (small-merchant fee-waiver support program) --
+ * see rw.itunda.merchant.MerchantFeeWaiverService's own doc comment. Eligibility (a real
+ * 30-day payment-volume threshold) is checked server-side; this card just surfaces the
+ * current state and lets an eligible merchant apply. merchant-mfe already has this; this
+ * is the first Android client.
+ */
+@Composable
+private fun FeeWaiverCard(merchant: MerchantDto, onUpdated: (MerchantDto) -> Unit) {
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val waived = merchant.feeRateOverride == 0.0
+    val scope = rememberCoroutineScope()
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Small-merchant fee waiver", fontWeight = FontWeight.Bold)
+                    Text(
+                        if (waived) {
+                            "Active -- you pay no platform fee on payments you collect."
+                        } else {
+                            "If your payment volume over the last 30 days is small, you may qualify for a full fee waiver."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (!waived) {
+                    Button(
+                        onClick = {
+                            busy = true
+                            error = null
+                            scope.launch {
+                                try {
+                                    onUpdated(NetworkClient.apiService.applyForFeeWaiver().merchant)
+                                } catch (e: Exception) {
+                                    error = "Couldn't apply for a fee waiver."
+                                } finally {
+                                    busy = false
+                                }
+                            }
+                        },
+                        enabled = !busy,
+                    ) { Text(if (busy) "…" else "Apply") }
+                }
+            }
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        }
     }
 }

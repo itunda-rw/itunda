@@ -11,6 +11,7 @@ import CoreDesignSystem
 struct BusinessAccountTab: View {
     @State private var wallet: BusinessWalletDto?
     @State private var loaded = false
+    @State private var merchant: MerchantDto?
     @State private var transactions: [BusinessLedgerEntryDto] = []
     @State private var opening = false
     @State private var error: String?
@@ -30,6 +31,9 @@ struct BusinessAccountTab: View {
 
     private var openAccountView: some View {
         VStack(alignment: .leading, spacing: 12) {
+            if let merchant {
+                FeeWaiverCard(merchant: merchant, onUpdated: { self.merchant = $0 })
+            }
             Text("Business account").font(.title3).bold()
             Text("Keep your business money separate from your personal wallet. Your real card/QR collections still settle to your personal wallet as before — move money into your business account whenever you're ready to set it aside.")
                 .font(.footnote).foregroundColor(.secondary)
@@ -51,6 +55,9 @@ struct BusinessAccountTab: View {
     private func accountView(_ wallet: BusinessWalletDto) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
+                if let merchant {
+                    FeeWaiverCard(merchant: merchant, onUpdated: { self.merchant = $0 })
+                }
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Business balance").font(.caption).foregroundColor(.secondary)
                     Text("\(formattedRWF(wallet.balance)) RWF").font(.title).bold()
@@ -94,6 +101,7 @@ struct BusinessAccountTab: View {
         } catch {
             wallet = nil
         }
+        merchant = try? await MerchantNetworkClient.shared.getMyMerchant().merchant
         loaded = true
     }
 
@@ -177,6 +185,62 @@ private struct MoveMoneyCard: View {
             needsDeviceVerification = true
         } catch {
             self.error = "Couldn't move this money. Check your balance."
+        }
+    }
+}
+
+/// Real Naver Pay 영세 가맹점 수수료 지원 (small-merchant fee-waiver support program) --
+/// see rw.itunda.merchant.MerchantFeeWaiverService's own doc comment. Eligibility (a real
+/// 30-day payment-volume threshold) is checked server-side; this card just surfaces the
+/// current state and lets an eligible merchant apply. merchant-mfe and Android already
+/// have this; this is the first iOS client.
+private struct FeeWaiverCard: View {
+    let merchant: MerchantDto
+    let onUpdated: (MerchantDto) -> Void
+
+    @State private var busy = false
+    @State private var error: String?
+
+    private var waived: Bool { merchant.feeRateOverride == 0 }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Small-merchant fee waiver").bold()
+                    Text(waived
+                        ? "Active — you pay no platform fee on payments you collect."
+                        : "If your payment volume over the last 30 days is small, you may qualify for a full fee waiver.")
+                        .font(.footnote).foregroundColor(.secondary)
+                }
+                Spacer()
+                if !waived {
+                    Button(action: { Task { await apply() } }) {
+                        Text(busy ? "…" : "Apply")
+                            .bold().foregroundColor(.white)
+                            .padding(.horizontal, 14).padding(.vertical, 8)
+                            .background(IDS.Colors.brand).cornerRadius(8)
+                    }
+                    .disabled(busy)
+                }
+            }
+            if let error {
+                Text(error).font(.footnote).foregroundColor(.red)
+            }
+        }
+        .padding(16)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
+    }
+
+    private func apply() async {
+        busy = true
+        error = nil
+        defer { busy = false }
+        do {
+            onUpdated(try await MerchantNetworkClient.shared.applyForFeeWaiver().merchant)
+        } catch {
+            self.error = "Couldn't apply for a fee waiver."
         }
     }
 }

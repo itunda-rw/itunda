@@ -23,6 +23,7 @@ struct MerchantDto: Decodable {
     let kybVerified: Bool
     let createdAt: String
     let category: String?
+    let feeRateOverride: Double?
 }
 struct MerchantResponse: Decodable { let success: Bool; let merchant: MerchantDto }
 struct RegisterMerchantRequest: Encodable { let businessName: String }
@@ -334,6 +335,13 @@ final class MerchantNetworkClient {
 
     func moveToPersonal(amount: Double) async throws -> BusinessWalletResponse {
         try await postWithHeader("api/v1/merchant/business-account/move-to-personal", body: MoveBusinessMoneyRequest(amount: amount), header: ("Idempotency-Key", UUID().uuidString))
+    }
+
+    // Real Naver Pay 영세 가맹점 수수료 지원 (small-merchant fee-waiver support program) --
+    // see rw.itunda.merchant.MerchantFeeWaiverService's own doc comment. merchant-mfe and
+    // Android already have this; this is the first iOS client.
+    func applyForFeeWaiver() async throws -> MerchantResponse {
+        try await post("api/v1/merchant/fee-waiver/apply", body: EmptyBody())
     }
 
     func getRestaurantOrders() async throws -> EatsOrdersResponse { try await get("api/v1/eats/orders/restaurant-orders") }

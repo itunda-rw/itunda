@@ -62,6 +62,7 @@ data class MerchantDto(
     val kybVerified: Boolean,
     val createdAt: String,
     val category: String?,
+    val feeRateOverride: Double? = null,
 )
 data class MerchantResponse(val success: Boolean, val merchant: MerchantDto)
 
@@ -344,6 +345,12 @@ interface ApiService {
 
     @POST("api/v1/merchant/business-account/move-to-personal")
     suspend fun moveToPersonal(@Header("Idempotency-Key") idempotencyKey: String, @Body request: MoveBusinessMoneyRequest): BusinessWalletResponse
+
+    // Real Naver Pay 영세 가맹점 수수료 지원 (small-merchant fee-waiver support program) --
+    // see rw.itunda.merchant.MerchantFeeWaiverService's own doc comment. merchant-mfe
+    // already has this; this is the first Android client.
+    @POST("api/v1/merchant/fee-waiver/apply")
+    suspend fun applyForFeeWaiver(): MerchantResponse
 
     // Real bulk/wholesale pricing (2026-07-25) -- see
     // rw.itunda.merchant.MerchantProductController.setPriceTiers.
