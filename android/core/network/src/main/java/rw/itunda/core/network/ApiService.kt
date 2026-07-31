@@ -2858,6 +2858,32 @@ interface ApiService {
     @DELETE("api/v1/vehicles/{id}")
     suspend fun removeVehicle(@Path("id") id: String): SuccessResponse
 
+    // Real Toss 유스 (Toss Youth)-style guardian-child account link -- see
+    // rw.itunda.family.FamilyLinkService's own doc comment. Honest scope boundary: real
+    // read-only spending oversight only, no new allowance mechanism (point an existing
+    // AutoTransfer/ScheduledTransfer at the child's phone number instead). bank-mfe
+    // already has this; this is the first Android client.
+    @POST("api/v1/family/invite")
+    suspend fun inviteFamilyChild(@Body request: InviteChildRequest): FamilyLinkResponse
+
+    @GET("api/v1/family/invites")
+    suspend fun getMyFamilyInvites(): FamilyLinksResponse
+
+    @POST("api/v1/family/invites/{id}/respond")
+    suspend fun respondToFamilyInvite(@Path("id") id: String, @Body request: RespondToInviteRequest): FamilyLinkResponse
+
+    @GET("api/v1/family/children")
+    suspend fun getMyFamilyChildren(): FamilyLinkViewsResponse
+
+    @GET("api/v1/family/guardians")
+    suspend fun getMyFamilyGuardians(): FamilyLinkViewsResponse
+
+    @GET("api/v1/family/children/{childUserId}/overview")
+    suspend fun getChildOverview(@Path("childUserId") childUserId: String): ChildOverviewResponse
+
+    @POST("api/v1/family/links/{id}/revoke")
+    suspend fun revokeFamilyLink(@Path("id") id: String): FamilyLinkResponse
+
     // Real Kakao Bank 모임통장 (group/shared account) equivalent -- first Android client
     // for this feature (item 104, found via a fresh matrix scan: zero client on either
     // mobile platform despite being real and live since well before this session).
@@ -2994,6 +3020,21 @@ data class VehicleValuationDto(
 data class VehicleResponse(val success: Boolean, val vehicle: VehicleDto)
 data class VehiclesResponse(val success: Boolean, val vehicles: List<VehicleDto>)
 data class VehicleValuationResponse(val success: Boolean, val valuation: VehicleValuationDto)
+
+// Real Toss 유스 (Toss Youth)-style guardian-child account link -- mirrors bank-mfe's
+// lib/family.ts exactly.
+data class InviteChildRequest(val childPhoneNumber: String)
+data class RespondToInviteRequest(val accept: Boolean)
+data class FamilyLinkDto(
+    val id: String, val guardianUserId: String, val childUserId: String,
+    val status: String, val createdAt: String, val respondedAt: String?,
+)
+data class FamilyLinkViewDto(val link: FamilyLinkDto, val guardianName: String, val childName: String)
+data class ChildOverviewDto(val childUserId: String, val childName: String, val walletBalance: Double, val recentTransactions: List<TransactionDto>)
+data class FamilyLinkResponse(val success: Boolean, val link: FamilyLinkDto)
+data class FamilyLinksResponse(val success: Boolean, val invites: List<FamilyLinkDto>)
+data class FamilyLinkViewsResponse(val success: Boolean, val children: List<FamilyLinkViewDto> = emptyList(), val guardians: List<FamilyLinkViewDto> = emptyList())
+data class ChildOverviewResponse(val success: Boolean, val overview: ChildOverviewDto)
 
 data class SpendingCategoryDto(val name: String, val amount: java.math.BigDecimal)
 data class SpendingInsightResponse(val success: Boolean, val categories: List<SpendingCategoryDto>, val totalSpent: java.math.BigDecimal)

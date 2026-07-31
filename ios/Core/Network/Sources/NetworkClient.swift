@@ -534,6 +534,35 @@ public struct VehicleResponse: Decodable { public let success: Bool; public let 
 public struct VehiclesResponse: Decodable { public let success: Bool; public let vehicles: [VehicleDto] }
 public struct VehicleValuationResponse: Decodable { public let success: Bool; public let valuation: VehicleValuationDto }
 
+// Real Toss 유스 (Toss Youth)-style guardian-child account link -- mirrors bank-mfe's
+// lib/family.ts exactly.
+public struct InviteChildRequest: Encodable { public let childPhoneNumber: String }
+public struct RespondToInviteRequest: Encodable { public let accept: Bool }
+public struct FamilyLinkDto: Decodable, Identifiable {
+    public let id: String
+    public let guardianUserId: String
+    public let childUserId: String
+    public let status: String
+    public let createdAt: String
+    public let respondedAt: String?
+}
+public struct FamilyLinkViewDto: Decodable, Identifiable {
+    public let link: FamilyLinkDto
+    public let guardianName: String
+    public let childName: String
+    public var id: String { link.id }
+}
+public struct ChildOverviewDto: Decodable {
+    public let childUserId: String
+    public let childName: String
+    public let walletBalance: Double
+    public let recentTransactions: [TransactionDto]
+}
+public struct FamilyLinkResponse: Decodable { public let success: Bool; public let link: FamilyLinkDto }
+public struct FamilyLinksResponse: Decodable { public let success: Bool; public let invites: [FamilyLinkDto] }
+public struct FamilyLinkViewsResponse: Decodable { public let success: Bool; public let children: [FamilyLinkViewDto]?; public let guardians: [FamilyLinkViewDto]? }
+public struct ChildOverviewResponse: Decodable { public let success: Bool; public let overview: ChildOverviewDto }
+
 public struct SavingsGoal: Decodable {
     public let id: String
     public let userId: String
@@ -745,6 +774,24 @@ extension NetworkClient {
     public func getMyVehicles() async throws -> VehiclesResponse { try await get("api/v1/vehicles") }
     public func getVehicleValuation(_ id: String) async throws -> VehicleValuationResponse { try await get("api/v1/vehicles/\(id)/valuation") }
     public func removeVehicle(_ id: String) async throws -> SuccessResponse { try await authenticatedDelete("api/v1/vehicles/\(id)") }
+
+    // Real Toss 유스 (Toss Youth)-style guardian-child account link -- see
+    // rw.itunda.family.FamilyLinkService's own doc comment. Honest scope boundary: real
+    // read-only spending oversight only, no new allowance mechanism. bank-mfe/Android
+    // already have this; this is the first iOS client.
+    public func inviteFamilyChild(childPhoneNumber: String) async throws -> FamilyLinkResponse {
+        try await authenticatedPost("api/v1/family/invite", body: InviteChildRequest(childPhoneNumber: childPhoneNumber))
+    }
+    public func getMyFamilyInvites() async throws -> FamilyLinksResponse { try await get("api/v1/family/invites") }
+    public func respondToFamilyInvite(_ id: String, accept: Bool) async throws -> FamilyLinkResponse {
+        try await authenticatedPost("api/v1/family/invites/\(id)/respond", body: RespondToInviteRequest(accept: accept))
+    }
+    public func getMyFamilyChildren() async throws -> FamilyLinkViewsResponse { try await get("api/v1/family/children") }
+    public func getMyFamilyGuardians() async throws -> FamilyLinkViewsResponse { try await get("api/v1/family/guardians") }
+    public func getChildOverview(_ childUserId: String) async throws -> ChildOverviewResponse { try await get("api/v1/family/children/\(childUserId)/overview") }
+    public func revokeFamilyLink(_ id: String) async throws -> FamilyLinkResponse {
+        try await authenticatedPost("api/v1/family/links/\(id)/revoke", body: EmptyBody())
+    }
 
     public func getSavingsGoals() async throws -> SavingsGoalsResponse { try await get("api/v1/savings/goals") }
     public func getInterestJar() async throws -> InterestJarResponse { try await get("api/v1/savings/interest-jar") }
