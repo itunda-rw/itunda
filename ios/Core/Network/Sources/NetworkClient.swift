@@ -1663,6 +1663,33 @@ public struct ToggleCommunityLikeResponse: Decodable { public let success: Bool;
 // CommunityService.joinMeetup's own doc comment.
 public struct JoinMeetupResponse: Decodable { public let success: Bool; public let groupId: String }
 
+// Real 당근모임 (Karrot Meetups) recurring schedule + attendance check-in -- mirrors
+// bank-mfe's lib/community.ts exactly. bank-mfe/Android already have this; this is the
+// first iOS client.
+public struct ScheduleMeetupSessionsRequest: Encodable {
+    public let dates: [String]
+    public init(dates: [String]) { self.dates = dates }
+}
+public struct MeetupSessionDto: Decodable, Identifiable {
+    public let id: String
+    public let postId: String
+    public let sequence: Int
+    public let scheduledFor: String
+    public let createdAt: String
+}
+public struct MeetupSessionsResponse: Decodable { public let success: Bool; public let sessions: [MeetupSessionDto] }
+public struct MeetupAttendanceDto: Decodable { public let id: String; public let sessionId: String; public let userId: String; public let checkedInAt: String }
+public struct MeetupAttendanceResponse: Decodable { public let success: Bool; public let attendance: MeetupAttendanceDto }
+
+// Real 당근마켓 같이사요 (Karrot "Let's Buy Together") -- see
+// rw.itunda.community.CommunityService.finalizeGroupBuy's own doc comment. bank-mfe/
+// Android already have this; this is the first iOS client.
+public struct FinalizeGroupBuyRequest: Encodable {
+    public let totalAmount: Double
+    public let description: String
+    public init(totalAmount: Double, description: String) { self.totalAmount = totalAmount; self.description = description }
+}
+
 // Real 당근알바-style local job board (2026-07-19) -- see rw.itunda.jobs.web.JobPostController.
 public struct JobCategoryDto: Decodable, Identifiable { public let id: String; public let label: String }
 public struct JobPostDto: Decodable, Identifiable {
@@ -2635,6 +2662,19 @@ extension NetworkClient {
     // CommunityService.joinMeetup's own doc comment.
     public func joinCommunityMeetup(_ postId: String) async throws -> JoinMeetupResponse {
         try await authenticatedPost("api/v1/community/posts/\(postId)/join", body: EmptyBody())
+    }
+
+    public func scheduleMeetupSessions(_ postId: String, dates: [String]) async throws -> MeetupSessionsResponse {
+        try await authenticatedPost("api/v1/community/posts/\(postId)/sessions", body: ScheduleMeetupSessionsRequest(dates: dates))
+    }
+    public func getMeetupSessions(_ postId: String) async throws -> MeetupSessionsResponse {
+        try await get("api/v1/community/posts/\(postId)/sessions")
+    }
+    public func checkIntoMeetupSession(_ sessionId: String) async throws -> MeetupAttendanceResponse {
+        try await authenticatedPost("api/v1/community/sessions/\(sessionId)/check-in", body: EmptyBody())
+    }
+    public func finalizeGroupBuy(_ postId: String, totalAmount: Double, description: String) async throws -> SuccessResponse {
+        try await authenticatedPost("api/v1/community/posts/\(postId)/finalize-group-buy", body: FinalizeGroupBuyRequest(totalAmount: totalAmount, description: description))
     }
 
     // Real 당근알바-style local job board (2026-07-19) -- see rw.itunda.jobs.web.JobPostController.

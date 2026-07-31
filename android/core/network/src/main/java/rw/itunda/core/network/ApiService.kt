@@ -725,6 +725,15 @@ data class ToggleCommunityLikeResponse(val success: Boolean, val liked: Boolean)
 // CommunityService.joinMeetup's own doc comment.
 data class JoinMeetupResponse(val success: Boolean, val groupId: String)
 
+// Real 당근모임 (Karrot Meetups) recurring schedule + attendance check-in -- mirrors
+// bank-mfe's lib/community.ts exactly.
+data class ScheduleMeetupSessionsRequest(val dates: List<String>)
+data class MeetupSessionDto(val id: String, val postId: String, val sequence: Int, val scheduledFor: String, val createdAt: String)
+data class MeetupSessionsResponse(val success: Boolean, val sessions: List<MeetupSessionDto>)
+data class MeetupAttendanceDto(val id: String, val sessionId: String, val userId: String, val checkedInAt: String)
+data class MeetupAttendanceResponse(val success: Boolean, val attendance: MeetupAttendanceDto)
+data class FinalizeGroupBuyRequest(val totalAmount: java.math.BigDecimal, val description: String)
+
 // Real 당근알바-style local job board (2026-07-19) -- see rw.itunda.jobs.web.JobPostController.
 data class JobCategoryDto(val id: String, val label: String)
 data class JobPostDto(
@@ -2057,6 +2066,24 @@ interface ApiService {
     // CommunityService.joinMeetup's own doc comment.
     @POST("api/v1/community/posts/{id}/join")
     suspend fun joinCommunityMeetup(@Path("id") postId: String): JoinMeetupResponse
+
+    // Real 당근모임 (Karrot Meetups) recurring schedule + attendance check-in -- see
+    // rw.itunda.community.CommunityService.scheduleMeetupSessions/checkIntoSession's own
+    // doc comments. bank-mfe already has this; this is the first Android client.
+    @POST("api/v1/community/posts/{postId}/sessions")
+    suspend fun scheduleMeetupSessions(@Path("postId") postId: String, @Body request: ScheduleMeetupSessionsRequest): MeetupSessionsResponse
+
+    @GET("api/v1/community/posts/{postId}/sessions")
+    suspend fun getMeetupSessions(@Path("postId") postId: String): MeetupSessionsResponse
+
+    @POST("api/v1/community/sessions/{sessionId}/check-in")
+    suspend fun checkIntoMeetupSession(@Path("sessionId") sessionId: String): MeetupAttendanceResponse
+
+    // Real 당근마켓 같이사요 (Karrot "Let's Buy Together") -- see
+    // rw.itunda.community.CommunityService.finalizeGroupBuy's own doc comment. bank-mfe
+    // already has this; this is the first Android client.
+    @POST("api/v1/community/posts/{postId}/finalize-group-buy")
+    suspend fun finalizeGroupBuy(@Path("postId") postId: String, @Body request: FinalizeGroupBuyRequest): SuccessResponse
 
     // Real 당근알바-style local job board (2026-07-19) -- see rw.itunda.jobs.web.JobPostController.
     @GET("api/v1/jobs/categories")

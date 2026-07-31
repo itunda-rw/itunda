@@ -1723,6 +1723,7 @@ private struct CommunityPostDetailView: View {
     @State private var error: String?
     @State private var liking = false
     @State private var commenting = false
+    private let currentUserId = KeychainTokenStore.shared.getUserId()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -1755,6 +1756,13 @@ private struct CommunityPostDetailView: View {
                         .padding(18)
                         .background(IDS.Colors.card)
                         .cornerRadius(IDS.Layout.cardCornerRadius)
+
+                        if post.category == "meetup" {
+                            MeetupSessionsSection(post: post, currentUserId: currentUserId)
+                        }
+                        if post.category == "group_buy" {
+                            GroupBuyFinalizeSection(post: post, currentUserId: currentUserId)
+                        }
                     }
 
                     Text("Comments").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
@@ -1828,6 +1836,178 @@ private struct CommunityPostDetailView: View {
             await load()
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
+    }
+}
+
+/// Real 당근모임 (Karrot Meetups) recurring schedule + attendance check-in -- see
+/// rw.itunda.community.CommunityService.scheduleMeetupSessions/checkIntoSession's own doc
+/// comments. Only rendered for a real category == "meetup" post; the author gets a real
+/// schedule form, any real joined member gets a real per-session check-in button.
+/// bank-mfe/Android already have this; this is the first iOS client.
+private struct MeetupSessionsSection: View {
+    let post: CommunityPostDto
+    let currentUserId: String?
+
+    @State private var sessions: [MeetupSessionDto]?
+    @State private var dates: [String] = [""]
+    @State private var scheduling = false
+    @State private var checkingInId: String?
+    @State private var checkedInIds: Set<String> = []
+    @State private var error: String?
+
+    private var isAuthor: Bool { currentUserId != nil && currentUserId == post.authorId }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Sessions").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+            if sessions == nil {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 40)
+            } else if sessions!.isEmpty {
+                Text("No sessions scheduled yet.").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
+            } else {
+                ForEach(sessions!) { s in
+                    HStack {
+                        Text(String(s.scheduledFor.replacingOccurrences(of: "T", with: " ").prefix(16)))
+                            .font(.subheadline).foregroundColor(IDS.Colors.textPrimary)
+                        Spacer()
+                        Button(action: { Task { await checkIn(s.id) } }) {
+                            Text(checkedInIds.contains(s.id) ? "✓ Checked in" : (checkingInId == s.id ? "…" : "Check in"))
+                                .font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                .padding(.horizontal, 12).padding(.vertical, 6)
+                                .background(IDS.Colors.chipBackground).cornerRadius(8)
+                        }
+                        .disabled(checkingInId == s.id || checkedInIds.contains(s.id))
+                    }
+                    .padding(12).background(IDS.Colors.card).cornerRadius(12)
+                }
+            }
+            if isAuthor {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Schedule sessions (up to 6)").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                    ForEach(dates.indices, id: \.self) { i in
+                        TextField("Hours from now", text: Binding(get: { dates[i] }, set: { dates[i] = $0 }))
+                            .keyboardType(.decimalPad)
+                            .padding(10).background(IDS.Colors.chipBackground).cornerRadius(10)
+                    }
+                    HStack(spacing: 8) {
+                        if dates.count < 6 {
+                            Button("+ Add date") { dates.append("") }
+                                .font(.caption).bold().foregroundColor(IDS.Colors.brand)
+                        }
+                        Button(action: { Task { await schedule() } }) {
+                            Text(scheduling ? "Scheduling…" : "Schedule").bold().foregroundColor(.white)
+                                .padding(.horizontal, 14).padding(.vertical, 8)
+                                .background(IDS.Colors.brand).cornerRadius(8)
+                        }
+                        .disabled(scheduling)
+                    }
+                }
+                .padding(12).background(IDS.Colors.card).cornerRadius(12)
+            }
+            if let error {
+                Text(error).font(.caption).foregroundColor(.red)
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        sessions = (try? await NetworkClient.shared.getMeetupSessions(post.id).sessions) ?? []
+    }
+
+    private func checkIn(_ sessionId: String) async {
+        checkingInId = sessionId
+        defer { checkingInId = nil }
+        do {
+            _ = try await NetworkClient.shared.checkIntoMeetupSession(sessionId)
+            checkedInIds.insert(sessionId)
+        } catch {
+            self.error = "Could not check in to this session."
+        }
+    }
+
+    private func schedule() async {
+        let isoDates = dates.compactMap { Double($0) }.map { hours in
+            ISO8601DateFormatter().string(from: Date().addingTimeInterval(hours * 3600))
+        }
+        guard !isoDates.isEmpty else {
+            error = "Add at least one session date."
+            return
+        }
+        scheduling = true
+        error = nil
+        defer { scheduling = false }
+        do {
+            _ = try await NetworkClient.shared.scheduleMeetupSessions(post.id, dates: isoDates)
+            dates = [""]
+            await load()
+        } catch {
+            self.error = "Could not schedule these sessions."
+        }
+    }
+}
+
+/// Real 당근마켓 같이사요 (Karrot "Let's Buy Together") -- see
+/// rw.itunda.community.CommunityService.finalizeGroupBuy's own doc comment. Author-only:
+/// once real participants have joined via the same 참여하기 flow a meetup already uses,
+/// the organizer fronts the total cost and splits it via the already-real SplitBill
+/// mechanic. bank-mfe/Android already have this; this is the first iOS client.
+private struct GroupBuyFinalizeSection: View {
+    let post: CommunityPostDto
+    let currentUserId: String?
+
+    @State private var totalAmount = ""
+    @State private var description = ""
+    @State private var submitting = false
+    @State private var done = false
+    @State private var error: String?
+
+    var body: some View {
+        if currentUserId == nil || currentUserId != post.authorId {
+            EmptyView()
+        } else if done {
+            Text("Split request sent -- see it in your group chat's Split bill tab.")
+                .font(.subheadline).bold().foregroundColor(IDS.Colors.brand)
+                .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                .background(IDS.Colors.card).cornerRadius(12)
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Split the cost").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                Text("Enter what you paid up front -- every real member who joined will be asked for their even share.")
+                    .font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                TextField("Total amount (RWF)", text: $totalAmount)
+                    .keyboardType(.decimalPad)
+                    .padding(10).background(IDS.Colors.chipBackground).cornerRadius(10)
+                TextField("What was this for?", text: $description)
+                    .padding(10).background(IDS.Colors.chipBackground).cornerRadius(10)
+                if let error {
+                    Text(error).font(.caption).foregroundColor(.red)
+                }
+                Button(action: { Task { await finalize() } }) {
+                    Text(submitting ? "Splitting…" : "Request even split").bold().foregroundColor(.white)
+                        .frame(maxWidth: .infinity).padding(.vertical, 12)
+                        .background(IDS.Colors.brand).cornerRadius(10)
+                }
+                .disabled(submitting)
+            }
+            .padding(14).background(IDS.Colors.card).cornerRadius(12)
+        }
+    }
+
+    private func finalize() async {
+        guard let amount = Double(totalAmount), amount > 0, !description.trimmingCharacters(in: .whitespaces).isEmpty else {
+            error = "Enter a real total amount and a short description."
+            return
+        }
+        submitting = true
+        error = nil
+        defer { submitting = false }
+        do {
+            _ = try await NetworkClient.shared.finalizeGroupBuy(post.id, totalAmount: amount, description: description.trimmingCharacters(in: .whitespaces))
+            done = true
+        } catch {
+            self.error = "Could not split this cost."
         }
     }
 }

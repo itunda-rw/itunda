@@ -29,6 +29,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -57,7 +58,10 @@ import rw.itunda.core.network.CommunityCategoryDto
 import rw.itunda.core.network.CommunityCommentWithAuthorDto
 import rw.itunda.core.network.CommunityPostDto
 import rw.itunda.core.network.CreateCommunityPostRequest
+import rw.itunda.core.network.FinalizeGroupBuyRequest
+import rw.itunda.core.network.MeetupSessionDto
 import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.ScheduleMeetupSessionsRequest
 import rw.itunda.core.network.TokenStore
 import rw.itunda.core.network.superAppErrorMessage
 import java.io.IOException
@@ -530,6 +534,7 @@ private fun CommunityPostCard(
 
 @Composable
 private fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
+    val currentUserId = remember { NetworkClient.currentTokenStore().let(TokenStore::getUserId) }
     var post by remember { mutableStateOf<CommunityPostDto?>(null) }
     var authorName by remember { mutableStateOf("") }
     var likedByMe by remember { mutableStateOf(false) }
@@ -584,6 +589,8 @@ private fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
                 }
             }
         }
+        post?.takeIf { it.category == "meetup" }?.let { p -> MeetupSessionsSection(post = p, currentUserId = currentUserId) }
+        post?.takeIf { it.category == "group_buy" }?.let { p -> GroupBuyFinalizeSection(post = p, currentUserId = currentUserId) }
         Spacer(modifier = Modifier.height(16.dp))
         Text("Comments", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         Spacer(modifier = Modifier.height(8.dp))
@@ -627,6 +634,178 @@ private fun CommunityPostDetailScreen(postId: String, onBack: () -> Unit) {
                     }
                     .padding(horizontal = 16.dp, vertical = 12.dp),
             ) { Text(if (commenting) "…" else "Send", color = Color.White, fontSize = 13.sp) }
+        }
+    }
+}
+
+/**
+ * Real 당근모임 (Karrot Meetups) recurring schedule + attendance check-in -- see
+ * rw.itunda.community.CommunityService.scheduleMeetupSessions/checkIntoSession's own doc
+ * comments. Only rendered for a real category == "meetup" post; the author gets a real
+ * schedule form, any real joined member gets a real per-session check-in button.
+ * bank-mfe already has this; this is the first Android client.
+ */
+@Composable
+private fun MeetupSessionsSection(post: CommunityPostDto, currentUserId: String?) {
+    var sessions by remember { mutableStateOf<List<MeetupSessionDto>?>(null) }
+    val dates = remember { mutableStateListOf("") }
+    var scheduling by remember { mutableStateOf(false) }
+    var checkingInId by remember { mutableStateOf<String?>(null) }
+    var checkedInIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+    val isAuthor = currentUserId != null && currentUserId == post.authorId
+
+    fun load() {
+        coroutineScope.launch {
+            try {
+                sessions = NetworkClient.apiService.getMeetupSessions(post.id).sessions
+            } catch (e: Exception) {
+                sessions = emptyList()
+            }
+        }
+    }
+    LaunchedEffect(post.id) { load() }
+
+    Spacer(modifier = Modifier.height(16.dp))
+    Text("Sessions", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+    Spacer(modifier = Modifier.height(8.dp))
+    val list = sessions
+    if (list == null) {
+        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), modifier = Modifier.fillMaxWidth().height(60.dp)) {}
+    } else if (list.isEmpty()) {
+        Text("No sessions scheduled yet.", color = Ids.colors.textSecondary, fontSize = 13.sp)
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            list.forEach { s ->
+                Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(s.scheduledFor.replace("T", " ").take(16), color = Ids.colors.textPrimary, fontSize = 13.sp)
+                        ListingActionButton(
+                            if (checkedInIds.contains(s.id)) "✓ Checked in" else if (checkingInId == s.id) "…" else "Check in",
+                            checkingInId == s.id || checkedInIds.contains(s.id),
+                        ) {
+                            checkingInId = s.id
+                            coroutineScope.launch {
+                                try {
+                                    NetworkClient.apiService.checkIntoMeetupSession(s.id)
+                                    checkedInIds = checkedInIds + s.id
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } finally {
+                                    checkingInId = null
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (isAuthor) {
+        Spacer(modifier = Modifier.height(8.dp))
+        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Schedule sessions (up to 6)", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                dates.forEachIndexed { i, d ->
+                    OutlinedTextField(
+                        value = d, onValueChange = { dates[i] = it },
+                        placeholder = { Text("Hours from now") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (dates.size < 6) {
+                        ListingActionButton("+ Add date", false) { dates.add("") }
+                    }
+                    ListingActionButton(if (scheduling) "Scheduling…" else "Schedule", scheduling, filled = true) {
+                        val isoDates = dates.mapNotNull { it.toDoubleOrNull() }
+                            .map { hours -> java.time.Instant.now().plusSeconds((hours * 3600).toLong()).toString() }
+                        if (isoDates.isEmpty()) {
+                            error = "Add at least one session date."
+                        } else {
+                            scheduling = true
+                            error = null
+                            coroutineScope.launch {
+                                try {
+                                    NetworkClient.apiService.scheduleMeetupSessions(post.id, ScheduleMeetupSessionsRequest(isoDates))
+                                    dates.clear(); dates.add("")
+                                    load()
+                                } catch (e: HttpException) {
+                                    error = superAppErrorMessage(e)
+                                } finally {
+                                    scheduling = false
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+}
+
+/**
+ * Real 당근마켓 같이사요 (Karrot "Let's Buy Together") -- see
+ * rw.itunda.community.CommunityService.finalizeGroupBuy's own doc comment. Author-only:
+ * once real participants have joined via the same 참여하기 flow a meetup already uses,
+ * the organizer fronts the total cost and splits it via the already-real SplitBill
+ * mechanic. bank-mfe already has this; this is the first Android client.
+ */
+@Composable
+private fun GroupBuyFinalizeSection(post: CommunityPostDto, currentUserId: String?) {
+    if (currentUserId == null || currentUserId != post.authorId) return
+    var totalAmount by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
+    var done by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    Spacer(modifier = Modifier.height(16.dp))
+    if (done) {
+        Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+            Text(
+                "Split request sent -- see it in your group chat's Split bill tab.",
+                color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                modifier = Modifier.padding(14.dp),
+            )
+        }
+        return
+    }
+    Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Split the cost", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text(
+                "Enter what you paid up front -- every real member who joined will be asked for their even share.",
+                color = Ids.colors.textSecondary, fontSize = 12.sp,
+            )
+            OutlinedTextField(value = totalAmount, onValueChange = { totalAmount = it }, placeholder = { Text("Total amount (RWF)") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = description, onValueChange = { description = it }, placeholder = { Text("What was this for?") }, modifier = Modifier.fillMaxWidth())
+            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+            ListingActionButton(if (submitting) "Splitting…" else "Request even split", submitting, filled = true) {
+                val amount = totalAmount.toBigDecimalOrNull()
+                if (amount == null || amount <= java.math.BigDecimal.ZERO || description.isBlank()) {
+                    error = "Enter a real total amount and a short description."
+                } else {
+                    submitting = true
+                    error = null
+                    coroutineScope.launch {
+                        try {
+                            NetworkClient.apiService.finalizeGroupBuy(post.id, FinalizeGroupBuyRequest(amount, description.trim()))
+                            done = true
+                        } catch (e: HttpException) {
+                            error = superAppErrorMessage(e)
+                        } finally {
+                            submitting = false
+                        }
+                    }
+                }
+            }
         }
     }
 }
