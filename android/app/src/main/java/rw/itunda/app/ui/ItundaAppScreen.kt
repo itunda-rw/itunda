@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.AttachMoney
 import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Campaign
@@ -259,6 +260,9 @@ fun ItundaAppScreen(
         var showCard by rememberSaveable { mutableStateOf(false) }
         var showSpending by rememberSaveable { mutableStateOf(false) }
         var showRides by rememberSaveable { mutableStateOf(false) }
+        // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment)
+        // screen (2026-07-31) -- bank-mfe shipped first; same pattern.
+        var showVehicleInspection by rememberSaveable { mutableStateOf(false) }
         // Real 토스뱅크 외화통장 (foreign-currency account) screen (2026-07-25) -- same
         // "backend existed with zero mobile UI" gap-close pattern as the two above.
         var showForeignCurrency by rememberSaveable { mutableStateOf(false) }
@@ -736,6 +740,10 @@ fun ItundaAppScreen(
         }
         // Real Kakao T-style ride-hailing screen (2026-07-28, item 109) -- first
         // Android client for this feature (bank-mfe has had it since 2026-07-26).
+        if (showVehicleInspection) {
+            BackHandler { showVehicleInspection = false }
+            VehicleInspectionScreen(onBack = { showVehicleInspection = false })
+        }
         if (showRides) {
             BackHandler { showRides = false }
             RideScreen(onBack = { showRides = false })
@@ -859,6 +867,7 @@ fun ItundaAppScreen(
                             onOpenGroupAccounts = { showGroupAccounts = true },
                             onOpenSpending = { showSpending = true },
                             onOpenRides = { showRides = true },
+                            onOpenVehicleInspection = { showVehicleInspection = true },
                             onOpenForeignCurrency = { showForeignCurrency = true },
                             onOpenRequestMoney = { showRequestMoney = true },
                             onOpenAutoTopUp = { showAutoTopUp = true },
@@ -1384,6 +1393,7 @@ private fun MenuScreen(
     onOpenGroupAccounts: () -> Unit = {},
     onOpenSpending: () -> Unit = {},
     onOpenRides: () -> Unit = {},
+    onOpenVehicleInspection: () -> Unit = {},
     onOpenForeignCurrency: () -> Unit = {},
     onOpenRequestMoney: () -> Unit = {},
     onOpenAutoTopUp: () -> Unit = {},
@@ -1521,6 +1531,7 @@ private fun MenuScreen(
                 FlatRow("Card", subtitle = "App-controlled spend limits, one-tap freeze", icon = Icons.Outlined.CreditCard, iconColor = AccentBlue, onClick = onOpenCard),
                 FlatRow("Group account", subtitle = "Shared account with dues and split expenses", icon = Icons.Outlined.Group, iconColor = AccentPurple, onClick = onOpenGroupAccounts),
                 FlatRow("Rides", subtitle = "Request a ride or drive for real fares", icon = Icons.Outlined.DirectionsCar, iconColor = AccentBlue, onClick = onOpenRides),
+                FlatRow("Vehicle inspection", subtitle = "Pay a mechanic to inspect a used car before you buy", icon = Icons.Outlined.Build, iconColor = AccentTeal, onClick = onOpenVehicleInspection),
                 FlatRow("Foreign currency", subtitle = "Hold and convert USD, EUR, GBP", icon = Icons.Outlined.CurrencyExchange, iconColor = AccentBlue, onClick = onOpenForeignCurrency),
                 FlatRow("Mobile plan", subtitle = "MTN, Airtel, broadband", icon = Icons.Outlined.Public, iconColor = AccentTeal)
             ))

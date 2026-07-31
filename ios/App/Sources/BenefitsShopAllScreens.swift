@@ -226,6 +226,9 @@ struct EntireMenuScreen: View {
     // Real Kakao T-style ride-hailing screen (2026-07-28, item 110) -- last remaining
     // client platform for this feature (bank-mfe always had it, Android item 109).
     @State private var showRides = false
+    // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment)
+    // screen (2026-07-31) -- bank-mfe and Android shipped first; same pattern.
+    @State private var showVehicleInspection = false
     // Real Kakao Pay round-up auto-saving screen (2026-07-28, item 113) -- last
     // remaining client platform for this feature (bank-mfe item 112, Android already
     // had it).
@@ -320,6 +323,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Credit score", subtitle: "Free check, alternative data", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showCreditScore = true }),
                         FlatRow(title: "Spending", subtitle: "Real, ledger-based category breakdown", symbol: "chart.pie.fill", tint: .accentBlue, action: { showSpending = true }),
                         FlatRow(title: "Rides", subtitle: "Request a ride or drive for real fares", symbol: "car.fill", tint: .accentBlue, action: { showRides = true }),
+                        FlatRow(title: "Vehicle inspection", subtitle: "Pay a mechanic to inspect a used car before you buy", symbol: "wrench.and.screwdriver.fill", tint: .accentTeal, action: { showVehicleInspection = true }),
                         FlatRow(title: "Round-up savings", subtitle: "Auto-save spare change from every transfer", symbol: "arrow.up.circle.fill", tint: .accentOrange, action: { showRoundUp = true }),
                         FlatRow(title: "Foreign currency", subtitle: "Hold and convert USD, EUR, GBP", symbol: "arrow.left.arrow.right.circle.fill", tint: .accentBlue, action: { showForeignCurrency = true }),
                         FlatRow(title: "12-month deposit", subtitle: "Interest paid upfront, principal locked 12 months", symbol: "lock.fill", tint: .accentTeal, action: { showUpfrontDeposit = true }),
@@ -451,6 +455,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showSpending) {
             SpendingScreenView(onBack: { showSpending = false })
+        }
+        .sheet(isPresented: $showVehicleInspection) {
+            VehicleInspectionScreenView(onBack: { showVehicleInspection = false })
         }
         .sheet(isPresented: $showRides) {
             RideScreenView(onBack: { showRides = false })

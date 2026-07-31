@@ -2751,6 +2751,40 @@ interface ApiService {
     @GET("api/v1/rides/drivers/{driverId}/rating")
     suspend fun getRideDriverRating(@Path("driverId") driverId: String): RideDriverRatingResponse
 
+    // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- see
+    // rw.itunda.marketplace.VehicleInspectionService's own doc comment. A buyer books
+    // and 100%-prepays a real mechanic to inspect a real Marketplace used-car listing
+    // before purchase. bank-mfe already has this; this is the first Android client.
+    @POST("api/v1/marketplace/inspections/mechanics/register")
+    suspend fun registerAsInspectionMechanic(@Body request: RegisterInspectionMechanicRequest): VehicleInspectionMechanicResponse
+
+    @GET("api/v1/marketplace/inspections/mechanics/me")
+    suspend fun getMyInspectionMechanicProfile(): VehicleInspectionMechanicOrNullResponse
+
+    @GET("api/v1/marketplace/inspections/mechanics")
+    suspend fun getAvailableInspectionMechanics(): VehicleInspectionMechanicsResponse
+
+    @POST("api/v1/marketplace/inspections/mechanics/availability")
+    suspend fun setInspectionMechanicAvailability(@Body request: SetInspectionMechanicAvailabilityRequest): VehicleInspectionMechanicResponse
+
+    @POST("api/v1/marketplace/inspections")
+    suspend fun requestVehicleInspection(@Header("Idempotency-Key") idempotencyKey: String, @Body request: RequestVehicleInspectionRequest): VehicleInspectionBookingResponse
+
+    @GET("api/v1/marketplace/inspections/my-bookings")
+    suspend fun getMyInspectionBookings(): VehicleInspectionBookingsResponse
+
+    @GET("api/v1/marketplace/inspections/my-mechanic-bookings")
+    suspend fun getMyInspectionMechanicBookings(): VehicleInspectionBookingsResponse
+
+    @POST("api/v1/marketplace/inspections/{bookingId}/accept")
+    suspend fun acceptVehicleInspection(@Path("bookingId") bookingId: String): VehicleInspectionBookingResponse
+
+    @POST("api/v1/marketplace/inspections/{bookingId}/complete")
+    suspend fun completeVehicleInspection(@Path("bookingId") bookingId: String, @Body request: CompleteVehicleInspectionRequest): VehicleInspectionBookingResponse
+
+    @POST("api/v1/marketplace/inspections/{bookingId}/cancel")
+    suspend fun cancelVehicleInspection(@Path("bookingId") bookingId: String): VehicleInspectionBookingResponse
+
     // Real Kakao Bank 모임통장 (group/shared account) equivalent -- first Android client
     // for this feature (item 104, found via a fresh matrix scan: zero client on either
     // mobile platform despite being real and live since well before this session).
@@ -2846,6 +2880,27 @@ data class RideTripReviewDto(
 )
 data class RideTripReviewResponse(val success: Boolean, val review: RideTripReviewDto)
 data class RideDriverRatingResponse(val success: Boolean, val average: Double?, val count: Long)
+
+// Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- mirrors
+// bank-mfe's lib/vehicleInspection.ts exactly.
+data class VehicleInspectionMechanicDto(
+    val id: String, val userId: String, val walletId: String, val businessName: String,
+    val available: Boolean, val createdAt: String,
+)
+data class RegisterInspectionMechanicRequest(val businessName: String)
+data class SetInspectionMechanicAvailabilityRequest(val available: Boolean)
+data class RequestVehicleInspectionRequest(val listingId: String, val mechanicId: String, val fee: java.math.BigDecimal, val scheduledFor: String)
+data class CompleteVehicleInspectionRequest(val findings: String? = null)
+data class VehicleInspectionBookingDto(
+    val id: String, val listingId: String, val buyerId: String, val mechanicId: String,
+    val fee: java.math.BigDecimal, val platformFee: java.math.BigDecimal, val scheduledFor: String,
+    val status: String, val findings: String?, val createdAt: String,
+)
+data class VehicleInspectionMechanicResponse(val success: Boolean, val mechanic: VehicleInspectionMechanicDto)
+data class VehicleInspectionMechanicOrNullResponse(val success: Boolean, val mechanic: VehicleInspectionMechanicDto?)
+data class VehicleInspectionMechanicsResponse(val success: Boolean, val mechanics: List<VehicleInspectionMechanicDto>)
+data class VehicleInspectionBookingResponse(val success: Boolean, val booking: VehicleInspectionBookingDto)
+data class VehicleInspectionBookingsResponse(val success: Boolean, val bookings: List<VehicleInspectionBookingDto>)
 
 data class SpendingCategoryDto(val name: String, val amount: java.math.BigDecimal)
 data class SpendingInsightResponse(val success: Boolean, val categories: List<SpendingCategoryDto>, val totalSpent: java.math.BigDecimal)

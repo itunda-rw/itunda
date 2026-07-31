@@ -451,6 +451,56 @@ public struct RideTripReviewDto: Decodable {
 public struct RideTripReviewResponse: Decodable { public let success: Bool; public let review: RideTripReviewDto }
 public struct RideDriverRatingResponse: Decodable { public let success: Bool; public let average: Double?; public let count: Int }
 
+// Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- mirrors
+// bank-mfe's lib/vehicleInspection.ts exactly. bank-mfe and Android already have this;
+// this is the first iOS client.
+public struct VehicleInspectionMechanicDto: Decodable {
+    public let id: String
+    public let userId: String
+    public let walletId: String
+    public let businessName: String
+    public let available: Bool
+    public let createdAt: String
+}
+public struct RegisterInspectionMechanicRequest: Encodable {
+    public let businessName: String
+    public init(businessName: String) { self.businessName = businessName }
+}
+public struct SetInspectionMechanicAvailabilityRequest: Encodable {
+    public let available: Bool
+    public init(available: Bool) { self.available = available }
+}
+public struct RequestVehicleInspectionRequest: Encodable {
+    public let listingId: String
+    public let mechanicId: String
+    public let fee: Double
+    public let scheduledFor: String
+    public init(listingId: String, mechanicId: String, fee: Double, scheduledFor: String) {
+        self.listingId = listingId; self.mechanicId = mechanicId; self.fee = fee; self.scheduledFor = scheduledFor
+    }
+}
+public struct CompleteVehicleInspectionRequest: Encodable {
+    public let findings: String?
+    public init(findings: String?) { self.findings = findings }
+}
+public struct VehicleInspectionBookingDto: Decodable, Identifiable {
+    public let id: String
+    public let listingId: String
+    public let buyerId: String
+    public let mechanicId: String
+    public let fee: Double
+    public let platformFee: Double
+    public let scheduledFor: String
+    public let status: String
+    public let findings: String?
+    public let createdAt: String
+}
+public struct VehicleInspectionMechanicResponse: Decodable { public let success: Bool; public let mechanic: VehicleInspectionMechanicDto }
+public struct VehicleInspectionMechanicOrNullResponse: Decodable { public let success: Bool; public let mechanic: VehicleInspectionMechanicDto? }
+public struct VehicleInspectionMechanicsResponse: Decodable { public let success: Bool; public let mechanics: [VehicleInspectionMechanicDto] }
+public struct VehicleInspectionBookingResponse: Decodable { public let success: Bool; public let booking: VehicleInspectionBookingDto }
+public struct VehicleInspectionBookingsResponse: Decodable { public let success: Bool; public let bookings: [VehicleInspectionBookingDto] }
+
 public struct SavingsGoal: Decodable {
     public let id: String
     public let userId: String
@@ -618,6 +668,41 @@ extension NetworkClient {
     }
 
     public func getRideDriverRating(driverId: String) async throws -> RideDriverRatingResponse { try await get("api/v1/rides/drivers/\(driverId)/rating") }
+
+    // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- see
+    // rw.itunda.marketplace.VehicleInspectionService's own doc comment. bank-mfe and
+    // Android already have this; this is the first iOS client.
+    public func registerAsInspectionMechanic(businessName: String) async throws -> VehicleInspectionMechanicResponse {
+        try await authenticatedPost("api/v1/marketplace/inspections/mechanics/register", body: RegisterInspectionMechanicRequest(businessName: businessName))
+    }
+    public func getMyInspectionMechanicProfile() async throws -> VehicleInspectionMechanicOrNullResponse {
+        try await get("api/v1/marketplace/inspections/mechanics/me")
+    }
+    public func getAvailableInspectionMechanics() async throws -> VehicleInspectionMechanicsResponse {
+        try await get("api/v1/marketplace/inspections/mechanics")
+    }
+    public func setInspectionMechanicAvailability(available: Bool) async throws -> VehicleInspectionMechanicResponse {
+        try await authenticatedPost("api/v1/marketplace/inspections/mechanics/availability", body: SetInspectionMechanicAvailabilityRequest(available: available))
+    }
+    public func requestVehicleInspection(listingId: String, mechanicId: String, fee: Double, scheduledFor: String) async throws -> VehicleInspectionBookingResponse {
+        try await authenticatedPost(
+            "api/v1/marketplace/inspections",
+            body: RequestVehicleInspectionRequest(listingId: listingId, mechanicId: mechanicId, fee: fee, scheduledFor: scheduledFor),
+            idempotencyKey: UUID().uuidString
+        )
+    }
+    public func getMyInspectionBookings() async throws -> VehicleInspectionBookingsResponse { try await get("api/v1/marketplace/inspections/my-bookings") }
+    public func getMyInspectionMechanicBookings() async throws -> VehicleInspectionBookingsResponse { try await get("api/v1/marketplace/inspections/my-mechanic-bookings") }
+    public func acceptVehicleInspection(bookingId: String) async throws -> VehicleInspectionBookingResponse {
+        try await authenticatedPost("api/v1/marketplace/inspections/\(bookingId)/accept", body: EmptyBody())
+    }
+    public func completeVehicleInspection(bookingId: String, findings: String?) async throws -> VehicleInspectionBookingResponse {
+        try await authenticatedPost("api/v1/marketplace/inspections/\(bookingId)/complete", body: CompleteVehicleInspectionRequest(findings: findings))
+    }
+    public func cancelVehicleInspection(bookingId: String) async throws -> VehicleInspectionBookingResponse {
+        try await authenticatedPost("api/v1/marketplace/inspections/\(bookingId)/cancel", body: EmptyBody())
+    }
+
     public func getSavingsGoals() async throws -> SavingsGoalsResponse { try await get("api/v1/savings/goals") }
     public func getInterestJar() async throws -> InterestJarResponse { try await get("api/v1/savings/interest-jar") }
 
