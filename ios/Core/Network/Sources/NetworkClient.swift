@@ -2081,7 +2081,13 @@ public struct MerchantProductDto: Decodable, Identifiable {
     // Optional/absent on endpoints that don't fold it in (e.g. product search) --
     // only ShoppingController.getMerchantProducts (Eats' menu) populates this today.
     public let optionGroups: [MenuOptionGroupDto]?
+    // Real bulk/wholesale pricing -- closes the gap named in Baemin's own real
+    // 배민상회 B2B supplies marketplace research. Empty/absent for every product with
+    // no real tiers set. See ProductPriceTier.kt's own doc comment on the backend.
+    // Android already has this; this is the first iOS client.
+    public let priceTiers: [PriceTierDto]?
 }
+public struct PriceTierDto: Decodable { public let minQuantity: Int; public let unitPrice: Double }
 public struct MerchantSummaryDto: Decodable { public let id: String; public let businessName: String }
 public struct MerchantProductsResponse: Decodable { public let success: Bool; public let merchant: MerchantSummaryDto; public let products: [MerchantProductDto] }
 

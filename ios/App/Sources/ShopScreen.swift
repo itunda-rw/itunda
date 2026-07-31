@@ -1362,17 +1362,28 @@ private struct ProductImageThumb: View {
 private struct ProductPriceRow: View {
     let product: MerchantProductDto
 
+    // Real bulk/wholesale pricing -- closes the gap named in Baemin's own real
+    // 배민상회 B2B supplies marketplace research. Shows the best (highest-quantity)
+    // real tier as a hint; the actual price used at checkout is always resolved
+    // server-side from the real ordered quantity, never trusted from this display.
+    // Android already has this; this is the first iOS client.
+    private var bestTier: PriceTierDto? { product.priceTiers?.max { $0.minQuantity < $1.minQuantity } }
+
     var body: some View {
-        if let originalPrice = product.originalPrice, let discountPercent = product.discountPercent, discountPercent > 0 {
-            VStack(alignment: .leading, spacing: 1) {
+        VStack(alignment: .leading, spacing: 1) {
+            if let originalPrice = product.originalPrice, let discountPercent = product.discountPercent, discountPercent > 0 {
                 HStack(spacing: 4) {
                     Text("\(discountPercent)%").font(.subheadline).bold().foregroundColor(.red)
                     Text("\(Int(product.price)) RWF").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
                 }
                 Text("\(Int(originalPrice)) RWF").font(.caption2).foregroundColor(IDS.Colors.textSecondary).strikethrough()
+            } else {
+                Text("\(Int(product.price)) RWF").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
             }
-        } else {
-            Text("\(Int(product.price)) RWF").font(.subheadline).foregroundColor(IDS.Colors.textSecondary)
+            if let bestTier {
+                Text("Buy \(bestTier.minQuantity)+ for \(Int(bestTier.unitPrice)) RWF each")
+                    .font(.caption2).bold().foregroundColor(.green)
+            }
         }
     }
 }

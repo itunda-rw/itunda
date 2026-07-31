@@ -16,6 +16,9 @@ struct CatalogTab: View {
     // Real menu-item option groups (item 210) -- see MenuOptionGroupDto's own doc
     // comment. A selected product presents ProductOptionsView as a sheet.
     @State private var optionsProduct: MerchantProductDto?
+    // Real bulk/wholesale pricing -- merchant-mfe/Android already have this; this is
+    // the first iOS MerchantApp client. A selected product presents PriceTiersView.
+    @State private var pricingProduct: MerchantProductDto?
 
     var body: some View {
         ScrollView {
@@ -81,6 +84,8 @@ struct CatalogTab: View {
                                 .font(.footnote)
                                 Button("Options") { optionsProduct = product }
                                     .font(.footnote)
+                                Button("Bulk pricing") { pricingProduct = product }
+                                    .font(.footnote)
                                 Button("Remove") { Task { await remove(product.id) } }
                                     .foregroundColor(.secondary)
                             }
@@ -116,6 +121,9 @@ struct CatalogTab: View {
         }
         .sheet(item: $optionsProduct) { product in
             ProductOptionsView(productId: product.id, productName: product.name)
+        }
+        .sheet(item: $pricingProduct) { product in
+            PriceTiersView(productId: product.id, productName: product.name, regularPrice: product.price)
         }
         .task { await load() }
     }
@@ -297,5 +305,93 @@ private struct ProductOptionsView: View {
             self.error = "Couldn't remove this option group."
         }
         removingId = nil
+    }
+}
+
+/// Real bulk/wholesale pricing -- closes the gap named in Baemin's own real 배민상회
+/// B2B supplies marketplace research: the real differentiator between a B2B wholesale
+/// listing and a normal retail one is that price genuinely depends on quantity. Up to
+/// 3 real tiers, quantity + price fields -- see backend
+/// MerchantProductService.setPriceTiers's own doc comment for the real "must actually
+/// be a discount" validation this relies on server-side. merchant-mfe/Android already
+/// have this; this is the first iOS MerchantApp client.
+private struct PriceTiersView: View {
+    let productId: String
+    let productName: String
+    let regularPrice: Double
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var tierRows: [(minQuantity: String, unitPrice: String)] = [("", ""), ("", ""), ("", "")]
+    @State private var loaded = false
+    @State private var saving = false
+    @State private var error: String?
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Real bulk discounts -- e.g. buy 10+, pay less per unit. Leave a row blank to skip it.")
+                        .font(.caption).foregroundColor(.secondary)
+                    if let error {
+                        Text(error).font(.caption).foregroundColor(.red)
+                    }
+                    if loaded {
+                        ForEach(tierRows.indices, id: \.self) { i in
+                            HStack {
+                                TextField("Min qty", text: Binding(get: { tierRows[i].minQuantity }, set: { tierRows[i].minQuantity = $0 }))
+                                    .keyboardType(.numberPad)
+                                    .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(8)
+                                TextField("Price each (RWF)", text: Binding(get: { tierRows[i].unitPrice }, set: { tierRows[i].unitPrice = $0 }))
+                                    .keyboardType(.numberPad)
+                                    .padding(10).background(Color(.secondarySystemBackground)).cornerRadius(8)
+                            }
+                        }
+                    } else {
+                        ProgressView()
+                    }
+                    Button(action: { Task { await save() } }) {
+                        Text(saving ? "Saving…" : "Save bulk pricing")
+                            .bold().foregroundColor(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(IDS.Colors.brand).cornerRadius(10)
+                    }
+                    .disabled(saving || !loaded)
+                }
+                .padding(16)
+            }
+            .navigationTitle(productName)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        if let tiers = try? await MerchantNetworkClient.shared.getPriceTiers(productId).tiers, !tiers.isEmpty {
+            var rows = tiers.map { (minQuantity: String($0.minQuantity), unitPrice: String(Int($0.unitPrice))) }
+            while rows.count < 3 { rows.append(("", "")) }
+            tierRows = Array(rows.prefix(3))
+        }
+        loaded = true
+    }
+
+    private func save() async {
+        let tiers = tierRows.compactMap { row -> PriceTierDto? in
+            guard let qty = Int(row.minQuantity.trimmingCharacters(in: .whitespaces)),
+                  let unitPrice = Double(row.unitPrice.trimmingCharacters(in: .whitespaces)) else { return nil }
+            return PriceTierDto(minQuantity: qty, unitPrice: unitPrice)
+        }
+        saving = true
+        error = nil
+        defer { saving = false }
+        do {
+            _ = try await MerchantNetworkClient.shared.setPriceTiers(productId, tiers: tiers)
+            dismiss()
+        } catch {
+            self.error = "Couldn't save bulk pricing -- each higher tier must cost less per unit."
+        }
     }
 }

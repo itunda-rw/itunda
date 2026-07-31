@@ -79,6 +79,16 @@ struct MerchantProductResponse: Decodable { let success: Bool; let product: Merc
 struct MerchantProductsResponse: Decodable { let success: Bool; let products: [MerchantProductDto] }
 struct AddProductRequest: Encodable { let name: String; let price: Double; let imageUrl: String?; let originalPrice: Double?; let description: String?; let stockQuantity: Int? }
 
+// Real bulk/wholesale pricing -- see backend MerchantProductService.setPriceTiers's own
+// doc comment. merchant-mfe/Android already have this; this is the first iOS
+// MerchantApp client.
+struct PriceTierDto: Codable { let minQuantity: Int; let unitPrice: Double }
+struct SetPriceTiersRequest: Encodable {
+    let tiers: [PriceTierDto]
+    init(tiers: [PriceTierDto]) { self.tiers = tiers }
+}
+struct PriceTiersResponse: Decodable { let success: Bool; let tiers: [PriceTierDto] }
+
 // Real menu-item option groups (item 210) -- merchant-mfe/Android already have this;
 // this is the iOS MerchantApp client. v1 scope matches merchant-mfe's own: required,
 // single-select groups only (e.g. "Size": Small/Medium/Large, exactly one choice).
@@ -340,6 +350,17 @@ final class MerchantNetworkClient {
 
     func removeOptionGroup(_ productId: String, groupId: String) async throws {
         _ = try await sendRequest(method: "DELETE", path: "api/v1/merchant/products/\(productId)/option-groups/\(groupId)", body: Optional<EmptyBody>.none)
+    }
+
+    // Real bulk/wholesale pricing -- see backend MerchantProductService.setPriceTiers's
+    // own doc comment. merchant-mfe/Android already have this; this is the first iOS
+    // MerchantApp client.
+    func getPriceTiers(_ productId: String) async throws -> PriceTiersResponse {
+        try await get("api/v1/merchant/products/\(productId)/price-tiers")
+    }
+
+    func setPriceTiers(_ productId: String, tiers: [PriceTierDto]) async throws -> PriceTiersResponse {
+        try await post("api/v1/merchant/products/\(productId)/price-tiers", body: SetPriceTiersRequest(tiers: tiers))
     }
 
     func getReport(from: String? = nil, to: String? = nil) async throws -> ReportResponse {
