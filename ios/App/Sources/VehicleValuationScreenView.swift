@@ -7,9 +7,10 @@ import CoreNetwork
 /// account and honest scope boundary: no real used-car pricing database partnership
 /// exists here, this is itunda's own documented general depreciation estimate.
 /// bank-mfe/Android already have this; this is the first iOS client. Mirrors bank-mfe's
-/// own register/list/valuation/remove flow. Honest v1 scope-down: bank-mfe's own
-/// "Update km" action uses a raw browser `window.prompt`, which has no direct mobile
-/// equivalent -- deliberately not ported this pass rather than faking a dialog for it.
+/// own register/list/valuation/remove flow, including its own "Update km" action
+/// (bank-mfe uses a raw browser `window.prompt`, ported here as a real `.alert` with a
+/// text field instead -- found real on Android's own `ApiService.kt` but never actually
+/// wired to a screen there either, closed on both native platforms together).
 struct VehicleValuationScreenView: View {
     var onBack: () -> Void = {}
 
@@ -25,6 +26,8 @@ struct VehicleValuationScreenView: View {
     @State private var busy = false
     @State private var busyId: String?
     @State private var error: String?
+    @State private var editingMileageVehicle: VehicleDto?
+    @State private var editMileageText = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -93,6 +96,11 @@ struct VehicleValuationScreenView: View {
                                         Text("\(Int(v.mileageKm)) km").font(.caption).foregroundColor(IDS.Colors.textSecondary)
                                     }
                                     Spacer()
+                                    Button(action: { editingMileageVehicle = v; editMileageText = String(v.mileageKm) }) {
+                                        Text("Update km").bold().font(.caption)
+                                            .padding(.horizontal, 12).padding(.vertical, 8)
+                                            .background(Color(.tertiarySystemBackground)).cornerRadius(8)
+                                    }
                                     Button(action: { Task { await remove(v.id) } }) {
                                         Text(busyId == v.id ? "…" : "Remove").bold().font(.caption)
                                             .padding(.horizontal, 12).padding(.vertical, 8)
@@ -119,6 +127,15 @@ struct VehicleValuationScreenView: View {
         }
         .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
         .task { await load() }
+        .alert("Update mileage", isPresented: Binding(get: { editingMileageVehicle != nil }, set: { if !$0 { editingMileageVehicle = nil } })) {
+            TextField("Current mileage (km)", text: $editMileageText).keyboardType(.numberPad)
+            Button("Cancel", role: .cancel) {}
+            Button("Save") {
+                if let v = editingMileageVehicle, let mileage = Int(editMileageText), mileage >= 0 {
+                    Task { await updateMileage(v.id, mileage) }
+                }
+            }
+        }
     }
 
     private func load() async {
@@ -155,6 +172,16 @@ struct VehicleValuationScreenView: View {
             await load()
         } catch {
             self.error = "Could not register this vehicle."
+        }
+    }
+
+    private func updateMileage(_ id: String, _ mileage: Int) async {
+        do {
+            _ = try await NetworkClient.shared.updateVehicleMileage(id, mileageKm: mileage)
+            editingMileageVehicle = nil
+            await load()
+        } catch {
+            self.error = "Could not update mileage."
         }
     }
 

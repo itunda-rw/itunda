@@ -521,6 +521,7 @@ public struct RegisterVehicleRequest: Encodable {
     public let purchaseDate: String
     public let mileageKm: Int
 }
+public struct UpdateVehicleMileageRequest: Encodable { public let mileageKm: Int }
 public struct VehicleValuationDto: Decodable {
     public let vehicle: VehicleDto
     public let ageYears: Int
@@ -789,6 +790,9 @@ extension NetworkClient {
     }
     public func getMyVehicles() async throws -> VehiclesResponse { try await get("api/v1/vehicles") }
     public func getVehicleValuation(_ id: String) async throws -> VehicleValuationResponse { try await get("api/v1/vehicles/\(id)/valuation") }
+    public func updateVehicleMileage(_ id: String, mileageKm: Int) async throws -> VehicleResponse {
+        try await authenticatedPost("api/v1/vehicles/\(id)/mileage", body: UpdateVehicleMileageRequest(mileageKm: mileageKm))
+    }
     public func removeVehicle(_ id: String) async throws -> SuccessResponse { try await authenticatedDelete("api/v1/vehicles/\(id)") }
 
     // Real Toss 유스 (Toss Youth)-style guardian-child account link -- see

@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,6 +40,7 @@ import rw.itunda.core.designsystem.components.BackTopBar
 import rw.itunda.core.designsystem.theme.Ids
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.RegisterVehicleRequest
+import rw.itunda.core.network.UpdateVehicleMileageRequest
 import rw.itunda.core.network.VehicleDto
 import rw.itunda.core.network.VehicleValuationDto
 import rw.itunda.core.network.superAppErrorMessage
@@ -50,9 +53,10 @@ import java.time.Year
 // account and honest scope boundary: no real used-car pricing database partnership
 // exists here, this is itunda's own documented general depreciation estimate. bank-mfe
 // already has this (MyVehiclesCard); this is the first Android client. Mirrors
-// bank-mfe's own register/list/valuation/remove flow. Honest v1 scope-down: bank-mfe's
-// own "Update km" action uses a raw browser `window.prompt`, which has no direct mobile
-// equivalent -- deliberately not ported this pass rather than faking a dialog for it.
+// bank-mfe's own register/list/valuation/remove flow, including its own "Update km"
+// action (bank-mfe uses a raw browser `window.prompt`, ported here as a real dialog
+// instead -- `updateVehicleMileage` had already been added to ApiService.kt but never
+// actually called from any screen, found via a fresh sweep).
 @Composable
 fun VehicleValuationScreen(onBack: () -> Unit) {
     BackHandler(onBack = onBack)
@@ -68,6 +72,9 @@ fun VehicleValuationScreen(onBack: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var busyId by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
+    var editingMileage by remember { mutableStateOf<VehicleDto?>(null) }
+    var editMileageText by remember { mutableStateOf("") }
+    var editMileageBusy by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     fun load() {
@@ -112,6 +119,21 @@ fun VehicleValuationScreen(onBack: () -> Unit) {
                 error = "Couldn't reach itunda. Check your connection and try again."
             } finally {
                 busy = false
+            }
+        }
+    }
+
+    fun updateMileage(id: String, mileage: Int) {
+        editMileageBusy = true
+        coroutineScope.launch {
+            try {
+                NetworkClient.apiService.updateVehicleMileage(id, UpdateVehicleMileageRequest(mileage))
+                editingMileage = null
+                load()
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+            } finally {
+                editMileageBusy = false
             }
         }
     }
@@ -190,10 +212,16 @@ fun VehicleValuationScreen(onBack: () -> Unit) {
                                     Text("${v.modelYear} ${v.make} ${v.model}", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                     Text("${"%,d".format(v.mileageKm)} km", color = Ids.colors.textSecondary, fontSize = 12.sp)
                                 }
-                                Box(
-                                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
-                                        .clickable(enabled = busyId != v.id) { remove(v.id) }.padding(horizontal = 12.dp, vertical = 8.dp),
-                                ) { Text(if (busyId == v.id) "…" else "Remove", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Box(
+                                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
+                                            .clickable { editingMileage = v; editMileageText = v.mileageKm.toString() }.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    ) { Text("Update km", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                                    Box(
+                                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ids.colors.surfaceSoft)
+                                            .clickable(enabled = busyId != v.id) { remove(v.id) }.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    ) { Text(if (busyId == v.id) "…" else "Remove", color = Ids.colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+                                }
                             }
                             if (valuation != null) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -208,5 +236,25 @@ fun VehicleValuationScreen(onBack: () -> Unit) {
                 }
             }
         }
+    }
+
+    editingMileage?.let { v ->
+        AlertDialog(
+            onDismissRequest = { if (!editMileageBusy) editingMileage = null },
+            title = { Text("Update mileage") },
+            text = {
+                OutlinedTextField(
+                    value = editMileageText, onValueChange = { editMileageText = it },
+                    label = { Text("Current mileage (km)") }, modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !editMileageBusy,
+                    onClick = { editMileageText.toIntOrNull()?.takeIf { it >= 0 }?.let { updateMileage(v.id, it) } },
+                ) { Text(if (editMileageBusy) "Saving…" else "Save") }
+            },
+            dismissButton = { TextButton(enabled = !editMileageBusy, onClick = { editingMileage = null }) { Text("Cancel") } },
+        )
     }
 }
