@@ -28,6 +28,8 @@ import rw.itunda.core.repository.MeetupAttendanceRepository
 import rw.itunda.core.repository.MeetupSessionRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
+import rw.itunda.splitbill.SplitBillService
+import java.math.BigDecimal
 import java.time.Duration
 import java.util.Optional
 
@@ -45,6 +47,7 @@ class CommunityServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val splitBillService = mockk<SplitBillService>(relaxed = true)
         val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
         val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
         val meetupSessionRepository = mockk<MeetupSessionRepository>(relaxed = true)
@@ -52,7 +55,7 @@ class CommunityServiceTest : BehaviorSpec({
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
-            rateLimiter, nominatimGeocodingClient, pushNotificationService,
+            rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
         )
 
         When("posting with valid fields") {
@@ -139,6 +142,7 @@ class CommunityServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val splitBillService = mockk<SplitBillService>(relaxed = true)
         val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
         val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
         val meetupSessionRepository = mockk<MeetupSessionRepository>(relaxed = true)
@@ -146,7 +150,7 @@ class CommunityServiceTest : BehaviorSpec({
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
-            rateLimiter, nominatimGeocodingClient, pushNotificationService,
+            rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
         )
         val post = CommunityPost(id = "post_1", authorId = "author_1", category = "question", title = "T", body = "B")
 
@@ -283,6 +287,7 @@ class CommunityServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val splitBillService = mockk<SplitBillService>(relaxed = true)
         val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
         val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
         val meetupSessionRepository = mockk<MeetupSessionRepository>(relaxed = true)
@@ -290,7 +295,7 @@ class CommunityServiceTest : BehaviorSpec({
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
-            rateLimiter, nominatimGeocodingClient, pushNotificationService,
+            rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
         )
 
         When("no category filter is given") {
@@ -325,6 +330,7 @@ class CommunityServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val splitBillService = mockk<SplitBillService>(relaxed = true)
         val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
         val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
         val meetupSessionRepository = mockk<MeetupSessionRepository>(relaxed = true)
@@ -332,7 +338,7 @@ class CommunityServiceTest : BehaviorSpec({
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
-            rateLimiter, nominatimGeocodingClient, pushNotificationService,
+            rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
         )
 
         // Real Kigali-area coordinates, same convention every geo test in this codebase uses.
@@ -370,6 +376,7 @@ class CommunityServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val splitBillService = mockk<SplitBillService>(relaxed = true)
         val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
         val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
         val meetupSessionRepository = mockk<MeetupSessionRepository>(relaxed = true)
@@ -377,7 +384,7 @@ class CommunityServiceTest : BehaviorSpec({
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
-            rateLimiter, nominatimGeocodingClient, pushNotificationService,
+            rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
         )
 
         When("the caller has a real neighborhood set") {
@@ -417,6 +424,7 @@ class CommunityServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val splitBillService = mockk<SplitBillService>(relaxed = true)
         val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
         val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
         val meetupSessionRepository = mockk<MeetupSessionRepository>()
@@ -424,7 +432,7 @@ class CommunityServiceTest : BehaviorSpec({
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
-            rateLimiter, nominatimGeocodingClient, pushNotificationService,
+            rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
         )
 
         val meetupPost = CommunityPost(id = "post_1", authorId = "author_1", category = "meetup", title = "Weekly run", body = "Join us")
@@ -506,6 +514,7 @@ class CommunityServiceTest : BehaviorSpec({
         val rateLimiter = mockk<RateLimiter>(relaxed = true)
         val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
         val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val splitBillService = mockk<SplitBillService>(relaxed = true)
         val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
         val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>()
         val meetupSessionRepository = mockk<MeetupSessionRepository>()
@@ -513,7 +522,7 @@ class CommunityServiceTest : BehaviorSpec({
         val service = CommunityService(
             postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
             groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
-            rateLimiter, nominatimGeocodingClient, pushNotificationService,
+            rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
         )
 
         val meetupPost = CommunityPost(
@@ -562,6 +571,154 @@ class CommunityServiceTest : BehaviorSpec({
                     service.checkIntoSession("member_1", "session_1")
                     error("expected MeetupAttendanceAlreadyCheckedInException")
                 } catch (e: MeetupAttendanceAlreadyCheckedInException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real user creating a real 당근마켓 같이사요 (group-buy) post") {
+        val postRepository = mockk<CommunityPostRepository>()
+        val commentRepository = mockk<CommunityCommentRepository>()
+        val likeRepository = mockk<CommunityLikeRepository>()
+        val userRepository = mockk<UserRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
+        val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>(relaxed = true)
+        val meetupSessionRepository = mockk<MeetupSessionRepository>(relaxed = true)
+        val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>(relaxed = true)
+        val splitBillService = mockk<SplitBillService>(relaxed = true)
+        val service = CommunityService(
+            postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
+            groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
+            rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
+        )
+        val savedSlot = slot<CommunityPost>()
+        every { postRepository.save(capture(savedSlot)) } answers { firstArg() }
+        // Real, explicit stub, not relaxed=true's default -- same known "relaxed mockk
+        // can't correctly infer a generic Optional<T> return" gotcha this codebase's own
+        // tests already document repeatedly for save().
+        every { userRepository.findById(any()) } returns Optional.empty()
+
+        When("posting with a real valid capacity of 3") {
+            val post = service.createPost("author_1", "group_buy", "Bulk rice order", "Splitting a 25kg bag", capacity = 3)
+
+            Then("it real-persists the real capacity") {
+                post.capacity shouldBe 3
+                post.category shouldBe "group_buy"
+            }
+        }
+
+        When("posting with no capacity at all") {
+            Then("it throws InvalidMeetupException -- a group buy needs a real headcount cap") {
+                try {
+                    service.createPost("author_1", "group_buy", "Bulk rice order", "Splitting a 25kg bag")
+                    error("expected InvalidMeetupException")
+                } catch (e: InvalidMeetupException) {
+                    // expected
+                }
+            }
+        }
+
+        When("posting with a real capacity above the real Karrot-sourced max of 4") {
+            Then("it throws InvalidMeetupException") {
+                try {
+                    service.createPost("author_1", "group_buy", "Bulk rice order", "Splitting a 25kg bag", capacity = 5)
+                    error("expected InvalidMeetupException")
+                } catch (e: InvalidMeetupException) {
+                    // expected
+                }
+            }
+        }
+    }
+
+    Given("a real group-buy organizer finalizing the real cost split") {
+        val postRepository = mockk<CommunityPostRepository>()
+        val commentRepository = mockk<CommunityCommentRepository>()
+        val likeRepository = mockk<CommunityLikeRepository>()
+        val userRepository = mockk<UserRepository>(relaxed = true)
+        val notificationRepository = mockk<NotificationRepository>(relaxed = true)
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val pushNotificationService = mockk<PushNotificationService>(relaxed = true)
+        val groupConversationRepository = mockk<GroupConversationRepository>(relaxed = true)
+        val groupConversationMemberRepository = mockk<GroupConversationMemberRepository>()
+        val meetupSessionRepository = mockk<MeetupSessionRepository>(relaxed = true)
+        val meetupAttendanceRepository = mockk<MeetupAttendanceRepository>(relaxed = true)
+        val splitBillService = mockk<SplitBillService>()
+        val service = CommunityService(
+            postRepository, commentRepository, likeRepository, userRepository, notificationRepository,
+            groupConversationRepository, groupConversationMemberRepository, meetupSessionRepository, meetupAttendanceRepository,
+            rateLimiter, nominatimGeocodingClient, pushNotificationService, splitBillService,
+        )
+
+        val groupBuyPost = CommunityPost(
+            id = "post_1", authorId = "organizer_1", category = "group_buy", title = "Bulk rice order", body = "Splitting a 25kg bag",
+            capacity = 4, groupConversationId = "group_1",
+        )
+        every { postRepository.findById("post_1") } returns Optional.of(groupBuyPost)
+        every { groupConversationMemberRepository.findByGroupConversationId("group_1") } returns listOf(
+            rw.itunda.core.domain.GroupConversationMember(id = "gm_0", groupConversationId = "group_1", userId = "organizer_1"),
+            rw.itunda.core.domain.GroupConversationMember(id = "gm_1", groupConversationId = "group_1", userId = "member_1"),
+            rw.itunda.core.domain.GroupConversationMember(id = "gm_2", groupConversationId = "group_1", userId = "member_2"),
+        )
+
+        When("the real organizer finalizes with the real total amount") {
+            val resultSlot = slot<List<String>>()
+            every {
+                splitBillService.createSplitBill("organizer_1", "group_1", BigDecimal("9000"), "25kg rice", capture(resultSlot))
+            } returns mockk(relaxed = true)
+
+            service.finalizeGroupBuy("organizer_1", "post_1", BigDecimal("9000"), "25kg rice")
+
+            Then("it real-delegates to SplitBillService with every real member except the organizer") {
+                resultSlot.captured.toSet() shouldBe setOf("member_1", "member_2")
+            }
+        }
+
+        When("a non-organizer tries to finalize") {
+            Then("it throws CommunityPostNotFoundException, not a 403 that would confirm the post exists") {
+                try {
+                    service.finalizeGroupBuy("member_1", "post_1", BigDecimal("9000"), "25kg rice")
+                    error("expected CommunityPostNotFoundException")
+                } catch (e: CommunityPostNotFoundException) {
+                    // expected
+                }
+            }
+        }
+
+        When("finalizing a group buy with real zero joined participants yet") {
+            val emptyGroupPost = CommunityPost(
+                id = "post_2", authorId = "organizer_1", category = "group_buy", title = "Solo so far", body = "Nobody joined",
+                capacity = 4, groupConversationId = null,
+            )
+            every { postRepository.findById("post_2") } returns Optional.of(emptyGroupPost)
+
+            Then("it throws InvalidGroupBuyFinalizeException before ever touching SplitBillService") {
+                try {
+                    service.finalizeGroupBuy("organizer_1", "post_2", BigDecimal("9000"), "25kg rice")
+                    error("expected InvalidGroupBuyFinalizeException")
+                } catch (e: InvalidGroupBuyFinalizeException) {
+                    verify(exactly = 0) { splitBillService.createSplitBill(any(), any(), any(), any(), any()) }
+                }
+            }
+        }
+
+        When("finalizing a non-group-buy post") {
+            val meetupPost = CommunityPost(
+                id = "post_3", authorId = "organizer_1", category = "meetup", title = "Run club", body = "Weekly run",
+                groupConversationId = "group_3",
+            )
+            every { postRepository.findById("post_3") } returns Optional.of(meetupPost)
+
+            Then("it throws InvalidGroupBuyFinalizeException") {
+                try {
+                    service.finalizeGroupBuy("organizer_1", "post_3", BigDecimal("9000"), "25kg rice")
+                    error("expected InvalidGroupBuyFinalizeException")
+                } catch (e: InvalidGroupBuyFinalizeException) {
                     // expected
                 }
             }

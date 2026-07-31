@@ -27,6 +27,9 @@ import rw.itunda.core.repository.MeetupAttendanceRepository
 import rw.itunda.core.repository.MeetupSessionRepository
 import rw.itunda.core.repository.NotificationRepository
 import rw.itunda.core.repository.UserRepository
+import rw.itunda.splitbill.SplitBillService
+import rw.itunda.splitbill.SplitBillWithParticipants
+import java.math.BigDecimal
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
@@ -44,6 +47,7 @@ class InvalidMeetupScheduleException(message: String) : RuntimeException(message
 class MeetupSessionNotFoundException(message: String) : RuntimeException(message)
 class MeetupAttendanceAlreadyCheckedInException(message: String) : RuntimeException(message)
 class MeetupAttendanceNotAMemberException(message: String) : RuntimeException(message)
+class InvalidGroupBuyFinalizeException(message: String) : RuntimeException(message)
 
 data class CommunityCategory(val id: String, val label: String)
 
@@ -79,6 +83,7 @@ class CommunityService(
     private val rateLimiter: RateLimiter,
     private val nominatimGeocodingClient: NominatimGeocodingClient,
     private val pushNotificationService: PushNotificationService,
+    private val splitBillService: SplitBillService,
 ) {
     companion object {
         val CATEGORIES = listOf(
@@ -87,6 +92,7 @@ class CommunityService(
             CommunityCategory("recommendation", "Recommendation"),
             CommunityCategory("lost_found", "Lost & found"),
             CommunityCategory("meetup", "Meetup"),
+            CommunityCategory("group_buy", "Group buy"),
             CommunityCategory("free", "Free talk"),
         )
         private val CATEGORY_IDS = CATEGORIES.map { it.id }.toSet()
@@ -94,6 +100,10 @@ class CommunityService(
         // Real 당근모임 (Karrot Meetups) own sourced cap -- a real recurring series is
         // limited to this many fixed sessions in one action.
         const val MAX_MEETUP_SESSIONS = 6
+
+        // Real 당근마켓 같이사요 (Karrot "Let's Buy Together") own sourced cap -- a real
+        // group-buy is limited to this many total participants (organizer included).
+        const val MAX_GROUP_BUY_CAPACITY = 4
     }
 
     private fun requireAuthor(authorId: String, postId: String): CommunityPost {
@@ -152,6 +162,13 @@ class CommunityService(
                 throw InvalidMeetupException("Capacity must allow at least 2 people (including the organizer)")
             }
         }
+        // Real 당근마켓 같이사요 (Karrot "Let's Buy Together") mandatory real headcount
+        // cap -- Karrot's own real product limits a group-buy to
+        // MAX_GROUP_BUY_CAPACITY total participants; itunda enforces it at post
+        // creation, not left to the organizer's own honor system.
+        if (category == "group_buy" && (capacity == null || capacity !in 2..MAX_GROUP_BUY_CAPACITY)) {
+            throw InvalidMeetupException("A group buy needs a real capacity between 2 and $MAX_GROUP_BUY_CAPACITY people (including the organizer)")
+        }
         if ((latitude == null) != (longitude == null)) {
             throw InvalidCommunityCoordinatesException("Both latitude and longitude are required together")
         }
@@ -180,7 +197,7 @@ class CommunityService(
                 id = "community_post_${UUID.randomUUID()}", authorId = authorId, category = category,
                 title = trimmedTitle, body = trimmedBody, latitude = latitude, longitude = longitude,
                 neighborhood = neighborhood, eventDate = if (category == "meetup") eventDate else null,
-                capacity = if (category == "meetup") capacity else null,
+                capacity = if (category == "meetup" || category == "group_buy") capacity else null,
             ),
         )
     }
@@ -260,11 +277,15 @@ class CommunityService(
     @Transactional
     fun joinMeetup(userId: String, postId: String): GroupConversation {
         val post = postRepository.findById(postId).orElseThrow { CommunityPostNotFoundException("Post not found") }
-        if (post.category != "meetup") {
-            throw CommunityMeetupJoinException("Only meetup posts can be joined")
+        // Real 당근마켓 같이사요 (group-buy) reuses this exact real join/capacity
+        // mechanic outright -- see CommunityService's own doc comment on
+        // finalizeGroupBuy for the full account of why "join a capped group, then
+        // split the real bill" is the same shape a meetup already establishes.
+        if (post.category != "meetup" && post.category != "group_buy") {
+            throw CommunityMeetupJoinException("Only meetup or group-buy posts can be joined")
         }
         if (post.status != CommunityPostStatus.ACTIVE) {
-            throw CommunityMeetupJoinException("This meetup is no longer active")
+            throw CommunityMeetupJoinException("This post is no longer active")
         }
         val groupId = post.groupConversationId ?: run {
             val newGroupId = "group_${UUID.randomUUID()}"
@@ -431,4 +452,28 @@ class CommunityService(
     }
 
     fun getSessionAttendance(sessionId: String): List<MeetupAttendance> = meetupAttendanceRepository.findBySessionId(sessionId)
+
+    /**
+     * Real 당근마켓 같이사요 (Karrot "Let's Buy Together") -- see this class's own doc
+     * comment on why joining a real capped group-buy reuses `joinMeetup` outright.
+     * Once the real organizer has fronted the total cost, they finalize here: reuses
+     * the already-proven `SplitBillService.createSplitBill` wholesale for the actual
+     * real cost-splitting (organizer request, participants pay their real even share)
+     * against the same real group chat every real joined participant is already in --
+     * no new payment mechanic invented for this feature, just two already-real
+     * capabilities wired together.
+     */
+    @Transactional
+    fun finalizeGroupBuy(organizerId: String, postId: String, totalAmount: BigDecimal, description: String): SplitBillWithParticipants {
+        val post = requireAuthor(organizerId, postId)
+        if (post.category != "group_buy") {
+            throw InvalidGroupBuyFinalizeException("Only group-buy posts can be finalized")
+        }
+        val groupId = post.groupConversationId
+            ?: throw InvalidGroupBuyFinalizeException("This group buy has no real participants to split the cost with yet")
+        val participantIds = groupConversationMemberRepository.findByGroupConversationId(groupId)
+            .map { it.userId }
+            .filter { it != organizerId }
+        return splitBillService.createSplitBill(organizerId, groupId, totalAmount, description, participantIds)
+    }
 }

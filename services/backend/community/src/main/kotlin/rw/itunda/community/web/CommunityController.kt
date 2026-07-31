@@ -22,6 +22,7 @@ import rw.itunda.community.CommunityService
 import rw.itunda.community.InvalidCommunityCommentException
 import rw.itunda.community.InvalidCommunityCoordinatesException
 import rw.itunda.community.InvalidCommunityPostException
+import rw.itunda.community.InvalidGroupBuyFinalizeException
 import rw.itunda.community.InvalidMeetupException
 import rw.itunda.community.InvalidMeetupScheduleException
 import rw.itunda.community.MeetupAttendanceAlreadyCheckedInException
@@ -31,6 +32,10 @@ import rw.itunda.community.MeetupSessionNotFoundException
 import rw.itunda.core.security.CurrentUser
 import rw.itunda.core.web.ApiError
 import rw.itunda.core.web.pageMeta
+import rw.itunda.splitbill.SplitBillDescriptionRequiredException
+import rw.itunda.splitbill.SplitBillInvalidAmountException
+import rw.itunda.splitbill.SplitBillNeedsParticipantsException
+import rw.itunda.splitbill.SplitBillParticipantNotGroupMemberException
 import java.time.Instant
 
 data class CreateCommunityPostRequest(
@@ -48,6 +53,9 @@ data class AddCommunityCommentRequest(val body: String)
 // Real 당근모임 (Karrot Meetups) recurring schedule -- see
 // CommunityService.scheduleMeetupSessions's own doc comment.
 data class ScheduleMeetupSessionsRequest(val dates: List<Instant>)
+// Real 당근마켓 같이사요 (Karrot "Let's Buy Together") -- see
+// CommunityService.finalizeGroupBuy's own doc comment.
+data class FinalizeGroupBuyRequest(val totalAmount: java.math.BigDecimal, val description: String)
 
 // Real 동네생활-style community board -- see CommunityService's own doc comment. Normal
 // itunda-user JWT gate (default SecurityConfig .anyRequest().authenticated()).
@@ -213,6 +221,18 @@ class CommunityController(private val communityService: CommunityService) {
     fun getSessionAttendance(@PathVariable sessionId: String): ResponseEntity<Map<String, Any?>> =
         ResponseEntity.ok(mapOf("success" to true, "attendance" to communityService.getSessionAttendance(sessionId)))
 
+    // Real 당근마켓 같이사요 (Karrot "Let's Buy Together") -- see
+    // CommunityService.finalizeGroupBuy's own doc comment.
+    @PostMapping("/posts/{postId}/finalize-group-buy")
+    fun finalizeGroupBuy(
+        @PathVariable postId: String,
+        @RequestBody request: FinalizeGroupBuyRequest,
+        @AuthenticationPrincipal currentUser: CurrentUser,
+    ): ResponseEntity<Map<String, Any?>> {
+        val result = communityService.finalizeGroupBuy(currentUser.userId, postId, request.totalAmount, request.description)
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapOf("success" to true, "splitBill" to result.splitBill, "participants" to result.participants))
+    }
+
     @ExceptionHandler(CommunityMeetupJoinException::class)
     fun handleMeetupJoin(ex: CommunityMeetupJoinException) =
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("COMMUNITY_MEETUP_JOIN_INVALID", ex.message ?: "Bad request"))
@@ -264,4 +284,27 @@ class CommunityController(private val communityService: CommunityService) {
     @ExceptionHandler(MeetupAttendanceNotAMemberException::class)
     fun handleNotAMember(ex: MeetupAttendanceNotAMemberException) =
         ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiError("NOT_A_MEMBER", ex.message ?: "Forbidden"))
+
+    @ExceptionHandler(InvalidGroupBuyFinalizeException::class)
+    fun handleInvalidGroupBuyFinalize(ex: InvalidGroupBuyFinalizeException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_GROUP_BUY_FINALIZE", ex.message ?: "Bad request"))
+
+    // Real exceptions SplitBillService.createSplitBill itself can throw, reachable via
+    // finalizeGroupBuy -- same clean 4xx handling every other real cross-module reuse
+    // in this backend already gives its own delegate's exceptions.
+    @ExceptionHandler(SplitBillInvalidAmountException::class)
+    fun handleSplitBillInvalidAmount(ex: SplitBillInvalidAmountException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("INVALID_AMOUNT", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(SplitBillDescriptionRequiredException::class)
+    fun handleSplitBillDescriptionRequired(ex: SplitBillDescriptionRequiredException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("DESCRIPTION_REQUIRED", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(SplitBillNeedsParticipantsException::class)
+    fun handleSplitBillNeedsParticipants(ex: SplitBillNeedsParticipantsException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("NEEDS_PARTICIPANTS", ex.message ?: "Bad request"))
+
+    @ExceptionHandler(SplitBillParticipantNotGroupMemberException::class)
+    fun handleSplitBillParticipantNotGroupMember(ex: SplitBillParticipantNotGroupMemberException) =
+        ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiError("PARTICIPANT_NOT_GROUP_MEMBER", ex.message ?: "Bad request"))
 }

@@ -16,6 +16,10 @@ dependencies {
     // toggle, same convention every other user-content-creation endpoint in this
     // codebase uses (Marketplace, Partner SDK, Certificate, messaging reactions).
     implementation(project(":auth"))
+    // For SplitBillService -- real 당근마켓 같이사요 (group-buy) cost-splitting reuses
+    // the already-proven SplitBill mechanic outright rather than reinventing it. No
+    // cycle: splitbill depends on messaging/core/auth, never on community.
+    implementation(project(":splitbill"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

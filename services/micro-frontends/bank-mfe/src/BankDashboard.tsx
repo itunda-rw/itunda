@@ -75,8 +75,8 @@ import { depositToMiniWallet, openMiniWallet } from './lib/miniWallet';
 import { claimGift, fetchGiftsForConversation, sendGiftInConversation, type Gift, type GiftStatus } from './lib/gift';
 import {
   addCommunityComment, checkIntoMeetupSession, createCommunityPost, fetchCommunityCategories, fetchCommunityComments, fetchCommunityPost,
-  fetchCommunityPosts, fetchCommunityPostsMyNeighborhood, fetchMeetupSessions, fetchMyCommunityPosts, joinCommunityMeetup, removeCommunityPost,
-  scheduleMeetupSessions, toggleCommunityLike,
+  fetchCommunityPosts, fetchCommunityPostsMyNeighborhood, fetchMeetupSessions, fetchMyCommunityPosts, finalizeGroupBuy, joinCommunityMeetup,
+  removeCommunityPost, scheduleMeetupSessions, toggleCommunityLike,
   type CommunityCategory, type CommunityComment, type CommunityPost, type JoinedCounts, type MeetupSession,
 } from './lib/community';
 import {
@@ -7188,6 +7188,10 @@ function NewCommunityPostCard({ categories, onCreated }: { categories: Community
   const [shareLocation, setShareLocation] = useState(false);
   const [myLocation, setMyLocation] = useState<[number, number] | null>(null);
   const [locating, setLocating] = useState(false);
+  // Real 당근모임/같이사요 structured fields -- see lib/community.ts's own
+  // createCommunityPost doc comment for the real live bug this closes.
+  const [eventDate, setEventDate] = useState('');
+  const [capacity, setCapacity] = useState('');
 
   const handleToggleShareLocation = () => {
     if (shareLocation) {
@@ -7220,11 +7224,15 @@ function NewCommunityPostCard({ categories, onCreated }: { categories: Community
     setSubmitting(true);
     try {
       const [lat, lng] = shareLocation && myLocation ? myLocation : [undefined, undefined];
-      await createCommunityPost(category, title, body, lat, lng);
+      const isoEventDate = eventDate ? new Date(eventDate).toISOString() : undefined;
+      const numericCapacity = capacity ? Number(capacity) : undefined;
+      await createCommunityPost(category, title, body, lat, lng, isoEventDate, numericCapacity);
       setTitle('');
       setBody('');
       setShareLocation(false);
       setMyLocation(null);
+      setEventDate('');
+      setCapacity('');
       setOpen(false);
       onCreated();
     } catch (err) {
@@ -7259,6 +7267,21 @@ function NewCommunityPostCard({ categories, onCreated }: { categories: Community
         value={body} onChange={(e) => setBody(e.target.value)} placeholder="What's going on in the neighborhood?" required rows={4}
         style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
       />
+      {category === 'meetup' && (
+        <input
+          type="datetime-local" value={eventDate} onChange={(e) => setEventDate(e.target.value)} required
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        />
+      )}
+      {(category === 'meetup' || category === 'group_buy') && (
+        <input
+          type="number" min={2} max={category === 'group_buy' ? 4 : undefined} value={capacity}
+          onChange={(e) => setCapacity(e.target.value)}
+          placeholder={category === 'group_buy' ? 'Max people (up to 4, including you)' : 'Max people (optional)'}
+          required={category === 'group_buy'}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+        />
+      )}
       <button
         type="button"
         className="toss-btn toss-btn-secondary"
@@ -7437,6 +7460,64 @@ function MeetupSessionsSection({ post, currentUserId }: { post: CommunityPost; c
   );
 }
 
+// Real 당근마켓 같이사요 (Karrot "Let's Buy Together") -- see lib/community.ts's own
+// finalizeGroupBuy doc comment. Author-only: once real participants have joined via the
+// same 참여하기 flow a meetup already uses, the organizer fronts the total cost and
+// splits it via the already-real SplitBill mechanic.
+function GroupBuyFinalizeSection({ post, currentUserId }: { post: CommunityPost; currentUserId: string | undefined }) {
+  const [totalAmount, setTotalAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (currentUserId == null || currentUserId !== post.authorId) return null;
+
+  const handleFinalize = async () => {
+    const amount = Number(totalAmount);
+    if (!amount || amount <= 0 || !description.trim()) { setError('Enter a real total amount and a short description.'); return; }
+    setSubmitting(true);
+    setError(null);
+    try {
+      await finalizeGroupBuy(post.id, amount, description.trim());
+      setDone(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not split this cost.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (done) {
+    return (
+      <div className="toss-card" style={{ marginTop: '16px' }}>
+        <p style={{ fontSize: '13px', fontWeight: 700, color: 'var(--toss-blue)' }}>Split request sent -- see it in your group chat's Split bill tab.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="toss-card" style={{ marginTop: '16px' }}>
+      <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Split the cost</h3>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '10px' }}>
+        Enter what you paid up front -- every real member who joined will be asked for their even share.
+      </p>
+      <input
+        type="number" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="Total amount (RWF)"
+        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginBottom: '8px' }}
+      />
+      <input
+        type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What was this for?"
+        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginBottom: '8px' }}
+      />
+      <button className="toss-btn toss-btn-primary" disabled={submitting} onClick={handleFinalize}>
+        {submitting ? 'Splitting…' : 'Request even split'}
+      </button>
+      {error && <p style={{ fontSize: '12px', color: '#E53935', marginTop: '8px' }} role="alert">{error}</p>}
+    </div>
+  );
+}
+
 function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: () => void }) {
   const [post, setPost] = useState<CommunityPost | null>(null);
   const [authorName, setAuthorName] = useState('');
@@ -7510,6 +7591,7 @@ function CommunityPostDetailView({ postId, onBack }: { postId: string; onBack: (
         </div>
       )}
       {post && post.category === 'meetup' && <MeetupSessionsSection post={post} currentUserId={currentUser?.id} />}
+      {post && post.category === 'group_buy' && <GroupBuyFinalizeSection post={post} currentUserId={currentUser?.id} />}
       <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Comments</h3>
       {comments === null && <div className="toss-card skeleton" style={{ height: '80px' }} />}
       {comments !== null && comments.length === 0 && (

@@ -65,16 +65,25 @@ export const fetchCommunityPostsMyNeighborhood = (category?: string) =>
     `/api/v1/community/posts/my-neighborhood${category ? `?category=${encodeURIComponent(category)}` : ''}`,
   ).then((r) => ({ posts: r.posts, joinedCounts: r.joinedCounts }));
 
+// Real bug fix, found live while wiring 같이사요 (2026-07-31): this function never
+// accepted/sent eventDate/capacity at all, so a real 'meetup' post created from this
+// app could never actually succeed (the backend real-400s InvalidMeetupException
+// without a real date) -- the only way a meetup post here was ever created was by
+// direct API call, never through this real UI path. Fixed the same day it was found,
+// same "found live, fixed same day" discipline this codebase already documents
+// everywhere else.
 export const createCommunityPost = (
   category: string,
   title: string,
   body: string,
   latitude?: number,
   longitude?: number,
+  eventDate?: string,
+  capacity?: number,
 ) =>
   apiFetch<{ success: boolean; post: CommunityPost }>('/api/v1/community/posts', {
     method: 'POST',
-    body: JSON.stringify({ category, title, body, latitude, longitude }),
+    body: JSON.stringify({ category, title, body, latitude, longitude, eventDate, capacity }),
   }).then((r) => r.post);
 
 export const fetchCommunityPost = (postId: string) =>
@@ -145,3 +154,12 @@ export const checkIntoMeetupSession = (sessionId: string) =>
 
 export const fetchSessionAttendance = (sessionId: string) =>
   apiFetch<{ success: boolean; attendance: MeetupAttendance[] }>(`/api/v1/community/sessions/${sessionId}/attendance`).then((r) => r.attendance);
+
+// Real 당근마켓 같이사요 (Karrot "Let's Buy Together") -- see the backend's
+// CommunityService.finalizeGroupBuy doc comment. Reuses the already-real SplitBill
+// mechanic wholesale for the actual cost-splitting once the organizer fronts the total.
+export const finalizeGroupBuy = (postId: string, totalAmount: number, description: string) =>
+  apiFetch<{ success: boolean }>(`/api/v1/community/posts/${postId}/finalize-group-buy`, {
+    method: 'POST',
+    body: JSON.stringify({ totalAmount, description }),
+  });
