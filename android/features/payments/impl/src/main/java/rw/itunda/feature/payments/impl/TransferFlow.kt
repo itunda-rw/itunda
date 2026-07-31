@@ -59,6 +59,16 @@ internal val rwfFormatter = NumberFormat.getNumberInstance(Locale.US)
 // already has API access, and are passed down here as plain data + callbacks.
 data class ContactUi(val name: String, val phoneNumber: String, val bank: String)
 
+// Real Toss 사기계좌 조회-style pre-transfer warning (2026-07-31) -- see
+// rw.itunda.p2p.ScamReportService's own doc comment on the backend. A warning, not a
+// hard block, same as bank-mfe's own ReportScamLink/scamCheck (BankDashboard.tsx):
+// itunda has no fraud-reimbursement protection scheme to withdraw for proceeding
+// anyway, so this is simply the sender's own informed choice. Plain UI-facing shape,
+// same "keep this feature module independent of :app's NetworkClient" convention
+// ContactUi above already establishes -- the actual check/report calls happen in
+// ItundaAppScreen.kt.
+data class ScamWarningUi(val reportCount: Int)
+
 @Composable
 fun RecipientEntryScreen(
     onBack: () -> Unit,
@@ -233,6 +243,9 @@ fun TransferAmountScreen(
     // balance, and had no way to show that a real network call was in progress.
     availableBalance: Double = 0.0,
     isSubmitting: Boolean = false,
+    scamWarning: ScamWarningUi? = null,
+    scamReported: Boolean = false,
+    onReportScam: () -> Unit = {},
 ) {
     // rememberSaveable (2026-07-12), same reasoning as ItundaAppScreen.kt's
     // TransferStep -- confirmed live on-device that without this, a process kill
@@ -267,6 +280,30 @@ fun TransferAmountScreen(
                 label = "To account $recipientAccountNumber",
                 sublabel = "New recipient",
                 icon = Icons.Outlined.Savings
+            )
+            if (scamWarning != null && scamWarning.reportCount > 0) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Ids.colors.dangerTint)
+                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                ) {
+                    Text("Caution needed before this transfer", color = Ids.colors.danger, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        "This recipient has been reported by ${scamWarning.reportCount} other itunda users. Double-check before sending.",
+                        color = Ids.colors.danger,
+                        fontSize = 12.sp,
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                if (scamReported) "Thanks -- this number has been reported." else "Report this number as a scam",
+                color = Ids.colors.textTertiary,
+                fontSize = 12.sp,
+                modifier = Modifier.clickable(enabled = !scamReported, onClick = onReportScam),
             )
         }
 

@@ -1173,6 +1173,17 @@ public struct CreateAutoTransferRequest: Encodable {
 public struct AutoTransferResponse: Decodable { public let success: Bool; public let autoTransfer: AutoTransferDto }
 public struct AutoTransfersListResponse: Decodable { public let success: Bool; public let autoTransfers: [AutoTransferDto] }
 
+// Real Toss 사기계좌 조회 (fraud-account lookup before transfer) -- see backend
+// ScamReportService's own doc comment. itunda's own crowd-sourced report registry,
+// not a real police-database integration. Real on bank-mfe/Android only until now
+// (2026-07-31).
+public struct ScamReportDto: Decodable { public let id: String; public let reporterId: String; public let reportedIdentifier: String; public let reason: String; public let createdAt: String }
+public struct ScamCheckResultDto: Decodable { public let identifier: String; public let reportCount: Int; public let warn: Bool }
+public struct ReportScamRequest: Encodable { public let identifier: String; public let reason: String }
+public struct ScamCheckResponse: Decodable { public let success: Bool; public let result: ScamCheckResultDto }
+public struct ScamReportResponse: Decodable { public let success: Bool; public let report: ScamReportDto }
+public struct ScamReportsListResponse: Decodable { public let success: Bool; public let reports: [ScamReportDto] }
+
 public struct DepositRequest: Encodable { public let goalId: String; public let amount: Double }
 public struct DepositResponse: Decodable { public let success: Bool; public let message: String; public let goal: SavingsGoal }
 public struct ClaimInterestResponse: Decodable { public let success: Bool; public let message: String }
@@ -1331,6 +1342,16 @@ extension NetworkClient {
     public func cancelAutoTransfer(_ id: String) async throws -> AutoTransferResponse {
         try await authenticatedDelete("api/v1/p2p/auto-transfers/\(id)")
     }
+
+    public func checkScamStatus(identifier: String) async throws -> ScamCheckResponse {
+        try await get("api/v1/p2p/scam-reports/check?identifier=\(identifier.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? identifier)")
+    }
+
+    public func reportScam(identifier: String, reason: String) async throws -> ScamReportResponse {
+        try await authenticatedPost("api/v1/p2p/scam-reports", body: ReportScamRequest(identifier: identifier, reason: reason))
+    }
+
+    public func getMyScamReports() async throws -> ScamReportsListResponse { try await get("api/v1/p2p/scam-reports/mine") }
 
     public func depositToGoal(goalId: String, amount: Double) async throws -> DepositResponse {
         try await authenticatedPost(

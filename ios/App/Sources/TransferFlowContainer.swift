@@ -31,6 +31,14 @@ struct TransferFlowContainer: View {
     // client UI anywhere) -- fetched here rather than eagerly on app launch, since
     // it's only ever needed on this screen.
     @State private var contacts: [ContactUi] = []
+    // Real Toss 사기계좌 조회-style pre-transfer warning (2026-07-31) -- see
+    // rw.itunda.p2p.ScamReportService's own doc comment. Mirrors bank-mfe/Android's
+    // own scamCheck/ReportScamLink exactly: a warning, not a hard block.
+    @State private var scamReportCount: Int?
+    @State private var scamReported = false
+    @State private var showScamReportSheet = false
+    @State private var scamReportReason = ""
+    @State private var scamReportBusy = false
     let availableBalance: Double
     let onDone: () -> Void
 
@@ -77,9 +85,13 @@ struct TransferFlowContainer: View {
                     recipientAccountNumber: accountNumber,
                     availableBalance: availableBalance,
                     isSubmitting: isSubmitting,
+                    scamWarning: scamReportCount.map { ScamWarningUi(reportCount: $0) },
+                    scamReported: scamReported,
+                    onReportScam: { showScamReportSheet = true },
                     onBack: { step = .recipient },
                     onConfirm: { amountRwf in confirm(accountNumber: accountNumber, amountRwf: amountRwf) }
                 )
+                .task(id: accountNumber) { await checkScamStatus(accountNumber) }
                 if let errorMessage {
                     Text(errorMessage)
                         .font(.system(size: 13))
@@ -114,6 +126,42 @@ struct TransferFlowContainer: View {
                     onCancel: { showDeviceStepUp = false; deviceStepUpError = nil }
                 )
             }
+        }
+        .sheet(isPresented: $showScamReportSheet) {
+            NavigationView {
+                Form {
+                    TextField("Why are you reporting this number?", text: $scamReportReason)
+                }
+                .navigationTitle("Report as a scam")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { showScamReportSheet = false }.disabled(scamReportBusy)
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(scamReportBusy ? "Reporting…" : "Report") { submitScamReport() }
+                            .disabled(scamReportBusy || scamReportReason.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                }
+            }
+        }
+    }
+
+    private func checkScamStatus(_ accountNumber: String) async {
+        scamReported = false
+        scamReportCount = nil
+        guard let result = try? await NetworkClient.shared.checkScamStatus(identifier: accountNumber).result else { return }
+        scamReportCount = result.warn ? result.reportCount : 0
+    }
+
+    private func submitScamReport() {
+        guard case .amount(let accountNumber) = step else { return }
+        scamReportBusy = true
+        Task { @MainActor in
+            _ = try? await NetworkClient.shared.reportScam(identifier: accountNumber, reason: scamReportReason.trimmingCharacters(in: .whitespaces))
+            scamReportBusy = false
+            showScamReportSheet = false
+            scamReported = true
+            scamReportReason = ""
         }
     }
 

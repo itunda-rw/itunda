@@ -165,11 +165,23 @@ public struct RecipientEntryScreen: View {
     }
 }
 
+// Real Toss 사기계좌 조회-style pre-transfer warning (2026-07-31) -- see
+// rw.itunda.p2p.ScamReportService's own doc comment on the backend. A warning, not a
+// hard block, same as bank-mfe/Android's own scamCheck/ReportScamLink: itunda has no
+// fraud-reimbursement protection scheme to withdraw for proceeding anyway, so this is
+// simply the sender's own informed choice. Plain UI-facing shape, same
+// module-independence convention ContactUi above already establishes -- the actual
+// check/report calls happen in TransferViewModel (App/Sources).
+public struct ScamWarningUi { public let reportCount: Int; public init(reportCount: Int) { self.reportCount = reportCount } }
+
 public struct TransferAmountScreen: View {
     @State private var digits = ""
     let recipientAccountNumber: String
     let availableBalance: Double
     let isSubmitting: Bool
+    let scamWarning: ScamWarningUi?
+    let scamReported: Bool
+    let onReportScam: () -> Void
     let onBack: () -> Void
     let onConfirm: (Int) -> Void
 
@@ -177,12 +189,18 @@ public struct TransferAmountScreen: View {
         recipientAccountNumber: String,
         availableBalance: Double = 0,
         isSubmitting: Bool = false,
+        scamWarning: ScamWarningUi? = nil,
+        scamReported: Bool = false,
+        onReportScam: @escaping () -> Void = {},
         onBack: @escaping () -> Void,
         onConfirm: @escaping (Int) -> Void
     ) {
         self.recipientAccountNumber = recipientAccountNumber
         self.availableBalance = availableBalance
         self.isSubmitting = isSubmitting
+        self.scamWarning = scamWarning
+        self.scamReported = scamReported
+        self.onReportScam = onReportScam
         self.onBack = onBack
         self.onConfirm = onConfirm
     }
@@ -197,6 +215,29 @@ public struct TransferAmountScreen: View {
                 TransferPartyRow(label: "From Itunda Wallet", sublabel: "Available RWF \(formatAmount(Int(availableBalance)))", symbol: "creditcard")
                 Rectangle().fill(IDS.Colors.divider).frame(width: 2, height: 20).padding(.leading, 21)
                 TransferPartyRow(label: "To account \(recipientAccountNumber)", sublabel: "New recipient", symbol: "leaf")
+
+                if let scamWarning, scamWarning.reportCount > 0 {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Caution needed before this transfer")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.red)
+                        Text("This recipient has been reported by \(scamWarning.reportCount) other itunda users. Double-check before sending.")
+                            .font(.system(size: 12))
+                            .foregroundColor(.red)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(Color.red.opacity(0.08))
+                    .cornerRadius(10)
+                    .padding(.top, 12)
+                }
+                Button(action: onReportScam) {
+                    Text(scamReported ? "Thanks -- this number has been reported." : "Report this number as a scam")
+                        .font(.system(size: 12))
+                        .foregroundColor(IDS.Colors.textTertiary)
+                }
+                .disabled(scamReported)
+                .padding(.top, 8)
             }
             .padding(.horizontal, 24)
 

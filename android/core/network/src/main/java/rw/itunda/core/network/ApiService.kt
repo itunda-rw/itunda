@@ -373,6 +373,16 @@ data class CreateAutoTransferRequest(
 data class AutoTransferResponse(val success: Boolean, val autoTransfer: AutoTransferDto)
 data class AutoTransfersListResponse(val success: Boolean, val autoTransfers: List<AutoTransferDto>)
 
+// Real Toss 사기계좌 조회 (fraud-account lookup before transfer) -- see backend
+// ScamReportService's own doc comment. itunda's own crowd-sourced report registry,
+// not a real police-database integration. Real on bank-mfe only until now (2026-07-31).
+data class ScamReportDto(val id: String, val reporterId: String, val reportedIdentifier: String, val reason: String, val createdAt: String)
+data class ScamCheckResultDto(val identifier: String, val reportCount: Int, val warn: Boolean)
+data class ReportScamRequest(val identifier: String, val reason: String)
+data class ScamCheckResponse(val success: Boolean, val result: ScamCheckResultDto)
+data class ScamReportResponse(val success: Boolean, val report: ScamReportDto)
+data class ScamReportsListResponse(val success: Boolean, val reports: List<ScamReportDto>)
+
 // Mirrors services/backend/savings's SavingsController.kt.
 data class DepositRequest(val goalId: String, val amount: java.math.BigDecimal, val fromWalletId: String? = null)
 data class DepositResponse(val success: Boolean, val message: String, val goal: SavingsGoal)
@@ -1802,6 +1812,15 @@ interface ApiService {
 
     @DELETE("api/v1/p2p/auto-transfers/{id}")
     suspend fun cancelAutoTransfer(@Path("id") id: String): AutoTransferResponse
+
+    @GET("api/v1/p2p/scam-reports/check")
+    suspend fun checkScamStatus(@Query("identifier") identifier: String): ScamCheckResponse
+
+    @POST("api/v1/p2p/scam-reports")
+    suspend fun reportScam(@Body request: ReportScamRequest): ScamReportResponse
+
+    @GET("api/v1/p2p/scam-reports/mine")
+    suspend fun getMyScamReports(): ScamReportsListResponse
 
     @POST("api/v1/savings/deposit")
     suspend fun depositToGoal(@Header("Idempotency-Key") idempotencyKey: String, @Body request: DepositRequest): DepositResponse

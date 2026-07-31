@@ -342,6 +342,26 @@ fun ItundaAppScreen(
         LaunchedEffect(step is TransferStep.Recipient) {
             if (step is TransferStep.Recipient) loadContacts()
         }
+        // Real Toss 사기계좌 조회-style pre-transfer warning (item 152's sibling gap,
+        // found 2026-07-31) -- see rw.itunda.p2p.ScamReportService's own doc comment.
+        // A warning, not a hard block, matching bank-mfe's own scamCheck/ReportScamLink
+        // (BankDashboard.tsx) exactly. Checked once per distinct recipient account
+        // number, not on every recomposition.
+        var scamReportCount by remember { mutableStateOf<Int?>(null) }
+        var scamReported by remember { mutableStateOf(false) }
+        var showScamReportDialog by remember { mutableStateOf(false) }
+        LaunchedEffect(step) {
+            if (step is TransferStep.Amount) {
+                scamReported = false
+                try {
+                    val result = rw.itunda.core.network.NetworkClient.apiService.checkScamStatus(step.accountNumber).result
+                    scamReportCount = if (result.warn) result.reportCount else 0
+                } catch (_: Exception) {
+                    // Real, non-critical -- a failed safety check must never block a
+                    // real transfer the sender is otherwise entitled to make.
+                }
+            }
+        }
         if (step != null) {
             // Without this, system/gesture back during a transfer falls through to
             // the Activity's default back behavior (there's no NavHost here) and
@@ -378,6 +398,9 @@ fun ItundaAppScreen(
                         recipientAccountNumber = step.accountNumber,
                         availableBalance = primaryWalletForTransfer?.availableBalance ?: 0.0,
                         isSubmitting = isSendingTransfer,
+                        scamWarning = scamReportCount?.let { rw.itunda.feature.payments.impl.ScamWarningUi(it) },
+                        scamReported = scamReported,
+                        onReportScam = { showScamReportDialog = true },
                         onBack = { transferStep = TransferStep.Recipient },
                         onConfirm = { amountRwf ->
                             // Toss-style biometric confirmation gate before a transfer
@@ -465,6 +488,53 @@ fun ItundaAppScreen(
                             }
                         }
                     }
+                )
+            }
+            if (showScamReportDialog) {
+                var reportReason by remember { mutableStateOf("") }
+                var reportBusy by remember { mutableStateOf(false) }
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { showScamReportDialog = false },
+                    title = { Text("Report this number as a scam", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold) },
+                    text = {
+                        androidx.compose.foundation.text.BasicTextField(
+                            value = reportReason,
+                            onValueChange = { reportReason = it },
+                            textStyle = androidx.compose.ui.text.TextStyle(color = Ids.colors.textPrimary, fontSize = 15.sp),
+                            modifier = Modifier.fillMaxWidth()
+                                .background(Ids.colors.surfaceSoft, androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                                .padding(12.dp),
+                            decorationBox = { inner -> if (reportReason.isEmpty()) Text("Why are you reporting this number?", color = Ids.colors.textTertiary, fontSize = 15.sp); inner() },
+                        )
+                    },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(
+                            enabled = !reportBusy && reportReason.isNotBlank() && step is TransferStep.Amount,
+                            onClick = {
+                                val account = (step as? TransferStep.Amount)?.accountNumber ?: return@TextButton
+                                reportBusy = true
+                                coroutineScope.launch {
+                                    try {
+                                        rw.itunda.core.network.NetworkClient.apiService.reportScam(
+                                            rw.itunda.core.network.ReportScamRequest(account, reportReason.trim()),
+                                        )
+                                        scamReported = true
+                                    } catch (_: Exception) {
+                                        // Best-effort, same non-critical discipline as the check above.
+                                    } finally {
+                                        reportBusy = false
+                                        showScamReportDialog = false
+                                    }
+                                }
+                            },
+                        ) { Text(if (reportBusy) "Reporting…" else "Report", color = Ids.colors.brand, fontWeight = FontWeight.SemiBold) }
+                    },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(onClick = { showScamReportDialog = false }, enabled = !reportBusy) {
+                            Text("Cancel", color = Ids.colors.textSecondary)
+                        }
+                    },
+                    containerColor = Ids.colors.surface,
                 )
             }
             return@IdsTheme
