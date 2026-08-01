@@ -105,6 +105,10 @@ private struct CommerceShopContent: View {
     @State private var selectedMerchant: ShoppingMerchantDto?
     @State private var products: [MerchantProductDto]?
     @State private var selectedProduct: MerchantProductDto?
+    // Real local-business appointment booking, customer side -- merchant-mfe/Android
+    // already have this; this is the first iOS client. See BookingFlowView's own doc
+    // comment.
+    @State private var bookingService: MerchantProductDto?
     @State private var cart: [String: CommerceCartLine] = [:]
     @State private var showCart = false
     @State private var results: [CommerceCheckoutResult]?
@@ -193,6 +197,13 @@ private struct CommerceShopContent: View {
                         results = checkoutResults
                     }
                 )
+            } else if let merchant = selectedMerchant, let service = bookingService {
+                BookingFlowView(
+                    merchant: merchant,
+                    service: service,
+                    onBack: { bookingService = nil },
+                    onBooked: { bookingService = nil }
+                )
             } else if let merchant = selectedMerchant, let product = selectedProduct {
                 ProductDetailView(
                     merchant: merchant,
@@ -212,6 +223,7 @@ private struct CommerceShopContent: View {
                     onBack: { selectedMerchant = nil },
                     onViewCart: { showCart = true },
                     onOpenProduct: { selectedProduct = $0 },
+                    onBookService: { bookingService = $0 },
                     favoriteProductIds: favoriteProductIds,
                     favoritingProductId: favoritingProductId,
                     onToggleFavorite: { productId in Task { await toggleProductFavorite(productId) } },
@@ -329,6 +341,7 @@ private struct CommerceShopContent: View {
 
                     if view == .orders {
                         MyCommerceOrdersView()
+                        MyBookingsView()
                     } else if view == .wishlist {
                         ProductWishlistView(onRemoved: { Task { await loadFavoriteProductIds() } })
                     } else if view == .subscriptions {
@@ -601,6 +614,7 @@ private struct MerchantDetailView: View {
     let onBack: () -> Void
     let onViewCart: () -> Void
     let onOpenProduct: (MerchantProductDto) -> Void
+    var onBookService: (MerchantProductDto) -> Void = { _ in }
     var favoriteProductIds: Set<String> = []
     var favoritingProductId: String?
     var onToggleFavorite: (String) -> Void = { _ in }
@@ -704,13 +718,27 @@ private struct MerchantDetailView: View {
                                     Text(product.stockQuantity.map { $0 == 0 ? "Out of stock" : "\($0) available" } ?? "Available")
                                         .font(.caption)
                                         .foregroundColor(product.stockQuantity == 0 ? .red : IDS.Colors.textSecondary)
-                                    HStack(spacing: 10) {
-                                        Spacer()
-                                        qtyButton("minus") { setQty(product, qty(product.id) - 1) }
-                                        Text("\(qty(product.id))").frame(width: 24).font(.subheadline).bold()
-                                        qtyButton("plus") { setQty(product, qty(product.id) + 1) }
-                                            .disabled(product.stockQuantity != nil && qty(product.id) >= product.stockQuantity!)
-                                        Spacer()
+                                    // Real bookable-service entry point -- a product with
+                                    // a real durationMinutes set is an appointment, not a
+                                    // cart-able good, so it gets a "Book" action instead
+                                    // of the qty stepper. See BookingFlowView's own doc
+                                    // comment. merchant-mfe/Android already have this;
+                                    // this is the first iOS client.
+                                    if product.durationMinutes != nil {
+                                        Button(action: { onBookService(product) }) {
+                                            Text("Book").font(.caption).bold().foregroundColor(.white)
+                                                .frame(maxWidth: .infinity).padding(.vertical, 8)
+                                                .background(IDS.Colors.brand).cornerRadius(10)
+                                        }
+                                    } else {
+                                        HStack(spacing: 10) {
+                                            Spacer()
+                                            qtyButton("minus") { setQty(product, qty(product.id) - 1) }
+                                            Text("\(qty(product.id))").frame(width: 24).font(.subheadline).bold()
+                                            qtyButton("plus") { setQty(product, qty(product.id) + 1) }
+                                                .disabled(product.stockQuantity != nil && qty(product.id) >= product.stockQuantity!)
+                                            Spacer()
+                                        }
                                     }
                                 }
                                 .padding(12)
@@ -1438,6 +1466,216 @@ private struct MyCommerceOrdersView: View {
         } catch {
             self.error = "Couldn't reach itunda. Check your connection and try again."
         }
+    }
+}
+
+private let BOOKING_STATUS_LABEL: [String: String] = [
+    "REQUESTED": "Requested", "CONFIRMED": "Confirmed", "DECLINED": "Declined",
+    "CANCELLED": "Cancelled", "COMPLETED": "Completed",
+]
+
+// Real customer-side view of merchant bookings requested via BookingFlowView -- see
+// its own doc comment. Cancel is the only customer action here (confirm/decline/
+// complete are owner-side, already real on merchant-mfe/Android's own merchant apps).
+private struct MyBookingsView: View {
+    @State private var bookings: [MerchantBookingDto]?
+    @State private var error: String?
+    @State private var cancellingId: String?
+
+    var body: some View {
+        Group {
+            if let bookings, !bookings.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Bookings").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                    if let error {
+                        Text(error).font(.caption).foregroundColor(.red)
+                    }
+                    ForEach(bookings) { b in
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(b.serviceName).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                                Spacer()
+                                Text(BOOKING_STATUS_LABEL[b.status] ?? b.status).font(.caption).bold().foregroundColor(IDS.Colors.brand)
+                            }
+                            Text("\(b.bookingDate) at \(String(b.startTime.prefix(5)))").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            if b.status == "REQUESTED" || b.status == "CONFIRMED" {
+                                Button(action: { Task { await cancel(b.id) } }) {
+                                    Text(cancellingId == b.id ? "Cancelling…" : "Cancel booking")
+                                        .font(.caption).bold().foregroundColor(.white)
+                                        .padding(.horizontal, 14).padding(.vertical, 8)
+                                        .background(.red).cornerRadius(10)
+                                }
+                                .disabled(cancellingId == b.id)
+                            }
+                        }
+                        .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                    }
+                }
+                .padding(.top, 16)
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        bookings = (try? await NetworkClient.shared.getMyBookings())?.bookings ?? []
+    }
+
+    private func cancel(_ bookingId: String) async {
+        cancellingId = bookingId
+        error = nil
+        do {
+            _ = try await NetworkClient.shared.cancelBooking(bookingId)
+            await load()
+        } catch {
+            self.error = "Couldn't cancel this booking."
+        }
+        cancellingId = nil
+    }
+}
+
+// Real local-business appointment booking (customer side) -- closes the "business
+// profile + real booking" gap independently converged on by Naver Smart Place, Kakao
+// Hair Shop, and Karrot's Business Profile research (docs/DESIGN_REFERENCES.md). Date
+// picker is a plain next-14-days strip (no calendar widget); slots come straight from
+// the real backend-computed availability (MerchantBookingService.getAvailableSlots),
+// never client-guessed. merchant-mfe/Android already have this; this is the first
+// iOS client.
+private struct BookingFlowView: View {
+    let merchant: ShoppingMerchantDto
+    let service: MerchantProductDto
+    let onBack: () -> Void
+    let onBooked: () -> Void
+
+    @State private var selectedDate = Date()
+    @State private var slots: [BookingSlotDto]?
+    @State private var selectedSlot: BookingSlotDto?
+    @State private var notes = ""
+    @State private var submitting = false
+    @State private var error: String?
+    @State private var booked = false
+
+    private var dateFormatter: DateFormatter {
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f
+    }
+    private var next14Days: [Date] {
+        (0..<14).compactMap { Calendar.current.date(byAdding: .day, value: $0, to: Calendar.current.startOfDay(for: Date())) }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Button(action: onBack) {
+                    Image(systemName: "chevron.left").font(.system(size: 18, weight: .medium)).frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Back")
+                Text("Book \(service.name)").font(IDS.Typography.title).foregroundColor(IDS.Colors.textPrimary)
+                Spacer()
+            }
+            .padding(.horizontal, 8)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("\(service.name) · \(service.durationMinutes ?? 0) min · \(Int(service.price)) RWF")
+                        .font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+
+                    Text("Choose a date").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(next14Days, id: \.self) { date in
+                                let selected = Calendar.current.isDate(date, inSameDayAs: selectedDate)
+                                VStack {
+                                    Text(date.formatted(.dateTime.weekday(.abbreviated))).font(.caption2)
+                                    Text(date.formatted(.dateTime.day())).font(.subheadline).bold()
+                                }
+                                .foregroundColor(selected ? .white : IDS.Colors.textPrimary)
+                                .padding(.horizontal, 12).padding(.vertical, 8)
+                                .background(selected ? IDS.Colors.brand : IDS.Colors.card)
+                                .cornerRadius(10)
+                                .onTapGesture { selectedDate = date; selectedSlot = nil }
+                            }
+                        }
+                    }
+
+                    Text("Choose a time").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                    if let slots {
+                        if slots.isEmpty {
+                            Text("No open times on this date.").font(.footnote).foregroundColor(IDS.Colors.textSecondary)
+                        } else {
+                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                                ForEach(slots, id: \.startTime) { slot in
+                                    let selected = slot == selectedSlot
+                                    Text(String(slot.startTime.prefix(5)))
+                                        .font(.subheadline).bold()
+                                        .foregroundColor(selected ? .white : IDS.Colors.textPrimary)
+                                        .frame(maxWidth: .infinity).padding(.vertical, 10)
+                                        .background(selected ? IDS.Colors.brand : IDS.Colors.card)
+                                        .cornerRadius(8)
+                                        .onTapGesture { selectedSlot = slot }
+                                }
+                            }
+                        }
+                    } else {
+                        ProgressView()
+                    }
+
+                    TextField("Notes (optional)", text: $notes)
+                        .padding(12).background(IDS.Colors.card).cornerRadius(10)
+
+                    if let error {
+                        Text(error).font(.caption).foregroundColor(.red)
+                    }
+
+                    Button(action: { Task { await book() } }) {
+                        Text(submitting ? "Requesting…" : "Request booking")
+                            .font(IDS.Typography.bodyBold).foregroundColor(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 16)
+                            .background(submitting || selectedSlot == nil ? IDS.Colors.textTertiary : IDS.Colors.brand)
+                            .cornerRadius(16)
+                    }
+                    .disabled(submitting || selectedSlot == nil)
+                }
+            }
+            .padding(.horizontal, IDS.Layout.screenHorizontal)
+            .padding(.top, 12)
+        }
+        .background(IDS.Colors.backgroundPrimary.ignoresSafeArea())
+        .task { await loadSlots() }
+        .onChange(of: selectedDate) { _ in Task { await loadSlots() } }
+        .alert("Booking requested", isPresented: $booked) {
+            Button("Done", action: onBooked)
+        } message: {
+            Text("\(service.name) on \(dateFormatter.string(from: selectedDate)) at \(selectedSlot.map { String($0.startTime.prefix(5)) } ?? "") -- \(merchant.businessName) will confirm shortly.")
+        }
+    }
+
+    private func loadSlots() async {
+        selectedSlot = nil
+        slots = nil
+        do {
+            slots = try await NetworkClient.shared.getBookingSlots(merchantId: merchant.merchantId, serviceId: service.id, date: dateFormatter.string(from: selectedDate)).slots
+        } catch {
+            self.error = "Couldn't load available times."
+            slots = []
+        }
+    }
+
+    private func book() async {
+        guard let slot = selectedSlot else { return }
+        submitting = true
+        error = nil
+        do {
+            let res = try await NetworkClient.shared.createBooking(CreateBookingRequest(
+                merchantId: merchant.merchantId, serviceId: service.id,
+                date: dateFormatter.string(from: selectedDate), startTime: slot.startTime,
+                notes: notes.trimmingCharacters(in: .whitespaces).isEmpty ? nil : notes.trimmingCharacters(in: .whitespaces)
+            ))
+            if res.success { booked = true }
+        } catch {
+            self.error = "Could not request this booking."
+        }
+        submitting = false
     }
 }
 

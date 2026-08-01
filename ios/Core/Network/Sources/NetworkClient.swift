@@ -2206,10 +2206,46 @@ public struct MerchantProductDto: Decodable, Identifiable {
     // no real tiers set. See ProductPriceTier.kt's own doc comment on the backend.
     // Android already has this; this is the first iOS client.
     public let priceTiers: [PriceTierDto]?
+    // Real bookable-service duration -- a non-null value means this "product" is
+    // actually a real appointment-bookable service (e.g. a 30-minute haircut). See
+    // MerchantProduct.kt's own doc comment on the backend. merchant-mfe/Android
+    // already have this; this is the first iOS client.
+    public let durationMinutes: Int?
+    // Real Kakao Hair Shop-style prepay-to-book -- only meaningful when
+    // durationMinutes is set.
+    public let requiresPrepay: Bool?
 }
 public struct PriceTierDto: Decodable { public let minQuantity: Int; public let unitPrice: Double }
 public struct MerchantSummaryDto: Decodable { public let id: String; public let businessName: String }
 public struct MerchantProductsResponse: Decodable { public let success: Bool; public let merchant: MerchantSummaryDto; public let products: [MerchantProductDto] }
+
+// Real local-business appointment booking, customer side -- see
+// rw.itunda.merchant.MerchantBookingService on the backend for the full account.
+// merchant-mfe/Android already have this; this is the first iOS client.
+public struct BookingSlotDto: Decodable, Equatable { public let startTime: String; public let endTime: String }
+public struct BookingSlotsResponse: Decodable { public let success: Bool; public let slots: [BookingSlotDto] }
+public struct CreateBookingRequest: Encodable {
+    public let merchantId: String; public let serviceId: String; public let date: String; public let startTime: String; public let notes: String?
+    public init(merchantId: String, serviceId: String, date: String, startTime: String, notes: String?) {
+        self.merchantId = merchantId; self.serviceId = serviceId; self.date = date; self.startTime = startTime; self.notes = notes
+    }
+}
+public struct MerchantBookingDto: Decodable, Identifiable {
+    public let id: String
+    public let merchantId: String
+    public let customerId: String
+    public let serviceId: String
+    public let serviceName: String
+    public let bookingDate: String
+    public let startTime: String
+    public let endTime: String
+    public let status: String
+    public let notes: String?
+    public let createdAt: String
+    public let updatedAt: String
+}
+public struct MerchantBookingDetailResponse: Decodable { public let success: Bool; public let booking: MerchantBookingDto }
+public struct MerchantBookingsResponse: Decodable { public let success: Bool; public let bookings: [MerchantBookingDto] }
 
 // Real cross-merchant product search (item 138) -- see backend
 // MerchantProductRepository.search's own doc comment. Mirrors bank-mfe's
@@ -3351,6 +3387,22 @@ extension NetworkClient {
 
     public func getMerchantProducts(merchantId: String) async throws -> MerchantProductsResponse {
         try await get("api/v1/shopping/merchants/\(merchantId)/products")
+    }
+
+    // Real local-business appointment booking, customer side -- see
+    // MerchantBookingController.kt's own doc comment. merchant-mfe/Android already
+    // have this; this is the first iOS client.
+    public func getBookingSlots(merchantId: String, serviceId: String, date: String) async throws -> BookingSlotsResponse {
+        try await get("api/v1/merchant/\(merchantId)/booking-slots", query: [
+            URLQueryItem(name: "serviceId", value: serviceId), URLQueryItem(name: "date", value: date),
+        ])
+    }
+    public func createBooking(_ request: CreateBookingRequest) async throws -> MerchantBookingDetailResponse {
+        try await authenticatedPost("api/v1/merchant/bookings", body: request)
+    }
+    public func getMyBookings() async throws -> MerchantBookingsResponse { try await get("api/v1/merchant/bookings/my-bookings") }
+    public func cancelBooking(_ bookingId: String) async throws -> MerchantBookingDetailResponse {
+        try await authenticatedPost("api/v1/merchant/bookings/\(bookingId)/cancel", body: EmptyBody())
     }
 
     // Real cross-merchant product search (item 138) -- see ProductSearchResultDto's

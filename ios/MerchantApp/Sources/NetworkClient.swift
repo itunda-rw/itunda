@@ -48,6 +48,30 @@ struct MerchantAdDto: Decodable {
 }
 struct MerchantAdResponse: Decodable { let success: Bool; let ad: MerchantAdDto? }
 
+// Real local-business appointment booking, owner side -- see
+// rw.itunda.merchant.MerchantBookingService on the backend. merchant-mfe/Android
+// already have this; this is the first iOS client. Date/time fields stay plain ISO
+// strings, same convention every other temporal field in this file already uses.
+struct AvailabilityWindowDto: Codable { let dayOfWeek: String; let startTime: String; let endTime: String }
+struct SetAvailabilityRequest: Encodable { let windows: [AvailabilityWindowDto] }
+struct AvailabilityResponse: Decodable { let success: Bool; let windows: [AvailabilityWindowDto] }
+struct MerchantBookingDto: Decodable, Identifiable {
+    let id: String
+    let merchantId: String
+    let customerId: String
+    let serviceId: String
+    let serviceName: String
+    let bookingDate: String
+    let startTime: String
+    let endTime: String
+    let status: String
+    let notes: String?
+    let createdAt: String
+}
+struct MerchantBookingDetailResponse: Decodable { let success: Bool; let booking: MerchantBookingDto }
+struct MerchantBookingsResponse: Decodable { let success: Bool; let bookings: [MerchantBookingDto] }
+struct RespondToBookingRequest: Encodable { let confirm: Bool }
+
 // Real merchant coupons + 단골 (regular customer) loyalty gating -- mirrors
 // merchant-mfe's lib/merchant.ts exactly.
 struct CreateCouponRequest: Encodable {
@@ -387,6 +411,21 @@ final class MerchantNetworkClient {
         try await postWithHeader("api/v1/merchant/ads", body: request, header: ("Idempotency-Key", UUID().uuidString))
     }
     func getMyAd() async throws -> MerchantAdResponse { try await get("api/v1/merchant/ads/me") }
+
+    // Real local-business appointment booking, owner side -- see
+    // MerchantBookingController.kt's own doc comment. merchant-mfe/Android already
+    // have this; this is the first iOS client.
+    func setAvailability(_ request: SetAvailabilityRequest) async throws -> AvailabilityResponse {
+        try await post("api/v1/merchant/booking/availability", body: request)
+    }
+    func getMyAvailability() async throws -> AvailabilityResponse { try await get("api/v1/merchant/booking/availability") }
+    func getMerchantBookings() async throws -> MerchantBookingsResponse { try await get("api/v1/merchant/bookings/merchant-bookings") }
+    func respondToBooking(_ bookingId: String, confirm: Bool) async throws -> MerchantBookingDetailResponse {
+        try await post("api/v1/merchant/bookings/\(bookingId)/respond", body: RespondToBookingRequest(confirm: confirm))
+    }
+    func completeBooking(_ bookingId: String) async throws -> MerchantBookingDetailResponse {
+        try await post("api/v1/merchant/bookings/\(bookingId)/complete", body: EmptyBody())
+    }
 
     func generateQr(amount: Double, description: String) async throws -> PaymentIntentResponse {
         try await post("api/v1/merchant/qr/generate", body: GenerateQrRequest(amount: amount, description: description))
