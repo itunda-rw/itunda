@@ -63,8 +63,23 @@ data class MerchantDto(
     val createdAt: String,
     val category: String?,
     val feeRateOverride: Double? = null,
+    // Real business location (POST /api/v1/merchant/location) -- merchant-mfe already
+    // has this; needed here for MerchantAdService's own radius-targeted ads (item 147).
+    val latitude: Double? = null,
+    val longitude: Double? = null,
 )
 data class MerchantResponse(val success: Boolean, val merchant: MerchantDto)
+data class SetMerchantLocationRequest(val latitude: Double, val longitude: Double)
+
+// Real 당근(Karrot) 반경 타기팅-style radius-targeted local ads (item 147) -- see
+// MerchantAd.kt's own doc comment for the sourced radius range and flat-fee tiers.
+// merchant-mfe already has this (AdsScreen.tsx); zero native client until now.
+data class CreateAdRequest(val title: String, val description: String?, val radiusMeters: Int, val days: Int)
+data class MerchantAdDto(
+    val id: String, val merchantId: String, val title: String, val description: String?,
+    val radiusMeters: Int, val activeUntil: String, val createdAt: String, val updatedAt: String,
+)
+data class MerchantAdResponse(val success: Boolean, val ad: MerchantAdDto?)
 
 // Real merchant coupons + 단골 (regular customer) loyalty gating -- mirrors
 // merchant-mfe's lib/merchant.ts exactly.
@@ -301,6 +316,19 @@ interface ApiService {
 
     @GET("api/v1/merchant/me")
     suspend fun getMyMerchant(): MerchantResponse
+
+    // Real business location -- see MerchantController.kt's own doc comment.
+    // merchant-mfe already has this; this is the first native client.
+    @POST("api/v1/merchant/location")
+    suspend fun setMerchantLocation(@Body request: SetMerchantLocationRequest): MerchantResponse
+
+    // Real radius-targeted local ads -- see MerchantAdController.kt's own doc comment.
+    // merchant-mfe already has this; this is the first native client.
+    @POST("api/v1/merchant/ads")
+    suspend fun createOrExtendAd(@Body request: CreateAdRequest, @Header("Idempotency-Key") idempotencyKey: String = UUID.randomUUID().toString()): MerchantAdResponse
+
+    @GET("api/v1/merchant/ads/me")
+    suspend fun getMyAd(): MerchantAdResponse
 
     @POST("api/v1/merchant/qr/generate")
     suspend fun generateQr(@Body request: GenerateQrRequest): PaymentIntentResponse

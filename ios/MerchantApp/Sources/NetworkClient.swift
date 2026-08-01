@@ -24,8 +24,29 @@ struct MerchantDto: Decodable {
     let createdAt: String
     let category: String?
     let feeRateOverride: Double?
+    // Real business location (POST /api/v1/merchant/location) -- merchant-mfe already
+    // has this; needed here for MerchantAdService's own radius-targeted ads (item 147).
+    let latitude: Double?
+    let longitude: Double?
 }
 struct MerchantResponse: Decodable { let success: Bool; let merchant: MerchantDto }
+struct SetMerchantLocationRequest: Encodable { let latitude: Double; let longitude: Double }
+
+// Real 당근(Karrot) 반경 타기팅-style radius-targeted local ads (item 147) -- see
+// MerchantAdController.kt's own doc comment. merchant-mfe already has this
+// (AdsScreen.tsx); this is the first iOS client.
+struct CreateAdRequest: Encodable { let title: String; let description: String?; let radiusMeters: Int; let days: Int }
+struct MerchantAdDto: Decodable {
+    let id: String
+    let merchantId: String
+    let title: String
+    let description: String?
+    let radiusMeters: Int
+    let activeUntil: String
+    let createdAt: String
+    let updatedAt: String
+}
+struct MerchantAdResponse: Decodable { let success: Bool; let ad: MerchantAdDto? }
 
 // Real merchant coupons + 단골 (regular customer) loyalty gating -- mirrors
 // merchant-mfe's lib/merchant.ts exactly.
@@ -353,6 +374,19 @@ final class MerchantNetworkClient {
     }
 
     func getMyMerchant() async throws -> MerchantResponse { try await get("api/v1/merchant/me") }
+
+    // Real business location -- see MerchantController.kt's own doc comment.
+    // merchant-mfe already has this; this is the first iOS client.
+    func setMerchantLocation(_ request: SetMerchantLocationRequest) async throws -> MerchantResponse {
+        try await post("api/v1/merchant/location", body: request)
+    }
+
+    // Real radius-targeted local ads -- see MerchantAdController.kt's own doc comment.
+    // merchant-mfe already has this; this is the first iOS client.
+    func createOrExtendAd(_ request: CreateAdRequest) async throws -> MerchantAdResponse {
+        try await postWithHeader("api/v1/merchant/ads", body: request, header: ("Idempotency-Key", UUID().uuidString))
+    }
+    func getMyAd() async throws -> MerchantAdResponse { try await get("api/v1/merchant/ads/me") }
 
     func generateQr(amount: Double, description: String) async throws -> PaymentIntentResponse {
         try await post("api/v1/merchant/qr/generate", body: GenerateQrRequest(amount: amount, description: description))

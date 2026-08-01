@@ -1,7 +1,7 @@
 import SwiftUI
 import CoreDesignSystem
 
-private enum MerchantTab { case orders, catalog, register, reports, business, dineIn, reviews, coupons, followers, payroll }
+private enum MerchantTab { case orders, catalog, register, reports, business, dineIn, reviews, coupons, followers, payroll, ads }
 
 struct MerchantHomeScreen: View {
     let merchant: MerchantDto
@@ -24,16 +24,24 @@ struct MerchantHomeScreen: View {
             .padding(16)
 
             Picker("", selection: $tab) {
-                Text("Orders").tag(MerchantTab.orders)
-                Text("Catalog").tag(MerchantTab.catalog)
-                Text("Register").tag(MerchantTab.register)
-                Text("Reports").tag(MerchantTab.reports)
-                Text("Business").tag(MerchantTab.business)
-                Text("Dine-in").tag(MerchantTab.dineIn)
-                Text("Reviews").tag(MerchantTab.reviews)
-                Text("Coupons").tag(MerchantTab.coupons)
-                Text("Followers").tag(MerchantTab.followers)
-                Text("Payroll").tag(MerchantTab.payroll)
+                // Wrapped in Group (2026-08-01): this Picker just grew past 10 items,
+                // the max the ViewBuilder overload set on this project's toolchain
+                // supports directly -- see BenefitsShopAllScreens.swift's own header
+                // for why (Group is purely a ViewBuilder child-count workaround, it
+                // doesn't change the Picker's rendered options at all).
+                Group {
+                    Text("Orders").tag(MerchantTab.orders)
+                    Text("Catalog").tag(MerchantTab.catalog)
+                    Text("Register").tag(MerchantTab.register)
+                    Text("Reports").tag(MerchantTab.reports)
+                    Text("Business").tag(MerchantTab.business)
+                    Text("Dine-in").tag(MerchantTab.dineIn)
+                    Text("Reviews").tag(MerchantTab.reviews)
+                    Text("Coupons").tag(MerchantTab.coupons)
+                    Text("Followers").tag(MerchantTab.followers)
+                    Text("Payroll").tag(MerchantTab.payroll)
+                }
+                Text("Ads").tag(MerchantTab.ads)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, 16)
@@ -50,6 +58,7 @@ struct MerchantHomeScreen: View {
             case .coupons: CouponsTab()
             case .followers: FollowersTab()
             case .payroll: PayrollTab()
+            case .ads: AdsTab()
             }
         }
     }

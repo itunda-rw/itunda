@@ -39,7 +39,7 @@ import rw.itunda.merchant.network.MerchantDto
 import rw.itunda.merchant.network.NetworkClient
 import rw.itunda.merchant.network.UpdateEatsOrderStatusRequest
 
-private enum class MerchantTab { ORDERS, DINE_IN, BOOKINGS, CATALOG, REGISTER, BUSINESS_ACCOUNT, REPORTS, REVIEWS, COUPONS, FOLLOWERS, PAYROLL }
+private enum class MerchantTab { ORDERS, DINE_IN, BOOKINGS, CATALOG, REGISTER, BUSINESS_ACCOUNT, REPORTS, REVIEWS, COUPONS, FOLLOWERS, PAYROLL, ADS }
 
 @Composable
 fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
@@ -73,6 +73,7 @@ fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
                 MerchantTab.COUPONS to "Coupons",
                 MerchantTab.FOLLOWERS to "Followers",
                 MerchantTab.PAYROLL to "Payroll",
+                MerchantTab.ADS to "Ads",
             ).forEach { (t, label) ->
                 val selected = t == tab
                 Text(
@@ -96,6 +97,7 @@ fun MerchantHomeScreen(merchant: MerchantDto, onLogout: () -> Unit) {
             MerchantTab.COUPONS -> CouponsTab()
             MerchantTab.FOLLOWERS -> FollowersTab()
             MerchantTab.PAYROLL -> PayrollTab()
+            MerchantTab.ADS -> AdsTab()
         }
     }
 }
