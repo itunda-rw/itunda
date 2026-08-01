@@ -1,6 +1,7 @@
 package rw.itunda.core.events
 
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.doubles.shouldBeLessThan
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.mockk.every
@@ -52,6 +53,61 @@ class OutboxRelayTest : BehaviorSpec({
             Then("it records the Kafka-acknowledged event as processed") {
                 pending.processedAt shouldNotBe null
                 verify(exactly = 1) { repository.save(match { it.id == "outbox_1" && it.processedAt != null }) }
+            }
+        }
+    }
+
+    // Real bug found live (2026-08-01): a Kafka outage left `send(...).get()` blocked
+    // for the Kafka client's own multi-minute internal timeout, holding this
+    // @Transactional method's DB locks the whole time. A future that never completes
+    // (matching how a real unreachable broker behaves before the producer's own
+    // internal timeout eventually fires) must not hang this method indefinitely.
+    Given("a pending outbox event Kafka never acknowledges (broker unreachable)") {
+        val repository = mockk<OutboxEventRepository>()
+        val kafkaTemplate = mockk<KafkaTemplate<String, String>>()
+        val stuck = event("outbox_stuck")
+        every { repository.findTop100ByProcessedAtIsNullOrderByCreatedAtAsc() } returns listOf(stuck)
+        every { kafkaTemplate.send(stuck.topic, stuck.key, stuck.payload) } returns CompletableFuture()
+        every { repository.save(any()) } answers { firstArg() }
+
+        When("the relay polls") {
+            val started = System.nanoTime()
+            OutboxRelay(repository, kafkaTemplate).relay()
+            val elapsedSeconds = (System.nanoTime() - started) / 1_000_000_000.0
+
+            Then("it gives up within a bounded wait instead of hanging, leaving the event pending") {
+                elapsedSeconds shouldBeLessThan 10.0
+                stuck.processedAt shouldBe null
+                verify(exactly = 0) { repository.save(match { it.id == "outbox_stuck" }) }
+            }
+        }
+    }
+
+    // Real bug found live (2026-08-01): a per-row timeout alone still multiplies into a
+    // long total hold when many rows are pending (33 real queued rows blew past MySQL's
+    // lock-wait-timeout at 5s each). `relayBudget` bounds the whole batch's wall-clock
+    // time so this stays fast regardless of how many rows are stuck.
+    Given("more stuck events than the relay's time budget can process") {
+        val repository = mockk<OutboxEventRepository>()
+        val kafkaTemplate = mockk<KafkaTemplate<String, String>>()
+        // perSendTimeout is 2s and relayBudget is 8s, so 6 events that each take just
+        // over 2s to time out real-guarantees the budget is exhausted before all of
+        // them are attempted -- proving the early-exit path actually fires, not just
+        // that any single send is individually bounded.
+        val stuckEvents = (1..6).map { event("outbox_stuck_$it") }
+        every { repository.findTop100ByProcessedAtIsNullOrderByCreatedAtAsc() } returns stuckEvents
+        stuckEvents.forEach { every { kafkaTemplate.send(it.topic, it.key, it.payload) } returns CompletableFuture() }
+        every { repository.save(any()) } answers { firstArg() }
+
+        When("the relay polls") {
+            val started = System.nanoTime()
+            OutboxRelay(repository, kafkaTemplate).relay()
+            val elapsedSeconds = (System.nanoTime() - started) / 1_000_000_000.0
+
+            Then("it stops early within the batch budget, leaving unattempted events pending for the next poll") {
+                elapsedSeconds shouldBeLessThan 15.0
+                stuckEvents.forEach { it.processedAt shouldBe null }
+                verify(exactly = 0) { repository.save(any()) }
             }
         }
     }

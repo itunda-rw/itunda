@@ -111,6 +111,17 @@ class LedgerAccount(
             // interest_income/agent_commission_expense/postpaid_credit_payable
             // precedent above.
             "vehicle_inspection_holding" to "Vehicle Inspection Fee Holding",
+            // Real Kakao T 대리운전 (designated driver, 2026-08-01) -- see
+            // DesignatedDriverTrip.kt's own doc comment. Real bug found live (2026-08-01)
+            // while live-verifying this exact feature end-to-end: the first real trip
+            // request 500'd with "Unknown ledger account designated_driver_holding" --
+            // this row was missed the same way interest_income/agent_commission_expense/
+            // card_spend_expense/postpaid_credit_payable/vehicle_inspection_holding all
+            // were before it. Every one of those was only ever caught live, never by a
+            // compile or a mocked unit test (LedgerService is always mocked in this
+            // codebase's own unit tests, so a missing seed row is invisible to them) --
+            // this is now six real instances of the identical bug class in one file.
+            "designated_driver_holding" to "Designated Driver Fare Holding",
         )
     }
 }

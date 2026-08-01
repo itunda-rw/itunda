@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import rw.itunda.core.domain.FraudFlag
 import rw.itunda.core.domain.FraudRule
 import java.time.Instant
@@ -20,7 +21,8 @@ interface FraudQueueRuleSummaryRow {
 interface FraudFlagRepository : JpaRepository<FraudFlag, String> {
     /** Reviewer decisions are state transitions; only one reviewer may claim a flag. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    fun findByIdForUpdate(id: String): Optional<FraudFlag>
+    @Query("select f from FraudFlag f where f.id = :id")
+    fun findByIdForUpdate(@Param("id") id: String): Optional<FraudFlag>
 
     // Paginated and risk-prioritized: a large ordinary NEW_RECIPIENT backlog must not
     // delay HIGH_VALUE or VELOCITY review. Within a tier, oldest flags remain first.
