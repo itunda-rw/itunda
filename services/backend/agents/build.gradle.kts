@@ -10,6 +10,8 @@ dependencyManagement {
 
 dependencies {
     implementation(project(":core"))
+    // For RateLimiter (float-listing creation spam guard).
+    implementation(project(":auth"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")

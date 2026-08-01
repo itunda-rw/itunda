@@ -49,6 +49,11 @@ import {
   fetchAgentTill, fetchAgentActivity, agentCashIn, agentCashOut, submitAgentTillCount,
   isNotAgentOperatorError, type AgentTillSnapshot, type AgentActivityItem,
 } from './lib/agentOperator';
+import {
+  postFloatListing, fetchNearbyFloatListings, fetchMyFloatListings, cancelFloatListing,
+  requestFloat, fetchMyFloatRequests, fetchIncomingFloatRequests, acceptFloatRequest, declineFloatRequest,
+  type NearbyFloatListing, type FloatListing, type FloatTransferRequest,
+} from './lib/floatMarketplace';
 import { setUssdPin } from './lib/ussd';
 import {
   fetchMyUpfrontDeposits, openUpfrontDeposit, withdrawUpfrontDeposit,
@@ -2671,6 +2676,7 @@ function BillsView() {
 // operator (AgentAdminController.assignOperator); an unassigned account gets a clean
 // "you are not an agent operator" state instead of a generic error.
 function AgentOperatorView() {
+  const [section, setSection] = useState<'till' | 'float'>('till');
   const [till, setTill] = useState<AgentTillSnapshot | null>(null);
   const [activity, setActivity] = useState<AgentActivityItem[]>([]);
   const [notOperator, setNotOperator] = useState(false);
@@ -2778,6 +2784,12 @@ function AgentOperatorView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button className={section === 'till' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'} onClick={() => setSection('till')} style={{ flex: 1 }}>Till</button>
+        <button className={section === 'float' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'} onClick={() => setSection('float')} style={{ flex: 1 }}>Float marketplace</button>
+      </div>
+      {section === 'float' ? <FloatMarketplaceSection /> : (
+      <>
       {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
       {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
       <div className="toss-card" style={{ padding: '24px' }}>
@@ -2831,6 +2843,211 @@ function AgentOperatorView() {
           <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
             <span>{a.type === 'CASH_IN' ? '↓ Cash in' : '↑ Cash out'} · {a.receiptNumber}</span>
             <span style={{ fontWeight: 600 }}>{a.amount.toLocaleString()} RWF</span>
+          </div>
+        ))}
+      </div>
+      </>
+      )}
+    </div>
+  );
+}
+
+// Real Rwanda-native peer-to-peer agent float rebalancing marketplace -- the fifth
+// feature in this codebase not sourced from Toss/당근/Coupang/Naver/Kakao. See
+// lib/floatMarketplace.ts's own doc comment for the full sourced account.
+function FloatMarketplaceSection() {
+  const [nearby, setNearby] = useState<NearbyFloatListing[]>([]);
+  const [myListings, setMyListings] = useState<FloatListing[]>([]);
+  const [myRequests, setMyRequests] = useState<FloatTransferRequest[]>([]);
+  const [incomingRequests, setIncomingRequests] = useState<FloatTransferRequest[]>([]);
+  const [locating, setLocating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [listAmount, setListAmount] = useState('');
+  const [requestAmounts, setRequestAmounts] = useState<Record<string, string>>({});
+
+  const loadMine = () => {
+    fetchMyFloatListings().then(setMyListings).catch(() => setMyListings([]));
+    fetchMyFloatRequests().then(setMyRequests).catch(() => setMyRequests([]));
+    fetchIncomingFloatRequests().then(setIncomingRequests).catch(() => setIncomingRequests([]));
+  };
+  useEffect(loadMine, []);
+
+  const handleFindNearby = () => {
+    if (!navigator.geolocation) {
+      setError('This browser does not support real location access.');
+      return;
+    }
+    setLocating(true);
+    setError(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        fetchNearbyFloatListings(position.coords.latitude, position.coords.longitude)
+          .then(setNearby)
+          .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load nearby float listings.'))
+          .finally(() => setLocating(false));
+      },
+      () => {
+        setLocating(false);
+        setError('Could not access your real location. Check your browser permissions.');
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
+
+  const handlePostListing = async () => {
+    const amount = Number(listAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError('Enter a real positive amount of float to offer.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await postFloatListing(amount);
+      setMessage('Listing posted -- other nearby agents can now request this float.');
+      setListAmount('');
+      loadMine();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not post this listing.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCancelListing = async (listingId: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await cancelFloatListing(listingId);
+      loadMine();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not cancel this listing.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRequestFloat = async (listingId: string, remainingAmount: number) => {
+    const raw = requestAmounts[listingId];
+    const amount = Number(raw);
+    if (!Number.isFinite(amount) || amount <= 0 || amount > remainingAmount) {
+      setError(`Enter a real amount up to the ${remainingAmount.toLocaleString()} RWF still available on this listing.`);
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await requestFloat(listingId, amount);
+      setMessage('Request sent -- the listing owner will accept or decline it.');
+      setRequestAmounts((prev) => ({ ...prev, [listingId]: '' }));
+      loadMine();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send this request.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleAcceptRequest = async (requestId: string) => {
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await acceptFloatRequest(requestId);
+      setMessage('Float transferred to the requesting agent.');
+      loadMine();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not accept this request.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDeclineRequest = async (requestId: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await declineFloatRequest(requestId);
+      loadMine();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not decline this request.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {message && <p style={{ fontSize: '13px', color: 'var(--toss-blue)' }}>{message}</p>}
+
+      <div className="toss-card">
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Offer surplus float</h3>
+        <input type="number" placeholder="Amount to offer (RWF)" value={listAmount} onChange={(e) => setListAmount(e.target.value)}
+          style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', width: '100%', marginBottom: '8px' }} />
+        <button className="toss-btn toss-btn-primary" disabled={busy} onClick={handlePostListing}>{busy ? 'Working…' : 'Post listing'}</button>
+      </div>
+
+      <div className="toss-card">
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Nearby agents with float to spare</h3>
+        <button className="toss-btn toss-btn-secondary" disabled={locating} onClick={handleFindNearby} style={{ marginBottom: '8px' }}>
+          {locating ? 'Finding…' : 'Find nearby listings'}
+        </button>
+        {nearby.length === 0 && <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No nearby listings loaded yet.</p>}
+        {nearby.map((n) => (
+          <div key={n.listing.id} style={{ padding: '8px 0', borderTop: '1px solid var(--toss-grey-100)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+              <span>{n.agentDisplayName} · {n.distanceKm.toFixed(1)} km</span>
+              <span style={{ fontWeight: 600 }}>{n.remainingAmount.toLocaleString()} RWF available</span>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+              <input type="number" placeholder="Amount to request" value={requestAmounts[n.listing.id] || ''}
+                onChange={(e) => setRequestAmounts((prev) => ({ ...prev, [n.listing.id]: e.target.value }))}
+                style={{ padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', flex: 1 }} />
+              <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={() => handleRequestFloat(n.listing.id, n.remainingAmount)}>Request</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="toss-card">
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My listings</h3>
+        {myListings.length === 0 && <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No listings posted yet.</p>}
+        {myListings.map((l) => (
+          <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '6px 0' }}>
+            <span>{l.amount.toLocaleString()} RWF offered · {l.claimedAmount.toLocaleString()} claimed · {l.status}</span>
+            {l.status === 'OPEN' && <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={() => handleCancelListing(l.id)}>Cancel</button>}
+          </div>
+        ))}
+      </div>
+
+      <div className="toss-card">
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Requests against my listings</h3>
+        {incomingRequests.length === 0 && <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No requests received yet.</p>}
+        {incomingRequests.map((r) => (
+          <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', padding: '6px 0' }}>
+            <span>{r.amount.toLocaleString()} RWF · {r.status}</span>
+            {r.status === 'REQUESTED' && (
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button className="toss-btn toss-btn-primary" disabled={busy} onClick={() => handleAcceptRequest(r.id)}>Accept</button>
+                <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={() => handleDeclineRequest(r.id)}>Decline</button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="toss-card">
+        <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My requests</h3>
+        {myRequests.length === 0 && <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No requests sent yet.</p>}
+        {myRequests.map((r) => (
+          <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '6px 0' }}>
+            <span>{r.amount.toLocaleString()} RWF</span>
+            <span style={{ fontWeight: 600 }}>{r.status}</span>
           </div>
         ))}
       </div>
