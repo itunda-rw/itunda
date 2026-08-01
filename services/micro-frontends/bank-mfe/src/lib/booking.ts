@@ -46,3 +46,31 @@ export const cancelBooking = (bookingId: string) =>
   apiFetch<{ success: boolean; booking: MerchantBooking }>(`/api/v1/merchant/bookings/${bookingId}/cancel`, {
     method: 'POST',
   }).then((r) => r.booking);
+
+// Real post-appointment reviews (item 143) -- see backend MerchantBookingReviewController's
+// own doc comment. The owner-side list+reply half has been real on merchant-mfe since
+// 2026-07-26; the CUSTOMER-facing submit-a-review half had zero client anywhere --
+// merchant-mfe's own lib/merchant.ts doc comment named this explicitly as blocked on a
+// real customer booking flow existing first, which bank-mfe's BookingWidget/
+// MyBookingsCard now provide.
+export interface MerchantBookingReview {
+  id: string;
+  bookingId: string;
+  merchantId: string;
+  customerId: string;
+  serviceName: string;
+  rating: number;
+  comment: string | null;
+  ownerReply: string | null;
+  ownerRepliedAt: string | null;
+  createdAt: string;
+}
+
+export const submitBookingReview = (bookingId: string, rating: number, comment?: string) =>
+  apiFetch<{ success: boolean; review: MerchantBookingReview }>(`/api/v1/merchant/bookings/${bookingId}/review`, {
+    method: 'POST',
+    body: JSON.stringify({ rating, comment: comment || undefined }),
+  }).then((r) => r.review);
+
+export const fetchMyBookingReviews = () =>
+  apiFetch<{ success: boolean; reviews: MerchantBookingReview[] }>('/api/v1/merchant/reviews/my-reviews?size=50').then((r) => r.reviews);

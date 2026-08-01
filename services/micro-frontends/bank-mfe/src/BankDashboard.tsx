@@ -117,7 +117,7 @@ import {
   fetchProductInquiries, fetchProductRating, fetchProductReviews, ORDER_RETURN_REASON_CODES, placeOrder, removeProductFavorite, requestOrderReturn, submitProductReview,
   type CommerceOrder, type CommerceOrderItem, type CommerceOrderStatus, type CommerceProduct, type FavoriteProduct, type OrderReturnRequestDto, type OrderReturnType, type PriceTier, type ProductInquiry, type ProductReview,
 } from './lib/commerce';
-import { cancelBooking, createBooking, fetchAvailableSlots, fetchMyBookings, type BookingSlot, type MerchantBooking } from './lib/booking';
+import { cancelBooking, createBooking, fetchAvailableSlots, fetchMyBookings, submitBookingReview, type BookingSlot, type MerchantBooking } from './lib/booking';
 import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
 import LiveRiderMap from './LiveRiderMap';
@@ -3272,9 +3272,76 @@ function MyBookingsCard() {
               {cancelling === b.id ? '…' : 'Cancel'}
             </button>
           )}
+          {b.status === 'COMPLETED' && <BookingReviewButton booking={b} />}
         </div>
       ))}
     </div>
+  );
+}
+
+// Real customer-side post-appointment review (item 143) -- see lib/booking.ts's own
+// doc comment. Mirrors ProductReviewRow's exact shape (star rating + optional comment,
+// a real BOOKING_ALREADY_REVIEWED 409 is treated as already-done, not an error).
+function BookingReviewButton({ booking }: { booking: MerchantBooking }) {
+  const [open, setOpen] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (rating === 0) {
+      setError('Pick a star rating.');
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      await submitBookingReview(booking.id, rating, comment);
+      setDone(true);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'BOOKING_ALREADY_REVIEWED') {
+        setDone(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Could not submit this review.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (done) {
+    return <span style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Thanks for your review!</span>;
+  }
+
+  if (!open) {
+    return (
+      <button className="toss-btn toss-btn-secondary" style={{ padding: '6px 10px', fontSize: '12px' }} onClick={() => setOpen(true)}>
+        Rate this visit
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+      <StarRatingInput value={rating} onChange={setRating} />
+      <input
+        type="text"
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        placeholder="How was it? (optional)"
+        style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+      />
+      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <button type="button" className="toss-btn toss-btn-secondary" style={{ flex: 1 }} onClick={() => setOpen(false)}>Cancel</button>
+        <button type="submit" className="toss-btn toss-btn-primary" style={{ flex: 1 }} disabled={submitting}>
+          {submitting ? 'Submitting…' : 'Submit review'}
+        </button>
+      </div>
+    </form>
   );
 }
 
