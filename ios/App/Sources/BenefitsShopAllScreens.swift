@@ -575,6 +575,12 @@ struct MyTabView: View {
     @State private var myListingsCount = 0
     @State private var myJobPostsCount = 0
     @State private var myPropertyListingsCount = 0
+    // Real 쿠팡파트너스 (Coupang Partners)-style affiliate earnings read-back (item 229)
+    // -- link creation itself happens inline on the Shop product card's Share icon;
+    // this is purely the read-back, mirroring bank-mfe's own AffiliateEarningsCard and
+    // Android's own port.
+    @State private var affiliateLinks: [AffiliateLinkDto] = []
+    @State private var affiliateCommissions: [AffiliateCommissionDto] = []
 
     var body: some View {
         ScrollView {
@@ -588,6 +594,29 @@ struct MyTabView: View {
                 }
                 ProfilePhotoCard()
                 VerificationCard()
+                if !affiliateLinks.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Partner earnings").font(IDS.scaledFont(size: 15, weight: .bold, relativeTo: .subheadline)).foregroundColor(IDS.Colors.textPrimary)
+                        Text("Earn 3% on any purchase made through a product link you've shared.").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                        HStack {
+                            Text("Links shared").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            Spacer()
+                            Text("\(affiliateLinks.count)").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                        }
+                        HStack {
+                            Text("Total clicks").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            Spacer()
+                            Text("\(affiliateLinks.reduce(0) { $0 + $1.clickCount })").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                        }
+                        HStack {
+                            Text("Total earned").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+                            Spacer()
+                            Text("\(Int(affiliateCommissions.reduce(0) { $0 + $1.commissionAmount })) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                        }
+                    }
+                    .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
+                }
                 // Real order tracking -- Naver Pay/Shopping's own "My" tab leads with
                 // recent orders across every product, not a settings list. Tapping
                 // switches to that product's own tab where the full order-history view
@@ -645,6 +674,8 @@ struct MyTabView: View {
             if let res = try? await NetworkClient.shared.getMyListings() { myListingsCount = res.listings.count }
             if let res = try? await NetworkClient.shared.getMyJobPosts() { myJobPostsCount = res.posts.count }
             if let res = try? await NetworkClient.shared.getMyPropertyListings() { myPropertyListingsCount = res.listings.count }
+            if let res = try? await NetworkClient.shared.getMyAffiliateLinks() { affiliateLinks = res.links }
+            if let res = try? await NetworkClient.shared.getMyAffiliateCommissions() { affiliateCommissions = res.commissions }
         }
     }
 

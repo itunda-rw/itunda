@@ -2624,6 +2624,33 @@ public struct PriceTierDto: Decodable { public let minQuantity: Int; public let 
 public struct MerchantSummaryDto: Decodable { public let id: String; public let businessName: String }
 public struct MerchantProductsResponse: Decodable { public let success: Bool; public let merchant: MerchantSummaryDto; public let products: [MerchantProductDto] }
 
+// Real 쿠팡파트너스 (Coupang Partners)-style affiliate link program (item 229) -- see
+// AffiliateLink.kt's own doc comment on the backend. bank-mfe/Android already have
+// this; this is the first iOS client. Referral capture-at-checkout stays bank-mfe-only,
+// a named, honest v1 scope-down (no deep-link precedent exists on this app).
+public struct CreateAffiliateLinkRequest: Encodable { public let productId: String; public init(productId: String) { self.productId = productId } }
+public struct AffiliateLinkDto: Decodable, Identifiable {
+    public let id: String
+    public let userId: String
+    public let productId: String
+    public let code: String
+    public let clickCount: Int
+    public let createdAt: String
+}
+public struct AffiliateLinkResponse: Decodable { public let success: Bool; public let link: AffiliateLinkDto }
+public struct AffiliateLinksResponse: Decodable { public let success: Bool; public let links: [AffiliateLinkDto] }
+public struct AffiliateCommissionDto: Decodable, Identifiable {
+    public let id: String
+    public let linkId: String
+    public let referrerId: String
+    public let orderId: String
+    public let buyerId: String
+    public let commissionAmount: Double
+    public let payoutTransactionId: String
+    public let createdAt: String
+}
+public struct AffiliateCommissionsResponse: Decodable { public let success: Bool; public let commissions: [AffiliateCommissionDto] }
+
 // Real local-business appointment booking, customer side -- see
 // rw.itunda.merchant.MerchantBookingService on the backend for the full account.
 // merchant-mfe/Android already have this; this is the first iOS client.
@@ -3866,6 +3893,15 @@ extension NetworkClient {
     public func getMerchantProducts(merchantId: String) async throws -> MerchantProductsResponse {
         try await get("api/v1/shopping/merchants/\(merchantId)/products")
     }
+
+    // Real 쿠팡파트너스 (Coupang Partners)-style affiliate link program (item 229) --
+    // see AffiliateLinkDto's own doc comment. bank-mfe/Android already have this; this
+    // is the first iOS client.
+    public func createAffiliateLink(productId: String) async throws -> AffiliateLinkResponse {
+        try await authenticatedPost("api/v1/affiliate/links", body: CreateAffiliateLinkRequest(productId: productId))
+    }
+    public func getMyAffiliateLinks() async throws -> AffiliateLinksResponse { try await get("api/v1/affiliate/links/my-links") }
+    public func getMyAffiliateCommissions() async throws -> AffiliateCommissionsResponse { try await get("api/v1/affiliate/commissions/my-commissions") }
 
     // Real local-business appointment booking, customer side -- see
     // MerchantBookingController.kt's own doc comment. merchant-mfe/Android already

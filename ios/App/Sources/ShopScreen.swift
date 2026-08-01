@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import CoreDesignSystem
 import CoreNetwork
 import CoreLocation
@@ -670,6 +671,31 @@ private struct MerchantDetailView: View {
     // Android already have this; this is the first iOS client.
     @State private var billingPlans: [MerchantBillingPlanDto] = []
     @State private var mySubscriptions: [MerchantBillingSubscriptionDto] = []
+    // Real 쿠팡파트너스 (Coupang Partners)-style affiliate link generation (item 229)
+    // -- see AffiliateLinkDto's own doc comment. bank-mfe/Android already have this;
+    // this is the first iOS client. Referral capture-at-checkout stays bank-mfe-only,
+    // a named, honest v1 scope-down (no deep-link precedent exists on this app).
+    @State private var sharingProductId: String?
+
+    private func shareProduct(_ productId: String) {
+        sharingProductId = productId
+        Task {
+            defer { sharingProductId = nil }
+            do {
+                let link = try await NetworkClient.shared.createAffiliateLink(productId: productId)
+                let text = "Check this out on itunda! Use code \(link.link.code) — https://itunda.rw/shop?ref=\(link.link.code)"
+                let activityVC = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+                if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let root = scene.windows.first?.rootViewController {
+                    var top = root
+                    while let presented = top.presentedViewController { top = presented }
+                    top.present(activityVC, animated: true)
+                }
+            } catch {
+                // Real, non-critical -- a share-link failure shouldn't block browsing.
+            }
+        }
+    }
 
     private var totalItems: Int { cart.values.reduce(0) { $0 + $1.quantity } }
     private func qty(_ productId: String) -> Int { cart["\(merchant.merchantId):\(productId)"]?.quantity ?? 0 }
@@ -750,12 +776,20 @@ private struct MerchantDetailView: View {
                                             }
                                         }
                                         .buttonStyle(.plain)
-                                        Button(action: { onToggleFavorite(product.id) }) {
-                                            Image(systemName: favoriteProductIds.contains(product.id) ? "heart.fill" : "heart")
-                                                .foregroundColor(favoriteProductIds.contains(product.id) ? .red : .white)
-                                                .padding(4)
+                                        VStack(spacing: 6) {
+                                            Button(action: { onToggleFavorite(product.id) }) {
+                                                Image(systemName: favoriteProductIds.contains(product.id) ? "heart.fill" : "heart")
+                                                    .foregroundColor(favoriteProductIds.contains(product.id) ? .red : .white)
+                                                    .padding(4)
+                                            }
+                                            .disabled(favoritingProductId == product.id)
+                                            Button(action: { shareProduct(product.id) }) {
+                                                Image(systemName: "square.and.arrow.up")
+                                                    .foregroundColor(.white)
+                                                    .padding(4)
+                                            }
+                                            .disabled(sharingProductId == product.id)
                                         }
-                                        .disabled(favoritingProductId == product.id)
                                     }
                                     ProductRatingBadge(productId: product.id)
                                     Text(product.stockQuantity.map { $0 == 0 ? "Out of stock" : "\($0) available" } ?? "Available")
