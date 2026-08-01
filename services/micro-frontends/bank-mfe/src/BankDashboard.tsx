@@ -159,12 +159,16 @@ import {
   startParkingSession, type ParkingSession, type ParkingSpot,
 } from './lib/parking';
 import {
+  bookBusSeats, cancelBusBooking, fetchMyBusBookings, fetchMyBusTrips, postBusTrip, searchBusTrips,
+  type BusBooking, type BusTrip,
+} from './lib/bus';
+import {
   acceptInspection, cancelInspection, completeInspection, fetchAvailableMechanics, fetchMyInspectionBookings,
   fetchMyMechanicBookings, fetchMyMechanicProfile, registerAsMechanic, requestInspection, setMechanicAvailability,
   type VehicleInspectionBooking, type VehicleInspectionMechanic,
 } from './lib/vehicleInspection';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'BUS' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
@@ -12963,6 +12967,235 @@ function ParkingView() {
   );
 }
 
+// Real Kakao T 시외버스 (intercity bus booking, item 224) -- see lib/bus.ts's own
+// doc comment for the full sourced account. Fare is known and charged in full at
+// booking time -- distinct from Bike/Parking's settle-at-checkout shape above.
+function BusView() {
+  const [subTab, setSubTab] = useState<'RIDE' | 'OPERATE'>('RIDE');
+
+  // Rider side
+  const [searchOrigin, setSearchOrigin] = useState('');
+  const [searchDestination, setSearchDestination] = useState('');
+  const [trips, setTrips] = useState<BusTrip[] | null>(null);
+  const [myBookings, setMyBookings] = useState<BusBooking[] | null>(null);
+  const [seatCounts, setSeatCounts] = useState<Record<string, string>>({});
+  const [riderError, setRiderError] = useState<string | null>(null);
+  const [busyTripId, setBusyTripId] = useState<string | null>(null);
+  const [busyBookingId, setBusyBookingId] = useState<string | null>(null);
+
+  const loadTrips = () => {
+    searchBusTrips(searchOrigin.trim() || undefined, searchDestination.trim() || undefined)
+      .then(setTrips)
+      .catch((err) => setRiderError(err instanceof ApiError ? err.message : 'Could not search trips.'));
+  };
+
+  const loadMyBookings = () => {
+    fetchMyBusBookings().then(setMyBookings).catch(() => {});
+  };
+
+  useEffect(() => {
+    if (subTab !== 'RIDE') return;
+    loadTrips();
+    loadMyBookings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subTab]);
+
+  const handleBookSeats = (tripId: string) => {
+    const seatCount = Number(seatCounts[tripId] || '1');
+    if (!Number.isFinite(seatCount) || seatCount < 1) return;
+    setBusyTripId(tripId);
+    setRiderError(null);
+    bookBusSeats(tripId, seatCount)
+      .then(() => { loadTrips(); loadMyBookings(); setBusyTripId(null); })
+      .catch((err) => { setRiderError(err instanceof ApiError ? err.message : 'Could not book these seats.'); setBusyTripId(null); });
+  };
+
+  const handleCancelBooking = (bookingId: string) => {
+    setBusyBookingId(bookingId);
+    setRiderError(null);
+    cancelBusBooking(bookingId)
+      .then(() => { loadMyBookings(); setBusyBookingId(null); })
+      .catch((err) => { setRiderError(err instanceof ApiError ? err.message : 'Could not cancel this booking.'); setBusyBookingId(null); });
+  };
+
+  // Operator side
+  const [myTrips, setMyTrips] = useState<BusTrip[] | null>(null);
+  const [tripOrigin, setTripOrigin] = useState('');
+  const [tripDestination, setTripDestination] = useState('');
+  const [tripDeparture, setTripDeparture] = useState('');
+  const [tripSeats, setTripSeats] = useState('');
+  const [tripFare, setTripFare] = useState('');
+  const [posting, setPosting] = useState(false);
+  const [operatorError, setOperatorError] = useState<string | null>(null);
+
+  const loadMyTrips = () => {
+    fetchMyBusTrips().then(setMyTrips).catch((err) => setOperatorError(err instanceof ApiError ? err.message : 'Could not load your trips.'));
+  };
+
+  useEffect(() => {
+    if (subTab === 'OPERATE') loadMyTrips();
+  }, [subTab]);
+
+  const handlePostTrip = () => {
+    const totalSeats = Number(tripSeats);
+    const farePerSeat = Number(tripFare);
+    if (!tripOrigin.trim() || !tripDestination.trim() || !tripDeparture || !Number.isFinite(totalSeats) || totalSeats <= 0 || !Number.isFinite(farePerSeat) || farePerSeat <= 0) {
+      return;
+    }
+    setPosting(true);
+    setOperatorError(null);
+    postBusTrip(tripOrigin.trim(), tripDestination.trim(), new Date(tripDeparture).toISOString(), totalSeats, farePerSeat)
+      .then(() => {
+        setTripOrigin(''); setTripDestination(''); setTripDeparture(''); setTripSeats(''); setTripFare('');
+        loadMyTrips();
+        setPosting(false);
+      })
+      .catch((err) => { setOperatorError(err instanceof ApiError ? err.message : 'Could not post this trip.'); setPosting(false); });
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button
+          className={subTab === 'RIDE' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          onClick={() => setSubTab('RIDE')} style={{ flex: 1 }}
+        >
+          Find a bus
+        </button>
+        <button
+          className={subTab === 'OPERATE' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          onClick={() => setSubTab('OPERATE')} style={{ flex: 1 }}
+        >
+          My routes
+        </button>
+      </div>
+
+      {subTab === 'RIDE' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {riderError && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{riderError}</p>}
+          <div className="toss-card">
+            <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>Search routes</p>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+              <input
+                type="text" value={searchOrigin} placeholder="From (e.g. Kigali)" onChange={(e) => setSearchOrigin(e.target.value)}
+                style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+              />
+              <input
+                type="text" value={searchDestination} placeholder="To (e.g. Musanze)" onChange={(e) => setSearchDestination(e.target.value)}
+                style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+              />
+            </div>
+            <button className="toss-btn toss-btn-primary" style={{ width: '100%' }} onClick={loadTrips}>Search</button>
+          </div>
+          {trips === null ? (
+            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+          ) : trips.length === 0 ? (
+            <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No upcoming trips found.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {trips.map((trip) => (
+                <div key={trip.id} className="toss-card">
+                  <p style={{ fontSize: '13px', fontWeight: 700 }}>{trip.origin} → {trip.destination}</p>
+                  <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+                    {new Date(trip.departureTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {' · '}{trip.farePerSeat.toLocaleString()} RWF/seat · {trip.availableSeats} seat(s) left
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                    <input
+                      type="number" min={1} max={trip.availableSeats} value={seatCounts[trip.id] ?? '1'}
+                      onChange={(e) => setSeatCounts((prev) => ({ ...prev, [trip.id]: e.target.value }))}
+                      style={{ width: '60px', padding: '8px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+                    />
+                    <button
+                      className="toss-btn toss-btn-primary" disabled={busyTripId === trip.id} style={{ flex: 1 }}
+                      onClick={() => handleBookSeats(trip.id)}
+                    >
+                      {busyTripId === trip.id ? '…' : 'Book seats'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {myBookings && myBookings.filter((b) => b.status === 'BOOKED').length > 0 && (
+            <div>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your bookings</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {myBookings.filter((b) => b.status === 'BOOKED').map((b) => (
+                  <div key={b.id} className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <p style={{ fontSize: '13px', fontWeight: 700 }}>{b.seatCount} seat(s)</p>
+                      <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{b.totalFare.toLocaleString()} RWF</p>
+                    </div>
+                    <button className="toss-btn toss-btn-secondary" disabled={busyBookingId === b.id} onClick={() => handleCancelBooking(b.id)}>
+                      {busyBookingId === b.id ? '…' : 'Cancel'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {subTab === 'OPERATE' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {operatorError && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{operatorError}</p>}
+          <div className="toss-card">
+            <p style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>Post a route</p>
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+              Any itunda user can post a scheduled trip -- no transport-licensing check.
+            </p>
+            <input
+              type="text" value={tripOrigin} placeholder="Origin" onChange={(e) => setTripOrigin(e.target.value)}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '8px' }}
+            />
+            <input
+              type="text" value={tripDestination} placeholder="Destination" onChange={(e) => setTripDestination(e.target.value)}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '8px' }}
+            />
+            <input
+              type="datetime-local" value={tripDeparture} onChange={(e) => setTripDeparture(e.target.value)}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '8px' }}
+            />
+            <input
+              type="number" value={tripSeats} placeholder="Total seats" onChange={(e) => setTripSeats(e.target.value)}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '8px' }}
+            />
+            <input
+              type="number" value={tripFare} placeholder="Fare per seat (RWF)" onChange={(e) => setTripFare(e.target.value)}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', marginBottom: '12px' }}
+            />
+            <button
+              className="toss-btn toss-btn-primary" style={{ width: '100%' }}
+              disabled={posting || !tripOrigin.trim() || !tripDestination.trim() || !tripDeparture || !tripSeats || !tripFare}
+              onClick={handlePostTrip}
+            >
+              {posting ? 'Posting…' : 'Post route'}
+            </button>
+          </div>
+          {myTrips && myTrips.length > 0 && (
+            <div>
+              <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px', padding: '0 4px' }}>Your routes</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {myTrips.map((trip) => (
+                  <div key={trip.id} className="toss-card">
+                    <p style={{ fontSize: '13px', fontWeight: 700 }}>{trip.origin} → {trip.destination}</p>
+                    <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+                      {new Date(trip.departureTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      {' · '}{trip.availableSeats}/{trip.totalSeats} seats left · {trip.farePerSeat.toLocaleString()} RWF/seat
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Real 배민오더-style table/QR in-store ordering (item 155) -- see lib/dineIn.ts's own
 // doc comment. Deliberately its own smaller, self-contained flow rather than bolted onto
 // MenuView/OrderFoodView's already-tested delivery checkout: no address, no favorites/
@@ -16776,6 +17009,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'DESIGNATED_DRIVER', label: 'Designated driver' },
     { id: 'BIKESHARE', label: 'Bike' },
     { id: 'PARKING', label: 'Parking' },
+    { id: 'BUS', label: 'Bus' },
     { id: 'MAP', label: 'Map' },
     { id: 'CERTIFICATE', label: 'Certificate' },
     { id: 'SHOPPING', label: 'Shopping' },
@@ -16849,6 +17083,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'DESIGNATED_DRIVER' && <DesignatedDriverView />}
       {tab === 'BIKESHARE' && <BikeShareView />}
       {tab === 'PARKING' && <ParkingView />}
+      {tab === 'BUS' && <BusView />}
       {tab === 'MAP' && <MapView />}
       {tab === 'CERTIFICATE' && <CertificateView />}
       {tab === 'SHOPPING' && <ShoppingView />}
