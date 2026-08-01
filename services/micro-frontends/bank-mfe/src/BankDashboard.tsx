@@ -18,6 +18,10 @@ import {
   type Ikimina, type IkiminaDetail,
 } from './lib/ikimina';
 import {
+  buySaccoShares, fetchMySaccoDividendHistory, fetchMySaccoShareholding, redeemSaccoShares,
+  type SaccoDividendPayout, type SaccoShareholding,
+} from './lib/sacco';
+import {
   cancelWeeklySavingsPlan, createWeeklySavingsPlan, fetchWeeklySavingsPlan, fetchWeeklySavingsPlans, withdrawWeeklySavingsPlan,
   WEEKLY_SAVINGS_ESCALATION_RATES, WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS, WEEKLY_SAVINGS_TERM_WEEKS,
   type WeeklySavingsPlan, type WeeklySavingsPlanDetail,
@@ -17414,6 +17418,103 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
   );
 }
 
+// Real Umurenge SACCO-style shares & dividends -- Rwanda's own government-backed
+// cooperative savings model. See lib/sacco.ts's own doc comment for the full sourced
+// account. Sibling to IkiminaSection above (both are Rwanda-specific, not sourced
+// from Toss/Kakao/Naver/Coupang) but a genuinely distinct mechanic: real shares +
+// periodic real dividends, not a rotating pot.
+function SaccoSection() {
+  const [shareholding, setShareholding] = useState<SaccoShareholding | null | undefined>(undefined);
+  const [currentValue, setCurrentValue] = useState<number | null>(null);
+  const [dividends, setDividends] = useState<SaccoDividendPayout[] | null>(null);
+  const [amount, setAmount] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    setError(null);
+    fetchMySaccoShareholding()
+      .then((r) => { setShareholding(r.shareholding); setCurrentValue(r.currentValue); })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your SACCO shares.'));
+    fetchMySaccoDividendHistory().then(setDividends).catch(() => setDividends([]));
+  };
+  useEffect(load, []);
+
+  const handleBuy = async () => {
+    const value = Number(amount);
+    if (!value || value <= 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await buySaccoShares(value);
+      setAmount('');
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not buy shares.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRedeem = async () => {
+    const value = Number(amount);
+    if (!value || value <= 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await redeemSaccoShares(value);
+      setAmount('');
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not redeem shares.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div>
+      <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '4px 4px 10px' }}>SACCO shares</h3>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', margin: '0 4px 10px' }}>
+        Buy real shares in itunda's own SACCO pool and earn periodic dividends, the same real cooperative model as Rwanda's 416 Umurenge SACCOs.
+      </p>
+      <div className="toss-card" style={{ marginBottom: '16px' }}>
+        {shareholding === undefined ? (
+          <div style={{ height: '48px' }} />
+        ) : (
+          <>
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Shares held</p>
+            <p style={{ fontSize: '22px', fontWeight: 700 }}>{(shareholding?.sharesHeld ?? 0).toLocaleString()} RWF</p>
+            {currentValue != null && (
+              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Total contributed: {(shareholding?.totalContributed ?? 0).toLocaleString()} RWF</p>
+            )}
+          </>
+        )}
+        {error && <p style={{ fontSize: '13px', color: '#E53935', marginTop: '8px' }} role="alert">{error}</p>}
+        <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+          <input
+            type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount (RWF)"
+            style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <button className="toss-btn toss-btn-primary" disabled={busy} onClick={handleBuy}>Buy</button>
+          <button className="toss-btn toss-btn-secondary" disabled={busy} onClick={handleRedeem}>Redeem</button>
+        </div>
+      </div>
+      {dividends && dividends.length > 0 && (
+        <div className="toss-card">
+          <p style={{ fontSize: '13px', fontWeight: 700, marginBottom: '8px' }}>Dividend history</p>
+          {dividends.map((d) => (
+            <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '4px 0' }}>
+              <span style={{ color: 'var(--toss-grey-500)' }}>{new Date(d.createdAt).toLocaleDateString()}</span>
+              <span style={{ fontWeight: 700 }}>+{d.amount.toLocaleString()} RWF</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Real KakaoBank 26주적금 (26-week savings) -- see lib/weeklySavings.ts's own doc
 // comment. Sibling to GroupAccountDetailView/CreateGroupAccountForm/
 // GroupAccountsSection above, same list -> detail shape, but this product's real
@@ -17856,6 +17957,9 @@ function SavingsView() {
       </div>
       <div style={{ marginTop: '24px' }}>
         <IkiminaSection />
+      </div>
+      <div style={{ marginTop: '24px' }}>
+        <SaccoSection />
       </div>
       <div style={{ marginTop: '24px' }}>
         <WeeklySavingsSection />
