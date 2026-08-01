@@ -508,6 +508,46 @@ public struct RequestDesignatedDriverTripRequest: Encodable {
     public let vehiclePlate: String
 }
 
+// Real Kakao T 바이크 (Kakao T Bike, item 222) -- real PEER-TO-PEER bike/scooter rental
+// pool (any user self-registers a bike they own), billed by elapsed TIME at rental end
+// -- distinct from ride-hailing/designated-driver above, which both know their fare up
+// front. Mirrors Bike.kt/BikeRentalSession.kt exactly. bank-mfe/Android already have
+// this; this is the first iOS client.
+public struct RegisterBikeRequest: Encodable { public let type: String; public let latitude: Double; public let longitude: Double }
+public struct BikeDto: Decodable, Identifiable {
+    public let id: String
+    public let ownerUserId: String
+    public let walletId: String
+    public let type: String
+    public let currentLatitude: Double
+    public let currentLongitude: Double
+    public let available: Bool
+    public let createdAt: String
+}
+public struct BikeResponse: Decodable { public let success: Bool; public let bike: BikeDto }
+public struct BikesResponse: Decodable { public let success: Bool; public let bikes: [BikeDto] }
+public struct SetBikeAvailabilityRequest: Encodable { public let available: Bool }
+public struct UpdateBikeLocationRequest: Encodable { public let latitude: Double; public let longitude: Double }
+public struct StartBikeRentalRequest: Encodable { public let bikeId: String; public let startLatitude: Double; public let startLongitude: Double }
+public struct EndBikeRentalRequest: Encodable { public let endLatitude: Double; public let endLongitude: Double }
+public struct BikeRentalSessionDto: Decodable, Identifiable {
+    public let id: String
+    public let bikeId: String
+    public let riderUserId: String
+    public let startedAt: String
+    public let endedAt: String?
+    public let startLatitude: Double
+    public let startLongitude: Double
+    public let endLatitude: Double?
+    public let endLongitude: Double?
+    public let durationMinutes: Int?
+    public let totalFare: Double?
+    public let platformFee: Double?
+    public let status: String
+}
+public struct BikeRentalResponse: Decodable { public let success: Bool; public let rental: BikeRentalSessionDto }
+public struct BikeRentalsResponse: Decodable { public let success: Bool; public let rentals: [BikeRentalSessionDto] }
+
 // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- mirrors
 // bank-mfe's lib/vehicleInspection.ts exactly. bank-mfe and Android already have this;
 // this is the first iOS client.
@@ -852,6 +892,40 @@ extension NetworkClient {
     public func cancelDesignatedDriverTrip(id: String) async throws -> DesignatedDriverTripResponse {
         try await authenticatedPost("api/v1/designated-driver/trips/\(id)/cancel", body: EmptyBody())
     }
+
+    // Real Kakao T 바이크 (Kakao T Bike, item 222) -- first iOS client for this feature.
+    // bank-mfe/Android already have this; mirrors ApiService.kt exactly.
+    public func registerBike(type: String, latitude: Double, longitude: Double) async throws -> BikeResponse {
+        try await authenticatedPost("api/v1/bikeshare/bikes", body: RegisterBikeRequest(type: type, latitude: latitude, longitude: longitude))
+    }
+
+    public func getMyBikes() async throws -> BikesResponse { try await get("api/v1/bikeshare/bikes/mine") }
+
+    public func setBikeAvailability(bikeId: String, available: Bool) async throws -> BikeResponse {
+        try await authenticatedPost("api/v1/bikeshare/bikes/\(bikeId)/availability", body: SetBikeAvailabilityRequest(available: available))
+    }
+
+    public func updateBikeLocation(bikeId: String, latitude: Double, longitude: Double) async throws -> BikeResponse {
+        try await authenticatedPost("api/v1/bikeshare/bikes/\(bikeId)/location", body: UpdateBikeLocationRequest(latitude: latitude, longitude: longitude))
+    }
+
+    public func getNearbyBikes(latitude: Double, longitude: Double, radiusKm: Double = 5.0) async throws -> BikesResponse {
+        try await get("api/v1/bikeshare/bikes/nearby", query: [
+            URLQueryItem(name: "latitude", value: String(latitude)),
+            URLQueryItem(name: "longitude", value: String(longitude)),
+            URLQueryItem(name: "radiusKm", value: String(radiusKm)),
+        ])
+    }
+
+    public func startBikeRental(bikeId: String, startLatitude: Double, startLongitude: Double) async throws -> BikeRentalResponse {
+        try await authenticatedPost("api/v1/bikeshare/rentals", body: StartBikeRentalRequest(bikeId: bikeId, startLatitude: startLatitude, startLongitude: startLongitude))
+    }
+
+    public func endBikeRental(sessionId: String, endLatitude: Double, endLongitude: Double) async throws -> BikeRentalResponse {
+        try await authenticatedPost("api/v1/bikeshare/rentals/\(sessionId)/end", body: EndBikeRentalRequest(endLatitude: endLatitude, endLongitude: endLongitude))
+    }
+
+    public func getMyBikeRentalHistory() async throws -> BikeRentalsResponse { try await get("api/v1/bikeshare/rentals/my-history") }
 
     // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- see
     // rw.itunda.marketplace.VehicleInspectionService's own doc comment. bank-mfe and

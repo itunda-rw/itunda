@@ -3146,6 +3146,38 @@ interface ApiService {
     @POST("api/v1/designated-driver/trips/{tripId}/cancel")
     suspend fun cancelDesignatedDriverTrip(@Path("tripId") tripId: String): DesignatedDriverTripResponse
 
+    // Real Kakao T 바이크 (Kakao T Bike, item 222) -- real peer-to-peer bike/scooter
+    // rental, billed by elapsed time (not a pre-known fare like ride-hailing/designated-
+    // driver). First Android client. bank-mfe already has this; mirrors lib/bikeshare.ts
+    // exactly.
+    @POST("api/v1/bikeshare/bikes")
+    suspend fun registerBike(@Body request: RegisterBikeRequest): BikeResponse
+
+    @GET("api/v1/bikeshare/bikes/mine")
+    suspend fun getMyBikes(): BikesResponse
+
+    @POST("api/v1/bikeshare/bikes/{bikeId}/availability")
+    suspend fun setBikeAvailability(@Path("bikeId") bikeId: String, @Body request: SetBikeAvailabilityRequest): BikeResponse
+
+    @POST("api/v1/bikeshare/bikes/{bikeId}/location")
+    suspend fun updateBikeLocation(@Path("bikeId") bikeId: String, @Body request: UpdateBikeLocationRequest): BikeResponse
+
+    @GET("api/v1/bikeshare/bikes/nearby")
+    suspend fun getNearbyBikes(
+        @Query("latitude") latitude: Double,
+        @Query("longitude") longitude: Double,
+        @Query("radiusKm") radiusKm: Double = 5.0,
+    ): BikesResponse
+
+    @POST("api/v1/bikeshare/rentals")
+    suspend fun startBikeRental(@Body request: StartBikeRentalRequest): BikeRentalResponse
+
+    @POST("api/v1/bikeshare/rentals/{sessionId}/end")
+    suspend fun endBikeRental(@Path("sessionId") sessionId: String, @Body request: EndBikeRentalRequest): BikeRentalResponse
+
+    @GET("api/v1/bikeshare/rentals/my-history")
+    suspend fun getMyBikeRentalHistory(): BikeRentalsResponse
+
     // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- see
     // rw.itunda.marketplace.VehicleInspectionService's own doc comment. A buyer books
     // and 100%-prepays a real mechanic to inspect a real Marketplace used-car listing
@@ -3336,6 +3368,30 @@ data class RequestDesignatedDriverTripRequest(
     val dropoffAddress: String, val dropoffLatitude: Double, val dropoffLongitude: Double,
     val vehicleMake: String, val vehicleModel: String, val vehiclePlate: String,
 )
+
+// Real Kakao T 바이크 (Kakao T Bike, item 222) -- real PEER-TO-PEER bike/scooter rental
+// pool (any user self-registers a bike they own), billed by elapsed TIME at rental end
+// -- distinct from ride-hailing/designated-driver, which both know their fare up front.
+// Mirrors Bike.kt/BikeRentalSession.kt exactly.
+data class RegisterBikeRequest(val type: String, val latitude: Double, val longitude: Double)
+data class BikeDto(
+    val id: String, val ownerUserId: String, val walletId: String, val type: String,
+    val currentLatitude: Double, val currentLongitude: Double, val available: Boolean, val createdAt: String,
+)
+data class BikeResponse(val success: Boolean, val bike: BikeDto)
+data class BikesResponse(val success: Boolean, val bikes: List<BikeDto>)
+data class SetBikeAvailabilityRequest(val available: Boolean)
+data class UpdateBikeLocationRequest(val latitude: Double, val longitude: Double)
+data class StartBikeRentalRequest(val bikeId: String, val startLatitude: Double, val startLongitude: Double)
+data class EndBikeRentalRequest(val endLatitude: Double, val endLongitude: Double)
+data class BikeRentalSessionDto(
+    val id: String, val bikeId: String, val riderUserId: String, val startedAt: String, val endedAt: String?,
+    val startLatitude: Double, val startLongitude: Double, val endLatitude: Double?, val endLongitude: Double?,
+    val durationMinutes: Int?, val totalFare: java.math.BigDecimal?, val platformFee: java.math.BigDecimal?,
+    val status: String,
+)
+data class BikeRentalResponse(val success: Boolean, val rental: BikeRentalSessionDto)
+data class BikeRentalsResponse(val success: Boolean, val rentals: List<BikeRentalSessionDto>)
 
 // Real Kakao T-style post-trip driver rating (item 213) -- see the backend's
 // RideTripReview.kt doc comment.

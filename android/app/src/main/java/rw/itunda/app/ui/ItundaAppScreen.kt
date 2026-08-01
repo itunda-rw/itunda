@@ -39,6 +39,7 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.CreditCard
 import androidx.compose.material.icons.outlined.CurrencyExchange
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.DirectionsBike
 import androidx.compose.material.icons.outlined.DirectionsCar
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.HelpOutline
@@ -263,6 +264,9 @@ fun ItundaAppScreen(
         // Real Kakao T 대리운전 (designated driver, item 221) -- bank-mfe shipped first;
         // same pattern.
         var showDesignatedDriver by rememberSaveable { mutableStateOf(false) }
+        // Real Kakao T 바이크 (Kakao T Bike, item 222) -- bank-mfe shipped first; same
+        // pattern.
+        var showBikeRental by rememberSaveable { mutableStateOf(false) }
         // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment)
         // screen (2026-07-31) -- bank-mfe shipped first; same pattern.
         var showVehicleInspection by rememberSaveable { mutableStateOf(false) }
@@ -864,6 +868,11 @@ fun ItundaAppScreen(
             DesignatedDriverScreen(onBack = { showDesignatedDriver = false })
             return@IdsTheme
         }
+        if (showBikeRental) {
+            BackHandler { showBikeRental = false }
+            BikeRentalScreen(onBack = { showBikeRental = false })
+            return@IdsTheme
+        }
         // Real 토스뱅크 외화통장 screen (2026-07-25) -- same pattern.
         if (showForeignCurrency) {
             BackHandler { showForeignCurrency = false }
@@ -983,6 +992,7 @@ fun ItundaAppScreen(
                             onOpenSpending = { showSpending = true },
                             onOpenRides = { showRides = true },
                             onOpenDesignatedDriver = { showDesignatedDriver = true },
+                            onOpenBikeRental = { showBikeRental = true },
                             onOpenVehicleInspection = { showVehicleInspection = true },
                             onOpenVehicleValuation = { showVehicleValuation = true },
                             onOpenFamilyLink = { showFamilyLink = true },
@@ -1515,6 +1525,7 @@ private fun MenuScreen(
     onOpenSpending: () -> Unit = {},
     onOpenRides: () -> Unit = {},
     onOpenDesignatedDriver: () -> Unit = {},
+    onOpenBikeRental: () -> Unit = {},
     onOpenVehicleInspection: () -> Unit = {},
     onOpenVehicleValuation: () -> Unit = {},
     onOpenFamilyLink: () -> Unit = {},
@@ -1661,6 +1672,7 @@ private fun MenuScreen(
                 FlatRow("Group account", subtitle = "Shared account with dues and split expenses", icon = Icons.Outlined.Group, iconColor = AccentPurple, onClick = onOpenGroupAccounts),
                 FlatRow("Rides", subtitle = "Request a ride or drive for real fares", icon = Icons.Outlined.DirectionsCar, iconColor = AccentBlue, onClick = onOpenRides),
                 FlatRow("Designated driver", subtitle = "A driver takes you and your own car home", icon = Icons.Outlined.SwapHoriz, iconColor = AccentTeal, onClick = onOpenDesignatedDriver),
+                FlatRow("Bike rental", subtitle = "Rent a nearby bike or scooter, billed by the minute", icon = Icons.Outlined.DirectionsBike, iconColor = AccentBlue, onClick = onOpenBikeRental),
                 FlatRow("Vehicle inspection", subtitle = "Pay a mechanic to inspect a used car before you buy", icon = Icons.Outlined.Build, iconColor = AccentTeal, onClick = onOpenVehicleInspection),
                 FlatRow("My vehicles", subtitle = "Track your car's estimated resale value", icon = Icons.Outlined.DirectionsCar, iconColor = AccentTeal, onClick = onOpenVehicleValuation),
                 FlatRow("Family", subtitle = "Link a guardian or child, view read-only spending", icon = Icons.Outlined.Groups, iconColor = AccentPurple, onClick = onOpenFamilyLink),
