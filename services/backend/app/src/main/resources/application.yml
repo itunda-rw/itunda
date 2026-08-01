@@ -89,6 +89,21 @@ spring:
 itunda:
   jwt:
     secret: ${JWT_SECRET:itunda-dev-secret-do-not-use-in-production}
+  # Real USSD gateway shared secret (2026-08-02) -- see UssdController's own doc
+  # comment. POST /api/v1/ussd/session is deliberately permitAll() (the real caller is
+  # a USSD gateway server, not a logged-in itunda user with a JWT) -- but permitAll()
+  # alone would let ANY internet client hit this endpoint claiming to be any phone
+  # number, turning the PIN-rate-limited balance/send-money/statement flows into an
+  # open oracle for account-existence enumeration and (rate-limited but nonzero) PIN
+  # guessing against real users. A real production USSD/aggregator integration
+  # (Africa's Talking and most telco setups) authenticates the GATEWAY itself via a
+  # shared secret/IP allowlist -- this is that shared secret, checked as a header on
+  # every request, distinct from and in addition to the real per-phone-number PIN rate
+  # limiting inside UssdService. Empty by default in dev/CI (no header check enforced),
+  # same "never required for local dev" convention `mtn-momo` below already establishes
+  # -- a real deployment sets USSD_GATEWAY_SECRET and the check becomes real.
+  ussd:
+    gateway-secret: ${USSD_GATEWAY_SECRET:}
   # Real MTN MoMo Collection sandbox integration (2026-07-17) -- see
   # MtnMomoProviderConnector.kt's own doc comment for the full account. Empty by
   # default: without real sandbox credentials (momodeveloper.mtn.com, free self-serve
