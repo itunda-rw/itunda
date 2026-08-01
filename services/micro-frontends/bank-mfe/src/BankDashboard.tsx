@@ -49,6 +49,7 @@ import {
   fetchAgentTill, fetchAgentActivity, agentCashIn, agentCashOut, submitAgentTillCount,
   isNotAgentOperatorError, type AgentTillSnapshot, type AgentActivityItem,
 } from './lib/agentOperator';
+import { setUssdPin } from './lib/ussd';
 import {
   fetchMyUpfrontDeposits, openUpfrontDeposit, withdrawUpfrontDeposit,
   UPFRONT_DEPOSIT_ANNUAL_RATE, UPFRONT_DEPOSIT_MIN_PRINCIPAL, UPFRONT_DEPOSIT_MAX_PRINCIPAL,
@@ -191,7 +192,7 @@ import {
   type VehicleInspectionBooking, type VehicleInspectionMechanic,
 } from './lib/vehicleInspection';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'BUS' | 'KNOWLEDGE' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'BUS' | 'KNOWLEDGE' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT' | 'USSD';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
@@ -2832,6 +2833,76 @@ function AgentOperatorView() {
             <span style={{ fontWeight: 600 }}>{a.amount.toLocaleString()} RWF</span>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// Real USSD basic-banking access (item 231) -- the fourth feature in this codebase
+// not sourced from Toss/당근/Coupang/Naver/Kakao. See lib/ussd.ts's own doc comment
+// for the full sourced account (Rwanda's real ~34-35% smartphone penetration).
+function UssdSettingsView() {
+  const [pin, setPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(false);
+    if (!/^\d{4,6}$/.test(pin)) {
+      setError('PIN must be 4-6 digits.');
+      return;
+    }
+    if (pin !== confirmPin) {
+      setError('PINs did not match.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await setUssdPin(pin);
+      setPin('');
+      setConfirmPin('');
+      setSuccess(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not set your USSD PIN.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div className="toss-card" style={{ padding: '20px' }}>
+        <p style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>USSD access</p>
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+          Roughly two-thirds of people in Rwanda have a feature phone, not a smartphone. Set a real 4-6 digit
+          USSD PIN so you can check your balance and send money from any phone, no app or internet needed.
+        </p>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '16px' }}>
+          Honestly scoped: the real menu, PIN check, and money transfer are fully built and working today. Dialing
+          a short code like <code>*123#</code> to reach them needs a real partnership with a mobile network operator
+          this project doesn't have yet -- the same honest limitation as our ID-verification integration.
+        </p>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <input
+            type="password" inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value)}
+            placeholder="New USSD PIN (4-6 digits)" maxLength={6}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+          />
+          <input
+            type="password" inputMode="numeric" value={confirmPin} onChange={(e) => setConfirmPin(e.target.value)}
+            placeholder="Confirm PIN" maxLength={6}
+            style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '15px' }}
+          />
+          {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+          {success && <p style={{ fontSize: '13px', color: '#1E8E4F' }}>Your USSD PIN has been set.</p>}
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting}>
+            {submitting ? 'Saving…' : 'Set USSD PIN'}
+          </button>
+        </form>
       </div>
     </div>
   );
@@ -18230,6 +18301,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'INSURANCE', label: 'Insurance' },
     { id: 'BILLS', label: 'Pay bills' },
     { id: 'AGENT', label: 'Agent till' },
+    { id: 'USSD', label: 'USSD access' },
     { id: 'FOREIGN_CURRENCY', label: 'Foreign currency' },
     { id: 'SPENDING', label: 'Spending' },
     { id: 'SUBSCRIPTIONS', label: 'Subscriptions' },
@@ -18305,6 +18377,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'INSURANCE' && <InsuranceView />}
       {tab === 'BILLS' && <BillsView />}
       {tab === 'AGENT' && <AgentOperatorView />}
+      {tab === 'USSD' && <UssdSettingsView />}
       {tab === 'FOREIGN_CURRENCY' && <ForeignCurrencyView />}
       {tab === 'SPENDING' && <SpendingInsightView />}
       {tab === 'SUBSCRIPTIONS' && <SubscriptionsView />}

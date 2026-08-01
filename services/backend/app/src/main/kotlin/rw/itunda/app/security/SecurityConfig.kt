@@ -120,6 +120,13 @@ class SecurityConfig(
                     // write" shape as itunda's self-hosted tiles/glyphs. GET only;
                     // POST (creating an upload) stays behind the default JWT gate below.
                     .requestMatchers(HttpMethod.GET, "/api/v1/uploads/**").permitAll()
+                    // Real USSD gateway webhook (item 231, 2026-08-02) -- same exact
+                    // reasoning as /api/v1/partners/**/pay/** above: the real USSD gateway
+                    // itself (Africa's Talking-style, the real East African regional
+                    // standard) has no itunda user JWT at all, it's a server-to-server
+                    // webhook keyed on the caller's real phoneNumber + an in-flow PIN, not
+                    // a Bearer token. See UssdController's own doc comment.
+                    .requestMatchers("/api/v1/ussd/session").permitAll()
                     // Fixed (2026-07-11): previously any authenticated user -- not just an
                     // operator -- could read fraud/compliance/reconciliation data from
                     // /api/v1/system/**, exactly the gap SECURITY.md names as still open.

@@ -51,6 +51,7 @@ dependencies {
     implementation(project(":family"))
     implementation(project(":splitbill"))
     implementation(project(":card"))
+    implementation(project(":ussd"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
