@@ -1187,8 +1187,25 @@ data class FavoriteProductDto(
 data class FavoriteProductsResponse(val success: Boolean, val favorites: List<FavoriteProductDto>)
 
 data class OrderItemRequest(val productId: String, val quantity: Int)
-data class PlaceOrderRequest(val merchantId: String, val items: List<OrderItemRequest>, val deliveryAddress: String)
+// referralCode added for the real 쿠팡파트너스-style affiliate program, item 229 --
+// see AffiliateLinkDto's own doc comment.
+data class PlaceOrderRequest(val merchantId: String, val items: List<OrderItemRequest>, val deliveryAddress: String, val referralCode: String? = null)
 data class UpdateOrderStatusRequest(val status: String)
+
+// Real 쿠팡파트너스 (Coupang Partners)-style affiliate link program (item 229) -- see
+// the backend's AffiliateService doc comment. bank-mfe already has this; this is the
+// first Android client, generation + earnings only (referral capture-at-checkout
+// stays bank-mfe-only, since that relies on a real ?ref= URL query param this native
+// app has no deep-link precedent for -- an honest v1 scope-down, not an invented one).
+data class CreateAffiliateLinkRequest(val productId: String)
+data class AffiliateLinkDto(val id: String, val userId: String, val productId: String, val code: String, val clickCount: Long, val createdAt: String)
+data class AffiliateLinkResponse(val success: Boolean, val link: AffiliateLinkDto)
+data class AffiliateLinksResponse(val success: Boolean, val links: List<AffiliateLinkDto>)
+data class AffiliateCommissionDto(
+    val id: String, val linkId: String, val referrerId: String, val orderId: String, val buyerId: String,
+    val commissionAmount: Double, val payoutTransactionId: String, val createdAt: String,
+)
+data class AffiliateCommissionsResponse(val success: Boolean, val commissions: List<AffiliateCommissionDto>)
 
 data class OrderDto(
     val id: String,
@@ -2671,6 +2688,17 @@ interface ApiService {
 
     @GET("api/v1/orders/{id}")
     suspend fun getOrder(@Path("id") orderId: String): OrderDetailResponse
+
+    // Real 쿠팡파트너스 (Coupang Partners)-style affiliate link program (item 229) --
+    // see AffiliateLinkDto's own doc comment.
+    @POST("api/v1/affiliate/links")
+    suspend fun createAffiliateLink(@Body request: CreateAffiliateLinkRequest): AffiliateLinkResponse
+
+    @GET("api/v1/affiliate/links/my-links")
+    suspend fun getMyAffiliateLinks(): AffiliateLinksResponse
+
+    @GET("api/v1/affiliate/commissions/my-commissions")
+    suspend fun getMyAffiliateCommissions(): AffiliateCommissionsResponse
 
     // Real cancellation + refund (2026-07-18) -- buyer or seller, PLACED orders only.
     // See rw.itunda.commerce.OrderService.cancelOrder's own doc comment.

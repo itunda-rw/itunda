@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.RateReview
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.outlined.Star
@@ -58,6 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -92,6 +94,7 @@ import rw.itunda.core.network.FavoriteProductDto
 import rw.itunda.core.network.MerchantBookingDto
 import rw.itunda.core.network.SubmitBookingReviewRequest
 import rw.itunda.core.network.MerchantProductDto
+import rw.itunda.core.network.CreateAffiliateLinkRequest
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.ORDER_RETURN_REASON_CODES
 import rw.itunda.core.network.OrderDto
@@ -874,6 +877,30 @@ private fun MerchantDetailView(
 ) {
     BackHandler(onBack = onBack)
     val totalItems = cart.values.sumOf { it.quantity }
+    // Real 쿠팡파트너스 (Coupang Partners)-style affiliate link generation (item 229)
+    // -- see AffiliateLinkDto's own doc comment. bank-mfe already has this; this is
+    // the first Android client. Referral capture-at-checkout stays bank-mfe-only, a
+    // named, honest v1 scope-down (no deep-link precedent exists on this app).
+    val shareContext = LocalContext.current
+    val shareScope = rememberCoroutineScope()
+    var sharingProductId by remember { mutableStateOf<String?>(null) }
+    fun shareProduct(productId: String) {
+        sharingProductId = productId
+        shareScope.launch {
+            try {
+                val link = NetworkClient.apiService.createAffiliateLink(CreateAffiliateLinkRequest(productId))
+                val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(android.content.Intent.EXTRA_TEXT, "Check this out on itunda! Use code ${link.link.code} — https://itunda.rw/shop?ref=${link.link.code}")
+                }
+                shareContext.startActivity(android.content.Intent.createChooser(intent, "Share & earn 3%"))
+            } catch (e: Exception) {
+                // Real, non-critical -- a share-link failure shouldn't block browsing.
+            } finally {
+                sharingProductId = null
+            }
+        }
+    }
     fun qtyFor(productId: String) = cart["${merchant.merchantId}:$productId"]?.quantity ?: 0
     fun setQty(product: MerchantProductDto, qty: Int) {
         val key = "${merchant.merchantId}:${product.id}"
@@ -947,16 +974,25 @@ private fun MerchantDetailView(
                                 // ListingCard, closing docs/DESIGN_REFERENCES.md
                                 // Section 5 recommendation #3.
                                 val favorited = p.id in favoriteProductIds
-                                Icon(
-                                    if (favorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                                    contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist",
-                                    tint = if (favorited) Ids.colors.danger else Color.White,
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(4.dp)
-                                        .size(20.dp)
-                                        .clickable(enabled = favoritingProductId != p.id) { onToggleFavorite(p.id) },
-                                )
+                                Column(horizontalAlignment = Alignment.End, modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)) {
+                                    Icon(
+                                        if (favorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                        contentDescription = if (favorited) "Remove from wishlist" else "Add to wishlist",
+                                        tint = if (favorited) Ids.colors.danger else Color.White,
+                                        modifier = Modifier
+                                            .size(20.dp)
+                                            .clickable(enabled = favoritingProductId != p.id) { onToggleFavorite(p.id) },
+                                    )
+                                    Icon(
+                                        Icons.Outlined.Share,
+                                        contentDescription = "Share & earn 3%",
+                                        tint = Color.White,
+                                        modifier = Modifier
+                                            .padding(top = 6.dp)
+                                            .size(18.dp)
+                                            .clickable(enabled = sharingProductId != p.id) { shareProduct(p.id) },
+                                    )
+                                }
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(p.name, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 2)
