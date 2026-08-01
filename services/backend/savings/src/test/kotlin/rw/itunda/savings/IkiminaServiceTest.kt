@@ -2,6 +2,7 @@ package rw.itunda.savings
 
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import rw.itunda.auth.RateLimiter
@@ -174,6 +175,58 @@ class IkiminaServiceTest : BehaviorSpec({
                 result.amount shouldBe BigDecimal("15000")
                 result.ikimina.currentRound shouldBe 2
                 result.ikimina.status shouldBe IkiminaStatus.ACTIVE
+            }
+        }
+    }
+
+    // Real bug caught and fixed: the round's payout previously only ever fired from a
+    // fully separate, manually-triggered endpoint -- nothing called it automatically
+    // when the round-completing contribution landed. A real ikimina round could sit
+    // indefinitely completed-but-unpaid until some member happened to tap a separate
+    // button. This proves the fix: the LAST member's own contributeThisRound call now
+    // auto-triggers the payout in the same call, without them ever calling the
+    // separate payout endpoint themselves.
+    Given("a real 2-member ikimina where the last member is about to contribute the round-completing amount") {
+        val ikiminaRepository = mockk<IkiminaRepository>()
+        val ikiminaMemberRepository = mockk<IkiminaMemberRepository>()
+        val ikiminaContributionRepository = mockk<IkiminaContributionRepository>()
+        val walletRepository = mockk<WalletRepository>()
+        val ledgerService = mockk<LedgerService>()
+        val service = newService(
+            ikiminaRepository = ikiminaRepository, ikiminaMemberRepository = ikiminaMemberRepository,
+            ikiminaContributionRepository = ikiminaContributionRepository, walletRepository = walletRepository, ledgerService = ledgerService,
+        )
+
+        val ikimina = Ikimina(id = "ikimina_1", name = "Test", organizerId = "u1", walletId = "wallet_grp", contributionAmount = BigDecimal("5000"), cycleFrequencyDays = 7, memberCap = 10, currentRound = 1, status = IkiminaStatus.ACTIVE)
+        val members = listOf(
+            IkiminaMember(id = "mem_1", ikiminaId = "ikimina_1", userId = "u1", payoutOrder = 1),
+            IkiminaMember(id = "mem_2", ikiminaId = "ikimina_1", userId = "u2", payoutOrder = 2),
+        )
+        every { ikiminaRepository.findById("ikimina_1") } returns Optional.of(ikimina)
+        every { ikiminaMemberRepository.findByIkiminaIdAndUserId("ikimina_1", "u2") } returns members[1]
+        every { ikiminaMemberRepository.findByIkiminaId("ikimina_1") } returns members
+        every { ikiminaMemberRepository.findByIkiminaIdAndPayoutOrder("ikimina_1", 1) } returns members[0]
+        // Member u1 (payoutOrder 1) already contributed; u2 is about to be the second
+        // and last real contribution this round.
+        every { ikiminaContributionRepository.findByIkiminaIdAndMemberIdAndRound("ikimina_1", "mem_2", 1) } returns null
+        every { ikiminaContributionRepository.findByIkiminaIdAndRound("ikimina_1", 1) } returns
+            listOf(mockk { every { memberId } returns "mem_1" }, mockk { every { memberId } returns "mem_2" })
+        every { walletRepository.findByUserIdAndType("u2", WalletType.MAIN) } returns wallet("wallet_u2", "u2")
+        every { walletRepository.findByUserIdAndType("u1", WalletType.MAIN) } returns wallet("wallet_u1", "u1")
+        every { walletRepository.findById("wallet_grp") } returns Optional.of(wallet("wallet_grp", "u1", WalletType.GROUP))
+        every { ledgerService.postLedgerTransaction(any(), any()) } returns LedgerPostResult("ledgertxn_1", emptyList())
+        every { ikiminaContributionRepository.save(any()) } answers { firstArg() }
+        every { ikiminaMemberRepository.save(any()) } answers { firstArg() }
+        every { ikiminaRepository.save(any()) } answers { firstArg() }
+
+        When("the last member contributes, completing the round") {
+            val result = service.contributeThisRound("u2", "ikimina_1")
+
+            Then("the payout fires automatically in the same call -- no separate manual trigger needed") {
+                result.payout shouldNotBe null
+                result.payout?.recipientUserId shouldBe "u1"
+                result.payout?.amount shouldBe BigDecimal("10000")
+                result.ikimina.currentRound shouldBe 2
             }
         }
     }

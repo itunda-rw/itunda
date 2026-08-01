@@ -42,6 +42,7 @@ data class IkiminaView(
     val currentRoundContributions: List<IkiminaContributionStatusView>,
 )
 data class IkiminaPayoutResult(val ikimina: Ikimina, val recipientUserId: String, val amount: BigDecimal)
+data class IkiminaContributionResult(val ikimina: Ikimina, val payout: IkiminaPayoutResult?)
 
 private const val MIN_MEMBERS_TO_START = 2
 private const val MAX_MEMBERS = 15
@@ -167,8 +168,23 @@ class IkiminaService(
         return ikiminaRepository.save(ikimina)
     }
 
+    /**
+     * Real bug caught during this session's own follow-up review, before it caused real
+     * confusion in production: the round's payout previously only ever fired from a
+     * fully separate, manually-triggered endpoint (`checkAndTriggerPayout`/`POST
+     * .../payout`) that bank-mfe exposed as its own distinct button -- nothing called it
+     * automatically. In practice, once every member has contributed for a round, NOTHING
+     * pays anyone out until some member happens to remember to tap that separate button;
+     * a real ikimina round could sit indefinitely completed-but-unpaid. Fixed by having
+     * the contribution that completes a round automatically attempt the payout in the
+     * same transaction -- `attemptPayout` returns `null` (not an exception) when
+     * contributions are still incomplete, so every contribution except the last one is
+     * unaffected. The explicit `checkAndTriggerPayout`/`POST .../payout` endpoint stays
+     * real and callable (e.g. a client retry, or a member checking status), it just isn't
+     * the ONLY path to a payout anymore.
+     */
     @Transactional
-    fun contributeThisRound(userId: String, ikiminaId: String): Ikimina {
+    fun contributeThisRound(userId: String, ikiminaId: String): IkiminaContributionResult {
         val ikimina = ikiminaRepository.findById(ikiminaId).orElseThrow { IkiminaNotFoundException("Ikimina not found") }
         if (ikimina.status != IkiminaStatus.ACTIVE) throw IkiminaNotActiveException("This ikimina's cycle is not currently active")
         val member = ikiminaMemberRepository.findByIkiminaIdAndUserId(ikiminaId, userId)
@@ -193,7 +209,8 @@ class IkiminaService(
         ikiminaContributionRepository.save(
             IkiminaContribution(id = "ikiminacontrib_${UUID.randomUUID()}", ikiminaId = ikiminaId, memberId = member.id, round = ikimina.currentRound, amount = ikimina.contributionAmount),
         )
-        return ikimina
+        val payout = attemptPayout(ikimina)
+        return IkiminaContributionResult(ikimina = payout?.ikimina ?: ikimina, payout = payout)
     }
 
     /**
@@ -205,23 +222,18 @@ class IkiminaService(
      * members' contribution calls both landing near the round-completing moment) --
      * the loser real-throws `ObjectOptimisticLockingFailureException`, already handled
      * globally as a clean 409 by `IdempotencyExceptionHandler.kt`, same as this
-     * session's Bike/Parking/Knowledge/SupportTicket fixes all rely on.
+     * session's Bike/Parking/Knowledge/SupportTicket fixes all rely on. Returns `null`
+     * (rather than throwing) when contributions aren't complete yet -- `contributeThisRound`
+     * relies on that to auto-attempt a payout after every contribution without disrupting
+     * the normal (round-still-incomplete) case.
      */
-    @Transactional
-    fun checkAndTriggerPayout(userId: String, ikiminaId: String): IkiminaPayoutResult {
-        val ikimina = ikiminaRepository.findById(ikiminaId).orElseThrow { IkiminaNotFoundException("Ikimina not found") }
-        ikiminaMemberRepository.findByIkiminaIdAndUserId(ikiminaId, userId)
-            ?: throw IkiminaNotMemberException("You are not a member of this ikimina")
-        if (ikimina.status != IkiminaStatus.ACTIVE) throw IkiminaNotActiveException("This ikimina's cycle is not currently active")
-
-        val members = ikiminaMemberRepository.findByIkiminaId(ikiminaId)
-        val contributedMemberIds = ikiminaContributionRepository.findByIkiminaIdAndRound(ikiminaId, ikimina.currentRound).map { it.memberId }.toSet()
-        if (!members.all { it.id in contributedMemberIds }) {
-            throw IkiminaContributionsIncompleteException("Not every member has contributed for round ${ikimina.currentRound} yet")
-        }
+    private fun attemptPayout(ikimina: Ikimina): IkiminaPayoutResult? {
+        val members = ikiminaMemberRepository.findByIkiminaId(ikimina.id)
+        val contributedMemberIds = ikiminaContributionRepository.findByIkiminaIdAndRound(ikimina.id, ikimina.currentRound).map { it.memberId }.toSet()
+        if (!members.all { it.id in contributedMemberIds }) return null
 
         val recipientPayoutOrder = ((ikimina.currentRound - 1) % members.size) + 1
-        val recipient = ikiminaMemberRepository.findByIkiminaIdAndPayoutOrder(ikiminaId, recipientPayoutOrder)
+        val recipient = ikiminaMemberRepository.findByIkiminaIdAndPayoutOrder(ikimina.id, recipientPayoutOrder)
             ?: throw IkiminaMemberNotFoundException("No member found for this round's payout order")
 
         val groupWallet = walletRepository.findById(ikimina.walletId).orElseThrow { IkiminaNoWalletException("Wallet not found") }
@@ -245,5 +257,15 @@ class IkiminaService(
         }
         val saved = ikiminaRepository.save(ikimina)
         return IkiminaPayoutResult(ikimina = saved, recipientUserId = recipient.userId, amount = potAmount)
+    }
+
+    @Transactional
+    fun checkAndTriggerPayout(userId: String, ikiminaId: String): IkiminaPayoutResult {
+        val ikimina = ikiminaRepository.findById(ikiminaId).orElseThrow { IkiminaNotFoundException("Ikimina not found") }
+        ikiminaMemberRepository.findByIkiminaIdAndUserId(ikiminaId, userId)
+            ?: throw IkiminaNotMemberException("You are not a member of this ikimina")
+        if (ikimina.status != IkiminaStatus.ACTIVE) throw IkiminaNotActiveException("This ikimina's cycle is not currently active")
+        return attemptPayout(ikimina)
+            ?: throw IkiminaContributionsIncompleteException("Not every member has contributed for round ${ikimina.currentRound} yet")
     }
 }

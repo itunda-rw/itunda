@@ -69,8 +69,12 @@ class IkiminaController(
         @AuthenticationPrincipal currentUser: CurrentUser,
     ): ResponseEntity<Map<String, Any?>> {
         val (status, body) = idempotencyService.replayOrExecute("POST /api/v1/ikiminas/$id/contribute", idempotencyKey, currentUser.userId) {
-            val ikimina = ikiminaService.contributeThisRound(currentUser.userId, id)
-            200 to mapOf("success" to true, "ikimina" to ikimina)
+            val result = ikiminaService.contributeThisRound(currentUser.userId, id)
+            // Real bug fix: a contribution that completes the round now auto-triggers
+            // the payout in the same call -- see IkiminaService.contributeThisRound's
+            // own doc comment. `payout` is null on every contribution except the one
+            // that completes a round.
+            200 to mapOf("success" to true, "ikimina" to result.ikimina, "payout" to result.payout)
         }
         return ResponseEntity.status(status).body(body)
     }

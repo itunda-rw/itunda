@@ -39,6 +39,12 @@ export interface IkiminaContributionStatus {
   contributed: boolean;
 }
 
+export interface IkiminaPayoutResult {
+  ikimina: Ikimina;
+  recipientUserId: string;
+  amount: number;
+}
+
 export interface IkiminaDetail {
   ikimina: Ikimina;
   balance: number;
@@ -67,11 +73,16 @@ export const inviteIkiminaMember = (id: string, phoneNumber: string) =>
 export const startIkiminaCycle = (id: string) =>
   apiFetch<{ success: boolean; ikimina: Ikimina }>(`/api/v1/ikiminas/${id}/start`, { method: 'POST' }).then((r) => r.ikimina);
 
+// Real bug fix: a contribution that completes the round now auto-triggers the payout
+// in the same call (see the backend's IkiminaService.contributeThisRound doc comment
+// for the full account of why -- nothing used to call the separate payout endpoint
+// automatically, so a real round could sit completed-but-unpaid indefinitely).
+// `payout` is null on every contribution except the one that completes a round.
 export const contributeToIkimina = (id: string) =>
-  apiFetch<{ success: boolean; ikimina: Ikimina }>(`/api/v1/ikiminas/${id}/contribute`, {
+  apiFetch<{ success: boolean; ikimina: Ikimina; payout: IkiminaPayoutResult | null }>(`/api/v1/ikiminas/${id}/contribute`, {
     method: 'POST',
     headers: { 'Idempotency-Key': randomUUID() },
-  }).then((r) => r.ikimina);
+  }).then((r) => ({ ikimina: r.ikimina, payout: r.payout }));
 
 export const triggerIkiminaPayout = (id: string) =>
   apiFetch<{ success: boolean; ikimina: Ikimina; recipientUserId: string; amount: number }>(`/api/v1/ikiminas/${id}/payout`, {

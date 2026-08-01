@@ -17520,8 +17520,15 @@ function IkiminaDetailView({ id, onBack }: { id: string; onBack: () => void }) {
   const handleContribute = async () => {
     setBusy(true);
     setError(null);
+    setPayoutMessage(null);
     try {
-      await contributeToIkimina(id);
+      const result = await contributeToIkimina(id);
+      // Real bug fix: this contribution may have just completed the round, in which
+      // case the backend already auto-triggered the payout -- surface that instead of
+      // silently leaving the member to wonder why the round advanced.
+      if (result.payout) {
+        setPayoutMessage(`Round complete — ${result.payout.amount.toLocaleString()} RWF paid out.`);
+      }
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not contribute.');
