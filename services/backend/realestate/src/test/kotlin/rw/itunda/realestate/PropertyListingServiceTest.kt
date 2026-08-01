@@ -319,6 +319,65 @@ class PropertyListingServiceTest : BehaviorSpec({
         }
     }
 
+    Given("a real Toss Bank 우리집 시세 (home value estimate) request") {
+        val propertyListingRepository = mockk<PropertyListingRepository>()
+        val rateLimiter = mockk<RateLimiter>(relaxed = true)
+        val messagingService = mockk<MessagingService>()
+        val nominatimGeocodingClient = mockk<NominatimGeocodingClient>(relaxed = true)
+        val userRepository = mockk<UserRepository>()
+        val trustScoreService = mockk<TrustScoreService>(relaxed = true)
+        val service = PropertyListingService(propertyListingRepository, rateLimiter, messagingService, nominatimGeocodingClient, userRepository, trustScoreService)
+
+        fun comp(id: String, price: String, sizeSqm: Double, lat: Double = -1.9500, lng: Double = 30.0619) = PropertyListing(
+            id = id, listerId = "a", listingType = PropertyListingType.SALE, propertyType = "house",
+            title = "T", description = "D", price = BigDecimal(price), sizeSqm = sizeSqm, latitude = lat, longitude = lng,
+        )
+
+        When("at least 3 real comparable listings exist nearby") {
+            val comps = listOf(comp("c1", "10000000", 100.0), comp("c2", "12000000", 120.0), comp("c3", "9000000", 90.0))
+            every { propertyListingRepository.findByStatusAndLatitudeIsNotNullAndLongitudeIsNotNull(PropertyListingStatus.AVAILABLE) } returns comps
+
+            val estimate = service.estimateValue(-1.9441, 30.0619, "house", PropertyListingType.SALE, 100.0, 5.0)
+
+            Then("a real estimate is computed from their real average price-per-sqm") {
+                // Each comp is exactly 100,000/sqm, so the average is exact and the
+                // estimate for a 100sqm target is exactly 10,000,000.
+                estimate.estimatedValue shouldBe BigDecimal("10000000.00")
+                estimate.comparableCount shouldBe 3
+            }
+        }
+
+        When("fewer than 3 real comparable listings exist nearby") {
+            val comps = listOf(comp("c1", "10000000", 100.0), comp("c2", "12000000", 120.0))
+            every { propertyListingRepository.findByStatusAndLatitudeIsNotNullAndLongitudeIsNotNull(PropertyListingStatus.AVAILABLE) } returns comps
+
+            Then("it throws InsufficientComparablesException rather than a fabricated number") {
+                try {
+                    service.estimateValue(-1.9441, 30.0619, "house", PropertyListingType.SALE, 100.0, 5.0)
+                    error("expected InsufficientComparablesException")
+                } catch (e: InsufficientComparablesException) {
+                    // expected
+                }
+            }
+        }
+
+        When("only far-away comparables exist") {
+            val comps = listOf(
+                comp("c1", "10000000", 100.0, lat = -1.5), comp("c2", "12000000", 120.0, lat = -1.5), comp("c3", "9000000", 90.0, lat = -1.5),
+            )
+            every { propertyListingRepository.findByStatusAndLatitudeIsNotNullAndLongitudeIsNotNull(PropertyListingStatus.AVAILABLE) } returns comps
+
+            Then("they're correctly excluded by the real radius filter, real-422ing") {
+                try {
+                    service.estimateValue(-1.9441, 30.0619, "house", PropertyListingType.SALE, 100.0, 5.0)
+                    error("expected InsufficientComparablesException")
+                } catch (e: InsufficientComparablesException) {
+                    // expected
+                }
+            }
+        }
+    }
+
     Given("a real caller browsing their own real neighborhood") {
         val propertyListingRepository = mockk<PropertyListingRepository>()
         val rateLimiter = mockk<RateLimiter>(relaxed = true)

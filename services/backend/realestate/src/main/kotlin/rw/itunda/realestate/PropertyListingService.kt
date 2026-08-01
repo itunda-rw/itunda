@@ -18,6 +18,7 @@ import rw.itunda.core.trust.TrustScoreService
 import rw.itunda.messaging.MessagingService
 import rw.itunda.messaging.SelfConversationException
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.Duration
 import java.util.UUID
 
@@ -28,8 +29,19 @@ class OwnPropertyListingException(message: String) : RuntimeException(message)
 class InvalidPropertyCoordinatesException(message: String) : RuntimeException(message)
 class RealEstateNeighborhoodNotSetException(message: String) : RuntimeException(message)
 class CounterpartyNotFoundException(message: String) : RuntimeException(message)
+class InsufficientComparablesException(message: String) : RuntimeException(message)
 
 data class PropertyType(val id: String, val label: String)
+
+// Real Toss Bank 우리집 시세 (my home's estimated value, item 228) -- see
+// PropertyListingService.estimateValue's own doc comment for the full sourced
+// account.
+data class PropertyValuationEstimate(
+    val estimatedValue: BigDecimal,
+    val comparableCount: Int,
+    val averagePricePerSqm: BigDecimal,
+    val radiusKm: Double,
+)
 
 /**
  * A real 당근부동산 (Danggeun/Karrot "Real Estate")-style property board -- see
@@ -64,6 +76,12 @@ class PropertyListingService(
             PropertyType("other", "Other"),
         )
         private val PROPERTY_TYPE_IDS = PROPERTY_TYPES.map { it.id }.toSet()
+        // itunda's own honest choice -- real comps-based estimators (Zillow's own
+        // published Zestimate methodology) use dozens of comparables; this codebase's
+        // real listing volume is far smaller, so 3 is the minimum that still means
+        // "more than a single coincidental data point" without demanding more real
+        // listings than a given area realistically has yet.
+        const val MIN_COMPARABLES = 3
     }
 
     private fun requireLister(listerId: String, propertyListingId: String): PropertyListing {
@@ -193,6 +211,55 @@ class PropertyListingService(
         val start = (pageable.pageNumber * pageable.pageSize).coerceAtMost(sorted.size)
         val end = (start + pageable.pageSize).coerceAtMost(sorted.size)
         return PageImpl(sorted.subList(start, end), pageable, sorted.size.toLong())
+    }
+
+    /**
+     * Real Toss Bank 우리집 시세 (my home's estimated value, item 228) -- Toss Bank's
+     * own real feature: a comparable-listings-based estimate of what a home is worth,
+     * the same real Zestimate-style methodology (average price-per-area among nearby,
+     * similar comparables) every real property-valuation product uses, none of which
+     * itunda has any external data-vendor access to license -- this computes an honest
+     * estimate purely from itunda's own real, currently-`AVAILABLE` listings, not a
+     * fabricated number and not a third-party feed. Deliberately a different shape
+     * from `VehicleValuationService`'s own depreciation-curve math: a car's value is a
+     * function of its own age/mileage, but a home's value is fundamentally comparative
+     * -- there's no equivalent "depreciation curve" for real estate that wouldn't be
+     * invented, so this reuses the same real `GeoUtils.haversineKm` nearby-candidate
+     * shape `nearby()` above already establishes instead.
+     *
+     * Real-422s (`InsufficientComparablesException`) rather than returning a fabricated
+     * number when fewer than [MIN_COMPARABLES] real comparable listings exist nearby --
+     * an honest "not enough data" is more useful than a confident-looking guess.
+     */
+    fun estimateValue(
+        latitude: Double, longitude: Double, propertyType: String, listingType: PropertyListingType,
+        sizeSqm: Double, radiusKm: Double = 5.0,
+    ): PropertyValuationEstimate {
+        if (!GeoUtils.isValidCoordinate(latitude, longitude)) {
+            throw InvalidPropertyCoordinatesException("Latitude must be between -90 and 90, longitude between -180 and 180")
+        }
+        if (radiusKm <= 0.0) {
+            throw InvalidPropertyCoordinatesException("radiusKm must be greater than zero")
+        }
+        if (sizeSqm <= 0.0) {
+            throw InvalidPropertyListingException("Size must be greater than zero")
+        }
+        val comparables = propertyListingRepository.findByStatusAndLatitudeIsNotNullAndLongitudeIsNotNull(PropertyListingStatus.AVAILABLE)
+            .filter { it.propertyType == propertyType && it.listingType == listingType && it.sizeSqm != null && it.sizeSqm!! > 0.0 }
+            .filter { GeoUtils.haversineKm(latitude, longitude, it.latitude!!, it.longitude!!) <= radiusKm }
+        if (comparables.size < MIN_COMPARABLES) {
+            throw InsufficientComparablesException(
+                "Not enough comparable listings nearby to estimate a value (found ${comparables.size}, need at least $MIN_COMPARABLES)",
+            )
+        }
+        val pricesPerSqm = comparables.map { it.price.divide(BigDecimal(it.sizeSqm!!), 4, RoundingMode.HALF_UP) }
+        val averagePricePerSqm = pricesPerSqm.fold(BigDecimal.ZERO) { acc, p -> acc + p }
+            .divide(BigDecimal(pricesPerSqm.size), 4, RoundingMode.HALF_UP)
+        val estimatedValue = averagePricePerSqm.multiply(BigDecimal(sizeSqm)).setScale(2, RoundingMode.HALF_UP)
+        return PropertyValuationEstimate(
+            estimatedValue = estimatedValue, comparableCount = comparables.size,
+            averagePricePerSqm = averagePricePerSqm.setScale(2, RoundingMode.HALF_UP), radiusKm = radiusKm,
+        )
     }
 
     // Any status, not just AVAILABLE -- a buyer/renter who already messaged about a

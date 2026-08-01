@@ -31,6 +31,7 @@ import rw.itunda.core.web.toResponseDto
 import rw.itunda.core.web.trustScores
 import rw.itunda.realestate.CounterpartyNotFoundException
 import rw.itunda.realestate.FavoritePropertyListingNotFoundException
+import rw.itunda.realestate.InsufficientComparablesException
 import rw.itunda.realestate.InvalidPropertyCoordinatesException
 import rw.itunda.realestate.InvalidPropertyListingException
 import rw.itunda.realestate.InvalidPropertyOfferAmountException
@@ -156,6 +157,23 @@ class PropertyListingController(
         val page = propertyListingService.getMyAcquiredListings(currentUser.userId, pageable)
         val scores = trustScores(userRepository, page.content.map { it.listerId })
         return ResponseEntity.ok(mapOf("success" to true, "listings" to page.content, "trustScores" to scores) + pageMeta(page))
+    }
+
+    // Real Toss Bank 우리집 시세 (my home's estimated value, item 228) -- see
+    // PropertyListingService.estimateValue's own doc comment for the full sourced
+    // account. Read-only, no persistence -- computed fresh from real comparable
+    // listings on every call.
+    @GetMapping("/valuation")
+    fun estimateValue(
+        @RequestParam latitude: Double,
+        @RequestParam longitude: Double,
+        @RequestParam propertyType: String,
+        @RequestParam listingType: PropertyListingType,
+        @RequestParam sizeSqm: Double,
+        @RequestParam(required = false, defaultValue = "5.0") radiusKm: Double,
+    ): ResponseEntity<Map<String, Any?>> {
+        val estimate = propertyListingService.estimateValue(latitude, longitude, propertyType, listingType, sizeSqm, radiusKm)
+        return ResponseEntity.ok(mapOf("success" to true, "estimate" to estimate))
     }
 
     @GetMapping("/listings/{propertyListingId}")
@@ -363,4 +381,8 @@ class PropertyListingController(
     @ExceptionHandler(PropertyOwnershipSubmissionAlreadyPendingException::class)
     fun handleOwnershipAlreadyPending(ex: PropertyOwnershipSubmissionAlreadyPendingException) =
         ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError("OWNERSHIP_VERIFICATION_ALREADY_PENDING", ex.message ?: "Conflict"))
+
+    @ExceptionHandler(InsufficientComparablesException::class)
+    fun handleInsufficientComparables(ex: InsufficientComparablesException) =
+        ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(ApiError("INSUFFICIENT_COMPARABLES", ex.message ?: "Unprocessable"))
 }

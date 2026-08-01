@@ -100,9 +100,9 @@ import {
 import {
   addPropertyListingFavorite, contactLister, createPropertyListing, fetchMyAcquiredPropertyListings, fetchMyFavoritePropertyListings, fetchMyPropertyListings,
   fetchPropertyListingReviews, fetchPropertyListings, fetchPropertyListingsMyNeighborhood, fetchPropertyOffersForConversation, fetchPropertyTypes,
-  makePropertyOffer, markPropertyListingTaken, removePropertyListing, removePropertyListingFavorite, respondToPropertyOffer,
+  fetchPropertyValuation, makePropertyOffer, markPropertyListingTaken, removePropertyListing, removePropertyListingFavorite, respondToPropertyOffer,
   submitPropertyListingReview, submitPropertyOwnershipVerification,
-  type FavoritePropertyListing, type PropertyListing, type PropertyListingType, type PropertyPriceOffer, type PropertyType,
+  type FavoritePropertyListing, type PropertyListing, type PropertyListingType, type PropertyPriceOffer, type PropertyType, type PropertyValuationEstimate,
 } from './lib/realestate';
 import { uploadFile } from './lib/upload';
 import {
@@ -9924,7 +9924,7 @@ function PropertyListingWishlistView() {
 function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: string) => void }) {
   // Real "Places I got" (2026-07-25) -- closes docs/DESIGN_REFERENCES.md Section 4
   // recommendation #6, see backend PropertyListingRepository's own doc comment.
-  const [view, setView] = useState<'BROWSE' | 'MINE' | 'ACQUIRED' | 'NEIGHBORHOOD' | 'WISHLIST'>('BROWSE');
+  const [view, setView] = useState<'BROWSE' | 'MINE' | 'ACQUIRED' | 'NEIGHBORHOOD' | 'WISHLIST' | 'VALUATION'>('BROWSE');
   const [propertyTypes, setPropertyTypes] = useState<PropertyType[]>([]);
   const [listingTypeFilter, setListingTypeFilter] = useState<PropertyListingType | null>(null);
   const [propertyTypeFilter, setPropertyTypeFilter] = useState<string | null>(null);
@@ -9968,7 +9968,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
         });
       return;
     }
-    if (view === 'WISHLIST') return;
+    if (view === 'WISHLIST' || view === 'VALUATION') return;
     const fetcher = view === 'BROWSE'
       ? fetchPropertyListings(listingTypeFilter ?? undefined, propertyTypeFilter ?? undefined)
       : view === 'ACQUIRED'
@@ -10014,7 +10014,7 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
   return (
     <div>
       <div style={{ display: 'flex', gap: '4px', padding: '4px', marginBottom: '16px', backgroundColor: 'var(--toss-grey-100)', borderRadius: '10px' }}>
-        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'ACQUIRED', 'WISHLIST'] as const).map((v) => (
+        {(['BROWSE', 'NEIGHBORHOOD', 'MINE', 'ACQUIRED', 'WISHLIST', 'VALUATION'] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -10024,13 +10024,15 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
               backgroundColor: view === v ? 'var(--toss-blue)' : 'transparent',
             }}
           >
-            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'ACQUIRED' ? 'Places I got' : '♡ Wishlist'}
+            {v === 'BROWSE' ? 'Browse' : v === 'NEIGHBORHOOD' ? 'Neighborhood' : v === 'MINE' ? 'My listings' : v === 'ACQUIRED' ? 'Places I got' : v === 'WISHLIST' ? '♡ Wishlist' : '시세 Value'}
           </button>
         ))}
       </div>
 
       {view === 'WISHLIST' ? (
         <PropertyListingWishlistView />
+      ) : view === 'VALUATION' ? (
+        <PropertyValuationCard propertyTypes={propertyTypes} />
       ) : (
         <>
           {view === 'BROWSE' && (
@@ -10118,6 +10120,116 @@ function PropertyView({ onMessageLister }: { onMessageLister: (conversationId: s
           )}
         </>
       )}
+    </div>
+  );
+}
+
+// Real Toss Bank 우리집 시세 (my home's estimated value, item 228) -- see
+// lib/realestate.ts's own doc comment. Read-only: enter a location + size, get a real
+// comparable-listings-based estimate, nothing persisted.
+function PropertyValuationCard({ propertyTypes }: { propertyTypes: PropertyType[] }) {
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
+  const [propertyType, setPropertyType] = useState('');
+  const [listingType, setListingType] = useState<PropertyListingType>('SALE');
+  const [sizeSqm, setSizeSqm] = useState('');
+  const [estimate, setEstimate] = useState<PropertyValuationEstimate | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const useMyLocation = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition((pos) => {
+      setLatitude(String(pos.coords.latitude));
+      setLongitude(String(pos.coords.longitude));
+    });
+  };
+
+  const handleEstimate = async () => {
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    const size = Number(sizeSqm);
+    if (!propertyType || Number.isNaN(lat) || Number.isNaN(lng) || Number.isNaN(size) || size <= 0) {
+      setError('Fill in a real location, property type, and size.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setEstimate(null);
+    try {
+      const result = await fetchPropertyValuation(lat, lng, propertyType, listingType, size);
+      setEstimate(result);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'INSUFFICIENT_COMPARABLES') {
+        setError(err.message);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Could not estimate a value.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="toss-card">
+      <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>우리집 시세 — Estimate my home's value</h3>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>
+        A real estimate based on comparable listings near you, not a fabricated number.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input
+            type="text" value={latitude} placeholder="Latitude" onChange={(e) => setLatitude(e.target.value)}
+            style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <input
+            type="text" value={longitude} placeholder="Longitude" onChange={(e) => setLongitude(e.target.value)}
+            style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <button className="toss-btn toss-btn-secondary" onClick={useMyLocation} style={{ padding: '10px 12px', fontSize: '12px' }}>
+            📍
+          </button>
+        </div>
+        <select
+          value={propertyType} onChange={(e) => setPropertyType(e.target.value)}
+          style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+        >
+          <option value="">Property type…</option>
+          {propertyTypes.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+        </select>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {(['SALE', 'RENT'] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setListingType(t)}
+              style={{
+                flex: 1, padding: '8px', borderRadius: '8px', fontSize: '12px', fontWeight: 700,
+                border: `1px solid ${listingType === t ? 'var(--toss-blue)' : 'var(--toss-grey-200)'}`,
+                color: listingType === t ? 'var(--toss-white)' : 'var(--toss-grey-700)',
+                backgroundColor: listingType === t ? 'var(--toss-blue)' : 'transparent',
+              }}
+            >
+              {t === 'SALE' ? 'For sale' : 'For rent'}
+            </button>
+          ))}
+        </div>
+        <input
+          type="text" value={sizeSqm} placeholder="Size (sqm)" onChange={(e) => setSizeSqm(e.target.value)}
+          style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+        />
+        {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+        <button className="toss-btn toss-btn-primary" disabled={loading} onClick={handleEstimate}>
+          {loading ? 'Estimating…' : 'Estimate value'}
+        </button>
+        {estimate && (
+          <div style={{ marginTop: '8px', padding: '12px', borderRadius: '10px', backgroundColor: 'var(--toss-grey-100)' }}>
+            <p style={{ fontSize: '24px', fontWeight: 700 }}>{estimate.estimatedValue.toLocaleString()} RWF</p>
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+              Based on {estimate.comparableCount} comparable listing{estimate.comparableCount === 1 ? '' : 's'} within {estimate.radiusKm}km ({estimate.averagePricePerSqm.toLocaleString()} RWF/sqm avg)
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

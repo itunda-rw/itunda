@@ -196,3 +196,23 @@ export const submitPropertyOwnershipVerification = (propertyListingId: string, d
     method: 'POST',
     body: JSON.stringify({ documentUrl }),
   });
+
+// Real Toss Bank 우리집 시세 (my home's estimated value, item 228) -- see
+// PropertyListingService.estimateValue's own doc comment on the backend. A real
+// comparable-listings-based estimate, computed fresh on every call, not persisted.
+export interface PropertyValuationEstimate {
+  estimatedValue: number;
+  comparableCount: number;
+  averagePricePerSqm: number;
+  radiusKm: number;
+}
+
+export const fetchPropertyValuation = (
+  latitude: number, longitude: number, propertyType: string, listingType: PropertyListingType, sizeSqm: number, radiusKm = 5.0,
+) => {
+  const params = new URLSearchParams({
+    latitude: String(latitude), longitude: String(longitude), propertyType, listingType,
+    sizeSqm: String(sizeSqm), radiusKm: String(radiusKm),
+  });
+  return apiFetch<{ success: boolean; estimate: PropertyValuationEstimate }>(`/api/v1/realestate/valuation?${params}`).then((r) => r.estimate);
+};
