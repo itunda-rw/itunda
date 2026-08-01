@@ -64,9 +64,25 @@ class AffiliateService(
 
     /** Best-effort click record -- see AffiliateLink.kt's own doc comment for why this
      * never gates whether a commission is paid. Real-404s if the code is unknown so a
-     * client can show an honest "this link is invalid" state rather than a silent no-op. */
+     * client can show an honest "this link is invalid" state rather than a silent no-op.
+     *
+     * Real gap found live during a security review (2026-08-02): unlike every other
+     * `RateLimiter.checkLimit` call in this codebase, all of which key on an
+     * authenticated caller's own userId, this endpoint has no auth at all -- a shared
+     * link must resolve for anyone who clicks it, including a browser with no itunda
+     * session. With no rate limit, a bot could hammer one real code to inflate
+     * `clickCount` (the referrer's own visible "how many people clicked my link"
+     * metric) arbitrarily. Rate-limited by the CODE itself rather than a caller
+     * identity that doesn't exist here -- bounds repeated hits on any single real link
+     * without needing new unauthenticated-request infrastructure (no IP-based limiter
+     * precedent exists anywhere in this codebase to extend instead). Code enumeration
+     * across many different codes is a real, separate, lower-severity concern this
+     * doesn't address -- honestly named, not silently ignored: itunda's own 6-char
+     * hex code space (16^6, ~16.7M) makes blind enumeration a slow, real-cost attack
+     * this scope doesn't need to solve today. */
     @Transactional
     fun resolveLink(code: String): AffiliateLink {
+        rateLimiter.checkLimit("affiliate:resolve:$code", limit = 30, window = Duration.ofHours(1))
         val link = affiliateLinkRepository.findByCode(code) ?: throw AffiliateLinkNotFoundException("This link is invalid or has expired")
         link.clickCount += 1
         return affiliateLinkRepository.save(link)

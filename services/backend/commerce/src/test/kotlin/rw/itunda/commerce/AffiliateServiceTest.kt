@@ -6,6 +6,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import rw.itunda.auth.RateLimitExceededException
 import rw.itunda.auth.RateLimiter
 import rw.itunda.core.domain.AffiliateCommission
 import rw.itunda.core.domain.AffiliateLink
@@ -123,6 +124,44 @@ class AffiliateServiceTest : BehaviorSpec({
 
             Then("no self-referral commission is paid") {
                 verify(exactly = 0) { ledgerService.postLedgerTransaction(any(), any()) }
+            }
+        }
+    }
+
+    Given("a real link being resolved by whoever clicked it") {
+        val affiliateLinkRepository = mockk<AffiliateLinkRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = newService(affiliateLinkRepository = affiliateLinkRepository, rateLimiter = rateLimiter)
+
+        val link = AffiliateLink(id = "affiliate_link_1", userId = "referrer_1", productId = "product_1", code = "AFABC123", clickCount = 5)
+        every { rateLimiter.checkLimit("affiliate:resolve:AFABC123", limit = 30, window = any()) } returns Unit
+        every { affiliateLinkRepository.findByCode("AFABC123") } returns link
+        every { affiliateLinkRepository.save(any()) } answers { firstArg() }
+
+        When("it resolves within the real per-code limit") {
+            val result = service.resolveLink("AFABC123")
+
+            Then("a real click is recorded") {
+                result.clickCount shouldBe 6
+            }
+        }
+    }
+
+    Given("a real code hammered past its resolve rate limit") {
+        val affiliateLinkRepository = mockk<AffiliateLinkRepository>()
+        val rateLimiter = mockk<RateLimiter>()
+        val service = newService(affiliateLinkRepository = affiliateLinkRepository, rateLimiter = rateLimiter)
+
+        every { rateLimiter.checkLimit("affiliate:resolve:AFHOT001", limit = 30, window = any()) } throws RateLimitExceededException("Too many requests")
+
+        When("one more resolve attempt arrives") {
+            Then("it real-429s before ever touching the link table, unauthenticated caller or not") {
+                try {
+                    service.resolveLink("AFHOT001")
+                    throw AssertionError("expected RateLimitExceededException")
+                } catch (e: RateLimitExceededException) {
+                    verify(exactly = 0) { affiliateLinkRepository.findByCode(any()) }
+                }
             }
         }
     }
