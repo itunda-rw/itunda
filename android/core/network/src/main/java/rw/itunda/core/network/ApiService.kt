@@ -1121,6 +1121,22 @@ data class CollectPaymentResultDto(
     val channel: String, val completedAt: String, val cashbackEarned: java.math.BigDecimal,
 )
 
+// Real read-only payment-code preview (item 149) -- see MerchantService.previewIntent's
+// own doc comment. Lets a payer see the merchant/amount/their own real coupon
+// eligibility before committing to collectPayment -- mirrors bank-mfe's lib/shopping.ts
+// PaymentIntentPreview/MerchantCouponView exactly. bank-mfe already has this
+// (previewPaymentIntent, item 146); this is the first Android client.
+data class MerchantCouponPreviewDto(
+    val id: String, val merchantId: String, val title: String, val description: String?,
+    val discountType: String, val discountValue: java.math.BigDecimal, val regularsOnly: Boolean,
+    val active: Boolean, val expiresAt: String?, val createdAt: String,
+)
+data class MerchantCouponViewDto(val coupon: MerchantCouponPreviewDto, val eligible: Boolean, val alreadyRedeemed: Boolean)
+data class PaymentIntentPreviewResponse(
+    val success: Boolean, val merchantId: String, val businessName: String,
+    val amount: java.math.BigDecimal, val description: String?, val coupons: List<MerchantCouponViewDto>,
+)
+
 // Real Face Pay -- mirrors bank-mfe's lib/facepay.ts exactly.
 data class FacePayEnrollmentDto(val id: String, val userId: String, val active: Boolean, val enrolledAt: String, val revokedAt: String?)
 data class FacePayEnrollmentResponse(val success: Boolean, val enrollment: FacePayEnrollmentDto)
@@ -2576,13 +2592,18 @@ interface ApiService {
     // Real "pay a merchant" -- the manual-code-entry alternative to camera QR scanning
     // (this app has no scanner), mirrors bank-mfe's lib/shopping.ts collectPayment/
     // payByStaticQr exactly. bank-mfe already has both; this is the first Android client
-    // for either. Honest v1 scope-down: no coupon-preview-before-pay this pass (bank-mfe's
-    // previewPaymentIntent flow) -- a named, deliberately deferred follow-up.
+    // for either.
     @POST("api/v1/merchant/collect/{intentId}")
     suspend fun collectPayment(@Path("intentId") intentId: String, @Header("Idempotency-Key") idempotencyKey: String, @Body request: CollectPaymentRequest): CollectPaymentResultDto
 
     @POST("api/v1/merchant/{merchantId}/static-qr/pay")
     suspend fun payByStaticQr(@Path("merchantId") merchantId: String, @Header("Idempotency-Key") idempotencyKey: String, @Body request: StaticQrPayRequest): CollectPaymentResultDto
+
+    // Real coupon-preview-before-pay (item 149/146) -- closes the deliberate scope-down
+    // this file's own collectPayment comment previously named. bank-mfe already has this
+    // (previewPaymentIntent); this is the first Android client.
+    @GET("api/v1/merchant/intent/{intentId}")
+    suspend fun previewPaymentIntent(@Path("intentId") intentId: String): PaymentIntentPreviewResponse
 
     // Real Face Pay -- see rw.itunda.merchant.FacePayService's own doc comment. The
     // backend has been fully real since 2026-07-13; bank-mfe wired it 2026-07-20; this

@@ -2354,6 +2354,38 @@ public struct CollectPaymentResultDto: Decodable {
     public let cashbackEarned: Double
 }
 
+// Real read-only payment-code preview (item 149) -- see MerchantService.previewIntent's
+// own doc comment. Lets a payer see the merchant/amount/their own real coupon
+// eligibility before committing to collectPayment -- mirrors bank-mfe's lib/shopping.ts
+// PaymentIntentPreview/MerchantCouponView exactly. bank-mfe/Android already have this;
+// this is the first iOS client.
+public struct MerchantCouponPreviewDto: Decodable {
+    public let id: String
+    public let merchantId: String
+    public let title: String
+    public let description: String?
+    public let discountType: String
+    public let discountValue: Double
+    public let regularsOnly: Bool
+    public let active: Bool
+    public let expiresAt: String?
+    public let createdAt: String
+}
+public struct MerchantCouponViewDto: Decodable, Identifiable {
+    public let coupon: MerchantCouponPreviewDto
+    public let eligible: Bool
+    public let alreadyRedeemed: Bool
+    public var id: String { coupon.id }
+}
+public struct PaymentIntentPreviewResponse: Decodable {
+    public let success: Bool
+    public let merchantId: String
+    public let businessName: String
+    public let amount: Double
+    public let description: String?
+    public let coupons: [MerchantCouponViewDto]
+}
+
 // Real Face Pay -- mirrors bank-mfe's lib/facepay.ts exactly.
 public struct FacePayEnrollmentDto: Decodable {
     public let id: String
@@ -3479,6 +3511,12 @@ extension NetworkClient {
     // existed anywhere on this native consumer app.
     public func collectPayment(intentId: String, couponId: String? = nil) async throws -> CollectPaymentResultDto {
         try await authenticatedPost("api/v1/merchant/collect/\(intentId)", body: CollectPaymentRequest(couponId: couponId), idempotencyKey: UUID().uuidString)
+    }
+    // Real coupon-preview-before-pay (item 149/146) -- closes the deliberate scope-down
+    // PayByCodeCard's own doc comment previously named. bank-mfe/Android already have
+    // this; this is the first iOS client.
+    public func previewPaymentIntent(intentId: String) async throws -> PaymentIntentPreviewResponse {
+        try await get("api/v1/merchant/intent/\(intentId)")
     }
     public func payByStaticQr(merchantId: String, amount: Double, description: String? = nil) async throws -> CollectPaymentResultDto {
         try await authenticatedPost("api/v1/merchant/\(merchantId)/static-qr/pay", body: StaticQrPayRequest(amount: amount, description: description), idempotencyKey: UUID().uuidString)

@@ -2211,9 +2211,9 @@ private struct MyReturnRequestsView: View {
 /// (this app has no scanner), mirrors bank-mfe's `PayByCodeCard`/`PayByStaticQrCard` and
 /// Android's `PayAMerchantSection` exactly. bank-mfe/Android already have both; this is
 /// the first iOS client for either -- previously neither the dynamic per-sale flow nor
-/// the static QR flow existed anywhere on this native consumer app. Honest v1
-/// scope-down: no coupon-preview-before-pay this pass (bank-mfe's own
-/// `previewPaymentIntent` flow) -- a named, deliberately deferred follow-up.
+/// the static QR flow existed anywhere on this native consumer app.
+/// Coupon-preview-before-pay (bank-mfe's own `previewPaymentIntent` flow, item 149/146)
+/// closed 2026-08-01 -- see PayByCodeCard's own doc comment.
 private struct PayAMerchantSection: View {
     @Binding var paymentResult: CollectPaymentResultDto?
     // Real Face Pay -- see FacePaySettingsCard/PayByCodeCard's own doc comments. Lifted
@@ -2309,6 +2309,15 @@ private struct FacePaySettingsCard: View {
     }
 }
 
+private func couponDiscountLabel(_ c: MerchantCouponPreviewDto) -> String {
+    c.discountType == "PERCENT" ? "\(Int(c.discountValue))% off" : "\(Int(c.discountValue)) RWF off"
+}
+
+/// Real coupon-preview-before-pay (item 149/146) -- closes the deliberate scope-down
+/// this struct's own doc comment previously named. Mirrors bank-mfe's PayByCodeCard
+/// exactly: a non-Face-Pay code with real eligible coupons stops at a preview step
+/// (merchant/amount + coupon picker) before the actual collect() call; Face Pay and a
+/// code with zero eligible coupons both skip straight to a direct pay.
 private struct PayByCodeCard: View {
     let facePayEnrolled: Bool
     let onPaid: (CollectPaymentResultDto) -> Void
@@ -2317,6 +2326,9 @@ private struct PayByCodeCard: View {
     @State private var submitting = false
     @State private var error: String?
     @State private var needsDeviceVerification = false
+    @State private var preview: PaymentIntentPreviewResponse?
+    @State private var eligibleCoupons: [MerchantCouponViewDto] = []
+    @State private var selectedCouponId: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -2325,27 +2337,64 @@ private struct PayByCodeCard: View {
                 ? "Face Pay is on — enter the code the merchant shows you to authorize with your face."
                 : "No scanner handy? Enter the payment code the merchant shows you to pay instantly and earn cashback.")
                 .font(.caption).foregroundColor(IDS.Colors.textSecondary)
-            HStack(spacing: 10) {
-                TextField("Payment code", text: $code)
-                    .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
-                Button(action: { Task { await pay() } }) {
-                    Text(submitting ? (facePayEnrolled ? "Authorizing…" : "Paying…") : (facePayEnrolled ? "😊 Pay" : "Pay"))
-                        .bold().foregroundColor(.white)
-                        .padding(.horizontal, 16).padding(.vertical, 14)
-                        .background(submitting || code.isEmpty ? IDS.Colors.textTertiary : IDS.Colors.brand)
-                        .cornerRadius(10)
+            if let preview {
+                Text(preview.businessName).font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                Text("\(Int(preview.amount)) RWF").font(.title2).bold().foregroundColor(IDS.Colors.textPrimary)
+                Text("Apply a coupon?").font(.footnote).bold().foregroundColor(IDS.Colors.textPrimary)
+                Button(action: { selectedCouponId = nil }) {
+                    HStack {
+                        Image(systemName: selectedCouponId == nil ? "largecircle.fill.circle" : "circle")
+                        Text("No coupon").font(.footnote)
+                    }.foregroundColor(IDS.Colors.textPrimary)
                 }
-                .disabled(submitting || code.isEmpty)
-            }
-            if let error {
-                Text(error).font(.caption).foregroundColor(.red)
+                ForEach(eligibleCoupons) { c in
+                    Button(action: { selectedCouponId = c.coupon.id }) {
+                        HStack {
+                            Image(systemName: selectedCouponId == c.coupon.id ? "largecircle.fill.circle" : "circle")
+                            Text("\(c.coupon.title) — \(couponDiscountLabel(c.coupon))").font(.footnote)
+                        }.foregroundColor(IDS.Colors.textPrimary)
+                    }
+                }
+                if let error {
+                    Text(error).font(.caption).foregroundColor(.red)
+                }
+                HStack(spacing: 10) {
+                    Button(action: { Task { await payDirect(couponId: selectedCouponId) } }) {
+                        Text(submitting ? "Paying…" : "Pay").bold().foregroundColor(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(IDS.Colors.brand).cornerRadius(10)
+                    }
+                    .disabled(submitting)
+                    Button(action: cancelPreview) {
+                        Text("Cancel").bold().foregroundColor(IDS.Colors.textPrimary)
+                            .padding(.horizontal, 16).padding(.vertical, 12)
+                            .background(Color(.tertiarySystemBackground)).cornerRadius(10)
+                    }
+                    .disabled(submitting)
+                }
+            } else {
+                HStack(spacing: 10) {
+                    TextField("Payment code", text: $code)
+                        .padding(12).background(IDS.Colors.backgroundPrimary).cornerRadius(10)
+                    Button(action: { Task { await submit() } }) {
+                        Text(submitting ? (facePayEnrolled ? "Authorizing…" : "Paying…") : (facePayEnrolled ? "😊 Pay" : "Pay"))
+                            .bold().foregroundColor(.white)
+                            .padding(.horizontal, 16).padding(.vertical, 14)
+                            .background(submitting || code.isEmpty ? IDS.Colors.textTertiary : IDS.Colors.brand)
+                            .cornerRadius(10)
+                    }
+                    .disabled(submitting || code.isEmpty)
+                }
+                if let error {
+                    Text(error).font(.caption).foregroundColor(.red)
+                }
             }
         }
         .padding(16).background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
         DeviceStepUpHost(visible: needsDeviceVerification, onDismiss: { needsDeviceVerification = false }, onVerified: { needsDeviceVerification = false })
     }
 
-    private func pay() async {
+    private func payDirect(couponId: String? = nil) async {
         submitting = true
         error = nil
         needsDeviceVerification = false
@@ -2353,14 +2402,48 @@ private struct PayByCodeCard: View {
         do {
             let result = facePayEnrolled
                 ? try await NetworkClient.shared.collectWithFacePay(intentId: code.trimmingCharacters(in: .whitespaces))
-                : try await NetworkClient.shared.collectPayment(intentId: code.trimmingCharacters(in: .whitespaces))
+                : try await NetworkClient.shared.collectPayment(intentId: code.trimmingCharacters(in: .whitespaces), couponId: couponId)
             code = ""
+            preview = nil
+            eligibleCoupons = []
+            selectedCouponId = nil
             onPaid(result)
         } catch NetworkError.deviceNotVerified {
             needsDeviceVerification = true
         } catch {
             self.error = "Could not complete this payment."
         }
+    }
+
+    private func submit() async {
+        error = nil
+        if facePayEnrolled {
+            await payDirect()
+            return
+        }
+        submitting = true
+        do {
+            let r = try await NetworkClient.shared.previewPaymentIntent(intentId: code.trimmingCharacters(in: .whitespaces))
+            let eligible = r.coupons.filter { $0.eligible && !$0.alreadyRedeemed }
+            if eligible.isEmpty {
+                submitting = false
+                await payDirect()
+            } else {
+                preview = r
+                eligibleCoupons = eligible
+                submitting = false
+            }
+        } catch {
+            self.error = "Could not look up this payment code."
+            submitting = false
+        }
+    }
+
+    private func cancelPreview() {
+        preview = nil
+        eligibleCoupons = []
+        selectedCouponId = nil
+        error = nil
     }
 }
 

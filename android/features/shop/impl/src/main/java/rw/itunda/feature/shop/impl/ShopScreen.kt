@@ -41,6 +41,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -106,6 +107,9 @@ import rw.itunda.core.network.ProductInquiryDto
 import rw.itunda.core.network.ProductReviewDto
 import rw.itunda.core.network.CollectPaymentRequest
 import rw.itunda.core.network.CollectPaymentResultDto
+import rw.itunda.core.network.MerchantCouponPreviewDto
+import rw.itunda.core.network.MerchantCouponViewDto
+import rw.itunda.core.network.PaymentIntentPreviewResponse
 import rw.itunda.core.network.RequestOrderReturnRequest
 import rw.itunda.core.network.ShoppingMerchantDto
 import rw.itunda.core.network.StaticQrPayRequest
@@ -2264,9 +2268,9 @@ private fun OrderItemReviews(order: OrderDto) {
  * (this app has no scanner), mirrors bank-mfe's `PayByCodeCard`/`PayByStaticQrCard`
  * exactly. bank-mfe already has both; this is the first Android client for either --
  * previously neither the dynamic per-sale flow nor the static QR flow existed anywhere
- * on this native consumer app. Honest v1 scope-down: no coupon-preview-before-pay this
- * pass (bank-mfe's own `previewPaymentIntent` flow) -- a named, deliberately deferred
- * follow-up.
+ * on this native consumer app. Coupon-preview-before-pay (bank-mfe's own
+ * `previewPaymentIntent` flow, item 149/146) closed 2026-08-01 -- see PayByCodeCard's
+ * own doc comment.
  */
 @Composable
 private fun PayAMerchantSection(
@@ -2364,6 +2368,17 @@ private fun FacePaySettingsCard(enrolled: Boolean?, onChanged: () -> Unit) {
     }
 }
 
+private fun couponDiscountLabel(c: MerchantCouponPreviewDto): String =
+    if (c.discountType == "PERCENT") "${c.discountValue}% off" else "%,.0f RWF off".format(c.discountValue)
+
+/**
+ * Real coupon-preview-before-pay (item 149/146) -- closes the deliberate scope-down
+ * this composable's own doc comment previously named. Mirrors bank-mfe's PayByCodeCard
+ * exactly: a non-Face-Pay code with real eligible coupons stops at a preview step
+ * (merchant/amount + coupon picker) before the actual collect() call; Face Pay and a
+ * code with zero eligible coupons both skip straight to a direct pay, same as
+ * bank-mfe's own payDirect()/handleSubmit() branching.
+ */
 @Composable
 private fun PayByCodeCard(
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
@@ -2374,21 +2389,27 @@ private fun PayByCodeCard(
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var needsDeviceVerification by remember { mutableStateOf(false) }
+    var preview by remember { mutableStateOf<PaymentIntentPreviewResponse?>(null) }
+    var eligibleCoupons by remember { mutableStateOf<List<MerchantCouponViewDto>>(emptyList()) }
+    var selectedCouponId by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    fun pay() {
+    fun payDirect(couponId: String? = null) {
+        needsDeviceVerification = false
         submitting = true
         error = null
-        needsDeviceVerification = false
         coroutineScope.launch {
             try {
                 val idempotencyKey = UUID.randomUUID().toString()
                 val result = if (facePayEnrolled) {
                     NetworkClient.apiService.collectWithFacePay(code.trim(), idempotencyKey)
                 } else {
-                    NetworkClient.apiService.collectPayment(code.trim(), idempotencyKey, CollectPaymentRequest())
+                    NetworkClient.apiService.collectPayment(code.trim(), idempotencyKey, CollectPaymentRequest(couponId))
                 }
                 code = ""
+                preview = null
+                eligibleCoupons = emptyList()
+                selectedCouponId = null
                 onPaid(result)
             } catch (e: HttpException) {
                 if (isDeviceNotVerifiedError(e)) {
@@ -2404,6 +2425,41 @@ private fun PayByCodeCard(
         }
     }
 
+    fun submit() {
+        error = null
+        if (facePayEnrolled) {
+            payDirect()
+            return
+        }
+        submitting = true
+        coroutineScope.launch {
+            try {
+                val r = NetworkClient.apiService.previewPaymentIntent(code.trim())
+                val eligible = r.coupons.filter { it.eligible && !it.alreadyRedeemed }
+                if (eligible.isEmpty()) {
+                    payDirect()
+                } else {
+                    preview = r
+                    eligibleCoupons = eligible
+                    submitting = false
+                }
+            } catch (e: HttpException) {
+                error = superAppErrorMessage(e)
+                submitting = false
+            } catch (e: IOException) {
+                error = "Could not look up this payment code."
+                submitting = false
+            }
+        }
+    }
+
+    fun cancelPreview() {
+        preview = null
+        eligibleCoupons = emptyList()
+        selectedCouponId = null
+        error = null
+    }
+
     Card(shape = RoundedCornerShape(Ids.layout.cardCornerRadius), colors = CardDefaults.cardColors(containerColor = Ids.colors.surface), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Pay by code", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -2415,14 +2471,36 @@ private fun PayByCodeCard(
                 },
                 color = Ids.colors.textSecondary, fontSize = 12.sp,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(value = code, onValueChange = { code = it }, placeholder = { Text("Payment code") }, singleLine = true, modifier = Modifier.weight(1f))
-                ListingActionButtonShop(
-                    if (submitting) (if (facePayEnrolled) "Authorizing…" else "Paying…") else if (facePayEnrolled) "😊 Pay" else "Pay",
-                    submitting || code.isBlank(), filled = true,
-                ) { pay() }
+            val currentPreview = preview
+            if (currentPreview != null) {
+                Text(currentPreview.businessName, color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("%,.0f RWF".format(currentPreview.amount), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Text("Apply a coupon?", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(selected = selectedCouponId == null, onClick = { selectedCouponId = null })
+                    Text("No coupon", color = Ids.colors.textPrimary, fontSize = 13.sp)
+                }
+                eligibleCoupons.forEach { c ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = selectedCouponId == c.coupon.id, onClick = { selectedCouponId = c.coupon.id })
+                        Text("${c.coupon.title} -- ${couponDiscountLabel(c.coupon)}", color = Ids.colors.textPrimary, fontSize = 13.sp)
+                    }
+                }
+                error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ListingActionButtonShop(if (submitting) "Paying…" else "Pay", submitting, filled = true) { payDirect(selectedCouponId) }
+                    ListingActionButtonShop("Cancel", submitting, filled = false) { cancelPreview() }
+                }
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(value = code, onValueChange = { code = it }, placeholder = { Text("Payment code") }, singleLine = true, modifier = Modifier.weight(1f))
+                    ListingActionButtonShop(
+                        if (submitting) (if (facePayEnrolled) "Authorizing…" else "Paying…") else if (facePayEnrolled) "😊 Pay" else "Pay",
+                        submitting || code.isBlank(), filled = true,
+                    ) { submit() }
+                }
+                error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
             }
-            error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
         }
     }
     deviceStepUpHost(needsDeviceVerification, { needsDeviceVerification = false }, { needsDeviceVerification = false })
