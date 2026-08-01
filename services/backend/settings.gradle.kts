@@ -27,6 +27,7 @@ include(
     ":messaging",
     ":marketplace",
     ":community",
+    ":knowledge",
     ":jobs",
     ":realestate",
     ":commerce",

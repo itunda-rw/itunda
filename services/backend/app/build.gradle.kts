@@ -39,6 +39,7 @@ dependencies {
     implementation(project(":messaging"))
     implementation(project(":marketplace"))
     implementation(project(":community"))
+    implementation(project(":knowledge"))
     implementation(project(":jobs"))
     implementation(project(":realestate"))
     implementation(project(":commerce"))
