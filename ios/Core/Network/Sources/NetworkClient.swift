@@ -153,6 +153,11 @@ public enum NetworkError: Error {
     // own dedicated request methods, which decode the real ApiError.code on a 422.
     case miniWalletBirthDateRequired
     case miniWalletAgeIneligible
+    // Real cash-agent operator gate (AgentOperatorController's own
+    // AGENT_OPERATOR_NOT_AUTHORIZED, 403) -- purely additive, same rationale as
+    // deviceNotVerified/miniWallet* above. Thrown only from getAgentTill's own
+    // dedicated request method below, which decodes the real ApiError.code on a 403.
+    case agentOperatorNotAuthorized
 }
 
 /// Real login/session flow (2026-07-11) -- this app previously had no networking
@@ -3913,6 +3918,42 @@ public struct CreditScoreResponse: Decodable { public let success: Bool; public 
 public struct TrustScoreFactorDto: Decodable, Identifiable { public let name: String; public let points: Int; public let description: String; public var id: String { name } }
 public struct TrustScoreResponse: Decodable { public let success: Bool; public let score: Int; public let factors: [TrustScoreFactorDto]; public let computedAt: String }
 
+// Real Itunda cash-agent operator console -- see AgentOperatorController.kt's own doc
+// comment: "Store-facing API: the operator's JWT determines the agent; callers never
+// supply an agent id." Distinct from the customer-facing withdrawal-code creation --
+// this is the STAFF side, real till balance + real cash-in/cash-out + real till
+// reconciliation. bank-mfe already has this (AgentOperatorView); this is the first
+// native client (Android/iOS).
+public struct AgentTillReconciliationDto: Decodable {
+    public let id: String; public let agentId: String; public let businessDate: String
+    public let expectedCash: Double; public let countedCash: Double; public let variance: Double
+    public let submittedByUserId: String; public let status: String
+    public let reviewedByUserId: String?; public let reviewNote: String?; public let reviewedAt: String?
+    public let createdAt: String
+}
+public struct AgentTillSnapshotDto: Decodable {
+    public let agentId: String; public let agentName: String; public let expectedCash: Double
+    public let todayCashIn: Double; public let todayCashOut: Double
+    public let reconciliation: AgentTillReconciliationDto?
+}
+public struct AgentActivityItemDto: Decodable, Identifiable {
+    public let id: String; public let type: String; public let amount: Double
+    public let receiptNumber: String; public let ledgerTransactionId: String; public let createdAt: String
+}
+public struct AgentTillResponse: Decodable { public let success: Bool; public let till: AgentTillSnapshotDto }
+public struct AgentActivityResponse: Decodable { public let success: Bool; public let activity: [AgentActivityItemDto] }
+public struct AgentCashInRequest: Encodable { public let accountNumber: String; public let amount: Double; public let receiptNumber: String
+    public init(accountNumber: String, amount: Double, receiptNumber: String) { self.accountNumber = accountNumber; self.amount = amount; self.receiptNumber = receiptNumber }
+}
+public struct AgentCashOutRequest: Encodable { public let accountNumber: String; public let amount: Double; public let receiptNumber: String; public let authorizationCode: String
+    public init(accountNumber: String, amount: Double, receiptNumber: String, authorizationCode: String) { self.accountNumber = accountNumber; self.amount = amount; self.receiptNumber = receiptNumber; self.authorizationCode = authorizationCode }
+}
+public struct AgentCashResultResponse: Decodable { public let success: Bool; public let newBalance: Double; public let operatorCommission: Double }
+public struct SubmitAgentTillCountRequest: Encodable { public let countedCash: Double
+    public init(countedCash: Double) { self.countedCash = countedCash }
+}
+public struct AgentTillReconciliationResponse: Decodable { public let success: Bool; public let reconciliation: AgentTillReconciliationDto }
+
 public struct CertificateDto: Decodable {
     public let id: String; public let userId: String; public let serialNumber: String; public let publicKeyBase64: String
     public let algorithm: String; public let status: String; public let issuedAt: String; public let expiresAt: String; public let revokedAt: String?
@@ -4087,6 +4128,39 @@ extension NetworkClient {
 
     public func getCreditScore() async throws -> CreditScoreResponse { try await get("api/v1/credit-score") }
     public func getTrustScore() async throws -> TrustScoreResponse { try await get("api/v1/trust-score") }
+
+    // Real Itunda cash-agent operator console -- see AgentOperatorController.kt's own
+    // doc comment. bank-mfe/Android already have this; this is the first iOS client.
+    public func getAgentTill() async throws -> AgentTillResponse {
+        var request = URLRequest(url: baseURL.appendingPathComponent("api/v1/agent/till"))
+        request.httpMethod = "GET"
+        if let token = KeychainTokenStore.shared.getAccessToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if httpResponse.statusCode == 403,
+               let errorBody = try? decoder.decode(ApiErrorBody.self, from: data),
+               errorBody.code == "AGENT_OPERATOR_NOT_AUTHORIZED" {
+                throw NetworkError.agentOperatorNotAuthorized
+            }
+            throw NetworkError.httpError(statusCode: httpResponse.statusCode)
+        }
+        return try decoder.decode(AgentTillResponse.self, from: data)
+    }
+    public func getAgentActivity(limit: Int = 30) async throws -> AgentActivityResponse {
+        try await get("api/v1/agent/activity", query: [URLQueryItem(name: "limit", value: String(limit))])
+    }
+    public func agentCashIn(_ request: AgentCashInRequest) async throws -> AgentCashResultResponse {
+        try await authenticatedPost("api/v1/agent/cash-ins", body: request, idempotencyKey: UUID().uuidString)
+    }
+    public func agentCashOut(_ request: AgentCashOutRequest) async throws -> AgentCashResultResponse {
+        try await authenticatedPost("api/v1/agent/cash-outs", body: request, idempotencyKey: UUID().uuidString)
+    }
+    public func submitAgentTillCount(_ countedCash: Double) async throws -> AgentTillReconciliationResponse {
+        try await authenticatedPost("api/v1/agent/till-reconciliations", body: SubmitAgentTillCountRequest(countedCash: countedCash))
+    }
 
     public func issueCertificate() async throws -> IssueCertificateResponse {
         try await authenticatedPost("api/v1/certificate/issue", body: EmptyRequest())

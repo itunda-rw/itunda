@@ -1601,6 +1601,34 @@ data class CreditScoreResponse(val success: Boolean, val score: Int, val factors
 data class TrustScoreFactorDto(val name: String, val points: Int, val description: String)
 data class TrustScoreResponse(val success: Boolean, val score: Int, val factors: List<TrustScoreFactorDto>, val computedAt: String)
 
+// Real Itunda cash-agent operator console -- see AgentOperatorController.kt's own doc
+// comment: "Store-facing API: the operator's JWT determines the agent; callers never
+// supply an agent id." Distinct from AgentCashScreen.kt's own customer-facing
+// withdrawal-code creation -- this is the STAFF side, real till balance + real
+// cash-in/cash-out + real till reconciliation. bank-mfe already has this
+// (AgentOperatorView); this is the first native client (Android/iOS).
+data class AgentTillReconciliationDto(
+    val id: String, val agentId: String, val businessDate: String, val expectedCash: java.math.BigDecimal,
+    val countedCash: java.math.BigDecimal, val variance: java.math.BigDecimal, val submittedByUserId: String,
+    val status: String, val reviewedByUserId: String?, val reviewNote: String?, val reviewedAt: String?, val createdAt: String,
+)
+data class AgentTillSnapshotDto(
+    val agentId: String, val agentName: String, val expectedCash: java.math.BigDecimal,
+    val todayCashIn: java.math.BigDecimal, val todayCashOut: java.math.BigDecimal,
+    val reconciliation: AgentTillReconciliationDto?,
+)
+data class AgentActivityItemDto(
+    val id: String, val type: String, val amount: java.math.BigDecimal, val receiptNumber: String,
+    val ledgerTransactionId: String, val createdAt: String,
+)
+data class AgentTillResponse(val success: Boolean, val till: AgentTillSnapshotDto)
+data class AgentActivityResponse(val success: Boolean, val activity: List<AgentActivityItemDto>)
+data class AgentCashInRequest(val accountNumber: String, val amount: java.math.BigDecimal, val receiptNumber: String)
+data class AgentCashOutRequest(val accountNumber: String, val amount: java.math.BigDecimal, val receiptNumber: String, val authorizationCode: String)
+data class AgentCashResultResponse(val success: Boolean, val newBalance: java.math.BigDecimal, val operatorCommission: java.math.BigDecimal)
+data class SubmitTillCountRequest(val countedCash: java.math.BigDecimal)
+data class AgentTillReconciliationResponse(val success: Boolean, val reconciliation: AgentTillReconciliationDto)
+
 // Real digital identity/signing certificate (rw.itunda.certificate) -- already real
 // and wired into bank-mfe (web) since 2026-07-17, but found 2026-07-22 completely
 // absent from the Android app, a platform-parity gap rather than a never-built
@@ -2872,6 +2900,23 @@ interface ApiService {
 
     @GET("api/v1/trust-score")
     suspend fun getTrustScore(): TrustScoreResponse
+
+    // Real Itunda cash-agent operator console -- see AgentOperatorController.kt's own
+    // doc comment. bank-mfe already has this; this is the first native client.
+    @GET("api/v1/agent/till")
+    suspend fun getAgentTill(): AgentTillResponse
+
+    @GET("api/v1/agent/activity")
+    suspend fun getAgentActivity(@Query("limit") limit: Int = 30): AgentActivityResponse
+
+    @POST("api/v1/agent/cash-ins")
+    suspend fun agentCashIn(@Header("Idempotency-Key") idempotencyKey: String, @Body request: AgentCashInRequest): AgentCashResultResponse
+
+    @POST("api/v1/agent/cash-outs")
+    suspend fun agentCashOut(@Header("Idempotency-Key") idempotencyKey: String, @Body request: AgentCashOutRequest): AgentCashResultResponse
+
+    @POST("api/v1/agent/till-reconciliations")
+    suspend fun submitAgentTillCount(@Body request: SubmitTillCountRequest): AgentTillReconciliationResponse
 
     @POST("api/v1/certificate/issue")
     suspend fun issueCertificate(): IssueCertificateResponse

@@ -1,0 +1,258 @@
+package rw.itunda.app.ui
+
+import rw.itunda.core.designsystem.components.BackTopBar
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import rw.itunda.core.network.AgentActivityItemDto
+import rw.itunda.core.network.AgentCashInRequest
+import rw.itunda.core.network.AgentCashOutRequest
+import rw.itunda.core.network.AgentTillSnapshotDto
+import rw.itunda.core.network.NetworkClient
+import rw.itunda.core.network.SubmitTillCountRequest
+import rw.itunda.core.network.apiErrorCode
+import java.util.UUID
+
+// Real Itunda cash-agent operator console -- see AgentOperatorController.kt's own doc
+// comment: "Store-facing API: the operator's JWT determines the agent; callers never
+// supply an agent id." Distinct from AgentCashScreen.kt's own customer-facing
+// withdrawal-code creation -- this is the STAFF side, real till balance + real
+// cash-in/cash-out + real till reconciliation. bank-mfe already has this
+// (AgentOperatorView); this is the first native client (Android/iOS).
+@Composable
+fun AgentOperatorScreen(onBack: () -> Unit) {
+    BackHandler(onBack = onBack)
+    var till by remember { mutableStateOf<AgentTillSnapshotDto?>(null) }
+    var activity by remember { mutableStateOf<List<AgentActivityItemDto>>(emptyList()) }
+    var notOperator by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var message by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    fun load() {
+        error = null
+        scope.launch {
+            try {
+                till = NetworkClient.apiService.getAgentTill().till
+                notOperator = false
+            } catch (e: retrofit2.HttpException) {
+                if (apiErrorCode(e) == "AGENT_OPERATOR_NOT_AUTHORIZED") {
+                    notOperator = true
+                } else {
+                    error = "Could not load your till."
+                }
+            } catch (e: Exception) {
+                error = "Could not load your till."
+            }
+            try {
+                activity = NetworkClient.apiService.getAgentActivity().activity
+            } catch (e: Exception) {
+                activity = emptyList()
+            }
+        }
+    }
+    LaunchedEffect(Unit) { load() }
+
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().padding(20.dp)) {
+            BackTopBar(title = "Agent till", onBack = onBack)
+        }
+        if (notOperator) {
+            Text(
+                "You are not assigned as an Itunda agent till operator. Ask an Itunda staff admin to assign your account to a store.",
+                modifier = Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            return
+        }
+        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
+            message?.let { item { Text(it, color = MaterialTheme.colorScheme.primary) } }
+            val current = till
+            if (current == null) {
+                item { Text("Loading…", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            } else {
+                item { TillSummaryCard(till = current) }
+                item {
+                    CashInCard(onSubmitted = { result -> message = "Cash in accepted — new customer balance ${"%,.0f".format(result)} RWF"; load() }, onError = { error = it })
+                }
+                item {
+                    CashOutCard(onSubmitted = { result -> message = "Cash out paid — new customer balance ${"%,.0f".format(result)} RWF"; load() }, onError = { error = it })
+                }
+                item {
+                    TillCountCard(onSubmitted = { variance, status -> message = "Till count submitted — variance ${"%,.0f".format(variance)} RWF ($status)"; load() }, onError = { error = it })
+                }
+                item { Text("Recent activity", style = MaterialTheme.typography.titleMedium) }
+                if (activity.isEmpty()) {
+                    item { Text("No cash movements yet today.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                }
+                items(activity, key = { it.id }) { a ->
+                    Card(Modifier.fillMaxWidth()) {
+                        Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(if (a.type == "CASH_IN") "↓ Cash in · ${a.receiptNumber}" else "↑ Cash out · ${a.receiptNumber}")
+                            Text("${"%,.0f".format(a.amount)} RWF")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TillSummaryCard(till: AgentTillSnapshotDto) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Text(till.agentName, style = MaterialTheme.typography.labelMedium)
+            Text("${"%,.0f".format(till.expectedCash)} RWF expected in till", style = MaterialTheme.typography.headlineSmall)
+            Text(
+                "Today: ${"%,.0f".format(till.todayCashIn)} RWF in · ${"%,.0f".format(till.todayCashOut)} RWF out",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            till.reconciliation?.let {
+                Text(
+                    "Last count: ${"%,.0f".format(it.countedCash)} RWF (${it.status}, variance ${"%,.0f".format(it.variance)})",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CashInCard(onSubmitted: (java.math.BigDecimal) -> Unit, onError: (String) -> Unit) {
+    var account by remember { mutableStateOf("") }
+    var amount by remember { mutableStateOf("") }
+    var receipt by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Accept cash-in", style = MaterialTheme.typography.titleMedium)
+            OutlinedTextField(value = account, onValueChange = { account = it }, label = { Text("Customer account number") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Amount (RWF)") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = receipt, onValueChange = { receipt = it }, label = { Text("Receipt number") }, modifier = Modifier.fillMaxWidth())
+            Button(
+                onClick = {
+                    val value = amount.toBigDecimalOrNull()
+                    if (account.isBlank() || receipt.isBlank() || value == null || value <= java.math.BigDecimal.ZERO) {
+                        onError("Enter a real account number, receipt number, and a positive amount.")
+                        return@Button
+                    }
+                    busy = true
+                    scope.launch {
+                        try {
+                            val result = NetworkClient.apiService.agentCashIn(UUID.randomUUID().toString(), AgentCashInRequest(account.trim(), value, receipt.trim()))
+                            account = ""; amount = ""; receipt = ""
+                            onSubmitted(result.newBalance)
+                        } catch (e: Exception) {
+                            onError("Could not accept this cash-in.")
+                        } finally {
+                            busy = false
+                        }
+                    }
+                },
+                enabled = !busy,
+            ) { Text(if (busy) "Working…" else "Accept cash-in") }
+        }
+    }
+}
+
+@Composable
+private fun CashOutCard(onSubmitted: (java.math.BigDecimal) -> Unit, onError: (String) -> Unit) {
+    var account by remember { mutableStateOf("") }
+    var amount by remember { mutableStateOf("") }
+    var receipt by remember { mutableStateOf("") }
+    var code by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Pay cash-out", style = MaterialTheme.typography.titleMedium)
+            OutlinedTextField(value = account, onValueChange = { account = it }, label = { Text("Customer account number") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Amount (RWF)") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = receipt, onValueChange = { receipt = it }, label = { Text("Receipt number") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = code, onValueChange = { code = it }, label = { Text("Customer's withdrawal code") }, modifier = Modifier.fillMaxWidth())
+            Button(
+                onClick = {
+                    val value = amount.toBigDecimalOrNull()
+                    if (account.isBlank() || receipt.isBlank() || code.isBlank() || value == null || value <= java.math.BigDecimal.ZERO) {
+                        onError("Enter a real account number, receipt number, withdrawal code, and a positive amount.")
+                        return@Button
+                    }
+                    busy = true
+                    scope.launch {
+                        try {
+                            val result = NetworkClient.apiService.agentCashOut(UUID.randomUUID().toString(), AgentCashOutRequest(account.trim(), value, receipt.trim(), code.trim()))
+                            account = ""; amount = ""; receipt = ""; code = ""
+                            onSubmitted(result.newBalance)
+                        } catch (e: Exception) {
+                            onError("Could not pay this cash-out. Check the withdrawal code.")
+                        } finally {
+                            busy = false
+                        }
+                    }
+                },
+                enabled = !busy,
+            ) { Text(if (busy) "Working…" else "Pay cash-out") }
+        }
+    }
+}
+
+@Composable
+private fun TillCountCard(onSubmitted: (java.math.BigDecimal, String) -> Unit, onError: (String) -> Unit) {
+    var counted by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Submit today's till count", style = MaterialTheme.typography.titleMedium)
+            OutlinedTextField(value = counted, onValueChange = { counted = it }, label = { Text("Counted cash (RWF)") }, modifier = Modifier.fillMaxWidth())
+            Button(
+                onClick = {
+                    val value = counted.toBigDecimalOrNull()
+                    if (value == null || value < java.math.BigDecimal.ZERO) {
+                        onError("Enter a real counted-cash amount.")
+                        return@Button
+                    }
+                    busy = true
+                    scope.launch {
+                        try {
+                            val result = NetworkClient.apiService.submitAgentTillCount(SubmitTillCountRequest(value)).reconciliation
+                            counted = ""
+                            onSubmitted(result.variance, result.status)
+                        } catch (e: Exception) {
+                            onError("Could not submit this till count.")
+                        } finally {
+                            busy = false
+                        }
+                    }
+                },
+                enabled = !busy,
+            ) { Text(if (busy) "Working…" else "Submit count") }
+        }
+    }
+}

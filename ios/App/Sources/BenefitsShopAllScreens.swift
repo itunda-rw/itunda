@@ -257,6 +257,9 @@ struct EntireMenuScreen: View {
     // Real Karrot-Score-style trust/reputation self-view screen (item 152) --
     // bank-mfe/Android shipped first; same pattern.
     @State private var showTrustScore = false
+    // Real Itunda cash-agent operator console (staff-facing till: cash-in/cash-out/
+    // reconciliation) -- bank-mfe/Android shipped first; same pattern.
+    @State private var showAgentOperator = false
 
     var body: some View {
         ScrollView {
@@ -334,6 +337,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Get a loan", subtitle: "Personal, salary-backed, SME working capital", symbol: "wallet.pass.fill", tint: .accentBlue, action: { showLoans = true }),
                         FlatRow(title: "Credit score", subtitle: "Free check, alternative data", symbol: "chart.line.uptrend.xyaxis", tint: .accentPurple, action: { showCreditScore = true }),
                         FlatRow(title: "Trust score", subtitle: "How your neighbors see you on Marketplace, Jobs, and Property", symbol: "checkmark.seal.fill", tint: .accentTeal, action: { showTrustScore = true }),
+                        FlatRow(title: "Agent till", subtitle: "For assigned cash-agent operators: cash-in, cash-out, till count", symbol: "storefront.fill", tint: .accentBlue, action: { showAgentOperator = true }),
                         FlatRow(title: "Spending", subtitle: "Real, ledger-based category breakdown", symbol: "chart.pie.fill", tint: .accentBlue, action: { showSpending = true }),
                         FlatRow(title: "Rides", subtitle: "Request a ride or drive for real fares", symbol: "car.fill", tint: .accentBlue, action: { showRides = true }),
                         FlatRow(title: "Vehicle inspection", subtitle: "Pay a mechanic to inspect a used car before you buy", symbol: "wrench.and.screwdriver.fill", tint: .accentTeal, action: { showVehicleInspection = true }),
@@ -450,6 +454,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showTrustScore) {
             TrustScoreScreenView(onBack: { showTrustScore = false })
+        }
+        .sheet(isPresented: $showAgentOperator) {
+            AgentOperatorScreenView(onBack: { showAgentOperator = false })
         }
         .sheet(isPresented: $showCertificate) {
             CertificateScreenView(onBack: { showCertificate = false })
