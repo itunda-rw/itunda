@@ -164,7 +164,7 @@ import {
   startParkingSession, type ParkingSession, type ParkingSpot,
 } from './lib/parking';
 import {
-  bookBusSeats, cancelBusBooking, fetchMyBusBookings, fetchMyBusTrips, postBusTrip, searchBusTrips,
+  bookBusSeats, cancelBusBooking, fetchBusTripBookings, fetchMyBusBookings, fetchMyBusTrips, postBusTrip, searchBusTrips,
   type BusBooking, type BusTrip,
 } from './lib/bus';
 import {
@@ -13219,6 +13219,28 @@ function BusView() {
     fetchMyBusTrips().then(setMyTrips).catch((err) => setOperatorError(err instanceof ApiError ? err.message : 'Could not load your trips.'));
   };
 
+  // Real trip manifest -- see fetchBusTripBookings's own doc comment. Previously a
+  // real, tested backend endpoint (GET /bus/trips/{id}/bookings) with zero client
+  // anywhere on any platform: an operator could post a route and see the seat
+  // countdown, but never who actually booked. Lazily loaded per trip, not prefetched
+  // for every route at once.
+  const [expandedTripId, setExpandedTripId] = useState<string | null>(null);
+  const [tripBookings, setTripBookings] = useState<BusBooking[] | null>(null);
+  const [manifestError, setManifestError] = useState<string | null>(null);
+
+  const toggleManifest = (tripId: string) => {
+    if (expandedTripId === tripId) {
+      setExpandedTripId(null);
+      return;
+    }
+    setExpandedTripId(tripId);
+    setTripBookings(null);
+    setManifestError(null);
+    fetchBusTripBookings(tripId)
+      .then(setTripBookings)
+      .catch((err) => setManifestError(err instanceof ApiError ? err.message : 'Could not load bookings for this route.'));
+  };
+
   useEffect(() => {
     if (subTab === 'OPERATE') loadMyTrips();
   }, [subTab]);
@@ -13372,6 +13394,35 @@ function BusView() {
                       {new Date(trip.departureTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       {' · '}{trip.availableSeats}/{trip.totalSeats} seats left · {trip.farePerSeat.toLocaleString()} RWF/seat
                     </p>
+                    <button
+                      className="toss-btn toss-btn-secondary" style={{ marginTop: '8px', fontSize: '12px', padding: '6px 10px' }}
+                      onClick={() => toggleManifest(trip.id)}
+                    >
+                      {expandedTripId === trip.id ? 'Hide bookings' : 'View bookings'}
+                    </button>
+                    {expandedTripId === trip.id && (
+                      <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--toss-grey-100)' }}>
+                        {manifestError && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{manifestError}</p>}
+                        {!manifestError && tripBookings === null && <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Loading…</p>}
+                        {tripBookings !== null && tripBookings.length === 0 && (
+                          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No bookings yet.</p>
+                        )}
+                        {tripBookings !== null && tripBookings.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {tripBookings.map((b) => (
+                              <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                                <span style={{ color: 'var(--toss-grey-700)' }}>
+                                  Rider #{b.riderUserId.slice(-6)} · {b.seatCount} seat{b.seatCount > 1 ? 's' : ''}
+                                </span>
+                                <span style={{ fontWeight: 700, color: b.status === 'CANCELLED' ? 'var(--toss-grey-400)' : 'var(--toss-grey-900)' }}>
+                                  {b.status === 'CANCELLED' ? 'Cancelled' : `${b.totalFare.toLocaleString()} RWF`}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
