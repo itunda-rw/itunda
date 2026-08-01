@@ -1507,6 +1507,9 @@ private struct MyBookingsView: View {
                                 }
                                 .disabled(cancellingId == b.id)
                             }
+                            if b.status == "COMPLETED" {
+                                BookingReviewButton(bookingId: b.id)
+                            }
                         }
                         .padding(14).frame(maxWidth: .infinity, alignment: .leading)
                         .background(IDS.Colors.card).cornerRadius(IDS.Layout.cardCornerRadius)
@@ -1532,6 +1535,79 @@ private struct MyBookingsView: View {
             self.error = "Couldn't cancel this booking."
         }
         cancellingId = nil
+    }
+}
+
+// Real customer-side post-appointment review (item 143) -- see NetworkClient.swift's
+// own doc comment on submitBookingReview. Mirrors ProductReviewRow's exact shape (star
+// rating + optional comment, a real 409 BOOKING_ALREADY_REVIEWED is treated as
+// already-done, not an error).
+private struct BookingReviewButton: View {
+    let bookingId: String
+
+    @State private var open = false
+    @State private var done = false
+    @State private var rating = 0
+    @State private var comment = ""
+    @State private var submitting = false
+    @State private var error: String?
+
+    var body: some View {
+        if done {
+            Text("Thanks for your review!").font(.caption).foregroundColor(IDS.Colors.textSecondary)
+        } else if !open {
+            Button(action: { open = true }) {
+                Text("Rate this visit").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                    .padding(.horizontal, 16).padding(.vertical, 10)
+                    .background(IDS.Colors.chipBackground).cornerRadius(12)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                StarRatingRow(value: rating) { rating = $0 }
+                TextField("How was it? (optional)", text: $comment)
+                    .padding(10).background(IDS.Colors.chipBackground).cornerRadius(10)
+                if let error {
+                    Text(error).font(.caption).foregroundColor(.red)
+                }
+                HStack(spacing: 10) {
+                    Button(action: { open = false }) {
+                        Text("Cancel").font(.subheadline).bold().foregroundColor(IDS.Colors.textPrimary)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(IDS.Colors.chipBackground).cornerRadius(12)
+                    }
+                    Button(action: { Task { await submit() } }) {
+                        Text(submitting ? "Submitting…" : "Submit review").font(.subheadline).bold().foregroundColor(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12)
+                            .background(submitting ? IDS.Colors.textTertiary : IDS.Colors.brand).cornerRadius(12)
+                    }
+                    .disabled(submitting)
+                }
+            }
+        }
+    }
+
+    private func submit() async {
+        guard rating > 0 else {
+            error = "Pick a star rating."
+            return
+        }
+        submitting = true
+        error = nil
+        defer { submitting = false }
+        do {
+            _ = try await NetworkClient.shared.submitBookingReview(
+                bookingId, rating: rating, comment: comment.trimmingCharacters(in: .whitespaces).isEmpty ? nil : comment
+            )
+            done = true
+        } catch let NetworkError.httpError(statusCode) {
+            if statusCode == 409 {
+                done = true
+            } else {
+                error = TalkScreen.errorMessage(statusCode)
+            }
+        } catch {
+            self.error = "Couldn't reach itunda. Check your connection and try again."
+        }
     }
 }
 

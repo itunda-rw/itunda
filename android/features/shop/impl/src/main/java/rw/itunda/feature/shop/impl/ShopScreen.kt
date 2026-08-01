@@ -88,6 +88,7 @@ import rw.itunda.core.network.ProductSubscriptionDto
 import rw.itunda.core.network.ProductSearchResultDto
 import rw.itunda.core.network.FavoriteProductDto
 import rw.itunda.core.network.MerchantBookingDto
+import rw.itunda.core.network.SubmitBookingReviewRequest
 import rw.itunda.core.network.MerchantProductDto
 import rw.itunda.core.network.NetworkClient
 import rw.itunda.core.network.ORDER_RETURN_REASON_CODES
@@ -1014,10 +1015,93 @@ private fun MyBookingsView() {
                                     )
                                 }
                             }
+                            if (b.status == "COMPLETED") {
+                                BookingReviewButton(bookingId = b.id)
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+// Real customer-side post-appointment review (item 143) -- see lib/booking.ts's own
+// doc comment on bank-mfe. Mirrors ProductReviewRow's exact shape (star rating +
+// optional comment, a real BOOKING_ALREADY_REVIEWED 409 is treated as already-done).
+@Composable
+private fun BookingReviewButton(bookingId: String) {
+    var open by remember { mutableStateOf(false) }
+    var done by remember { mutableStateOf(false) }
+    var rating by remember { mutableStateOf(0) }
+    var comment by remember { mutableStateOf("") }
+    var submitting by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+
+    if (done) {
+        Text("Thanks for your review!", color = Ids.colors.textSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
+        return
+    }
+    if (!open) {
+        Box(
+            modifier = Modifier
+                .padding(top = 10.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Ids.colors.textTertiary)
+                .clickable { open = true }
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+        ) {
+            Text("Rate this visit", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        }
+        return
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 10.dp)) {
+        StarRatingRow(rating) { rating = it }
+        OutlinedTextField(
+            value = comment,
+            onValueChange = { comment = it },
+            placeholder = { Text("How was it? (optional)") },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        error?.let { Text(it, color = Ids.colors.danger, fontSize = 12.sp) }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(
+                modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(Ids.colors.textTertiary).clickable { open = false }.padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) { Text("Cancel", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (submitting) Ids.colors.textTertiary else Ids.colors.brand)
+                    .clickable(enabled = !submitting) {
+                        if (rating == 0) {
+                            error = "Pick a star rating."
+                            return@clickable
+                        }
+                        submitting = true
+                        error = null
+                        coroutineScope.launch {
+                            try {
+                                NetworkClient.apiService.submitBookingReview(bookingId, SubmitBookingReviewRequest(rating, comment.trim().ifBlank { null }))
+                                done = true
+                            } catch (e: HttpException) {
+                                if (e.code() == 409) {
+                                    done = true
+                                } else {
+                                    error = superAppErrorMessage(e)
+                                }
+                            } catch (e: IOException) {
+                                error = "Couldn't reach itunda. Check your connection and try again."
+                            } finally {
+                                submitting = false
+                            }
+                        }
+                    }
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) { Text(if (submitting) "Submitting…" else "Submit review", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
         }
     }
 }

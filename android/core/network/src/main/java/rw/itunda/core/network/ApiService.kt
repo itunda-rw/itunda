@@ -1037,6 +1037,26 @@ data class MerchantBookingDto(
 )
 data class MerchantBookingDetailResponse(val success: Boolean, val booking: MerchantBookingDto)
 data class MerchantBookingsResponse(val success: Boolean, val bookings: List<MerchantBookingDto>)
+
+// Real post-appointment reviews (item 143) -- see MerchantBookingReview.kt's own doc
+// comment. The owner-side list+reply half is real on merchant-mfe; this is the
+// CUSTOMER-facing submit-a-review half, real on bank-mfe since 2026-08-01 -- this is
+// the first native client.
+data class SubmitBookingReviewRequest(val rating: Int, val comment: String? = null)
+data class MerchantBookingReviewDto(
+    val id: String,
+    val bookingId: String,
+    val merchantId: String,
+    val customerId: String,
+    val serviceName: String,
+    val rating: Int,
+    val comment: String? = null,
+    val ownerReply: String? = null,
+    val ownerRepliedAt: String? = null,
+    val createdAt: String,
+)
+data class MerchantBookingReviewResponse(val success: Boolean, val review: MerchantBookingReviewDto)
+data class MerchantBookingReviewsResponse(val success: Boolean, val reviews: List<MerchantBookingReviewDto>)
 data class MerchantSummaryDto(val id: String, val businessName: String)
 data class MerchantProductsResponse(val success: Boolean, val merchant: MerchantSummaryDto, val products: List<MerchantProductDto>)
 
@@ -2543,6 +2563,15 @@ interface ApiService {
 
     @POST("api/v1/merchant/bookings/{id}/cancel")
     suspend fun cancelBooking(@Path("id") bookingId: String): MerchantBookingDetailResponse
+
+    // Real customer-facing post-appointment review submission (item 143) -- see
+    // rw.itunda.merchant.MerchantBookingReviewController. bank-mfe already has this;
+    // this is the first native client.
+    @POST("api/v1/merchant/bookings/{bookingId}/review")
+    suspend fun submitBookingReview(@Path("bookingId") bookingId: String, @Body request: SubmitBookingReviewRequest): MerchantBookingReviewResponse
+
+    @GET("api/v1/merchant/reviews/my-reviews")
+    suspend fun getMyBookingReviews(@Query("size") size: Int = 50): MerchantBookingReviewsResponse
 
     // Real "pay a merchant" -- the manual-code-entry alternative to camera QR scanning
     // (this app has no scanner), mirrors bank-mfe's lib/shopping.ts collectPayment/

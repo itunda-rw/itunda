@@ -2247,6 +2247,29 @@ public struct MerchantBookingDto: Decodable, Identifiable {
 public struct MerchantBookingDetailResponse: Decodable { public let success: Bool; public let booking: MerchantBookingDto }
 public struct MerchantBookingsResponse: Decodable { public let success: Bool; public let bookings: [MerchantBookingDto] }
 
+// Real post-appointment reviews (item 143) -- see MerchantBookingReview.kt's own doc
+// comment. The owner-side list+reply half is real on merchant-mfe; this is the
+// CUSTOMER-facing submit-a-review half, real on bank-mfe/Android since 2026-08-01 --
+// this is the first iOS client.
+public struct SubmitBookingReviewRequest: Encodable {
+    public let rating: Int; public let comment: String?
+    public init(rating: Int, comment: String?) { self.rating = rating; self.comment = comment }
+}
+public struct MerchantBookingReviewDto: Decodable, Identifiable {
+    public let id: String
+    public let bookingId: String
+    public let merchantId: String
+    public let customerId: String
+    public let serviceName: String
+    public let rating: Int
+    public let comment: String?
+    public let ownerReply: String?
+    public let ownerRepliedAt: String?
+    public let createdAt: String
+}
+public struct MerchantBookingReviewResponse: Decodable { public let success: Bool; public let review: MerchantBookingReviewDto }
+public struct MerchantBookingReviewsResponse: Decodable { public let success: Bool; public let reviews: [MerchantBookingReviewDto] }
+
 // Real cross-merchant product search (item 138) -- see backend
 // MerchantProductRepository.search's own doc comment. Mirrors bank-mfe's
 // lib/shopping.ts ProductSearchResult and Android's ProductSearchResultDto exactly;
@@ -3403,6 +3426,16 @@ extension NetworkClient {
     public func getMyBookings() async throws -> MerchantBookingsResponse { try await get("api/v1/merchant/bookings/my-bookings") }
     public func cancelBooking(_ bookingId: String) async throws -> MerchantBookingDetailResponse {
         try await authenticatedPost("api/v1/merchant/bookings/\(bookingId)/cancel", body: EmptyBody())
+    }
+
+    // Real customer-facing post-appointment review submission (item 143) -- see
+    // MerchantBookingReviewController.kt. bank-mfe/Android already have this; this is
+    // the first iOS client.
+    public func submitBookingReview(_ bookingId: String, rating: Int, comment: String?) async throws -> MerchantBookingReviewResponse {
+        try await authenticatedPost("api/v1/merchant/bookings/\(bookingId)/review", body: SubmitBookingReviewRequest(rating: rating, comment: comment))
+    }
+    public func getMyBookingReviews() async throws -> MerchantBookingReviewsResponse {
+        try await get("api/v1/merchant/reviews/my-reviews", query: [URLQueryItem(name: "size", value: "50")])
     }
 
     // Real cross-merchant product search (item 138) -- see ProductSearchResultDto's
