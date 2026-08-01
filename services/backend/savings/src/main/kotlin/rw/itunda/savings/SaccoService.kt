@@ -161,9 +161,23 @@ class SaccoService(
      * declared `ANNUAL_DIVIDEND_RATE`, prorated by the real elapsed days since the
      * last distribution, or since the pool's own creation if this is the first one)
      * and distributes it pro-rata across every real shareholder by
-     * `sharesHeld / totalSharesOutstanding`, paid from the pool wallet via a real
-     * WALLET-to-WALLET ledger transaction per shareholder. Real-throws if there are
-     * no shares outstanding yet rather than silently no-op'ing on an empty pool.
+     * `sharesHeld / totalSharesOutstanding`. Real-throws if there are no shares
+     * outstanding yet rather than silently no-op'ing on an empty pool.
+     *
+     * Real bug caught during this feature's own build-time review (2026-08-02), before
+     * it ever shipped: the first draft paid every dividend straight out of the pool
+     * wallet -- which is funded ONLY by members' own 1:1 share purchases (`buyShares`)
+     * and pays out redemptions 1:1 at par (`redeemShares`). Since `sharesHeld` (a
+     * member's redemption entitlement) is never reduced by a dividend payout, repeatedly
+     * draining the pool to pay dividends would silently push `poolWallet.balance` below
+     * `sum(sharesHeld)` -- a real, growing insolvency where the SACCO promises
+     * redemption at par but can no longer honor it for every member. Fixed by funding
+     * dividends from `INTEREST_EXPENSE` instead, the exact same real "itunda pays this
+     * out of its own P&L, not out of other members' principal" shape
+     * `SavingsService.claimInterest`/`WeeklySavingsService`/`UpfrontInterestDepositService`
+     * already establish for every other yield-paying feature in this backend -- the pool
+     * wallet is now only ever debited by a real member `redeemShares` call, keeping
+     * `poolWallet.balance == sum(sharesHeld)` a true invariant at all times.
      */
     @Transactional
     fun declareDividend(): SaccoDividendDistribution {
@@ -194,7 +208,7 @@ class SaccoService(
             val result = ledgerService.postLedgerTransaction(
                 memberWallet.currency,
                 listOf(
-                    LedgerLeg(poolWallet.id, LedgerAccountType.WALLET, LedgerDirection.DEBIT, payoutAmount, "SACCO dividend"),
+                    LedgerLeg("interest_expense", LedgerAccountType.INTEREST_EXPENSE, LedgerDirection.DEBIT, payoutAmount, "SACCO dividend"),
                     LedgerLeg(memberWallet.id, LedgerAccountType.WALLET, LedgerDirection.CREDIT, payoutAmount, "SACCO dividend"),
                 ),
             )

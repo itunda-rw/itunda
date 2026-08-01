@@ -6,13 +6,17 @@ import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import rw.itunda.auth.RateLimiter
+import rw.itunda.core.domain.LedgerAccountType
+import rw.itunda.core.domain.LedgerDirection
 import rw.itunda.core.domain.SaccoDividendDistribution
 import rw.itunda.core.domain.SaccoDividendPayout
 import rw.itunda.core.domain.SaccoShareholding
 import rw.itunda.core.domain.User
 import rw.itunda.core.domain.Wallet
 import rw.itunda.core.domain.WalletType
+import rw.itunda.core.ledger.LedgerLeg
 import rw.itunda.core.ledger.LedgerPostResult
 import rw.itunda.core.ledger.LedgerService
 import rw.itunda.core.repository.SaccoDividendDistributionRepository
@@ -174,6 +178,16 @@ class SaccoServiceTest : BehaviorSpec({
             Then("the real ledger balances and the total paid is the sum of both real per-shareholder payouts") {
                 result.totalDividendPaid.signum() shouldBe 1
                 savedDistributionSlot.captured.totalDividendPaid shouldBe result.totalDividendPaid
+            }
+
+            Then("real bug caught before shipping: dividends are funded from INTEREST_EXPENSE, never from the member-backed pool wallet") {
+                verify(exactly = 2) {
+                    ledgerService.postLedgerTransaction(any(), match { legs ->
+                        legs.size == 2 &&
+                            legs.any { it.accountId == "interest_expense" && it.accountType == LedgerAccountType.INTEREST_EXPENSE && it.direction == LedgerDirection.DEBIT } &&
+                            legs.none { it.accountId == "wallet_pool" }
+                    })
+                }
             }
         }
     }
