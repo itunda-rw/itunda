@@ -3484,6 +3484,21 @@ interface ApiService {
 
     @POST("api/v1/ikiminas/{id}/payout")
     suspend fun triggerIkiminaPayout(@Path("id") id: String, @Header("Idempotency-Key") idempotencyKey: String): IkiminaPayoutResponse
+
+    // Real Umurenge SACCO-style shares & dividends -- see SaccoShareholdingDto's own
+    // doc comment. Genuinely distinct from every Toss/Kakao/Naver/Coupang-sourced
+    // feature in this backend and from Ikimina (rotating-pot ROSCA).
+    @POST("api/v1/sacco/shares/buy")
+    suspend fun buySaccoShares(@Body request: SaccoAmountRequest, @Header("Idempotency-Key") idempotencyKey: String): SaccoShareholdingResponse
+
+    @POST("api/v1/sacco/shares/redeem")
+    suspend fun redeemSaccoShares(@Body request: SaccoAmountRequest, @Header("Idempotency-Key") idempotencyKey: String): SaccoShareholdingResponse
+
+    @GET("api/v1/sacco/shares/me")
+    suspend fun getMySaccoShareholding(): SaccoShareholdingResponse
+
+    @GET("api/v1/sacco/dividends/me")
+    suspend fun getMySaccoDividendHistory(): SaccoDividendPayoutsResponse
 }
 
 data class UpfrontDepositDto(
@@ -3801,6 +3816,24 @@ data class IkiminaDetailResponse(
 data class InviteIkiminaMemberRequest(val phoneNumber: String)
 data class InviteIkiminaMemberResponse(val success: Boolean, val member: IkiminaMemberDto)
 data class IkiminaPayoutResponse(val success: Boolean, val ikimina: IkiminaDto, val recipientUserId: String, val amount: java.math.BigDecimal)
+
+// Real Umurenge SACCO-style shares & dividends -- Rwanda's own government-backed
+// cooperative savings model (416 real sector SACCOs, 4M+ members, RWF 200B+ deposits
+// as of 2024). Distinct from IkiminaDto (informal rotating-pot ROSCA, no shares/
+// dividends): a SACCO member buys real shares and receives periodic real dividend
+// distributions tied to the pool's real performance. Mirrors bank-mfe's lib/sacco.ts
+// exactly.
+data class SaccoShareholdingDto(
+    val id: String, val userId: String, val walletId: String,
+    val sharesHeld: java.math.BigDecimal, val totalContributed: java.math.BigDecimal, val createdAt: String,
+)
+data class SaccoAmountRequest(val amount: java.math.BigDecimal)
+data class SaccoShareholdingResponse(val success: Boolean, val shareholding: SaccoShareholdingDto?, val currentValue: java.math.BigDecimal?)
+data class SaccoDividendPayoutDto(
+    val id: String, val distributionId: String, val shareholdingId: String,
+    val amount: java.math.BigDecimal, val payoutTransactionId: String, val createdAt: String,
+)
+data class SaccoDividendPayoutsResponse(val success: Boolean, val payouts: List<SaccoDividendPayoutDto>)
 
 // Real KakaoBank mini-style capped starter wallet -- see MiniWalletService.kt's own
 // doc comment (real balance/daily/monthly caps plus a real 7-18 age-eligibility gate).

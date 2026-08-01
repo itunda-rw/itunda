@@ -223,6 +223,9 @@ struct EntireMenuScreen: View {
     // Real ikimina (Rwanda's own rotating savings & credit association) -- the first
     // feature in this codebase not sourced from Toss/Kakao/Naver/Coupang.
     @State private var showIkimina = false
+    // Real Umurenge SACCO-style shares & dividends -- the second Rwanda-specific
+    // feature not sourced from Toss/Kakao/Naver/Coupang.
+    @State private var showSacco = false
     // Real Kakao Pay spending categorization screen (2026-07-28, item 108) -- last
     // remaining client platform for this feature (bank-mfe item 106, Android item 107).
     @State private var showSpending = false
@@ -306,6 +309,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Card", subtitle: "App-controlled spend limits, one-tap freeze", symbol: "creditcard.fill", tint: .accentBlue, action: { showCard = true }),
                         FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", symbol: "person.2.fill", tint: .accentPurple, action: { showGroupAccounts = true }),
                         FlatRow(title: "Ikimina", subtitle: "Rotating savings group -- everyone takes a turn", symbol: "arrow.triangle.2.circlepath", tint: .accentTeal, action: { showIkimina = true }),
+                        FlatRow(title: "SACCO shares", subtitle: "Buy cooperative shares, earn a real dividend", symbol: "chart.pie.fill", tint: .accentPurple, action: { showSacco = true }),
                         FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", symbol: "map.fill", tint: .accentTeal, action: { showMap = true }),
                     ])
                     IdsSearchBar(placeholder: "Search")
@@ -503,6 +507,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showIkimina) {
             IkiminaScreenView(onBack: { showIkimina = false })
+        }
+        .sheet(isPresented: $showSacco) {
+            SaccoScreenView(onBack: { showSacco = false })
         }
         .sheet(isPresented: $showSpending) {
             SpendingScreenView(onBack: { showSpending = false })

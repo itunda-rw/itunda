@@ -171,6 +171,32 @@ public struct InviteIkiminaMemberRequest: Encodable { public let phoneNumber: St
 public struct InviteIkiminaMemberResponse: Decodable { public let success: Bool; public let member: IkiminaMemberDto }
 public struct IkiminaPayoutResponse: Decodable { public let success: Bool; public let ikimina: IkiminaDto; public let recipientUserId: String; public let amount: Double }
 
+// Real Umurenge SACCO-style shares & dividends -- Rwanda's own government-backed
+// cooperative savings model (416 real sector SACCOs, 4M+ members, RWF 200B+ deposits
+// as of 2024). Distinct from IkiminaDto (informal rotating-pot ROSCA, no shares/
+// dividends): a SACCO member buys real shares and receives periodic real dividend
+// distributions tied to the pool's real performance. Mirrors bank-mfe's lib/sacco.ts
+// exactly.
+public struct SaccoShareholdingDto: Decodable {
+    public let id: String
+    public let userId: String
+    public let walletId: String
+    public let sharesHeld: Double
+    public let totalContributed: Double
+    public let createdAt: String
+}
+public struct SaccoAmountRequest: Encodable { public let amount: Double }
+public struct SaccoShareholdingResponse: Decodable { public let success: Bool; public let shareholding: SaccoShareholdingDto?; public let currentValue: Double? }
+public struct SaccoDividendPayoutDto: Decodable {
+    public let id: String
+    public let distributionId: String
+    public let shareholdingId: String
+    public let amount: Double
+    public let payoutTransactionId: String
+    public let createdAt: String
+}
+public struct SaccoDividendPayoutsResponse: Decodable { public let success: Bool; public let payouts: [SaccoDividendPayoutDto] }
+
 public struct AuthResponse: Decodable {
     public let message: String
     public let user: PublicUser
@@ -1393,6 +1419,21 @@ extension NetworkClient {
     public func triggerIkiminaPayout(id: String) async throws -> IkiminaPayoutResponse {
         try await authenticatedPost("api/v1/ikiminas/\(id)/payout", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
+
+    // Real Umurenge SACCO-style shares & dividends -- see SaccoShareholdingDto's own
+    // doc comment. Genuinely distinct from every Toss/Kakao/Naver/Coupang-sourced
+    // feature in this backend and from Ikimina (rotating-pot ROSCA).
+    public func buySaccoShares(amount: Double) async throws -> SaccoShareholdingResponse {
+        try await authenticatedPost("api/v1/sacco/shares/buy", body: SaccoAmountRequest(amount: amount), idempotencyKey: UUID().uuidString)
+    }
+
+    public func redeemSaccoShares(amount: Double) async throws -> SaccoShareholdingResponse {
+        try await authenticatedPost("api/v1/sacco/shares/redeem", body: SaccoAmountRequest(amount: amount), idempotencyKey: UUID().uuidString)
+    }
+
+    public func getMySaccoShareholding() async throws -> SaccoShareholdingResponse { try await get("api/v1/sacco/shares/me") }
+
+    public func getMySaccoDividendHistory() async throws -> SaccoDividendPayoutsResponse { try await get("api/v1/sacco/dividends/me") }
 
     private func authenticatedPut<Body: Encodable, Response: Decodable>(_ path: String, body: Body) async throws -> Response {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))

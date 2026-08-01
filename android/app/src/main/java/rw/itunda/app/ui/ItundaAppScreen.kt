@@ -261,6 +261,9 @@ fun ItundaAppScreen(
         // Real ikimina (Rwanda's own rotating savings & credit association) -- the
         // first feature in this codebase not sourced from Toss/Kakao/Naver/Coupang.
         var showIkimina by rememberSaveable { mutableStateOf(false) }
+        // Real Umurenge SACCO-style shares & dividends -- the second Rwanda-specific
+        // feature not sourced from Toss/Kakao/Naver/Coupang.
+        var showSacco by rememberSaveable { mutableStateOf(false) }
         // Real Toss Bank 체크카드 (check/debit card) screen (2026-07-31, item 207) --
         // bank-mfe shipped first; same pattern.
         var showCard by rememberSaveable { mutableStateOf(false) }
@@ -845,6 +848,11 @@ fun ItundaAppScreen(
             IkiminaScreen(onBack = { showIkimina = false })
             return@IdsTheme
         }
+        if (showSacco) {
+            BackHandler { showSacco = false }
+            SaccoScreen(onBack = { showSacco = false })
+            return@IdsTheme
+        }
         if (showGroupAccounts) {
             BackHandler { showGroupAccounts = false }
             GroupAccountScreen(onBack = { showGroupAccounts = false })
@@ -1022,6 +1030,7 @@ fun ItundaAppScreen(
                             onOpenCard = { showCard = true },
                             onOpenGroupAccounts = { showGroupAccounts = true },
                             onOpenIkimina = { showIkimina = true },
+                            onOpenSacco = { showSacco = true },
                             onOpenSpending = { showSpending = true },
                             onOpenRides = { showRides = true },
                             onOpenDesignatedDriver = { showDesignatedDriver = true },
@@ -1559,6 +1568,7 @@ private fun MenuScreen(
     onOpenCard: () -> Unit = {},
     onOpenGroupAccounts: () -> Unit = {},
     onOpenIkimina: () -> Unit = {},
+    onOpenSacco: () -> Unit = {},
     onOpenSpending: () -> Unit = {},
     onOpenRides: () -> Unit = {},
     onOpenDesignatedDriver: () -> Unit = {},
@@ -1711,6 +1721,7 @@ private fun MenuScreen(
                 FlatRow("Card", subtitle = "App-controlled spend limits, one-tap freeze", icon = Icons.Outlined.CreditCard, iconColor = AccentBlue, onClick = onOpenCard),
                 FlatRow("Group account", subtitle = "Shared account with dues and split expenses", icon = Icons.Outlined.Group, iconColor = AccentPurple, onClick = onOpenGroupAccounts),
                 FlatRow("Ikimina", subtitle = "Rotating savings group -- everyone takes a turn", icon = Icons.Outlined.Savings, iconColor = AccentTeal, onClick = onOpenIkimina),
+                FlatRow("SACCO shares", subtitle = "Buy cooperative shares, earn a real dividend", icon = Icons.Outlined.Savings, iconColor = AccentPurple, onClick = onOpenSacco),
                 FlatRow("Rides", subtitle = "Request a ride or drive for real fares", icon = Icons.Outlined.DirectionsCar, iconColor = AccentBlue, onClick = onOpenRides),
                 FlatRow("Designated driver", subtitle = "A driver takes you and your own car home", icon = Icons.Outlined.SwapHoriz, iconColor = AccentTeal, onClick = onOpenDesignatedDriver),
                 FlatRow("Bike rental", subtitle = "Rent a nearby bike or scooter, billed by the minute", icon = Icons.Outlined.DirectionsBike, iconColor = AccentBlue, onClick = onOpenBikeRental),
