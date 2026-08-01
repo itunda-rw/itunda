@@ -22,6 +22,11 @@ import {
   type SaccoDividendPayout, type SaccoShareholding,
 } from './lib/sacco';
 import {
+  disburseHarvestAdvance, fetchMyCooperativeMemberships, fetchMyHarvestAdvances, joinCooperative,
+  registerCooperative, repayHarvestAdvance, requestHarvestAdvance,
+  type CooperativeMembership, type HarvestAdvance,
+} from './lib/harvestAdvance';
+import {
   cancelWeeklySavingsPlan, createWeeklySavingsPlan, fetchWeeklySavingsPlan, fetchWeeklySavingsPlans, withdrawWeeklySavingsPlan,
   WEEKLY_SAVINGS_ESCALATION_RATES, WEEKLY_SAVINGS_ESCALATION_STEP_WEEKS, WEEKLY_SAVINGS_TERM_WEEKS,
   type WeeklySavingsPlan, type WeeklySavingsPlanDetail,
@@ -1549,7 +1554,7 @@ function OverviewView() {
 // (rw.itunda.loans, BNR-licensed partner banks alongside itunda's own book, see
 // LoanOffer.kt's own doc comment) with zero client UI anywhere.
 function LoansView() {
-  const [mode, setMode] = useState<'OFFERS' | 'MY_LOANS' | 'OVERDRAFT' | 'POSTPAID_CREDIT'>('OFFERS');
+  const [mode, setMode] = useState<'OFFERS' | 'MY_LOANS' | 'OVERDRAFT' | 'POSTPAID_CREDIT' | 'HARVEST_ADVANCE'>('OFFERS');
   const [offers, setOffers] = useState<LoanOffer[] | null>(null);
   const [myLoans, setMyLoans] = useState<LoanAccount[] | null>(null);
   const [lenders, setLenders] = useState<Lender[] | null>(null);
@@ -1634,11 +1639,13 @@ function LoansView() {
         <button className="toss-btn toss-btn-secondary" onClick={() => setMode('MY_LOANS')}>My loans ({myLoans?.length ?? 0})</button>
         <button className="toss-btn toss-btn-secondary" onClick={() => setMode('OVERDRAFT')}>Overdraft</button>
         <button className="toss-btn toss-btn-secondary" onClick={() => setMode('POSTPAID_CREDIT')}>Postpaid credit</button>
+        <button className="toss-btn toss-btn-secondary" onClick={() => setMode('HARVEST_ADVANCE')}>Harvest advance</button>
       </div>
       {mode === 'OVERDRAFT' && <OverdraftView />}
       {mode === 'POSTPAID_CREDIT' && <PostpaidCreditView />}
-      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
-      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && refinanceResult && (
+      {mode === 'HARVEST_ADVANCE' && <HarvestAdvanceView />}
+      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {mode !== 'OVERDRAFT' && mode !== 'POSTPAID_CREDIT' && mode !== 'HARVEST_ADVANCE' && refinanceResult && (
         <div className="toss-card" style={{ padding: '16px', border: '1px solid var(--toss-blue)' }}>
           <p style={{ fontSize: '13px', fontWeight: 700 }}>Refinanced into {refinanceResult.newLoanName}</p>
           <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>{refinanceResult.oldRate}% → {refinanceResult.newRate}%</p>
@@ -1956,6 +1963,204 @@ function PostpaidCreditView() {
         style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
       />
       <button className="toss-btn toss-btn-secondary" disabled={busy || line.currentBalance <= 0} onClick={handleRepay}>{busy ? 'Repaying…' : 'Repay'}</button>
+    </div>
+  );
+}
+
+// Real Rwanda coffee-cooperative harvest-advance / input financing -- see
+// lib/harvestAdvance.ts's own doc comment for the full sourced account. Sourced beyond
+// this session's usual Toss/Kakao/Naver/Coupang reference ecosystems. Itunda is the
+// sole real lender here (the same real underwriting-free wallet-to-wallet pattern the
+// Offers/My-loans views above already use for itunda's own book), disbursed from
+// itunda's own real loan_payable receivable -- never a shared pool, distinct from the
+// Ikimina/SACCO shapes above.
+function HarvestAdvanceView() {
+  const [memberships, setMemberships] = useState<CooperativeMembership[] | null>(null);
+  const [advances, setAdvances] = useState<HarvestAdvance[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const [coopName, setCoopName] = useState('');
+  const [coopId, setCoopId] = useState('');
+  const [advanceAmount, setAdvanceAmount] = useState('');
+  const [advancePurpose, setAdvancePurpose] = useState('INPUT_FINANCING');
+  const [harvestDate, setHarvestDate] = useState('');
+  const [repayAmounts, setRepayAmounts] = useState<Record<string, string>>({});
+
+  const refresh = () => {
+    setError(null);
+    Promise.all([fetchMyCooperativeMemberships(), fetchMyHarvestAdvances()])
+      .then(([m, a]) => { setMemberships(m); setAdvances(a); })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your cooperative memberships.'));
+  };
+
+  useEffect(refresh, []);
+
+  const handleRegisterAndJoin = async () => {
+    if (!coopName.trim()) { setError('Enter a real cooperative name.'); return; }
+    setBusy(true);
+    setError(null);
+    try {
+      const coop = await registerCooperative(coopName.trim(), 'COFFEE');
+      await joinCooperative(coop.id);
+      setCoopName('');
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not register this cooperative.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleJoinExisting = async () => {
+    if (!coopId.trim()) { setError('Enter a real cooperative id.'); return; }
+    setBusy(true);
+    setError(null);
+    try {
+      await joinCooperative(coopId.trim());
+      setCoopId('');
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not join this cooperative.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRequestAdvance = async (membershipId: string) => {
+    const amount = Number(advanceAmount);
+    if (!amount || amount <= 0 || !harvestDate) { setError('Enter a real advance amount and expected harvest date.'); return; }
+    setBusy(true);
+    setError(null);
+    try {
+      await requestHarvestAdvance(membershipId, amount, advancePurpose, new Date(harvestDate).toISOString());
+      setAdvanceAmount('');
+      setHarvestDate('');
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not request this harvest advance.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDisburse = async (advanceId: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await disburseHarvestAdvance(advanceId);
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not disburse this advance.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRepay = async (advanceId: string) => {
+    const amount = Number(repayAmounts[advanceId] ?? '');
+    if (!amount || amount <= 0) { setError('Enter a valid repayment amount.'); return; }
+    setBusy(true);
+    setError(null);
+    try {
+      await repayHarvestAdvance(advanceId, amount);
+      setRepayAmounts((prev) => { const next = { ...prev }; delete next[advanceId]; return next; });
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not repay this advance.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (memberships === null) return <div className="toss-card skeleton" style={{ height: '160px' }} />;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      <div className="toss-card" style={{ padding: '16px' }}>
+        <h4 style={{ fontSize: '14px', fontWeight: 700 }}>Cooperative harvest advance</h4>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+          Input financing or post-harvest advances for coffee cooperative members. Cooperative registration is self-declared -- not verified against a real RCA registry.
+        </p>
+        <input
+          type="text" value={coopName} onChange={(e) => setCoopName(e.target.value)} placeholder="Register a new cooperative (name)"
+          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+        />
+        <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busy} onClick={handleRegisterAndJoin}>
+          {busy ? 'Working…' : 'Register & join'}
+        </button>
+        <input
+          type="text" value={coopId} onChange={(e) => setCoopId(e.target.value)} placeholder="Or join an existing cooperative (id)"
+          style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+        />
+        <button className="toss-btn toss-btn-secondary" style={{ marginTop: '8px' }} disabled={busy} onClick={handleJoinExisting}>
+          {busy ? 'Working…' : 'Join'}
+        </button>
+      </div>
+
+      {memberships.length === 0 ? (
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>You're not a member of any cooperative yet.</p>
+      ) : (
+        memberships.map((m) => (
+          <div key={m.id} className="toss-card" style={{ padding: '16px' }}>
+            <p style={{ fontSize: '13px', fontWeight: 700 }}>Cooperative membership {m.cooperativeId}</p>
+            <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>Member since {new Date(m.memberSince).toLocaleDateString()}</p>
+            <input
+              type="number" value={advanceAmount} onChange={(e) => setAdvanceAmount(e.target.value)} placeholder="Advance amount (RWF)"
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+            />
+            <select
+              value={advancePurpose} onChange={(e) => setAdvancePurpose(e.target.value)}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+            >
+              <option value="INPUT_FINANCING">Input financing (seeds/fertilizer)</option>
+              <option value="POST_HARVEST">Post-harvest advance</option>
+            </select>
+            <input
+              type="date" value={harvestDate} onChange={(e) => setHarvestDate(e.target.value)}
+              style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+            />
+            <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busy} onClick={() => handleRequestAdvance(m.id)}>
+              {busy ? 'Requesting…' : 'Request advance'}
+            </button>
+          </div>
+        ))
+      )}
+
+      {advances && advances.length > 0 && (
+        <div>
+          <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>My advances</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {advances.map((a) => (
+              <div key={a.id} className="toss-card" style={{ padding: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <p style={{ fontSize: '13px', fontWeight: 700 }}>{a.principalAmount.toLocaleString()} RWF · {a.purpose}</p>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--toss-blue)' }}>{a.status}</span>
+                </div>
+                <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>Repay by {new Date(a.repaymentDueDate).toLocaleDateString()}</p>
+                {a.status === 'REQUESTED' && (
+                  <button className="toss-btn toss-btn-primary" style={{ marginTop: '8px' }} disabled={busy} onClick={() => handleDisburse(a.id)}>
+                    {busy ? 'Disbursing…' : 'Disburse'}
+                  </button>
+                )}
+                {a.status === 'DISBURSED' && (
+                  <>
+                    <input
+                      type="number" value={repayAmounts[a.id] ?? ''} onChange={(e) => setRepayAmounts((prev) => ({ ...prev, [a.id]: e.target.value }))}
+                      placeholder="Repay amount (RWF)"
+                      style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '12px', width: '100%', boxSizing: 'border-box', marginTop: '8px' }}
+                    />
+                    <button className="toss-btn toss-btn-secondary" style={{ marginTop: '8px' }} disabled={busy} onClick={() => handleRepay(a.id)}>
+                      {busy ? 'Repaying…' : 'Repay'}
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

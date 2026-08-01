@@ -12,6 +12,10 @@ dependencyManagement {
 
 dependencies {
     implementation(project(":core"))
+    // For RateLimiter -- real anti-spam limit on harvest-advance requests, matching
+    // the same discipline every other content/money-creation endpoint in this backend
+    // already establishes.
+    implementation(project(":auth"))
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
