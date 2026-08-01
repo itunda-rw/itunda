@@ -622,6 +622,38 @@ public struct BusBookingDto: Decodable, Identifiable {
 public struct BusBookingResponse: Decodable { public let success: Bool; public let booking: BusBookingDto }
 public struct BusBookingsResponse: Decodable { public let success: Bool; public let bookings: [BusBookingDto] }
 
+// Real Naver 지식iN (Knowledge iN) open-topic community Q&A (item 225) -- a genuinely
+// different shape from the trip/rental structs above: no wallet movement, no location,
+// just a real question -> competing answers -> asker-adopts-one-best-answer content
+// flow. Mirrors KnowledgeQuestion.kt/KnowledgeAnswer.kt exactly. bank-mfe/Android
+// already have this; this is the first iOS client.
+public struct KnowledgeCategory: Decodable, Identifiable { public let id: String; public let label: String }
+public struct KnowledgeCategoriesResponse: Decodable { public let success: Bool; public let categories: [KnowledgeCategory] }
+public struct PostKnowledgeQuestionRequest: Encodable { public let category: String; public let title: String; public let body: String }
+public struct KnowledgeQuestionDto: Decodable, Identifiable {
+    public let id: String
+    public let askerId: String
+    public let category: String
+    public let title: String
+    public let body: String
+    public let adoptedAnswerId: String?
+    public let createdAt: String
+}
+public struct KnowledgeQuestionResponse: Decodable { public let success: Bool; public let question: KnowledgeQuestionDto }
+public struct KnowledgeQuestionsResponse: Decodable { public let success: Bool; public let questions: [KnowledgeQuestionDto] }
+public struct PostKnowledgeAnswerRequest: Encodable { public let body: String }
+public struct KnowledgeAnswerDto: Decodable, Identifiable {
+    public let id: String
+    public let questionId: String
+    public let answererId: String
+    public let body: String
+    public let isAdopted: Bool
+    public let createdAt: String
+}
+public struct KnowledgeAnswerResponse: Decodable { public let success: Bool; public let answer: KnowledgeAnswerDto }
+public struct KnowledgeAnswersResponse: Decodable { public let success: Bool; public let answers: [KnowledgeAnswerDto] }
+public struct KnowledgeReputationResponse: Decodable { public let success: Bool; public let adoptedAnswerCount: Int }
+
 // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- mirrors
 // bank-mfe's lib/vehicleInspection.ts exactly. bank-mfe and Android already have this;
 // this is the first iOS client.
@@ -1057,6 +1089,39 @@ extension NetworkClient {
     }
 
     public func getMyBusBookings() async throws -> BusBookingsResponse { try await get("api/v1/bus/bookings/my-history") }
+
+    // Real Naver 지식iN (Knowledge iN) open-topic community Q&A (item 225) -- first
+    // iOS client for this feature. bank-mfe/Android already have this; mirrors
+    // ApiService.kt exactly.
+    public func getKnowledgeCategories() async throws -> KnowledgeCategoriesResponse { try await get("api/v1/knowledge/categories") }
+
+    public func postKnowledgeQuestion(category: String, title: String, body: String) async throws -> KnowledgeQuestionResponse {
+        try await authenticatedPost("api/v1/knowledge/questions", body: PostKnowledgeQuestionRequest(category: category, title: title, body: body))
+    }
+
+    public func getKnowledgeQuestions(category: String?) async throws -> KnowledgeQuestionsResponse {
+        var query: [URLQueryItem] = []
+        if let category, !category.isEmpty { query.append(URLQueryItem(name: "category", value: category)) }
+        return try await get("api/v1/knowledge/questions", query: query)
+    }
+
+    public func getMyKnowledgeQuestions() async throws -> KnowledgeQuestionsResponse { try await get("api/v1/knowledge/questions/my-questions") }
+
+    public func getMyKnowledgeAnswers() async throws -> KnowledgeAnswersResponse { try await get("api/v1/knowledge/answers/my-answers") }
+
+    public func getMyKnowledgeReputation() async throws -> KnowledgeReputationResponse { try await get("api/v1/knowledge/reputation/me") }
+
+    public func getKnowledgeQuestion(questionId: String) async throws -> KnowledgeQuestionResponse { try await get("api/v1/knowledge/questions/\(questionId)") }
+
+    public func getKnowledgeAnswers(questionId: String) async throws -> KnowledgeAnswersResponse { try await get("api/v1/knowledge/questions/\(questionId)/answers") }
+
+    public func postKnowledgeAnswer(questionId: String, body: String) async throws -> KnowledgeAnswerResponse {
+        try await authenticatedPost("api/v1/knowledge/questions/\(questionId)/answers", body: PostKnowledgeAnswerRequest(body: body))
+    }
+
+    public func adoptKnowledgeAnswer(questionId: String, answerId: String) async throws -> KnowledgeAnswerResponse {
+        try await authenticatedPost("api/v1/knowledge/questions/\(questionId)/answers/\(answerId)/adopt", body: EmptyBody())
+    }
 
     // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- see
     // rw.itunda.marketplace.VehicleInspectionService's own doc comment. bank-mfe and

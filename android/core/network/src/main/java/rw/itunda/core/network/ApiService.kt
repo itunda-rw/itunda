@@ -3235,6 +3235,41 @@ interface ApiService {
     @GET("api/v1/bus/bookings/my-history")
     suspend fun getMyBusBookings(): BusBookingsResponse
 
+    // Real Naver 지식iN (Knowledge iN) open-topic community Q&A (item 225) -- a
+    // genuinely different shape from the trip/rental features above: no wallet
+    // movement, no location, just a real question -> competing answers ->
+    // asker-adopts-one-best-answer content flow. First Android client. bank-mfe
+    // already has this; mirrors lib/knowledge.ts exactly.
+    @GET("api/v1/knowledge/categories")
+    suspend fun getKnowledgeCategories(): KnowledgeCategoriesResponse
+
+    @POST("api/v1/knowledge/questions")
+    suspend fun postKnowledgeQuestion(@Body request: PostKnowledgeQuestionRequest): KnowledgeQuestionResponse
+
+    @GET("api/v1/knowledge/questions")
+    suspend fun getKnowledgeQuestions(@Query("category") category: String? = null): KnowledgeQuestionsResponse
+
+    @GET("api/v1/knowledge/questions/my-questions")
+    suspend fun getMyKnowledgeQuestions(): KnowledgeQuestionsResponse
+
+    @GET("api/v1/knowledge/answers/my-answers")
+    suspend fun getMyKnowledgeAnswers(): KnowledgeAnswersResponse
+
+    @GET("api/v1/knowledge/reputation/me")
+    suspend fun getMyKnowledgeReputation(): KnowledgeReputationResponse
+
+    @GET("api/v1/knowledge/questions/{questionId}")
+    suspend fun getKnowledgeQuestion(@Path("questionId") questionId: String): KnowledgeQuestionResponse
+
+    @GET("api/v1/knowledge/questions/{questionId}/answers")
+    suspend fun getKnowledgeAnswers(@Path("questionId") questionId: String): KnowledgeAnswersResponse
+
+    @POST("api/v1/knowledge/questions/{questionId}/answers")
+    suspend fun postKnowledgeAnswer(@Path("questionId") questionId: String, @Body request: PostKnowledgeAnswerRequest): KnowledgeAnswerResponse
+
+    @POST("api/v1/knowledge/questions/{questionId}/answers/{answerId}/adopt")
+    suspend fun adoptKnowledgeAnswer(@Path("questionId") questionId: String, @Path("answerId") answerId: String): KnowledgeAnswerResponse
+
     // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- see
     // rw.itunda.marketplace.VehicleInspectionService's own doc comment. A buyer books
     // and 100%-prepays a real mechanic to inspect a real Marketplace used-car listing
@@ -3496,6 +3531,28 @@ data class BusBookingDto(
 )
 data class BusBookingResponse(val success: Boolean, val booking: BusBookingDto)
 data class BusBookingsResponse(val success: Boolean, val bookings: List<BusBookingDto>)
+
+// Real Naver 지식iN (Knowledge iN) open-topic community Q&A (item 225) -- see the
+// backend's KnowledgeQuestion.kt/KnowledgeAnswer.kt doc comments for the full sourced
+// account. A genuinely different shape from the trip/rental DTOs above -- no wallet
+// movement, no location. Mirrors those entities' field names exactly.
+data class KnowledgeCategory(val id: String, val label: String)
+data class KnowledgeCategoriesResponse(val success: Boolean, val categories: List<KnowledgeCategory>)
+data class PostKnowledgeQuestionRequest(val category: String, val title: String, val body: String)
+data class KnowledgeQuestionDto(
+    val id: String, val askerId: String, val category: String, val title: String, val body: String,
+    val adoptedAnswerId: String?, val createdAt: String,
+)
+data class KnowledgeQuestionResponse(val success: Boolean, val question: KnowledgeQuestionDto)
+data class KnowledgeQuestionsResponse(val success: Boolean, val questions: List<KnowledgeQuestionDto>)
+data class PostKnowledgeAnswerRequest(val body: String)
+data class KnowledgeAnswerDto(
+    val id: String, val questionId: String, val answererId: String, val body: String,
+    val isAdopted: Boolean, val createdAt: String,
+)
+data class KnowledgeAnswerResponse(val success: Boolean, val answer: KnowledgeAnswerDto)
+data class KnowledgeAnswersResponse(val success: Boolean, val answers: List<KnowledgeAnswerDto>)
+data class KnowledgeReputationResponse(val success: Boolean, val adoptedAnswerCount: Int)
 
 // Real Kakao T-style post-trip driver rating (item 213) -- see the backend's
 // RideTripReview.kt doc comment.

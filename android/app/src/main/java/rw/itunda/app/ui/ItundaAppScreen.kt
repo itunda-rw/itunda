@@ -273,6 +273,9 @@ fun ItundaAppScreen(
         // pattern.
         var showParking by rememberSaveable { mutableStateOf(false) }
         var showBus by rememberSaveable { mutableStateOf(false) }
+        // Real Naver 지식iN (Knowledge iN) open-topic community Q&A (item 225) --
+        // bank-mfe shipped first; same pattern.
+        var showKnowledge by rememberSaveable { mutableStateOf(false) }
         // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment)
         // screen (2026-07-31) -- bank-mfe shipped first; same pattern.
         var showVehicleInspection by rememberSaveable { mutableStateOf(false) }
@@ -884,6 +887,11 @@ fun ItundaAppScreen(
             BusScreen(onBack = { showBus = false })
             return@IdsTheme
         }
+        if (showKnowledge) {
+            BackHandler { showKnowledge = false }
+            KnowledgeScreen(onBack = { showKnowledge = false })
+            return@IdsTheme
+        }
         if (showParking) {
             BackHandler { showParking = false }
             ParkingScreen(onBack = { showParking = false })
@@ -1011,6 +1019,7 @@ fun ItundaAppScreen(
                             onOpenBikeRental = { showBikeRental = true },
                             onOpenParking = { showParking = true },
                             onOpenBus = { showBus = true },
+                            onOpenKnowledge = { showKnowledge = true },
                             onOpenVehicleInspection = { showVehicleInspection = true },
                             onOpenVehicleValuation = { showVehicleValuation = true },
                             onOpenFamilyLink = { showFamilyLink = true },
@@ -1546,6 +1555,7 @@ private fun MenuScreen(
     onOpenBikeRental: () -> Unit = {},
     onOpenParking: () -> Unit = {},
     onOpenBus: () -> Unit = {},
+    onOpenKnowledge: () -> Unit = {},
     onOpenVehicleInspection: () -> Unit = {},
     onOpenVehicleValuation: () -> Unit = {},
     onOpenFamilyLink: () -> Unit = {},
@@ -1695,6 +1705,7 @@ private fun MenuScreen(
                 FlatRow("Bike rental", subtitle = "Rent a nearby bike or scooter, billed by the minute", icon = Icons.Outlined.DirectionsBike, iconColor = AccentBlue, onClick = onOpenBikeRental),
                 FlatRow("Parking", subtitle = "Rent a nearby parking spot, billed by the hour", icon = Icons.Outlined.LocalParking, iconColor = AccentPurple, onClick = onOpenParking),
                 FlatRow("Bus", subtitle = "Book intercity bus seats or post your own route", icon = Icons.Outlined.DirectionsBus, iconColor = AccentTeal, onClick = onOpenBus),
+                FlatRow("Q&A", subtitle = "Ask a question, answer one, get adopted", icon = Icons.Outlined.HelpOutline, iconColor = AccentPurple, onClick = onOpenKnowledge),
                 FlatRow("Vehicle inspection", subtitle = "Pay a mechanic to inspect a used car before you buy", icon = Icons.Outlined.Build, iconColor = AccentTeal, onClick = onOpenVehicleInspection),
                 FlatRow("My vehicles", subtitle = "Track your car's estimated resale value", icon = Icons.Outlined.DirectionsCar, iconColor = AccentTeal, onClick = onOpenVehicleValuation),
                 FlatRow("Family", subtitle = "Link a guardian or child, view read-only spending", icon = Icons.Outlined.Groups, iconColor = AccentPurple, onClick = onOpenFamilyLink),
