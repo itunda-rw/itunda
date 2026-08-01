@@ -548,6 +548,42 @@ public struct BikeRentalSessionDto: Decodable, Identifiable {
 public struct BikeRentalResponse: Decodable { public let success: Bool; public let rental: BikeRentalSessionDto }
 public struct BikeRentalsResponse: Decodable { public let success: Bool; public let rentals: [BikeRentalSessionDto] }
 
+// Real Kakao T 주차 (Kakao T Parking, item 223) -- real PEER-TO-PEER parking-spot
+// rental pool (any user self-lists a spot they own/control), billed by elapsed HOURS
+// at checkout -- same "settle at end, no fare known up front" shape Bike already
+// establishes, just hourly instead of per-minute. Mirrors ParkingSpot.kt/
+// ParkingSession.kt exactly. bank-mfe/Android already have this; this is the first iOS
+// client.
+public struct RegisterParkingSpotRequest: Encodable { public let address: String; public let latitude: Double; public let longitude: Double; public let hourlyRate: Double }
+public struct ParkingSpotDto: Decodable, Identifiable {
+    public let id: String
+    public let ownerUserId: String
+    public let walletId: String
+    public let address: String
+    public let latitude: Double
+    public let longitude: Double
+    public let hourlyRate: Double
+    public let available: Bool
+    public let createdAt: String
+}
+public struct ParkingSpotResponse: Decodable { public let success: Bool; public let spot: ParkingSpotDto }
+public struct ParkingSpotsResponse: Decodable { public let success: Bool; public let spots: [ParkingSpotDto] }
+public struct SetParkingSpotAvailabilityRequest: Encodable { public let available: Bool }
+public struct StartParkingSessionRequest: Encodable { public let spotId: String }
+public struct ParkingSessionDto: Decodable, Identifiable {
+    public let id: String
+    public let spotId: String
+    public let renterUserId: String
+    public let startedAt: String
+    public let endedAt: String?
+    public let durationMinutes: Int?
+    public let totalFare: Double?
+    public let platformFee: Double?
+    public let status: String
+}
+public struct ParkingSessionResponse: Decodable { public let success: Bool; public let session: ParkingSessionDto }
+public struct ParkingSessionsResponse: Decodable { public let success: Bool; public let sessions: [ParkingSessionDto] }
+
 // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- mirrors
 // bank-mfe's lib/vehicleInspection.ts exactly. bank-mfe and Android already have this;
 // this is the first iOS client.
@@ -926,6 +962,36 @@ extension NetworkClient {
     }
 
     public func getMyBikeRentalHistory() async throws -> BikeRentalsResponse { try await get("api/v1/bikeshare/rentals/my-history") }
+
+    // Real Kakao T 주차 (Kakao T Parking, item 223) -- first iOS client for this
+    // feature. bank-mfe/Android already have this; mirrors ApiService.kt exactly.
+    public func registerParkingSpot(address: String, latitude: Double, longitude: Double, hourlyRate: Double) async throws -> ParkingSpotResponse {
+        try await authenticatedPost("api/v1/parking/spots", body: RegisterParkingSpotRequest(address: address, latitude: latitude, longitude: longitude, hourlyRate: hourlyRate))
+    }
+
+    public func getMyParkingSpots() async throws -> ParkingSpotsResponse { try await get("api/v1/parking/spots/mine") }
+
+    public func setParkingSpotAvailability(spotId: String, available: Bool) async throws -> ParkingSpotResponse {
+        try await authenticatedPost("api/v1/parking/spots/\(spotId)/availability", body: SetParkingSpotAvailabilityRequest(available: available))
+    }
+
+    public func getNearbyParkingSpots(latitude: Double, longitude: Double, radiusKm: Double = 5.0) async throws -> ParkingSpotsResponse {
+        try await get("api/v1/parking/spots/nearby", query: [
+            URLQueryItem(name: "latitude", value: String(latitude)),
+            URLQueryItem(name: "longitude", value: String(longitude)),
+            URLQueryItem(name: "radiusKm", value: String(radiusKm)),
+        ])
+    }
+
+    public func startParkingSession(spotId: String) async throws -> ParkingSessionResponse {
+        try await authenticatedPost("api/v1/parking/sessions", body: StartParkingSessionRequest(spotId: spotId))
+    }
+
+    public func endParkingSession(sessionId: String) async throws -> ParkingSessionResponse {
+        try await authenticatedPost("api/v1/parking/sessions/\(sessionId)/end", body: EmptyBody())
+    }
+
+    public func getMyParkingHistory() async throws -> ParkingSessionsResponse { try await get("api/v1/parking/sessions/my-history") }
 
     // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- see
     // rw.itunda.marketplace.VehicleInspectionService's own doc comment. bank-mfe and

@@ -3178,6 +3178,35 @@ interface ApiService {
     @GET("api/v1/bikeshare/rentals/my-history")
     suspend fun getMyBikeRentalHistory(): BikeRentalsResponse
 
+    // Real Kakao T 주차 (Kakao T Parking, item 223) -- real peer-to-peer parking-spot
+    // rental, billed by elapsed hours (not a pre-known fare, same "settle at checkout"
+    // shape Bike already establishes). First Android client. bank-mfe already has this;
+    // mirrors lib/parking.ts exactly.
+    @POST("api/v1/parking/spots")
+    suspend fun registerParkingSpot(@Body request: RegisterParkingSpotRequest): ParkingSpotResponse
+
+    @GET("api/v1/parking/spots/mine")
+    suspend fun getMyParkingSpots(): ParkingSpotsResponse
+
+    @POST("api/v1/parking/spots/{spotId}/availability")
+    suspend fun setParkingSpotAvailability(@Path("spotId") spotId: String, @Body request: SetParkingSpotAvailabilityRequest): ParkingSpotResponse
+
+    @GET("api/v1/parking/spots/nearby")
+    suspend fun getNearbyParkingSpots(
+        @Query("latitude") latitude: Double,
+        @Query("longitude") longitude: Double,
+        @Query("radiusKm") radiusKm: Double = 5.0,
+    ): ParkingSpotsResponse
+
+    @POST("api/v1/parking/sessions")
+    suspend fun startParkingSession(@Body request: StartParkingSessionRequest): ParkingSessionResponse
+
+    @POST("api/v1/parking/sessions/{sessionId}/end")
+    suspend fun endParkingSession(@Path("sessionId") sessionId: String): ParkingSessionResponse
+
+    @GET("api/v1/parking/sessions/my-history")
+    suspend fun getMyParkingHistory(): ParkingSessionsResponse
+
     // Real 당근마켓 중고차 정비소 동행 (used-car mechanic-inspection accompaniment) -- see
     // rw.itunda.marketplace.VehicleInspectionService's own doc comment. A buyer books
     // and 100%-prepays a real mechanic to inspect a real Marketplace used-car listing
@@ -3392,6 +3421,29 @@ data class BikeRentalSessionDto(
 )
 data class BikeRentalResponse(val success: Boolean, val rental: BikeRentalSessionDto)
 data class BikeRentalsResponse(val success: Boolean, val rentals: List<BikeRentalSessionDto>)
+
+// Real Kakao T 주차 (Kakao T Parking, item 223) -- real PEER-TO-PEER parking-spot
+// rental pool (any user self-lists a spot they own/control), billed by elapsed HOURS
+// at checkout -- same "settle at end, no fare known up front" shape Bike already
+// establishes, just hourly instead of per-minute. Mirrors ParkingSpot.kt/
+// ParkingSession.kt exactly.
+data class RegisterParkingSpotRequest(val address: String, val latitude: Double, val longitude: Double, val hourlyRate: java.math.BigDecimal)
+data class ParkingSpotDto(
+    val id: String, val ownerUserId: String, val walletId: String, val address: String,
+    val latitude: Double, val longitude: Double, val hourlyRate: java.math.BigDecimal,
+    val available: Boolean, val createdAt: String,
+)
+data class ParkingSpotResponse(val success: Boolean, val spot: ParkingSpotDto)
+data class ParkingSpotsResponse(val success: Boolean, val spots: List<ParkingSpotDto>)
+data class SetParkingSpotAvailabilityRequest(val available: Boolean)
+data class StartParkingSessionRequest(val spotId: String)
+data class ParkingSessionDto(
+    val id: String, val spotId: String, val renterUserId: String, val startedAt: String, val endedAt: String?,
+    val durationMinutes: Int?, val totalFare: java.math.BigDecimal?, val platformFee: java.math.BigDecimal?,
+    val status: String,
+)
+data class ParkingSessionResponse(val success: Boolean, val session: ParkingSessionDto)
+data class ParkingSessionsResponse(val success: Boolean, val sessions: List<ParkingSessionDto>)
 
 // Real Kakao T-style post-trip driver rating (item 213) -- see the backend's
 // RideTripReview.kt doc comment.
