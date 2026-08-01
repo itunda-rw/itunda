@@ -129,6 +129,48 @@ public struct GroupAccountDuesDto: Decodable { public let duesAmount: Double?; p
 public struct GroupAccountDuesResponse: Decodable { public let success: Bool; public let dues: GroupAccountDuesDto }
 public struct RemindUnpaidDuesResponse: Decodable { public let success: Bool; public let remindedCount: Int }
 
+// Real ikimina -- Rwanda's own rotating savings & credit association (ROSCA). See the
+// backend's Ikimina.kt doc comment for the full sourced account. Distinct from
+// GroupAccountDto above (Kakao Bank 모임통장): that feature has one permanent owner
+// with sole withdrawal authority; an ikimina rotates the full pot to a different
+// member each real round, until everyone has been paid exactly once. Genuinely the
+// first feature in this codebase not sourced from Toss/Kakao/Naver/Coupang. Mirrors
+// bank-mfe's lib/ikimina.ts exactly.
+public struct IkiminaDto: Decodable {
+    public let id: String
+    public let name: String
+    public let organizerId: String
+    public let walletId: String
+    public let contributionAmount: Double
+    public let cycleFrequencyDays: Int
+    public let memberCap: Int
+    public let currentRound: Int
+    public let status: String
+    public let createdAt: String
+}
+public struct IkiminaMemberDto: Decodable {
+    public let userId: String
+    public let firstName: String
+    public let lastName: String
+    public let payoutOrder: Int
+    public let hasReceivedPayout: Bool
+    public let isOrganizer: Bool
+}
+public struct IkiminaContributionStatusDto: Decodable { public let userId: String; public let contributed: Bool }
+public struct CreateIkiminaRequest: Encodable { public let name: String; public let contributionAmount: Double; public let cycleFrequencyDays: Int; public let memberCap: Int }
+public struct CreateIkiminaResponse: Decodable { public let success: Bool; public let ikimina: IkiminaDto }
+public struct IkiminasResponse: Decodable { public let success: Bool; public let ikiminas: [IkiminaDto] }
+public struct IkiminaDetailResponse: Decodable {
+    public let success: Bool
+    public let ikimina: IkiminaDto
+    public let balance: Double
+    public let members: [IkiminaMemberDto]
+    public let currentRoundContributions: [IkiminaContributionStatusDto]
+}
+public struct InviteIkiminaMemberRequest: Encodable { public let phoneNumber: String }
+public struct InviteIkiminaMemberResponse: Decodable { public let success: Bool; public let member: IkiminaMemberDto }
+public struct IkiminaPayoutResponse: Decodable { public let success: Bool; public let ikimina: IkiminaDto; public let recipientUserId: String; public let amount: Double }
+
 public struct AuthResponse: Decodable {
     public let message: String
     public let user: PublicUser
@@ -1323,6 +1365,33 @@ extension NetworkClient {
 
     public func requestUnpaidGroupAccountDues(id: String) async throws -> RemindUnpaidDuesResponse {
         try await authenticatedPost("api/v1/group-accounts/\(id)/dues/remind", body: EmptyBody())
+    }
+
+    // Real ikimina (Rwanda's own rotating savings & credit association) -- see
+    // IkiminaDto's own doc comment. Genuinely distinct from every Toss/Kakao/Naver/
+    // Coupang-sourced feature in this backend.
+    public func createIkimina(name: String, contributionAmount: Double, cycleFrequencyDays: Int, memberCap: Int) async throws -> CreateIkiminaResponse {
+        try await authenticatedPost("api/v1/ikiminas", body: CreateIkiminaRequest(name: name, contributionAmount: contributionAmount, cycleFrequencyDays: cycleFrequencyDays, memberCap: memberCap))
+    }
+
+    public func getMyIkiminas() async throws -> IkiminasResponse { try await get("api/v1/ikiminas") }
+
+    public func getIkimina(id: String) async throws -> IkiminaDetailResponse { try await get("api/v1/ikiminas/\(id)") }
+
+    public func inviteIkiminaMember(id: String, phoneNumber: String) async throws -> InviteIkiminaMemberResponse {
+        try await authenticatedPost("api/v1/ikiminas/\(id)/members", body: InviteIkiminaMemberRequest(phoneNumber: phoneNumber))
+    }
+
+    public func startIkiminaCycle(id: String) async throws -> CreateIkiminaResponse {
+        try await authenticatedPost("api/v1/ikiminas/\(id)/start", body: EmptyBody())
+    }
+
+    public func contributeToIkimina(id: String) async throws -> CreateIkiminaResponse {
+        try await authenticatedPost("api/v1/ikiminas/\(id)/contribute", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+    }
+
+    public func triggerIkiminaPayout(id: String) async throws -> IkiminaPayoutResponse {
+        try await authenticatedPost("api/v1/ikiminas/\(id)/payout", body: EmptyBody(), idempotencyKey: UUID().uuidString)
     }
 
     private func authenticatedPut<Body: Encodable, Response: Decodable>(_ path: String, body: Body) async throws -> Response {

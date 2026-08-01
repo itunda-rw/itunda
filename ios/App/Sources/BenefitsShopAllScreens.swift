@@ -220,6 +220,9 @@ struct EntireMenuScreen: View {
     // last remaining client platform for this feature (bank-mfe always had it, Android
     // ported the same day as item 104).
     @State private var showGroupAccounts = false
+    // Real ikimina (Rwanda's own rotating savings & credit association) -- the first
+    // feature in this codebase not sourced from Toss/Kakao/Naver/Coupang.
+    @State private var showIkimina = false
     // Real Kakao Pay spending categorization screen (2026-07-28, item 108) -- last
     // remaining client platform for this feature (bank-mfe item 106, Android item 107).
     @State private var showSpending = false
@@ -302,6 +305,7 @@ struct EntireMenuScreen: View {
                         FlatRow(title: "Mini account", subtitle: "Capped starter wallet, ages 7-18", symbol: "banknote.fill", tint: .accentTeal, action: { showMiniWallet = true }),
                         FlatRow(title: "Card", subtitle: "App-controlled spend limits, one-tap freeze", symbol: "creditcard.fill", tint: .accentBlue, action: { showCard = true }),
                         FlatRow(title: "Group account", subtitle: "Shared account with dues and split expenses", symbol: "person.2.fill", tint: .accentPurple, action: { showGroupAccounts = true }),
+                        FlatRow(title: "Ikimina", subtitle: "Rotating savings group -- everyone takes a turn", symbol: "arrow.triangle.2.circlepath", tint: .accentTeal, action: { showIkimina = true }),
                         FlatRow(title: "Map", subtitle: "Real Rwanda map, self-hosted", symbol: "map.fill", tint: .accentTeal, action: { showMap = true }),
                     ])
                     IdsSearchBar(placeholder: "Search")
@@ -496,6 +500,9 @@ struct EntireMenuScreen: View {
         }
         .sheet(isPresented: $showGroupAccounts) {
             GroupAccountScreenView(onBack: { showGroupAccounts = false })
+        }
+        .sheet(isPresented: $showIkimina) {
+            IkiminaScreenView(onBack: { showIkimina = false })
         }
         .sheet(isPresented: $showSpending) {
             SpendingScreenView(onBack: { showSpending = false })

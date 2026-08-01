@@ -3460,6 +3460,30 @@ interface ApiService {
 
     @POST("api/v1/group-accounts/{id}/dues/remind")
     suspend fun requestUnpaidGroupAccountDues(@Path("id") id: String): RemindUnpaidDuesResponse
+
+    // Real ikimina (Rwanda's own rotating savings & credit association) -- see
+    // IkiminaDto's own doc comment. Genuinely distinct from every Toss/Kakao/Naver/
+    // Coupang-sourced feature in this backend.
+    @POST("api/v1/ikiminas")
+    suspend fun createIkimina(@Body request: CreateIkiminaRequest): CreateIkiminaResponse
+
+    @GET("api/v1/ikiminas")
+    suspend fun getMyIkiminas(): IkiminasResponse
+
+    @GET("api/v1/ikiminas/{id}")
+    suspend fun getIkimina(@Path("id") id: String): IkiminaDetailResponse
+
+    @POST("api/v1/ikiminas/{id}/members")
+    suspend fun inviteIkiminaMember(@Path("id") id: String, @Body request: InviteIkiminaMemberRequest): InviteIkiminaMemberResponse
+
+    @POST("api/v1/ikiminas/{id}/start")
+    suspend fun startIkiminaCycle(@Path("id") id: String): CreateIkiminaResponse
+
+    @POST("api/v1/ikiminas/{id}/contribute")
+    suspend fun contributeToIkimina(@Path("id") id: String, @Header("Idempotency-Key") idempotencyKey: String): CreateIkiminaResponse
+
+    @POST("api/v1/ikiminas/{id}/payout")
+    suspend fun triggerIkiminaPayout(@Path("id") id: String, @Header("Idempotency-Key") idempotencyKey: String): IkiminaPayoutResponse
 }
 
 data class UpfrontDepositDto(
@@ -3749,6 +3773,34 @@ data class GroupAccountDuesMemberDto(val userId: String, val firstName: String, 
 data class GroupAccountDuesDto(val duesAmount: java.math.BigDecimal?, val cycleMonth: String, val members: List<GroupAccountDuesMemberDto>)
 data class GroupAccountDuesResponse(val success: Boolean, val dues: GroupAccountDuesDto)
 data class RemindUnpaidDuesResponse(val success: Boolean, val remindedCount: Int)
+
+// Real ikimina -- Rwanda's own rotating savings & credit association (ROSCA). See the
+// backend's Ikimina.kt doc comment for the full sourced account. Distinct from
+// GroupAccountDto above (Kakao Bank 모임통장): that feature has one permanent owner
+// with sole withdrawal authority; an ikimina rotates the full pot to a different
+// member each real round, until everyone has been paid exactly once. Genuinely the
+// first feature in this codebase not sourced from Toss/Kakao/Naver/Coupang. Mirrors
+// bank-mfe's lib/ikimina.ts exactly.
+data class IkiminaDto(
+    val id: String, val name: String, val organizerId: String, val walletId: String,
+    val contributionAmount: java.math.BigDecimal, val cycleFrequencyDays: Int, val memberCap: Int,
+    val currentRound: Int, val status: String, val createdAt: String,
+)
+data class IkiminaMemberDto(
+    val userId: String, val firstName: String, val lastName: String,
+    val payoutOrder: Int, val hasReceivedPayout: Boolean, val isOrganizer: Boolean,
+)
+data class IkiminaContributionStatusDto(val userId: String, val contributed: Boolean)
+data class CreateIkiminaRequest(val name: String, val contributionAmount: java.math.BigDecimal, val cycleFrequencyDays: Int, val memberCap: Int)
+data class CreateIkiminaResponse(val success: Boolean, val ikimina: IkiminaDto)
+data class IkiminasResponse(val success: Boolean, val ikiminas: List<IkiminaDto>)
+data class IkiminaDetailResponse(
+    val success: Boolean, val ikimina: IkiminaDto, val balance: java.math.BigDecimal,
+    val members: List<IkiminaMemberDto>, val currentRoundContributions: List<IkiminaContributionStatusDto>,
+)
+data class InviteIkiminaMemberRequest(val phoneNumber: String)
+data class InviteIkiminaMemberResponse(val success: Boolean, val member: IkiminaMemberDto)
+data class IkiminaPayoutResponse(val success: Boolean, val ikimina: IkiminaDto, val recipientUserId: String, val amount: java.math.BigDecimal)
 
 // Real KakaoBank mini-style capped starter wallet -- see MiniWalletService.kt's own
 // doc comment (real balance/daily/monthly caps plus a real 7-18 age-eligibility gate).
