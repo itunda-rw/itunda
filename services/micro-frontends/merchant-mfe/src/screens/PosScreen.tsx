@@ -8,6 +8,9 @@ import {
   addProduct,
   updateProductStock,
   chargeCard,
+  createTimeDeal,
+  endTimeDeal,
+  fetchMyTimeDeals,
   fetchPriceTiers,
   generateQr,
   getOptionGroups,
@@ -20,6 +23,7 @@ import {
   type MenuOptionGroup,
   type MerchantProduct,
   type PaymentIntent,
+  type TimeDeal,
 } from '../lib/merchant';
 
 type Mode = 'REGISTER' | 'CATALOG';
@@ -406,6 +410,9 @@ function CatalogView() {
   // "one panel expanded at a time" convention as the Options panel above, its own
   // separate toggle since a product can have both option groups and price tiers.
   const [expandedPricingProductId, setExpandedPricingProductId] = useState<string | null>(null);
+  // Real Coupang 타임특가 (Time Deal, item 226) -- same "one panel expanded at a time"
+  // convention as Options/Pricing above, its own separate toggle.
+  const [expandedTimeDealProductId, setExpandedTimeDealProductId] = useState<string | null>(null);
   const lowStock = products?.filter((product) => product.stockQuantity !== null && product.stockQuantity <= 5) ?? [];
 
   const load = () => {
@@ -560,6 +567,7 @@ function CatalogView() {
               {products.map((product) => {
                 const isExpanded = expandedProductId === product.id;
                 const isPricingExpanded = expandedPricingProductId === product.id;
+                const isTimeDealExpanded = expandedTimeDealProductId === product.id;
                 return (
                   <Fragment key={product.id}>
                     <tr style={{ borderTop: '1px solid var(--toss-grey-200)' }}>
@@ -591,6 +599,12 @@ function CatalogView() {
                             Pricing {isPricingExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                           </button>
                           <button
+                            onClick={() => setExpandedTimeDealProductId(isTimeDealExpanded ? null : product.id)}
+                            style={{ color: 'var(--toss-blue)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 600 }}
+                          >
+                            Time deal {isTimeDealExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                          <button
                             onClick={() => adjustStock(product)}
                             style={{ color: 'var(--toss-blue)', fontSize: '13px', fontWeight: 600 }}
                           >
@@ -616,6 +630,13 @@ function CatalogView() {
                       <tr style={{ borderTop: '1px solid var(--toss-grey-200)', backgroundColor: 'var(--toss-grey-100)' }}>
                         <td colSpan={3} style={{ padding: '16px 20px' }}>
                           <PriceTiersPanel productId={product.id} regularPrice={product.price} />
+                        </td>
+                      </tr>
+                    )}
+                    {isTimeDealExpanded && (
+                      <tr style={{ borderTop: '1px solid var(--toss-grey-200)', backgroundColor: 'var(--toss-grey-100)' }}>
+                        <td colSpan={3} style={{ padding: '16px 20px' }}>
+                          <TimeDealPanel productId={product.id} regularPrice={product.price} />
                         </td>
                       </tr>
                     )}
@@ -888,6 +909,141 @@ function PriceTiersPanel({ productId, regularPrice }: { productId: string; regul
       <button type="button" className="toss-btn toss-btn-primary" disabled={saving || tiers === null} onClick={handleSave} style={{ alignSelf: 'flex-start' }}>
         {saving ? 'Saving…' : 'Save price tiers'}
       </button>
+    </div>
+  );
+}
+
+// Real Coupang 타임특가 (Time Deal, item 226) -- see the backend TimeDeal.kt's own doc
+// comment. A time-boxed, quantity-capped discount, distinct from PriceTiersPanel above
+// (a permanent bulk-quantity discount, not a scheduled event). Consumer browse is
+// already real on bank-mfe/Android/iOS; this is the first client for the creation half.
+// GET /api/v1/time-deals/mine returns every deal across all of a merchant's products
+// (no product-scoped endpoint exists), so this panel filters that list client-side to
+// this one product -- an honest tradeoff for a merchant who rarely has more than a
+// handful of deals running at once, not a real N+1 concern.
+function TimeDealPanel({ productId, regularPrice }: { productId: string; regularPrice: number }) {
+  const [deals, setDeals] = useState<TimeDeal[] | null>(null);
+  const [dealPrice, setDealPrice] = useState('');
+  const [totalQuantity, setTotalQuantity] = useState('');
+  const [startsAt, setStartsAt] = useState('');
+  const [endsAt, setEndsAt] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [busyDealId, setBusyDealId] = useState<string | null>(null);
+
+  const load = () => {
+    fetchMyTimeDeals()
+      .then((all) => setDeals(all.filter((d) => d.productId === productId)))
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load time deals.'));
+  };
+
+  useEffect(load, [productId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const now = Date.now();
+  const activeDeals = (deals ?? []).filter((d) => new Date(d.endsAt).getTime() > now && d.remainingQuantity > 0);
+  const pastDeals = (deals ?? []).filter((d) => !activeDeals.includes(d));
+
+  const handleCreate = async () => {
+    setError(null);
+    const price = Number(dealPrice);
+    const quantity = Number(totalQuantity);
+    if (!Number.isFinite(price) || price <= 0 || price >= regularPrice) {
+      setError(`The deal price must be greater than zero and less than the regular price (${regularPrice.toLocaleString()} RWF).`);
+      return;
+    }
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      setError('Quantity must be a whole number of at least 1.');
+      return;
+    }
+    if (!startsAt || !endsAt) {
+      setError('Set both a start and end time.');
+      return;
+    }
+    const startIso = new Date(startsAt).toISOString();
+    const endIso = new Date(endsAt).toISOString();
+    if (new Date(endIso).getTime() <= new Date(startIso).getTime()) {
+      setError('The end time must be after the start time.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await createTimeDeal(productId, price, quantity, startIso, endIso);
+      setDealPrice('');
+      setTotalQuantity('');
+      setStartsAt('');
+      setEndsAt('');
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not create this time deal.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEnd = async (dealId: string) => {
+    setBusyDealId(dealId);
+    try {
+      await endTimeDeal(dealId);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not end this deal.');
+    } finally {
+      setBusyDealId(null);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <p style={{ fontSize: '13px', fontWeight: 700 }}>⏰ Time deal</p>
+      <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>
+        A real time-boxed, quantity-capped discount -- checkout automatically charges the deal price while it's live and stock remains, then reverts to the regular price.
+      </p>
+      {activeDeals.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {activeDeals.map((d) => (
+            <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: '8px', backgroundColor: 'var(--toss-grey-200)' }}>
+              <span style={{ fontSize: '13px' }}>
+                {d.dealPrice.toLocaleString()} RWF · {d.remainingQuantity}/{d.totalQuantity} left · ends {new Date(d.endsAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </span>
+              <button type="button" onClick={() => handleEnd(d.id)} disabled={busyDealId === d.id} style={{ color: 'var(--toss-grey-500)', fontSize: '12px' }}>
+                {busyDealId === d.id ? '…' : 'End now'}
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <input
+            type="number" min="1" value={dealPrice} onChange={(e) => setDealPrice(e.target.value)} placeholder="Deal price (RWF)"
+            style={{ flex: 1, minWidth: '140px', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <input
+            type="number" min="1" step="1" value={totalQuantity} onChange={(e) => setTotalQuantity(e.target.value)} placeholder="Quantity"
+            style={{ flex: 1, minWidth: '100px', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <input
+            type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)}
+            style={{ flex: 1, minWidth: '160px', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+          <input
+            type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)}
+            style={{ flex: 1, minWidth: '160px', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+          />
+        </div>
+      )}
+      {error && (
+        <p style={{ fontSize: '13px', color: '#E53935', margin: 0 }} role="alert">{error}</p>
+      )}
+      {activeDeals.length === 0 && (
+        <button type="button" className="toss-btn toss-btn-primary" disabled={submitting} onClick={handleCreate} style={{ alignSelf: 'flex-start' }}>
+          {submitting ? 'Creating…' : 'Start a time deal'}
+        </button>
+      )}
+      {pastDeals.length > 0 && (
+        <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+          {pastDeals.length} past deal{pastDeals.length === 1 ? '' : 's'} for this product.
+        </p>
+      )}
     </div>
   );
 }

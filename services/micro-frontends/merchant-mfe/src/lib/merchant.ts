@@ -309,6 +309,36 @@ export const setPriceTiers = (productId: string, tiers: PriceTier[]) =>
     body: JSON.stringify({ tiers }),
   }).then((r) => r.tiers);
 
+// Real Coupang 타임특가 (Time Deal, item 226) -- see the backend TimeDeal.kt's own doc
+// comment. A time-boxed, quantity-capped discount OVERLAY on an existing product,
+// distinct from PriceTier above (a permanent bulk-quantity discount, not a scheduled
+// event). Consumer browse already real on bank-mfe/Android/iOS; this is the
+// merchant-facing creation/management half.
+export interface TimeDeal {
+  id: string;
+  merchantId: string;
+  productId: string;
+  dealPrice: number;
+  originalPrice: number;
+  totalQuantity: number;
+  remainingQuantity: number;
+  startsAt: string;
+  endsAt: string;
+  createdAt: string;
+}
+
+export const createTimeDeal = (productId: string, dealPrice: number, totalQuantity: number, startsAt: string, endsAt: string) =>
+  apiFetch<{ success: boolean; deal: TimeDeal }>('/api/v1/time-deals', {
+    method: 'POST',
+    body: JSON.stringify({ productId, dealPrice, totalQuantity, startsAt, endsAt }),
+  }).then((r) => r.deal);
+
+export const fetchMyTimeDeals = () =>
+  apiFetch<{ success: boolean; deals: TimeDeal[] }>('/api/v1/time-deals/mine?size=50').then((r) => r.deals);
+
+export const endTimeDeal = (dealId: string) =>
+  apiFetch<{ success: boolean; deal: TimeDeal }>(`/api/v1/time-deals/${dealId}/end`, { method: 'POST' }).then((r) => r.deal);
+
 // Real menu-item option groups (2026-07-21, v1: required single-select only) -- the
 // merchant-facing half of a gap the buyer side (bank-mfe's "Choose options" panel) has
 // had since the same day: this backend endpoint (MerchantProductController.kt's own
