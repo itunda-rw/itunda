@@ -54,6 +54,7 @@ import { fetchIdentityStatus, submitIdentity, type IdentityDocumentType, type Ky
 import { addContact, fetchContacts, type Contact } from './lib/contacts';
 import { createSupportTicket, fetchSupportTickets, type SupportTicket, type SupportTicketCategory } from './lib/support';
 import { cancelBillingSubscription, collectPayment, fetchMembershipDayStatus, fetchMerchantBillingPlans, fetchMerchantCategories, fetchMyBillingSubscriptions, fetchMyFollowedMerchants, fetchNearbyAds, fetchShopDeals, fetchShoppingCatalog, followMerchant, payByStaticQr, previewPaymentIntent, searchProducts, subscribeToBillingPlan, unfollowMerchant, type CollectPaymentResult, type MerchantBillingPlan, type MerchantBillingSubscription, type MerchantCouponView, type NearbyMerchantAd, type PaymentIntentPreview, type ProductSearchResult, type ShoppingMerchant } from './lib/shopping';
+import { fetchActiveTimeDeals, type TimeDealView } from './lib/timeDeal';
 import {
   buyStock, fetchPortfolio, fetchPortfolioHistory, fetchStockHistory, fetchStocks, fetchWatchlist,
   sellStock, unwatchStock, watchStock,
@@ -15542,6 +15543,15 @@ function WishlistView({ onOpenMerchant }: { onOpenMerchant: (merchant: ShoppingM
   );
 }
 
+function formatDealCountdown(endsAt: string): string {
+  const msLeft = new Date(endsAt).getTime() - Date.now();
+  if (msLeft <= 0) return 'Ending soon';
+  const totalMinutes = Math.floor(msLeft / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return hours > 0 ? `${hours}h ${minutes}m left` : `${minutes}m left`;
+}
+
 function ShopView() {
   const [view, setView] = useState<'BROWSE' | 'ORDERS' | 'WISHLIST'>('BROWSE');
   const [merchants, setMerchants] = useState<ShoppingMerchant[] | null>(null);
@@ -15566,6 +15576,18 @@ function ShopView() {
   const [deals, setDeals] = useState<ProductSearchResult[] | null>(null);
   useEffect(() => {
     fetchShopDeals().then(setDeals).catch(() => {});
+  }, []);
+
+  // Real Coupang 타임특가 (Time Deal, item 226) -- see lib/timeDeal.ts's own doc
+  // comment. Distinct from the always-on "🔥 Deals" rail above: a time-boxed,
+  // quantity-capped event, not a permanent discount. Re-fetched every 30s so a deal
+  // that just sold out or expired stops showing without a manual refresh.
+  const [timeDeals, setTimeDeals] = useState<TimeDealView[] | null>(null);
+  useEffect(() => {
+    const load = () => fetchActiveTimeDeals().then(setTimeDeals).catch(() => {});
+    load();
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   // Real Karrot 반경 타기팅-style nearby ads (item 148) -- silent, non-blocking: a
@@ -15793,6 +15815,38 @@ function ShopView() {
                 <ProductPriceBlock price={d.price} originalPrice={d.originalPrice} discountPercent={d.discountPercent} />
                 <p style={{ fontSize: '11px', color: d.stockQuantity === 0 ? '#E53935' : 'var(--toss-grey-500)' }}>
                   {d.stockQuantity === null || d.stockQuantity === undefined ? 'Available' : d.stockQuantity === 0 ? 'Out of stock' : `${d.stockQuantity} available`}
+                </p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Real Coupang 타임특가 (Time Deal, item 226) -- see lib/timeDeal.ts's own doc
+          comment. A time-boxed, quantity-capped event, distinct from the always-on
+          "🔥 Deals" rail above. Clicking a card opens that merchant's catalog, same
+          simplification the Deals rail above already uses (not a deep-link straight
+          to the specific product). */}
+      {view === 'BROWSE' && searchResults === null && timeDeals && timeDeals.length > 0 && (
+        <div style={{ marginBottom: '16px' }}>
+          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--toss-grey-900)', marginBottom: '8px' }}>⏰ Time Deals</p>
+          <div style={{ display: 'flex', gap: '10px', overflowX: 'auto' }}>
+            {timeDeals.map((v) => (
+              <button
+                key={v.deal.id}
+                onClick={() => setSelected({ merchantId: v.deal.merchantId, businessName: v.businessName, category: null, cashbackRate: '1%' })}
+                className="toss-card"
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left', width: '120px', flexShrink: 0, gap: '4px' }}
+              >
+                <ProductImageThumb imageUrl={v.productImageUrl} size={96} />
+                <p style={{ fontSize: '12px', fontWeight: 700 }}>{v.productName}</p>
+                <ProductPriceBlock
+                  price={v.deal.dealPrice} originalPrice={v.deal.originalPrice}
+                  discountPercent={Math.round((1 - v.deal.dealPrice / v.deal.originalPrice) * 100)}
+                />
+                <p style={{ fontSize: '11px', color: 'var(--toss-blue)', fontWeight: 700 }}>{formatDealCountdown(v.deal.endsAt)}</p>
+                <p style={{ fontSize: '11px', color: v.deal.remainingQuantity <= 3 ? '#E53935' : 'var(--toss-grey-500)' }}>
+                  {v.deal.remainingQuantity} left
                 </p>
               </button>
             ))}
