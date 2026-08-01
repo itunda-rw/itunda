@@ -163,12 +163,17 @@ import {
   type BusBooking, type BusTrip,
 } from './lib/bus';
 import {
+  adoptKnowledgeAnswer, fetchKnowledgeAnswers, fetchKnowledgeCategories, fetchKnowledgeQuestion, fetchKnowledgeQuestions,
+  fetchMyKnowledgeAnswers, fetchMyKnowledgeQuestions, fetchMyKnowledgeReputation, postKnowledgeAnswer, postKnowledgeQuestion,
+  type KnowledgeAnswer, type KnowledgeCategory, type KnowledgeQuestion,
+} from './lib/knowledge';
+import {
   acceptInspection, cancelInspection, completeInspection, fetchAvailableMechanics, fetchMyInspectionBookings,
   fetchMyMechanicBookings, fetchMyMechanicProfile, registerAsMechanic, requestInspection, setMechanicAvailability,
   type VehicleInspectionBooking, type VehicleInspectionMechanic,
 } from './lib/vehicleInspection';
 
-type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'BUS' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT';
+type Tab = 'HOME' | 'CERTIFICATE' | 'SHOPPING' | 'SHOP' | 'STOCKS' | 'SAVINGS' | 'MESSAGES' | 'MARKETPLACE' | 'COMMUNITY' | 'JOBS' | 'PROPERTY' | 'EATS' | 'RIDES' | 'DESIGNATED_DRIVER' | 'BIKESHARE' | 'PARKING' | 'BUS' | 'KNOWLEDGE' | 'MAP' | 'DEVICES' | 'CARD' | 'OVERVIEW' | 'LOANS' | 'CREDIT_SCORE' | 'TRUST_SCORE' | 'IDENTITY' | 'SUPPORT' | 'MY' | 'SUBSCRIPTIONS' | 'SPENDING' | 'FOREIGN_CURRENCY' | 'REWARDS' | 'INSURANCE' | 'BILLS' | 'AGENT';
 
 function AccountBalance({ wallet, onTransferClick }: { wallet: Wallet | null; onTransferClick: () => void }) {
   return (
@@ -13196,6 +13201,280 @@ function BusView() {
   );
 }
 
+// Real Naver 지식iN (Knowledge iN)-style open-topic community Q&A (item 225) -- see
+// lib/knowledge.ts's own doc comment for the full sourced account. A genuinely
+// different shape from the trip/rental views above: no location, no booking, just a
+// real question -> competing answers -> asker-adopts-one-best-answer content flow.
+function KnowledgeView() {
+  const [subTab, setSubTab] = useState<'BROWSE' | 'MINE'>('BROWSE');
+  const [categories, setCategories] = useState<KnowledgeCategory[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<KnowledgeQuestion[] | null>(null);
+  const [myAnswers, setMyAnswers] = useState<KnowledgeAnswer[] | null>(null);
+  const [reputation, setReputation] = useState<number | null>(null);
+  const [openQuestionId, setOpenQuestionId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchKnowledgeCategories().then(setCategories).catch(() => {});
+    fetchMyKnowledgeReputation().then(setReputation).catch(() => {});
+  }, []);
+
+  const load = () => {
+    setError(null);
+    setQuestions(null);
+    if (subTab === 'MINE') {
+      fetchMyKnowledgeQuestions().then(setQuestions).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load your questions.'));
+      fetchMyKnowledgeAnswers().then(setMyAnswers).catch(() => {});
+      return;
+    }
+    fetchKnowledgeQuestions(activeCategory ?? undefined)
+      .then(setQuestions)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load questions.'));
+  };
+
+  useEffect(load, [subTab, activeCategory]);
+
+  if (openQuestionId) {
+    return <KnowledgeQuestionDetailView questionId={openQuestionId} onBack={() => { setOpenQuestionId(null); load(); }} />;
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div className="toss-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Your reputation</p>
+        <p style={{ fontSize: '15px', fontWeight: 700 }}>{reputation ?? '…'} adopted answer{reputation === 1 ? '' : 's'}</p>
+      </div>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button
+          className={subTab === 'BROWSE' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          onClick={() => setSubTab('BROWSE')} style={{ flex: 1 }}
+        >
+          Browse
+        </button>
+        <button
+          className={subTab === 'MINE' ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+          onClick={() => setSubTab('MINE')} style={{ flex: 1 }}
+        >
+          Mine
+        </button>
+      </div>
+      {subTab === 'BROWSE' && categories.length > 0 && (
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          <button
+            className={activeCategory === null ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+            style={{ fontSize: '12px', padding: '6px 12px' }} onClick={() => setActiveCategory(null)}
+          >
+            All
+          </button>
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              className={activeCategory === c.id ? 'toss-btn toss-btn-primary' : 'toss-btn toss-btn-secondary'}
+              style={{ fontSize: '12px', padding: '6px 12px' }} onClick={() => setActiveCategory(c.id)}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {subTab === 'BROWSE' && <KnowledgeAskCard onAsked={load} categories={categories} />}
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {questions === null ? (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>Loading…</p>
+      ) : questions.length === 0 ? (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)' }}>No questions yet.</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {questions.map((q) => (
+            <button
+              key={q.id} className="toss-card" style={{ textAlign: 'left', width: '100%' }}
+              onClick={() => setOpenQuestionId(q.id)}
+            >
+              <p style={{ fontSize: '13px', fontWeight: 700 }}>
+                {q.adoptedAnswerId ? '✅ ' : ''}{q.title}
+              </p>
+              <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)', marginTop: '2px' }}>
+                {categories.find((c) => c.id === q.category)?.label ?? q.category}
+              </p>
+            </button>
+          ))}
+        </div>
+      )}
+      {subTab === 'MINE' && myAnswers !== null && myAnswers.length > 0 && (
+        <div>
+          <h4 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Your answers</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {myAnswers.map((a) => (
+              <div key={a.id} className="toss-card" style={{ padding: '10px 14px' }}>
+                <p style={{ fontSize: '13px' }}>{a.isAdopted ? '✅ Adopted' : 'Pending'}</p>
+                <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)' }}>{a.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function KnowledgeAskCard({ onAsked, categories }: { onAsked: () => void; categories: KnowledgeCategory[] }) {
+  const [category, setCategory] = useState('');
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  if (!open) {
+    return (
+      <button className="toss-btn toss-btn-secondary" style={{ width: '100%' }} onClick={() => setOpen(true)}>
+        + Ask a question
+      </button>
+    );
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!category || !title.trim() || !body.trim()) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await postKnowledgeQuestion(category, title, body);
+      setCategory(''); setTitle(''); setBody(''); setOpen(false);
+      onAsked();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not post this question.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <select
+        value={category} onChange={(e) => setCategory(e.target.value)}
+        style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+      >
+        <option value="">Choose a category</option>
+        {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+      </select>
+      <input
+        type="text" value={title} placeholder="Your question" onChange={(e) => setTitle(e.target.value)}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+      />
+      <textarea
+        value={body} placeholder="Add more detail" onChange={(e) => setBody(e.target.value)} rows={3}
+        style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px', resize: 'vertical' }}
+      />
+      {error && <p style={{ fontSize: '12px', color: '#E53935' }} role="alert">{error}</p>}
+      <button type="submit" className="toss-btn toss-btn-primary" disabled={submitting || !category || !title.trim() || !body.trim()}>
+        {submitting ? 'Posting…' : 'Post question'}
+      </button>
+    </form>
+  );
+}
+
+function KnowledgeQuestionDetailView({ questionId, onBack }: { questionId: string; onBack: () => void }) {
+  const [question, setQuestion] = useState<KnowledgeQuestion | null>(null);
+  const [answers, setAnswers] = useState<KnowledgeAnswer[] | null>(null);
+  const [answerBody, setAnswerBody] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [answering, setAnswering] = useState(false);
+  const [busyAnswerId, setBusyAnswerId] = useState<string | null>(null);
+  const currentUser = getStoredUser();
+
+  const load = () => {
+    setError(null);
+    fetchKnowledgeQuestion(questionId).then(setQuestion).catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this question.'));
+    fetchKnowledgeAnswers(questionId).then(setAnswers).catch(() => {});
+  };
+
+  useEffect(load, [questionId]);
+
+  const handleAnswer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!answerBody.trim()) return;
+    setAnswering(true);
+    setError(null);
+    try {
+      await postKnowledgeAnswer(questionId, answerBody);
+      setAnswerBody('');
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not post your answer.');
+    } finally {
+      setAnswering(false);
+    }
+  };
+
+  const handleAdopt = async (answerId: string) => {
+    setBusyAnswerId(answerId);
+    setError(null);
+    try {
+      await adoptKnowledgeAnswer(questionId, answerId);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not adopt this answer.');
+    } finally {
+      setBusyAnswerId(null);
+    }
+  };
+
+  const isAsker = !!question && !!currentUser && question.askerId === currentUser.id;
+
+  return (
+    <div>
+      <button className="toss-btn toss-btn-secondary" style={{ marginBottom: '12px' }} onClick={onBack}>← Back</button>
+      {error && <p style={{ fontSize: '13px', color: '#E53935' }} role="alert">{error}</p>}
+      {!question && !error && <div className="toss-card skeleton" style={{ height: '120px' }} />}
+      {question && (
+        <div className="toss-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+          <p style={{ fontSize: '17px', fontWeight: 700 }}>{question.title}</p>
+          <p style={{ fontSize: '14px', color: 'var(--toss-grey-700)', whiteSpace: 'pre-wrap' }}>{question.body}</p>
+        </div>
+      )}
+      <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '10px' }}>Answers</h3>
+      {answers === null && <div className="toss-card skeleton" style={{ height: '80px' }} />}
+      {answers !== null && answers.length === 0 && (
+        <p style={{ fontSize: '13px', color: 'var(--toss-grey-500)', marginBottom: '12px' }}>No answers yet -- be the first to help.</p>
+      )}
+      {answers !== null && answers.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+          {answers.map((a) => (
+            <div
+              key={a.id} className="toss-card"
+              style={{ padding: '10px 14px', border: a.isAdopted ? '1.5px solid var(--toss-blue)' : undefined }}
+            >
+              {a.isAdopted && <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--toss-blue)', marginBottom: '4px' }}>✅ Adopted answer</p>}
+              <p style={{ fontSize: '13px', color: 'var(--toss-grey-900)' }}>{a.body}</p>
+              {isAsker && !question?.adoptedAnswerId && (
+                <button
+                  className="toss-btn toss-btn-secondary" style={{ marginTop: '8px', fontSize: '12px' }}
+                  disabled={busyAnswerId === a.id} onClick={() => handleAdopt(a.id)}
+                >
+                  {busyAnswerId === a.id ? '…' : 'Adopt this answer'}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {!question?.adoptedAnswerId && (
+        <form onSubmit={handleAnswer} style={{ display: 'flex', gap: '8px' }}>
+          <input
+            type="text" value={answerBody} onChange={(e) => setAnswerBody(e.target.value)} placeholder="Write an answer"
+            style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--toss-grey-200)', fontSize: '14px' }}
+          />
+          <button type="submit" className="toss-btn toss-btn-primary" disabled={answering || !answerBody.trim()}>
+            {answering ? '…' : 'Send'}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
 // Real 배민오더-style table/QR in-store ordering (item 155) -- see lib/dineIn.ts's own
 // doc comment. Deliberately its own smaller, self-contained flow rather than bolted onto
 // MenuView/OrderFoodView's already-tested delivery checkout: no address, no favorites/
@@ -17010,6 +17289,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
     { id: 'BIKESHARE', label: 'Bike' },
     { id: 'PARKING', label: 'Parking' },
     { id: 'BUS', label: 'Bus' },
+    { id: 'KNOWLEDGE', label: 'Q&A' },
     { id: 'MAP', label: 'Map' },
     { id: 'CERTIFICATE', label: 'Certificate' },
     { id: 'SHOPPING', label: 'Shopping' },
@@ -17084,6 +17364,7 @@ export default function BankDashboard({ onLogout }: { onLogout: () => void }) {
       {tab === 'BIKESHARE' && <BikeShareView />}
       {tab === 'PARKING' && <ParkingView />}
       {tab === 'BUS' && <BusView />}
+      {tab === 'KNOWLEDGE' && <KnowledgeView />}
       {tab === 'MAP' && <MapView />}
       {tab === 'CERTIFICATE' && <CertificateView />}
       {tab === 'SHOPPING' && <ShoppingView />}
