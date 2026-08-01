@@ -24,6 +24,11 @@ export interface CommerceProduct {
   discountPercent?: number | null;
   description?: string | null;
   stockQuantity?: number | null;
+  // Real bookable-service marker (see MerchantBooking.kt's own doc comment) -- a
+  // product with durationMinutes set is bookable via lib/booking.ts; requiresPrepay
+  // means booking it holds a real deposit from the customer's wallet automatically.
+  durationMinutes?: number | null;
+  requiresPrepay?: boolean;
 }
 
 export const fetchMerchantProducts = (merchantId: string) =>

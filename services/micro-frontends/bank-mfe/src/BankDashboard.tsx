@@ -117,6 +117,7 @@ import {
   fetchProductInquiries, fetchProductRating, fetchProductReviews, ORDER_RETURN_REASON_CODES, placeOrder, removeProductFavorite, requestOrderReturn, submitProductReview,
   type CommerceOrder, type CommerceOrderItem, type CommerceOrderStatus, type CommerceProduct, type FavoriteProduct, type OrderReturnRequestDto, type OrderReturnType, type PriceTier, type ProductInquiry, type ProductReview,
 } from './lib/commerce';
+import { cancelBooking, createBooking, fetchAvailableSlots, fetchMyBookings, type BookingSlot, type MerchantBooking } from './lib/booking';
 import MapView from './MapView';
 import RouteMiniMap from './RouteMiniMap';
 import LiveRiderMap from './LiveRiderMap';
@@ -3230,6 +3231,53 @@ function SupportView() {
   );
 }
 
+// Real customer-side view of merchant bookings requested via BookingWidget above --
+// see lib/booking.ts's own doc comment. Cancel is the only customer action here
+// (confirm/decline/complete are owner-side, already real on merchant-mfe).
+function MyBookingsCard() {
+  const [bookings, setBookings] = useState<MerchantBooking[] | null>(null);
+  const [cancelling, setCancelling] = useState<string | null>(null);
+
+  const load = () => {
+    fetchMyBookings().then(setBookings).catch(() => setBookings([]));
+  };
+  useEffect(load, []);
+
+  if (!bookings || bookings.length === 0) return null;
+
+  const cancel = async (id: string) => {
+    setCancelling(id);
+    try {
+      await cancelBooking(id);
+      load();
+    } catch {
+      // Real, non-critical -- a failed cancel just leaves the booking as-is; the user
+      // can retry.
+    } finally {
+      setCancelling(null);
+    }
+  };
+
+  return (
+    <div className="toss-card" style={{ padding: '16px' }}>
+      <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>My bookings</h3>
+      {bookings.slice(0, 5).map((b) => (
+        <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', fontSize: '13px', borderTop: '1px solid var(--toss-grey-100)' }}>
+          <div>
+            <p style={{ fontWeight: 600 }}>{b.serviceName}</p>
+            <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>{b.bookingDate} · {b.startTime.slice(0, 5)} · {b.status}</p>
+          </div>
+          {(b.status === 'REQUESTED' || b.status === 'CONFIRMED') && (
+            <button className="toss-btn toss-btn-secondary" style={{ padding: '6px 10px', fontSize: '12px' }} onClick={() => cancel(b.id)} disabled={cancelling === b.id}>
+              {cancelling === b.id ? '…' : 'Cancel'}
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Real Naver-style "My" personal hub (2026-07-22), at the user's direct request:
 // "My should be like Naver style My since we have shopping and eats and other
 // products where users need to easily get track of their orders, reservation,
@@ -3273,6 +3321,7 @@ function MyView() {
       <ProfilePhotoCard />
       <VerificationCard />
       <NotificationsCard />
+      <MyBookingsCard />
       {(shopOrders.length > 0 || eatsOrders.length > 0) && (
         <div className="toss-card" style={{ padding: '16px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '8px' }}>My orders</h3>
@@ -12680,6 +12729,92 @@ function PriceTiersDisplay({ productId, regularPrice }: { productId: string; reg
   );
 }
 
+// Real Naver Smart Place/Kakao Hair Shop/Karrot Business-Profile-style local business
+// appointment booking (item 220) -- see lib/booking.ts's own doc comment. A product
+// with durationMinutes set is bookable; requiresPrepay means the customer's deposit is
+// held automatically the moment they request the slot (no separate payment step).
+function BookingWidget({ merchantId, product }: { merchantId: string; product: CommerceProduct }) {
+  const [date, setDate] = useState('');
+  const [slots, setSlots] = useState<BookingSlot[] | null>(null);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
+  const [requesting, setRequesting] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [requested, setRequested] = useState(false);
+
+  if (!product.durationMinutes) return null;
+
+  const loadSlots = (d: string) => {
+    setDate(d);
+    setSlots(null);
+    setSlotsError(null);
+    if (!d) return;
+    fetchAvailableSlots(merchantId, product.id, d)
+      .then(setSlots)
+      .catch((err) => setSlotsError(err instanceof ApiError ? err.message : 'Could not load available times.'));
+  };
+
+  const book = async (slot: BookingSlot) => {
+    setRequesting(slot.startTime);
+    setError(null);
+    try {
+      await createBooking(merchantId, product.id, date, slot.startTime);
+      setRequested(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not request this booking.');
+    } finally {
+      setRequesting(null);
+    }
+  };
+
+  if (requested) {
+    return (
+      <div style={{ padding: '12px', borderRadius: '10px', background: 'var(--toss-grey-100)' }}>
+        <p style={{ fontSize: '13px', fontWeight: 700 }}>Booking requested</p>
+        <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>The business will confirm or decline your appointment. See it under My &gt; My bookings.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: '12px', borderRadius: '10px', background: 'var(--toss-grey-100)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <p style={{ fontSize: '13px', fontWeight: 700 }}>Book an appointment ({product.durationMinutes} min)</p>
+      {product.requiresPrepay && (
+        <p style={{ fontSize: '11px', color: 'var(--toss-grey-500)' }}>
+          Requesting this slot holds a {product.price.toLocaleString()} RWF deposit from your wallet.
+        </p>
+      )}
+      <input
+        type="date"
+        value={date}
+        min={new Date().toISOString().slice(0, 10)}
+        onChange={(e) => loadSlots(e.target.value)}
+        style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--toss-grey-200)', fontSize: '13px' }}
+      />
+      {slotsError && <p style={{ fontSize: '12px', color: '#E53935' }}>{slotsError}</p>}
+      {error && <p style={{ fontSize: '12px', color: '#E53935' }}>{error}</p>}
+      {date && slots !== null && (
+        slots.length === 0 ? (
+          <p style={{ fontSize: '12px', color: 'var(--toss-grey-500)' }}>No open times on this date.</p>
+        ) : (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {slots.map((slot) => (
+              <button
+                key={slot.startTime}
+                className="toss-btn toss-btn-secondary"
+                style={{ padding: '8px 12px', fontSize: '12px' }}
+                onClick={() => book(slot)}
+                disabled={requesting !== null}
+              >
+                {requesting === slot.startTime ? '…' : slot.startTime.slice(0, 5)}
+              </button>
+            ))}
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
 // Real Coupang-style pre-purchase product Q&A (상품문의) (2026-07-26) -- see
 // ProductInquiryService's own doc comment on the backend. Genuinely distinct from
 // ProductRatingBadge's reviews above: no order/purchase required at all, so this is
@@ -13335,6 +13470,7 @@ function ProductDetailView({
           <p style={{ fontSize: '13px', color: 'var(--toss-grey-700)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{product.description}</p>
         )}
         <PriceTiersDisplay productId={product.id} regularPrice={product.price} />
+        <BookingWidget merchantId={merchant.merchantId} product={product} />
         <ProductInquirySection productId={product.id} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', paddingTop: '4px', borderTop: '1px solid var(--toss-grey-100)' }}>
           <button onClick={() => onSetQty(merchant, product, Math.max(0, qty - 1))} className="toss-btn toss-btn-secondary" style={{ padding: '8px 16px' }}>−</button>
