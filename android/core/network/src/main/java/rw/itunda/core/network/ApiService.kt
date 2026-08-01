@@ -921,6 +921,19 @@ data class DealProductDto(
 data class DealsResponse(val success: Boolean, val products: List<DealProductDto>)
 data class MembershipDayStatusResponse(val success: Boolean, val isMembershipDay: Boolean, val multiplier: Double)
 
+// Real Coupang 타임특가 (Time Deal, item 226) -- see the backend TimeDeal.kt's own doc
+// comment. A time-boxed, quantity-capped discount OVERLAY on an existing product,
+// distinct from the always-on "Deals" rail above (DealProductDto), which surfaces a
+// permanent discountPercent/originalPrice, not a scheduled event. bank-mfe already has
+// this; this is the first Android client (consumer browse only -- merchant creation
+// lives on merchant-mfe, mirroring this app's existing consumer/merchant app split).
+data class TimeDealDto(
+    val id: String, val merchantId: String, val productId: String, val dealPrice: Double, val originalPrice: Double,
+    val totalQuantity: Int, val remainingQuantity: Int, val startsAt: String, val endsAt: String, val createdAt: String,
+)
+data class TimeDealViewDto(val deal: TimeDealDto, val productName: String, val productImageUrl: String?, val businessName: String)
+data class TimeDealsResponse(val success: Boolean, val deals: List<TimeDealViewDto>)
+
 // Real Coupang 정기배송 (subscribe & save)-style recurring product delivery
 // (rw.itunda.commerce's ProductSubscriptionService) -- real on bank-mfe since
 // 2026-07-25, found 2026-08-01 with zero client on Android/iOS despite that.
@@ -2513,6 +2526,10 @@ interface ApiService {
     // own doc comment.
     @GET("api/v1/shopping/products/deals")
     suspend fun getShopDeals(): DealsResponse
+
+    // Real Coupang 타임특가 (Time Deal, item 226) -- see TimeDealDto's own doc comment.
+    @GET("api/v1/time-deals")
+    suspend fun getActiveTimeDeals(): TimeDealsResponse
 
     // Real Naver Pay 멤버십 데이 (Membership Day) cashback boost -- see
     // rw.itunda.merchant.ShoppingCashbackService's own doc comment. bank-mfe already has

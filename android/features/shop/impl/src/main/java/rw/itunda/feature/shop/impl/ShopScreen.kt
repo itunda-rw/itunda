@@ -84,6 +84,7 @@ import rw.itunda.core.network.BookingSlotDto
 import rw.itunda.core.network.CreateBookingRequest
 import rw.itunda.core.network.CreateProductSubscriptionRequest
 import rw.itunda.core.network.DealProductDto
+import rw.itunda.core.network.TimeDealViewDto
 import rw.itunda.core.network.MembershipDayStatusResponse
 import rw.itunda.core.network.ProductSubscriptionDto
 import rw.itunda.core.network.ProductSearchResultDto
@@ -144,6 +145,17 @@ private enum class CommerceView { BROWSE, ORDERS, WISHLIST, SUBSCRIPTIONS }
 private data class CommerceCartLine(val merchantId: String, val businessName: String, val product: MerchantProductDto, val quantity: Int)
 private data class CommerceCheckoutResult(val merchantId: String, val businessName: String, val order: OrderDto?, val error: String?)
 
+// Real Coupang 타임특가 (Time Deal, item 226) countdown -- mirrors bank-mfe's own
+// formatDealCountdown exactly.
+private fun formatTimeDealCountdown(endsAt: String): String {
+    val msLeft = java.time.Instant.parse(endsAt).toEpochMilli() - java.time.Instant.now().toEpochMilli()
+    if (msLeft <= 0) return "Ending soon"
+    val totalMinutes = msLeft / 60000
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    return if (hours > 0) "${hours}h ${minutes}m left" else "${minutes}m left"
+}
+
 @Composable
 fun CommerceShopContent(
     deviceStepUpHost: @Composable (visible: Boolean, onDismiss: () -> Unit, onVerified: suspend () -> Unit) -> Unit,
@@ -188,6 +200,24 @@ fun CommerceShopContent(
             if (res.success) deals = res.products
         } catch (e: Exception) {
             // Real, non-critical -- the Deals rail just won't render if this fails.
+        }
+    }
+
+    // Real Coupang 타임특가 (Time Deal, item 226) -- see TimeDealDto's own doc comment
+    // on the backend. A time-boxed, quantity-capped event, distinct from the
+    // always-on Deals rail above. Re-fetched every 30s so a deal that just sold out
+    // or expired stops showing without a manual refresh, matching bank-mfe's own
+    // established re-fetch interval for this exact feature.
+    var timeDeals by remember { mutableStateOf<List<TimeDealViewDto>?>(null) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            try {
+                val res = NetworkClient.apiService.getActiveTimeDeals()
+                if (res.success) timeDeals = res.deals
+            } catch (e: Exception) {
+                // Real, non-critical -- the Time Deals rail just won't render if this fails.
+            }
+            kotlinx.coroutines.delay(30000)
         }
     }
 
@@ -628,6 +658,36 @@ fun CommerceShopContent(
                                     }
                                     Text("%,.0f RWF".format(d.price), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                     Text(d.stockQuantity?.let { if (it == 0) "Out of stock" else "$it available" } ?: "Available", color = if (d.stockQuantity == 0) Ids.colors.danger else Ids.colors.textSecondary, fontSize = 10.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // Real Coupang 타임특가 (Time Deal, item 226) -- see TimeDealDto's own doc
+            // comment. Tapping a deal jumps straight to that real merchant, same
+            // minimal-ShoppingMerchantDto shortcut the Deals rail above already uses.
+            if (selectedCategory == null && searchInput.isBlank() && !timeDeals.isNullOrEmpty()) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("⏰ Time Deals", color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            timeDeals!!.forEach { v ->
+                                Column(
+                                    modifier = Modifier.width(120.dp).clip(RoundedCornerShape(Ids.layout.cardCornerRadius)).background(Ids.colors.surface)
+                                        .clickable { openMerchant(ShoppingMerchantDto(merchantId = v.deal.merchantId, businessName = v.businessName, category = null, cashbackRate = "1%")) }
+                                        .padding(10.dp),
+                                ) {
+                                    ProductImageThumb(v.productImageUrl, size = 96.dp, corner = 10.dp)
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(v.productName, color = Ids.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, maxLines = 2)
+                                    Text("%,.0f RWF".format(v.deal.dealPrice), color = Ids.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    Text(formatTimeDealCountdown(v.deal.endsAt), color = Ids.colors.brand, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                    Text(
+                                        "${v.deal.remainingQuantity} left",
+                                        color = if (v.deal.remainingQuantity <= 3) Ids.colors.danger else Ids.colors.textSecondary,
+                                        fontSize = 10.sp,
+                                    )
                                 }
                             }
                         }

@@ -133,6 +133,13 @@ private struct CommerceShopContent: View {
     // comment.
     @State private var deals: [DealProductDto]?
 
+    // Real Coupang 타임특가 (Time Deal, item 226) -- see TimeDealDto's own doc comment
+    // on the backend. A time-boxed, quantity-capped event, distinct from the
+    // always-on Deals rail above. Re-fetched every 30s so a deal that just sold out
+    // or expired stops showing without a manual refresh, matching bank-mfe/Android's
+    // own established re-fetch interval for this exact feature.
+    @State private var timeDeals: [TimeDealViewDto]?
+
     // Real 당근(Karrot) 반경 타기팅-style nearby ads rail -- see lib/shopping.ts's own
     // NearbyMerchantAd doc comment. bank-mfe/Android already have this; this is the
     // first iOS client.
@@ -249,6 +256,12 @@ private struct CommerceShopContent: View {
                 do { membershipDay = try await NetworkClient.shared.getMembershipDayStatus() } catch {}
             }
             nearbyAdsLocationFetcher.requestLocation()
+        }
+        .task {
+            while true {
+                do { timeDeals = try await NetworkClient.shared.getActiveTimeDeals().deals } catch {}
+                try? await Task.sleep(nanoseconds: 30_000_000_000)
+            }
         }
         .onChange(of: nearbyAdsLocationFetcher.coordinate?.latitude) { _ in
             guard let coordinate = nearbyAdsLocationFetcher.coordinate else { return }
@@ -463,6 +476,36 @@ private struct CommerceShopContent: View {
                                             .cornerRadius(IDS.Layout.cardCornerRadius)
                                             .onTapGesture {
                                                 Task { await openMerchant(ShoppingMerchantDto(merchantId: d.merchantId, businessName: d.merchantName, category: nil, cashbackRate: "1%")) }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // Real Coupang 타임특가 (Time Deal, item 226) -- see
+                        // TimeDealDto's own doc comment. Tapping a deal jumps
+                        // straight to that real merchant, same minimal-
+                        // ShoppingMerchantDto shortcut the Deals rail above uses.
+                        if selectedCategory == nil, searchInput.trimmingCharacters(in: .whitespaces).isEmpty, let timeDeals, !timeDeals.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("⏰ Time Deals").font(IDS.Typography.bodyBold).foregroundColor(IDS.Colors.textPrimary)
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 10) {
+                                        ForEach(timeDeals) { v in
+                                            VStack(alignment: .leading, spacing: 6) {
+                                                ProductImageThumb(imageUrl: v.productImageUrl, side: 96)
+                                                Text(v.productName).font(.caption).bold().foregroundColor(IDS.Colors.textPrimary).lineLimit(2)
+                                                Text("\(Int(v.deal.dealPrice)) RWF").font(.caption).bold().foregroundColor(IDS.Colors.textPrimary)
+                                                Text(formatTimeDealCountdown(v.deal.endsAt)).font(.caption2).bold().foregroundColor(IDS.Colors.brand)
+                                                Text("\(v.deal.remainingQuantity) left")
+                                                    .font(.caption2).foregroundColor(v.deal.remainingQuantity <= 3 ? .red : IDS.Colors.textSecondary)
+                                            }
+                                            .frame(width: 120, alignment: .leading)
+                                            .padding(10)
+                                            .background(IDS.Colors.card)
+                                            .cornerRadius(IDS.Layout.cardCornerRadius)
+                                            .onTapGesture {
+                                                Task { await openMerchant(ShoppingMerchantDto(merchantId: v.deal.merchantId, businessName: v.businessName, category: nil, cashbackRate: "1%")) }
                                             }
                                         }
                                     }
@@ -2318,6 +2361,18 @@ private struct FacePaySettingsCard: View {
 
 private func couponDiscountLabel(_ c: MerchantCouponPreviewDto) -> String {
     c.discountType == "PERCENT" ? "\(Int(c.discountValue))% off" : "\(Int(c.discountValue)) RWF off"
+}
+
+// Real Coupang 타임특가 (Time Deal, item 226) countdown -- mirrors bank-mfe/Android's
+// own formatDealCountdown exactly.
+private func formatTimeDealCountdown(_ endsAt: String) -> String {
+    guard let end = ISO8601DateFormatter(withFractionalSeconds: true).date(from: endsAt) ?? ISO8601DateFormatter().date(from: endsAt) else { return "Ending soon" }
+    let secondsLeft = end.timeIntervalSinceNow
+    if secondsLeft <= 0 { return "Ending soon" }
+    let totalMinutes = Int(secondsLeft / 60)
+    let hours = totalMinutes / 60
+    let minutes = totalMinutes % 60
+    return hours > 0 ? "\(hours)h \(minutes)m left" : "\(minutes)m left"
 }
 
 /// Real coupon-preview-before-pay (item 149/146) -- closes the deliberate scope-down

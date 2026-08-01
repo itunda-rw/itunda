@@ -2477,6 +2477,33 @@ public struct DealProductDto: Decodable, Identifiable {
 public struct DealsResponse: Decodable { public let success: Bool; public let products: [DealProductDto] }
 public struct MembershipDayStatusResponse: Decodable { public let success: Bool; public let isMembershipDay: Bool; public let multiplier: Double }
 
+// Real Coupang 타임특가 (Time Deal, item 226) -- see the backend TimeDeal.kt's own doc
+// comment. A time-boxed, quantity-capped discount OVERLAY on an existing product,
+// distinct from DealProductDto above (a permanent discount, not a scheduled event).
+// bank-mfe/Android already have this; this is the first iOS client (consumer browse
+// only -- merchant creation lives on merchant-mfe, matching this app's existing
+// consumer/merchant app split).
+public struct TimeDealDto: Decodable {
+    public let id: String
+    public let merchantId: String
+    public let productId: String
+    public let dealPrice: Double
+    public let originalPrice: Double
+    public let totalQuantity: Int
+    public let remainingQuantity: Int
+    public let startsAt: String
+    public let endsAt: String
+    public let createdAt: String
+}
+public struct TimeDealViewDto: Decodable, Identifiable {
+    public let deal: TimeDealDto
+    public let productName: String
+    public let productImageUrl: String?
+    public let businessName: String
+    public var id: String { deal.id }
+}
+public struct TimeDealsResponse: Decodable { public let success: Bool; public let deals: [TimeDealViewDto] }
+
 // Real Coupang 정기배송 (subscribe & save)-style recurring product delivery -- see
 // Android's ProductSubscriptionDto doc comment. bank-mfe already had this; found
 // 2026-08-01 with zero client on Android/iOS despite that.
@@ -3687,6 +3714,9 @@ extension NetworkClient {
     // Real "Deals" rail (2026-07-25) -- see backend MerchantProductRepository.findDeals's
     // own doc comment.
     public func getShopDeals() async throws -> DealsResponse { try await get("api/v1/shopping/products/deals") }
+
+    // Real Coupang 타임특가 (Time Deal, item 226) -- see TimeDealDto's own doc comment.
+    public func getActiveTimeDeals() async throws -> TimeDealsResponse { try await get("api/v1/time-deals") }
 
     // Real Naver Pay 멤버십 데이 (Membership Day) cashback boost -- see
     // rw.itunda.merchant.ShoppingCashbackService's own doc comment. bank-mfe/Android
