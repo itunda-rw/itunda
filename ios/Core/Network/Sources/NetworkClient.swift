@@ -197,6 +197,56 @@ public struct SaccoDividendPayoutDto: Decodable {
 }
 public struct SaccoDividendPayoutsResponse: Decodable { public let success: Bool; public let payouts: [SaccoDividendPayoutDto] }
 
+// Real Rwanda coffee-cooperative harvest-advance / input financing -- sourced beyond
+// this session's usual Toss/Kakao/Naver/Coupang reference ecosystems, grounded in
+// Rwanda's own real coffee sector (Rwanda Coffee Cooperatives Federation: 13 member
+// cooperatives, ~19,000 producer members). A direct itunda-to-farmer lending
+// relationship mirroring the regular Loans feature's own loan_payable receivable
+// shape -- never a shared/pooled wallet. Mirrors bank-mfe's lib/harvestAdvance.ts
+// exactly, including the post-fix repay contract (amount must equal the full real
+// outstanding principal, no partial repayment).
+public struct CooperativeDto: Decodable {
+    public let id: String
+    public let name: String
+    public let cropType: String
+    public let registrationNumber: String?
+    public let createdAt: String
+}
+public struct CooperativeMembershipDto: Decodable {
+    public let id: String
+    public let cooperativeId: String
+    public let userId: String
+    public let walletId: String
+    public let memberSince: String
+    public let active: Bool
+}
+public struct HarvestAdvanceDto: Decodable, Identifiable {
+    public let id: String
+    public let membershipId: String
+    public let walletId: String
+    public let principalAmount: Double
+    public let purpose: String
+    public let expectedHarvestDate: String
+    public let repaymentDueDate: String
+    public let status: String
+    public let disbursedAt: String?
+    public let repaidAt: String?
+    public let createdAt: String
+}
+public struct RegisterCooperativeRequest: Encodable { public let name: String; public let cropType: String; public let registrationNumber: String? }
+public struct RequestAdvanceRequest: Encodable {
+    public let membershipId: String
+    public let principalAmount: Double
+    public let purpose: String
+    public let expectedHarvestDate: String
+}
+public struct RepayAdvanceRequest: Encodable { public let amount: Double }
+public struct CooperativeResponse: Decodable { public let success: Bool; public let cooperative: CooperativeDto }
+public struct CooperativeMembershipResponse: Decodable { public let success: Bool; public let membership: CooperativeMembershipDto }
+public struct CooperativeMembershipsResponse: Decodable { public let success: Bool; public let memberships: [CooperativeMembershipDto] }
+public struct HarvestAdvanceResponse: Decodable { public let success: Bool; public let advance: HarvestAdvanceDto }
+public struct HarvestAdvancesResponse: Decodable { public let success: Bool; public let advances: [HarvestAdvanceDto] }
+
 public struct AuthResponse: Decodable {
     public let message: String
     public let user: PublicUser
@@ -1434,6 +1484,38 @@ extension NetworkClient {
     public func getMySaccoShareholding() async throws -> SaccoShareholdingResponse { try await get("api/v1/sacco/shares/me") }
 
     public func getMySaccoDividendHistory() async throws -> SaccoDividendPayoutsResponse { try await get("api/v1/sacco/dividends/me") }
+
+    // Real Rwanda coffee-cooperative harvest-advance / input financing -- see
+    // CooperativeDto's own doc comment. The third feature in this backend not sourced
+    // from Toss/Kakao/Naver/Coupang. amount must equal the advance's own
+    // principalAmount exactly -- a real debt-forgiveness bug this session caught and
+    // fixed before shipping (no partial repayment).
+    public func registerCooperative(name: String, cropType: String, registrationNumber: String?) async throws -> CooperativeResponse {
+        try await authenticatedPost("api/v1/cooperatives", body: RegisterCooperativeRequest(name: name, cropType: cropType, registrationNumber: registrationNumber))
+    }
+
+    public func joinCooperative(cooperativeId: String) async throws -> CooperativeMembershipResponse {
+        try await authenticatedPost("api/v1/cooperatives/\(cooperativeId)/join", body: EmptyBody())
+    }
+
+    public func getMyCooperativeMemberships() async throws -> CooperativeMembershipsResponse { try await get("api/v1/cooperatives/my-memberships") }
+
+    public func requestHarvestAdvance(membershipId: String, principalAmount: Double, purpose: String, expectedHarvestDate: String) async throws -> HarvestAdvanceResponse {
+        try await authenticatedPost(
+            "api/v1/cooperatives/advances",
+            body: RequestAdvanceRequest(membershipId: membershipId, principalAmount: principalAmount, purpose: purpose, expectedHarvestDate: expectedHarvestDate),
+        )
+    }
+
+    public func disburseHarvestAdvance(advanceId: String) async throws -> HarvestAdvanceResponse {
+        try await authenticatedPost("api/v1/cooperatives/advances/\(advanceId)/disburse", body: EmptyBody(), idempotencyKey: UUID().uuidString)
+    }
+
+    public func repayHarvestAdvance(advanceId: String, amount: Double) async throws -> HarvestAdvanceResponse {
+        try await authenticatedPost("api/v1/cooperatives/advances/\(advanceId)/repay", body: RepayAdvanceRequest(amount: amount), idempotencyKey: UUID().uuidString)
+    }
+
+    public func getMyHarvestAdvances() async throws -> HarvestAdvancesResponse { try await get("api/v1/cooperatives/advances/my-advances") }
 
     private func authenticatedPut<Body: Encodable, Response: Decodable>(_ path: String, body: Body) async throws -> Response {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))

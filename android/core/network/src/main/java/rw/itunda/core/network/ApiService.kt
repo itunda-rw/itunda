@@ -3499,6 +3499,34 @@ interface ApiService {
 
     @GET("api/v1/sacco/dividends/me")
     suspend fun getMySaccoDividendHistory(): SaccoDividendPayoutsResponse
+
+    // Real Rwanda coffee-cooperative harvest-advance / input financing -- see
+    // HarvestAdvanceDto's own doc comment. The third feature in this backend not
+    // sourced from Toss/Kakao/Naver/Coupang. A direct itunda-to-farmer lending
+    // relationship (loan_payable), not a cooperative-pool redistribution.
+    @POST("api/v1/cooperatives")
+    suspend fun registerCooperative(@Body request: RegisterCooperativeRequest): CooperativeResponse
+
+    @POST("api/v1/cooperatives/{cooperativeId}/join")
+    suspend fun joinCooperative(@Path("cooperativeId") cooperativeId: String): CooperativeMembershipResponse
+
+    @GET("api/v1/cooperatives/my-memberships")
+    suspend fun getMyCooperativeMemberships(): CooperativeMembershipsResponse
+
+    @POST("api/v1/cooperatives/advances")
+    suspend fun requestHarvestAdvance(@Body request: RequestAdvanceRequest): HarvestAdvanceResponse
+
+    @POST("api/v1/cooperatives/advances/{advanceId}/disburse")
+    suspend fun disburseHarvestAdvance(@Path("advanceId") advanceId: String, @Header("Idempotency-Key") idempotencyKey: String): HarvestAdvanceResponse
+
+    // amount must exactly equal the advance's own principalAmount -- real bug caught
+    // and fixed before this feature shipped: a free-form amount let a token repayment
+    // silently forgive the rest of a real debt. No amount is user-editable client-side.
+    @POST("api/v1/cooperatives/advances/{advanceId}/repay")
+    suspend fun repayHarvestAdvance(@Path("advanceId") advanceId: String, @Body request: RepayAdvanceRequest, @Header("Idempotency-Key") idempotencyKey: String): HarvestAdvanceResponse
+
+    @GET("api/v1/cooperatives/advances/my-advances")
+    suspend fun getMyHarvestAdvances(): HarvestAdvancesResponse
 }
 
 data class UpfrontDepositDto(
@@ -3834,6 +3862,37 @@ data class SaccoDividendPayoutDto(
     val amount: java.math.BigDecimal, val payoutTransactionId: String, val createdAt: String,
 )
 data class SaccoDividendPayoutsResponse(val success: Boolean, val payouts: List<SaccoDividendPayoutDto>)
+
+// Real Rwanda coffee-cooperative harvest-advance / input financing -- sourced beyond
+// this session's usual Toss/Kakao/Naver/Coupang reference ecosystems, grounded in
+// Rwanda's own real coffee sector (Rwanda Coffee Cooperatives Federation: 13 member
+// cooperatives, ~19,000 producer members). A direct itunda-to-farmer lending
+// relationship mirroring the regular Loans feature's own loan_payable receivable
+// shape -- never a shared/pooled wallet. Mirrors bank-mfe's lib/harvestAdvance.ts
+// exactly, including the post-fix repay contract (amount must equal the full real
+// outstanding principal, no partial repayment).
+data class CooperativeDto(
+    val id: String, val name: String, val cropType: String, val registrationNumber: String?, val createdAt: String,
+)
+data class CooperativeMembershipDto(
+    val id: String, val cooperativeId: String, val userId: String, val walletId: String,
+    val memberSince: String, val active: Boolean,
+)
+data class HarvestAdvanceDto(
+    val id: String, val membershipId: String, val walletId: String, val principalAmount: java.math.BigDecimal,
+    val purpose: String, val expectedHarvestDate: String, val repaymentDueDate: String, val status: String,
+    val disbursedAt: String?, val repaidAt: String?, val createdAt: String,
+)
+data class RegisterCooperativeRequest(val name: String, val cropType: String, val registrationNumber: String?)
+data class RequestAdvanceRequest(
+    val membershipId: String, val principalAmount: java.math.BigDecimal, val purpose: String, val expectedHarvestDate: String,
+)
+data class RepayAdvanceRequest(val amount: java.math.BigDecimal)
+data class CooperativeResponse(val success: Boolean, val cooperative: CooperativeDto)
+data class CooperativeMembershipResponse(val success: Boolean, val membership: CooperativeMembershipDto)
+data class CooperativeMembershipsResponse(val success: Boolean, val memberships: List<CooperativeMembershipDto>)
+data class HarvestAdvanceResponse(val success: Boolean, val advance: HarvestAdvanceDto)
+data class HarvestAdvancesResponse(val success: Boolean, val advances: List<HarvestAdvanceDto>)
 
 // Real KakaoBank mini-style capped starter wallet -- see MiniWalletService.kt's own
 // doc comment (real balance/daily/monthly caps plus a real 7-18 age-eligibility gate).
